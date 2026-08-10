@@ -1,0 +1,8 @@
+@media (max-width: 560px) {
+  .page :global([class*="mapPanel"]) { min-height: 470px; }
+  .page :global([class*="map__"]) {
+    min-height: 470px;
+    transform: scale(1.28);
+    transform-origin: center;
+  }
+}

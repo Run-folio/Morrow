@@ -1,0 +1,33 @@
+@media (min-width: 681px) {
+  .plan {
+    --map-side-panel-bottom: 24px;
+    --map-side-panel-gap: 16px;
+    --map-finder-panel-height: clamp(260px, 34svh, 380px);
+  }
+
+  /* The finder now lives on the left, so the itinerary can use the full
+     height of the right rail instead of reserving the finder's old space. */
+  .plan :global([class*="itineraryWithFinder"]) {
+    bottom:var(--map-side-panel-bottom);
+    height:auto;
+    max-height:none;
+  }
+
+  /* Let the left-hand location and finder cards share all available height.
+     Each remains independently scrollable when its content is longer. */
+  .plan :global([class*="destinationWithPinDock"]) {
+    bottom:calc(var(--map-side-panel-bottom) + var(--map-finder-panel-height) + var(--map-side-panel-gap));
+    height:auto;
+    max-height:none;
+  }
+
+  .plan :global([class*="finderDock"]) {
+    right:auto;
+    bottom:var(--map-side-panel-bottom);
+    left:clamp(20px,3.5vw,52px);
+    height:var(--map-finder-panel-height);
+    max-height:calc(100svh - 234px);
+  }
+
+  .plan :global([class*="pinDock"]) { bottom:92px; left:50%; transform:translateX(-50%); }
+}

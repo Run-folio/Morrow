@@ -1,0 +1,13 @@
+@media (max-width: 680px) {
+  .plan :global([class*="titleLockup"]) { max-width:calc(100vw - 150px); margin-right:48px; }
+  .plan :global([class*="editableActivities"]) li {
+    grid-template-columns:28px minmax(0,1fr) auto auto !important;
+    align-items:center;
+    gap:8px;
+    padding:16px 0;
+  }
+  .plan :global([class*="editableActivities"]) li > :global([class*="mobileActivityMove"]) { grid-column:3; }
+  .plan :global([class*="editableActivities"]) li > :global([class*="removeActivity"]) { grid-column:4; }
+  .plan :global([class*="editableActivities"]) li :global([class*="customActivityInput"]) { min-width:0; font-size:14px; }
+  .plan :global([class*="editableActivities"]) li:not(:has(input)) { font-size:15px; line-height:1.45; }
+}

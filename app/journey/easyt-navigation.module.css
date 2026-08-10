@@ -1,0 +1,345 @@
+.header {
+  width: 100%;
+  min-height: 78px;
+  padding: 0 clamp(20px, 4vw, 64px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(221, 218, 222, 0.72);
+  color: #17152f;
+  font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+}
+.portfolio,
+.brand,
+.quietLink,
+.primaryLink,
+.accountTrigger {
+  color: inherit;
+  text-decoration: none;
+}
+.portfolio {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 12px var(--font-geist-mono, monospace);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.portfolioSpacer {
+  display: block;
+  min-width: 58px;
+}
+.portfolio svg {
+  width: 15px;
+  height: 15px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  line-height: 1;
+}
+.brandMark {
+  display: block;
+  width: 48px;
+  height: auto;
+  flex: 0 0 auto;
+}
+.brandName {
+  color: #201c4d;
+  font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: .11em;
+  line-height: 1;
+}
+.actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.quietLink,
+.primaryLink,
+.accountTrigger {
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  font-variant-caps: normal;
+  transition:
+    transform 0.18s,
+    background 0.18s,
+    color 0.18s,
+    border-color 0.18s;
+}
+.quietLink {
+  border: 1px solid #dddade;
+  background: rgba(255, 255, 255, 0.72);
+}
+.quietLink:hover,
+.quietLink.current,
+.accountTrigger:hover,
+.accountTrigger.current {
+  background: #fff;
+  border-color: #ff3d8b;
+  color: #ff3d8b;
+}
+.quietLink svg,
+.primaryLink svg,
+.accountTrigger svg {
+  width: 14px;
+  height: 14px;
+}
+.primaryLink {
+  background: #17152f;
+  border: 1px solid #17152f;
+  color: #fff;
+}
+.primaryLink:hover {
+  transform: translateY(-1px);
+  background: #ff3d8b;
+  border-color: #ff3d8b;
+}
+.accountMenu {
+  position: relative;
+}
+.accountMenu summary {
+  list-style: none;
+  cursor: pointer;
+}
+.accountMenu summary::-webkit-details-marker {
+  display: none;
+}
+.accountTrigger {
+  border: 1px solid #dddade;
+  background: rgba(255, 255, 255, 0.82);
+}
+.avatar {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff0f5;
+  color: #ff3d8b;
+  font-weight: 800;
+}
+.accountName {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.accountPopover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 250px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #dddade;
+  border-radius: 18px;
+  box-shadow: 0 20px 55px rgba(23, 21, 47, 0.14);
+  display: grid;
+  z-index: 40;
+}
+.accountIdentity {
+  padding: 11px 12px 13px;
+  border-bottom: 1px solid #eceaec;
+  margin-bottom: 4px;
+  min-width: 0;
+}
+.accountIdentity strong,
+.accountIdentity span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.accountIdentity strong {
+  font-size: 13px;
+}
+.accountIdentity span {
+  font-size: 11px;
+  color: #777482;
+  margin-top: 3px;
+}
+.accountPopover > a,
+.accountPopover > button,
+.languageControl {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #17152f;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 13px var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  text-align: left;
+}
+.accountPopover > a:hover,
+.accountPopover > button:hover,
+.languageControl:hover {
+  background: #f7f5f6;
+}
+.accountPopover > a.submenuCurrent {
+  background: #fff0f5;
+  color: #ff3d8b;
+}
+.accountPopover svg {
+  width: 16px;
+  height: 16px;
+  color: #ff3d8b;
+  flex: none;
+}
+.accountPopover > button {
+  cursor: pointer;
+}
+.languageControl select {
+  margin-left: auto;
+  max-width: 94px;
+  border: 0;
+  background: transparent;
+  color: #17152f;
+  font: 600 12px var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  outline: none;
+  cursor: pointer;
+}
+.mobileDock {
+  display: none;
+}
+@media (max-width: 820px) {
+  .header {
+    min-height: 66px;
+    padding-inline: 16px;
+    grid-template-columns: 1fr auto;
+  }
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+  .portfolio {
+    display: none;
+  }
+  .portfolioSpacer {
+    display: none;
+  }
+  .actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .quietLink:first-child {
+    display: none;
+  }
+  .quietLink,
+  .primaryLink,
+  .accountTrigger {
+    min-height: 36px;
+    padding-inline: 11px;
+    font-size: 12px;
+  }
+  .accountName {
+    display: none;
+  }
+  .accountTrigger {
+    width: 36px;
+    padding: 0;
+  }
+  .accountTrigger > svg:last-child {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .actions {
+    display: none;
+  }
+  .quietLink {
+    display: none;
+  }
+  .tripsLink {
+    display: inline-flex;
+    padding-inline: 10px;
+  }
+  .primaryLink span {
+    display: none;
+  }
+  .primaryLink {
+    width: 36px;
+    padding: 0;
+  }
+  .brandMark {
+    width: 42px;
+  }
+  .brandName {
+    font-size: 16px;
+    letter-spacing: .08em;
+  }
+  .accountPopover {
+    position: fixed;
+    top: 62px;
+    right: 12px;
+    width: min(280px, calc(100vw - 24px));
+  }
+  .mobileDock {
+    position: fixed;
+    z-index: 90;
+    left: 12px;
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    min-height: 62px;
+    padding: 5px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 3px;
+    border: 1px solid rgba(221, 218, 222, 0.95);
+    border-radius: 21px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 15px 38px rgba(23, 21, 47, 0.18);
+    backdrop-filter: blur(18px);
+  }
+  .mobileDock a {
+    min-width: 0;
+    padding: 4px 2px;
+    display: grid;
+    place-items: center;
+    gap: 2px;
+    border-radius: 15px;
+    color: #777482;
+    text-decoration: none;
+    font: 700 9px/1.1 var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  }
+  .mobileDock svg {
+    width: 18px;
+    height: 18px;
+  }
+  .mobileDock .dockCurrent {
+    color: #ff3d8b;
+    background: #fff0f5;
+  }
+  .mobileDock .dockPrimary {
+    color: #fff;
+    background: #17152f;
+  }
+}

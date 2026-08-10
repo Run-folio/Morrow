@@ -1,0 +1,13 @@
+.stampCard {
+  background: linear-gradient(145deg, #f6f7fb 0%, #eceef5 100%);
+}
+
+.mapLayer {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(217, 63, 114, .16) 0 3px, transparent 4px),
+    radial-gradient(circle at 86% 18%, transparent 0 24px, rgba(217, 63, 114, .18) 25px 26px, transparent 27px),
+    radial-gradient(circle at 82% 80%, transparent 0 34px, rgba(32, 29, 61, .09) 35px 36px, transparent 37px);
+}
+
+.mapLayer span { display: none; }

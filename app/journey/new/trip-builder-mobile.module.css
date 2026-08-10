@@ -1,0 +1,16 @@
+@media (max-width: 620px) {
+  .builder :global([class*="placeCard"]) {
+    grid-template-columns: 72px 22px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+    padding: 9px 11px 10px 9px;
+  }
+  .builder :global([class*="placeThumb"]),
+  .builder :global([class*="placeThumbFallback"]) { width:72px; min-height:72px; }
+  .builder :global([class*="placeThumb"] img) { min-height:72px; }
+  .builder :global([class*="placeText"]) { gap:3px; }
+  .builder :global([class*="placeText"] strong) { font-size:15px; line-height:1.15; }
+  .builder :global([class*="placeText"] > span) { display:-webkit-box; overflow:hidden; font-size:12px; line-height:1.32; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .builder :global([class*="placeText"] small) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:9px; }
+  .builder :global([class*="placeCost"]) { grid-column:3; margin:0; font-size:9px; }
+}
