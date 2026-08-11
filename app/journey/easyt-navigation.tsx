@@ -133,7 +133,7 @@ export default function EasyTNavigation({
           src="/brand/morrow-route-wordmark.svg"
           alt=""
         />
-        <span className={styles.brandName}>MORROVIA</span>
+        <span className={styles.brandName}>morrovia</span>
       </Link>
 
       <nav className={styles.actions} aria-label="Morrovia navigation">

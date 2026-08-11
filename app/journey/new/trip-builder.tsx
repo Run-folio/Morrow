@@ -283,9 +283,10 @@ export default function TripBuilder() {
     addOrigin: "Añade tu ciudad o aeropuerto de salida.", addStop: "Añade al menos una parada para continuar", typePlace: "Escribe primero una ciudad, región o lugar.", checking: "Comprobando este lugar…", unavailable: "No pudimos comprobar este lugar ahora. Inténtalo de nuevo.",
     verifyOrigin: "No pudimos verificar ese punto de partida.", originUnavailable: "No pudimos comprobar ese punto de partida ahora.", startDate: "Fecha de inicio", endDate: "Fecha de fin", pickDate: "Elige una fecha", typeIt: "O escríbela",
     day: "día", days: "días", split: "Elige exactamente cómo repartir tu tiempo entre destinos en el siguiente paso.", addStops: "Añade paradas y se repartirán entre ellas.", selected: "seleccionados", finding: "Buscando lugares y actividades reales cerca de", noSuggestions: "Aún no hay sugerencias fiables. Comprueba la ubicación o inténtalo de nuevo.",
+    tripBriefLabel: "TU IDEA DE VIAJE", tripBriefTitle: "¿Qué quieres hacer realidad?", tripBriefHelp: "Cuéntanos la ocasión, las fechas fijas, los lugares, el presupuesto o cualquier contexto que ayude a dar forma a este viaje.", tripBriefPlaceholder: "Por ejemplo: Tenemos tres semanas en Japón, una maratón en Tokio y queremos terminar en Hong Kong sin prisas.", tripBriefHint: "Opcional, pero útil cuando el viaje tiene mucho que encajar.",
     yourTime: "TU TIEMPO", shapeDays: "Organiza tus días", allocation: "Hemos sugerido una distribución inicial según tus lugares. Mueve un control y EasyT reajustará el resto.", total: "días en total", suggested: "sugeridos", budget: "Presupuesto", budgetHelp: "Se usa para elegir dónde dormir y comer durante la investigación.", value: "Buena relación calidad-precio", valueNote: "Cómodo, sin excesos.", mid: "Gama media", midNote: "Algunos caprichos.", high: "Sin límite", highNote: "Lo mejor disponible.", route: "RUTA HASTA AHORA", departure: "Salida", routeEmpty: "Añade una parada y la ruta aparecerá aquí.", daysBudget: "PRESUPUESTO DE DÍAS", full: "COMPLETO", room: "DÍAS DISPONIBLES", overBy: "EXCESO DE", available: "días disponibles", committed: "comprometidos", open: "libres", overHint: "Hay más lugares seleccionados de los que permiten las fechas. Quita un lugar, elimina una parada o añade días.", selectedPlaces: "LUGARES SELECCIONADOS", nothingSelected: "Aún no hay nada seleccionado. El paso 03 concreta el viaje.", removePlace: "Quitar lugar", placesSelected: "lugares seleccionados", daysTotal: "días en total"
   } : {
-    previousMonth: "Previous month", nextMonth: "Next month", draft: "Draft · editable", editBrief: "Edit brief", dayByDay: "Day by day", source: "Source ↗", previousDay: "← Previous day", nextDay: "Next day →", savingChanges: "Saving changes…", savedDevice: "Saved on this device", exploreMap: "Explore the map first, then save it to an account when you are ready.", openMap: "Open map view →", addOrigin: "Add the city or airport you're leaving from.", addStop: "Add at least one stop to continue", typePlace: "Type a city, region or landmark first.", checking: "Checking this place…", unavailable: "We couldn't check that place just now. Please try again.", verifyOrigin: "We couldn't verify that starting point.", originUnavailable: "We couldn't check that starting point just now.", startDate: "Start date", endDate: "End date", pickDate: "Pick a date", typeIt: "Or type it", day: "day", days: "days", split: "Choose exactly how your time is split between destinations in the next step.", addStops: "Add stops and this splits across them.", selected: "selected", finding: "Finding real places, landmarks and activities around", noSuggestions: "No reliable suggestions loaded yet. Check the location or try again shortly.", yourTime: "YOUR TIME", shapeDays: "Shape the days", allocation: "We've suggested a starting split from your selected places. Move a slider and EasyT rebalances the rest.", total: "days total", suggested: "suggested", budget: "Budget band", budgetHelp: "Used to pick where to sleep and eat during research.", value: "Good value", valueNote: "Comfortable, not precious.", mid: "Mid-range", midNote: "Some splurges.", high: "No ceiling", highNote: "Best available.", route: "ROUTE SO FAR", departure: "Departure", routeEmpty: "Add a stop and the route builds here as you go.", daysBudget: "DAYS BUDGET", full: "FULL", room: "ROOM LEFT", overBy: "OVER BY", available: "days available", committed: "committed", open: "open", overHint: "More is selected than the dates allow. Remove a place, drop a stop, or add days.", selectedPlaces: "SELECTED PLACES", nothingSelected: "Nothing selected yet. Step 03 is where the trip gets specific.", removePlace: "Remove place", placesSelected: "places selected", daysTotal: "days total"
+    previousMonth: "Previous month", nextMonth: "Next month", draft: "Draft · editable", editBrief: "Edit brief", dayByDay: "Day by day", source: "Source ↗", previousDay: "← Previous day", nextDay: "Next day →", savingChanges: "Saving changes…", savedDevice: "Saved on this device", exploreMap: "Explore the map first, then save it to an account when you are ready.", openMap: "Open map view →", addOrigin: "Add the city or airport you're leaving from.", addStop: "Add at least one stop to continue", typePlace: "Type a city, region or landmark first.", checking: "Checking this place…", unavailable: "We couldn't check that place just now. Please try again.", verifyOrigin: "We couldn't verify that starting point.", originUnavailable: "We couldn't check that starting point just now.", startDate: "Start date", endDate: "End date", pickDate: "Pick a date", typeIt: "Or type it", day: "day", days: "days", split: "Choose exactly how your time is split between destinations in the next step.", addStops: "Add stops and this splits across them.", selected: "selected", finding: "Finding real places, landmarks and activities around", noSuggestions: "No reliable suggestions loaded yet. Check the location or try again shortly.", tripBriefLabel: "YOUR TRIP BRIEF", tripBriefTitle: "What are you trying to make happen?", tripBriefHelp: "Share the occasion, fixed dates, places, budget or any context that helps shape this trip.", tripBriefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", tripBriefHint: "Optional, but useful when the trip has a lot to hold together.", yourTime: "YOUR TIME", shapeDays: "Shape the days", allocation: "We've suggested a starting split from your selected places. Move a slider and EasyT rebalances the rest.", total: "days total", suggested: "suggested", budget: "Budget band", budgetHelp: "Used to pick where to sleep and eat during research.", value: "Good value", valueNote: "Comfortable, not precious.", mid: "Mid-range", midNote: "Some splurges.", high: "No ceiling", highNote: "Best available.", route: "ROUTE SO FAR", departure: "Departure", routeEmpty: "Add a stop and the route builds here as you go.", daysBudget: "DAYS BUDGET", full: "FULL", room: "ROOM LEFT", overBy: "OVER BY", available: "days available", committed: "committed", open: "open", overHint: "More is selected than the dates allow. Remove a place, drop a stop, or add days.", selectedPlaces: "SELECTED PLACES", nothingSelected: "Nothing selected yet. Step 03 is where the trip gets specific.", removePlace: "Remove place", placesSelected: "places selected", daysTotal: "days total"
   };
   const [tripId, setTripId] = useState(() => `trip-${crypto.randomUUID()}`);
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
@@ -299,6 +300,7 @@ export default function TripBuilder() {
   const today = useMemo(() => iso(new Date()), []);
   const oneWeekLater = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 6); return iso(date); }, []);
   const [origin, setOrigin] = useState("");
+  const [tripBrief, setTripBrief] = useState("");
   const [originCoordinates, setOriginCoordinates] = useState<[number, number] | undefined>();
   const [originTouched, setOriginTouched] = useState(false);
   const [originError, setOriginError] = useState("");
@@ -332,6 +334,7 @@ export default function TripBuilder() {
       setTripId(saved.id);
       setCreatedAt(saved.createdAt);
       setOrigin(saved.brief.origin);
+      setTripBrief(saved.brief.mustDo);
       setOriginCoordinates(saved.brief.originCoordinates);
       setStops(saved.stops.map(({ id, name, country, longitude, latitude }) => ({ id, name, country, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
       setStartDate(saved.startDate);
@@ -364,7 +367,7 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; startDate?: string; endDate?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; startDate?: string; endDate?: string; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
@@ -374,6 +377,7 @@ export default function TripBuilder() {
           setStops([homeDraft.destination]);
           setStartDate(homeDraft.startDate);
           setEndDate(homeDraft.endDate);
+          setTripBrief(homeDraft.brief ?? "");
           window.localStorage.removeItem("easyt-home-trip-draft");
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
@@ -549,7 +553,7 @@ export default function TripBuilder() {
     startDate,
     endDate,
     picks,
-    mustDo: "",
+    mustDo: tripBrief,
     pace: "slow",
     hotels: "few",
     budget,
@@ -558,7 +562,7 @@ export default function TripBuilder() {
     placeDetails: discoveredPlaces,
     originCoordinates,
     createdAt,
-  }), [tripId, origin, stops, startDate, endDate, picks, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt]);
+  }), [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
@@ -706,6 +710,13 @@ export default function TripBuilder() {
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
+              <div className={`${styles.card} ${styles.tripBriefCard}`}>
+                <span className={styles.cardLabel}><MapPin /> {ui.tripBriefLabel}</span>
+                <h2>{ui.tripBriefTitle}</h2>
+                <p>{ui.tripBriefHelp}</p>
+                <textarea className={styles.tripBriefTextarea} aria-label={ui.tripBriefLabel} value={tripBrief} maxLength={600} onChange={(event) => setTripBrief(event.target.value)} placeholder={ui.tripBriefPlaceholder} />
+                <small className={styles.hint}>{ui.tripBriefHint}</small>
+              </div>
               <div className={`${styles.card} ${originMissing ? styles.cardError : ""}`}>
                 <span className={styles.cardLabel}><Plane /> {copy.startFrom}</span>
                 <input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}

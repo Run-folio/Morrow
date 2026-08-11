@@ -63,6 +63,8 @@
   color: #000; font-size: 19px; font-weight: 600; letter-spacing: -.02em; font-family: inherit;
 }
 .card input::placeholder { color: #a9a5b0; }
+.tripBriefCard{gap:9px;background:#fffafd;border-color:#eadce4}.tripBriefCard h2{margin:0;color:var(--ink);font-size:23px;font-weight:650;line-height:1.05;letter-spacing:-.04em}.tripBriefCard p{max-width:620px;margin:0;color:var(--muted);font-size:14px;line-height:1.48}.tripBriefTextarea{box-sizing:border-box;width:100%;min-height:92px;padding:12px 13px;color:var(--ink);border:1px solid #ded9df;border-radius:12px;background:#fff;font:500 14px/1.45 var(--font-geist-sans,Geist,system-ui,sans-serif);outline:0;resize:vertical}.tripBriefTextarea::placeholder{color:#97919c}.tripBriefTextarea:focus{border-color:var(--signal);box-shadow:0 0 0 3px rgba(255,61,139,.1)}
+@media(max-width:620px){.tripBriefCard h2{font-size:21px}.tripBriefTextarea{min-height:112px}}
 .cardTrigger { display: grid; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; }
 .cardValue { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .cardValue strong { font-size: 20px; font-weight: 600; letter-spacing: -.03em; }

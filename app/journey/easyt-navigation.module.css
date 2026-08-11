@@ -58,8 +58,8 @@
   color: #201c4d;
   font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
   font-size: 19px;
-  font-weight: 500;
-  letter-spacing: .11em;
+  font-weight: 600;
+  letter-spacing: .06em;
   line-height: 1;
 }
 .actions {
@@ -293,7 +293,8 @@
   }
   .brandName {
     font-size: 16px;
-    letter-spacing: .08em;
+    font-weight: 600;
+    letter-spacing: .04em;
   }
   .accountPopover {
     position: fixed;
