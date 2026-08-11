@@ -156,6 +156,15 @@ export default function EasyTNavigation({
         >
           <span>{labels.trips}</span>
         </EasyTLinkButton>
+        <EasyTLinkButton
+          className={`${styles.quietLink} ${current === "stamped" ? styles.current : ""}`}
+          href="/journey/stamped"
+          size="small"
+          variant="secondary"
+        >
+          <Stamp aria-hidden="true" />
+          <span>{labels.stamped}</span>
+        </EasyTLinkButton>
         <EasyTProductTour triggerLabel={labels.tour} />
         {activeAccount ? (
           <details className={styles.accountMenu}>

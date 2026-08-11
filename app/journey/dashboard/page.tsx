@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import {
   ensureEasyTUser,
+  getCountryStamps,
   getEasyTUserPreferences,
   listTripsForOwner,
 } from "@/lib/easyt/repository";
@@ -22,9 +23,10 @@ export default async function EasyTDashboardPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/journey/login?next=/journey/dashboard");
   await ensureEasyTUser(session.user.id, session.user.email, session.user.name);
-  const [trips, preferences] = await Promise.all([
+  const [trips, preferences, stamps] = await Promise.all([
     listTripsForOwner(session.user.id),
     getEasyTUserPreferences(session.user.id),
+    getCountryStamps(session.user.id),
   ]);
   return (
     <main className={styles.page}>
@@ -46,7 +48,7 @@ export default async function EasyTDashboardPage() {
             </p>
           </div>
         </div>
-        <DashboardClient trips={trips} />
+        <DashboardClient trips={trips} stamps={stamps} />
       </section>
     </main>
   );

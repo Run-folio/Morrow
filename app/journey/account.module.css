@@ -384,6 +384,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
+.showMoreTrips{display:block;margin:22px auto 0;border:0;border-radius:999px;padding:12px 18px;background:#17152f;color:#fff;font:750 13px inherit;cursor:pointer;transition:transform .16s ease,background .16s ease}.showMoreTrips:hover{background:#302b5b;transform:translateY(-1px)}.showMoreTrips:focus-visible{outline:3px solid #ff3d8b;outline-offset:3px}.stampsSummary{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:26px;margin-top:48px;padding:28px 30px;border:1px solid #dddade;border-radius:24px;background:linear-gradient(135deg,#fff 0%,#f5f6fb 100%);box-shadow:0 16px 42px rgba(23,21,47,.05)}.stampsSummary .eyebrow{margin:0 0 9px}.stampsSummary h2{margin:0;font-size:34px;line-height:1;letter-spacing:-.055em}.stampsSummary p:not(.eyebrow){max-width:510px;margin:10px 0 0;color:#777482;line-height:1.5}.stampsStats{display:flex;gap:18px}.stampsStats span{display:grid;gap:3px;color:#777482;font-size:12px;white-space:nowrap}.stampsStats b{color:#17152f;font-size:28px;letter-spacing:-.06em}.stampsLink{display:inline-flex;align-items:center;gap:8px;min-height:42px;border-radius:999px;padding:0 16px;background:#fff0f5;color:#b21351;font-size:13px;font-weight:800;text-decoration:none;transition:transform .16s ease,background .16s ease}.stampsLink:hover{background:#ffe1ec;transform:translateY(-1px)}.stampsLink:focus-visible{outline:3px solid #ff3d8b;outline-offset:3px}.stampsLink svg{width:16px;height:16px}
 .tripCard {
   background: #fff;
   border: 1px solid rgba(23, 21, 47, 0.14);
@@ -759,6 +760,7 @@
   .tripGrid {
     grid-template-columns: 1fr 1fr;
   }
+  .stampsSummary{grid-template-columns:1fr;gap:18px}.stampsLink{justify-self:start}
   .dashTop {
     align-items: flex-start;
     flex-direction: column;

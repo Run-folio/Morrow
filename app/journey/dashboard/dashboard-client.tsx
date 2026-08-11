@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, CalendarCheck2, Copy, Edit3, Gift, MoreHorizontal, RotateCcw, Trash2, X } from "lucide-react";
+import { Archive, CalendarCheck2, Copy, Edit3, Gift, MoreHorizontal, RotateCcw, Stamp, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
@@ -12,7 +12,9 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import styles from "../account.module.css";
 import FirstTripGuide from "./first-trip-guide";
 
-export default function DashboardClient({ trips }: { trips: EasyTTrip[] }) {
+type StampSummary = { countryId: string; status: "visited" | "want" };
+
+export default function DashboardClient({ trips, stamps }: { trips: EasyTTrip[]; stamps: StampSummary[] }) {
   const router = useRouter();
   const [view, setView] = useState<"active" | "archived">("active");
   const [working, setWorking] = useState<string | null>(null);
@@ -24,6 +26,7 @@ export default function DashboardClient({ trips }: { trips: EasyTTrip[] }) {
   const [claimUrl, setClaimUrl] = useState("");
   const [delivered, setDelivered] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
+  const [showAll, setShowAll] = useState(false);
   const copy = easytCopy[language].dashboard;
 
   useEffect(() => {
@@ -103,6 +106,12 @@ export default function DashboardClient({ trips }: { trips: EasyTTrip[] }) {
   const activeTrips = trips.filter((trip) => trip.status !== "archived");
   const archivedTrips = trips.filter((trip) => trip.status === "archived");
   const visibleTrips = view === "active" ? activeTrips : archivedTrips;
+  const displayedTrips = showAll ? visibleTrips : visibleTrips.slice(0, 3);
+  const visitedCount = stamps.filter((stamp) => stamp.status === "visited").length;
+  const wantCount = stamps.filter((stamp) => stamp.status === "want").length;
+  const stampsCopy = language === "es"
+    ? { eyebrow: "Tu mundo, marcado", title: "Sellos.", text: "Guarda un registro vivo de los lugares donde has estado y de los que aún te llaman.", visited: "visitados", want: "por visitar", action: "Abrir sellos", seeAll: `Ver los ${visibleTrips.length} viajes`, showFewer: "Mostrar menos viajes" }
+    : { eyebrow: "Your world, marked", title: "Stamped.", text: "Keep a living record of places you’ve been and the ones still calling.", visited: "visited", want: "want to visit", action: "Open Stamped", seeAll: `See all ${visibleTrips.length} trips`, showFewer: "Show fewer trips" };
 
   return (
     <>
@@ -111,14 +120,14 @@ export default function DashboardClient({ trips }: { trips: EasyTTrip[] }) {
         ariaLabel={language === "es" ? "Estado del viaje" : "Trip status"}
         className={styles.tripViews}
         value={view}
-        onChange={setView}
+        onChange={(nextView) => { setView(nextView); setShowAll(false); }}
         options={[
           { label: copy.active, value: "active", count: activeTrips.length },
           { label: copy.archived, value: "archived", count: archivedTrips.length },
         ]}
       />
       <div className={styles.tripGrid}>
-        {visibleTrips.map((trip) => (
+        {displayedTrips.map((trip) => (
           <article
             key={trip.id}
             className={`${styles.tripCard} ${working === trip.id ? styles.loading : ""}`}
@@ -218,6 +227,23 @@ export default function DashboardClient({ trips }: { trips: EasyTTrip[] }) {
           </div>
         )}
       </div>
+      {visibleTrips.length > 3 ? (
+        <button type="button" className={styles.showMoreTrips} onClick={() => setShowAll((current) => !current)}>
+          {showAll ? stampsCopy.showFewer : stampsCopy.seeAll}
+        </button>
+      ) : null}
+      <section className={styles.stampsSummary} aria-labelledby="dashboard-stamps-title">
+        <div>
+          <p className={styles.eyebrow}>{stampsCopy.eyebrow}</p>
+          <h2 id="dashboard-stamps-title">{stampsCopy.title}</h2>
+          <p>{stampsCopy.text}</p>
+        </div>
+        <div className={styles.stampsStats} aria-label={language === "es" ? "Resumen de sellos" : "Stamps summary"}>
+          <span><b>{visitedCount}</b>{stampsCopy.visited}</span>
+          <span><b>{wantCount}</b>{stampsCopy.want}</span>
+        </div>
+        <Link className={styles.stampsLink} href="/journey/stamped"><Stamp aria-hidden="true" /> {stampsCopy.action}</Link>
+      </section>
       {gifting ? (
         <div className={styles.giftOverlay} role="presentation" onMouseDown={() => setGifting(null)}>
           <section className={styles.giftDialog} role="dialog" aria-modal="true" aria-labelledby="gift-title" onMouseDown={(event) => event.stopPropagation()}>
