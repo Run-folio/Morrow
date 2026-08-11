@@ -93,8 +93,10 @@ export default function HomeTripStarter() {
   return <form id="start-building" className={styles.startBuilder} onSubmit={(event) => void submit(event)}>
     <div className={styles.startBuilderBrief}>
       <span>{text.briefLabel}</span>
-      <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
-      <div className={styles.startBuilderPromptAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
+      <div className={styles.startBuilderPromptField}>
+        <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
+        <div className={styles.startBuilderPromptAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
+      </div>
       <div className={styles.shapePlan}>
         <span className={styles.shapePlanLabel}>{text.startersLabel}</span>
         <div className={styles.shapePlanChoices}>{text.starters.map((shape) => <button type="button" key={shape} onClick={() => addShape(shape)}><Sparkles aria-hidden="true" /> {shape}</button>)}</div>
