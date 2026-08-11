@@ -2,6 +2,7 @@ export type ParsedTripBrief = {
   origin?: string;
   destination?: string;
   stops: string[];
+  routeHints: string[];
   anchor?: string;
   durationDays?: number;
 };
@@ -58,6 +59,20 @@ function findDurationDays(value: string) {
   return undefined;
 }
 
+function findRouteHints(value: string) {
+  const text = normalise(value);
+  const hints: string[] = [];
+  // These are deliberately route preferences rather than invented stops. A
+  // traveller asking for "north and south Japan" has not yet chosen Sapporo
+  // or Fukuoka, but that intent should still influence the next suggestions.
+  const mentionsJapan = /\bjapan\b/.test(text);
+  const wantsNorth = /\b(north(?:ern)?|norte)\b/.test(text);
+  const wantsSouth = /\b(south(?:ern)?|sur)\b/.test(text);
+  if (mentionsJapan && wantsNorth) hints.push("north-japan");
+  if (mentionsJapan && wantsSouth) hints.push("south-japan");
+  return hints;
+}
+
 function resolveMention(mention?: string) {
   if (!mention) return undefined;
   const known = findPlaces(mention)[0];
@@ -83,6 +98,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
     origin,
     destination: destination === origin && matchedPlaces.length > 1 ? matchedPlaces.at(-1) : destination,
     stops: matchedPlaces.filter((name) => name !== origin),
+    routeHints: findRouteHints(value),
     anchor,
     durationDays: findDurationDays(value),
   };

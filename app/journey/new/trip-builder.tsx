@@ -55,7 +55,7 @@ const CATALOG: Record<string, Place[]> = {
  */
 const NEARBY_SUGGESTIONS: Record<string, string[]> = {
   tokyo: ["Nikko", "Kanazawa", "Takayama", "Kyoto"],
-  japan: ["Kyoto", "Kanazawa", "Takayama", "Nikko"],
+  japan: ["Kyoto", "Kanazawa", "Takayama", "Nikko", "Hiroshima"],
   paris: ["Versailles", "Reims", "Lyon", "Bordeaux"],
   france: ["Lyon", "Bordeaux", "Nice", "Strasbourg"],
   "mexico city": ["Puebla", "Oaxaca", "Tepoztlán", "San Miguel de Allende"],
@@ -73,6 +73,10 @@ const NEARBY_SUGGESTIONS: Record<string, string[]> = {
   china: ["Shanghai", "Chengdu", "Xi'an", "Hong Kong"],
   "guatemala city": ["Antigua Guatemala", "Lake Atitlán", "Flores", "Semuc Champey"],
   guatemala: ["Antigua Guatemala", "Lake Atitlán", "Flores", "Tikal"],
+};
+const ROUTE_HINT_SUGGESTIONS: Record<string, string[]> = {
+  "north-japan": ["Sapporo", "Hakodate", "Sendai"],
+  "south-japan": ["Fukuoka", "Nagasaki", "Kagoshima"],
 };
 const FILTERS = ["All", "Food", "Nature", "Cities", "Beach"];
 const STEPS = [
@@ -306,6 +310,7 @@ export default function TripBuilder() {
   const [originTouched, setOriginTouched] = useState(false);
   const [originError, setOriginError] = useState("");
   const [stops, setStops] = useState<Stop[]>([]);
+  const [routeHints, setRouteHints] = useState<string[]>([]);
   const [stopInput, setStopInput] = useState("");
   const [stopError, setStopError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
@@ -368,14 +373,18 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; startDate?: string; endDate?: string; brief?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; routeHints?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
-        if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination) {
+        if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length) {
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
-          if (homeDraft.destination?.coordinates && homeDraft.destination.country) setStops([homeDraft.destination]);
+          // `destination` is retained for drafts created before prompt-first
+          // routing. New homepage drafts carry the complete verified route.
+          const draftStops = homeDraft.destinations?.length ? homeDraft.destinations : homeDraft.destination ? [homeDraft.destination] : [];
+          if (draftStops.length) setStops(draftStops);
+          if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
           setTripBrief(homeDraft.brief ?? "");
@@ -428,8 +437,10 @@ export default function TripBuilder() {
   const over = committed > totalDays;
   const selected = stops.flatMap((stop) => (picks[stop.id] ?? []).map((title) => ({ stopId: stop.id, title })));
   const contextualSuggestions = useMemo(
-    () => suggestionsFor(stops.at(-1)).filter((name) => !stops.some((stop) => stop.name.toLowerCase() === name.toLowerCase())).slice(0, 4),
-    [stops],
+    () => [...(ROUTE_HINT_SUGGESTIONS[routeHints[0]] ?? []), ...(ROUTE_HINT_SUGGESTIONS[routeHints[1]] ?? []), ...suggestionsFor(stops.at(-1))]
+      .filter((name, index, all) => all.indexOf(name) === index && !stops.some((stop) => stop.name.toLowerCase() === name.toLowerCase()))
+      .slice(0, 4),
+    [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const stepGuidance = language === "es"
@@ -510,6 +521,8 @@ export default function TripBuilder() {
   const applyTripBrief = async () => {
     const parsed = parseTripBrief(tripBrief);
     if (!tripBrief.trim()) return;
+
+    setRouteHints(parsed.routeHints);
 
     if (!origin.trim() && parsed.origin) {
       setOrigin(parsed.origin);

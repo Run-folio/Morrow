@@ -9,6 +9,7 @@ import { trackEvent } from "@/lib/analytics";
 import styles from "./home.module.css";
 
 type GeocodeResult = { name?: string; country?: string; coordinates?: [number, number] };
+type DraftDestination = { id: string; name: string; country: string; coordinates: [number, number] };
 
 const copy = {
   en: {
@@ -54,19 +55,29 @@ export default function HomeTripStarter() {
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: Boolean(brief.trim()), has_origin: Boolean(origin.trim()), has_destination: Boolean(destination.trim()) });
     setLoading(true);
     try {
-      const [resolvedOrigin, resolvedDestination] = await Promise.all([
+      const destinationsToResolve = [...new Set((destination.trim() ? [proposedDestination, ...parsed.stops] : [...parsed.stops, proposedDestination]).filter(Boolean))];
+      const [resolvedOrigin, ...resolvedDestinations] = await Promise.all([
         proposedOrigin ? resolve(proposedOrigin).catch(() => null) : Promise.resolve(null),
-        proposedDestination ? resolve(proposedDestination).catch(() => null) : Promise.resolve(null),
+        ...destinationsToResolve.map((place) => resolve(place).catch(() => null)),
       ]);
+      const destinations: DraftDestination[] = resolvedDestinations.flatMap((result, index) => {
+        if (!result?.coordinates || !result.country) return [];
+        const name = result.name?.split(",")[0]?.trim() || destinationsToResolve[index];
+        return [{
+          id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}-${index}`,
+          name,
+          country: result.country,
+          coordinates: result.coordinates,
+        }];
+      });
       window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify({
         origin: resolvedOrigin?.name?.split(",")[0]?.trim() || proposedOrigin || undefined,
         originCoordinates: resolvedOrigin?.coordinates,
-        destination: resolvedDestination?.coordinates && resolvedDestination.country ? {
-          id: `${(resolvedDestination.name || proposedDestination).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
-          name: resolvedDestination.name?.split(",")[0]?.trim() || proposedDestination,
-          country: resolvedDestination.country,
-          coordinates: resolvedDestination.coordinates,
-        } : undefined,
+        // Keep every explicitly mentioned place. The builder can then show a
+        // real Tokyo → Kyoto starting route instead of silently keeping only
+        // the final city in the sentence.
+        destinations,
+        routeHints: parsed.routeHints,
         startDate,
         endDate: proposedEndDate,
         brief: brief.trim(),
