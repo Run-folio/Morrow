@@ -55,3 +55,30 @@
 .startBuilderBrief textarea{box-sizing:border-box;width:100%;min-height:88px;padding:12px;color:#201d3d;border:1px solid #dcd8df;border-radius:14px;background:#fff;font:500 13px/1.45 var(--font-geist-sans,Inter,sans-serif);outline:none;resize:vertical}
 .startBuilderBrief textarea::placeholder{color:#96919b}.startBuilderBrief textarea:focus{border-color:#d93f72;box-shadow:0 0 0 3px rgba(217,63,114,.1)}
 @media(max-width:900px){.startBuilder{grid-template-columns:1fr}.startBuilderBrief{grid-column:1}.startBuilderBrief textarea{min-height:104px}}
+
+/* Hero prompt: one clear entry point, with optional shaping controls underneath. */
+.hero .heroCopy{max-width:680px}
+.hero .startBuilder{display:grid;grid-template-columns:1fr;gap:0;margin-top:32px;padding:23px 26px 18px;border:1px solid #ddd9e1;border-radius:19px;background:#fff;box-shadow:0 16px 36px rgba(32,29,61,.07)}
+.hero .startBuilderBrief{display:grid;gap:9px}
+.hero .startBuilderBrief>span{color:#d93f72;font:700 10px var(--font-geist-mono,monospace);letter-spacing:.14em;text-transform:uppercase}
+.hero .startBuilderBrief textarea{min-height:132px;padding:17px 18px;color:#201d3d;border:1px solid #dedbe4;border-radius:14px;background:#fff;font:500 16px/1.45 var(--font-geist-sans,Inter,Arial,sans-serif);resize:none}
+.hero .startBuilderBrief textarea::placeholder{color:#96919b}
+.startBuilderPromptAction{display:flex;justify-content:flex-end;margin-top:-61px;margin-right:12px;margin-bottom:29px;position:relative;z-index:1}
+.startBuilderPromptAction button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:0 17px;color:#fff;border:0;border-radius:999px;background:#201d3d;font:650 13px var(--font-geist-sans,Inter,Arial,sans-serif);cursor:pointer;transition:background .18s ease,transform .18s ease}
+.startBuilderPromptAction button:hover{background:#ff3d8b;transform:translateY(-1px)}
+.startBuilderPromptAction button:disabled{opacity:.68;cursor:wait}
+.startBuilderPromptAction svg{width:16px;height:16px}
+.shapePlan{display:grid;gap:9px;padding-top:15px;border-top:1px solid #e7e4e9}
+.shapePlanLabel{color:#595460;font:700 9px var(--font-geist-mono,monospace);letter-spacing:.13em}
+.shapePlanChoices{display:flex;flex-wrap:wrap;gap:8px}
+.shapePlanChoices button,.startBuilderSecondary a{display:inline-flex;align-items:center;gap:7px;color:#595460;background:#fff;border:1px solid #e0dde4;border-radius:999px;font:500 11px var(--font-geist-sans,Inter,Arial,sans-serif);cursor:pointer;transition:border-color .18s ease,color .18s ease,background .18s ease}
+.shapePlanChoices button{padding:9px 12px}
+.shapePlanChoices button:hover{color:#201d3d;border-color:#d93f72;background:#fff6f9}
+.shapePlanChoices svg{width:14px;height:14px;color:#ff3d8b}
+.startBuilderSecondary{display:flex;gap:28px;margin-top:17px}
+.startBuilderSecondary a{padding:10px 15px;text-decoration:none}
+.startBuilderSecondary a:first-child{color:#fff;background:#201d3d;border-color:#201d3d}
+.startBuilderSecondary a:hover{color:#fff;background:#201d3d;border-color:#201d3d}
+.startBuilderSecondary svg{width:14px;height:14px}
+@media(max-width:900px){.hero .startBuilder{padding:20px}.hero .startBuilderBrief textarea{min-height:126px}.startBuilderPromptAction{margin-right:8px}.shapePlanChoices button{padding:8px 10px}}
+@media(max-width:760px){.hero .heroCopy{max-width:none}.hero .startBuilder{margin-top:25px}.hero .startBuilderBrief textarea{font-size:15px}.startBuilderSecondary{gap:10px;flex-wrap:wrap}.startBuilderSecondary a{flex:1;justify-content:center;min-width:130px}}

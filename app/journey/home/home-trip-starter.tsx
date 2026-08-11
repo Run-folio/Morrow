@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Plus, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -13,10 +14,10 @@ type DraftDestination = { id: string; name: string; country: string; coordinates
 
 const copy = {
   en: {
-    eyebrow: "Start with the why", title: "What are you trying to make happen?", intro: "Tell us the occasion, places, timing, budget or anything that matters. We will carry it into your plan.", briefLabel: "Your trip brief", briefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", continue: "Turn this into a plan", checking: "Opening your plan…",
+    briefLabel: "YOUR TRIP BRIEF", briefPlaceholder: "For example: Two weeks in Japan this October — Tokyo, Kyoto and time in the Japanese Alps.", continue: "Make my plan", checking: "Opening your plan…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "See featured routes",
   },
   es: {
-    eyebrow: "Empieza por el porqué", title: "¿Qué quieres hacer realidad?", intro: "Cuéntanos la ocasión, los lugares, las fechas, el presupuesto o lo que importe. Lo llevaremos a tu plan.", briefLabel: "Tu idea de viaje", briefPlaceholder: "Por ejemplo: Tenemos tres semanas en Japón, una maratón en Tokio y queremos terminar en Hong Kong sin prisas.", continue: "Convertirlo en un plan", checking: "Abriendo tu plan…",
+    briefLabel: "TU IDEA DE VIAJE", briefPlaceholder: "Por ejemplo: Dos semanas en Japón este octubre — Tokio, Kioto y tiempo en los Alpes japoneses.", continue: "Crear mi plan", checking: "Abriendo tu plan…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Ver rutas destacadas",
   },
 } as const;
 
@@ -32,6 +33,7 @@ export default function HomeTripStarter() {
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
   const [loading, setLoading] = useState(false);
   const text = copy[language];
+  const addShape = (shape: string) => setBrief((current) => current.trim() ? `${current.trim()} ${shape}.` : `${shape}.`);
 
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -88,12 +90,16 @@ export default function HomeTripStarter() {
     }
   };
 
-  return <form className={styles.startBuilder} onSubmit={(event) => void submit(event)}>
-    <div className={styles.startBuilderIntro}><p>{text.eyebrow}</p><h2>{text.title}</h2><span>{text.intro}</span></div>
+  return <form id="start-building" className={styles.startBuilder} onSubmit={(event) => void submit(event)}>
     <div className={styles.startBuilderBrief}>
       <span>{text.briefLabel}</span>
       <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
+      <div className={styles.startBuilderPromptAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
+      <div className={styles.shapePlan}>
+        <span className={styles.shapePlanLabel}>{text.startersLabel}</span>
+        <div className={styles.shapePlanChoices}>{text.starters.map((shape) => <button type="button" key={shape} onClick={() => addShape(shape)}><Sparkles aria-hidden="true" /> {shape}</button>)}</div>
+      </div>
     </div>
-    <div className={styles.startBuilderAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
+    <div className={styles.startBuilderSecondary}><Link href="/journey/new"><Plus aria-hidden="true" /> {text.newTrip}</Link><a href="#routes"><Sparkles aria-hidden="true" /> {text.routes}</a></div>
   </form>;
 }

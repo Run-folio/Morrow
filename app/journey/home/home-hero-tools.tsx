@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Compass, Plus, Sparkles, Stamp, Utensils } from "lucide-react";
+import { ArrowRight, Sparkles, Stamp, Utensils } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import HomeRestaurantFinder from "./restaurant-finder";
+import HomeTripStarter from "./home-trip-starter";
 import styles from "./home.module.css";
 import polish from "./home-polish.module.css";
 import stampCard from "./stamp-card.module.css";
 
 const copy = {
-  en: { eyebrow: "Travel, with a little more thought", title: "Complex trips simplified for you.", lede: "Pick a route that matches the break you need. EasyT gives you a thoughtful first plan, then leaves it open for you to make it yours.", routes: "See featured routes", scratch: "Start from scratch", personal: "Personal, not packaged", useful: "Useful before and during the trip", chapter: "A route you can make yours", japan: "Tokyo, Kanazawa\nand the Japanese Alps", routeMeta: "Japan · 10 days", routeStops: "Tokyo → Kanazawa → Kyoto", exploreJapan: "Explore the Japan route", out: "Out and about", nearby: "Find a good place nearby.", nearbyText: "Choose what you need, then EasyT will search around your current location.", story: "Keep the story", stamps: "Collect your stamps.", stampsText: "Mark the places you’ve lived, loved and returned to. Your map becomes a record of how you travel.", openMap: "Open your map" },
-  es: { eyebrow: "Viaja con un poco más de intención", title: "Viajes complejos, simplificados para ti.", lede: "Elige una ruta que encaje con el descanso que necesitas. EasyT te da un primer plan pensado y lo deja abierto para que lo hagas tuyo.", routes: "Ver rutas destacadas", scratch: "Empezar desde cero", personal: "Personal, no empaquetado", useful: "Útil antes y durante el viaje", chapter: "Una ruta que haces tuya", japan: "Tokio, Kanazawa\ny los Alpes japoneses", routeMeta: "Japón · 10 días", routeStops: "Tokio → Kanazawa → Kioto", exploreJapan: "Explora la ruta de Japón", out: "En movimiento", nearby: "Encuentra un buen lugar cerca.", nearbyText: "Elige lo que necesitas y EasyT buscará alrededor de tu ubicación actual.", story: "Guarda la historia", stamps: "Colecciona tus sellos.", stampsText: "Marca los lugares donde has vivido, amado y regresado. Tu mapa se convierte en un registro de cómo viajas.", openMap: "Abre tu mapa" },
+  en: { eyebrow: "Travel, with a little more thought", title: "Complex trips simplified for you.", lede: "Pick a route that matches the break you need. Morrovia gives you a thoughtful first plan, then leaves it open for you to make it yours.", routes: "See featured routes", scratch: "Start from scratch", personal: "Personal, not packaged", useful: "Useful before and during the trip", chapter: "A route you can make yours", japan: "Tokyo, Kanazawa\nand the Japanese Alps", routeMeta: "Japan · 10 days", routeStops: "Tokyo → Kanazawa → Kyoto", exploreJapan: "Explore the Japan route", out: "Out and about", nearby: "Find a good place nearby.", nearbyText: "Choose what you need, then Morrovia will search around your current location.", story: "Keep the story", stamps: "Collect your stamps.", stampsText: "Mark the places you’ve lived, loved and returned to. Your map becomes a record of how you travel.", openMap: "Open your map" },
+  es: { eyebrow: "Viaja con un poco más de intención", title: "Viajes complejos, simplificados para ti.", lede: "Elige una ruta que encaje con el descanso que necesitas. Morrovia te da un primer plan pensado y lo deja abierto para que lo hagas tuyo.", routes: "Ver rutas destacadas", scratch: "Empezar desde cero", personal: "Personal, no empaquetado", useful: "Útil antes y durante el viaje", chapter: "Una ruta que haces tuya", japan: "Tokio, Kanazawa\ny los Alpes japoneses", routeMeta: "Japón · 10 días", routeStops: "Tokio → Kanazawa → Kioto", exploreJapan: "Explora la ruta de Japón", out: "En movimiento", nearby: "Encuentra un buen lugar cerca.", nearbyText: "Elige lo que necesitas y Morrovia buscará alrededor de tu ubicación actual.", story: "Guarda la historia", stamps: "Colecciona tus sellos.", stampsText: "Marca los lugares donde has vivido, amado y regresado. Tu mapa se convierte en un registro de cómo viajas.", openMap: "Abre tu mapa" },
 } as const;
 
 export default function HomeHeroTools({ showHero = true, showTools = true }: { showHero?: boolean; showTools?: boolean }) {
@@ -23,8 +24,7 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
     {showHero ? <section className={styles.hero}>
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}>{text.eyebrow}</p><h1>{text.title}</h1><p className={styles.lede}>{text.lede}</p>
-        <div className={styles.heroActions}><a className={styles.primary} href="#start-building" onClick={() => trackEvent("easyt_trip_started", { source: "homepage_hero" })}><Plus aria-hidden="true" /> {text.scratch}</a><a className={styles.secondaryPill} href="#routes" onClick={() => trackEvent("easyt_featured_route_opened", { source: "homepage_hero" })}><Sparkles aria-hidden="true" /> {text.routes}</a></div>
-        <div className={styles.heroProof}><span><Sparkles aria-hidden="true" /> {text.personal}</span><span><Compass aria-hidden="true" /> {text.useful}</span></div>
+        <HomeTripStarter />
       </div>
       <Link href="/journey/routes/japan-slow" className={`${styles.heroCard} ${polish.heroCard}`} aria-label={text.exploreJapan} onClick={() => trackEvent("easyt_featured_route_opened", { source: "homepage_hero_card", route: "japan-slow" })}><div className={styles.heroImage} style={{ backgroundImage: "url(/journey/tokyo.jpg)" }} /><div className={styles.heroCardOverlay}><div className={styles.heroRouteMeta}><span>{text.routeMeta} · {text.routeStops}</span></div><small>{text.exploreJapan} <ArrowRight aria-hidden="true" /></small></div></Link>
     </section> : null}
