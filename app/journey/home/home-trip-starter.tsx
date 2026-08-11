@@ -1,30 +1,26 @@
 "use client";
 
-import { ArrowRight, CalendarDays, ChevronDown, MapPin, Plane } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { parseTripBrief } from "@/lib/easyt/trip-brief";
 import { trackEvent } from "@/lib/analytics";
-import { Calendar } from "../new/trip-builder";
-import builderStyles from "../new/trip-builder.module.css";
 import styles from "./home.module.css";
 
 type GeocodeResult = { name?: string; country?: string; coordinates?: [number, number] };
 
 const copy = {
   en: {
-    eyebrow: "Start with the why", title: "What are you trying to make happen?", intro: "Tell us the occasion, fixed dates, places, budget or anything that matters. We will carry it into your plan.", briefLabel: "Your trip brief", briefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", essentials: "Add the essentials", essentialsHelp: "These make the route concrete. You can change them later.", from: "Leaving from", fromPlaceholder: "City or airport", to: "Going to", toPlaceholder: "City, region or landmark", startDate: "Start date", endDate: "End date", typeIt: "Or type it", continue: "Turn this into a plan", checking: "Checking your route…", error: "We could not find both places. Try a city, region or airport.", samePlace: "Choose a different starting point and destination.", dateError: "Choose an end date after your start date.",
+    eyebrow: "Start with the why", title: "What are you trying to make happen?", intro: "Tell us the occasion, places, timing, budget or anything that matters. We will carry it into your plan.", briefLabel: "Your trip brief", briefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", continue: "Turn this into a plan", checking: "Opening your plan…",
   },
   es: {
-    eyebrow: "Empieza por el porqué", title: "¿Qué quieres hacer realidad?", intro: "Cuéntanos la ocasión, las fechas fijas, los lugares, el presupuesto o lo que importe. Lo llevaremos a tu plan.", briefLabel: "Tu idea de viaje", briefPlaceholder: "Por ejemplo: Tenemos tres semanas en Japón, una maratón en Tokio y queremos terminar en Hong Kong sin prisas.", essentials: "Añade lo esencial", essentialsHelp: "Esto concreta la ruta. Podrás cambiarlo después.", from: "Sales de", fromPlaceholder: "Ciudad o aeropuerto", to: "Vas a", toPlaceholder: "Ciudad, región o lugar", startDate: "Fecha de inicio", endDate: "Fecha de fin", typeIt: "O escríbela", continue: "Convertirlo en un plan", checking: "Comprobando tu ruta…", error: "No pudimos encontrar ambos lugares. Prueba una ciudad, región o aeropuerto.", samePlace: "Elige un punto de partida y destino diferentes.", dateError: "Elige una fecha de fin posterior a la fecha de inicio.",
+    eyebrow: "Empieza por el porqué", title: "¿Qué quieres hacer realidad?", intro: "Cuéntanos la ocasión, los lugares, las fechas, el presupuesto o lo que importe. Lo llevaremos a tu plan.", briefLabel: "Tu idea de viaje", briefPlaceholder: "Por ejemplo: Tenemos tres semanas en Japón, una maratón en Tokio y queremos terminar en Hong Kong sin prisas.", continue: "Convertirlo en un plan", checking: "Abriendo tu plan…",
   },
 } as const;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
-function formatDate(value: string, language: EasyTLanguage) {
-  return new Intl.DateTimeFormat(language === "es" ? "es" : "en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`));
-}
-
+function addDays(value: string, days: number) { const date = new Date(`${value}T00:00:00`); date.setDate(date.getDate() + Math.max(0, days - 1)); return iso(date); }
 export default function HomeTripStarter() {
   const router = useRouter();
   const [language, setLanguage] = useState<EasyTLanguage>("en");
@@ -33,11 +29,8 @@ export default function HomeTripStarter() {
   const [brief, setBrief] = useState("");
   const [startDate, setStartDate] = useState(() => iso(new Date()));
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
-  const [picker, setPicker] = useState<"start" | "end" | null>(null);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const text = copy[language];
-  const dateMin = useMemo(() => startDate, [startDate]);
 
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -54,33 +47,31 @@ export default function HomeTripStarter() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const parsed = parseTripBrief(brief);
+    const proposedOrigin = origin.trim() || parsed.origin || "";
+    const proposedDestination = destination.trim() || parsed.destination || parsed.stops[0] || "";
+    const proposedEndDate = parsed.durationDays ? addDays(startDate, parsed.durationDays) : endDate;
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: Boolean(brief.trim()), has_origin: Boolean(origin.trim()), has_destination: Boolean(destination.trim()) });
-    setError("");
-    if (endDate <= startDate) { setError(text.dateError); return; }
-    if (origin.trim().toLowerCase() === destination.trim().toLowerCase()) { setError(text.samePlace); return; }
     setLoading(true);
     try {
-      const [resolvedOrigin, resolvedDestination] = await Promise.all([resolve(origin), resolve(destination)]);
-      if (!resolvedOrigin?.coordinates || !resolvedDestination?.coordinates || !resolvedDestination.country) {
-        setError(text.error);
-        return;
-      }
+      const [resolvedOrigin, resolvedDestination] = await Promise.all([
+        proposedOrigin ? resolve(proposedOrigin).catch(() => null) : Promise.resolve(null),
+        proposedDestination ? resolve(proposedDestination).catch(() => null) : Promise.resolve(null),
+      ]);
       window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify({
-        origin: resolvedOrigin.name?.split(",")[0]?.trim() || origin.trim(),
-        originCoordinates: resolvedOrigin.coordinates,
-        destination: {
-          id: `${(resolvedDestination.name || destination).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
-          name: resolvedDestination.name?.split(",")[0]?.trim() || destination.trim(),
+        origin: resolvedOrigin?.name?.split(",")[0]?.trim() || proposedOrigin || undefined,
+        originCoordinates: resolvedOrigin?.coordinates,
+        destination: resolvedDestination?.coordinates && resolvedDestination.country ? {
+          id: `${(resolvedDestination.name || proposedDestination).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+          name: resolvedDestination.name?.split(",")[0]?.trim() || proposedDestination,
           country: resolvedDestination.country,
           coordinates: resolvedDestination.coordinates,
-        },
+        } : undefined,
         startDate,
-        endDate,
+        endDate: proposedEndDate,
         brief: brief.trim(),
       }));
       router.push("/journey/new?homeDraft=1");
-    } catch {
-      setError(text.error);
     } finally {
       setLoading(false);
     }
@@ -92,24 +83,6 @@ export default function HomeTripStarter() {
       <span>{text.briefLabel}</span>
       <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
     </div>
-    <div className={styles.startBuilderDetails}><strong>{text.essentials}</strong><span>{text.essentialsHelp}</span></div>
-    <label><span><Plane aria-hidden="true" /> {text.from}</span><input required value={origin} onChange={(event) => setOrigin(event.target.value)} placeholder={text.fromPlaceholder} /></label>
-    <label><span><MapPin aria-hidden="true" /> {text.to}</span><input required value={destination} onChange={(event) => setDestination(event.target.value)} placeholder={text.toPlaceholder} /></label>
-    <div className={`${styles.homeDateField} ${builderStyles.dateRow}`}>
-      {([
-        { key: "start" as const, label: text.startDate, value: startDate, set: (value: string) => { setStartDate(value); if (value > endDate) setEndDate(value); } },
-        { key: "end" as const, label: text.endDate, value: endDate, set: (value: string) => setEndDate(value < dateMin ? dateMin : value) },
-      ]).map((field) => <div key={field.key} className={styles.homeDateControl}>
-        <span className={styles.homeDateLabel}><CalendarDays aria-hidden="true" /> {field.label}</span>
-        <button type="button" className={styles.homeDateTrigger} aria-expanded={picker === field.key} onClick={() => setPicker(picker === field.key ? null : field.key)}>
-          <span>{formatDate(field.value, language)}</span><ChevronDown aria-hidden="true" />
-        </button>
-        {picker === field.key ? <div className={`${styles.homeDatePopover} ${builderStyles.popover}`}>
-          <Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} />
-          <label className={builderStyles.typeIt}>{text.typeIt}<input defaultValue={formatDate(field.value, language)} onChange={(event) => { const value = new Date(event.target.value); if (!Number.isNaN(value.getTime())) field.set(iso(value)); }} /></label>
-        </div> : null}
-      </div>)}
-    </div>
-    <div className={styles.startBuilderAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button>{error ? <small className={styles.startBuilderError}>{error}</small> : null}</div>
+    <div className={styles.startBuilderAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
   </form>;
 }
