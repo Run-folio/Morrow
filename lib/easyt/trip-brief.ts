@@ -2,6 +2,7 @@ export type ParsedTripBrief = {
   origin?: string;
   destination?: string;
   stops: string[];
+  regions: string[];
   routeHints: string[];
   anchor?: string;
   durationDays?: number;
@@ -10,34 +11,38 @@ export type ParsedTripBrief = {
 type Place = { name: string; terms: string[] };
 
 const places: Place[] = [
-  { name: "London", terms: ["london", "lhr", "lgw"] },
-  { name: "Tokyo", terms: ["tokyo", "hnd", "nrt", "tokyo marathon"] },
-  { name: "Kyoto", terms: ["kyoto"] }, { name: "Osaka", terms: ["osaka", "kix"] },
+  { name: "London", terms: ["london", "londres", "lhr", "lgw"] },
+  { name: "Tokyo", terms: ["tokyo", "tokio", "hnd", "nrt", "tokyo marathon"] },
+  { name: "Kyoto", terms: ["kyoto", "kioto"] }, { name: "Osaka", terms: ["osaka", "kix"] },
   { name: "Kanazawa", terms: ["kanazawa"] }, { name: "Takayama", terms: ["takayama"] },
   { name: "Hiroshima", terms: ["hiroshima"] }, { name: "Hong Kong", terms: ["hong kong", "hkg"] },
   { name: "Chengdu", terms: ["chengdu", "ctu"] }, { name: "Zhangjiajie", terms: ["zhangjiajie", "dyg"] },
   { name: "Beijing", terms: ["beijing", "pek", "pkx", "great wall"] },
   { name: "Shanghai", terms: ["shanghai", "pvg", "sha"] }, { name: "Xi'an", terms: ["xi'an", "xian"] },
   { name: "Hanoi", terms: ["hanoi", "han"] }, { name: "Ho Chi Minh City", terms: ["ho chi minh", "saigon", "sgn"] },
-  { name: "Siem Reap", terms: ["siem reap", "angkor wat", "angkor"] }, { name: "Bangkok", terms: ["bangkok", "bkk"] },
+  { name: "Angkor Wat", terms: ["angkor wat", "angkor", "ankor wat", "ankor"] }, { name: "Siem Reap", terms: ["siem reap"] }, { name: "Bangkok", terms: ["bangkok", "bkk"] },
   { name: "Chiang Mai", terms: ["chiang mai"] }, { name: "Luang Prabang", terms: ["luang prabang"] },
   { name: "Taipei", terms: ["taipei", "tpe"] }, { name: "Tainan", terms: ["tainan"] },
-  { name: "Lima", terms: ["lima", "lim"] }, { name: "Cusco", terms: ["cusco", "cuz", "machu picchu", "inca trail"] },
+  { name: "Lima", terms: ["lima", "lim"] }, { name: "Cusco", terms: ["cusco", "cuz", "inca trail"] }, { name: "Machu Picchu", terms: ["machu picchu"] },
   { name: "La Paz", terms: ["la paz", "lpb"] }, { name: "Quito", terms: ["quito", "uio"] },
   { name: "Medellín", terms: ["medellin", "medellín"] }, { name: "Bogotá", terms: ["bogota", "bogotá"] },
   { name: "Santiago", terms: ["santiago", "scl"] }, { name: "Buenos Aires", terms: ["buenos aires", "eze"] },
-  { name: "Lisbon", terms: ["lisbon", "lisboa", "lis"] }, { name: "Porto", terms: ["porto", "opo"] },
+  { name: "Lisbon", terms: ["lisbon", "lisboa", "lis"] }, { name: "Porto", terms: ["porto", "oporto", "opo"] },
   { name: "Barcelona", terms: ["barcelona", "bcn", "sagrada familia"] }, { name: "Madrid", terms: ["madrid", "mad"] },
-  { name: "Rome", terms: ["rome", "roma", "fco"] }, { name: "Venice", terms: ["venice", "venezia", "vce"] },
+  { name: "Rome", terms: ["rome", "roma", "fco"] }, { name: "Venice", terms: ["venice", "venezia", "venecia", "vce"] },
   { name: "Milan", terms: ["milan", "milano", "mxp"] }, { name: "Paris", terms: ["paris", "cdg", "ory"] },
-  { name: "Istanbul", terms: ["istanbul", "ist"] }, { name: "Marrakech", terms: ["marrakech", "marrakesh", "rak"] },
+  { name: "Istanbul", terms: ["istanbul", "estambul", "ist"] }, { name: "Marrakech", terms: ["marrakech", "marrakesh", "rak"] },
   { name: "Reykjavík", terms: ["reykjavik", "reykjavík", "kef"] }, { name: "Cape Town", terms: ["cape town", "cpt"] },
   { name: "Nairobi", terms: ["nairobi", "nbo"] }, { name: "Moshi", terms: ["moshi", "kilimanjaro", "jro"] },
   { name: "Kathmandu", terms: ["kathmandu", "everest base camp"] }, { name: "Agra", terms: ["agra", "taj mahal"] },
 ];
 
 const normalise = (value: string) => value.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-const indexOfTerm = (text: string, term: string) => text.indexOf(normalise(term));
+function indexOfTerm(text: string, term: string) {
+  const escaped = normalise(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, "u").exec(text);
+  return match ? match.index + match[0].length - normalise(term).length : -1;
+}
 
 function findPlaces(value: string) {
   const text = normalise(value);
@@ -56,6 +61,9 @@ function findDurationDays(value: string) {
   if (/\b(one|a|una)\s+week\b|\buna semana\b/.test(text)) return 7;
   if (/\b(two|dos)\s+weeks?\b|\bdos semanas\b/.test(text)) return 14;
   if (/\bthree\s+weeks?\b|\btres semanas\b/.test(text)) return 21;
+  const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, un: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
+  const wordDuration = text.match(/\b([a-záéíóú]+)\s+(days?|dias?|weeks?|semanas?)\b/);
+  if (wordDuration && words[wordDuration[1]]) return words[wordDuration[1]] * (/week|semana/.test(wordDuration[2]) ? 7 : 1);
   return undefined;
 }
 
@@ -71,6 +79,15 @@ function findRouteHints(value: string) {
   if (mentionsJapan && wantsNorth) hints.push("north-japan");
   if (mentionsJapan && wantsSouth) hints.push("south-japan");
   return hints;
+}
+
+function findRegions(value: string) {
+  const text = normalise(value);
+  const regions = [
+    { name: "Southeast Asia", terms: ["southeast asia", "south east asia", "asia sudoriental", "sudeste asiatico", "sudeste asiático"] },
+    { name: "Japanese Alps", terms: ["japanese alps", "alpes japoneses"] },
+  ];
+  return regions.filter((region) => region.terms.some((term) => text.includes(term))).map((region) => region.name);
 }
 
 function resolveMention(mention?: string) {
@@ -89,8 +106,8 @@ function resolveMention(mention?: string) {
 export function parseTripBrief(value: string): ParsedTripBrief {
   const text = normalise(value);
   const matchedPlaces = findPlaces(value);
-  const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+([^,.\n;]+)/i);
-  const toMatch = value.match(/(?:finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde)\s+([^,.\n;]+)/i);
+  const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
+  const toMatch = value.match(/(?:\bto|finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde|\ba|hasta)\s+([^,.\n;]+)/i);
   const origin = resolveMention(fromMatch?.[1]);
   const destination = resolveMention(toMatch?.[1]) ?? matchedPlaces.at(-1);
   const anchor = matchedPlaces.find((name) => /marathon|machu picchu|angkor|great wall|kilimanjaro|everest|taj mahal|sagrada familia/.test(text) && places.find((place) => place.name === name)?.terms.some((term) => text.includes(normalise(term))));
@@ -98,6 +115,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
     origin,
     destination: destination === origin && matchedPlaces.length > 1 ? matchedPlaces.at(-1) : destination,
     stops: matchedPlaces.filter((name) => name !== origin),
+    regions: findRegions(value),
     routeHints: findRouteHints(value),
     anchor,
     durationDays: findDurationDays(value),

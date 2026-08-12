@@ -80,8 +80,8 @@ const ROUTE_HINT_SUGGESTIONS: Record<string, string[]> = {
 };
 const FILTERS = ["All", "Food", "Nature", "Cities", "Beach"];
 const STEPS = [
-  { label: "Where", note: "Route first" },
-  { label: "When", note: "Dates set length" },
+  { label: "Confirm", note: "Route & dates" },
+  { label: "Places", note: "What matters" },
   { label: "Places", note: "Spend your days" },
   { label: "Time", note: "Make room for what matters" },
 ];
@@ -317,6 +317,7 @@ export default function TripBuilder() {
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(oneWeekLater);
+  const [datesConfirmed, setDatesConfirmed] = useState(false);
   const [picker, setPicker] = useState<"start" | "end" | null>(null);
 
   const [filter, setFilter] = useState("All");
@@ -373,7 +374,7 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; routeHints?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
@@ -387,7 +388,8 @@ export default function TripBuilder() {
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
-          setTripBrief(homeDraft.brief ?? "");
+          const regions = homeDraft.regions?.filter(Boolean) ?? [];
+          setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
           window.localStorage.removeItem("easyt-home-trip-draft");
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
@@ -443,20 +445,26 @@ export default function TripBuilder() {
     [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
+  const stepLabels = language === "es"
+    ? ["Confirmar", "Fechas", "Lugares", "Tiempo"]
+    : ["Confirm", "Dates", "Places", "Time"];
+  const stepNotes = language === "es"
+    ? ["Ruta y fechas", "Define el ritmo", "Elige lo importante", "Haz sitio para todo"]
+    : ["Route & dates", "Set the rhythm", "Choose what matters", "Make room for it all"];
   const stepGuidance = language === "es"
     ? [
-      ["Empieza con lo esencial.", "Añade una salida y un destino. Podrás cambiar, añadir o quitar lugares después."],
-      ["Marca el ritmo.", "Nada se reserva al crear el plan."],
+      ["Comprueba lo esencial.", "Confirma cada lugar y las fechas antes de que Morrovia dé forma al viaje."],
+      ["Elige lo que importa.", "Marca los lugares y experiencias para los que quieres dejar tiempo."],
       ["Elige lo que importa.", "EasyT deja espacio para el resto."],
       ["Haz que los días encajen.", "Podrás editar cada detalle más adelante."],
     ]
     : [
-      ["Start with the essentials.", "Add a departure and destination. You can change, add or remove places later."],
-      ["Set the rhythm.", "Nothing is booked when you create a plan."],
+      ["Check the essentials.", "Confirm every place and the dates before Morrovia starts shaping the trip."],
+      ["Choose what matters.", "Pick the places and experiences worth making room for."],
       ["Choose what matters.", "EasyT leaves room for the rest."],
       ["Make the days fit.", "You can edit every detail later."],
     ];
-  const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : "") : "";
+  const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "") : "";
 
   /** A transparent default: selected activity volume influences the recommended split. */
   const recommendedDays = useMemo(() => {
@@ -727,13 +735,12 @@ export default function TripBuilder() {
   return (
     <div className={`${styles.shellWide} ${mobilePolish.builder}`}>
       <nav className={styles.steps} aria-label="Trip brief progress">
-        {copy.steps.map((label, i) => {
-          const notes = [copy.routeFirst, copy.datesSetLength, copy.spendDays, copy.howFeels];
+        {stepLabels.map((label, i) => {
           return (
           <button type="button" key={label} onClick={() => setStep(i)}
             className={`${styles.stepTab} ${i === step ? styles.stepTabOn : ""} ${i < step ? styles.stepTabDone : ""}`}>
             <b>{i < step ? "✓" : pad(i + 1)}</b>
-            <span><span>{label}</span><small>{notes[i]}</small></span>
+            <span><span>{label}</span><small>{stepNotes[i]}</small></span>
           </button>
           );
         })}
@@ -781,6 +788,22 @@ export default function TripBuilder() {
                   </div>
                 )}
               </div>
+
+              <div className={`${styles.card} ${styles.confirmDatesCard} ${!datesConfirmed ? styles.cardAttention : ""}`}>
+                <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
+                <div className={styles.confirmDatesGrid}>
+                  {([
+                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => { setStartDate(value); if (value > endDate) setEndDate(value); setDatesConfirmed(true); } },
+                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => { setEndDate(value < startDate ? startDate : value); setDatesConfirmed(true); } },
+                  ]).map((field) => <label key={field.key}><span>{field.label}</span><input type="date" value={field.value} min={field.key === "end" ? startDate : today} onChange={(event) => field.set(event.target.value)} /></label>)}
+                </div>
+                <div className={styles.confirmDatesFoot}><p className={styles.confirmDatesNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa o cambia estas fechas para confirmarlas." : "Review or change these dates to confirm them.")}</p>{!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}</div>
+              </div>
+
+              {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
+                <span>{language === "es" ? "PARADAS CONFIRMADAS" : "CONFIRMED STOPS"}</span>
+                <div>{stops.map((stop, index) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{index + 1}. {stop.name} <X aria-hidden="true" /></button>)}</div>
+              </div>}
 
             </div>
           )}
