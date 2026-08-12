@@ -8,7 +8,7 @@ type NominatimResult = {
   type?: string;
   category?: string;
   addresstype?: string;
-  address?: { country?: string };
+  address?: { country?: string; city?: string; town?: string; village?: string; municipality?: string; county?: string; state?: string };
 };
 
 function normalise(value: string) {
@@ -60,6 +60,7 @@ async function find(query: string, country?: string) {
     name: friendlyName,
     country: result.address?.country,
     kind: result.addresstype ?? result.type ?? result.category ?? "place",
+    locality: result.address?.city ?? result.address?.town ?? result.address?.village ?? result.address?.municipality ?? result.address?.county ?? result.address?.state,
   };
 }
 

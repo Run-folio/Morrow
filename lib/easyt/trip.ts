@@ -151,7 +151,7 @@ export type BuilderDay = {
 export type BuilderTripInput = {
   id: string;
   origin: string;
-  stops: Array<{ id: string; name: string; country: string; coordinates?: [number, number] }>;
+  stops: Array<{ id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
   picks: Record<string, string[]>;

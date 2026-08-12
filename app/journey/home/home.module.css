@@ -83,6 +83,8 @@
 .captureReview dl>div{display:grid;grid-template-columns:72px 1fr;gap:10px}
 .captureReview dt{color:#81787b;font:700 8px var(--font-geist-mono,monospace);letter-spacing:.11em;text-transform:uppercase}
 .captureReview dd{margin:0;color:#3d3944;font-size:12px;line-height:1.35}
+.captureResolved dd{display:grid;gap:5px}.captureResolved dd>b{font-weight:620}.captureResolved dd label{display:flex;align-items:center;gap:6px;color:#625b67;font-size:11px;cursor:pointer}.captureResolved dd input{accent-color:#ff3d8b}
+.captureResolved dd small{color:#81787b;font-size:10px;line-height:1.35}
 .captureReview .captureUnresolved dd{color:#b02d60;font-weight:650}
 .captureUnresolved{display:grid;gap:6px;padding:10px;border:1px solid #f2cad8;border-radius:10px;background:#fff5f8}
 .captureUnresolved>span{color:#b02d60;font:700 8px var(--font-geist-mono,monospace);letter-spacing:.11em;text-transform:uppercase}

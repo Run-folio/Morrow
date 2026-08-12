@@ -299,6 +299,7 @@ export default function JourneyPage() {
   const [selectedId, setSelectedId] = useState("tokyo");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{ restaurant: JourneyRestaurant; meal?: RestaurantMeal }>();
+  const [localFinderKind, setLocalFinderKind] = useState<"restaurant" | "stay">("restaurant");
   const [customBrief, setCustomBrief] = useState<CustomBrief | null>(null);
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(null);
   const [planHydrated, setPlanHydrated] = useState(!isPlanningPreview);
@@ -1038,9 +1039,8 @@ export default function JourneyPage() {
       </aside> : null}
 
       {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={styles.finderDock} aria-label={planCopy.findPlaces}>
-        <header><small>{planCopy.onTheGo}</small><strong>{planCopy.findNearby}</strong></header>
-        <JourneyLocalFinder kind="restaurant" city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} />
-        <JourneyLocalFinder kind="stay" city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} onSavePlace={saveLocalVenue} />
+        <header><small>{planCopy.onTheGo}</small><strong>{planCopy.findNearby}</strong><div className={styles.finderTabs}><button type="button" aria-pressed={localFinderKind === "restaurant"} onClick={() => setLocalFinderKind("restaurant")}>{language === "es" ? "Comida" : "Food"}</button><button type="button" aria-pressed={localFinderKind === "stay"} onClick={() => setLocalFinderKind("stay")}>{language === "es" ? "Estancias" : "Stays"}</button></div></header>
+        <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} />
       </aside> : null}
 
       {isPlanningPreview && isCustomJourney && selected.coordinates ? <MobileTripCompanion day={selectedDay} city={selected.city} country={selected.country} coordinates={selected.coordinates} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} /> : null}

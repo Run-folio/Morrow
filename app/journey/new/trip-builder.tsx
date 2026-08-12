@@ -28,7 +28,7 @@ import { parseTripBrief } from "@/lib/easyt/trip-brief";
 /* ---------------------------------------------------------------- data */
 
 export type Place = PlannerPlace;
-export type Stop = { id: string; name: string; country: string; coordinates?: [number, number] };
+export type Stop = { id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 
 // TODO: replace with the live discovery API response.
 const CATALOG: Record<string, Place[]> = {
@@ -910,7 +910,7 @@ export default function TripBuilder() {
                     const suggestion = recommendedDays[stop.id] ?? 1;
                     return (
                       <label className={styles.allocationRow} key={stop.id}>
-                        <span><strong>{stop.name}</strong><small>{(picks[stop.id] ?? []).length} {ui.placesSelected} · {ui.suggested} {suggestion} {suggestion === 1 ? ui.day : ui.days}</small></span>
+                        <span><strong>{stop.name}</strong><small>{stop.intent === "landmark" ? `${language === "es" ? "Lugar emblemático" : "Landmark"}${stop.locality ? ` · ${language === "es" ? "vía" : "via"} ${stop.locality}` : ""} · ` : ""}{(picks[stop.id] ?? []).length} {ui.placesSelected} · {ui.suggested} {suggestion} {suggestion === 1 ? ui.day : ui.days}</small></span>
                         <input type="range" min="1" max={Math.max(1, totalDays - Math.max(0, stops.length - 1))} value={days}
                           onChange={(event) => updateAllocatedDays(stop.id, Number(event.target.value))}
                           aria-label={`${stop.name}: ${days} days`} />

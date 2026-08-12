@@ -4,8 +4,9 @@ import { parseTripBrief } from "@/lib/easyt/trip-brief";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-type GeocodeResult = { name?: string; country?: string; coordinates?: [number, number]; kind?: string };
+type GeocodeResult = { name?: string; country?: string; coordinates?: [number, number]; kind?: string; locality?: string };
 type MentionRole = "origin" | "stop";
+type PlaceIntent = "place" | "landmark";
 type CapturedMention = {
   sourceText: string;
   canonicalName: string;
@@ -15,9 +16,21 @@ type CapturedMention = {
   country?: string;
   coordinates?: [number, number];
   kind?: string;
+  intent: PlaceIntent;
+  locality?: string;
 };
-type ExtractedMention = { sourceText: string; canonicalName: string; role: MentionRole; order: number };
+type ExtractedMention = { sourceText: string; canonicalName: string; role: MentionRole; intent: PlaceIntent; order: number };
 type ExtractedCapture = { mentions: ExtractedMention[]; regions: string[]; durationDays?: number; routeHints: string[] };
+
+// A small canonical-country guard stops ambiguous city names being silently
+// accepted in the wrong country (for example London, Ontario for London, UK).
+// Unknown names remain open to the general geocoder and the traveller review.
+const knownCountries: Record<string, string> = {
+  London: "United Kingdom", Tokyo: "Japan", Kyoto: "Japan", Osaka: "Japan", Kanazawa: "Japan", Takayama: "Japan", Hiroshima: "Japan",
+  "Machu Picchu": "Peru", Cusco: "Peru", Lima: "Peru", Bogotá: "Colombia", Medellín: "Colombia", Quito: "Ecuador", "La Paz": "Bolivia",
+  Bangkok: "Thailand", "Chiang Mai": "Thailand", "Angkor Wat": "Cambodia", "Siem Reap": "Cambodia", Hanoi: "Vietnam", "Ho Chi Minh City": "Vietnam",
+  Paris: "France", Rome: "Italy", Venice: "Italy", Milan: "Italy", Barcelona: "Spain", Madrid: "Spain", Lisbon: "Portugal", Porto: "Portugal",
+};
 
 const captureSchema = {
   type: "object",
@@ -30,11 +43,12 @@ const captureSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["sourceText", "canonicalName", "role", "order"],
+        required: ["sourceText", "canonicalName", "role", "intent", "order"],
         properties: {
           sourceText: { type: "string" },
           canonicalName: { type: "string" },
           role: { type: "string", enum: ["origin", "stop"] },
+          intent: { type: "string", enum: ["place", "landmark"] },
           order: { type: "integer", minimum: 0, maximum: 20 },
         },
       },
@@ -45,13 +59,14 @@ const captureSchema = {
   },
 } as const;
 
-const extractionPolicy = `You extract a traveller's location intent for Morrovia. Return every explicitly requested departure point and destination, landmark or region in the order the traveller mentions it. Correct obvious spelling mistakes only in canonicalName, but preserve the exact original phrase in sourceText. Never invent a location, route, country, date or stop. A region belongs in regions, not mentions. A landmark such as Angkor Wat is a stop, not its nearest city. Return durationDays when the text gives a duration; otherwise null.`;
+const extractionPolicy = `You extract a traveller's location intent for Morrovia. Return every explicitly requested departure point and destination, landmark or region in the order the traveller mentions it. Correct obvious spelling mistakes only in canonicalName, but preserve the exact original phrase in sourceText. Never invent a location, route, country, date or stop. A region belongs in regions, not mentions. A landmark, heritage site, monument, national park, museum, natural wonder or major attraction is a stop with intent landmark, never its nearest city. Cities, towns and airports have intent place. Return durationDays when the text gives a duration; otherwise null.`;
 
 const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function resolve(request: NextRequest, place: string) {
+async function resolve(request: NextRequest, place: string, country?: string) {
   const url = new URL("/api/journey-geocode", request.url);
   url.searchParams.set("place", place);
+  if (country) url.searchParams.set("country", country);
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) return null;
   const body = await response.json() as { result?: GeocodeResult | null };
@@ -64,10 +79,10 @@ function cleanExtraction(value: unknown): ExtractedCapture | null {
   const mentions = Array.isArray(raw.mentions) ? raw.mentions.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const mention = item as Partial<ExtractedMention>;
-    if (typeof mention.sourceText !== "string" || typeof mention.canonicalName !== "string" || (mention.role !== "origin" && mention.role !== "stop") || !Number.isInteger(mention.order)) return [];
+    if (typeof mention.sourceText !== "string" || typeof mention.canonicalName !== "string" || (mention.role !== "origin" && mention.role !== "stop") || (mention.intent !== "place" && mention.intent !== "landmark") || !Number.isInteger(mention.order)) return [];
     const sourceText = mention.sourceText.trim().slice(0, 140);
     const canonicalName = mention.canonicalName.trim().slice(0, 140);
-    return sourceText && canonicalName ? [{ sourceText, canonicalName, role: mention.role, order: mention.order as number }] : [];
+    return sourceText && canonicalName ? [{ sourceText, canonicalName, role: mention.role, intent: mention.intent, order: mention.order as number }] : [];
   }) : [];
   const strings = (value: unknown, maximum: number) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 120)).filter(Boolean).slice(0, maximum) : [];
   const durationDays = typeof raw.durationDays === "number" && Number.isInteger(raw.durationDays) && raw.durationDays > 0 && raw.durationDays <= 365 ? raw.durationDays : undefined;
@@ -100,8 +115,8 @@ async function extractWithModel(brief: string): Promise<ExtractedCapture | null>
 function reconcile(brief: string, model: ExtractedCapture | null) {
   const fallback = parseTripBrief(brief);
   const deterministic: ExtractedMention[] = [
-    ...(fallback.origin ? [{ sourceText: fallback.origin, canonicalName: fallback.origin, role: "origin" as const, order: -1 }] : []),
-    ...fallback.stops.filter((name) => name !== fallback.origin).map((name, order) => ({ sourceText: name, canonicalName: name, role: "stop" as const, order })),
+    ...(fallback.origin ? [{ sourceText: fallback.origin, canonicalName: fallback.origin, role: "origin" as const, intent: "place" as const, order: -1 }] : []),
+    ...fallback.stops.filter((name) => name !== fallback.origin).map((name, order) => ({ sourceText: name, canonicalName: name, role: "stop" as const, intent: name === fallback.anchor ? "landmark" as const : "place" as const, order })),
   ];
   const combined = [...(model?.mentions ?? []), ...deterministic]
     .sort((a, b) => a.order - b.order)
@@ -124,7 +139,7 @@ export async function POST(request: NextRequest) {
   if (!brief) return NextResponse.json({ message: "Add a trip brief first." }, { status: 400 });
 
   const extracted = reconcile(brief, await extractWithModel(brief));
-  const candidates = extracted.mentions.map((mention) => ({ name: mention.canonicalName, sourceText: mention.sourceText, role: mention.role }));
+  const candidates = extracted.mentions.map((mention) => ({ name: mention.canonicalName, sourceText: mention.sourceText, role: mention.role, intent: mention.intent, country: knownCountries[mention.canonicalName] }));
 
   const mentions: CapturedMention[] = [];
   // Public Nominatim permits at most one request per second. Resolving in order
@@ -132,7 +147,7 @@ export async function POST(request: NextRequest) {
   // throttled. Replace this adapter with a production geocoder as traffic grows.
   for (const [order, candidate] of candidates.entries()) {
     if (order) await pause(1_050);
-    const result = await resolve(request, candidate.name).catch(() => null);
+    const result = await resolve(request, candidate.name, candidate.country).catch(() => null);
     mentions.push({
       sourceText: candidate.sourceText,
       canonicalName: result?.name?.split(",")[0]?.trim() || candidate.name,
@@ -142,6 +157,8 @@ export async function POST(request: NextRequest) {
       country: result?.country,
       coordinates: result?.coordinates,
       kind: result?.kind,
+      intent: candidate.intent,
+      locality: result?.locality,
     });
   }
 

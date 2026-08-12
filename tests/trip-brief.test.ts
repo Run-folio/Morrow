@@ -58,6 +58,7 @@ const cases: Expected[] = [
   { brief: "Great Wall, Beijing and Xi'an", stops: ["Beijing", "Xi'an"] },
   { brief: "Sagrada Familia then Barcelona", stops: ["Barcelona"] },
   { brief: "Machu Picchu with Lima and Cusco", stops: ["Machu Picchu", "Lima", "Cusco"] },
+  { brief: "Two weeks from London visiting Cusco, Machu Picchu, Lima and Bogotá", origin: "London", stops: ["Cusco", "Machu Picchu", "Lima", "Bogotá"], durationDays: 14 },
 ];
 
 for (const expected of cases) {
