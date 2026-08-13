@@ -47,6 +47,7 @@ export interface JourneyImage {
   alt: string;
   caption: string;
   sourceUrl: string;
+  sourceLabel?: string;
 }
 
 export interface JourneyMedia {

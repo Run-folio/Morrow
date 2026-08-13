@@ -1,0 +1,5 @@
+Slides 3, 5, 8, 10, 11: widen inherited title frame to keep each title on one line and prevent collision with the subtitle. Slide 8 also uses a modestly smaller headline size because it remains too long at the source size.
+Slide 13: slightly adjust inherited closing headline and supporting paragraph frames to establish clean vertical separation.
+Slide 3: tighten the inherited bottom callout to keep all text inside its existing accent frame.
+Slide 10: widen the inherited subtitle and tighten the inherited bottom callout to remove crowding around the team lanes and accent frame.
+All other slides: preserve source content and layout.

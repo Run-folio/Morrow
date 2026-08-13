@@ -28,7 +28,7 @@ type ExtractedCapture = { mentions: ExtractedMention[]; regions: string[]; durat
 const knownCountries: Record<string, string> = {
   London: "United Kingdom", Tokyo: "Japan", Kyoto: "Japan", Osaka: "Japan", Kanazawa: "Japan", Takayama: "Japan", Hiroshima: "Japan",
   "Machu Picchu": "Peru", Cusco: "Peru", Lima: "Peru", Bogotá: "Colombia", Medellín: "Colombia", Quito: "Ecuador", "La Paz": "Bolivia",
-  Bangkok: "Thailand", "Chiang Mai": "Thailand", "Angkor Wat": "Cambodia", "Siem Reap": "Cambodia", Hanoi: "Vietnam", "Ho Chi Minh City": "Vietnam",
+  Bangkok: "Thailand", "Chiang Mai": "Thailand", Krabi: "Thailand", "Angkor Wat": "Cambodia", "Siem Reap": "Cambodia", Hanoi: "Vietnam", "Hoi An": "Vietnam", "Ho Chi Minh City": "Vietnam", "Luang Prabang": "Laos", "Vang Vieng": "Laos",
   Paris: "France", Rome: "Italy", Venice: "Italy", Milan: "Italy", Barcelona: "Spain", Madrid: "Spain", Lisbon: "Portugal", Porto: "Portugal",
 };
 

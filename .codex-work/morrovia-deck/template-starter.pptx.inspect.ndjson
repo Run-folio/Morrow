@@ -1,0 +1,314 @@
+{"kind":"deck","id":"pr/j2t0rs","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"DEFAULT"}
+{"kind":"slide","id":"sl/1byna9","slide":1,"title":"AI journey planner + transaction engine","textShapes":7}
+{"kind":"shape","id":"sh/e9svu1k3","slide":1,"name":"Shape 0","bbox":[65.28,62.4,307.2,33.6]}
+{"kind":"textbox","id":"sh/903u9gjq","slide":1,"name":"Text 1","text":"AI journey planner + transaction engine","textPreview":"AI journey planner + transaction engine","textChars":39,"textLines":1,"bbox":[76.8,69.6,284.16,17.28]}
+{"kind":"textbox","id":"sh/ofad0b25","slide":1,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[62.4,132.48,441.6,86.4]}
+{"kind":"textbox","id":"sh/ne1c761k","slide":1,"name":"Text 3","text":"Turn travel intent\ninto booked trips.","textPreview":"Turn travel intent | into booked trips.","textChars":37,"textLines":2,"bbox":[65.28,218.88,556.8,129.6]}
+{"kind":"textbox","id":"sh/mdsvy1kz","slide":1,"name":"Text 4","text":"A lean, founder-led travel product that helps people build confident routes, then monetises hotels, flights, activities and trip essentials at the exact decision moment.","textPreview":"A lean, founder-led travel product that helps people build confident routes, then monetises hotels, flights, activities and trip essentia...","textChars":169,"textLines":1,"bbox":[67.2,388.8,552,110.4]}
+{"kind":"textbox","id":"sh/pkzuxcj6","slide":1,"name":"Text 5","text":"Revenue + funding pitch deck","textPreview":"Revenue + funding pitch deck","textChars":28,"textLines":1,"bbox":[67.2,585.6,316.8,24.96]}
+{"kind":"textbox","id":"sh/4jqto721","slide":1,"name":"Text 6","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/650n618f","slide":1,"name":"Text 7","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/7694f690","slide":1,"name":"Shape 8","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"image","id":"im/b6947ytc","slide":1,"name":"Image 0","bbox":[696,33.6,532.8,635.52]}
+{"kind":"notes","id":"nt/1byna9","slide":1,"text":""}
+{"kind":"slide","id":"sl/xexlr4","slide":2,"title":"Planning leaks value","textShapes":14}
+{"kind":"textbox","id":"sh/ml4r2hgn","slide":2,"name":"Text 0","text":"Planning leaks value","textPreview":"Planning leaks value","textChars":20,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/nmd8vmx8","slide":2,"name":"Text 1","text":"Travellers arrive with intent, but the buying journey is scattered across search, maps, blogs, spreadsheets and booking sites.","textPreview":"Travellers arrive with intent, but the buying journey is scattered across search, maps, blogs, spreadsheets and booking sites.","textChars":126,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/wrm98ryp","slide":2,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/hsfa1wfa","slide":2,"name":"Text 3","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/up4r6hgj","slide":2,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/vqdszmx4","slide":2,"name":"Text 5","text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[74.88,225.6,36.48,33.6]}
+{"kind":"textbox","id":"sh/cv29w7yl","slide":2,"name":"Text 6","text":"Fragmented decisions","textPreview":"Fragmented decisions","textChars":20,"textLines":1,"bbox":[74.88,266.88,307.2,34.56]}
+{"kind":"textbox","id":"sh/dwbqpsfq","slide":2,"name":"Text 7","text":"Routes, stays, flights and activities are planned in different places.","textPreview":"Routes, stays, flights and activities are planned in different places.","textChars":70,"textLines":1,"bbox":[74.88,313.92,292.8,74.88]}
+{"kind":"textbox","id":"sh/xs7ilsnu","slide":2,"name":"Text 8","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[444.48,225.6,36.48,33.6]}
+{"kind":"textbox","id":"sh/wry1snmp","slide":2,"name":"Text 9","text":"Low confidence","textPreview":"Low confidence","textChars":14,"textLines":1,"bbox":[444.48,266.88,307.2,34.56]}
+{"kind":"textbox","id":"sh/bqp0j254","slide":2,"name":"Text 10","text":"People struggle to know if the sequence, duration and logistics actually work.","textPreview":"People struggle to know if the sequence, duration and logistics actually work.","textChars":78,"textLines":1,"bbox":[444.48,313.92,292.8,74.88]}
+{"kind":"textbox","id":"sh/apgjqx4j","slide":2,"name":"Text 11","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[814.08,225.6,36.48,33.6]}
+{"kind":"textbox","id":"sh/5gripcn6","slide":2,"name":"Text 12","text":"Lost transaction moment","textPreview":"Lost transaction moment","textChars":23,"textLines":1,"bbox":[814.08,266.88,307.2,34.56]}
+{"kind":"textbox","id":"sh/kfi1w7ml","slide":2,"name":"Text 13","text":"Most planners hand users away before the booking decisions are made.","textPreview":"Most planners hand users away before the booking decisions are made.","textChars":68,"textLines":1,"bbox":[814.08,313.92,292.8,74.88]}
+{"kind":"textbox","id":"sh/itgjux4f","slide":2,"name":"Text 14","text":"Morrovia’s opportunity is to keep the traveller inside one decision flow until the trip becomes bookable.","textPreview":"Morrovia’s opportunity is to keep the traveller inside one decision flow until the trip becomes bookable.","textChars":105,"textLines":1,"bbox":[91.2,609.6,1027.2,26.88]}
+{"kind":"image","id":"im/yhsfq5wn","slide":2,"name":"Image 0","bbox":[67.2,465.6,1147.2,139.2]}
+{"kind":"notes","id":"nt/xexlr4","slide":2,"text":""}
+{"kind":"slide","id":"sl/58al7s","slide":3,"title":"Morrovia sits inside the decision","textShapes":14}
+{"kind":"textbox","id":"sh/fahcvyx8","slide":3,"name":"Text 0","text":"Morrovia sits inside the decision","textPreview":"Morrovia sits inside the decision","textChars":33,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/u98v2tgn","slide":3,"name":"Text 1","text":"Not another travel blog. A planner that moves users from idea to route to specific booking actions.","textPreview":"Not another travel blog. A planner that moves users from idea to route to specific booking actions.","textChars":99,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/t8zutoz2","slide":3,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/s7qt0jyh","slide":3,"name":"Text 3","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/76hcrehw","slide":3,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/d43u58f6","slide":3,"name":"Text 5","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[81.6,196.8,52.8,30.72]}
+{"kind":"textbox","id":"sh/c3udc3yl","slide":3,"name":"Text 6","text":"Start with intent","textPreview":"Start with intent","textChars":17,"textLines":1,"bbox":[148.8,193.92,297.6,33.6]}
+{"kind":"textbox","id":"sh/u5w32tkv","slide":3,"name":"Text 7","text":"“I have 2 weeks in Japan and China.”","textPreview":"“I have 2 weeks in Japan and China.”","textChars":36,"textLines":1,"bbox":[148.8,240,432,34.56]}
+{"kind":"shape","id":"sh/v654bylg","slide":3,"name":"Shape 8","bbox":[107.52,249.6,0,48]}
+{"kind":"textbox","id":"sh/w7el4321","slide":3,"name":"Text 9","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[81.6,316.8,52.8,30.72]}
+{"kind":"textbox","id":"sh/h8nmd83m","slide":3,"name":"Text 10","text":"Build the trip","textPreview":"Build the trip","textChars":14,"textLines":1,"bbox":[148.8,313.92,297.6,33.6]}
+{"kind":"textbox","id":"sh/m1c3y9kz","slide":3,"name":"Text 11","text":"Dates, route, pace, interests and trade-offs.","textPreview":"Dates, route, pace, interests and trade-offs.","textChars":45,"textLines":1,"bbox":[148.8,360,432,34.56]}
+{"kind":"shape","id":"sh/72l47elk","slide":3,"name":"Shape 12","bbox":[107.52,369.6,0,48]}
+{"kind":"textbox","id":"sh/83el0j25","slide":3,"name":"Text 13","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[81.6,436.8,52.8,30.72]}
+{"kind":"textbox","id":"sh/94nm9o3q","slide":3,"name":"Text 14","text":"Make it bookable","textPreview":"Make it bookable","textChars":16,"textLines":1,"bbox":[148.8,433.92,297.6,33.6]}
+{"kind":"textbox","id":"sh/6xgnadk3","slide":3,"name":"Text 15","text":"Hotels, flights, activities and essentials appear at the right moment.","textPreview":"Hotels, flights, activities and essentials appear at the right moment.","textChars":70,"textLines":1,"bbox":[148.8,480,432,34.56]}
+{"kind":"shape","id":"sh/ryp4jilo","slide":3,"name":"Shape 16","bbox":[86.4,556.8,542.4,64.32]}
+{"kind":"textbox","id":"sh/3ih0ba10","slide":3,"name":"Text 17","text":"The commercial model works because recommendations are contextual: the user already needs to book the next part of the journey.","textPreview":"The commercial model works because recommendations are contextual: the user already needs to book the next part of the journey.","textChars":127,"textLines":1,"bbox":[107.52,572.16,500.16,37.44]}
+{"kind":"image","id":"im/tgfi9gn2","slide":3,"name":"Image 0","bbox":[734.4,129.6,460.8,460.8]}
+{"kind":"notes","id":"nt/58al7s","slide":3,"text":""}
+{"kind":"slide","id":"sl/s2mmcm","slide":4,"title":"The revenue stack is the trip","textShapes":20}
+{"kind":"textbox","id":"sh/o3u1gzu1","slide":4,"name":"Text 0","text":"The revenue stack is the trip","textPreview":"The revenue stack is the trip","textChars":29,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/p43i94vm","slide":4,"name":"Text 1","text":"A single holiday contains multiple commercial decisions. Morrovia can monetise the sequence without feeling like ads.","textPreview":"A single holiday contains multiple commercial decisions. Morrovia can monetise the sequence without feeling like ads.","textChars":117,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/q5wji9c7","slide":4,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/b650beds","slide":4,"name":"Text 3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/c7e1kzud","slide":4,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/x8nid4vy","slide":4,"name":"Text 5","text":"Accommodation","textPreview":"Accommodation","textChars":13,"textLines":1,"bbox":[76.8,205.44,201.6,28.8]}
+{"kind":"textbox","id":"sh/69sz65w3","slide":4,"name":"Text 6","text":"Core booking moment","textPreview":"Core booking moment","textChars":19,"textLines":1,"bbox":[305.28,208.32,196.8,24]}
+{"kind":"textbox","id":"sh/ra10zado","slide":4,"name":"Text 7","text":"£40","textPreview":"£40","textChars":3,"textLines":1,"bbox":[513.6,202.56,81.6,30.72]}
+{"kind":"shape","id":"sh/f2hsrap0","slide":4,"name":"Shape 8","bbox":[76.8,252.48,532.8,0]}
+{"kind":"textbox","id":"sh/u18ry5of","slide":4,"name":"Text 9","text":"Flights","textPreview":"Flights","textChars":7,"textLines":1,"bbox":[76.8,277.44,201.6,28.8]}
+{"kind":"textbox","id":"sh/h4zatk76","slide":4,"name":"Text 10","text":"Before route locks","textPreview":"Before route locks","textChars":18,"textLines":1,"bbox":[305.28,280.32,196.8,24]}
+{"kind":"textbox","id":"sh/g3q90f6l","slide":4,"name":"Text 11","text":"£10","textPreview":"£10","textChars":3,"textLines":1,"bbox":[513.6,274.56,81.6,30.72]}
+{"kind":"shape","id":"sh/7yhsnap4","slide":4,"name":"Shape 12","bbox":[76.8,324.48,532.8,0]}
+{"kind":"textbox","id":"sh/6xoru5oj","slide":4,"name":"Text 13","text":"Activities","textPreview":"Activities","textChars":10,"textLines":1,"bbox":[76.8,349.44,201.6,28.8]}
+{"kind":"textbox","id":"sh/t0zap07u","slide":4,"name":"Text 14","text":"Inside each day","textPreview":"Inside each day","textChars":15,"textLines":1,"bbox":[305.28,352.32,196.8,24]}
+{"kind":"textbox","id":"sh/szq9wf69","slide":4,"name":"Text 15","text":"£10–15","textPreview":"£10–15","textChars":6,"textLines":1,"bbox":[513.6,346.56,81.6,30.72]}
+{"kind":"shape","id":"sh/jaxsjqps","slide":4,"name":"Shape 16","bbox":[76.8,396.48,532.8,0]}
+{"kind":"textbox","id":"sh/i9orqlo7","slide":4,"name":"Text 17","text":"Car rental","textPreview":"Car rental","textChars":10,"textLines":1,"bbox":[76.8,421.44,201.6,28.8]}
+{"kind":"textbox","id":"sh/m54b2lsz","slide":4,"name":"Text 18","text":"Only where useful","textPreview":"Only where useful","textChars":17,"textLines":1,"bbox":[305.28,424.32,196.8,24]}
+{"kind":"textbox","id":"sh/n6dsvq9k","slide":4,"name":"Text 19","text":"£4–6","textPreview":"£4–6","textChars":4,"textLines":1,"bbox":[513.6,418.56,81.6,30.72]}
+{"kind":"shape","id":"sh/876t4va5","slide":4,"name":"Shape 20","bbox":[76.8,468.48,532.8,0]}
+{"kind":"textbox","id":"sh/98fax0rq","slide":4,"name":"Text 21","text":"eSIM + transport","textPreview":"eSIM + transport","textChars":16,"textLines":1,"bbox":[76.8,493.44,201.6,28.8]}
+{"kind":"textbox","id":"sh/a9ob65sb","slide":4,"name":"Text 22","text":"Preparation layer","textPreview":"Preparation layer","textChars":17,"textLines":1,"bbox":[305.28,496.32,196.8,24]}
+{"kind":"textbox","id":"sh/vaxsza9w","slide":4,"name":"Text 23","text":"£2–5","textPreview":"£2–5","textChars":4,"textLines":1,"bbox":[513.6,490.56,81.6,30.72]}
+{"kind":"shape","id":"sh/wv6t8vah","slide":4,"name":"Shape 24","bbox":[76.8,540.48,532.8,0]}
+{"kind":"shape","id":"sh/ixoba5s7","slide":4,"name":"Shape 25","bbox":[81.6,578.88,537.6,46.08]}
+{"kind":"textbox","id":"sh/jyhc3a9s","slide":4,"name":"Text 26","text":"Blended value per completed trip: ~£70.50 before paid products.","textPreview":"Blended value per completed trip: ~£70.50 before paid products.","textChars":63,"textLines":1,"bbox":[102.72,594.24,495.36,19.2]}
+{"kind":"image","id":"im/6hwn6lc7","slide":4,"name":"Image 0","bbox":[676.8,156.48,513.6,451.2]}
+{"kind":"notes","id":"nt/s2mmcm","slide":4,"text":""}
+{"kind":"slide","id":"sl/z7a5cs","slide":5,"title":"Per-trip economics become meaningful","textShapes":14}
+{"kind":"textbox","id":"sh/sny58vyd","slide":5,"name":"Text 0","text":"Per-trip economics become meaningful","textPreview":"Per-trip economics become meaningful","textChars":36,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/do7m10fy","slide":5,"name":"Text 1","text":"The Year-1 model uses conservative affiliate assumptions plus a lightweight paid trip product.","textPreview":"The Year-1 model uses conservative affiliate assumptions plus a lightweight paid trip product.","textChars":94,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/epgna5gj","slide":5,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/fqpo3axo","slide":5,"name":"Text 3","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/0ry5cfy9","slide":5,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"shape","id":"sh/1s765kfu","slide":5,"name":"Shape 5","bbox":[72,201.6,254.4,139.2]}
+{"kind":"textbox","id":"sh/2d0nepgf","slide":5,"name":"Text 6","text":"~£70.50","textPreview":"~£70.50","textChars":7,"textLines":1,"bbox":[89.28,216.96,219.84,58.46]}
+{"kind":"textbox","id":"sh/ne9o7ux0","slide":5,"name":"Text 7","text":"affiliate revenue per completed trip","textPreview":"affiliate revenue per completed trip","textChars":36,"textLines":1,"bbox":[93.12,280.94,212.16,38.98]}
+{"kind":"shape","id":"sh/b6dor2po","slide":5,"name":"Shape 8","bbox":[357.12,201.6,254.4,139.2]}
+{"kind":"textbox","id":"sh/a547ix83","slide":5,"name":"Text 9","text":"+ £14.99","textPreview":"+ £14.99","textChars":8,"textLines":1,"bbox":[374.4,216.96,219.84,58.46]}
+{"kind":"textbox","id":"sh/xsf6ts7u","slide":5,"name":"Text 10","text":"optional Morrovia Trip Pass","textPreview":"optional Morrovia Trip Pass","textChars":27,"textLines":1,"bbox":[378.24,280.94,212.16,38.98]}
+{"kind":"shape","id":"sh/cr6pknq9","slide":5,"name":"Shape 11","bbox":[81.6,412.8,547.2,34.56]}
+{"kind":"shape","id":"sh/n2donips","slide":5,"name":"Shape 12","bbox":[81.6,412.8,310.47,34.56]}
+{"kind":"shape","id":"sh/2147ed87","slide":5,"name":"Shape 13","bbox":[392.07,412.8,77.62,34.56]}
+{"kind":"shape","id":"sh/p4v6ps7i","slide":5,"name":"Shape 14","bbox":[469.69,412.8,93.14,34.56]}
+{"kind":"shape","id":"sh/o3mpgnqx","slide":5,"name":"Shape 15","bbox":[562.83,412.8,38.81,34.56]}
+{"kind":"shape","id":"sh/7yh8zmpw","slide":5,"name":"Shape 16","bbox":[601.63,412.8,27.17,34.56]}
+{"kind":"textbox","id":"sh/mxo7qh8b","slide":5,"name":"Text 17","text":"Accom\n£40","textPreview":"Accom | £40","textChars":9,"textLines":2,"bbox":[81.6,470.4,96,48]}
+{"kind":"textbox","id":"sh/itsrylsj","slide":5,"name":"Text 18","text":"Flights\n£10","textPreview":"Flights | £10","textChars":11,"textLines":2,"bbox":[192,470.4,96,48]}
+{"kind":"textbox","id":"sh/ju1sr694","slide":5,"name":"Text 19","text":"Activities\n£12","textPreview":"Activities | £12","textChars":14,"textLines":2,"bbox":[302.4,470.4,96,48]}
+{"kind":"textbox","id":"sh/4va90bap","slide":5,"name":"Text 20","text":"Car\n£5","textPreview":"Car | £5","textChars":6,"textLines":2,"bbox":[412.8,470.4,96,48]}
+{"kind":"textbox","id":"sh/5gjatgra","slide":5,"name":"Text 21","text":"Other\n£3.5","textPreview":"Other | £3.5","textChars":10,"textLines":2,"bbox":[523.2,470.4,96,48]}
+{"kind":"textbox","id":"sh/rilsvq90","slide":5,"name":"Text 22","text":"Working assumptions only. Real performance depends on traffic quality, affiliate acceptance, basket size and conversion.","textPreview":"Working assumptions only. Real performance depends on traffic quality, affiliate acceptance, basket size and conversion.","textChars":120,"textLines":1,"bbox":[81.6,609.6,595.2,28.8]}
+{"kind":"image","id":"im/ret0ji1w","slide":5,"name":"Image 0","bbox":[720,134.4,432,456]}
+{"kind":"notes","id":"nt/z7a5cs","slide":5,"text":""}
+{"kind":"slide","id":"sl/6a3idt","slide":6,"title":"The three metrics that matter","textShapes":16}
+{"kind":"textbox","id":"sh/i94nu18b","slide":6,"name":"Text 0","text":"The three metrics that matter","textPreview":"The three metrics that matter","textChars":29,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/jadon6pg","slide":6,"name":"Text 1","text":"Morrovia’s revenue model should be explained through three simple levers: qualified planners, booking conversion and average affiliate income.","textPreview":"Morrovia’s revenue model should be explained through three simple levers: qualified planners, booking conversion and average affiliate in...","textChars":142,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/sf650bqd","slide":6,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/tgf6tg7y","slide":6,"name":"Text 3","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/6d4ny187","slide":6,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/7exor6ps","slide":6,"name":"Text 5","text":"MAUs","textPreview":"MAUs","textChars":4,"textLines":1,"bbox":[78.72,192,312,24.96]}
+{"kind":"shape","id":"sh/oj25orqt","slide":6,"name":"Shape 6","bbox":[78.72,232.32,312,155.52]}
+{"kind":"textbox","id":"sh/9kbmhc7e","slide":6,"name":"Text 7","text":"1,000","textPreview":"1,000","textChars":5,"textLines":1,"bbox":[96,247.68,277.44,65.32]}
+{"kind":"textbox","id":"sh/9gvehc3y","slide":6,"name":"Text 8","text":"qualified active planners / month","textPreview":"qualified active planners / month","textChars":33,"textLines":1,"bbox":[99.84,320.97,269.76,43.55]}
+{"kind":"textbox","id":"sh/ofmdo72d","slide":6,"name":"Text 9","text":"Booking conversion","textPreview":"Booking conversion","textChars":18,"textLines":1,"bbox":[464.64,192,312,24.96]}
+{"kind":"shape","id":"sh/netwf2ls","slide":6,"name":"Shape 10","bbox":[464.64,232.32,312,155.52]}
+{"kind":"textbox","id":"sh/mdkvmxk7","slide":6,"name":"Text 11","text":"12%","textPreview":"12%","textChars":3,"textLines":1,"bbox":[481.92,247.68,277.44,65.32]}
+{"kind":"textbox","id":"sh/x4velc3u","slide":6,"name":"Text 12","text":"planners who complete bookings via Morrovia","textPreview":"planners who complete bookings via Morrovia","textChars":43,"textLines":1,"bbox":[485.76,320.97,269.76,43.55]}
+{"kind":"textbox","id":"sh/w3mdsr29","slide":6,"name":"Text 13","text":"Avg. affiliate income","textPreview":"Avg. affiliate income","textChars":21,"textLines":1,"bbox":[850.56,192,312,24.96]}
+{"kind":"shape","id":"sh/b2dwjmlo","slide":6,"name":"Shape 14","bbox":[850.56,232.32,312,155.52]}
+{"kind":"textbox","id":"sh/ah4vqhk3","slide":6,"name":"Text 15","text":"£70","textPreview":"£70","textChars":3,"textLines":1,"bbox":[867.84,247.68,277.44,65.32]}
+{"kind":"textbox","id":"sh/l8fepw3q","slide":6,"name":"Text 16","text":"per completed monetised trip","textPreview":"per completed monetised trip","textChars":28,"textLines":1,"bbox":[871.68,320.97,269.76,43.55]}
+{"kind":"textbox","id":"sh/k76xwr2l","slide":6,"name":"Text 17","text":"MAUs × booking conversion × average affiliate income × 12 = annualised revenue","textPreview":"MAUs × booking conversion × average affiliate income × 12 = annualised revenue","textChars":78,"textLines":1,"bbox":[100.8,446.4,1056,38.4]}
+{"kind":"shape","id":"sh/4bexsvah","slide":6,"name":"Shape 18","bbox":[153.6,539.52,969.6,63.36]}
+{"kind":"textbox","id":"sh/5cnyl0b2","slide":6,"name":"Text 19","text":"Year 1 model: 1,000 MAUs × 12% booking conversion × £70 × 12 = ~£100.8k ARR.","textPreview":"Year 1 model: 1,000 MAUs × 12% booking conversion × £70 × 12 = ~£100.8k ARR.","textChars":76,"textLines":1,"bbox":[174.72,554.88,927.36,36.48]}
+{"kind":"textbox","id":"sh/i9cfq5sb","slide":6,"name":"Text 20","text":"Important: at 10% conversion, 1,000 MAUs is ~£84k ARR. The £100k target assumes roughly 12% conversion or a small amount of direct Trip Pass revenue.","textPreview":"Important: at 10% conversion, 1,000 MAUs is ~£84k ARR. The £100k target assumes roughly 12% conversion or a small amount of direct Trip P...","textChars":149,"textLines":1,"bbox":[153.6,617.28,960,32.64]}
+{"kind":"notes","id":"nt/6a3idt","slide":6,"text":""}
+{"kind":"slide","id":"sl/yjgypa","slide":7,"title":"The growth targets are simple","textShapes":26}
+{"kind":"textbox","id":"sh/1ozqhgr2","slide":7,"name":"Text 0","text":"The growth targets are simple","textPreview":"The growth targets are simple","textChars":29,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/0nqp8bah","slide":7,"name":"Text 1","text":"The deck should anchor around MAUs, booking conversion and average affiliate income — not generic traffic.","textPreview":"The deck should anchor around MAUs, booking conversion and average affiliate income — not generic traffic.","textChars":106,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/rih8b690","slide":7,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/qho721sf","slide":7,"name":"Text 3","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/dkzqdwrq","slide":7,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/sjqp4bal","slide":7,"name":"Text 5","text":"Milestone","textPreview":"Milestone","textChars":9,"textLines":1,"bbox":[76.8,209.28,148.8,26.88]}
+{"kind":"textbox","id":"sh/3ex87m9o","slide":7,"name":"Text 6","text":"MAUs","textPreview":"MAUs","textChars":4,"textLines":1,"bbox":[283.2,209.28,158.4,26.88]}
+{"kind":"textbox","id":"sh/ido7yhs3","slide":7,"name":"Text 7","text":"Booking conv.","textPreview":"Booking conv.","textChars":13,"textLines":1,"bbox":[489.6,209.28,158.4,26.88]}
+{"kind":"textbox","id":"sh/sv6d07ml","slide":7,"name":"Text 8","text":"Avg. income","textPreview":"Avg. income","textChars":11,"textLines":1,"bbox":[696,209.28,158.4,26.88]}
+{"kind":"textbox","id":"sh/twzetc36","slide":7,"name":"Text 9","text":"Annualised revenue","textPreview":"Annualised revenue","textChars":18,"textLines":1,"bbox":[902.4,209.28,211.2,26.88]}
+{"kind":"shape","id":"sh/6tovyx4v","slide":7,"name":"Shape 10","bbox":[62.4,248.64,1080,78.72]}
+{"kind":"textbox","id":"sh/7uxwr2l0","slide":7,"name":"Text 11","text":"Year 1","textPreview":"Year 1","textChars":6,"textLines":1,"bbox":[76.8,270.72,148.8,36.48]}
+{"kind":"textbox","id":"sh/kr6dw7mp","slide":7,"name":"Text 12","text":"1,000","textPreview":"1,000","textChars":5,"textLines":1,"bbox":[283.2,270.72,158.4,36.48]}
+{"kind":"textbox","id":"sh/lsfepsna","slide":7,"name":"Text 13","text":"12%","textPreview":"12%","textChars":3,"textLines":1,"bbox":[489.6,270.72,158.4,36.48]}
+{"kind":"textbox","id":"sh/ypovux4j","slide":7,"name":"Text 14","text":"£70","textPreview":"£70","textChars":3,"textLines":1,"bbox":[696,270.72,158.4,36.48]}
+{"kind":"textbox","id":"sh/jqxcn254","slide":7,"name":"Text 15","text":"£100k ARR","textPreview":"£100k ARR","textChars":9,"textLines":1,"bbox":[902.4,270.72,211.2,36.48]}
+{"kind":"shape","id":"sh/4nad8rmt","slide":7,"name":"Shape 16","bbox":[62.4,352.32,1080,78.72]}
+{"kind":"textbox","id":"sh/poje1w3e","slide":7,"name":"Text 17","text":"Year 2","textPreview":"Year 2","textChars":6,"textLines":1,"bbox":[76.8,374.4,148.8,36.48]}
+{"kind":"textbox","id":"sh/dsvm5sr6","slide":7,"name":"Text 18","text":"5,000","textPreview":"5,000","textChars":5,"textLines":1,"bbox":[283.2,374.4,158.4,36.48]}
+{"kind":"textbox","id":"sh/c7m5wnal","slide":7,"name":"Text 19","text":"12%","textPreview":"12%","textChars":3,"textLines":1,"bbox":[489.6,374.4,158.4,36.48]}
+{"kind":"textbox","id":"sh/r6d43i9g","slide":7,"name":"Text 20","text":"£75","textPreview":"£75","textChars":3,"textLines":1,"bbox":[696,374.4,158.4,36.48]}
+{"kind":"textbox","id":"sh/q54nuxsv","slide":7,"name":"Text 21","text":"£540k ARR","textPreview":"£540k ARR","textChars":9,"textLines":1,"bbox":[902.4,374.4,211.2,36.48]}
+{"kind":"shape","id":"sh/p4bm1sra","slide":7,"name":"Shape 22","bbox":[62.4,456,1080,78.72]}
+{"kind":"textbox","id":"sh/432lsnap","slide":7,"name":"Text 23","text":"Year 3","textPreview":"Year 3","textChars":6,"textLines":1,"bbox":[76.8,478.08,148.8,36.48]}
+{"kind":"textbox","id":"sh/32t4zi94","slide":7,"name":"Text 24","text":"10,000","textPreview":"10,000","textChars":6,"textLines":1,"bbox":[283.2,478.08,158.4,36.48]}
+{"kind":"textbox","id":"sh/21k3qdsj","slide":7,"name":"Text 25","text":"12%","textPreview":"12%","textChars":3,"textLines":1,"bbox":[489.6,478.08,158.4,36.48]}
+{"kind":"textbox","id":"sh/h0bmx8ry","slide":7,"name":"Text 26","text":"£70","textPreview":"£70","textChars":3,"textLines":1,"bbox":[696,478.08,158.4,36.48]}
+{"kind":"textbox","id":"sh/gz2lo3at","slide":7,"name":"Text 27","text":"£1.0m ARR","textPreview":"£1.0m ARR","textChars":9,"textLines":1,"bbox":[902.4,478.08,211.2,36.48]}
+{"kind":"shape","id":"sh/65gjy98b","slide":7,"name":"Shape 28","bbox":[115.2,576,1017.6,59.52]}
+{"kind":"textbox","id":"sh/769krepw","slide":7,"name":"Text 29","text":"Year 3 target: 10,000 qualified planners/month × 12% conversion × £70 = ~£84k/month, or ~£1.0m ARR.","textPreview":"Year 3 target: 10,000 qualified planners/month × 12% conversion × £70 = ~£84k/month, or ~£1.0m ARR.","textChars":99,"textLines":1,"bbox":[136.32,591.36,975.36,32.64]}
+{"kind":"textbox","id":"sh/87i10jqh","slide":7,"name":"Text 30","text":"The major investor question becomes: can Morrovia reach 10k high-intent planners/month and maintain ~12% booking conversion?","textPreview":"The major investor question becomes: can Morrovia reach 10k high-intent planners/month and maintain ~12% booking conversion?","textChars":124,"textLines":1,"bbox":[115.2,650.88,1008,26.88]}
+{"kind":"notes","id":"nt/yjgypa","slide":7,"text":""}
+{"kind":"slide","id":"sl/ih0jtk","slide":8,"title":"Funding: validation capital, not a big pre-seed","textShapes":14}
+{"kind":"textbox","id":"sh/nqpor254","slide":8,"name":"Text 0","text":"Funding: validation capital, not a big pre-seed","textPreview":"Funding: validation capital, not a big pre-seed","textChars":47,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/mpwnix4j","slide":8,"name":"Text 1","text":"With no founder salaries in Year 1, Morrovia can be tested cheaply before raising serious growth capital.","textPreview":"With no founder salaries in Year 1, Morrovia can be tested cheaply before raising serious growth capital.","textChars":105,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/lonmpsne","slide":8,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/0ne5gnmt","slide":8,"name":"Text 3","text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/zm54ni58","slide":8,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"shape","id":"sh/ylwned4n","slide":8,"name":"Shape 5","bbox":[86.4,216,292.8,129.6]}
+{"kind":"textbox","id":"sh/dknmlsn2","slide":8,"name":"Text 6","text":"£5k","textPreview":"£5k","textChars":3,"textLines":1,"bbox":[103.68,231.36,258.24,54.43]}
+{"kind":"textbox","id":"sh/cze5cnmh","slide":8,"name":"Text 7","text":"Founder-funded launch","textPreview":"Founder-funded launch","textChars":21,"textLines":1,"bbox":[107.52,289.87,250.56,36.29]}
+{"kind":"textbox","id":"sh/29ojmdw3","slide":8,"name":"Text 8","text":"MVP, analytics, basic APIs, first organic/social tests.","textPreview":"MVP, analytics, basic APIs, first organic/social tests.","textChars":55,"textLines":1,"bbox":[110.4,379.2,244.8,62.4]}
+{"kind":"shape","id":"sh/3axkfido","slide":8,"name":"Shape 9","bbox":[470.4,216,292.8,129.6]}
+{"kind":"textbox","id":"sh/ob61one9","slide":8,"name":"Text 10","text":"£10k","textPreview":"£10k","textChars":4,"textLines":1,"bbox":[487.68,231.36,258.24,54.43]}
+{"kind":"textbox","id":"sh/pcf2hsvu","slide":8,"name":"Text 11","text":"Angel buffer","textPreview":"Angel buffer","textChars":12,"textLines":1,"bbox":[491.52,289.87,250.56,36.29]}
+{"kind":"textbox","id":"sh/u54jitw7","slide":8,"name":"Text 12","text":"More creator tests, paid acquisition signal, faster learning.","textPreview":"More creator tests, paid acquisition signal, faster learning.","textChars":61,"textLines":1,"bbox":[494.4,379.2,244.8,62.4]}
+{"kind":"shape","id":"sh/f6d0bydc","slide":8,"name":"Shape 13","bbox":[854.4,216,292.8,129.6]}
+{"kind":"textbox","id":"sh/g7m1k3ex","slide":8,"name":"Text 14","text":"£20k","textPreview":"£20k","textChars":4,"textLines":1,"bbox":[871.68,231.36,258.24,54.43]}
+{"kind":"textbox","id":"sh/18v2d8vi","slide":8,"name":"Text 15","text":"Full validation push","textPreview":"Full validation push","textChars":20,"textLines":1,"bbox":[875.52,289.87,250.56,36.29]}
+{"kind":"textbox","id":"sh/6hkjetwv","slide":8,"name":"Text 16","text":"Enough room to actively chase the Year-1 £100k run-rate.","textPreview":"Enough room to actively chase the Year-1 £100k run-rate.","textChars":56,"textLines":1,"bbox":[878.4,379.2,244.8,62.4]}
+{"kind":"shape","id":"sh/7id07ydg","slide":8,"name":"Shape 17","bbox":[144,520.32,993.6,65.28]}
+{"kind":"textbox","id":"sh/vm9gfut8","slide":8,"name":"Text 18","text":"Raise only enough to learn: can we acquire qualified planners, convert bookings and prove £50–£70+ revenue per monetised trip?","textPreview":"Raise only enough to learn: can we acquire qualified planners, convert bookings and prove £50–£70+ revenue per monetised trip?","textChars":126,"textLines":1,"bbox":[165.12,535.68,951.36,38.4]}
+{"kind":"notes","id":"nt/ih0jtk","slide":8,"text":""}
+{"kind":"slide","id":"sl/8cz9p0","slide":9,"title":"Minimum viable budget","textShapes":26}
+{"kind":"textbox","id":"sh/tsfid4ze","slide":9,"name":"Text 0","text":"Minimum viable budget","textPreview":"Minimum viable budget","textChars":21,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/876hkzi9","slide":9,"name":"Text 1","text":"Spend only against proof. Keep most cash back until a channel shows signal.","textPreview":"Spend only against proof. Keep most cash back until a channel shows signal.","textChars":75,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/vux0fehk","slide":9,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/utozm90z","slide":9,"name":"Text 3","text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/hwzih4zq","slide":9,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/gvq1ozi5","slide":9,"name":"Text 5","text":"AI, maps, hosting, software","textPreview":"AI, maps, hosting, software","textChars":27,"textLines":1,"bbox":[81.6,199.68,403.2,26.88]}
+{"kind":"textbox","id":"sh/3yh0jehw","slide":9,"name":"Text 6","text":"£1–2k","textPreview":"£1–2k","textChars":5,"textLines":1,"bbox":[484.8,197.76,105.6,30.72]}
+{"kind":"shape","id":"sh/ix8jq90b","slide":9,"name":"Shape 7","bbox":[81.6,242.88,513.6,0]}
+{"kind":"textbox","id":"sh/wr65kn2x","slide":9,"name":"Text 8","text":"Analytics, testing, research","textPreview":"Analytics, testing, research","textChars":28,"textLines":1,"bbox":[81.6,263.04,403.2,26.88]}
+{"kind":"textbox","id":"sh/hcf6dsji","slide":9,"name":"Text 9","text":"£0.5–1k","textPreview":"£0.5–1k","textChars":7,"textLines":1,"bbox":[484.8,261.12,105.6,30.72]}
+{"kind":"shape","id":"sh/up4nixkr","slide":9,"name":"Shape 10","bbox":[81.6,306.24,513.6,0]}
+{"kind":"textbox","id":"sh/vqdobi1c","slide":9,"name":"Text 11","text":"Creators + content experiments","textPreview":"Creators + content experiments","textChars":30,"textLines":1,"bbox":[81.6,326.4,403.2,26.88]}
+{"kind":"textbox","id":"sh/4f65o72t","slide":9,"name":"Text 12","text":"£1–3k","textPreview":"£1–3k","textChars":5,"textLines":1,"bbox":[484.8,324.48,105.6,30.72]}
+{"kind":"shape","id":"sh/5gf6hcje","slide":9,"name":"Shape 13","bbox":[81.6,369.6,513.6,0]}
+{"kind":"textbox","id":"sh/idonmxk3","slide":9,"name":"Text 14","text":"Paid acquisition tests","textPreview":"Paid acquisition tests","textChars":22,"textLines":1,"bbox":[81.6,389.76,403.2,26.88]}
+{"kind":"textbox","id":"sh/jexof218","slide":9,"name":"Text 15","text":"£1.5–5k","textPreview":"£1.5–5k","textChars":7,"textLines":1,"bbox":[484.8,387.84,105.6,30.72]}
+{"kind":"shape","id":"sh/sjq5s725","slide":9,"name":"Shape 16","bbox":[81.6,432.96,513.6,0]}
+{"kind":"textbox","id":"sh/dkz6lcjq","slide":9,"name":"Text 17","text":"Admin, company, legal/accounting","textPreview":"Admin, company, legal/accounting","textChars":32,"textLines":1,"bbox":[81.6,453.12,403.2,26.88]}
+{"kind":"textbox","id":"sh/10v65cbu","slide":9,"name":"Text 18","text":"£0.5–1k","textPreview":"£0.5–1k","textChars":7,"textLines":1,"bbox":[484.8,451.2,105.6,30.72]}
+{"kind":"shape","id":"sh/0zm5c7u9","slide":9,"name":"Shape 19","bbox":[81.6,496.32,513.6,0]}
+{"kind":"textbox","id":"sh/zyd432to","slide":9,"name":"Text 20","text":"Validation milestones","textPreview":"Validation milestones","textChars":21,"textLines":1,"bbox":[700.8,192,345.6,33.6]}
+{"kind":"textbox","id":"sh/exknaxc3","slide":9,"name":"Text 21","text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[705.6,249.6,24,24]}
+{"kind":"textbox","id":"sh/94v69wbq","slide":9,"name":"Text 22","text":"MVP live","textPreview":"MVP live","textChars":8,"textLines":1,"bbox":[737.28,251.52,364.8,24.96]}
+{"kind":"textbox","id":"sh/o3m5gru5","slide":9,"name":"Text 23","text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[705.6,299.52,24,24]}
+{"kind":"textbox","id":"sh/n2do7mtk","slide":9,"name":"Text 24","text":"100+ monetised trips","textPreview":"100+ monetised trips","textChars":20,"textLines":1,"bbox":[737.28,301.44,364.8,24.96]}
+{"kind":"textbox","id":"sh/m14nehcf","slide":9,"name":"Text 25","text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[705.6,349.44,24,24]}
+{"kind":"textbox","id":"sh/58bmxsbm","slide":9,"name":"Text 26","text":"measured revenue/trip","textPreview":"measured revenue/trip","textChars":21,"textLines":1,"bbox":[737.28,351.36,364.8,24.96]}
+{"kind":"textbox","id":"sh/47254nu1","slide":9,"name":"Text 27","text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[705.6,399.36,24,24]}
+{"kind":"textbox","id":"sh/udg3etsz","slide":9,"name":"Text 28","text":"repeatable acquisition signal","textPreview":"repeatable acquisition signal","textChars":29,"textLines":1,"bbox":[737.28,401.28,364.8,24.96]}
+{"kind":"textbox","id":"sh/ve9k7y9k","slide":9,"name":"Text 29","text":"•","textPreview":"•","textChars":1,"textLines":1,"bbox":[705.6,449.28,24,24]}
+{"kind":"textbox","id":"sh/gfilg3ap","slide":9,"name":"Text 30","text":"path to 1,000 planners/mo","textPreview":"path to 1,000 planners/mo","textChars":25,"textLines":1,"bbox":[737.28,451.2,364.8,24.96]}
+{"kind":"shape","id":"sh/hgr298ra","slide":9,"name":"Shape 31","bbox":[686.4,549.12,441.6,49.92]}
+{"kind":"textbox","id":"sh/ih03idsv","slide":9,"name":"Text 32","text":"The next raise should be based on evidence, not the idea.","textPreview":"The next raise should be based on evidence, not the idea.","textChars":57,"textLines":1,"bbox":[707.52,564.48,399.36,23.04]}
+{"kind":"notes","id":"nt/8cz9p0","slide":9,"text":""}
+{"kind":"slide","id":"sl/6c9r8a","slide":10,"title":"A small team with distinct lanes","textShapes":15}
+{"kind":"textbox","id":"sh/gne9wv6l","slide":10,"name":"Text 0","text":"A small team with distinct lanes","textPreview":"A small team with distinct lanes","textChars":32,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/1onqp076","slide":10,"name":"Text 1","text":"More hands increase the odds of success — as long as roles are complementary and equity is earned through contribution.","textPreview":"More hands increase the odds of success — as long as roles are complementary and equity is earned through contribution.","textChars":119,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/2pwry5or","slide":10,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/3qp8rapc","slide":10,"name":"Text 3","text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/ory90f6x","slide":10,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"shape","id":"sh/ps7qtk7i","slide":10,"name":"Shape 5","bbox":[74.88,211.2,30.72,30.72]}
+{"kind":"textbox","id":"sh/itc7m1on","slide":10,"name":"Text 6","text":"Founder","textPreview":"Founder","textChars":7,"textLines":1,"bbox":[122.88,206.4,273.6,32.64]}
+{"kind":"textbox","id":"sh/jul8f6p8","slide":10,"name":"Text 7","text":"Product, design, product engineering, strategy","textPreview":"Product, design, product engineering, strategy","textChars":46,"textLines":1,"bbox":[122.88,246.72,292.8,48]}
+{"kind":"shape","id":"sh/ra187294","slide":10,"name":"Shape 8","bbox":[463.68,211.2,30.72,30.72]}
+{"kind":"textbox","id":"sh/q9s7ex8j","slide":10,"name":"Text 9","text":"Growth lead","textPreview":"Growth lead","textChars":11,"textLines":1,"bbox":[511.68,206.4,273.6,32.64]}
+{"kind":"textbox","id":"sh/dwjq9cra","slide":10,"name":"Text 10","text":"Sales, social, partnerships, creator distribution","textPreview":"Sales, social, partnerships, creator distribution","textChars":49,"textLines":1,"bbox":[511.68,246.72,292.8,48]}
+{"kind":"shape","id":"sh/cvapg7qp","slide":10,"name":"Shape 11","bbox":[852.48,211.2,30.72,30.72]}
+{"kind":"textbox","id":"sh/36ho3i9s","slide":10,"name":"Text 12","text":"Strategic angel","textPreview":"Strategic angel","textChars":15,"textLines":1,"bbox":[900.48,206.4,273.6,32.64]}
+{"kind":"textbox","id":"sh/i587ax8n","slide":10,"name":"Text 13","text":"Capital, investor network, commercial guidance","textPreview":"Capital, investor network, commercial guidance","textChars":46,"textLines":1,"bbox":[900.48,246.72,292.8,48]}
+{"kind":"shape","id":"sh/58jq5sry","slide":10,"name":"Shape 14","bbox":[74.88,369.6,30.72,30.72]}
+{"kind":"textbox","id":"sh/47apcnqd","slide":10,"name":"Text 15","text":"Product / AI advisor","textPreview":"Product / AI advisor","textChars":20,"textLines":1,"bbox":[122.88,364.8,273.6,32.64]}
+{"kind":"textbox","id":"sh/v2hozi9w","slide":10,"name":"Text 16","text":"AI direction, prioritisation, team/product thinking","textPreview":"AI direction, prioritisation, team/product thinking","textChars":51,"textLines":1,"bbox":[122.88,405.12,292.8,48]}
+{"kind":"shape","id":"sh/u1876d8b","slide":10,"name":"Shape 17","bbox":[463.68,369.6,30.72,30.72]}
+{"kind":"textbox","id":"sh/yxoridc3","slide":10,"name":"Text 18","text":"Technical advisor","textPreview":"Technical advisor","textChars":17,"textLines":1,"bbox":[511.68,364.8,273.6,32.64]}
+{"kind":"textbox","id":"sh/jyx8bito","slide":10,"name":"Text 19","text":"Architecture, code review, hard integrations","textPreview":"Architecture, code review, hard integrations","textChars":44,"textLines":1,"bbox":[511.68,405.12,292.8,48]}
+{"kind":"shape","id":"sh/l0zqd8bu","slide":10,"name":"Shape 20","bbox":[120,568.32,672,52.8]}
+{"kind":"textbox","id":"sh/618rmdcf","slide":10,"name":"Text 21","text":"Team philosophy: do not minimise the team. Minimise unnecessary dilution.","textPreview":"Team philosophy: do not minimise the team. Minimise unnecessary dilution.","textChars":73,"textLines":1,"bbox":[141.12,583.68,629.76,25.92]}
+{"kind":"image","id":"im/83e58r61","slide":10,"name":"Image 0","bbox":[907.2,456,225.6,100.8]}
+{"kind":"notes","id":"nt/6c9r8a","slide":10,"text":""}
+{"kind":"slide","id":"sl/uc7dtd","slide":11,"title":"Equity framework: protect the cap table","textShapes":19}
+{"kind":"textbox","id":"sh/kvil4b25","slide":11,"name":"Text 0","text":"Equity framework: protect the cap table","textPreview":"Equity framework: protect the cap table","textChars":39,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/5wr2dg3q","slide":11,"name":"Text 1","text":"Before traction, outside equity should stay small, specific and mostly vested.","textPreview":"Before traction, outside equity should stay small, specific and mostly vested.","textChars":78,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/6x036lkb","slide":11,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/7y9kf6lw","slide":11,"name":"Text 3","text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/szil8b2h","slide":11,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"shape","id":"sh/t0r2hgj2","slide":11,"name":"Shape 5","bbox":[81.6,196.8,268.8,148.8]}
+{"kind":"textbox","id":"sh/u103alk7","slide":11,"name":"Text 6","text":"<10%","textPreview":"<10%","textChars":4,"textLines":1,"bbox":[98.88,212.16,234.24,62.5]}
+{"kind":"textbox","id":"sh/f2tkjq1s","slide":11,"name":"Text 7","text":"target outside founder ownership before traction","textPreview":"target outside founder ownership before traction","textChars":48,"textLines":1,"bbox":[102.72,281.62,226.56,41.66]}
+{"kind":"shape","id":"sh/ju9gnmhg","slide":11,"name":"Shape 8","bbox":[384,196.8,268.8,148.8]}
+{"kind":"textbox","id":"sh/it0feh0b","slide":11,"name":"Text 9","text":"3–6%","textPreview":"3–6%","textChars":4,"textLines":1,"bbox":[401.28,212.16,234.24,62.5]}
+{"kind":"textbox","id":"sh/5gbypwzm","slide":11,"name":"Text 10","text":"likely externally allocated initially","textPreview":"likely externally allocated initially","textChars":37,"textLines":1,"bbox":[405.12,281.62,226.56,41.66]}
+{"kind":"shape","id":"sh/kvixgri1","slide":11,"name":"Shape 11","bbox":[686.4,196.8,268.8,148.8]}
+{"kind":"textbox","id":"sh/vq9wj2hk","slide":11,"name":"Text 12","text":"15%","textPreview":"15%","textChars":3,"textLines":1,"bbox":[703.68,212.16,234.24,62.5]}
+{"kind":"textbox","id":"sh/ap0fax0z","slide":11,"name":"Text 13","text":"hard ceiling unless co-founder calibre","textPreview":"hard ceiling unless co-founder calibre","textChars":38,"textLines":1,"bbox":[707.52,281.62,226.56,41.66]}
+{"kind":"textbox","id":"sh/xsrelczq","slide":11,"name":"Text 14","text":"Strategic angel","textPreview":"Strategic angel","textChars":15,"textLines":1,"bbox":[105.6,395.52,230.4,24]}
+{"kind":"textbox","id":"sh/wrixc7i5","slide":11,"name":"Text 15","text":"2–5% total, with contribution equity vesting","textPreview":"2–5% total, with contribution equity vesting","textChars":44,"textLines":1,"bbox":[340.8,395.52,662.4,24]}
+{"kind":"textbox","id":"sh/fmtgv6ho","slide":11,"name":"Text 16","text":"Product / AI advisor","textPreview":"Product / AI advisor","textChars":20,"textLines":1,"bbox":[105.6,440.64,230.4,24]}
+{"kind":"textbox","id":"sh/ulkfm103","slide":11,"name":"Text 17","text":"0.25–1.5% depending on actual involvement","textPreview":"0.25–1.5% depending on actual involvement","textChars":41,"textLines":1,"bbox":[340.8,440.64,662.4,24]}
+{"kind":"textbox","id":"sh/qhoze5kb","slide":11,"name":"Text 18","text":"Technical advisor","textPreview":"Technical advisor","textChars":17,"textLines":1,"bbox":[105.6,485.76,230.4,24]}
+{"kind":"textbox","id":"sh/rix0na1w","slide":11,"name":"Text 19","text":"0.1–0.5% unless they become core builder","textPreview":"0.1–0.5% unless they become core builder","textChars":40,"textLines":1,"bbox":[340.8,485.76,662.4,24]}
+{"kind":"textbox","id":"sh/cj61gf2h","slide":11,"name":"Text 20","text":"Other advisors","textPreview":"Other advisors","textChars":14,"textLines":1,"bbox":[105.6,530.88,230.4,24]}
+{"kind":"textbox","id":"sh/dkfip0j2","slide":11,"name":"Text 21","text":"keep combined pool under ~1% initially","textPreview":"keep combined pool under ~1% initially","textChars":38,"textLines":1,"bbox":[340.8,530.88,662.4,24]}
+{"kind":"shape","id":"sh/eloji5kn","slide":11,"name":"Shape 22","bbox":[105.6,580.8,950.4,49.92]}
+{"kind":"textbox","id":"sh/z6x0ra18","slide":11,"name":"Text 23","text":"Rule: pay extra equity for specific ongoing contribution, not availability or goodwill.","textPreview":"Rule: pay extra equity for specific ongoing contribution, not availability or goodwill.","textChars":87,"textLines":1,"bbox":[126.72,596.16,908.16,23.04]}
+{"kind":"notes","id":"nt/uc7dtd","slide":11,"text":""}
+{"kind":"slide","id":"sl/d8or57","slide":12,"title":"Clean company setup","textShapes":13}
+{"kind":"textbox","id":"sh/q50f2107","slide":12,"name":"Text 0","text":"Clean company setup","textPreview":"Clean company setup","textChars":19,"textLines":1,"bbox":[62.4,55.68,844.8,69.12]}
+{"kind":"textbox","id":"sh/r69wbm1c","slide":12,"name":"Text 1","text":"Keep Morrovia separate from the existing contracting Ltd before investment, IP and affiliate contracts build up.","textPreview":"Keep Morrovia separate from the existing contracting Ltd before investment, IP and affiliate contracts build up.","textChars":112,"textLines":1,"bbox":[65.28,136.32,590.4,52.8]}
+{"kind":"textbox","id":"sh/4jyd0ri1","slide":12,"name":"Text 2","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[52.8,683.52,115.2,17.28]}
+{"kind":"textbox","id":"sh/p4re9wjm","slide":12,"name":"Text 3","text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1200,683.52,28.8,17.28]}
+{"kind":"shape","id":"sh/2hgvyh0v","slide":12,"name":"Shape 4","bbox":[52.8,665.28,1174.08,0]}
+{"kind":"textbox","id":"sh/3ipw7m1g","slide":12,"name":"Text 5","text":"Old UK Ltd","textPreview":"Old UK Ltd","textChars":10,"textLines":1,"bbox":[81.6,192,216,30.72]}
+{"kind":"textbox","id":"sh/8z2xcbi5","slide":12,"name":"Text 6","text":"Keep as personal contracting vehicle. Do not mix client income with startup shareholders.","textPreview":"Keep as personal contracting vehicle. Do not mix client income with startup shareholders.","textChars":89,"textLines":1,"bbox":[331.2,193.92,465.6,46.08]}
+{"kind":"shape","id":"sh/90belgjq","slide":12,"name":"Shape 7","bbox":[81.6,251.52,720,0]}
+{"kind":"textbox","id":"sh/pwrmtwv2","slide":12,"name":"Text 8","text":"New Morrovia Ltd","textPreview":"New Morrovia Ltd","textChars":16,"textLines":1,"bbox":[81.6,278.4,216,30.72]}
+{"kind":"textbox","id":"sh/ovylkrux","slide":12,"name":"Text 9","text":"Owns product, code, brand, domain, affiliate accounts and investment.","textPreview":"Owns product, code, brand, domain, affiliate accounts and investment.","textChars":69,"textLines":1,"bbox":[331.2,280.32,465.6,46.08]}
+{"kind":"shape","id":"sh/3up4rmdc","slide":12,"name":"Shape 10","bbox":[81.6,337.92,720,0]}
+{"kind":"textbox","id":"sh/2tg3ihcr","slide":12,"name":"Text 11","text":"Remote-first setup","textPreview":"Remote-first setup","textChars":18,"textLines":1,"bbox":[81.6,364.8,216,30.72]}
+{"kind":"textbox","id":"sh/hs72pcv6","slide":12,"name":"Text 12","text":"Incorporate online, use registered office, open business banking such as Revolut Business.","textPreview":"Incorporate online, use registered office, open business banking such as Revolut Business.","textChars":90,"textLines":1,"bbox":[331.2,366.72,465.6,46.08]}
+{"kind":"shape","id":"sh/grylg7ul","slide":12,"name":"Shape 13","bbox":[81.6,424.32,720,0]}
+{"kind":"textbox","id":"sh/fqpknmd0","slide":12,"name":"Text 14","text":"SEIS-ready path","textPreview":"SEIS-ready path","textChars":15,"textLines":1,"bbox":[81.6,451.2,216,30.72]}
+{"kind":"textbox","id":"sh/upg3ehcf","slide":12,"name":"Text 15","text":"Issue new shares directly from Morrovia Ltd if angel investment proceeds.","textPreview":"Issue new shares directly from Morrovia Ltd if angel investment proceeds.","textChars":73,"textLines":1,"bbox":[331.2,453.12,465.6,46.08]}
+{"kind":"shape","id":"sh/lobm1gva","slide":12,"name":"Shape 16","bbox":[81.6,510.72,720,0]}
+{"kind":"shape","id":"sh/k3axkj6d","slide":12,"name":"Shape 17","bbox":[100.8,580.8,710.4,49.92]}
+{"kind":"textbox","id":"sh/54jedo7y","slide":12,"name":"Text 18","text":"Clean entity. Clean IP. Clean cap table. Cleaner angel conversation.","textPreview":"Clean entity. Clean IP. Clean cap table. Cleaner angel conversation.","textChars":68,"textLines":1,"bbox":[121.92,596.16,668.16,23.04]}
+{"kind":"image","id":"im/9w3yts3e","slide":12,"name":"Image 0","bbox":[878.4,168,292.8,379.2]}
+{"kind":"notes","id":"nt/d8or57","slide":12,"text":""}
+{"kind":"slide","id":"sl/irayfj","slide":13,"title":"morrovia","textShapes":16}
+{"kind":"textbox","id":"sh/mpk7i50v","slide":13,"name":"Text 0","text":"morrovia","textPreview":"morrovia","textChars":8,"textLines":1,"bbox":[72,67.2,364.8,59.52]}
+{"kind":"textbox","id":"sh/7qt8rahg","slide":13,"name":"Text 1","text":"A travel planner with a transaction engine underneath.","textPreview":"A travel planner with a transaction engine underneath.","textChars":54,"textLines":1,"bbox":[74.88,145.92,662.4,59.52]}
+{"kind":"textbox","id":"sh/kn2pgvip","slide":13,"name":"Text 2","text":"The near-term ask is intentionally small: launch, prove conversion and raise only when the data deserves it.","textPreview":"The near-term ask is intentionally small: launch, prove conversion and raise only when the data deserves it.","textChars":108,"textLines":1,"bbox":[76.8,225.6,595.2,74.88]}
+{"kind":"textbox","id":"sh/lobqp0za","slide":13,"name":"Text 3","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[91.2,350.4,43.2,24]}
+{"kind":"textbox","id":"sh/y1k7e50z","slide":13,"name":"Text 4","text":"Launch MVP","textPreview":"Launch MVP","textChars":10,"textLines":1,"bbox":[144,347.52,211.2,26.88]}
+{"kind":"textbox","id":"sh/zmt8nahk","slide":13,"name":"Text 5","text":"route builder, saved trips and trip pages","textPreview":"route builder, saved trips and trip pages","textChars":41,"textLines":1,"bbox":[144,383.04,230.4,33.6]}
+{"kind":"textbox","id":"sh/4jm9szi9","slide":13,"name":"Text 6","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[403.2,350.4,43.2,24]}
+{"kind":"textbox","id":"sh/5kfq14zu","slide":13,"name":"Text 7","text":"Validate revenue","textPreview":"Validate revenue","textChars":16,"textLines":1,"bbox":[456,347.52,211.2,26.88]}
+{"kind":"textbox","id":"sh/t83yxcr2","slide":13,"name":"Text 8","text":"hotels, flights, activities and Trip Pass","textPreview":"hotels, flights, activities and Trip Pass","textChars":41,"textLines":1,"bbox":[456,383.04,230.4,33.6]}
+{"kind":"textbox","id":"sh/s7ux47qx","slide":13,"name":"Text 9","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[91.2,451.2,43.2,24]}
+{"kind":"textbox","id":"sh/76lgv29c","slide":13,"name":"Text 10","text":"Prove distribution","textPreview":"Prove distribution","textChars":18,"textLines":1,"bbox":[144,448.32,211.2,26.88]}
+{"kind":"textbox","id":"sh/65cf2h8r","slide":13,"name":"Text 11","text":"1,000 MAUs at ~12% conversion","textPreview":"1,000 MAUs at ~12% conversion","textChars":29,"textLines":1,"bbox":[144,483.84,230.4,33.6]}
+{"kind":"textbox","id":"sh/5k3ytcr6","slide":13,"name":"Text 12","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[403.2,451.2,43.2,24]}
+{"kind":"textbox","id":"sh/kjux07ql","slide":13,"name":"Text 13","text":"Decide next raise","textPreview":"Decide next raise","textChars":17,"textLines":1,"bbox":[456,448.32,211.2,26.88]}
+{"kind":"textbox","id":"sh/jilwr290","slide":13,"name":"Text 14","text":"bootstrap, angel extension or seed","textPreview":"bootstrap, angel extension or seed","textChars":34,"textLines":1,"bbox":[456,483.84,230.4,33.6]}
+{"kind":"textbox","id":"sh/pg7y5w7a","slide":13,"name":"Text 15","text":"morrovia.com","textPreview":"morrovia.com","textChars":12,"textLines":1,"bbox":[76.8,648,192,23.04]}
+{"kind":"image","id":"im/v2xg369c","slide":13,"name":"Image 0","bbox":[768,62.4,436.8,580.8]}
+{"kind":"notes","id":"nt/irayfj","slide":13,"text":""}

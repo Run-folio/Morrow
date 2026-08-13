@@ -12,6 +12,7 @@ import { JourneyRestaurantFinder } from "@/components/journey-restaurant-finder"
 import { JourneyLocalFinder } from "@/components/journey-local-finder";
 import { MobileTripCompanion } from "@/components/mobile-trip-companion";
 import { JourneyWeather } from "@/components/journey-weather";
+import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
@@ -130,6 +131,7 @@ function customPlaceDetails(place: CustomPick | undefined) {
   ];
 }
 function customDate(startDate: string, offset: number) { const date = new Date(`${startDate || "2027-03-01"}T00:00:00`); date.setDate(date.getDate() + offset); return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date); }
+function nextIsoDate(date: string) { const next = new Date(`${date}T00:00:00`); next.setDate(next.getDate() + 1); return next.toISOString().slice(0, 10); }
 const planningBases: Record<string, string> = { peru: "Cusco", colombia: "Bogotá", japan: "Tokyo", china: "Beijing", italy: "Rome", france: "Paris", spain: "Barcelona", thailand: "Bangkok", vietnam: "Hanoi", indonesia: "Bali", "south korea": "Seoul", mexico: "Mexico City", portugal: "Lisbon", greece: "Athens", turkey: "Istanbul", "united kingdom": "London", "united states": "New York", australia: "Sydney", brazil: "Rio de Janeiro", morocco: "Marrakech", india: "Delhi", egypt: "Cairo", "new zealand": "Auckland", "south africa": "Cape Town" };
 function planningBase(destination: string) { return getCountryIntelligence(destination)?.preferredFirstBase ?? planningBases[destination.toLowerCase()] ?? destination; }
 function formatEstimate(minutes: number | null) { return minutes === null ? "Confirm connection" : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m approx.`; }
@@ -304,7 +306,7 @@ export default function JourneyPage() {
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(null);
   const [planHydrated, setPlanHydrated] = useState(!isPlanningPreview);
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
-  const [placeMedia, setPlaceMedia] = useState<Record<string, { image?: string; description?: string; sourceUrl?: string; coordinates?: [number, number] }>>({});
+  const [placeMedia, setPlaceMedia] = useState<Record<string, { image?: string; alt?: string; description?: string; sourceUrl?: string; sourceLabel?: string; coordinates?: [number, number] }>>({});
   const [cloudSaveState, setCloudSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [exportState, setExportState] = useState<"idle" | "saving" | "error">("idle");
@@ -388,7 +390,7 @@ export default function JourneyPage() {
   const details = isCustomJourney ? customPlaceDetails(customPlace) : (journeyDetails[selected.id] ?? []);
   const media = isCustomJourney ? undefined : journeyMedia[selected.id];
   const customImage = placeMedia[selected.id]?.image
-    ? { src: placeMedia[selected.id]!.image!, alt: selected.city, caption: selected.city, sourceUrl: placeMedia[selected.id]?.sourceUrl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.city.replace(/ /g, "_"))}` }
+    ? { src: placeMedia[selected.id]!.image!, alt: placeMedia[selected.id]?.alt ?? selected.city, caption: selected.city, sourceUrl: placeMedia[selected.id]?.sourceUrl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.city.replace(/ /g, "_"))}`, sourceLabel: placeMedia[selected.id]?.sourceLabel }
     : customPlace?.image
       ? { src: customPlace.image, alt: selected.city, caption: selected.city, sourceUrl: customPlace.sourceUrl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.city.replace(/ /g, "_"))}` }
       : Object.entries(placeMedia).map(([stopId, item]) => {
@@ -688,7 +690,7 @@ export default function JourneyPage() {
     Promise.all(generated.stops.slice(1).map(async (stop) => {
       const country = stop.id === "custom-origin" ? "" : stop.country;
       const response = await fetch(`/api/journey-place?title=${encodeURIComponent(stop.city)}&country=${encodeURIComponent(country)}`);
-      const payload = await response.json() as { place?: { image?: string; description?: string; sourceUrl?: string; coordinates?: [number, number] } | null };
+      const payload = await response.json() as { place?: { image?: string; alt?: string; description?: string; sourceUrl?: string; sourceLabel?: string; coordinates?: [number, number] } | null };
       return [stop.id, payload.place] as const;
     })).then((results) => {
       if (!active) return;
@@ -927,6 +929,11 @@ export default function JourneyPage() {
                 {selected.highlights.map((highlight, index) => <span key={highlight}><b>0{index + 1}</b>{highlight}</span>)}
               </div> : null}
             </div>
+            {isPlanningPreview && isCustomJourney && customTrip ? <JourneyTripReadiness
+              countries={customTrip.stops.map((stop) => stop.country)}
+              startDate={customTrip.startDate}
+              language={language}
+            /> : null}
             {images.length ? <>
               <JourneyCarousel images={images} city={selectedDay.city} storyKey={selectedDay.id} />
               {details.length ? <details className={styles.exploreMore} open>
@@ -1040,10 +1047,10 @@ export default function JourneyPage() {
 
       {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={styles.finderDock} aria-label={planCopy.findPlaces}>
         <header><small>{planCopy.onTheGo}</small><strong>{planCopy.findNearby}</strong><div className={styles.finderTabs}><button type="button" aria-pressed={localFinderKind === "restaurant"} onClick={() => setLocalFinderKind("restaurant")}>{language === "es" ? "Comida" : "Food"}</button><button type="button" aria-pressed={localFinderKind === "stay"} onClick={() => setLocalFinderKind("stay")}>{language === "es" ? "Estancias" : "Stays"}</button></div></header>
-        <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} />
+        <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: selectedPlanItem.date, checkOut: nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1) } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} />
       </aside> : null}
 
-      {isPlanningPreview && isCustomJourney && selected.coordinates ? <MobileTripCompanion day={selectedDay} city={selected.city} country={selected.country} coordinates={selected.coordinates} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} /> : null}
+      {isPlanningPreview && isCustomJourney && selected.coordinates ? <MobileTripCompanion day={selectedDay} city={selected.city} country={selected.country} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: selectedPlanItem.date, checkOut: nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1) } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} /> : null}
 
       <div className={styles.bottomControls}>
         {isPlanningPreview && isCustomJourney ? <EasyTTripCopilot surface="map" dayCount={journey.calendar.length} destination={selected.city} /> : null}

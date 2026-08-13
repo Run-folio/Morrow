@@ -59,6 +59,8 @@ const cases: Expected[] = [
   { brief: "Sagrada Familia then Barcelona", stops: ["Barcelona"] },
   { brief: "Machu Picchu with Lima and Cusco", stops: ["Machu Picchu", "Lima", "Cusco"] },
   { brief: "Two weeks from London visiting Cusco, Machu Picchu, Lima and Bogotá", origin: "London", stops: ["Cusco", "Machu Picchu", "Lima", "Bogotá"], durationDays: 14 },
+  { brief: "Three weeks from London through Bangkok, Chiang Mai, Hoi An, Vang Vieng and Luang Prabang", origin: "London", stops: ["Bangkok", "Chiang Mai", "Hoi An", "Vang Vieng", "Luang Prabang"], durationDays: 21 },
+  { brief: "Two weeks in Thailand with Krabi and Chiang Mai", stops: ["Krabi", "Chiang Mai"], durationDays: 14 },
 ];
 
 for (const expected of cases) {

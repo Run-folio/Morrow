@@ -19,7 +19,7 @@ const copy = {
     collectItems: [
       ["Account details", "Your name, email address, account identifier and authentication records. Passwords are handled by the authentication system and are never shown inside EasyT."],
       ["Trip information", "Your trip title, dates, destinations, selected places, plan items, notes, pins and the practical route details you save."],
-      ["Profile and memories", "Your travel-profile choices, language preference, country stamps, country notes and any photo you choose to attach to a stamp."],
+      ["Profile and memories", "Your travel-profile choices, language preference, country stamps, country notes and any photo you choose to attach to a stamp. If you choose to personalise trip-preparation reminders, this can include nationality or nationalities, country of residence and passport-expiry month only — never a passport number, scan or image."],
       ["Feedback and email records", "Ratings and comments you send, plus a record of transactional email delivery such as verification, password reset and trip-gift emails."],
     ],
     location: "Location and nearby search",
@@ -53,7 +53,7 @@ const copy = {
     collectItems: [
       ["Datos de la cuenta", "Tu nombre, correo electrónico, identificador de cuenta y registros de autenticación. El sistema de autenticación gestiona las contraseñas y nunca se muestran dentro de EasyT."],
       ["Información del viaje", "El título, las fechas, destinos, lugares seleccionados, elementos del plan, notas, pines y detalles prácticos de ruta que guardas."],
-      ["Perfil y recuerdos", "Las elecciones de tu perfil de viaje, idioma, sellos de países, notas de países y cualquier foto que adjuntes a un sello."],
+      ["Perfil y recuerdos", "Las elecciones de tu perfil de viaje, idioma, sellos de países, notas de países y cualquier foto que adjuntes a un sello. Si eliges personalizar los recordatorios antes de salir, puede incluir nacionalidad o nacionalidades, país de residencia y mes de caducidad del pasaporte, pero nunca un número, escaneo o imagen del pasaporte."],
       ["Comentarios y registros de correo", "Las valoraciones y comentarios que envías, además de un registro de la entrega de correos transaccionales como verificación, restablecimiento de contraseña y regalos de viajes."],
     ],
     location: "Ubicación y búsqueda cercana",

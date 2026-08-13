@@ -1,0 +1,18 @@
+{
+  "outputSlides": [
+    {"outputSlide":1,"sourceSlide":1,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":2,"sourceSlide":2,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":3,"sourceSlide":3,"narrativeRole":"product mechanism","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/cza94vmx","action":"rewrite-and-reposition","reason":"keep title on one line and separate it from subtitle"},{"sourceElementId":"sh/e10f2twf","action":"rewrite","reason":"tighten callout copy so it remains within its inherited frame"}]},
+    {"outputSlide":4,"sourceSlide":4,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":5,"sourceSlide":5,"narrativeRole":"unit economics","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/dgbulwnm","action":"rewrite-and-reposition","reason":"keep title on one line and separate it from subtitle"}]},
+    {"outputSlide":6,"sourceSlide":6,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":7,"sourceSlide":7,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":8,"sourceSlide":8,"narrativeRole":"funding strategy","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/18byd4zy","action":"rewrite-and-reposition","reason":"keep title on one line and separate it from subtitle"}]},
+    {"outputSlide":9,"sourceSlide":9,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":10,"sourceSlide":10,"narrativeRole":"team","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/xc3mho32","action":"rewrite-and-reposition","reason":"keep title on one line and separate it from subtitle"},{"sourceElementId":"sh/cbu58j2h","action":"rewrite-and-reposition","reason":"widen supporting copy to avoid collision with the team lanes"},{"sourceElementId":"sh/lk7ut0va","action":"rewrite","reason":"tighten callout copy so it remains within its inherited frame"}]},
+    {"outputSlide":11,"sourceSlide":11,"narrativeRole":"equity framework","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/xcryxg7y","action":"rewrite-and-reposition","reason":"keep title on one line and separate it from subtitle"}]},
+    {"outputSlide":12,"sourceSlide":12,"narrativeRole":"preserve source slide","reuseMode":"duplicate-slide","editTargets":[]},
+    {"outputSlide":13,"sourceSlide":13,"narrativeRole":"close and next steps","reuseMode":"duplicate-slide","editTargets":[{"sourceElementId":"sh/bq9orito","action":"rewrite-and-reposition","reason":"increase separation between closing headline and supporting copy"},{"sourceElementId":"sh/o3i5w3ad","action":"rewrite-and-reposition","reason":"increase separation between closing headline and supporting copy"}]}
+  ],
+  "omittedSourceSlides": []
+}

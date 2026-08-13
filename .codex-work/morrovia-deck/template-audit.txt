@@ -1,0 +1,9 @@
+Communication job: By the end, prospective early investors and collaborators should understand that Morrovia can validate a transaction-led travel model with modest capital because revenue is tied to high-intent planning moments.
+
+Source structure: 13-slide, 16:9 investor deck. Slides 2–12 share a cream canvas, dark green headlines, teal/coral accents, lower-left wordmark, lower-right page number, and a thin footer rule. Slides 1 and 13 act as branded opening/closing bookends with full-height travel imagery.
+
+Typography and spacing: Aptos/Aptos Display theme typography. Primary titles sit near x=62, y=56. Supporting copy begins near y=136. The long titles on slides 3, 5, 8, 10, and 11 wrap into the subtitle zone; these should be kept to one line by widening their inherited title boxes while preserving font styling. The closing slide needs more vertical separation between its two-line headline and supporting paragraph.
+
+Reusable content patterns: hero split, three-column problem statement, process + illustration, revenue list + illustration, metric cards, growth table, funding options, budget + milestones, team lanes, equity metrics, company setup, and closing action grid.
+
+Insertion contract: preserve all inherited slide furniture, images, content, typography, notes, and page markers. Only reposition the specifically mapped inherited title/supporting-copy shapes.

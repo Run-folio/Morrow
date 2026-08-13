@@ -15,6 +15,8 @@ export type AnalyticsEventName =
   | "easyt_trip_capture_failed"
   | "easyt_featured_route_opened"
   | "easyt_finder_started"
+  | "easyt_accommodation_inventory_viewed"
+  | "easyt_accommodation_affiliate_clicked"
   | "easyt_stamps_opened"
   | "easyt_trip_saved"
   | "easyt_trip_exported"

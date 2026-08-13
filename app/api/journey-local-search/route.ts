@@ -17,6 +17,22 @@ type LocalPlace = {
   mapsUrl: string;
   bookingUrl: string | undefined;
   distanceKm: number;
+  operational: boolean;
+  availability: "available" | "check";
+  provider: "google-places" | "openstreetmap";
+  rating?: number;
+  priceLevel?: string;
+};
+
+type GooglePlace = {
+  id?: string;
+  displayName?: { text?: string };
+  formattedAddress?: string;
+  location?: { latitude?: number; longitude?: number };
+  businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "FUTURE_OPENING";
+  googleMapsUri?: string;
+  rating?: number;
+  priceLevel?: string;
 };
 
 type PhotonPlace = {
@@ -57,16 +73,16 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   });
   if (!response.ok) return [];
   const data = await response.json() as { features?: PhotonPlace[] };
-  return (data.features ?? [])
-    .map((place) => {
+  const places: LocalPlace[] = [];
+  for (const place of data.features ?? []) {
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
       const name = properties.name?.trim();
-      if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const address = [properties.housenumber, properties.street, properties.locality || properties.city, properties.postcode, properties.country || country].filter(Boolean).join(", ") || `${city}, ${country}`;
       const searchQuery = `${name}, ${address}`;
       const china = /china/i.test(country);
-      return {
+      places.push({
         id: `photon-${properties.osm_id ?? `${lat}-${lon}`}`,
         name,
         address,
@@ -77,9 +93,61 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
           : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
         bookingUrl: kind === "stay" ? `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}` : undefined,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-      } satisfies LocalPlace;
-    })
-    .filter((place): place is LocalPlace => place !== null);
+        operational: true as boolean,
+        availability: "check" as "check",
+        provider: "openstreetmap" as "openstreetmap",
+      });
+  }
+  return places;
+}
+
+async function googleOperationalStays(country: string, latitude: number, longitude: number) {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return null;
+  const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.rating,places.priceLevel",
+    },
+    body: JSON.stringify({
+      includedTypes: ["lodging"],
+      maxResultCount: 12,
+      rankPreference: "DISTANCE",
+      locationRestriction: { circle: { center: { latitude, longitude }, radius: 7000 } },
+    }),
+    next: { revalidate: 60 * 15 },
+    signal: AbortSignal.timeout(7000),
+  });
+  if (!response.ok) throw new Error("Google Places stay lookup unavailable");
+  const seen = new Set<string>();
+  return ((await response.json() as { places?: GooglePlace[] }).places ?? [])
+    .flatMap((place) => {
+      const name = place.displayName?.text?.trim();
+      const lat = place.location?.latitude;
+      const lon = place.location?.longitude;
+      if (!name || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
+      const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
+      if (seen.has(key)) return [];
+      seen.add(key);
+      const searchQuery = `${name}, ${place.formattedAddress ?? country}`;
+      return [{
+        id: `google-${place.id}`,
+        name,
+        address: place.formattedAddress ?? country,
+        category: "lodging",
+        coordinates: [lon!, lat!] as [number, number],
+        mapsUrl: place.googleMapsUri ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
+        bookingUrl: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}`,
+        distanceKm: distanceKm(latitude, longitude, lat!, lon!),
+        operational: true,
+        availability: "check" as const,
+        provider: "google-places" as const,
+        rating: place.rating,
+        priceLevel: place.priceLevel,
+      } satisfies LocalPlace];
+    });
 }
 
 export async function GET(request: NextRequest) {
@@ -90,6 +158,16 @@ export async function GET(request: NextRequest) {
   const longitude = Number(request.nextUrl.searchParams.get("lon"));
   if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
     return NextResponse.json({ places: [] }, { status: 400 });
+  }
+
+  if (kind === "stay") {
+    try {
+      const places = await googleOperationalStays(country ?? "", latitude, longitude);
+      if (places) return NextResponse.json({ places, source: "Google Places", inventory: false });
+    } catch {
+      // Keep the map-data fallback available, but never represent it as a live
+      // availability result. The client labels these as "Check availability".
+    }
   }
 
   const radius = kind === "stay" ? 7500 : 5000;
@@ -114,17 +192,17 @@ export async function GET(request: NextRequest) {
     if (!response.ok) throw new Error("Local venue lookup unavailable");
     const data = await response.json() as { elements?: OverpassElement[] };
     const seen = new Set<string>();
-    const places = (data.elements ?? [])
-      .map((place) => {
+    const places: LocalPlace[] = [];
+    for (const place of data.elements ?? []) {
         const tags = place.tags ?? {};
         const lat = place.lat ?? place.center?.lat;
         const lon = place.lon ?? place.center?.lon;
         const name = tags.name?.trim();
-        if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+        if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
         const address = addressFor(tags, country ? `${city}, ${country}` : city);
         const searchQuery = `${name}, ${address}`;
         const china = /china/i.test(country ?? "");
-        return {
+        places.push({
           id: `${place.id}`,
           name,
           address,
@@ -135,9 +213,12 @@ export async function GET(request: NextRequest) {
             : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
           bookingUrl: kind === "stay" ? `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}` : undefined,
           distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-        } satisfies LocalPlace;
-      })
-      .filter((place): place is LocalPlace => place !== null)
+          operational: true as boolean,
+          availability: "check" as "check",
+          provider: "openstreetmap" as "openstreetmap",
+        });
+    }
+    const uniquePlaces = places
       .filter((place) => {
         const key = `${place.name}|${place.address}`.toLowerCase();
         if (seen.has(key)) return false;
@@ -145,7 +226,7 @@ export async function GET(request: NextRequest) {
         return true;
       })
       .slice(0, 8);
-    return NextResponse.json({ places, source: "OpenStreetMap" });
+    return NextResponse.json({ places: uniquePlaces, source: "OpenStreetMap", inventory: false });
   } catch {
     // Overpass mirrors can be busy. Photon is a dependable OpenStreetMap-backed
     // fallback that still returns named, mapped venues.

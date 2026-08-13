@@ -11,6 +11,7 @@ import {
 import styles from "../account.module.css";
 import { easytCopy } from "@/lib/easyt/i18n";
 import { type TravelProfile } from "@/lib/easyt/travel-profile";
+import { type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 
 const paceOptions = [
   { value: "slow", label: "Slow", detail: "One good thing at a time", icon: Sun },
@@ -39,17 +40,20 @@ export default function ProfileForm({
   email,
   initialLanguage,
   initialTravelProfile,
+  initialTravelReadinessProfile,
 }: {
   name: string;
   email: string;
   initialLanguage: "en" | "es";
   initialTravelProfile: TravelProfile;
+  initialTravelReadinessProfile: TravelReadinessProfile;
 }) {
   const [name, setName] = useState(initialName);
   const [language, setLanguage] = useState(initialLanguage);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(initialTravelProfile);
+  const [travelReadinessProfile, setTravelReadinessProfile] = useState<TravelReadinessProfile>(initialTravelReadinessProfile);
   const copy = easytCopy[language];
   const profileGuide = language === "es"
     ? { eyebrow: "Punto de partida", title: "Configúralo una vez. Ajusta cada viaje cuando quieras.", detail: "Estas preferencias solo dan a EasyT una dirección inicial. No reservan nada ni limitan las decisiones de tu viaje.", action: "Crear un viaje" }
@@ -92,9 +96,12 @@ export default function ProfileForm({
     const response = await fetch("/api/easyt/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ language, travelProfile }),
+      body: JSON.stringify({ language, travelProfile, travelReadinessProfile }),
     });
-    if (response.ok) window.localStorage.setItem("easyt-travel-profile", JSON.stringify(travelProfile));
+    if (response.ok) {
+      window.localStorage.setItem("easyt-travel-profile", JSON.stringify(travelProfile));
+      window.localStorage.setItem("easyt-travel-readiness-profile", JSON.stringify(travelReadinessProfile));
+    }
     setSaving(false);
     setMessage(response.ok ? messages.preferencesSaved : messages.preferencesError);
   };
@@ -132,6 +139,18 @@ export default function ProfileForm({
             <input className={styles.preferenceRange} type="range" min="0" max="2" step="1" value={comfortOptions.findIndex((option) => option.value === travelProfile.budget)} onChange={(event) => setTravelProfile((current) => ({ ...current, budget: comfortOptions[Number(event.target.value)].value }))} aria-label="Comfort level" />
           </section>
         </div>
+        <section className={styles.readinessProfile}>
+          <div>
+            <p className={styles.eyebrow}>{language === "es" ? "ANTES DE SALIR" : "BEFORE YOU GO"}</p>
+            <h3>{language === "es" ? "Haz que las comprobaciones prácticas sean más útiles." : "Make practical trip checks more useful."}</h3>
+            <p>{language === "es" ? "Usamos estos datos solo para orientar recordatorios de entrada, visado y conectividad. Nunca introduzcas números, fotos o copias del pasaporte." : "We use this only to shape entry, visa and connectivity reminders. Never enter passport numbers, scans or photos."}</p>
+          </div>
+          <div className={styles.readinessFields}>
+            <label><span>{language === "es" ? "Nacionalidad(es)" : "Nationality / nationalities"}</span><input value={travelReadinessProfile.nationalities.join(", ")} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, nationalities: event.target.value.split(",").map((country) => country.trim()).filter(Boolean).slice(0, 4) }))} placeholder={language === "es" ? "Por ejemplo, Reino Unido" : "For example, United Kingdom"} /></label>
+            <label><span>{language === "es" ? "País de residencia" : "Country of residence"}</span><input value={travelReadinessProfile.residenceCountry} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, residenceCountry: event.target.value }))} placeholder={language === "es" ? "Por ejemplo, Reino Unido" : "For example, United Kingdom"} /></label>
+            <label><span>{language === "es" ? "Mes de caducidad del pasaporte" : "Passport expiry month"}</span><input type="month" value={travelReadinessProfile.passportExpiryMonth} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, passportExpiryMonth: event.target.value }))} /></label>
+          </div>
+        </section>
         <EasyTButton type="button" loading={saving} onClick={saveTravelProfile}>Save travel profile</EasyTButton>
       </section>
       {message ? (

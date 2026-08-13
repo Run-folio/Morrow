@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
         hostname: "commons.wikimedia.org",
         pathname: "/wiki/Special:FilePath/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
     ],
   },
 };

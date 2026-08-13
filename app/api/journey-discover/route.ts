@@ -8,6 +8,8 @@ type WikiPage = {
   coordinates?: Array<{ lat?: number; lon?: number }>;
 };
 
+type GeocodeCountry = { address?: { country?: string } };
+
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
 const nonVisitPage = /\b(administrative division|rapid transit line|metro line|population density|electoral district|neighbourhood of madrid|disambiguation|politics of|demographics of|transport in)\b/i;
 const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
@@ -33,6 +35,20 @@ function suggestedVisitLength(title: string, extract: string) {
   const text = `${title} ${extract}`.toLowerCase();
   if (/mountain|beach|lake|forest|trail|national park|archaeological|zoo|aquarium/.test(text)) return 1;
   return 0.5;
+}
+
+async function isWithinRequestedCountry(latitude: number, longitude: number, country?: string) {
+  if (!country) return true;
+  try {
+    const params = new URLSearchParams({ format: "jsonv2", lat: String(latitude), lon: String(longitude), zoom: "3", addressdetails: "1", "accept-language": "en" });
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`, { headers: { "User-Agent": "Morrovia place discovery" }, next: { revalidate: 60 * 60 * 24 * 30 }, signal: AbortSignal.timeout(4000) });
+    if (!response.ok) return false;
+    const result = await response.json() as GeocodeCountry;
+    return result.address?.country?.toLocaleLowerCase() === country.toLocaleLowerCase();
+  } catch {
+    // Never add a recommendation if its country cannot be verified.
+    return false;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -71,6 +87,10 @@ export async function GET(request: NextRequest) {
     if (!response.ok) throw new Error("Wikipedia lookup failed");
     const data = await response.json() as { query?: { pages?: Record<string, WikiPage> } };
     const seen = new Set<string>();
+    // Verify the search centre itself before considering its nearby results.
+    // A 10 km Wikimedia geosearch is local, so this prevents an entire wrong-
+    // country result set without making a reverse-geocode request per result.
+    if (!(await isWithinRequestedCountry(latitude, longitude, country))) return NextResponse.json({ places: [] });
     const places = Object.values(data.query?.pages ?? {})
       .filter((page) => {
         const coordinate = page.coordinates?.[0];

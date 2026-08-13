@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "checkedAt": "2026-08-13T18:21:22.049Z",
+  "workspace": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck",
+  "finalPptx": "/Users/shaun/Documents/Morrovia/Morrovia_Revenue_Funding_Metrics_Pitch_Deck_Refined.pptx",
+  "starterPptx": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck/template-starter.pptx",
+  "mapPath": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck/template-frame-map.json",
+  "starterLayoutDir": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck/template-starter-layout",
+  "finalLayoutDir": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck/final",
+  "editDir": "/Users/shaun/Documents/Morrovia/.codex-work/morrovia-deck",
+  "issueCount": 0,
+  "issues": []
+}

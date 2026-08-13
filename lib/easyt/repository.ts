@@ -5,9 +5,10 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { getEasyTDatabase } from "./database";
 import { EasyTTrip, isEasyTTrip } from "./trip";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "./travel-profile";
+import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
 type TripDocumentRow = { document: unknown };
-export type EasyTUserPreferences = { language: "en" | "es"; travelProfile: TravelProfile };
+export type EasyTUserPreferences = { language: "en" | "es"; travelProfile: TravelProfile; travelReadinessProfile: TravelReadinessProfile };
 
 export type EasyTEmailEvent = {
   id: string;
@@ -113,6 +114,7 @@ export async function getEasyTUserPreferences(
   return {
     language: rows[0]?.preferences?.language === "es" ? "es" : "en",
     travelProfile: isTravelProfile(rows[0]?.preferences?.travelProfile) ? rows[0].preferences.travelProfile : defaultTravelProfile,
+    travelReadinessProfile: isTravelReadinessProfile(rows[0]?.preferences?.travelReadinessProfile) ? rows[0].preferences.travelReadinessProfile : defaultTravelReadinessProfile,
   };
 }
 

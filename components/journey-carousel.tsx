@@ -48,7 +48,7 @@ export function JourneyCarousel({ images, city, storyKey }: { images: JourneyIma
         <div className={styles.carouselDots} aria-label="Choose image">
           {images.map((item, dotIndex) => <button key={item.src} type="button" className={dotIndex === index ? styles.currentDot : ""} onClick={() => { setDirection(dotIndex > index ? 1 : -1); setIndex(dotIndex); }} aria-label={`View image ${dotIndex + 1}`} />)}
         </div>
-        <a href={image.sourceUrl} target="_blank" rel="noreferrer">Wikimedia ↗</a>
+        <a href={image.sourceUrl} target="_blank" rel="noreferrer">{image.sourceLabel ?? "Wikimedia"} ↗</a>
       </figcaption>
     </figure>
   );

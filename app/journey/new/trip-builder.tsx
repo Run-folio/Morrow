@@ -24,11 +24,14 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
+import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
 
 /* ---------------------------------------------------------------- data */
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
+type CapturedLocation = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent?: "place" | "landmark"; locality?: string };
+type LocationChoice = { name: string; country: string; coordinates: [number, number]; kind?: string; locality?: string };
 
 // TODO: replace with the live discovery API response.
 const CATALOG: Record<string, Place[]> = {
@@ -314,6 +317,9 @@ export default function TripBuilder() {
   const [stopInput, setStopInput] = useState("");
   const [stopError, setStopError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [locationChoices, setLocationChoices] = useState<Array<{ mention: CapturedLocation; choices: LocationChoice[] }>>([]);
+  const [resolvingLocations, setResolvingLocations] = useState(false);
+  const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(oneWeekLater);
@@ -374,11 +380,11 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
-        if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length) {
+        if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length) {
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
           // `destination` is retained for drafts created before prompt-first
@@ -390,6 +396,29 @@ export default function TripBuilder() {
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
+          if (homeDraft.locationMentions?.length) {
+            setIntakeMentions(homeDraft.locationMentions);
+            setResolvingLocations(true);
+            const selections = await Promise.all(homeDraft.locationMentions.map(async (mention) => {
+              try {
+                const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1`);
+                const payload = await response.json() as { candidates?: LocationChoice[] };
+                return { mention, choices: payload.candidates ?? [] };
+              } catch { return { mention, choices: [] }; }
+            }));
+            if (!active) return;
+            const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
+            const uncertainKeys = new Set(uncertain.map(({ mention }) => `${mention.role}-${mention.order}`));
+            const automatic = selections.filter(({ mention }) => !uncertainKeys.has(`${mention.role}-${mention.order}`));
+            for (const { mention, choices } of automatic) {
+              const chosen = choices[0] ?? (mention.coordinates && mention.country ? { name: mention.canonicalName, country: mention.country, coordinates: mention.coordinates, kind: mention.kind, locality: mention.locality } : undefined);
+              if (!chosen) continue;
+              if (mention.role === "origin") { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
+              else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
+            }
+            setLocationChoices(uncertain);
+            setResolvingLocations(false);
+          }
           window.localStorage.removeItem("easyt-home-trip-draft");
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
@@ -445,6 +474,7 @@ export default function TripBuilder() {
     [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
+  const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
   const stepLabels = language === "es"
     ? ["Confirmar", "Fechas", "Lugares", "Tiempo"]
     : ["Confirm", "Dates", "Places", "Time"];
@@ -631,14 +661,15 @@ export default function TripBuilder() {
       const stop = stops.find((candidate) => candidate.name === day.destination);
       const title = day.placeTitle ?? day.destination;
       const response = await fetch(`/api/journey-place?title=${encodeURIComponent(title)}&area=${encodeURIComponent(day.destination)}&country=${encodeURIComponent(stop?.country ?? "")}`, { signal: controller.signal });
-      const payload = await response.json() as { place?: { image?: string; sourceUrl?: string } | null };
+      const payload = await response.json() as { place?: { image?: string; alt?: string; sourceUrl?: string; sourceLabel?: string } | null };
       if (!payload.place?.image) return null;
       return [day.number, {
         src: payload.place.image,
-        alt: title,
+        alt: payload.place.alt ?? title,
         caption: day.destination,
         sourceUrl: payload.place.sourceUrl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`,
-      } satisfies JourneyImage] as const;
+        sourceLabel: payload.place.sourceLabel,
+      } satisfies JourneyImage] as readonly [string, JourneyImage];
     })).then((results) => {
       if (!active) return;
       setDraftImages((current) => ({ ...current, ...Object.fromEntries(results.filter((result): result is readonly [string, JourneyImage] => Boolean(result))) }));
@@ -700,7 +731,7 @@ export default function TripBuilder() {
             {activeImage ? (
               <figure className={styles.dayImage}>
                 <img src={activeImage.src} alt={activeImage.alt} />
-                <figcaption><span>{activeImage.caption}</span><a href={activeImage.sourceUrl} target="_blank" rel="noreferrer">{ui.source}</a></figcaption>
+                <figcaption><span>{activeImage.caption}</span><a href={activeImage.sourceUrl} target="_blank" rel="noreferrer">{activeImage.sourceLabel ?? ui.source}</a></figcaption>
               </figure>
             ) : (
               <div className={`${styles.dayImage} ${styles.dayImageFallback}`} role="img" aria-label={`Image for ${active.title}`}>
@@ -734,6 +765,8 @@ export default function TripBuilder() {
 
   return (
     <div className={`${styles.shellWide} ${mobilePolish.builder}`}>
+      {resolvingLocations ? <div className={styles.locationResolution} role="status">Checking your places…</div> : null}
+      {locationChoices.length ? <div className={styles.locationOverlay} role="dialog" aria-modal="true" aria-label="Confirm locations"><section className={styles.locationDialog}><p>ONE QUICK CHECK</p><h2>Which place did you mean?</h2><span>We only ask when a place name could point to more than one location.</span>{locationChoices.map(({ mention, choices }) => <div className={styles.locationQuestion} key={`${mention.role}-${mention.order}`}><strong>{mention.sourceText}</strong><div>{choices.map((choice) => <button type="button" key={`${choice.name}-${choice.country}`} onClick={() => { if (mention.role === "origin") { setOrigin(choice.name); setOriginCoordinates(choice.coordinates); } else setStops((current) => [...current, { id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: choice.name, country: choice.country, coordinates: choice.coordinates, intent: mention.intent, locality: choice.locality }]); setLocationChoices((current) => current.filter((item) => item.mention !== mention)); }}>{choice.name}, {choice.country}</button>)}</div></div>)}<button type="button" className={styles.locationSkip} onClick={() => setLocationChoices([])}>I’ll add these myself</button></section></div> : null}
       <nav className={styles.steps} aria-label="Trip brief progress">
         {stepLabels.map((label, i) => {
           return (
@@ -754,6 +787,20 @@ export default function TripBuilder() {
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
+              {intakeMentions.length > 0 && <section className={styles.intakeReview} aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
+                <div><span>{language === "es" ? "RESUMEN DEL VIAJE" : "TRIP INTAKE"}</span><h2>{language === "es" ? "Esto es lo que llevaremos al plan." : "This is what will shape your plan."}</h2><p>{language === "es" ? "Edita cualquier detalle antes de repartir los días." : "Edit anything now, before we start allocating your days."}</p></div>
+                <dl>
+                  <div><dt>{language === "es" ? "Salida" : "Departure"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Añade tu salida" : "Add your departure")}</dd></div>
+                  <div><dt>{language === "es" ? "Fechas" : "Dates"}</dt><dd>{startDate} → {endDate} · {totalDays} {totalDays === 1 ? ui.day : ui.days}</dd></div>
+                  <div><dt>{language === "es" ? "Ruta" : "Route"}</dt><dd>{stops.length ? stops.map((stop) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{stop.name}, {stop.country} <X aria-hidden="true" /></button>) : (language === "es" ? "Aún no hay paradas" : "No stops yet")}</dd></div>
+                  {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt>{language === "es" ? "Necesita atención" : "Needs attention"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") setOrigin(mention.canonicalName); else setStopInput(mention.canonicalName); }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
+                </dl>
+              </section>}
+              <JourneyTripReadiness
+                countries={stops.map((stop) => stop.country)}
+                startDate={startDate}
+                language={language}
+              />
               <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><MapPin /> {ui.tripBriefLabel}</span>
                 <h2>{ui.tripBriefTitle}</h2>
