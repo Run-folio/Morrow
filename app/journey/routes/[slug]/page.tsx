@@ -15,6 +15,7 @@ import { listEasyTRouteControls } from "@/lib/easyt/admin-content";
 import { inspirationByKey, type InspirationStop } from "@/lib/easyt/inspiration";
 import { routeFamilyByKey } from "@/lib/easyt/route-catalog";
 import { routeImages } from "@/lib/easyt/route-images";
+import RouteHeroImage from "./route-hero-image";
 import styles from "./route-overview.module.css";
 
 type RouteStory = {
@@ -157,9 +158,7 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
     <EasyTNavigation current="home" />
 
     <section className={styles.hero}>
-      <div className={`${styles.heroImage} ${!story.image ? styles.heroImagePending : ""}`} style={story.image ? { backgroundImage: `url(${story.image})` } : undefined}>
-        <div><p>{story.eyebrow}</p><span>{story.duration}</span>{!story.image && <small>Photography being curated</small>}</div>
-      </div>
+      <RouteHeroImage image={story.image} query={route?.imageQuery ?? `${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`} eyebrow={story.eyebrow} duration={story.duration} />
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}>A route with room to breathe</p>
         <h1>{story.title}</h1>
