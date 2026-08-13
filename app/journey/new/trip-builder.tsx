@@ -24,8 +24,6 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
-import { reviewTripQuality } from "@/lib/easyt/trip-quality";
-import { JourneyTripQuality } from "@/components/journey-trip-quality";
 
 /* ---------------------------------------------------------------- data */
 
@@ -476,28 +474,21 @@ export default function TripBuilder() {
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
-  const preflightChecks = useMemo(() => reviewTripQuality({ origin, originCoordinates, startDate, endDate, stops, mentions: intakeMentions, travellerReady: true }), [origin, originCoordinates, startDate, endDate, stops, intakeMentions]);
-  const preflightMissingPlaces = preflightChecks.find((check) => check.id === "requested-places")?.missingPlaces ?? [];
-  const preflightGate = preflightMissingPlaces.length || unresolvedMentions.length
-    ? (language === "es" ? "Añade o revisa los lugares que pediste antes de crear el plan." : "Add or review the places you asked for before building the plan.")
-    : "";
   const stepLabels = language === "es"
-    ? ["Confirmar", "Fechas", "Lugares", "Tiempo"]
-    : ["Confirm", "Dates", "Places", "Time"];
+    ? ["Confirmar", "Lugares", "Tiempo"]
+    : ["Confirm", "Places", "Time"];
   const stepNotes = language === "es"
-    ? ["Ruta y fechas", "Define el ritmo", "Elige lo importante", "Haz sitio para todo"]
-    : ["Route & dates", "Set the rhythm", "Choose what matters", "Make room for it all"];
+    ? ["Ruta y fechas", "Elige lo importante", "Haz sitio para todo"]
+    : ["Route & dates", "Choose what matters", "Make room for it all"];
   const stepGuidance = language === "es"
     ? [
       ["Comprueba lo esencial.", "Confirma cada lugar y las fechas antes de que Morrovia dé forma al viaje."],
       ["Elige lo que importa.", "Marca los lugares y experiencias para los que quieres dejar tiempo."],
-      ["Elige lo que importa.", "EasyT deja espacio para el resto."],
       ["Haz que los días encajen.", "Podrás editar cada detalle más adelante."],
     ]
     : [
       ["Check the essentials.", "Confirm every place and the dates before Morrovia starts shaping the trip."],
       ["Choose what matters.", "Pick the places and experiences worth making room for."],
-      ["Choose what matters.", "EasyT leaves room for the rest."],
       ["Make the days fit.", "You can edit every detail later."],
     ];
   const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "") : "";
@@ -698,7 +689,7 @@ export default function TripBuilder() {
             <p className={styles.eyebrow}>{ui.draft}</p>
             <h2>{origin} to {stops.map((s) => s.name).join(" & ")}</h2>
           </div>
-          <button type="button" className={styles.primary} onClick={() => { setGenerated(false); setStep(3); }}>{ui.editBrief}</button>
+          <button type="button" className={styles.primary} onClick={() => { setGenerated(false); setStep(2); }}>{ui.editBrief}</button>
         </div>
 
         <div className={styles.draftSummary}>
@@ -803,15 +794,6 @@ export default function TripBuilder() {
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt>{language === "es" ? "Necesita atención" : "Needs attention"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") setOrigin(mention.canonicalName); else setStopInput(mention.canonicalName); }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
               </section>}
-              <JourneyTripQuality
-                origin={origin}
-                originCoordinates={originCoordinates}
-                startDate={startDate}
-                endDate={endDate}
-                stops={stops}
-                mentions={intakeMentions}
-                language={language}
-              />
               <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><MapPin /> {ui.tripBriefLabel}</span>
                 <h2>{ui.tripBriefTitle}</h2>
@@ -847,61 +829,49 @@ export default function TripBuilder() {
                 )}
               </div>
 
-              <div className={`${styles.card} ${styles.confirmDatesCard} ${!datesConfirmed ? styles.cardAttention : ""}`}>
-                <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
-                <div className={styles.confirmDatesGrid}>
-                  {([
-                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => { setStartDate(value); if (value > endDate) setEndDate(value); setDatesConfirmed(true); } },
-                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => { setEndDate(value < startDate ? startDate : value); setDatesConfirmed(true); } },
-                  ]).map((field) => <label key={field.key}><span>{field.label}</span><input type="date" value={field.value} min={field.key === "end" ? startDate : today} onChange={(event) => field.set(event.target.value)} /></label>)}
-                </div>
-                <div className={styles.confirmDatesFoot}><p className={styles.confirmDatesNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa o cambia estas fechas para confirmarlas." : "Review or change these dates to confirm them.")}</p>{!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}</div>
-              </div>
-
               {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
                 <span>{language === "es" ? "PARADAS CONFIRMADAS" : "CONFIRMED STOPS"}</span>
                 <div>{stops.map((stop, index) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{index + 1}. {stop.name} <X aria-hidden="true" /></button>)}</div>
               </div>}
 
+              <section className={styles.dateConfirmSection} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
+                <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
+                <div className={styles.dateRow}>
+                  {([
+                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => { setStartDate(value); if (value > endDate) setEndDate(value); setDatesConfirmed(false); } },
+                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => { setEndDate(value < startDate ? startDate : value); setDatesConfirmed(false); } },
+                  ]).map((field) => (
+                    <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}>
+                      <button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key}
+                        onClick={() => setPicker(picker === field.key ? null : field.key)}>
+                        <span className={styles.cardLabel}><CalendarDays /> {field.label}</span>
+                        <span className={styles.cardValue}>
+                          <strong>{fmtLong(field.value) || ui.pickDate}</strong>
+                          <ChevronDown />
+                        </span>
+                      </button>
+                      {picker === field.key && (
+                        <div className={styles.popover}>
+                          <Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} />
+                          <label className={styles.typeIt}>{ui.typeIt}
+                            <input defaultValue={fmtLong(field.value)}
+                              onChange={(event) => { const value = parseTyped(event.target.value); if (value) field.set(value); }} />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.dateConfirmFoot}>
+                  <p className={styles.dateConfirmNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa tus fechas y confírmalas para continuar." : "Review your dates, then confirm them to continue.")}</p>
+                  {!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}
+                </div>
+              </section>
+
             </div>
           )}
 
           {step === 1 && (
-            <div className={styles.stack} ref={pickerRef}>
-              <div className={styles.dateRow}>
-                {([
-                  { key: "start" as const, label: ui.startDate, value: startDate, set: (v: string) => { setStartDate(v); if (v > endDate) setEndDate(v); } },
-                  { key: "end" as const, label: ui.endDate, value: endDate, set: (v: string) => setEndDate(v < startDate ? startDate : v) },
-                ]).map((field) => (
-                  <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}>
-                    <button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key}
-                      onClick={() => setPicker(picker === field.key ? null : field.key)}>
-                      <span className={styles.cardLabel}><CalendarDays /> {field.label}</span>
-                      <span className={styles.cardValue}>
-                        <strong>{fmtLong(field.value) || ui.pickDate}</strong>
-                        <ChevronDown />
-                      </span>
-                    </button>
-                    {picker === field.key && (
-                      <div className={styles.popover}>
-                        <Calendar language={language} value={field.value} onPick={(v) => { field.set(v); setPicker(null); }} />
-                        <label className={styles.typeIt}>{ui.typeIt}
-                          <input defaultValue={fmtLong(field.value)}
-                            onChange={(e) => { const v = parseTyped(e.target.value); if (v) field.set(v); }} />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className={styles.lengthNote}>
-                <strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong>
-                <span>{stops.length ? ui.split : ui.addStops}</span>
-              </p>
-            </div>
-          )}
-
-          {step === 2 && (
             <div>
               <div className={styles.filters}>
                 {FILTERS.map((label) => (
@@ -951,21 +921,8 @@ export default function TripBuilder() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div className={styles.stack}>
-              <JourneyTripQuality
-                origin={origin}
-                originCoordinates={originCoordinates}
-                startDate={startDate}
-                endDate={endDate}
-                stops={stops}
-                mentions={intakeMentions}
-                language={language}
-                onAddMissingPlace={(place) => { setStep(0); setStopInput(place); void addStop(place); }}
-                onReviewOrigin={() => { setStep(0); setOriginTouched(true); }}
-                onReviewDates={() => setStep(1)}
-                onReviewTraveller={() => { window.location.assign("/journey/profile"); }}
-              />
               <section className={styles.allocationPanel} aria-labelledby="day-allocation-title">
                 <div className={styles.allocationHead}>
                   <div>
@@ -1070,14 +1027,14 @@ export default function TripBuilder() {
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
           <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : ui.savedDevice}</small>
-          {(gate || (step === 3 && preflightGate)) && <small className={styles.gate}>{gate || preflightGate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate || (step === 3 && preflightGate))}
+          {gate && <small className={styles.gate}>{gate}</small>}
+          <button type="button" className={styles.primary} disabled={Boolean(gate)}
             onClick={async () => {
-              if (gate || (step === 3 && preflightGate)) return;
+              if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;
-              if (step === 3) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
+              if (step === 2) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
             }}>
-            {step === 3 ? copy.buildDraft : copy.continue} →
+            {step === 2 ? copy.buildDraft : copy.continue} →
           </button>
         </div>
       </div>

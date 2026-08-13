@@ -12,8 +12,6 @@ import { JourneyRestaurantFinder } from "@/components/journey-restaurant-finder"
 import { JourneyLocalFinder } from "@/components/journey-local-finder";
 import { MobileTripCompanion } from "@/components/mobile-trip-companion";
 import { JourneyWeather } from "@/components/journey-weather";
-import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
-import { JourneyTripQuality } from "@/components/journey-trip-quality";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
@@ -862,18 +860,20 @@ export default function JourneyPage() {
       {isPlanningPreview && isCustomJourney && mapCoachVisible ? <aside className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></aside> : null}
 
       <header className={styles.topbar}>
-        <div className={styles.headerRow}>
+          <div className={styles.headerRow}>
           {isPlanningPreview ? <Link href={editTripHref} className={styles.back}>← {planCopy.backToItinerary}</Link> : <Link href="/" className={styles.back}>← Shaun Whiting</Link>}
           <div className={styles.titleLockup}><span>{journey.title}</span><small>{journey.dateRange}</small></div>
           <details className={mobileNav.menu}>
             <summary aria-label={planCopy.menu}><Menu aria-hidden="true" /></summary>
             <div>
               {isPlanningPreview ? <Link href={editTripHref}>{planCopy.backToItinerary}</Link> : null}
+              {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`}>Trip prep</Link> : null}
               <Link href="/journey/dashboard">{planCopy.myTrips}</Link>
               {isPlanningPreview && customTrip && session?.user ? <button type="button" onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.exportPdf}</button> : null}
             </div>
           </details>
           <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="EasyT account navigation">
+            {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>Trip prep</Link> : null}
             <Link href="/journey/dashboard" className={styles.myTripsLink}>{planCopy.myTrips}</Link>
             {isPlanningPreview && customTrip && session?.user ? <button type="button" className={styles.exportPlanLink} onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.export}</button> : null}
           </nav>
@@ -930,20 +930,6 @@ export default function JourneyPage() {
                 {selected.highlights.map((highlight, index) => <span key={highlight}><b>0{index + 1}</b>{highlight}</span>)}
               </div> : null}
             </div>
-            {isPlanningPreview && isCustomJourney && customTrip ? <JourneyTripReadiness
-              countries={customTrip.stops.map((stop) => stop.country)}
-              startDate={customTrip.startDate}
-              language={language}
-            /> : null}
-            {isPlanningPreview && isCustomJourney && customTrip ? <JourneyTripQuality
-              origin={customTrip.brief.origin}
-              originCoordinates={customTrip.brief.originCoordinates}
-              startDate={customTrip.startDate}
-              endDate={customTrip.endDate}
-              stops={customTrip.stops}
-              mentions={customTrip.brief.capturedIntent?.mentions ?? customTrip.stops.map((stop, order) => ({ sourceText: stop.name, canonicalName: stop.name, role: "stop" as const, status: "resolved" as const, order }))}
-              language={language}
-            /> : null}
             {images.length ? <>
               <JourneyCarousel images={images} city={selectedDay.city} storyKey={selectedDay.id} />
               {details.length ? <details className={styles.exploreMore} open>
