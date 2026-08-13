@@ -4,6 +4,7 @@ import { AlertCircle, CarFront, ChevronRight, FileCheck2, Globe2, Plane, ShieldC
 import { useEffect, useMemo, useState } from "react";
 
 import { defaultTravelReadinessProfile, type ReadinessCard, type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import { trackEvent } from "@/lib/analytics";
 import styles from "./journey-trip-readiness.module.css";
 
 const profileStorageKey = "easyt-travel-readiness-profile";
@@ -76,7 +77,7 @@ export function JourneyTripReadiness({
             const Icon = iconFor(card.id);
             return <article className={`${styles.card} ${card.priority === "essential" ? styles.essential : ""}`} key={card.id}>
               <Icon aria-hidden="true" />
-              <div><small>{card.priority === "essential" ? labels.essential : labels.useful}{card.partner ? " · SAILY" : ""}</small><h3>{card.title}</h3><p>{card.detail}</p>{card.note ? <em><AlertCircle aria-hidden="true" />{card.note}</em> : null}{card.href && card.cta ? <a href={card.href} target="_blank" rel="noreferrer sponsored">{card.cta}<ChevronRight aria-hidden="true" /></a> : null}</div>
+              <div><small>{card.priority === "essential" ? labels.essential : labels.useful}{card.partner ? " · SAILY" : ""}</small><h3>{card.title}</h3><p>{card.detail}</p>{card.note ? <em><AlertCircle aria-hidden="true" />{card.note}</em> : null}{card.href && card.cta ? <><a href={card.href} target="_blank" rel={card.partner ? "noreferrer sponsored" : "noreferrer"} onClick={() => { if (card.partner) trackEvent("easyt_readiness_affiliate_clicked", { partner: card.partner, card: card.id }); }}>{card.cta}<ChevronRight aria-hidden="true" /></a>{card.partner ? <small className={styles.disclosure}>{language === "es" ? "Enlace de socio: podemos recibir una comisión sin coste adicional para ti." : "Partner link: we may earn a commission at no extra cost to you."}</small> : null}</> : null}</div>
             </article>;
           })}
         </div>

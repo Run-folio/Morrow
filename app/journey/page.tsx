@@ -13,6 +13,7 @@ import { JourneyLocalFinder } from "@/components/journey-local-finder";
 import { MobileTripCompanion } from "@/components/mobile-trip-companion";
 import { JourneyWeather } from "@/components/journey-weather";
 import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
+import { JourneyTripQuality } from "@/components/journey-trip-quality";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
@@ -932,6 +933,15 @@ export default function JourneyPage() {
             {isPlanningPreview && isCustomJourney && customTrip ? <JourneyTripReadiness
               countries={customTrip.stops.map((stop) => stop.country)}
               startDate={customTrip.startDate}
+              language={language}
+            /> : null}
+            {isPlanningPreview && isCustomJourney && customTrip ? <JourneyTripQuality
+              origin={customTrip.brief.origin}
+              originCoordinates={customTrip.brief.originCoordinates}
+              startDate={customTrip.startDate}
+              endDate={customTrip.endDate}
+              stops={customTrip.stops}
+              mentions={customTrip.brief.capturedIntent?.mentions ?? customTrip.stops.map((stop, order) => ({ sourceText: stop.name, canonicalName: stop.name, role: "stop" as const, status: "resolved" as const, order }))}
               language={language}
             /> : null}
             {images.length ? <>

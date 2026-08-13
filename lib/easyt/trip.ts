@@ -88,6 +88,24 @@ export type TripBrief = {
   bookings?: TripBooking[];
   /** A compact pre-departure checklist for the mobile trip view. */
   checklist?: TripChecklistItem[];
+  /** The original route intent, retained so a saved plan can be audited later. */
+  capturedIntent?: TripCapturedIntent;
+};
+
+export type TripCapturedIntent = {
+  originalBrief: string;
+  parserVersion?: string;
+  regions: string[];
+  routeHints: string[];
+  mentions: Array<{
+    sourceText: string;
+    canonicalName: string;
+    role: "origin" | "stop";
+    order: number;
+    status: "resolved" | "unresolved";
+    intent?: "place" | "landmark";
+    country?: string;
+  }>;
 };
 
 export type PlannerPinCategory = "restaurant" | "stay" | "activity" | "transport" | "custom";
@@ -164,6 +182,7 @@ export type BuilderTripInput = {
   placeDetails?: Record<string, Array<{ title: string; coordinates?: [number, number]; image?: string; sourceUrl?: string }>>;
   originCoordinates?: [number, number];
   createdAt?: string;
+  capturedIntent?: TripCapturedIntent;
 };
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -235,6 +254,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       budgetBand: input.budget,
       selectedPlaces: input.picks,
       dayAllocations: input.dayAllocations,
+      capturedIntent: input.capturedIntent,
     },
     stops,
     legs: input.stops.slice(1).map((stop, index) => {

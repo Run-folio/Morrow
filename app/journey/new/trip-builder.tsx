@@ -24,7 +24,8 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
-import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
+import { reviewTripQuality } from "@/lib/easyt/trip-quality";
+import { JourneyTripQuality } from "@/components/journey-trip-quality";
 
 /* ---------------------------------------------------------------- data */
 
@@ -475,6 +476,11 @@ export default function TripBuilder() {
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
+  const preflightChecks = useMemo(() => reviewTripQuality({ origin, originCoordinates, startDate, endDate, stops, mentions: intakeMentions, travellerReady: true }), [origin, originCoordinates, startDate, endDate, stops, intakeMentions]);
+  const preflightMissingPlaces = preflightChecks.find((check) => check.id === "requested-places")?.missingPlaces ?? [];
+  const preflightGate = preflightMissingPlaces.length || unresolvedMentions.length
+    ? (language === "es" ? "Añade o revisa los lugares que pediste antes de crear el plan." : "Add or review the places you asked for before building the plan.")
+    : "";
   const stepLabels = language === "es"
     ? ["Confirmar", "Fechas", "Lugares", "Tiempo"]
     : ["Confirm", "Dates", "Places", "Time"];
@@ -637,7 +643,8 @@ export default function TripBuilder() {
     placeDetails: discoveredPlaces,
     originCoordinates,
     createdAt,
-  }), [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt]);
+    capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
+  }), [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
@@ -796,9 +803,13 @@ export default function TripBuilder() {
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt>{language === "es" ? "Necesita atención" : "Needs attention"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") setOrigin(mention.canonicalName); else setStopInput(mention.canonicalName); }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
               </section>}
-              <JourneyTripReadiness
-                countries={stops.map((stop) => stop.country)}
+              <JourneyTripQuality
+                origin={origin}
+                originCoordinates={originCoordinates}
                 startDate={startDate}
+                endDate={endDate}
+                stops={stops}
+                mentions={intakeMentions}
                 language={language}
               />
               <div className={`${styles.card} ${styles.tripBriefCard}`}>
@@ -942,6 +953,19 @@ export default function TripBuilder() {
 
           {step === 3 && (
             <div className={styles.stack}>
+              <JourneyTripQuality
+                origin={origin}
+                originCoordinates={originCoordinates}
+                startDate={startDate}
+                endDate={endDate}
+                stops={stops}
+                mentions={intakeMentions}
+                language={language}
+                onAddMissingPlace={(place) => { setStep(0); setStopInput(place); void addStop(place); }}
+                onReviewOrigin={() => { setStep(0); setOriginTouched(true); }}
+                onReviewDates={() => setStep(1)}
+                onReviewTraveller={() => { window.location.assign("/journey/profile"); }}
+              />
               <section className={styles.allocationPanel} aria-labelledby="day-allocation-title">
                 <div className={styles.allocationHead}>
                   <div>
@@ -1046,10 +1070,10 @@ export default function TripBuilder() {
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
           <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : ui.savedDevice}</small>
-          {gate && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate)}
+          {(gate || (step === 3 && preflightGate)) && <small className={styles.gate}>{gate || preflightGate}</small>}
+          <button type="button" className={styles.primary} disabled={Boolean(gate || (step === 3 && preflightGate))}
             onClick={async () => {
-              if (gate) return;
+              if (gate || (step === 3 && preflightGate)) return;
               if (step === 0 && !(await validateOrigin())) return;
               if (step === 3) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
             }}>
