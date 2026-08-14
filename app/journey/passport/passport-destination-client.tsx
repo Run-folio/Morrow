@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import EasyTNavigation from "../easyt-navigation";
 import { canonicalCountry, entrySourcesByCountry, type EntrySource } from "@/lib/easyt/travel-readiness";
+import { touristEntryRequirementFor, type TouristEntryRequirement } from "@/lib/easyt/visa-requirements";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./passport.module.css";
 
@@ -18,10 +19,11 @@ export default function PassportDestinationClient() {
   const [nationality, setNationality] = useState("United Kingdom");
   const [destination, setDestination] = useState("Guatemala");
   const [source, setSource] = useState<EntrySource | null>(null);
+  const [requirement, setRequirement] = useState<TouristEntryRequirement | null>(null);
   const destinations = useMemo(() => Object.keys(entrySourcesByCountry).sort((a, b) => a.localeCompare(b)), []);
   const t = language === "es"
-    ? { eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba lo que necesitas antes de reservar.", intro: "Una forma sencilla de llegar a la fuente oficial adecuada para tu pasaporte y destino.", passport: "Pasaporte o nacionalidad", destination: "Destino", check: "Comprobar la fuente oficial", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", result: "Tu punto de partida oficial", verify: "Los requisitos pueden cambiar según nacionalidad, residencia, fechas y tránsito. Compruébalos antes de pagar una reserva no reembolsable.", open: "Abrir fuente oficial", plan: "¿Ya tienes una ruta? Crea un plan", note: "Morrovia no toma decisiones de visado." }
-    : { eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "A simple way to reach the right official source for your passport and destination.", passport: "Passport or nationality", destination: "Destination", check: "Check official source", private: "We do not save this check or ask for passport numbers, photos or copies.", result: "Your official starting point", verify: "Requirements can change by nationality, residence, dates and transit route. Verify them before paying for a non-refundable booking.", open: "Open official source", plan: "Already have a route? Build a plan", note: "Morrovia is not a visa decision service." };
+    ? { eyebrow: "PASAPORTE AL DESTINO", title: "Comprueba lo que necesitas antes de reservar.", intro: "Consulta el visado turístico y la estancia permitida para tu pasaporte y destino.", passport: "Pasaporte o nacionalidad", destination: "Destino", check: "Comprobar requisitos", private: "No guardamos esta consulta ni pedimos números, fotos o copias del pasaporte.", result: "ENTRADA COMO TURISTA", visa: "Visado turístico", stay: "Estancia permitida", reviewed: "Revisado", verify: "Las normas pueden cambiar. Comprueba la fuente oficial antes de pagar una reserva no reembolsable.", open: "Comprobar fuente oficial", plan: "¿Ya tienes una ruta? Crea un plan", note: "Resumen orientativo para turismo; la autoridad fronteriza toma la decisión final." }
+    : { eyebrow: "PASSPORT TO DESTINATION", title: "Check what to verify before you book.", intro: "See the tourist-visa position and permitted stay for your passport and destination.", passport: "Passport or nationality", destination: "Destination", check: "Check requirements", private: "We do not save this check or ask for passport numbers, photos or copies.", result: "TOURIST ENTRY", visa: "Tourist visa", stay: "Permitted stay", reviewed: "Reviewed", verify: "Rules can change. Check the official source before paying for a non-refundable booking.", open: "Check official source", plan: "Already have a route? Build a plan", note: "This is a tourism summary; the border authority makes the final decision." };
 
   useEffect(() => {
     const update = (event?: Event) => setLanguage(event ? (event as CustomEvent<EasyTLanguage>).detail : languageFromStorage());
@@ -34,6 +36,7 @@ export default function PassportDestinationClient() {
     const country = canonicalCountry(destination);
     const record = entrySourcesByCountry[country];
     setSource(record ? { country, ...record } : null);
+    setRequirement(touristEntryRequirementFor(nationality, country));
   };
 
   return <main className={styles.page}>
@@ -49,9 +52,15 @@ export default function PassportDestinationClient() {
         <button type="button" onClick={checkDestination}>{t.check}<ArrowRight aria-hidden="true" /></button>
       </div>
       <p className={styles.privacy}><ShieldCheck aria-hidden="true" />{t.private}</p>
-      {source && <article className={styles.result}>
-        <p>{t.result}</p><h2>{source.country}</h2><span>{nationality} passport · {source.label}</span>
-        <div><p>{t.verify}</p><a href={source.href} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a></div>
+      {source && requirement && <article className={styles.result}>
+        <div className={styles.resultHeading}><div><p>{t.result}</p><h2>{nationality} → {source.country}</h2></div><span className={`${styles.status} ${requirement.status === "not-verified" ? styles.notVerified : ""}`}>{requirement.status === "not-verified" ? (language === "es" ? "Por verificar" : "Needs verification") : (language === "es" ? "Sin visado" : "Visa-free")}</span></div>
+        <div className={styles.facts}>
+          <section><span>{t.visa}</span><strong>{requirement.visaAnswer}</strong></section>
+          <section><span>{t.stay}</span><strong>{requirement.permittedStay}</strong></section>
+        </div>
+        <p className={styles.detail}>{requirement.detail}</p>
+        <ul>{requirement.conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
+        <div className={styles.sourceRow}><div><p>{t.verify}</p>{requirement.checkedOn && <small>{t.reviewed}: {requirement.checkedOn}</small>}</div><a href={requirement.sourceHref} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a></div>
         <small>{t.note}</small>
       </article>}
     </section>
