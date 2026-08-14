@@ -1,0 +1,123 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { assessRouteIntelligence, assessRouteOrder, legDecisionAlternatives, recommendStopDurations } from "../lib/easyt/planner.ts";
+
+const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
+
+test("recommends a clearly more direct order when it removes material backtracking", () => {
+  const stops = [
+    { id: "c", name: "C", country: "Testland", coordinates: [20, 0] as [number, number] },
+    { id: "a", name: "A", country: "Testland", coordinates: [1, 0] as [number, number] },
+    { id: "b", name: "B", country: "Testland", coordinates: [10, 0] as [number, number] },
+  ];
+  const assessment = assessRouteOrder({ origin, stops });
+
+  assert.equal(assessment.state, "recommendation");
+  assert.deepEqual(assessment.recommendedStopIds, ["a", "b", "c"]);
+  assert.ok((assessment.improvementMinutes ?? 0) >= 90);
+});
+
+test("does not make an order recommendation without verified coordinates", () => {
+  const assessment = assessRouteOrder({
+    origin,
+    stops: [
+      { id: "a", name: "A", country: "Testland", coordinates: [1, 0] },
+      { id: "b", name: "B", country: "Testland" },
+    ],
+  });
+
+  assert.equal(assessment.state, "insufficient-data");
+});
+
+test("does not pretend to optimise an excessive number of stops", () => {
+  const assessment = assessRouteOrder({
+    origin,
+    stops: Array.from({ length: 7 }, (_, index) => ({ id: `stop-${index}`, name: `Stop ${index}`, country: "Testland", coordinates: [index + 1, 0] as [number, number] })),
+  });
+
+  assert.equal(assessment.state, "insufficient-data");
+});
+
+test("protects fixed commitments instead of silently reordering around them", () => {
+  const assessment = assessRouteOrder({
+    origin,
+    stops: [
+      { id: "c", name: "C", country: "Testland", coordinates: [20, 0] },
+      { id: "a", name: "A", country: "Testland", coordinates: [1, 0] },
+      { id: "b", name: "B", country: "Testland", coordinates: [10, 0] },
+    ],
+    constraints: { fixedCommitments: [{ label: "Wedding in B", date: "2026-09-10" }] },
+  });
+
+  assert.equal(assessment.state, "current-order");
+  assert.match(assessment.summary, /protected/i);
+});
+
+test("protects a full day when a transfer is travel-heavy", () => {
+  const durations = recommendStopDurations({
+    origin,
+    stops: [{ id: "far", name: "Far", country: "Elsewhere", coordinates: [20, 0] }],
+    picks: {},
+  });
+
+  assert.equal(durations.far.arrivalLoad, "travel-heavy");
+  assert.equal(durations.far.minimumDays, 2);
+  assert.ok(durations.far.usableDays >= 1);
+});
+
+test("exposes the time shortfall instead of hiding it in the allocation", () => {
+  const assessment = assessRouteIntelligence({
+    origin,
+    stops: [
+      { id: "far", name: "Far", country: "Elsewhere", coordinates: [20, 0] },
+      { id: "landmark", name: "Landmark", country: "Elsewhere", coordinates: [21, 0], intent: "landmark" },
+    ],
+    picks: { landmark: ["One", "Two", "Three"] },
+    availableDays: 3,
+  });
+
+  assert.ok(assessment.comfortableDays > 3);
+  assert.ok(assessment.shortfallDays > 0);
+});
+
+test("suggests cutting an optional stop when the route is overloaded", () => {
+  const assessment = assessRouteIntelligence({
+    origin,
+    stops: [
+      { id: "must", name: "Must", country: "Elsewhere", coordinates: [20, 0] },
+      { id: "optional", name: "Optional", country: "Elsewhere", coordinates: [21, 0] },
+    ],
+    picks: {},
+    availableDays: 2,
+    constraints: { optionalStopIds: ["optional"] },
+  });
+
+  assert.equal(assessment.overload?.suggestedCutStopId, "optional");
+});
+
+test("keeps mixed train and flight preferences compatible with matching estimates", () => {
+  const assessment = assessRouteOrder({
+    origin: { name: "London", coordinates: [-0.1276, 51.5072] },
+    stops: [
+      { id: "paris", name: "Paris", country: "France", coordinates: [2.3522, 48.8566] },
+      { id: "rome", name: "Rome", country: "Italy", coordinates: [12.4964, 41.9028] },
+    ],
+    constraints: { transportModes: ["train", "flight"], avoidDriving: true },
+  });
+
+  assert.deepEqual(assessment.tradeoffs, []);
+});
+
+test("offers lightweight transport trade-offs only for a meaningful intercity leg", () => {
+  const options = legDecisionAlternatives(
+    { id: "madrid", name: "Madrid", country: "Spain", coordinates: [-3.7038, 40.4168] },
+    { id: "barcelona", name: "Barcelona", country: "Spain", coordinates: [2.1734, 41.3851] },
+  );
+  assert.ok(options.length >= 2);
+  assert.equal(options.filter((option) => option.recommended).length, 1);
+  assert.ok(options.every((option) => option.tradeoff.length > 0));
+  assert.deepEqual(legDecisionAlternatives(
+    { id: "a", name: "A", country: "Test", coordinates: [0, 0] },
+    { id: "b", name: "B", country: "Test", coordinates: [0.1, 0] },
+  ), []);
+});

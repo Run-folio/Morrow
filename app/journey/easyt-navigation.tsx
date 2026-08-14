@@ -14,6 +14,7 @@ import {
   Stamp,
   UserRound,
   House,
+  Compass,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { clearActiveTrip } from "@/lib/easyt/storage";
@@ -23,7 +24,7 @@ import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
-  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin";
+  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport";
   account?: { name?: string | null; email: string; language?: Language };
   showBack?: boolean;
 };
@@ -187,6 +188,13 @@ export default function EasyTNavigation({
                 <span>{labels.profile}</span>
               </Link>
               <Link
+                className={current === "passport" ? styles.submenuCurrent : undefined}
+                href="/journey/passport"
+              >
+                <Compass aria-hidden="true" />
+                <span>{language === "es" ? "Pasaporte al destino" : "Passport to Destination"}</span>
+              </Link>
+              <Link
                 className={current === "stamped" ? styles.submenuCurrent : undefined}
                 href="/journey/stamped"
               >
@@ -235,14 +243,35 @@ export default function EasyTNavigation({
             </div>
           </details>
         ) : current !== "login" ? (
-          <Link
-            className={styles.accountTrigger}
-            href="/journey/dashboard"
-            aria-label={labels.account}
-          >
-            <UserRound aria-hidden="true" />
-            <span className={styles.accountName}>{labels.account}</span>
-          </Link>
+          <details className={styles.accountMenu}>
+            <summary className={styles.accountTrigger}>
+              <Languages aria-hidden="true" />
+              <span className={styles.accountName}>{language === "es" ? "Menú" : "Menu"}</span>
+              <ChevronDown aria-hidden="true" />
+            </summary>
+            <div className={styles.accountPopover}>
+              <Link className={current === "passport" ? styles.submenuCurrent : undefined} href="/journey/passport">
+                <Compass aria-hidden="true" />
+                <span>{language === "es" ? "Pasaporte al destino" : "Passport to Destination"}</span>
+              </Link>
+              <Link href="/journey/discover">
+                <Map aria-hidden="true" />
+                <span>{language === "es" ? "Rutas destacadas" : "Featured routes"}</span>
+              </Link>
+              <Link href="/journey/dashboard">
+                <UserRound aria-hidden="true" />
+                <span>{language === "es" ? "Iniciar sesión" : "Sign in"}</span>
+              </Link>
+              <label className={styles.languageControl}>
+                <Languages aria-hidden="true" />
+                <span>{labels.language}</span>
+                <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
+                  <option value="en">English</option>
+                  <option value="es">Español</option>
+                </select>
+              </label>
+            </div>
+          </details>
         ) : null}
       </nav>
       </header>
@@ -274,11 +303,11 @@ export default function EasyTNavigation({
             <span>{labels.stamped}</span>
           </Link>
           <Link
-            className={current === "profile" ? styles.dockCurrent : undefined}
-            href={activeAccount ? "/journey/profile" : "/journey/dashboard"}
+            className={current === "passport" ? styles.dockCurrent : undefined}
+            href={activeAccount ? "/journey/profile" : "/journey/passport"}
           >
-            <UserRound aria-hidden="true" />
-            <span>{labels.account}</span>
+            {activeAccount ? <UserRound aria-hidden="true" /> : <Compass aria-hidden="true" />}
+            <span>{activeAccount ? labels.account : (language === "es" ? "Pasaporte" : "Passport")}</span>
           </Link>
         </nav>
       ) : null}

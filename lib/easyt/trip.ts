@@ -1,4 +1,4 @@
-import { estimateLeg } from "@/lib/easyt/planner";
+import { estimateLeg, type RouteIntelligenceAssessment } from "@/lib/easyt/planner";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -6,6 +6,71 @@ export type TripStatus = "draft" | "planned" | "archived";
 export type TripPace = "slow" | "full";
 export type HotelChanges = "few" | "some";
 export type BudgetBand = "value" | "mid" | "high";
+
+export type TripIntentPace = "relaxed" | "balanced" | "packed";
+export type TripTransportMode = "flight" | "train" | "drive";
+export type FixedTripCommitment = { id: string; label: string; date?: string };
+
+/**
+ * The durable, structured counterpart to a traveller's free-form brief.
+ * `hardConstraints` are never discarded when the plan is reshaped; preferences
+ * guide trade-offs where the route has room to adapt.
+ */
+export type TripIntent = {
+  version: 1;
+  travellers: number;
+  timing: { flexibility: "fixed" | "flexible"; durationDays: number };
+  hardConstraints: {
+    originRequired: boolean;
+    mustSeeStopIds: string[];
+    optionalStopIds: string[];
+    fixedCommitments: FixedTripCommitment[];
+    avoidDriving: boolean;
+  };
+  preferences: {
+    budgetSensitivity: BudgetBand;
+    transportModes: TripTransportMode[];
+    pace: TripIntentPace;
+    interests: string[];
+    dislikes: string[];
+  };
+};
+
+export function defaultTripIntent(input: Partial<Omit<TripIntent, "version" | "hardConstraints" | "preferences" | "timing">> & {
+  durationDays?: number;
+  stopIds?: string[];
+  budgetSensitivity?: BudgetBand;
+  pace?: TripIntentPace;
+} = {}): TripIntent {
+  return {
+    version: 1,
+    travellers: Math.max(1, Math.min(12, Math.round(input.travellers ?? 2))),
+    timing: { flexibility: "fixed", durationDays: Math.max(1, Math.round(input.durationDays ?? 7)) },
+    hardConstraints: { originRequired: true, mustSeeStopIds: input.stopIds ?? [], optionalStopIds: [], fixedCommitments: [], avoidDriving: false },
+    preferences: { budgetSensitivity: input.budgetSensitivity ?? "mid", transportModes: ["flight", "train"], pace: input.pace ?? "balanced", interests: [], dislikes: [] },
+  };
+}
+
+export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" | "stops" | "travellers" | "brief">): TripIntent {
+  const durationDays = Math.max(1, Math.round((+new Date(`${trip.endDate}T00:00:00`) - +new Date(`${trip.startDate}T00:00:00`)) / 86400000) + 1);
+  const fallback = defaultTripIntent({
+    travellers: trip.travellers,
+    durationDays,
+    stopIds: trip.stops.map((stop) => stop.id),
+    budgetSensitivity: trip.brief.budgetBand,
+    pace: trip.brief.pace === "full" ? "packed" : "relaxed",
+  });
+  const saved = trip.brief.intent;
+  if (!saved || saved.version !== 1) return fallback;
+  return {
+    ...fallback,
+    ...saved,
+    travellers: Math.max(1, Math.min(12, Math.round(saved.travellers || fallback.travellers))),
+    timing: { ...fallback.timing, ...saved.timing, durationDays },
+    hardConstraints: { ...fallback.hardConstraints, ...saved.hardConstraints, mustSeeStopIds: saved.hardConstraints?.mustSeeStopIds ?? fallback.hardConstraints.mustSeeStopIds, optionalStopIds: saved.hardConstraints?.optionalStopIds ?? [], fixedCommitments: saved.hardConstraints?.fixedCommitments ?? [] },
+    preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: saved.preferences?.interests ?? [], dislikes: saved.preferences?.dislikes ?? [] },
+  };
+}
 
 export type TripStop = {
   id: string;
@@ -90,6 +155,32 @@ export type TripBrief = {
   checklist?: TripChecklistItem[];
   /** The original route intent, retained so a saved plan can be audited later. */
   capturedIntent?: TripCapturedIntent;
+  /** The lightweight route and time assessment shown while this plan was made. */
+  routeAssessment?: RouteIntelligenceAssessment;
+  /** Structured constraints and preferences, retained independently of free text. */
+  intent?: TripIntent;
+  /** Stops or arrival dates a traveller has explicitly protected while editing. */
+  scheduleLocks?: TripScheduleLocks;
+  /** A non-destructive record of consequences from the latest schedule cascade. */
+  cascadeStatus?: TripCascadeStatus;
+  /** The traveller's explicit choice where Morrovia presented meaningful alternatives. */
+  decisionSelections?: TripDecisionSelections;
+};
+
+export type TripScheduleLocks = {
+  stopIds: string[];
+  arrivalDates: Record<string, string>;
+};
+
+export type TripCascadeStatus = {
+  conflicts: string[];
+  affectedBookingIds: string[];
+  affectedPlanItemCount: number;
+};
+
+export type TripDecisionSelections = {
+  routeOrder?: "entered" | "recommended";
+  transportByLeg: Record<string, "fastest" | "simplest" | "lower-cost" | "experience-led">;
 };
 
 export type TripCapturedIntent = {
@@ -183,6 +274,10 @@ export type BuilderTripInput = {
   originCoordinates?: [number, number];
   createdAt?: string;
   capturedIntent?: TripCapturedIntent;
+  routeAssessment?: RouteIntelligenceAssessment;
+  intent?: TripIntent;
+  scheduleLocks?: TripScheduleLocks;
+  decisionSelections?: TripDecisionSelections;
 };
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -243,7 +338,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     status: "draft",
     startDate: input.startDate,
     endDate: input.endDate,
-    travellers: 2,
+    travellers: input.intent?.travellers ?? 2,
     currency: "GBP",
     brief: {
       origin: input.origin,
@@ -255,6 +350,16 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       selectedPlaces: input.picks,
       dayAllocations: input.dayAllocations,
       capturedIntent: input.capturedIntent,
+      routeAssessment: input.routeAssessment,
+      scheduleLocks: input.scheduleLocks ?? { stopIds: [], arrivalDates: {} },
+      decisionSelections: input.decisionSelections ?? { transportByLeg: {} },
+      intent: input.intent ?? defaultTripIntent({
+        travellers: 2,
+        durationDays: Math.max(1, Math.round((+new Date(`${input.endDate}T00:00:00`) - +new Date(`${input.startDate}T00:00:00`)) / 86400000) + 1),
+        stopIds: input.stops.map((stop) => stop.id),
+        budgetSensitivity: input.budget,
+        pace: input.pace === "full" ? "packed" : "relaxed",
+      }),
     },
     stops,
     legs: input.stops.slice(1).map((stop, index) => {

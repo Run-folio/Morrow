@@ -12,7 +12,12 @@
     "build-storybook": "storybook build",
     "test:trip-capture": "node --experimental-strip-types --test tests/trip-brief.test.ts",
     "test:trip-readiness": "node --experimental-strip-types --test tests/travel-readiness.test.ts",
-    "test:trip-quality": "node --experimental-strip-types --test tests/trip-quality.test.ts"
+    "test:trip-quality": "node --experimental-strip-types --test tests/trip-quality.test.ts",
+    "test:route-intelligence": "node --experimental-strip-types --test tests/route-intelligence.test.ts",
+    "test:trip-replan": "node --experimental-strip-types --test tests/trip-replan.test.ts",
+    "test:trip-cascade": "node --experimental-strip-types --test tests/cascade.test.ts",
+    "test:trip-health": "node --experimental-strip-types --test tests/trip-health.test.ts",
+    "test:booking-readiness": "node --experimental-strip-types --test tests/booking-readiness.test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

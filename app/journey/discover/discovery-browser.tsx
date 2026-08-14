@@ -23,6 +23,7 @@ const interests: Array<[RouteInterest | "all", string]> = [
 ];
 
 type LiveImage = CachedRoutePhoto;
+const ROUTES_PER_PAGE = 12;
 
 function imageQueryFor(route: RouteFamily) {
   // Unsplash search quality drops sharply when every stop is packed into one
@@ -43,6 +44,8 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
   const [country, setCountry] = useState("all");
   const countries = useMemo(() => Array.from(new Set(routes.flatMap((route) => route.countries))).sort(), [routes]);
   const filtered = useMemo(() => routes.filter((route) => (region === "all" || route.region === region) && (interest === "all" || route.interests.includes(interest)) && (country === "all" || route.countries.includes(country))), [routes, region, interest, country]);
+  const [visibleCount, setVisibleCount] = useState(ROUTES_PER_PAGE);
+  const displayed = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const [liveImages, setLiveImages] = useState<Record<string, LiveImage>>({});
   const [imageStatus, setImageStatus] = useState<Record<string, "loading" | "unavailable">>({});
   const [visibleRoutes, setVisibleRoutes] = useState<Set<string>>(new Set());
@@ -66,10 +69,10 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
     }, { rootMargin: "500px 0px" });
     grid.querySelectorAll<HTMLElement>("[data-route-key]").forEach((card) => observer.observe(card));
     return () => observer.disconnect();
-  }, [filtered]);
+  }, [displayed]);
   useEffect(() => {
     let active = true;
-    const pending = filtered.filter((route) => visibleRoutes.has(route.key) && !routeImages[route.key] && !liveImages[route.key] && !requestedImages.current.has(route.key)).slice(0, 4);
+    const pending = displayed.filter((route) => visibleRoutes.has(route.key) && !routeImages[route.key] && !liveImages[route.key] && !requestedImages.current.has(route.key)).slice(0, 4);
     if (!pending.length) return;
     pending.forEach((route) => requestedImages.current.add(route.key));
     setImageStatus((current) => ({ ...current, ...Object.fromEntries(pending.map((route) => [route.key, "loading"])) }));
@@ -80,7 +83,7 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
       if (!active) return;
       const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
       const missingConfiguration = settled.some((result) => result.configured === false);
-      if (missingConfiguration) routes.forEach((route) => requestedImages.current.add(route.key));
+      if (missingConfiguration) displayed.forEach((route) => requestedImages.current.add(route.key));
       const usedIds = new Set(Object.values(liveImages).map((image) => image.id ?? image.src));
       const images = settled.flatMap((result) => {
         const image = result.candidates.find((candidate) => !usedIds.has(candidate.id ?? candidate.src)) ?? result.candidates[0];
@@ -96,18 +99,20 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
       setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
     });
     return () => { active = false; };
-  }, [filtered, routes, liveImages, visibleRoutes]);
+  }, [displayed, routes, liveImages, visibleRoutes]);
+
+  const resetVisibleCount = () => setVisibleCount(ROUTES_PER_PAGE);
 
   return (
     <section className={styles.browser}>
       <div className={styles.filters}>
-        <div><small>REGION</small><div className={styles.pills}>{regions.map(([key, label]) => <button key={key} className={region === key ? styles.selected : ""} onClick={() => setRegion(key)}>{label}</button>)}</div></div>
-        <div><small>WHAT PULLS YOU IN</small><div className={styles.pills}>{interests.map(([key, label]) => <button key={key} className={interest === key ? styles.selected : ""} onClick={() => setInterest(key)}>{label}</button>)}</div></div>
-        <div><label className={styles.selectLabel} htmlFor="discover-country">COUNTRY</label><select id="discover-country" className={styles.select} value={country} onChange={(event) => setCountry(event.target.value)}><option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}</select></div>
+        <div><small>REGION</small><div className={styles.pills}>{regions.map(([key, label]) => <button key={key} className={region === key ? styles.selected : ""} onClick={() => { setRegion(key); resetVisibleCount(); }}>{label}</button>)}</div></div>
+        <div><small>WHAT PULLS YOU IN</small><div className={styles.pills}>{interests.map(([key, label]) => <button key={key} className={interest === key ? styles.selected : ""} onClick={() => { setInterest(key); resetVisibleCount(); }}>{label}</button>)}</div></div>
+        <div><label className={styles.selectLabel} htmlFor="discover-country">COUNTRY</label><select id="discover-country" className={styles.select} value={country} onChange={(event) => { setCountry(event.target.value); resetVisibleCount(); }}><option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}</select></div>
       </div>
-      <div className={styles.resultHead}><p>{filtered.length} thoughtful starting points</p><span>Every route is editable.</span></div>
+      <div className={styles.resultHead}><p>{filtered.length} thoughtful starting points</p><span>{Math.min(displayed.length, filtered.length)} of {filtered.length} shown · every route is editable.</span></div>
       <div className={styles.grid} ref={gridRef}>
-        {filtered.map((route) => {
+        {displayed.map((route) => {
           const curatedImage = routeImages[route.key];
           const liveImage = liveImages[route.key];
           const image = liveImage?.src ?? curatedImage;
@@ -118,6 +123,11 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
         </Link>;
         })}
       </div>
+      {displayed.length < filtered.length && <div className={styles.moreWrap}>
+        <button type="button" className={styles.moreButton} onClick={() => setVisibleCount((count) => count + ROUTES_PER_PAGE)}>
+          See more routes <span>{Math.min(ROUTES_PER_PAGE, filtered.length - displayed.length)} more</span>
+        </button>
+      </div>}
       {!filtered.length && <div className={styles.empty}><strong>Nothing matches that combination yet.</strong><span>Try a broader region or feeling.</span></div>}
     </section>
   );

@@ -19,8 +19,10 @@ import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } fr
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/trip";
-import { estimateLeg } from "@/lib/easyt/planner";
-import { applyRecommendation, recommendationImpact, reviewTrip, undoRecommendation } from "@/lib/easyt/review";
+import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
+import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
+import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
+import { trackEvent } from "@/lib/analytics";
 import styles from "./journey.module.css";
 import mobileNav from "./plan-mobile-nav.module.css";
 import mobileLayout from "./plan-mobile-layout.module.css";
@@ -342,6 +344,9 @@ export default function JourneyPage() {
   const planCopy = language === "es"
     ? { backToItinerary: "Volver al itinerario", myTrips: "Mis viajes", export: "Exportar", exportPdf: "Exportar PDF", preparing: "Preparando…", menu: "Menú del viaje", review: "REVISIÓN DEL PLAN", signal: "señal de planificación", noWarnings: "Sin avisos inmediatos", checks: "Comprobaciones definidas", affects: "Afecta", overallPlan: "todo el plan", confidence: "de confianza", apply: "Aplicar", undo: "Deshacer", coverage: "La ruta tiene cobertura para todos los días y no hay señales de trayectos largos por carretera. Aun así, comprueba horarios y cierres antes de reservar.", travelConnection: "Conexión de viaje", localTransfer: "Traslado local", editingHint: "Arrastra días en la cronología o actividades abajo. Las sugerencias se mantienen hasta que las elimines.", scheduleHealth: "RITMO DEL DÍA", needsCheck: "Necesita una revisión", comfortable: "Ritmo cómodo", dayClear: "No hay trayectos largos ni demasiadas actividades para este día.", moveDay: "MOVER ESTE DÍA", earlier: "Antes", later: "Después", editActivity: "Editar tu actividad personalizada", yours: "TUYA", addActivity: "Añadir una actividad personalizada", add: "Añadir", notes: "NOTAS PARA MÍ", dayOnly: "Solo para este día", editNote: "Editar nota", save: "Guardar", cancel: "Cancelar", addNote: "Añade una nota para ti", addNoteButton: "Añadir nota", mapPins: "PINES EN EL MAPA", addToDay: "Añadir a este día", chooseLocation: "1. Elige una ubicación", chooseAnother: "Elegir otra ubicación", clickMap: "Haz clic en el mapa…", locationSelected: "Ubicación seleccionada", detailedMap: "abre el mapa detallado", chooseCategory: "2. Elige una categoría y ponle nombre", namePlace: "Nombra este lugar", savePin: "Guardar pin", pinHelp: "Primero haz clic en el punto exacto. Después elegirás su categoría y nombre.", selectedPin: "PIN SELECCIONADO", renamePin: "Cambiar nombre del pin", saveName: "Guardar nombre", removeSelectedPin: "Eliminar pin seleccionado", pinsAria: "Pines del mapa", findPlaces: "Buscar lugares para este día", onTheGo: "SOBRE LA MARCHA", findNearby: "Encuentra lugares cerca", tripOverview: "VISTA DEL VIAJE", localDetail: "DETALLE LOCAL", zoomInto: "Acercar a", viewOverview: "Ver vista del viaje", pause: "Pausar recorrido", play: "Reproducir recorrido", meal: "Comida", savedRestaurant: "restaurante guardado", next: "Siguiente" }
     : { backToItinerary: "Back to itinerary", myTrips: "Trips", export: "Export", exportPdf: "Export PDF", preparing: "Preparing…", menu: "Trip menu", review: "PLAN REVIEW", signal: "planning signal", noWarnings: "No immediate warnings", checks: "Deterministic checks", affects: "Affects", overallPlan: "the overall plan", confidence: "confidence", apply: "Apply", undo: "Undo", coverage: "The route currently has coverage for every day and no long road transfer signal. Live schedules and closures still need checking before booking.", travelConnection: "Travel connection", localTransfer: "Local transfer", editingHint: "Drag days in the timeline, or activities below. Suggestions stay intact unless you remove them.", scheduleHealth: "SCHEDULE HEALTH", needsCheck: "Needs a quick check", comfortable: "Comfortable pace", dayClear: "No long transfer or crowded activity signal for this day.", moveDay: "MOVE THIS DAY", earlier: "Earlier", later: "Later", editActivity: "Edit your custom activity", yours: "YOURS", addActivity: "Add a custom activity", add: "Add", notes: "NOTES TO SELF", dayOnly: "For this day only", editNote: "Edit note", save: "Save", cancel: "Cancel", addNote: "Add a note to yourself", addNoteButton: "Add note", mapPins: "MAP PINS", addToDay: "Add to this day", chooseLocation: "1. Choose a location", chooseAnother: "Choose another location", clickMap: "Click the map…", locationSelected: "Location selected", detailedMap: "opens the detailed map", chooseCategory: "2. Choose a category and name it", namePlace: "Name this place", savePin: "Save pin", pinHelp: "Click the exact spot first. You’ll choose its category and name next.", selectedPin: "SELECTED PIN", renamePin: "Rename selected pin", saveName: "Save name", removeSelectedPin: "Remove selected pin", pinsAria: "Map pins", findPlaces: "Find places for this day", onTheGo: "ON THE GO", findNearby: "Find nearby places", tripOverview: "TRIP OVERVIEW", localDetail: "LOCAL DETAIL", zoomInto: "Zoom into", viewOverview: "View trip overview", pause: "Pause journey sequence", play: "Play journey sequence", meal: "Meal", savedRestaurant: "saved restaurant", next: "Next" };
+  const healthCopy = language === "es"
+    ? { title: "SALUD DEL VIAJE", ready: "Listo para reservar", blocking: "bloqueos", cautions: "avisos", info: "información", blockingLabel: "bloqueo", cautionLabel: "aviso" }
+    : { title: "TRIP HEALTH", ready: "Ready to book", blocking: "blocking", cautions: "cautions", info: "information", blockingLabel: "blocking", cautionLabel: "caution" };
   const pinCategoryLabel = (category: PlannerPinCategory) => language === "es"
     ? ({ restaurant: "Restaurante", stay: "Alojamiento", activity: "Actividad", transport: "Transporte", custom: "Personalizado" }[category])
     : category;
@@ -358,6 +363,17 @@ export default function JourneyPage() {
   const selectedDay = journey.calendar.find((day) => day.id === selectedDayId) ?? journey.calendar[0];
   const selectedDayIndex = journey.calendar.findIndex((day) => day.id === selectedDay.id);
   const selectedPlanItem = customTrip?.planItems.find((item) => item.dayNumber === selectedDayIndex + 1);
+  const selectedLeg = customTrip?.legs.find((leg) => leg.toStopId === selectedPlanItem?.stopId);
+  const transportAlternatives = useMemo(() => {
+    if (!customTrip || !selectedLeg) return [];
+    const destination = customTrip.stops.find((stop) => stop.id === selectedLeg.toStopId);
+    const originStop = customTrip.stops.find((stop) => stop.id === selectedLeg.fromStopId);
+    if (!destination) return [];
+    return legDecisionAlternatives(
+      originStop ? { id: originStop.id, name: originStop.name, country: originStop.country, coordinates: originStop.longitude !== null && originStop.latitude !== null ? [originStop.longitude, originStop.latitude] : undefined } : { name: customTrip.brief.origin, country: customTrip.brief.origin, coordinates: customTrip.brief.originCoordinates },
+      { id: destination.id, name: destination.name, country: destination.country, coordinates: destination.longitude !== null && destination.latitude !== null ? [destination.longitude, destination.latitude] : undefined },
+    );
+  }, [customTrip, selectedLeg]);
   const selectedActivities = selectedPlanItem?.notes ?? selectedDay.items;
   const selectedDayNotes = customTrip?.brief.dayNotes?.[selectedDayIndex + 1] ?? [];
   useEffect(() => {
@@ -377,7 +393,22 @@ export default function JourneyPage() {
     if (Number.isFinite(hours) && hours >= 4) signals.push(`Long transfer: allow at least ${hours + 1} hours door to door.`);
     return signals;
   }, [selectedActivities.length, selectedDay.travel?.duration]);
-  const reviewRecommendations = useMemo(() => customTrip ? reviewTrip(customTrip).map((item) => ({ ...item, status: customTrip.recommendations.find((saved) => saved.id === item.id)?.status ?? item.status })) : [], [customTrip]);
+  const health = useMemo(() => customTrip ? tripHealth(customTrip) : null, [customTrip]);
+  const reviewRecommendations = health?.issues ?? [];
+  useEffect(() => {
+    if (!isPlanningPreview || !customTrip || !health) return;
+    const key = `morrovia:health-shown:${customTrip.id}:${health.blockingCount}:${health.cautionCount}:${health.issues.length}`;
+    if (window.sessionStorage.getItem(key)) return;
+    trackEvent("health_check_shown", { blocking_count: health.blockingCount, caution_count: health.cautionCount, issue_count: health.issues.length });
+    window.sessionStorage.setItem(key, "1");
+  }, [isPlanningPreview, customTrip, health]);
+  useEffect(() => {
+    if (!isPlanningPreview || !customTrip || !health?.isReady) return;
+    const key = `morrovia:trip-ready:${customTrip.id}`;
+    if (window.localStorage.getItem(key)) return;
+    trackEvent("trip_ready", { stop_count: customTrip.stops.length, duration_days: customTrip.planItems.length });
+    window.localStorage.setItem(key, "1");
+  }, [isPlanningPreview, customTrip, health]);
   const customPlace = useMemo(() => {
     if (!customBrief) return undefined;
     return customBrief.destinations.flatMap((destination) => customBrief.pickDetails?.[destination.id] ?? [])
@@ -445,6 +476,7 @@ export default function JourneyPage() {
     const sourceIndex = journey.calendar.findIndex((day) => day.id === fromDayId);
     const targetIndex = journey.calendar.findIndex((day) => day.id === toDayId);
     if (sourceIndex < 0 || targetIndex < 0) return;
+    let returnedStopName = "";
     updatePlannerTrip((trip) => {
       const ordered = [...trip.planItems].sort((a, b) => a.dayNumber - b.dayNumber);
       const [moved] = ordered.splice(sourceIndex, 1);
@@ -453,7 +485,7 @@ export default function JourneyPage() {
       const customActivities = trip.brief.customActivities ?? {};
       const reorderedNotes = Object.fromEntries(ordered.map((item, index) => [index + 1, notes[item.dayNumber] ?? []]));
       const reorderedActivities = Object.fromEntries(ordered.map((item, index) => [index + 1, customActivities[item.dayNumber] ?? []]));
-      return {
+      const next = {
         ...trip,
         brief: { ...trip.brief, dayNotes: reorderedNotes, customActivities: reorderedActivities },
         planItems: ordered.map((item, index) => ({
@@ -462,9 +494,21 @@ export default function JourneyPage() {
           date: new Date(+new Date(`${trip.startDate}T00:00:00`) + index * 86400000).toISOString().slice(0, 10),
         })),
       };
+      const replanned = replanTripAfterDayOrder(next, next.planItems);
+      if (replanned.state === "needs-route-edit") {
+        returnedStopName = trip.stops.find((stop) => stop.id === replanned.returnedStopId)?.name ?? "an earlier stop";
+        return next;
+      }
+      return replanned.trip;
     }, "Day order updated");
-    setPlannerWarning("Day order changed. EasyT has recalculated the route; check the highlighted transfers before booking.");
-  }, [customTrip, journey.calendar, updatePlannerTrip]);
+    setPlannerWarning(returnedStopName
+      ? language === "es"
+        ? `Este cambio vuelve a ${returnedStopName}. Mantén ese regreso intencionadamente o edita la ruta antes de reservar.`
+        : `This move returns to ${returnedStopName}. Keep that return intentionally, or edit the route before booking.`
+      : language === "es"
+        ? "El orden de los días cambió. Morrovia recalculó la ruta y los traslados estimados; revisa los traslados destacados antes de reservar."
+        : "Day order changed. Morrovia recalculated the route and transfer estimates; check the highlighted transfers before booking.");
+  }, [customTrip, journey.calendar, language, updatePlannerTrip]);
 
   const moveActivity = useCallback((from: { dayNumber: number; index: number }, to: { dayNumber: number; index: number }) => {
     updatePlannerTrip((trip) => {
@@ -573,11 +617,22 @@ export default function JourneyPage() {
     const next = action === "apply" ? applyRecommendation(source, recommendationId) : undoRecommendation(source, recommendationId);
     setCustomTrip(next);
     saveActiveTrip(next);
+    if (action === "apply") trackEvent("health_issue_resolved", { rule: reviewRecommendations.find((item) => item.id === recommendationId)?.rule ?? "unknown" });
     if (session?.user) {
       setCloudSaveState("saving");
       void saveTripToEasyT(next).then((saved) => { saveActiveTrip(saved); setCustomTrip(saved); setCloudSaveState("saved"); }).catch(() => setCloudSaveState("error"));
     }
   }, [customTrip, reviewRecommendations, session?.user]);
+
+  const chooseTransportAlternative = (option: (typeof transportAlternatives)[number]) => {
+    if (!selectedLeg) return;
+    updatePlannerTrip((trip) => ({
+      ...trip,
+      brief: { ...trip.brief, decisionSelections: { routeOrder: trip.brief.decisionSelections?.routeOrder, transportByLeg: { ...(trip.brief.decisionSelections?.transportByLeg ?? {}), [selectedLeg.id]: option.id } } },
+      legs: trip.legs.map((leg) => leg.id === selectedLeg.id ? { ...leg, mode: option.mode, durationMinutes: option.estimatedMinutes, provider: `${option.label} planning estimate; verify live service and price.`, routeMetadata: { ...leg.routeMetadata, decisionOption: option.id, planningEstimate: true } } : leg),
+    }), `${option.label} selected`);
+    trackEvent("trip_refined", { change_type: "transport_alternative", affected_stop_count: 1 });
+  };
 
   const savePlan = useCallback(async () => {
     if (!customTrip) return;
@@ -955,11 +1010,18 @@ export default function JourneyPage() {
           <p className={styles.itineraryEyebrow}>{selectedDay.date} <span /> {selectedDay.label}</p>
           <h2>{selectedDay.title}</h2>
           <p className={styles.itineraryLocation}>{selectedDay.city}</p>
-          {isPlanningPreview && customTrip ? <section className={styles.reviewPanel} aria-label={planCopy.review}>
-            <div className={styles.reviewHeader}><div><small>{planCopy.review}</small><strong>{reviewRecommendations.length ? `${reviewRecommendations.length} ${planCopy.signal}${reviewRecommendations.length === 1 ? "" : language === "es" ? "es" : "s"}` : planCopy.noWarnings}</strong></div><span>{planCopy.checks}</span></div>
-            {reviewRecommendations.length ? <div className={styles.reviewList}>{reviewRecommendations.map((item) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}><div><b>{item.status === "open" ? item.severity : item.status}</b><strong>{item.message}</strong></div><p>{item.evidence}</p><small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan} · {item.confidence} {planCopy.confidence}</small><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><div className={styles.reviewActions}>{item.status === "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button>}</div></article>)}</div> : <p className={styles.reviewEmpty}>{planCopy.coverage}</p>}
+          {isPlanningPreview && customTrip ? <section className={styles.reviewPanel} aria-label={healthCopy.title}>
+            <div className={styles.reviewHeader}><div><small>{healthCopy.title}</small><strong>{health?.isReady ? healthCopy.ready : health?.blockingCount ? `${health.blockingCount} ${healthCopy.blocking}` : `${health?.cautionCount ?? 0} ${healthCopy.cautions}`}</strong></div><span>{planCopy.checks}</span></div>
+            {reviewRecommendations.length ? <div className={styles.reviewList}>{reviewRecommendations.map((item) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}><div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div><p>{item.evidence}</p><small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan} · {item.confidence} {planCopy.confidence}</small><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div></article>)}</div> : <p className={styles.reviewEmpty}>{planCopy.coverage}</p>}
           </section> : null}
           {selectedDay.travel ? <div className={styles.dayTravel}><Plane /><div><small>{selectedDay.travel.mode === "flight" ? planCopy.travelConnection : planCopy.localTransfer}</small><strong>{selectedDay.travel.from ? `${selectedDay.travel.from} → ${selectedDay.city}` : selectedDay.travel.detail}</strong><span>{selectedDay.travel.duration} · {selectedDay.travel.detail}</span></div></div> : null}
+          {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <section className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
+            <div><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong><span>{language === "es" ? "Estimaciones de puerta a puerta; verifica horarios y precios antes de reservar." : "Door-to-door planning estimates; verify live schedules and prices before booking."}</span></div>
+            <div className={styles.transportChoiceList}>{transportAlternatives.map((option) => {
+              const selectedOption = customTrip.brief.decisionSelections?.transportByLeg[selectedLeg.id] === option.id;
+              return <button type="button" key={option.id} className={selectedOption ? styles.transportChoiceSelected : ""} onClick={() => chooseTransportAlternative(option)}><span><b>{option.label}</b>{option.recommended ? <em>{language === "es" ? "RECOMENDADO" : "RECOMMENDED"}</em> : null}</span><small>{option.estimatedMinutes ? `${Math.floor(option.estimatedMinutes / 60)}h ${option.estimatedMinutes % 60}m` : (language === "es" ? "Tiempo por verificar" : "Time to verify")}{option.timeImpactMinutes && option.timeImpactMinutes > 0 ? ` · +${Math.floor(option.timeImpactMinutes / 60)}h ${option.timeImpactMinutes % 60}m` : ""} · {option.costImpact}</small><p>{option.tradeoff}</p>{option.recommendationReason ? <i>{option.recommendationReason}</i> : null}</button>;
+            })}</div>
+          </section> : null}
           {isPlanningPreview && customTrip && selectedPlanItem ? <>
             <p className={styles.editingHint}><GripVertical /> {planCopy.editingHint}</p>
             {plannerWarning ? <p className={styles.plannerWarning}>{plannerWarning}</p> : null}

@@ -22,10 +22,12 @@ export function JourneyTripReadiness({
   countries,
   startDate,
   language = "en",
+  hideConnectivity = false,
 }: {
   countries: string[];
   startDate?: string;
   language?: "en" | "es";
+  hideConnectivity?: boolean;
 }) {
   const [profile, setProfile] = useState<TravelReadinessProfile>(defaultTravelReadinessProfile);
   const [cards, setCards] = useState<ReadinessCard[]>([]);
@@ -53,7 +55,7 @@ export function JourneyTripReadiness({
     void fetch("/api/journey-readiness", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ countries: destinations, startDate, profile }),
+      body: JSON.stringify({ countries: destinations, startDate, profile, language }),
     }).then(async (response) => {
       const payload = await response.json() as { cards?: ReadinessCard[] };
       if (active && response.ok) setCards(payload.cards ?? []);
@@ -73,11 +75,11 @@ export function JourneyTripReadiness({
       </div>
       {!destinations.length ? <p className={styles.empty}>{labels.noTrip}</p> : <>
         <div className={styles.cards}>
-          {cards.map((card) => {
+          {cards.filter((card) => !(hideConnectivity && card.id === "esim")).map((card) => {
             const Icon = iconFor(card.id);
             return <article className={`${styles.card} ${card.priority === "essential" ? styles.essential : ""}`} key={card.id}>
               <Icon aria-hidden="true" />
-              <div><small>{card.priority === "essential" ? labels.essential : labels.useful}{card.partner ? " · SAILY" : ""}</small><h3>{card.title}</h3><p>{card.detail}</p>{card.note ? <em><AlertCircle aria-hidden="true" />{card.note}</em> : null}{card.href && card.cta ? <><a href={card.href} target="_blank" rel={card.partner ? "noreferrer sponsored" : "noreferrer"} onClick={() => { if (card.partner) trackEvent("easyt_readiness_affiliate_clicked", { partner: card.partner, card: card.id }); }}>{card.cta}<ChevronRight aria-hidden="true" /></a>{card.partner ? <small className={styles.disclosure}>{language === "es" ? "Enlace de socio: podemos recibir una comisión sin coste adicional para ti." : "Partner link: we may earn a commission at no extra cost to you."}</small> : null}</> : null}</div>
+              <div><small>{card.priority === "essential" ? labels.essential : labels.useful}{card.partner ? " · SAILY" : ""}</small><h3>{card.title}</h3><p>{card.detail}</p>{card.note ? <em><AlertCircle aria-hidden="true" />{card.note}</em> : null}{card.sources?.length ? <ul className={styles.entrySources}>{card.sources.map((source) => <li key={source.country}><span>{source.country}</span><a href={source.href} target="_blank" rel="noreferrer">{source.coverage === "official" ? source.label : (language === "es" ? "Comprobar guía oficial" : "Check official guidance")}<ChevronRight aria-hidden="true" /></a></li>)}</ul> : null}{card.href && card.cta ? <><a href={card.href} target="_blank" rel={card.partner ? "noreferrer sponsored" : "noreferrer"} onClick={() => { if (card.partner) trackEvent("easyt_readiness_affiliate_clicked", { partner: card.partner, card: card.id }); }}>{card.cta}<ChevronRight aria-hidden="true" /></a>{card.partner ? <small className={styles.disclosure}>{language === "es" ? "Enlace de socio: podemos recibir una comisión sin coste adicional para ti." : "Partner link: we may earn a commission at no extra cost to you."}</small> : null}</> : null}</div>
             </article>;
           })}
         </div>

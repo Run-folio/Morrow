@@ -1,4 +1,4 @@
-import type { EasyTTrip, TripChange, TripRecommendation } from "./trip";
+import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -17,6 +17,22 @@ const recommendation = (
  */
 export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const results: TripRecommendation[] = [];
+  const dayStopSequence = [...trip.planItems]
+    .sort((a, b) => a.dayNumber - b.dayNumber)
+    .reduce<string[]>((sequence, item) => sequence.at(-1) === item.stopId ? sequence : [...sequence, item.stopId], []);
+  const returnedStopId = dayStopSequence.find((stopId, index) => dayStopSequence.indexOf(stopId) !== index);
+  if (returnedStopId) {
+    const stop = trip.stops.find((item) => item.id === returnedStopId);
+    results.push(recommendation(trip, {
+      rule: "split-base-sequence",
+      severity: "warning",
+      message: `${stop?.name ?? "One base"} appears in separate parts of the itinerary, which creates an extra return transfer.`,
+      evidence: "The day order now leaves this base and comes back to it later. Keep that return intentionally or regroup the route.",
+      affectedDays: trip.planItems.filter((item) => item.stopId === returnedStopId).map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
   const longLeg = trip.legs
     .map((leg) => ({ leg, minutes: leg.durationMinutes ?? 0 }))
     .filter(({ leg, minutes }) => leg.mode === "road" && minutes >= 300)
@@ -119,7 +135,128 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
+  if (trip.stops.length >= 3 && totalDays < trip.stops.length * 2) {
+    results.push(recommendation(trip, {
+      rule: "stop-density",
+      severity: totalDays < trip.stops.length ? "critical" : "warning",
+      message: `${trip.stops.length} stops in ${totalDays} days leaves very little usable time at each base.`,
+      evidence: "This counts the arrival and transfer time that each additional base creates.",
+      affectedDays: trip.planItems.map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
+  trip.stops.forEach((stop) => {
+    const inbound = trip.legs.find((leg) => leg.toStopId === stop.id);
+    const minutes = inbound?.durationMinutes ?? 0;
+    if ((stop.nights ?? 0) <= 1 && minutes >= 240) {
+      results.push(recommendation(trip, {
+        rule: "short-stop-heavy-transfer",
+        severity: minutes >= 420 ? "critical" : "warning",
+        message: `${stop.name} has ${stop.nights === 0 ? "no overnight" : "one night"} after a ${Math.floor(minutes / 60)}h transfer.`,
+        evidence: "The transfer uses a large share of the time this stop is meant to provide.",
+        affectedDays: trip.planItems.filter((item) => item.stopId === stop.id).map((item) => item.dayNumber),
+        confidence: "high",
+        proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },
+      }, results.length));
+    }
+    if (minutes >= Math.max(360, ((stop.nights ?? 0) + 1) * 300)) {
+      results.push(recommendation(trip, {
+        rule: "transit-to-time-ratio",
+        severity: "warning",
+        message: `The transfer into ${stop.name} is large relative to the time planned there.`,
+        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m estimated transit for ${Math.max(0, stop.nights ?? 0)} planned nights.`,
+        affectedDays: trip.planItems.filter((item) => item.stopId === stop.id).map((item) => item.dayNumber),
+        confidence: "high",
+        proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },
+      }, results.length));
+    }
+  });
+
+  const fixedCommitments = trip.brief.intent?.hardConstraints.fixedCommitments ?? [];
+  const outOfRangeCommitments = fixedCommitments.filter((item) => item.date && (item.date < trip.startDate || item.date > trip.endDate));
+  if (outOfRangeCommitments.length) {
+    results.push(recommendation(trip, {
+      rule: "fixed-date-conflict",
+      severity: "critical",
+      message: `${outOfRangeCommitments.map((item) => item.label).join(", ")} falls outside the current trip dates.`,
+      evidence: `Trip dates are ${trip.startDate} to ${trip.endDate}.`,
+      affectedDays: [],
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
+  for (const conflict of trip.brief.cascadeStatus?.conflicts ?? []) {
+    results.push(recommendation(trip, {
+      rule: "schedule-lock-conflict",
+      severity: "critical",
+      message: conflict,
+      evidence: "A protected arrival date conflicts with the connected route schedule.",
+      affectedDays: [],
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
+  const route = trip.brief.routeAssessment?.route;
+  if (route?.state === "recommendation") {
+    results.push(recommendation(trip, {
+      rule: "route-backtracking",
+      severity: "warning",
+      message: "This stop order has avoidable backtracking.",
+      evidence: route.reasons.join(" ") || route.summary,
+      affectedDays: trip.planItems.map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
+  const finalStop = [...trip.stops].sort((a, b) => a.order - b.order).at(-1);
+  if (finalStop?.departureDate && finalStop.departureDate !== new Date(+new Date(`${trip.endDate}T00:00:00`) + 86400000).toISOString().slice(0, 10)) {
+    results.push(recommendation(trip, {
+      rule: "trip-end-mismatch",
+      severity: finalStop.departureDate > new Date(+new Date(`${trip.endDate}T00:00:00`) + 86400000).toISOString().slice(0, 10) ? "critical" : "warning",
+      message: `The final stop ends on ${finalStop.departureDate}, not at the end of the trip.`,
+      evidence: `Trip end is ${trip.endDate}; check the final stay and departure plan.`,
+      affectedDays: trip.planItems.filter((item) => item.stopId === finalStop.id).map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
+  const unconfirmedMajorLeg = trip.legs.find((leg) => (leg.distanceKm ?? 0) >= 150 && Boolean(leg.routeMetadata?.planningEstimate) && !leg.routeMetadata?.decisionOption);
+  if (unconfirmedMajorLeg) {
+    const destination = trip.stops.find((stop) => stop.id === unconfirmedMajorLeg.toStopId)?.name ?? "the next stop";
+    results.push(recommendation(trip, {
+      rule: "missing-transport-decision",
+      severity: "warning",
+      message: `Choose how you will travel into ${destination} before booking the rest of the trip.`,
+      evidence: "Morrovia has a planning estimate, not a confirmed transport decision or live timetable.",
+      affectedDays: trip.planItems.filter((item) => item.stopId === unconfirmedMajorLeg.toStopId).map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: { action: "resolve-leg", legId: unconfirmedMajorLeg.id },
+    }, results.length));
+  }
+
   return results;
+}
+
+export type TripHealth = {
+  issues: TripRecommendation[];
+  blockingCount: number;
+  cautionCount: number;
+  isReady: boolean;
+};
+
+export function tripHealth(trip: EasyTTrip): TripHealth {
+  const current = reviewTrip(trip).map((item) => ({ ...item, status: trip.recommendations.find((saved) => saved.id === item.id)?.status ?? item.status }));
+  const openIssues = current.filter((item) => item.status === "open");
+  const blockingCount = openIssues.filter((item) => item.severity === "critical").length;
+  const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
+  const hasUnresolvedTransport = openIssues.some((item) => item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
+  return { issues: current, blockingCount, cautionCount, isReady: blockingCount === 0 && !hasUnresolvedTransport };
 }
 
 export function recommendationImpact(item: TripRecommendation) {
@@ -128,6 +265,11 @@ export function recommendationImpact(item: TripRecommendation) {
   if (action === "suggest-extra-night") return "Flags the affected stops for an extra night; no bookings are changed automatically.";
   if (action === "add-stopover-or-compare-rail") return "Marks the transfer for a stopover or rail comparison; the route remains unchanged until you choose one.";
   if (action === "resolve-leg") return "Keeps the route in place while recording that this connection needs a confirmed estimate.";
+  if (item.rule === "stop-density") return "Remove an optional stop, add days, or accept a faster-paced route before booking.";
+  if (item.rule === "fixed-date-conflict") return "Change the trip dates or move the fixed commitment into the travel window.";
+  if (item.rule === "schedule-lock-conflict") return "Move the locked arrival, change the surrounding nights, or keep the gap intentionally.";
+  if (item.rule === "route-backtracking") return "Reorder the route in the builder if the suggested sequence still suits your must-see stops.";
+  if (item.rule === "trip-end-mismatch") return "Adjust the final stay or the overall trip end so your departure day is explicit.";
   return "Records your decision without changing booked items.";
 }
 

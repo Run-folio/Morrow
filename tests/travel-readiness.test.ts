@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildTripReadiness, defaultTravelReadinessProfile } from "../lib/easyt/travel-readiness.ts";
+import { buildTripReadiness, defaultTravelReadinessProfile, entrySourcesByCountry, entrySourcesFor } from "../lib/easyt/travel-readiness.ts";
 
 test("builds a privacy-safe international trip readiness checklist", () => {
   const cards = buildTripReadiness({
@@ -21,4 +21,13 @@ test("adds neutral mainland China connectivity guidance without promoting a VPN"
   assert.ok(chinaCard);
   assert.equal(chinaCard?.href, undefined);
   assert.doesNotMatch(`${chinaCard?.title} ${chinaCard?.detail}`, /NordVPN/i);
+});
+
+test("provides launch official-source coverage for major, English-speaking and Nordic destinations", () => {
+  assert.ok(Object.keys(entrySourcesByCountry).length >= 55);
+  const sources = entrySourcesFor(["Guatemala", "Japan", "UK", "Ireland", "Denmark", "Sweden", "Finland", "Norway", "New Zealand", "Atlantis"]);
+  assert.equal(sources.find((source) => source.country === "Guatemala")?.coverage, "official");
+  assert.equal(sources.find((source) => source.country === "United Kingdom")?.coverage, "official");
+  assert.equal(sources.find((source) => source.country === "New Zealand")?.coverage, "official");
+  assert.equal(sources.find((source) => source.country === "Atlantis")?.coverage, "needs-source");
 });

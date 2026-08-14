@@ -44,6 +44,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    {
+      url: `${siteUrl}/journey/passport`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
     ...easyTRouteSlugs.map((slug) => ({
       url: `${siteUrl}/journey/routes/${slug}`,
       lastModified: now,

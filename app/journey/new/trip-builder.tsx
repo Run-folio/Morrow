@@ -11,12 +11,14 @@
 
 import {
   CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
-  Clock, GripVertical, MapPin, Plane, Plus, Users, X,
+  Clock, GripVertical, Lock, MapPin, Plane, Plus, Users, X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
-import { tripFromBuilder } from "@/lib/easyt/trip";
-import { buildCredibleItinerary, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
+import { assessRouteIntelligence, buildCredibleItinerary, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { cascadeTripSchedule } from "@/lib/easyt/cascade";
+import { trackEvent } from "@/lib/analytics";
 import { journeyMedia, type JourneyImage } from "@/lib/journey";
 import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
@@ -29,6 +31,7 @@ import { parseTripBrief } from "@/lib/easyt/trip-brief";
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
+type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; startDate: string; endDate: string; locks: TripScheduleLocks; summary: string };
 type CapturedLocation = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent?: "place" | "landmark"; locality?: string };
 type LocationChoice = { name: string; country: string; coordinates: [number, number]; kind?: string; locality?: string };
 
@@ -316,9 +319,16 @@ export default function TripBuilder() {
   const [stopInput, setStopInput] = useState("");
   const [stopError, setStopError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [keptRouteKey, setKeptRouteKey] = useState<string | null>(null);
   const [locationChoices, setLocationChoices] = useState<Array<{ mention: CapturedLocation; choices: LocationChoice[] }>>([]);
   const [resolvingLocations, setResolvingLocations] = useState(false);
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
+  const [tripIntent, setTripIntent] = useState<TripIntent>(() => defaultTripIntent());
+  const [fixedCommitmentLabel, setFixedCommitmentLabel] = useState("");
+  const [fixedCommitmentDate, setFixedCommitmentDate] = useState("");
+  const [scheduleLocks, setScheduleLocks] = useState<TripScheduleLocks>({ stopIds: [], arrivalDates: {} });
+  const [decisionSelections, setDecisionSelections] = useState<TripDecisionSelections>({ transportByLeg: {} });
+  const [lastStructuralChange, setLastStructuralChange] = useState<StructuralSnapshot | null>(null);
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(oneWeekLater);
@@ -354,6 +364,9 @@ export default function TripBuilder() {
       setPicks(saved.brief.selectedPlaces);
       setDayAllocations(saved.brief.dayAllocations ?? {});
       setBudget(saved.brief.budgetBand);
+      setTripIntent(tripIntentForTrip(saved));
+      setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
+      setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
     };
     const hydrate = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -458,6 +471,34 @@ export default function TripBuilder() {
     return Number.isFinite(d) && d > 0 ? d : 1;
   }, [startDate, endDate]);
 
+  const effectiveIntent = useMemo<TripIntent>(() => ({
+    ...tripIntent,
+    timing: { ...tripIntent.timing, durationDays: totalDays },
+    hardConstraints: {
+      ...tripIntent.hardConstraints,
+      originRequired: Boolean(origin.trim()),
+      optionalStopIds: tripIntent.hardConstraints.optionalStopIds.filter((id) => stops.some((stop) => stop.id === id)),
+      mustSeeStopIds: stops.filter((stop) => !tripIntent.hardConstraints.optionalStopIds.includes(stop.id)).map((stop) => stop.id),
+    },
+    preferences: { ...tripIntent.preferences, budgetSensitivity: budget },
+  }), [tripIntent, totalDays, origin, stops, budget]);
+  const intentReady = Boolean(originCoordinates && stops.length && datesConfirmed && effectiveIntent.travellers >= 1);
+
+  useEffect(() => {
+    if (!hydrated || !intentReady) return;
+    const key = `morrovia:trip-intent-tracked:${tripId}`;
+    if (window.localStorage.getItem(key)) return;
+    trackEvent("trip_intent_created", {
+      traveller_count: effectiveIntent.travellers,
+      stop_count: stops.length,
+      duration_days: totalDays,
+      dates_flexible: effectiveIntent.timing.flexibility === "flexible",
+      fixed_commitment_count: effectiveIntent.hardConstraints.fixedCommitments.length,
+      avoid_driving: effectiveIntent.hardConstraints.avoidDriving,
+    });
+    window.localStorage.setItem(key, "1");
+  }, [hydrated, intentReady, tripId, effectiveIntent, stops.length, totalDays]);
+
   const committed = useMemo(() => stops.length + stops.reduce((sum, stop) => {
     const titles = picks[stop.id] ?? [];
     return sum + placesFor(stop, discoveredPlaces).filter((p) => titles.includes(p.title)).reduce((a, p) => a + p.cost, 0);
@@ -493,23 +534,126 @@ export default function TripBuilder() {
     ];
   const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "") : "";
 
-  /** A transparent default: selected activity volume influences the recommended split. */
-  const recommendedDays = useMemo(() => {
-    if (!stops.length) return {} as Record<string, number>;
-    const allocation = Object.fromEntries(stops.map((stop) => [stop.id, 1])) as Record<string, number>;
-    let remaining = Math.max(0, totalDays - stops.length);
-    const ranked = [...stops].sort((a, b) => {
-      const score = (stop: Stop) => (picks[stop.id] ?? []).length + Math.min(2, placesFor(stop, discoveredPlaces).length / 5);
-      return score(b) - score(a);
+  const routeIntelligence = useMemo(() => assessRouteIntelligence({
+    origin: { name: origin.trim(), coordinates: originCoordinates },
+    stops,
+    picks,
+    availableDays: totalDays,
+    constraints: {
+      fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments,
+      avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
+      transportModes: effectiveIntent.preferences.transportModes,
+      optionalStopIds: effectiveIntent.hardConstraints.optionalStopIds,
+    },
+  }), [origin, originCoordinates, stops, picks, totalDays, effectiveIntent]);
+  const routeKey = stops.map((stop) => stop.id).join("|");
+  const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
+  const routeAnalyticsKey = `${tripId}:${routeKey}:${startDate}:${endDate}:${effectiveIntent.hardConstraints.fixedCommitments.length}:${effectiveIntent.hardConstraints.avoidDriving}`;
+  useEffect(() => {
+    if (!hydrated || routeIntelligence.route.state === "insufficient-data") return;
+    const key = `morrovia:route-generated:${routeAnalyticsKey}`;
+    if (window.localStorage.getItem(key)) return;
+    trackEvent("route_generated", {
+      stop_count: stops.length,
+      duration_days: totalDays,
+      has_recommendation: routeIntelligence.route.state === "recommendation",
+      shortfall_days: routeIntelligence.shortfallDays,
+      has_fixed_commitments: effectiveIntent.hardConstraints.fixedCommitments.length > 0,
     });
-    for (let index = 0; remaining > 0; index += 1, remaining -= 1) allocation[ranked[index % ranked.length].id] += 1;
-    return allocation;
-  }, [stops, totalDays, picks, discoveredPlaces]);
+    window.localStorage.setItem(key, "1");
+  }, [hydrated, routeAnalyticsKey, routeIntelligence, stops.length, totalDays, effectiveIntent.hardConstraints.fixedCommitments.length]);
+  const routeCopy = language === "es" ? {
+    eyebrow: "COMPROBACIÓN DE RUTA", useOrder: "Usar este orden", keepOrder: "Mantener mi orden",
+    currentOrder: "Tu ruta ya tiene un buen flujo.", cleanerOrder: "es el orden más directo.",
+    removesTravel: (minutes: number) => `Ahorra aproximadamente ${Math.floor(minutes / 60)} h ${minutes % 60} min de tiempo de traslado estimado.`,
+    direction: "Evita retrocesos innecesarios.", heavyArrival: "El traslado de llegada ocupa gran parte del día.",
+    substantialArrival: "El traslado de llegada ocupa una parte importante del día.", landmark: "Reserva un día completo para este lugar emblemático.",
+    selectedPlaces: (count: number) => `${count} lugares seleccionados necesitan más que un día apresurado.`,
+    lightArrival: "Deja tiempo para llegar y empezar a conocer el lugar.", usable: (days: number) => `aprox. ${days} días aprovechables`,
+    shortfall: (comfortable: number) => `${comfortable} días sería un ritmo más cómodo`,
+    shortfallHelp: "Ajusta el tiempo, elimina una parada o acepta que algunos días serán más intensos.",
+  } : {
+    eyebrow: "ROUTE CHECK", useOrder: "Use this order", keepOrder: "Keep my order",
+    currentOrder: "Your route already flows well.", cleanerOrder: "is the cleaner order.",
+    removesTravel: (minutes: number) => `It removes about ${Math.floor(minutes / 60)}h ${minutes % 60}m of estimated transfer time.`,
+    direction: "It avoids unnecessary backtracking.", heavyArrival: "The arrival transfer takes most of the day.",
+    substantialArrival: "The arrival transfer uses a meaningful part of the day.", landmark: "Keep a full day protected for this landmark.",
+    selectedPlaces: (count: number) => `${count} selected places need more than a rushed day.`,
+    lightArrival: "It leaves time to arrive and start experiencing the place.", usable: (days: number) => `about ${days} usable days`,
+    shortfall: (comfortable: number) => `${comfortable} days would feel more comfortable`,
+    shortfallHelp: "Adjust the time, remove a stop, or accept that some days will be more intensive.",
+  };
+
+  /** A transparent default: travel time and selected activity volume shape the split. */
+  const recommendedDays = useMemo(() => {
+    return Object.fromEntries(stops.map((stop) => [stop.id, routeIntelligence.durations[stop.id]?.recommendedDays ?? 1])) as Record<string, number>;
+  }, [stops, routeIntelligence.durations]);
 
   const allocation = useMemo(
     () => rebalanceDays(stops, totalDays, dayAllocations, recommendedDays),
     [stops, totalDays, dayAllocations, recommendedDays],
   );
+
+  const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
+    setLastStructuralChange({ stops, allocations: dayAllocations, startDate, endDate, locks: scheduleLocks, summary });
+    trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
+  };
+
+  const undoStructuralChange = () => {
+    if (!lastStructuralChange) return;
+    setStops(lastStructuralChange.stops);
+    setDayAllocations(lastStructuralChange.allocations);
+    setStartDate(lastStructuralChange.startDate);
+    setEndDate(lastStructuralChange.endDate);
+    setScheduleLocks(lastStructuralChange.locks);
+    setDatesConfirmed(true);
+    setLastStructuralChange(null);
+  };
+
+  const arrivalDateForStop = (stopId: string) => {
+    let offset = 0;
+    for (const stop of stops) {
+      if (stop.id === stopId) break;
+      offset += allocation[stop.id] ?? 1;
+    }
+    const date = new Date(`${startDate}T00:00:00`);
+    date.setDate(date.getDate() + offset);
+    return iso(date);
+  };
+
+  const toggleStopLock = (stopId: string) => {
+    setScheduleLocks((current) => ({ ...current, stopIds: current.stopIds.includes(stopId) ? current.stopIds.filter((id) => id !== stopId) : [...current.stopIds, stopId] }));
+  };
+
+  const toggleArrivalLock = (stopId: string) => {
+    setScheduleLocks((current) => {
+      const arrivalDates = { ...current.arrivalDates };
+      if (arrivalDates[stopId]) delete arrivalDates[stopId];
+      else arrivalDates[stopId] = arrivalDateForStop(stopId);
+      return { ...current, arrivalDates };
+    });
+  };
+
+  const removeStop = (stopId: string) => {
+    const stop = stops.find((item) => item.id === stopId);
+    if (!stop) return;
+    if (scheduleLocks.stopIds.includes(stopId)) return;
+    rememberStructuralChange("remove_stop", Math.max(0, stops.length - stops.findIndex((item) => item.id === stopId) - 1));
+    setStops((current) => current.filter((item) => item.id !== stopId));
+    setDayAllocations((current) => { const next = { ...current }; delete next[stopId]; return next; });
+    setScheduleLocks((current) => { const arrivalDates = { ...current.arrivalDates }; delete arrivalDates[stopId]; return { stopIds: current.stopIds.filter((id) => id !== stopId), arrivalDates }; });
+    setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
+  };
+
+  const updateTravelDate = (kind: "start" | "end", value: string) => {
+    const nextStart = kind === "start" ? value : startDate;
+    const nextEnd = kind === "end" ? (value < startDate ? startDate : value) : (value > endDate ? value : endDate);
+    if (nextStart === startDate && nextEnd === endDate) return;
+    rememberStructuralChange(kind === "start" ? "change_start_date" : "change_end_date", stops.length);
+    setStartDate(nextStart);
+    setEndDate(nextEnd);
+    setDatesConfirmed(false);
+  };
 
   const updateAllocatedDays = (stopId: string, requested: number) => {
     const current = allocation[stopId] ?? 1;
@@ -519,6 +663,7 @@ export default function TripBuilder() {
     const next = Math.max(1, Math.min(maximum, requested));
     const difference = next - current;
     if (!difference) return;
+    rememberStructuralChange("change_nights", others.length);
     const nextAllocation = { ...allocation, [stopId]: next };
     if (difference > 0) {
       let remaining = difference;
@@ -546,7 +691,9 @@ export default function TripBuilder() {
       if (!payload.result?.coordinates || !payload.result.country) return setStopError(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
       const resolvedName = payload.result.name?.split(",")[0]?.trim() || value;
       const id = `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+      rememberStructuralChange("add_stop", 1);
       setStops((current) => [...current, { id, name: resolvedName, country: payload.result!.country!, coordinates: payload.result!.coordinates }]);
+      setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
       setStopInput(""); setStopError("");
     } catch {
       setStopError(ui.unavailable);
@@ -580,12 +727,61 @@ export default function TripBuilder() {
 
   const moveStop = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= stops.length || to >= stops.length) return;
+    const moved = stops[from];
+    if (scheduleLocks.stopIds.includes(moved.id) || stops.slice(Math.min(from, to), Math.max(from, to) + 1).some((stop) => scheduleLocks.stopIds.includes(stop.id))) return;
+    rememberStructuralChange("reorder_stop", Math.abs(from - to) + 1);
     setStops((current) => {
       const next = [...current];
       const [moving] = next.splice(from, 1);
       next.splice(to, 0, moving);
       return next;
     });
+    setDecisionSelections((current) => ({ ...current, routeOrder: "entered" }));
+  };
+
+  const applyRecommendedOrder = () => {
+    if (routeIntelligence.route.state !== "recommendation") return;
+    if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length) return;
+    const order = routeIntelligence.route.recommendedStopIds;
+    rememberStructuralChange("apply_route_order", stops.length);
+    setStops((current) => order.map((id) => current.find((stop) => stop.id === id)).filter((stop): stop is Stop => Boolean(stop)));
+    setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
+    setKeptRouteKey(null);
+    trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays });
+  };
+
+  const acceptCurrentRoute = (method: "continue" | "keep_order") => {
+    const key = `morrovia:route-accepted:${tripId}:${routeKey}`;
+    if (window.localStorage.getItem(key)) return;
+    trackEvent("route_accepted", { method, stop_count: stops.length, duration_days: totalDays, has_recommendation: routeIntelligence.route.state === "recommendation" });
+    window.localStorage.setItem(key, "1");
+    setDecisionSelections((current) => ({ ...current, routeOrder: method === "keep_order" ? "entered" : current.routeOrder ?? "entered" }));
+  };
+
+  const updateIntentPreferences = (update: Partial<TripIntent["preferences"]>) => {
+    setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, ...update } }));
+  };
+
+  const toggleTransportMode = (mode: TripTransportMode) => {
+    setTripIntent((current) => {
+      const modes = current.preferences.transportModes.includes(mode)
+        ? current.preferences.transportModes.filter((item) => item !== mode)
+        : [...current.preferences.transportModes, mode];
+      return { ...current, preferences: { ...current.preferences, transportModes: modes.length ? modes : [mode] } };
+    });
+  };
+
+  const toggleInterest = (interest: string) => {
+    setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, interests: current.preferences.interests.includes(interest) ? current.preferences.interests.filter((item) => item !== interest) : [...current.preferences.interests, interest] } }));
+  };
+
+  const addFixedCommitment = () => {
+    const label = fixedCommitmentLabel.trim();
+    if (!label) return;
+    const commitment: FixedTripCommitment = { id: `fixed-${Date.now()}`, label, date: fixedCommitmentDate || undefined };
+    setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
+    setFixedCommitmentLabel("");
+    setFixedCommitmentDate("");
   };
 
   const validateOrigin = async () => {
@@ -618,7 +814,7 @@ export default function TripBuilder() {
     places: Object.fromEntries(stops.map((stop) => [stop.id, placesFor(stop, discoveredPlaces)])),
   }), [origin, originCoordinates, stops, startDate, allocation, picks, discoveredPlaces]);
 
-  const activeTripDocument = useMemo(() => tripFromBuilder({
+  const activeTripDocument = useMemo(() => cascadeTripSchedule(tripFromBuilder({
     id: tripId,
     origin,
     stops,
@@ -626,7 +822,7 @@ export default function TripBuilder() {
     endDate,
     picks,
     mustDo: tripBrief,
-    pace: "slow",
+    pace: effectiveIntent.preferences.pace === "packed" ? "full" : "slow",
     hotels: "few",
     budget,
     dayAllocations: allocation,
@@ -635,7 +831,11 @@ export default function TripBuilder() {
     originCoordinates,
     createdAt,
     capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
-  }), [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints]);
+    routeAssessment: routeIntelligence,
+    intent: effectiveIntent,
+    scheduleLocks,
+    decisionSelections,
+  })).trip, [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, scheduleLocks, decisionSelections]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
@@ -831,15 +1031,79 @@ export default function TripBuilder() {
 
               {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
                 <span>{language === "es" ? "PARADAS CONFIRMADAS" : "CONFIRMED STOPS"}</span>
-                <div>{stops.map((stop, index) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{index + 1}. {stop.name} <X aria-hidden="true" /></button>)}</div>
+                <div>{stops.map((stop, index) => <button type="button" key={stop.id} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-label={language === "es" ? "Parada bloqueada" : "Stop locked"} /> : <X aria-hidden="true" />}</button>)}</div>
               </div>}
+
+              <section className={styles.intentPanel} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
+                <header><p>{language === "es" ? "INTENCIÓN DEL VIAJE" : "TRIP INTENT"}</p><h3>{language === "es" ? "Protege lo que no puede cambiar." : "Protect what cannot move."}</h3><span>{language === "es" ? "Lo imprescindible no se pierde al replantear la ruta. Las preferencias ayudan a decidir entre opciones." : "Must-keeps stay protected when the route changes. Preferences guide the trade-offs."}</span></header>
+                <div className={styles.intentGrid}>
+                  <section className={styles.intentHard}>
+                    <p>{language === "es" ? "DEBE MANTENERSE" : "MUST KEEP"}</p>
+                    <div className={styles.intentFacts}>
+                      <span>{language === "es" ? "Salida" : "Origin"}<b>{origin || (language === "es" ? "Añadir" : "Add")}</b></span>
+                      <span>{language === "es" ? "Ruta" : "Route"}<b>{stops.length ? `${stops.length} ${language === "es" ? "paradas" : "stops"}` : (language === "es" ? "Añadir" : "Add")}</b></span>
+                      <span>{language === "es" ? "Fechas" : "Timing"}<b>{effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "Fijas" : "Fixed") : (language === "es" ? "Flexible" : "Flexible")}</b></span>
+                    </div>
+                    {stops.length > 0 && <div className={styles.mustSeeStops}><span>{language === "es" ? "PARADAS IMPRESCINDIBLES" : "MUST-SEE STOPS"}</span><div>{stops.map((stop) => {
+                      const mustSee = !effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id);
+                      return <button type="button" key={stop.id} className={mustSee ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, optionalStopIds: mustSee ? [...current.hardConstraints.optionalStopIds, stop.id] : current.hardConstraints.optionalStopIds.filter((id) => id !== stop.id) } }))}>{mustSee ? "✓ " : ""}{stop.name}{mustSee ? "" : ` · ${language === "es" ? "opcional" : "optional"}`}</button>;
+                    })}</div></div>}
+                    <div className={styles.intentToggle} role="group" aria-label={language === "es" ? "Flexibilidad de fechas" : "Date flexibility"}>
+                      <button type="button" className={effectiveIntent.timing.flexibility === "fixed" ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, timing: { ...current.timing, flexibility: "fixed" } }))}>{language === "es" ? "Fechas fijas" : "Dates fixed"}</button>
+                      <button type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, timing: { ...current.timing, flexibility: "flexible" } }))}>{language === "es" ? "Duración flexible" : "Flexible duration"}</button>
+                    </div>
+                    <div className={styles.fixedCommitment}>
+                      <label><span>{language === "es" ? "FECHA O RESERVA FIJA" : "FIXED DATE OR BOOKING"}</span><input value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. boda en Kioto" : "e.g. wedding in Kyoto"} /></label>
+                      <input type="date" value={fixedCommitmentDate} onChange={(event) => setFixedCommitmentDate(event.target.value)} aria-label={language === "es" ? "Fecha fija" : "Fixed date"} />
+                      <button type="button" onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}><Plus />{language === "es" ? "Añadir" : "Add"}</button>
+                    </div>
+                    {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter((commitment) => commitment.id !== item.id) } }))}><X /></button></span>)}</div>}
+                  </section>
+                  <section className={styles.intentPreferences}>
+                    <p>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</p>
+                    <div className={styles.intentFieldRow}>
+                      <label><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) }))} /></label>
+                      <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
+                    </div>
+                    <div className={styles.intentFieldRow}>
+                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Volar", train: "Tren", drive: "Coche" }[mode]) : ({ flight: "Fly", train: "Train", drive: "Drive" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }))}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
+                      <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
+                    </div>
+                    <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{["Food", "Culture", "Nature", "Cities", "Beach", "Hiking"].map((interest) => <button type="button" key={interest} className={effectiveIntent.preferences.interests.includes(interest.toLowerCase()) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest.toLowerCase())}>{language === "es" ? ({ Food: "Comida", Culture: "Cultura", Nature: "Naturaleza", Cities: "Ciudades", Beach: "Playa", Hiking: "Senderismo" }[interest]) : interest}</button>)}</div></div>
+                    <label className={styles.dislikesField}><span>{language === "es" ? "EVITAR (OPCIONAL)" : "AVOID (OPTIONAL)"}</span><input value={effectiveIntent.preferences.dislikes.join(", ")} onChange={(event) => updateIntentPreferences({ dislikes: event.target.value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6) })} placeholder={language === "es" ? "Ej. traslados nocturnos, calor extremo" : "e.g. overnight transfers, extreme heat"} /></label>
+                  </section>
+                </div>
+                <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
+              </section>
+
+              {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
+                <div>
+                  <p>{routeCopy.eyebrow}</p>
+                  {routeRecommendationVisible ? <>
+                    <h3>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")} {routeCopy.cleanerOrder}</h3>
+                    <span>{routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0)} {routeCopy.direction}</span>
+                  </> : <>
+                    <h3>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Tus condiciones fijas están protegidas." : "Your fixed commitments are protected.") : routeCopy.currentOrder}</h3>
+                    <span>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Confirma dónde encaja cada condición antes de cambiar el orden." : "Confirm where each commitment sits before changing the order.") : (language === "es" ? "Puedes cambiar el orden en la ruta de la derecha cuando quieras." : "You can still change the order in the route on the right whenever you like.")}</span>
+                  </>}
+                  {routeIntelligence.route.tradeoffs[0] && !effectiveIntent.hardConstraints.fixedCommitments.length && <span className={styles.routeTradeoff}>{effectiveIntent.hardConstraints.avoidDriving ? (language === "es" ? "Evitar coche está activo: compara tren o vuelo para los traslados locales antes de reservar." : "Avoid driving is active: compare rail or flight for local transfers before booking.") : (language === "es" ? "Esta ruta puede necesitar un tipo de transporte fuera de tus preferencias. Compáralo antes de reservar." : routeIntelligence.route.tradeoffs[0])}</span>}
+                  {routeRecommendationVisible && <div className={styles.decisionAlternatives}>
+                    <article className={decisionSelections.routeOrder === "recommended" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "RECOMENDADO" : "MORROVIA RECOMMENDS"}</b><strong>{language === "es" ? "Ruta más directa" : "More direct route"}</strong></div><span>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</span><small>{routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0)} {language === "es" ? "Es una estimación de planificación, no un horario en vivo." : "This is a planning estimate, not a live timetable."}</small></article>
+                    <article className={decisionSelections.routeOrder === "entered" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "TU ORDEN" : "YOUR ORDER"}</b><strong>{language === "es" ? "Mantener la intención" : "Keep your intended sequence"}</strong></div><span>{stops.map((stop) => stop.name).join(" → ")}</span><small>{language === "es" ? "Conserva el orden que elegiste, con más tiempo de traslado estimado." : "Preserves the order you chose, with more estimated transfer time."}</small></article>
+                  </div>}
+                </div>
+                {routeRecommendationVisible && <div className={styles.routeCheckActions}>
+                  <button type="button" className={styles.primary} onClick={applyRecommendedOrder}>{routeCopy.useOrder}</button>
+                  <button type="button" className={styles.ghost} onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>{routeCopy.keepOrder}</button>
+                </div>}
+              </section>}
 
               <section className={styles.dateConfirmSection} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
                 <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
                 <div className={styles.dateRow}>
                   {([
-                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => { setStartDate(value); if (value > endDate) setEndDate(value); setDatesConfirmed(false); } },
-                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => { setEndDate(value < startDate ? startDate : value); setDatesConfirmed(false); } },
+                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => updateTravelDate("start", value) },
+                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => updateTravelDate("end", value) },
                   ]).map((field) => (
                     <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}>
                       <button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key}
@@ -866,6 +1130,14 @@ export default function TripBuilder() {
                   <p className={styles.dateConfirmNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa tus fechas y confírmalas para continuar." : "Review your dates, then confirm them to continue.")}</p>
                   {!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}
                 </div>
+                {stops.length > 0 && <div className={styles.scheduleLocks}>
+                  <span>{language === "es" ? "BLOQUEAR LLEGADA" : "LOCK ARRIVAL"}</span>
+                  <div>{stops.map((stop) => <button type="button" key={stop.id} className={scheduleLocks.arrivalDates[stop.id] ? styles.intentChoiceOn : ""} onClick={() => toggleArrivalLock(stop.id)}><Lock /> {stop.name}{scheduleLocks.arrivalDates[stop.id] ? ` · ${fmtLong(scheduleLocks.arrivalDates[stop.id])}` : ""}</button>)}</div>
+                </div>}
+                {(lastStructuralChange || activeTripDocument.brief.cascadeStatus?.conflicts.length || activeTripDocument.brief.cascadeStatus?.affectedPlanItemCount) && <div className={styles.cascadeSummary} aria-live="polite">
+                  <div><strong>{language === "es" ? "PLAN ACTUALIZADO" : "PLAN UPDATED"}</strong><span>{activeTripDocument.brief.cascadeStatus?.conflicts[0] ?? (activeTripDocument.brief.cascadeStatus?.affectedPlanItemCount ? (language === "es" ? `${activeTripDocument.brief.cascadeStatus.affectedPlanItemCount} días posteriores se han actualizado.` : `${activeTripDocument.brief.cascadeStatus.affectedPlanItemCount} downstream days were updated.`) : (language === "es" ? "Las fechas posteriores se actualizarán juntas." : "Later dates will move together."))}</span></div>
+                  {lastStructuralChange && <button type="button" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</button>}
+                </div>}
               </section>
 
             </div>
@@ -932,13 +1204,25 @@ export default function TripBuilder() {
                   </div>
                   <strong>{totalDays} {ui.daysTotal}</strong>
                 </div>
+                {routeIntelligence.shortfallDays > 0 && <div className={styles.durationSignal}>
+                  <strong>{routeCopy.shortfall(routeIntelligence.comfortableDays)}</strong>
+                  <span>{routeIntelligence.overload?.suggestedCutStopId
+                    ? (language === "es" ? `${stops.find((stop) => stop.id === routeIntelligence.overload?.suggestedCutStopId)?.name} es la parada opcional más pequeña que puedes quitar.` : `${stops.find((stop) => stop.id === routeIntelligence.overload?.suggestedCutStopId)?.name} is the smallest optional stop to remove.`)
+                    : routeCopy.shortfallHelp}</span>
+                </div>}
                 <div className={styles.allocationList}>
                   {stops.map((stop) => {
                     const days = allocation[stop.id] ?? 1;
                     const suggestion = recommendedDays[stop.id] ?? 1;
+                    const duration = routeIntelligence.durations[stop.id];
+                    const durationReason = duration?.arrivalLoad === "travel-heavy" ? routeCopy.heavyArrival
+                      : duration?.arrivalLoad === "substantial" ? routeCopy.substantialArrival
+                        : stop.intent === "landmark" ? routeCopy.landmark
+                          : (picks[stop.id] ?? []).length >= 3 ? routeCopy.selectedPlaces((picks[stop.id] ?? []).length)
+                            : routeCopy.lightArrival;
                     return (
                       <label className={styles.allocationRow} key={stop.id}>
-                        <span><strong>{stop.name}</strong><small>{stop.intent === "landmark" ? `${language === "es" ? "Lugar emblemático" : "Landmark"}${stop.locality ? ` · ${language === "es" ? "vía" : "via"} ${stop.locality}` : ""} · ` : ""}{(picks[stop.id] ?? []).length} {ui.placesSelected} · {ui.suggested} {suggestion} {suggestion === 1 ? ui.day : ui.days}</small></span>
+                        <span><strong>{stop.name}</strong><small>{stop.intent === "landmark" ? `${language === "es" ? "Lugar emblemático" : "Landmark"}${stop.locality ? ` · ${language === "es" ? "vía" : "via"} ${stop.locality}` : ""} · ` : ""}{(picks[stop.id] ?? []).length} {ui.placesSelected} · {ui.suggested} {suggestion} {suggestion === 1 ? ui.day : ui.days}</small><em className={styles.allocationInsight}>{durationReason}{duration ? ` · ${routeCopy.usable(duration.usableDays)}` : ""}</em></span>
                         <input type="range" min="1" max={Math.max(1, totalDays - Math.max(0, stops.length - 1))} value={days}
                           onChange={(event) => updateAllocatedDays(stop.id, Number(event.target.value))}
                           aria-label={`${stop.name}: ${days} days`} />
@@ -983,7 +1267,8 @@ export default function TripBuilder() {
                       <span className={styles.railNodeHead}><GripVertical className={styles.railGrip} aria-hidden /><strong>{stop.name}</strong></span>
                       <small>{(picks[stop.id] ?? []).length} {ui.selected} · {allocation[stop.id] ?? 1} {(allocation[stop.id] ?? 1) === 1 ? ui.day : ui.days}</small>
                       <span className={styles.railNodeActions}>
-                        <button type="button" onClick={() => setStops(stops.filter((item) => item.id !== stop.id))} aria-label={`${language === "es" ? "Quitar" : "Remove"} ${stop.name}`}><X /></button>
+                        <button type="button" className={scheduleLocks.stopIds.includes(stop.id) ? styles.intentChoiceOn : ""} onClick={() => toggleStopLock(stop.id)} aria-label={`${scheduleLocks.stopIds.includes(stop.id) ? (language === "es" ? "Desbloquear" : "Unlock") : (language === "es" ? "Bloquear" : "Lock")} ${stop.name}`}><Lock /></button>
+                        <button type="button" disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)} aria-label={`${language === "es" ? "Quitar" : "Remove"} ${stop.name}`}><X /></button>
                       </span>
                     </span>
                 </div>
@@ -1032,6 +1317,7 @@ export default function TripBuilder() {
             onClick={async () => {
               if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;
+              if (step === 0) acceptCurrentRoute("continue");
               if (step === 2) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
             }}>
             {step === 2 ? copy.buildDraft : copy.continue} →
