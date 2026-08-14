@@ -21,13 +21,23 @@ const interests: Array<[RouteInterest | "all", string]> = [
   ["all", "Any feeling"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"],
 ];
 
+type LiveImage = { id?: string; src: string; sourceUrl: string; sourceLabel: string; downloadLocation?: string };
+
+function imageQueryFor(route: RouteFamily) {
+  // Unsplash search quality drops sharply when every stop is packed into one
+  // query. Use the route's editorial image query where supplied; otherwise
+  // anchor the photograph to the first chapter and one defining interest.
+  const anchor = route.stops[0];
+  return route.imageQuery ?? `${anchor?.name ?? route.bases[0]} ${anchor?.country ?? route.countries[0]} ${route.interests[0]} travel`;
+}
+
 export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) {
   const [region, setRegion] = useState<RouteRegion | "all">("all");
   const [interest, setInterest] = useState<RouteInterest | "all">("all");
   const [country, setCountry] = useState("all");
   const countries = useMemo(() => Array.from(new Set(routes.flatMap((route) => route.countries))).sort(), [routes]);
   const filtered = useMemo(() => routes.filter((route) => (region === "all" || route.region === region) && (interest === "all" || route.interests.includes(interest)) && (country === "all" || route.countries.includes(country))), [routes, region, interest, country]);
-  const [liveImages, setLiveImages] = useState<Record<string, { src: string; sourceUrl: string; sourceLabel: string }>>({});
+  const [liveImages, setLiveImages] = useState<Record<string, LiveImage>>({});
   const [imageStatus, setImageStatus] = useState<Record<string, "loading" | "unavailable">>({});
   const requestedImages = useRef(new Set<string>());
   useEffect(() => {
@@ -37,20 +47,34 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
     pending.forEach((route) => requestedImages.current.add(route.key));
     setImageStatus((current) => ({ ...current, ...Object.fromEntries(pending.map((route) => [route.key, "loading"])) }));
     void Promise.allSettled(pending.map(async (route) => {
-      const response = await fetch(`/api/journey-route-image?query=${encodeURIComponent(route.imageQuery ?? `${route.bases[0]} ${route.countries[0]} travel`)}`);
-      const payload = await response.json() as { image?: { src: string; sourceUrl: string; sourceLabel: string } | null; configured?: boolean };
-      if (!response.ok || !payload.image) return { key: route.key, image: null, configured: payload.configured };
-      return { key: route.key, image: payload.image, configured: true };
+      const query = imageQueryFor(route);
+      const response = await fetch(`/api/journey-route-image?query=${encodeURIComponent(query)}`);
+      const payload = await response.json() as { image?: LiveImage | null; candidates?: LiveImage[]; configured?: boolean };
+      if (!response.ok || !payload.image) return { key: route.key, candidates: [] as LiveImage[], configured: payload.configured };
+      return { key: route.key, candidates: payload.candidates?.length ? payload.candidates : [payload.image], configured: true };
     })).then((results) => {
       if (!active) return;
-      const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, image: null, configured: true });
+      const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
       const missingConfiguration = settled.some((result) => result.configured === false);
       if (missingConfiguration) routes.forEach((route) => requestedImages.current.add(route.key));
-      const images = settled.flatMap((result) => result.image ? [[result.key, result.image] as const] : []);
+      const usedIds = new Set(Object.values(liveImages).map((image) => image.id ?? image.src));
+      const images = settled.flatMap((result) => {
+        const image = result.candidates.find((candidate) => !usedIds.has(candidate.id ?? candidate.src)) ?? result.candidates[0];
+        if (!image) return [];
+        usedIds.add(image.id ?? image.src);
+        return [[result.key, image] as const];
+      });
+      images.forEach(([, image]) => {
+        if (image.downloadLocation) void fetch("/api/journey-route-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ downloadLocation: image.downloadLocation }),
+        }).catch(() => undefined);
+      });
       setLiveImages((current) => ({ ...current, ...Object.fromEntries(images) }));
       const unavailableKeys = missingConfiguration
         ? routes.filter((route) => !routeImages[route.key]).map((route) => route.key)
-        : settled.filter((result) => !result.image).map((result) => result.key);
+        : settled.filter((result) => !result.candidates.length).map((result) => result.key);
       setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
     });
     return () => { active = false; };

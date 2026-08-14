@@ -10,7 +10,7 @@ type RouteHeroImageProps = {
   duration: string;
 };
 
-type LiveImage = { src: string; sourceUrl: string; sourceLabel: string };
+type LiveImage = { src: string; sourceUrl: string; sourceLabel: string; downloadLocation?: string };
 
 export default function RouteHeroImage({ image, query, eyebrow, duration }: RouteHeroImageProps) {
   const [liveImage, setLiveImage] = useState<LiveImage | null>(null);
@@ -24,6 +24,11 @@ export default function RouteHeroImage({ image, query, eyebrow, duration }: Rout
         const payload = await response.json() as { image?: LiveImage | null };
         if (!response.ok || !payload.image) throw new Error("No route image available");
         setLiveImage(payload.image);
+        if (payload.image.downloadLocation) void fetch("/api/journey-route-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ downloadLocation: payload.image.downloadLocation }),
+        }).catch(() => undefined);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("unavailable");
