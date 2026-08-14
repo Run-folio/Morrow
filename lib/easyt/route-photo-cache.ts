@@ -30,7 +30,8 @@ export function saveRoutePhoto(routeKey: string, photo: CachedRoutePhoto) {
 
 export async function findRoutePhotos(queries: string[], signal?: AbortSignal) {
   for (const query of queries.filter(Boolean)) {
-    const response = await fetch(`/api/journey-route-image?query=${encodeURIComponent(query)}`, { signal });
+    // A gallery request must never leave a card in a permanent loading state.
+    const response = await fetch(`/api/journey-route-image?query=${encodeURIComponent(query)}`, { signal: signal ?? AbortSignal.timeout(10_000) });
     const payload = await response.json() as { image?: CachedRoutePhoto | null; candidates?: CachedRoutePhoto[]; configured?: boolean };
     if (response.ok && payload.image) return { candidates: payload.candidates?.length ? payload.candidates : [payload.image], configured: true };
     if (payload.configured === false || response.status === 429) return { candidates: [] as CachedRoutePhoto[], configured: payload.configured };

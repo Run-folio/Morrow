@@ -48,9 +48,8 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
   const displayed = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const [liveImages, setLiveImages] = useState<Record<string, LiveImage>>({});
   const [imageStatus, setImageStatus] = useState<Record<string, "loading" | "unavailable">>({});
-  const [visibleRoutes, setVisibleRoutes] = useState<Set<string>>(new Set());
-  const requestedImages = useRef(new Set<string>());
-  const gridRef = useRef<HTMLDivElement>(null);
+  const inFlightImages = useRef(new Set<string>());
+  const [queueVersion, setQueueVersion] = useState(0);
   useEffect(() => {
     setLiveImages((current) => ({ ...current, ...Object.fromEntries(routes.flatMap((route) => {
       const cached = readRoutePhoto(route.key);
@@ -58,23 +57,12 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
     })) }));
   }, [routes]);
   useEffect(() => {
-    const grid = gridRef.current;
-    if (!grid) return;
-    const observer = new IntersectionObserver((entries) => {
-      setVisibleRoutes((current) => {
-        const next = new Set(current);
-        entries.forEach((entry) => { if (entry.isIntersecting) next.add((entry.target as HTMLElement).dataset.routeKey ?? ""); });
-        return next;
-      });
-    }, { rootMargin: "500px 0px" });
-    grid.querySelectorAll<HTMLElement>("[data-route-key]").forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-  }, [displayed]);
-  useEffect(() => {
     let active = true;
-    const pending = displayed.filter((route) => visibleRoutes.has(route.key) && !routeImages[route.key] && !liveImages[route.key] && !requestedImages.current.has(route.key)).slice(0, 4);
+    // Resolve only the routes the traveller has asked to see, with a small
+    // queue rather than an intersection-observer race or an API burst.
+    const pending = displayed.filter((route) => !routeImages[route.key] && !liveImages[route.key] && !inFlightImages.current.has(route.key) && imageStatus[route.key] !== "unavailable").slice(0, 2);
     if (!pending.length) return;
-    pending.forEach((route) => requestedImages.current.add(route.key));
+    pending.forEach((route) => inFlightImages.current.add(route.key));
     setImageStatus((current) => ({ ...current, ...Object.fromEntries(pending.map((route) => [route.key, "loading"])) }));
     void Promise.allSettled(pending.map(async (route) => {
       const result = await findRoutePhotos(imageQueriesFor(route));
@@ -82,8 +70,6 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
     })).then((results) => {
       if (!active) return;
       const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
-      const missingConfiguration = settled.some((result) => result.configured === false);
-      if (missingConfiguration) displayed.forEach((route) => requestedImages.current.add(route.key));
       const usedIds = new Set(Object.values(liveImages).map((image) => image.id ?? image.src));
       const images = settled.flatMap((result) => {
         const image = result.candidates.find((candidate) => !usedIds.has(candidate.id ?? candidate.src)) ?? result.candidates[0];
@@ -93,13 +79,14 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
       });
       images.forEach(([key, image]) => { saveRoutePhoto(key, image); trackRoutePhoto(image); });
       setLiveImages((current) => ({ ...current, ...Object.fromEntries(images) }));
-      const unavailableKeys = missingConfiguration
-        ? routes.filter((route) => !routeImages[route.key]).map((route) => route.key)
-        : settled.filter((result) => !result.candidates.length).map((result) => result.key);
+      const unavailableKeys = settled.filter((result) => !result.candidates.length).map((result) => result.key);
       setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
+    }).finally(() => {
+      pending.forEach((route) => inFlightImages.current.delete(route.key));
+      if (active) setQueueVersion((version) => version + 1);
     });
     return () => { active = false; };
-  }, [displayed, routes, liveImages, visibleRoutes]);
+  }, [displayed, liveImages, queueVersion]);
 
   const resetVisibleCount = () => setVisibleCount(ROUTES_PER_PAGE);
 
@@ -111,16 +98,16 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
         <div><label className={styles.selectLabel} htmlFor="discover-country">COUNTRY</label><select id="discover-country" className={styles.select} value={country} onChange={(event) => { setCountry(event.target.value); resetVisibleCount(); }}><option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}</select></div>
       </div>
       <div className={styles.resultHead}><p>{filtered.length} thoughtful starting points</p><span>{Math.min(displayed.length, filtered.length)} of {filtered.length} shown · every route is editable.</span></div>
-      <div className={styles.grid} ref={gridRef}>
+      <div className={styles.grid}>
         {displayed.map((route) => {
           const curatedImage = routeImages[route.key];
           const liveImage = liveImages[route.key];
           const image = liveImage?.src ?? curatedImage;
           const status = imageStatus[route.key];
-          return <Link className={styles.card} href={`/journey/routes/${route.key}`} key={route.key} data-route-key={route.key}>
-          <div className={`${styles.image} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined}><span>{route.region.replace("-", " ")} · {route.suggestedDays.ideal} days</span>{liveImage ? <a className={styles.imageCredit} href={liveImage.sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{liveImage.sourceLabel}</a> : !image && status === "loading" ? <em>Finding a photograph…</em> : !image && status === "unavailable" ? <em>Photography unavailable</em> : null}</div>
-          <div className={styles.cardBody}><small>{route.countries.join(" · ")}</small><h2>{route.title}</h2><p>{route.bestFor}</p><dl><div><dt><MapPin /> Bases</dt><dd>{route.bases.join(" · ")}</dd></div><div><dt><CalendarDays /> Shape</dt><dd>{route.suggestedDays.min}–{route.suggestedDays.max} days · {route.confidence} confidence</dd></div></dl><b>See the route <ArrowRight /></b></div>
-        </Link>;
+          return <article className={styles.card} key={route.key} data-route-key={route.key}>
+          <div className={`${styles.image} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined}><Link className={styles.imageLink} href={`/journey/routes/${route.key}`} aria-label={`See ${route.title}`} /><span>{route.region.replace("-", " ")} · {route.suggestedDays.ideal} days</span>{liveImage ? <a className={styles.imageCredit} href={liveImage.sourceUrl} target="_blank" rel="noreferrer">{liveImage.sourceLabel}</a> : !image ? <em>{status === "unavailable" ? "Photography unavailable" : "Finding a photograph…"}</em> : null}</div>
+          <Link className={styles.cardBody} href={`/journey/routes/${route.key}`}><small>{route.countries.join(" · ")}</small><h2>{route.title}</h2><p>{route.bestFor}</p><dl><div><dt><MapPin /> Bases</dt><dd>{route.bases.join(" · ")}</dd></div><div><dt><CalendarDays /> Shape</dt><dd>{route.suggestedDays.min}–{route.suggestedDays.max} days · {route.confidence} confidence</dd></div></dl><b>See the route <ArrowRight /></b></Link>
+        </article>;
         })}
       </div>
       {displayed.length < filtered.length && <div className={styles.moreWrap}>

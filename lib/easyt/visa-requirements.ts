@@ -17,8 +17,25 @@ export type TouristEntryRequirement = {
 };
 
 type DatasetRule = { status: string; days?: number };
-type Dataset = { source: string; sourceUpdatedAt: string; rules: Record<string, Record<string, DatasetRule>> };
+type Dataset = {
+  source: string;
+  sourceUpdatedAt: string;
+  passportCountries?: { code: string; name: string }[];
+  countryCodes?: Record<string, string>;
+  rules: Record<string, Record<string, DatasetRule>>;
+};
 const dataset = passportIndex as Dataset;
+
+const flagFromIso2 = (code: string | undefined) => code && /^[a-z]{2}$/i.test(code)
+  ? [...code.toUpperCase()].map((character) => String.fromCodePoint(127397 + character.charCodeAt(0))).join("")
+  : "🌐";
+
+/** Available ordinary-passport nationalities in the bundled Passport Index snapshot. */
+export const supportedPassportCountries = (dataset.passportCountries?.map(({ name }) => name) ?? Object.keys(dataset.rules))
+  .sort((a, b) => a.localeCompare(b));
+
+/** Country flag for passport and destination controls, using the bundled ISO country codes. */
+export const countryFlagFor = (country: string) => flagFromIso2(dataset.countryCodes?.[canonicalCountry(country)]);
 
 const SCHENGEN_DESTINATIONS = new Set([
   "Austria", "Croatia", "Denmark", "Finland", "France", "Germany", "Greece", "Italy",

@@ -6,13 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import EasyTNavigation from "../easyt-navigation";
 import { canonicalCountry, entrySourcesByCountry, type EntrySource } from "@/lib/easyt/travel-readiness";
-import { touristEntryRequirementFor, type TouristEntryRequirement } from "@/lib/easyt/visa-requirements";
+import { countryFlagFor, supportedPassportCountries, touristEntryRequirementFor, type TouristEntryRequirement } from "@/lib/easyt/visa-requirements";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./passport.module.css";
-
-const passportOptions = [
-  "Australia", "Canada", "Denmark", "Finland", "France", "Germany", "Ireland", "Japan", "Netherlands", "New Zealand", "Norway", "Singapore", "South Korea", "Spain", "Sweden", "United Kingdom", "United States",
-];
 
 export default function PassportDestinationClient() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
@@ -47,13 +43,13 @@ export default function PassportDestinationClient() {
     </section>
     <section className={styles.tool} aria-label={t.eyebrow}>
       <div className={styles.form}>
-        <label><span>{t.passport}</span><select value={nationality} onChange={(event) => setNationality(event.target.value)}>{passportOptions.map((country) => <option key={country}>{country}</option>)}</select></label>
-        <label><span>{t.destination}</span><select value={destination} onChange={(event) => setDestination(event.target.value)}>{destinations.map((country) => <option key={country}>{country}</option>)}</select></label>
+        <label><span>{t.passport}</span><select value={nationality} onChange={(event) => setNationality(event.target.value)}>{supportedPassportCountries.map((country) => <option key={country} value={country}>{countryFlagFor(country)} {country}</option>)}</select></label>
+        <label><span>{t.destination}</span><select value={destination} onChange={(event) => setDestination(event.target.value)}>{destinations.map((country) => <option key={country} value={country}>{countryFlagFor(country)} {country}</option>)}</select></label>
         <button type="button" onClick={checkDestination}>{t.check}<ArrowRight aria-hidden="true" /></button>
       </div>
       <p className={styles.privacy}><ShieldCheck aria-hidden="true" />{t.private}</p>
       {source && requirement && <article className={styles.result}>
-        <div className={styles.resultHeading}><div><p>{t.result}</p><h2>{nationality} → {source.country}</h2></div><span className={`${styles.status} ${requirement.status === "not-verified" ? styles.notVerified : ""}`}>{requirement.statusLabel}</span></div>
+        <div className={styles.resultHeading}><div><p>{t.result}</p><h2><span className={styles.countryFlag} aria-hidden="true">{countryFlagFor(nationality)}</span>{nationality} <span aria-hidden="true">→</span> <span className={styles.countryFlag} aria-hidden="true">{countryFlagFor(source.country)}</span>{source.country}</h2></div><span className={`${styles.status} ${requirement.status === "not-verified" ? styles.notVerified : ""}`}>{requirement.statusLabel}</span></div>
         <div className={styles.facts}>
           <section><span>{t.visa}</span><strong>{requirement.visaAnswer}</strong></section>
           <section><span>{t.stay}</span><strong>{requirement.permittedStay}</strong></section>

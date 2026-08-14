@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { touristEntryRequirementFor } from "../lib/easyt/visa-requirements.ts";
+import { countryFlagFor, supportedPassportCountries, touristEntryRequirementFor } from "../lib/easyt/visa-requirements.ts";
+
+test("exposes every passport nationality available in the bundled snapshot", () => {
+  assert.ok(supportedPassportCountries.length >= 190);
+  assert.ok(supportedPassportCountries.includes("Guatemala"));
+  assert.equal(countryFlagFor("United Kingdom"), "🇬🇧");
+  assert.equal(countryFlagFor("Guatemala"), "🇬🇹");
+});
 
 test("shows the dataset-backed UK to Greece tourist rule", () => {
   const result = touristEntryRequirementFor("United Kingdom", "Greece");
