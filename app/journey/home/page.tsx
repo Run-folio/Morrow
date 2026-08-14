@@ -5,7 +5,7 @@ import ProductShowcase from "./product-showcase";
 import HomeProof from "./home-proof";
 import HomeHeroTools from "./home-hero-tools";
 
-export const metadata = { title: "Travel your way · EasyT" };
+export const metadata = { title: "Travel your way · Morrovia" };
 
 export default function EasyTHomePage() {
   return (

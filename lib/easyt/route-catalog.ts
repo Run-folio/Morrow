@@ -212,6 +212,31 @@ const coreRouteFamilies: RouteFamily[] = [
 ];
 
 const extraRouteFamilies: RouteFamily[] = [
+  {
+    key: "thailand-vietnam-cambodia",
+    title: "Southeast Asia, with room to land",
+    region: "asia",
+    countries: ["Thailand", "Vietnam", "Cambodia"],
+    interests: ["food", "culture", "nature"],
+    bestFor: "Bangkok energy, central Vietnam and Angkor, with full travel days where the distances ask for them.",
+    suggestedDays: { min: 14, ideal: 18, max: 25 },
+    bases: ["Bangkok", "Hoi An", "Siem Reap"],
+    stops: [
+      { name: "Bangkok", country: "Thailand", coordinates: [100.5018, 13.7563], minimumNights: 4, reason: "A food-led opening with strong international connections and a softer first day." },
+      { name: "Hoi An", country: "Vietnam", coordinates: [108.338, 15.88], minimumNights: 4, reason: "A slower central base for food, bicycles and coast time after the flight." },
+      { name: "Siem Reap", country: "Cambodia", coordinates: [103.8564, 13.3633], minimumNights: 4, reason: "A protected heritage finish that gives Angkor early starts and recovery time." },
+    ],
+    connections: [
+      { from: "Bangkok", to: "Hoi An", mode: "flight", planningMinutes: 300, note: `Cross-border flight allowance via Da Nang. ${verify}`, confidence: "needs-review" },
+      { from: "Hoi An", to: "Siem Reap", mode: "flight", planningMinutes: 300, note: `Cross-border flight allowance. Confirm current schedules and entry rules. ${verify}`, confidence: "needs-review" },
+    ],
+    seasonalNotes: ["Monsoon patterns differ across Thailand, central Vietnam and Cambodia; choose dates around the specific route, not a single regional season.", "Treat cross-border flight days as light days and verify entry requirements before booking."],
+    highlights: ["Bangkok food neighbourhoods", "Hoi An old town and coast", "Angkor Archaeological Park"],
+    sourceLinks: [{ label: "Tourism Thailand", url: "https://www.tourismthailand.org/", covers: "Official destination context" }, { label: "Vietnam Tourism", url: "https://vietnam.travel/", covers: "Official destination context" }, { label: "Visit Cambodia", url: "https://www.tourismcambodia.com/", covers: "Official destination context" }],
+    imageQuery: "Hoi An Vietnam lanterns travel",
+    confidence: "needs-review",
+    reviewedAt: "2026-08-14",
+  },
   { key: "thailand-laos", title: "Thailand to Laos, slowly", region: "asia", countries: ["Thailand", "Laos"], interests: ["food", "nature", "culture"], bestFor: "Markets, river towns and a softer overland route through mainland Southeast Asia.", suggestedDays: { min: 10, ideal: 14, max: 20 }, bases: ["Bangkok", "Chiang Mai", "Luang Prabang"], stops: [{ name: "Bangkok", country: "Thailand", coordinates: [100.5018, 13.7563], minimumNights: 3, reason: "A high-energy opening with food and easy onward connections." }, { name: "Chiang Mai", country: "Thailand", coordinates: [98.9853, 18.7883], minimumNights: 3, reason: "A calmer northern base for markets, temples and mountain days." }, { name: "Luang Prabang", country: "Laos", coordinates: [102.135, 19.8856], minimumNights: 3, reason: "A gentle river finish with room to slow down." }], connections: [], seasonalNotes: ["Rain and river conditions vary by month; keep the border day flexible."], sourceLinks: [{ label: "Tourism Thailand", url: "https://www.tourismthailand.org/", covers: "Official destination context" }], confidence: "needs-review", reviewedAt: "2026-08-09" },
   { key: "south-korea", title: "South Korea by rail", region: "asia", countries: ["South Korea"], interests: ["food", "rail", "culture"], bestFor: "Seoul energy, coastal food towns and a simple rail spine.", suggestedDays: { min: 8, ideal: 12, max: 16 }, bases: ["Seoul", "Gyeongju", "Busan"], stops: [{ name: "Seoul", country: "South Korea", coordinates: [126.978, 37.5665], minimumNights: 4, reason: "A deep urban opening with neighbourhoods worth lingering in." }, { name: "Gyeongju", country: "South Korea", coordinates: [129.2247, 35.8562], minimumNights: 2, reason: "A heritage pause between city chapters." }, { name: "Busan", country: "South Korea", coordinates: [129.0756, 35.1796], minimumNights: 3, reason: "A coastal, food-led finish." }], connections: [], seasonalNotes: ["Spring and autumn are popular; reserve rail and stays earlier."], sourceLinks: [{ label: "Visit Korea", url: "https://english.visitkorea.or.kr/", covers: "Official destination context" }], confidence: "medium", reviewedAt: "2026-08-09" },
   { key: "malaysia-singapore", title: "Malaysia to Singapore, by appetite", region: "asia", countries: ["Malaysia", "Singapore"], interests: ["food", "culture", "coast"], bestFor: "A low-friction food route from street markets to a polished city finish.", suggestedDays: { min: 8, ideal: 11, max: 16 }, bases: ["Kuala Lumpur", "Penang", "Singapore"], stops: [{ name: "Kuala Lumpur", country: "Malaysia", coordinates: [101.6869, 3.139], minimumNights: 3, reason: "A diverse opening that rewards eating across neighbourhoods." }, { name: "Penang", country: "Malaysia", coordinates: [100.3327, 5.4141], minimumNights: 3, reason: "A compact food and heritage base." }, { name: "Singapore", country: "Singapore", coordinates: [103.8198, 1.3521], minimumNights: 3, reason: "A clean, easy final chapter." }], connections: [], seasonalNotes: ["Heat is year-round; plan outdoor days around the morning."], sourceLinks: [{ label: "Malaysia Travel", url: "https://www.malaysia.travel/", covers: "Official destination context" }], confidence: "medium", reviewedAt: "2026-08-09" },

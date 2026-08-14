@@ -15,7 +15,7 @@ const primaryLinks = [
 ];
 
 const journeyPrototype = {
-  label: "EasyT",
+  label: "Morrovia",
   detail: "Travel companion prototype",
   href: "/journey",
 };

@@ -156,7 +156,7 @@ export function JourneyGlobe({ stops, legs, selectedId, selectedDayId, activeIte
   const selected = mappedStops.find((stop) => stop.id === selectedId) ?? mappedStops[0];
   if (!selected) return <div className="journey-map journey-map--unmapped">This route needs a verified map location before it can be shown.</div>;
   // The original proof uses a Pacific-centred globe as part of its visual
-  // story. Generated EasyT plans instead use a standard Mercator map so every
+  // story. Generated Morrovia plans instead use a standard Mercator map so every
   // city, including European routes, is positioned and zoomed consistently.
   const projection = useMemo(() => variant === "planner"
     ? geoMercator().fitExtent([[22, 62], [width - 22, height - 22]], land)

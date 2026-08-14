@@ -86,7 +86,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     results.push(recommendation(trip, {
       rule: "connection-confidence",
       severity: "info",
-      message: `The connection into ${destination} still needs a travel mode before EasyT can judge the day realistically.`,
+      message: `The connection into ${destination} still needs a travel mode before Morrovia can judge the day realistically.`,
       evidence: "No rail, road, ferry or flight mode has been confirmed for this leg.",
       affectedDays: trip.planItems.filter((item) => item.stopId === unknownLeg.toStopId).map((item) => item.dayNumber),
       confidence: "high",
@@ -101,7 +101,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       rule: "recovery-time",
       severity: trip.brief.pace === "slow" ? "warning" : "info",
       message: "Two travel-heavy days sit back to back, leaving little room to arrive, recover and explore.",
-      evidence: "EasyT found consecutive arrival or transport days in the current plan.",
+      evidence: "Morrovia found consecutive arrival or transport days in the current plan.",
       affectedDays: [...transportDays].sort((a, b) => a - b),
       confidence: "medium",
       proposedChange: { action: "suggest-extra-night", stopIds: trip.stops.filter((stop) => stop.nights === 1).map((stop) => stop.id) },

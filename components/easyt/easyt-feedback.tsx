@@ -24,8 +24,8 @@ export function EasyTFeedback() {
   }, []);
 
   const copy = language === "es"
-    ? { close: "Cerrar", aria: "Compartir comentarios", thanks: "Gracias.", sent: "Tus comentarios ayudan a mejorar EasyT.", title: "¿Cómo se siente EasyT?", subtitle: "Valoración rápida, nota opcional.", rate: "Valora EasyT del 1 al 5", placeholder: "¿Qué podríamos mejorar? (opcional)", send: "Enviar comentarios", sending: "Enviando…", error: "Guardado en este dispositivo; inténtalo de nuevo más tarde." }
-    : { close: "Dismiss feedback", aria: "Share feedback", thanks: "Thank you.", sent: "Your feedback helps shape EasyT.", title: "How’s EasyT feeling?", subtitle: "Quick rating, optional note.", rate: "Rate EasyT from 1 to 5", placeholder: "Anything we could improve? (optional)", send: "Send feedback", sending: "Sending…", error: "Saved privately on this device. Try again later." };
+    ? { close: "Cerrar", aria: "Compartir comentarios", thanks: "Gracias.", sent: "Tus comentarios ayudan a mejorar Morrovia.", title: "¿Cómo se siente Morrovia?", subtitle: "Valoración rápida, nota opcional.", rate: "Valora Morrovia del 1 al 5", placeholder: "¿Qué podríamos mejorar? (opcional)", send: "Enviar comentarios", sending: "Enviando…", error: "Guardado en este dispositivo; inténtalo de nuevo más tarde." }
+    : { close: "Dismiss feedback", aria: "Share feedback", thanks: "Thank you.", sent: "Your feedback helps shape Morrovia.", title: "How’s Morrovia feeling?", subtitle: "Quick rating, optional note.", rate: "Rate Morrovia from 1 to 5", placeholder: "Anything we could improve? (optional)", send: "Send feedback", sending: "Sending…", error: "Saved privately on this device. Try again later." };
 
   const close = () => {
     localStorage.setItem(storageKey, "1");

@@ -56,19 +56,19 @@ export default function ProfileForm({
   const [travelReadinessProfile, setTravelReadinessProfile] = useState<TravelReadinessProfile>(initialTravelReadinessProfile);
   const copy = easytCopy[language];
   const profileGuide = language === "es"
-    ? { eyebrow: "Punto de partida", title: "Configúralo una vez. Ajusta cada viaje cuando quieras.", detail: "Estas preferencias solo dan a EasyT una dirección inicial. No reservan nada ni limitan las decisiones de tu viaje.", action: "Crear un viaje" }
-    : { eyebrow: "Starting point", title: "Set this once. Change every trip whenever you want.", detail: "These preferences only give EasyT an initial direction. They do not book anything or limit your decisions on a trip.", action: "Create a trip" };
+    ? { eyebrow: "Punto de partida", title: "Configúralo una vez. Ajusta cada viaje cuando quieras.", detail: "Estas preferencias solo dan a Morrovia una dirección inicial. No reservan nada ni limitan las decisiones de tu viaje.", action: "Crear un viaje" }
+    : { eyebrow: "Starting point", title: "Set this once. Change every trip whenever you want.", detail: "These preferences only give Morrovia an initial direction. They do not book anything or limit your decisions on a trip.", action: "Create a trip" };
   const messages = language === "es"
     ? {
         profileSaved: "Tu perfil se ha actualizado.",
         profileError: "No pudimos guardar tu perfil ahora. Revisa tu conexión e inténtalo de nuevo.",
-        preferencesSaved: "Preferencias guardadas. EasyT las usará como punto de partida para nuevos viajes.",
+        preferencesSaved: "Preferencias guardadas. Morrovia las usará como punto de partida para nuevos viajes.",
         preferencesError: "No pudimos guardar tus preferencias. Inténtalo de nuevo; tu viaje actual no cambiará.",
       }
     : {
         profileSaved: "Your profile has been updated.",
         profileError: "We could not save your profile just now. Check your connection and try again.",
-        preferencesSaved: "Travel preferences saved. EasyT will use them as a starting point for new trips.",
+        preferencesSaved: "Travel preferences saved. Morrovia will use them as a starting point for new trips.",
         preferencesError: "We could not save your travel preferences. Try again; your current trip will not change.",
       };
 

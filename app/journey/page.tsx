@@ -529,7 +529,7 @@ export default function JourneyPage() {
       }
       return { ...trip, brief: { ...trip.brief, customActivities }, planItems };
     }, "Activity moved");
-    setPlannerWarning(from.dayNumber === to.dayNumber ? "Activity order updated." : "Activity moved to a different day. EasyT has recalculated the travel sequence.");
+    setPlannerWarning(from.dayNumber === to.dayNumber ? "Activity order updated." : "Activity moved to a different day. Morrovia has recalculated the travel sequence.");
   }, [updatePlannerTrip]);
 
   const addActivity = () => {
@@ -927,7 +927,7 @@ export default function JourneyPage() {
               {isPlanningPreview && customTrip && session?.user ? <button type="button" onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.exportPdf}</button> : null}
             </div>
           </details>
-          <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="EasyT account navigation">
+          <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="Morrovia account navigation">
             {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>Trip prep</Link> : null}
             <Link href="/journey/dashboard" className={styles.myTripsLink}>{planCopy.myTrips}</Link>
             {isPlanningPreview && customTrip && session?.user ? <button type="button" className={styles.exportPlanLink} onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.export}</button> : null}

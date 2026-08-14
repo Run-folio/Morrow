@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
     setBusy(false);
   };
   return <main className={styles.page}><EasyTNavigation current="login" /><div className={styles.authWrap}><div className={styles.authGrid}><section className={styles.authPanel}>
-    <p className={styles.eyebrow}>EasyT account</p><h2>Reset your password.</h2>
+    <p className={styles.eyebrow}>Morrovia account</p><h2>Reset your password.</h2>
     <p className={styles.muted}>{sent ? "If an account exists for that email, a reset link is on its way." : "Enter your email and we’ll send a secure reset link."}</p>
     {!sent && <form className={styles.form} onSubmit={submit}><EasyTField label="Email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" />{error && <p className={styles.error}>{error}</p>}<EasyTButton type="submit" fullWidth loading={busy}>Send reset link →</EasyTButton></form>}
     <Link className={styles.forgotLink} href="/journey/login">Back to sign in</Link>

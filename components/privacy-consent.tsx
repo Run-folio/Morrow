@@ -31,7 +31,7 @@ export default function PrivacyConsent() {
     <aside className={styles.notice} aria-label="Analytics privacy choice">
       <div>
         <strong>Choose optional analytics</strong>
-        <p>EasyT can use analytics to understand what is working. You can continue without it.</p>
+        <p>Morrovia can use analytics to understand what is working. You can continue without it.</p>
         <Link href="/journey/privacy">Read the privacy notice</Link>
       </div>
       <div className={styles.actions}>

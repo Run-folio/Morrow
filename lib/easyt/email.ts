@@ -16,11 +16,11 @@ export function emailLayout(input: { eyebrow: string; title: string; body: strin
 }
 
 export function verificationEmail(url: string) {
-  return { subject: "Verify your EasyT account", template: "verification" as const, text: `Welcome to EasyT. Verify your account: ${url}`, html: emailLayout({ eyebrow: "EasyT account", title: "Keep your trips together.", body: `<p>Confirm your email address to save plans, collect stamps and access EasyT from any device.</p>${emailButton(url, "Verify email")}`, footer: "If you didn’t create an EasyT account, you can ignore this email." }) };
+  return { subject: "Verify your Morrovia account", template: "verification" as const, text: `Welcome to Morrovia. Verify your account: ${url}`, html: emailLayout({ eyebrow: "Morrovia account", title: "Keep your trips together.", body: `<p>Confirm your email address to save plans, collect stamps and access Morrovia from any device.</p>${emailButton(url, "Verify email")}`, footer: "If you didn’t create a Morrovia account, you can ignore this email." }) };
 }
 
 export function passwordResetEmail(url: string) {
-  return { subject: "Reset your EasyT password", template: "password_reset" as const, text: `Reset your EasyT password: ${url}`, html: emailLayout({ eyebrow: "EasyT security", title: "Reset your password.", body: `<p>We received a request to reset your EasyT password.</p>${emailButton(url, "Reset password")}`, footer: "If you did not request this, you can safely ignore this email." }) };
+  return { subject: "Reset your Morrovia password", template: "password_reset" as const, text: `Reset your Morrovia password: ${url}`, html: emailLayout({ eyebrow: "Morrovia security", title: "Reset your password.", body: `<p>We received a request to reset your Morrovia password.</p>${emailButton(url, "Reset password")}`, footer: "If you did not request this, you can safely ignore this email." }) };
 }
 
 export function tripGiftEmail(input: { title: string; note?: string | null; url: string }) {

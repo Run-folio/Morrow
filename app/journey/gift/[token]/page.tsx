@@ -10,7 +10,7 @@ import ClaimGift from "./claim-gift";
 import styles from "../../account.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "A trip for you · EasyT" };
+export const metadata = { title: "A trip for you · Morrovia" };
 
 type PageProps = { params: Promise<{ token: string }> };
 

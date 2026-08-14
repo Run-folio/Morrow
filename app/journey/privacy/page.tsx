@@ -2,8 +2,8 @@ import EasyTNavigation from "../easyt-navigation";
 import PrivacyNotice from "./privacy-notice";
 
 export const metadata = {
-  title: "Privacy · EasyT",
-  description: "How EasyT collects, uses and protects travel-planning data.",
+  title: "Privacy · Morrovia",
+  description: "How Morrovia collects, uses and protects travel-planning data.",
   robots: { index: true, follow: true },
 };
 

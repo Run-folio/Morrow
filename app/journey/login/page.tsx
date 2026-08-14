@@ -3,7 +3,7 @@ import EasyTNavigation from "../easyt-navigation";
 import styles from "../account.module.css";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 
-export const metadata = { title: "Sign in · EasyT" };
+export const metadata = { title: "Sign in · Morrovia" };
 
 export default async function EasyTLoginPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string; mode?: string; email?: string; sent?: string }> }) {
   const { next, setup, mode, email, sent } = await searchParams;

@@ -8,7 +8,7 @@ import styles from "./stamped.module.css";
 import mobilePolish from "./stamped-mobile-polish.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Stamped · EasyT" };
+export const metadata = { title: "Stamped · Morrovia" };
 
 export default async function StampedPage() {
   let session: any = null;

@@ -9,7 +9,7 @@ import FeedbackTriageList from "./feedback-triage-list";
 import styles from "./feedback.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Feedback · EasyT" };
+export const metadata = { title: "Feedback · Morrovia" };
 
 export default async function EasyTAdminFeedbackPage() {
   if (!isEasyTAuthConfigured()) redirect("/journey/login?setup=required");

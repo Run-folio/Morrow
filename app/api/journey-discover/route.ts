@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       origin: "*",
     });
     const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
-      headers: { "User-Agent": "EasyT journey planner/1.0 (https://shaunwhiting.com)" },
+      headers: { "User-Agent": "Morrovia journey planner/1.0 (https://morrovia.com)" },
       next: { revalidate: 60 * 60 * 24 * 7 },
     });
     if (!response.ok) throw new Error("Wikipedia lookup failed");

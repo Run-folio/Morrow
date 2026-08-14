@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CloudSun,
   ExternalLink,
-  Landmark,
   MapPin,
   Route,
   ShieldCheck,
@@ -22,6 +21,7 @@ import { routeFamilyByKey } from "@/lib/easyt/route-catalog";
 import { routeImages } from "@/lib/easyt/route-images";
 import { countryFlagFor, touristEntryRequirementFor } from "@/lib/easyt/visa-requirements";
 import RouteHeroImage from "./route-hero-image";
+import RouteAttractionImage from "./route-attraction-image";
 import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
 
@@ -107,7 +107,7 @@ function formatMinutes(minutes: number | null) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const story = storyForRoute(slug);
-  return { title: story ? `${story.title} · EasyT` : "Route · EasyT" };
+  return { title: story ? `${story.title} · Morrovia` : "Route · Morrovia" };
 }
 
 export const dynamic = "force-dynamic";
@@ -186,7 +186,13 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
 
     <section className={styles.attractionsSection}>
       <div className={styles.sectionIntro}><div><p className={styles.eyebrow}>Worth making time for</p><h2>Key attractions along the route</h2></div><p>Use these as anchors, not a checklist. The builder keeps every day editable.</p></div>
-      <div className={styles.attractionGrid}>{attractions.map((attraction, index) => <article key={attraction}><span>{String(index + 1).padStart(2, "0")}</span><Landmark aria-hidden="true" /><h3>{attraction}</h3><p>{seed.stops[index % seed.stops.length]?.name}</p></article>)}</div>
+      <div className={styles.attractionGrid}>{attractions.map((attraction, index) => {
+        const stop = seed.stops[index % seed.stops.length];
+        return <article key={attraction}>
+          <RouteAttractionImage routeKey={slug} attraction={attraction} stop={stop?.name ?? route?.bases[0] ?? story.title} country={stop?.country ?? countryNames[0] ?? "travel"} index={index} />
+          <div className={styles.attractionCopy}><span>{String(index + 1).padStart(2, "0")}</span><h3>{attraction}</h3><p>{stop?.name}</p></div>
+        </article>;
+      })}</div>
     </section>
 
     <section className={styles.countrySection}>

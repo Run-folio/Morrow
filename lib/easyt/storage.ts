@@ -28,7 +28,7 @@ export async function saveTripToEasyT(trip: EasyTTrip): Promise<EasyTTrip> {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(payload?.error || "EasyT cloud save failed.");
+    throw new Error(payload?.error || "Morrovia cloud save failed.");
   }
   const payload = await response.json() as { trip: EasyTTrip };
   return payload.trip;
@@ -37,7 +37,7 @@ export async function saveTripToEasyT(trip: EasyTTrip): Promise<EasyTTrip> {
 export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {
   const response = await fetch(`/api/easyt/trips/${encodeURIComponent(tripId)}`, { cache: "no-store" });
   if (response.status === 404 || response.status === 401) return null;
-  if (!response.ok) throw new Error("EasyT cloud load failed.");
+  if (!response.ok) throw new Error("Morrovia cloud load failed.");
   const payload = await response.json() as { trip: EasyTTrip };
   return isEasyTTrip(payload.trip) ? payload.trip : null;
 }

@@ -5,7 +5,7 @@ import DiscoveryBrowser from "./discovery-browser";
 import styles from "./discover.module.css";
 
 export const metadata = {
-  title: "Find your route · EasyT",
+  title: "Find your route · Morrovia",
   description: "Browse thoughtful, editable routes by region, feeling and trip length.",
 };
 

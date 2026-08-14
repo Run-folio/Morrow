@@ -67,7 +67,7 @@ export default function LoginForm({
   };
 
   return <section className={styles.authPanel}>
-    <p className={styles.eyebrow}>EasyT account</p>
+    <p className={styles.eyebrow}>Morrovia account</p>
     <h2>{mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
     <p className={styles.muted}>{verificationSent ? `Your account is ready. We sent a one-time verification link to ${initialEmail || "your email"}. Confirm it, then sign in below.` : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
     {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
@@ -90,6 +90,6 @@ export default function LoginForm({
       <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
     </form>
     {googleEnabled && <><div className={styles.divider}>or</div><EasyTButton type="button" variant="secondary" fullWidth loading={googleBusy} disabled={!configured || busy} onClick={continueWithGoogle}>Continue with Google</EasyTButton></>}
-    <p className={styles.legalLink}>Read how EasyT handles your data in our <a href="/journey/privacy">Privacy notice</a>.</p>
+    <p className={styles.legalLink}>Read how Morrovia handles your data in our <a href="/journey/privacy">Privacy notice</a>.</p>
   </section>;
 }

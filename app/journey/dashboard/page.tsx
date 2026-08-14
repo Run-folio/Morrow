@@ -13,7 +13,7 @@ import styles from "../account.module.css";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Trips · EasyT" };
+export const metadata = { title: "Trips · Morrovia" };
 
 export default async function EasyTDashboardPage() {
   if (!isEasyTAuthConfigured()) {
