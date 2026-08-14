@@ -7,15 +7,22 @@ import {
   Landmark,
   MapPin,
   Route,
+  ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import EasyTNavigation from "../../easyt-navigation";
+import { getAuth } from "@/lib/auth";
 import { listEasyTRouteControls } from "@/lib/easyt/admin-content";
+import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 import { inspirationByKey, type InspirationStop } from "@/lib/easyt/inspiration";
+import { ensureEasyTUser, getEasyTUserPreferences } from "@/lib/easyt/repository";
 import { routeFamilyByKey } from "@/lib/easyt/route-catalog";
 import { routeImages } from "@/lib/easyt/route-images";
+import { countryFlagFor, touristEntryRequirementFor } from "@/lib/easyt/visa-requirements";
 import RouteHeroImage from "./route-hero-image";
+import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
 
 type RouteStory = {
@@ -82,45 +89,11 @@ function storyForRoute(slug: string): RouteStory | null {
   };
 }
 
-function routeMapPoints(stops: InspirationStop[]) {
-  const longitudes = stops.map((stop) => stop.coordinates[0]);
-  const latitudes = stops.map((stop) => stop.coordinates[1]);
-  const minLongitude = Math.min(...longitudes);
-  const maxLongitude = Math.max(...longitudes);
-  const minLatitude = Math.min(...latitudes);
-  const maxLatitude = Math.max(...latitudes);
-  const longitudeRange = maxLongitude - minLongitude || 1;
-  const latitudeRange = maxLatitude - minLatitude || 1;
-
-  return stops.map((stop, index) => ({
-    ...stop,
-    index,
-    x: 92 + ((stop.coordinates[0] - minLongitude) / longitudeRange) * 516,
-    y: 70 + ((maxLatitude - stop.coordinates[1]) / latitudeRange) * 220,
-  }));
-}
-
 function RouteMap({ title, stops }: { title: string; stops: InspirationStop[] }) {
-  const points = routeMapPoints(stops);
-  const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-
   return <div className={styles.mapCard}>
     <div className={styles.cardHeading}><div><p className={styles.eyebrow}>Route overview</p><h2>See the shape before the detail</h2></div><span>{stops.length} stops</span></div>
-    <svg className={styles.routeMap} viewBox="0 0 700 360" role="img" aria-label={`Map of ${title}. A schematic route connecting ${stops.map((stop) => stop.name).join(", ")}.`}>
-      <defs><pattern id="route-grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="currentColor" strokeWidth="1" /></pattern></defs>
-      <rect width="700" height="360" rx="24" className={styles.mapBackground} />
-      <rect width="700" height="360" rx="24" fill="url(#route-grid)" className={styles.mapGrid} />
-      <path d="M35 92C132 31 207 63 283 113S437 176 665 83" className={styles.mapContour} />
-      <path d="M29 289C181 222 257 267 357 300S557 318 670 236" className={styles.mapContour} />
-      <path d={path} className={styles.routeLine} />
-      {points.map((point) => <g key={point.id} transform={`translate(${point.x} ${point.y})`}>
-        <circle r="25" className={styles.routeHalo} />
-        <circle r="14" className={styles.routeDot} />
-        <text textAnchor="middle" dominantBaseline="central" className={styles.routeNumber}>{point.index + 1}</text>
-        <text x={point.x > 500 ? -24 : 24} y={point.index % 2 ? 34 : -25} textAnchor={point.x > 500 ? "end" : "start"} className={styles.routeName}>{point.name}</text>
-      </g>)}
-    </svg>
-    <p className={styles.mapNote}>Route map is a planning overview, not turn-by-turn navigation.</p>
+    <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} />
+    <p className={styles.mapNote}>Explore the route, then make a personal editable copy.</p>
   </div>;
 }
 
@@ -137,6 +110,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: story ? `${story.title} · EasyT` : "Route · EasyT" };
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function RouteOverviewPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const seed = inspirationByKey[slug];
@@ -146,6 +121,20 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
   const controls = await listEasyTRouteControls().catch(() => []);
   if (controls.find((control) => control.routeKey === slug)?.published === false) notFound();
 
+  let session: any = null;
+  let preferences: Awaited<ReturnType<typeof getEasyTUserPreferences>> | null = null;
+  try {
+    if (isEasyTAuthConfigured()) {
+      session = await getAuth().api.getSession({ headers: await headers() });
+      if (session?.user) {
+        await ensureEasyTUser(session.user.id, session.user.email, session.user.name);
+        preferences = await getEasyTUserPreferences(session.user.id);
+      }
+    }
+  } catch {
+    session = null;
+  }
+
   const detail = routeDetails[slug];
   const countryNames = route?.countries ?? [...new Set(seed.stops.map((stop) => stop.country))];
   const seasonalNotes = route?.seasonalNotes ?? [];
@@ -153,9 +142,11 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
   const bestTime = detail?.bestTime ?? seasonalNotes[0] ?? "Check the seasonal pattern for each stop before choosing dates";
   const weather = detail?.weather ?? seasonalNotes[1] ?? seasonalNotes[0] ?? "Conditions vary across this route. Check each stop again when your dates are set.";
   const countryContext = detail?.country ?? `${countryNames.join(" and ")} give this route its character. The sequence balances ${route?.interests.slice(0, 3).join(", ") || "major sights and local time"} while keeping the route editable.`;
+  const primaryNationality = preferences?.travelReadinessProfile.nationalities[0];
+  const entryChecks = primaryNationality ? countryNames.map((country) => ({ country, requirement: touristEntryRequirementFor(primaryNationality, country, preferences?.language) })) : [];
 
   return <main className={styles.page}>
-    <EasyTNavigation current="home" />
+    <EasyTNavigation current="home" account={session?.user ? { name: session.user.name, email: session.user.email, language: preferences?.language } : undefined} />
 
     <section className={styles.hero}>
       <RouteHeroImage image={story.image} routeKey={slug} query={route?.imageQuery ?? `${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`} fallbackQueries={[`${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`, `${route?.countries[0] ?? story.title} travel`]} eyebrow={story.eyebrow} duration={story.duration} />
@@ -181,6 +172,7 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
         <div className={styles.contextItem}><CalendarDays aria-hidden="true" /><div><b>Best time</b><p>{bestTime}</p></div></div>
         <div className={styles.contextItem}><CloudSun aria-hidden="true" /><div><b>Typical conditions</b><p>{weather}</p></div></div>
         <div className={styles.contextItem}><MapPin aria-hidden="true" /><div><b>Countries</b><p>{countryNames.join(" · ")}</p></div></div>
+        {session?.user && <div className={styles.entryCheck}><div className={styles.entryCheckHeading}><ShieldCheck aria-hidden="true" /><div><b>Your entry check</b><p>{primaryNationality ? `${countryFlagFor(primaryNationality)} ${primaryNationality} passport` : "Add your nationality to personalise this route."}</p></div></div>{primaryNationality ? <ul>{entryChecks.map(({ country, requirement }) => <li key={country}><div><span aria-hidden="true">{countryFlagFor(country)}</span><b>{country}</b><p>{requirement.statusLabel} · {requirement.permittedStay}</p></div><a href={requirement.sourceHref} target="_blank" rel="noreferrer" aria-label={`Verify ${country} entry requirements`}><ExternalLink aria-hidden="true" /></a></li>)}</ul> : <Link href="/journey/profile">Add traveller details <ArrowRight aria-hidden="true" /></Link>}</div>}
       </aside>
     </section>
 
