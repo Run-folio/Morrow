@@ -158,7 +158,7 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
     <EasyTNavigation current="home" />
 
     <section className={styles.hero}>
-      <RouteHeroImage image={story.image} query={route?.imageQuery ?? `${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`} eyebrow={story.eyebrow} duration={story.duration} />
+      <RouteHeroImage image={story.image} routeKey={slug} query={route?.imageQuery ?? `${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`} fallbackQueries={[`${route?.bases[0] ?? story.title} ${route?.countries[0] ?? "travel"}`, `${route?.countries[0] ?? story.title} travel`]} eyebrow={story.eyebrow} duration={story.duration} />
       <div className={styles.heroCopy}>
         <p className={styles.eyebrow}>A route with room to breathe</p>
         <h1>{story.title}</h1>

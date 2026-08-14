@@ -1,40 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
 import styles from "./route-overview.module.css";
 
 type RouteHeroImageProps = {
   image: string;
+  routeKey: string;
   query: string;
+  fallbackQueries: string[];
   eyebrow: string;
   duration: string;
 };
 
-type LiveImage = { src: string; sourceUrl: string; sourceLabel: string; downloadLocation?: string };
-
-export default function RouteHeroImage({ image, query, eyebrow, duration }: RouteHeroImageProps) {
-  const [liveImage, setLiveImage] = useState<LiveImage | null>(null);
+export default function RouteHeroImage({ image, routeKey, query, fallbackQueries, eyebrow, duration }: RouteHeroImageProps) {
+  const [liveImage, setLiveImage] = useState<CachedRoutePhoto | null>(null);
   const [status, setStatus] = useState<"loading" | "unavailable">(image ? "unavailable" : "loading");
 
   useEffect(() => {
     if (image) return;
+    const cached = readRoutePhoto(routeKey);
+    if (cached) { setLiveImage(cached); return; }
     const controller = new AbortController();
-    void fetch(`/api/journey-route-image?query=${encodeURIComponent(query)}`, { signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json() as { image?: LiveImage | null };
-        if (!response.ok || !payload.image) throw new Error("No route image available");
-        setLiveImage(payload.image);
-        if (payload.image.downloadLocation) void fetch("/api/journey-route-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ downloadLocation: payload.image.downloadLocation }),
-        }).catch(() => undefined);
+    void findRoutePhotos([query, ...fallbackQueries], controller.signal)
+      .then(({ candidates }) => {
+        const photo = candidates[0];
+        if (!photo) throw new Error("No route image available");
+        setLiveImage(photo);
+        saveRoutePhoto(routeKey, photo);
+        trackRoutePhoto(photo);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("unavailable");
       });
     return () => controller.abort();
-  }, [image, query]);
+  }, [fallbackQueries, image, query, routeKey]);
 
   const source = liveImage?.src ?? image;
   return <div className={`${styles.heroImage} ${!source ? styles.heroImagePending : ""}`} style={source ? { backgroundImage: `url(${source})` } : undefined}>

@@ -5,6 +5,7 @@ import { ArrowRight, CalendarDays, MapPin } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RouteFamily, RouteInterest, RouteRegion } from "@/lib/easyt/route-catalog";
 import { routeImages } from "@/lib/easyt/route-images";
+import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
 import styles from "./discover.module.css";
 
 const regions: Array<[RouteRegion | "all", string]> = [
@@ -21,7 +22,7 @@ const interests: Array<[RouteInterest | "all", string]> = [
   ["all", "Any feeling"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"],
 ];
 
-type LiveImage = { id?: string; src: string; sourceUrl: string; sourceLabel: string; downloadLocation?: string };
+type LiveImage = CachedRoutePhoto;
 
 function imageQueryFor(route: RouteFamily) {
   // Unsplash search quality drops sharply when every stop is packed into one
@@ -29,6 +30,11 @@ function imageQueryFor(route: RouteFamily) {
   // anchor the photograph to the first chapter and one defining interest.
   const anchor = route.stops[0];
   return route.imageQuery ?? `${anchor?.name ?? route.bases[0]} ${anchor?.country ?? route.countries[0]} ${route.interests[0]} travel`;
+}
+
+function imageQueriesFor(route: RouteFamily) {
+  const anchor = route.stops[0];
+  return [imageQueryFor(route), `${anchor?.name ?? route.bases[0]} ${anchor?.country ?? route.countries[0]}`, `${route.countries[0]} travel`];
 }
 
 export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) {
@@ -39,19 +45,37 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
   const filtered = useMemo(() => routes.filter((route) => (region === "all" || route.region === region) && (interest === "all" || route.interests.includes(interest)) && (country === "all" || route.countries.includes(country))), [routes, region, interest, country]);
   const [liveImages, setLiveImages] = useState<Record<string, LiveImage>>({});
   const [imageStatus, setImageStatus] = useState<Record<string, "loading" | "unavailable">>({});
+  const [visibleRoutes, setVisibleRoutes] = useState<Set<string>>(new Set());
   const requestedImages = useRef(new Set<string>());
+  const gridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setLiveImages((current) => ({ ...current, ...Object.fromEntries(routes.flatMap((route) => {
+      const cached = readRoutePhoto(route.key);
+      return cached ? [[route.key, cached] as const] : [];
+    })) }));
+  }, [routes]);
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const observer = new IntersectionObserver((entries) => {
+      setVisibleRoutes((current) => {
+        const next = new Set(current);
+        entries.forEach((entry) => { if (entry.isIntersecting) next.add((entry.target as HTMLElement).dataset.routeKey ?? ""); });
+        return next;
+      });
+    }, { rootMargin: "500px 0px" });
+    grid.querySelectorAll<HTMLElement>("[data-route-key]").forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, [filtered]);
   useEffect(() => {
     let active = true;
-    const pending = filtered.filter((route) => !routeImages[route.key] && !liveImages[route.key] && !requestedImages.current.has(route.key)).slice(0, 8);
+    const pending = filtered.filter((route) => visibleRoutes.has(route.key) && !routeImages[route.key] && !liveImages[route.key] && !requestedImages.current.has(route.key)).slice(0, 4);
     if (!pending.length) return;
     pending.forEach((route) => requestedImages.current.add(route.key));
     setImageStatus((current) => ({ ...current, ...Object.fromEntries(pending.map((route) => [route.key, "loading"])) }));
     void Promise.allSettled(pending.map(async (route) => {
-      const query = imageQueryFor(route);
-      const response = await fetch(`/api/journey-route-image?query=${encodeURIComponent(query)}`);
-      const payload = await response.json() as { image?: LiveImage | null; candidates?: LiveImage[]; configured?: boolean };
-      if (!response.ok || !payload.image) return { key: route.key, candidates: [] as LiveImage[], configured: payload.configured };
-      return { key: route.key, candidates: payload.candidates?.length ? payload.candidates : [payload.image], configured: true };
+      const result = await findRoutePhotos(imageQueriesFor(route));
+      return { key: route.key, ...result };
     })).then((results) => {
       if (!active) return;
       const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
@@ -64,13 +88,7 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
         usedIds.add(image.id ?? image.src);
         return [[result.key, image] as const];
       });
-      images.forEach(([, image]) => {
-        if (image.downloadLocation) void fetch("/api/journey-route-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ downloadLocation: image.downloadLocation }),
-        }).catch(() => undefined);
-      });
+      images.forEach(([key, image]) => { saveRoutePhoto(key, image); trackRoutePhoto(image); });
       setLiveImages((current) => ({ ...current, ...Object.fromEntries(images) }));
       const unavailableKeys = missingConfiguration
         ? routes.filter((route) => !routeImages[route.key]).map((route) => route.key)
@@ -78,7 +96,7 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
       setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
     });
     return () => { active = false; };
-  }, [filtered, routes, liveImages]);
+  }, [filtered, routes, liveImages, visibleRoutes]);
 
   return (
     <section className={styles.browser}>
@@ -88,13 +106,13 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
         <div><label className={styles.selectLabel} htmlFor="discover-country">COUNTRY</label><select id="discover-country" className={styles.select} value={country} onChange={(event) => setCountry(event.target.value)}><option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}</select></div>
       </div>
       <div className={styles.resultHead}><p>{filtered.length} thoughtful starting points</p><span>Every route is editable.</span></div>
-      <div className={styles.grid}>
+      <div className={styles.grid} ref={gridRef}>
         {filtered.map((route) => {
           const curatedImage = routeImages[route.key];
           const liveImage = liveImages[route.key];
           const image = liveImage?.src ?? curatedImage;
           const status = imageStatus[route.key];
-          return <Link className={styles.card} href={`/journey/routes/${route.key}`} key={route.key}>
+          return <Link className={styles.card} href={`/journey/routes/${route.key}`} key={route.key} data-route-key={route.key}>
           <div className={`${styles.image} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined}><span>{route.region.replace("-", " ")} · {route.suggestedDays.ideal} days</span>{liveImage ? <a className={styles.imageCredit} href={liveImage.sourceUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{liveImage.sourceLabel}</a> : !image && status === "loading" ? <em>Finding a photograph…</em> : !image && status === "unavailable" ? <em>Photography unavailable</em> : null}</div>
           <div className={styles.cardBody}><small>{route.countries.join(" · ")}</small><h2>{route.title}</h2><p>{route.bestFor}</p><dl><div><dt><MapPin /> Bases</dt><dd>{route.bases.join(" · ")}</dd></div><div><dt><CalendarDays /> Shape</dt><dd>{route.suggestedDays.min}–{route.suggestedDays.max} days · {route.confidence} confidence</dd></div></dl><b>See the route <ArrowRight /></b></div>
         </Link>;
