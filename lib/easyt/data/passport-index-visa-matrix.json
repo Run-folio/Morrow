@@ -1,0 +1,3382 @@
+{
+  "source": "https://github.com/imorte/passport-index-data",
+  "sourceUpdatedAt": "2026-02-17",
+  "importedAt": "2026-08-14",
+  "rules": {
+    "Australia": {
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "e-visa"
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 30
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free"
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "visa free"
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Canada": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "e-visa"
+      },
+      "China": {
+        "status": "visa required"
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 30
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Vietnam": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 240
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free"
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Denmark": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 240
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Finland": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "France": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Germany": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Ireland": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 30
+      },
+      "United Kingdom": {
+        "status": "visa free"
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Japan": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 30
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Netherlands": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "New Zealand": {
+      "Australia": {
+        "status": "visa free"
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 30
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free"
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Norway": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 240
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Singapore": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free"
+      },
+      "Kenya": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa free",
+        "days": 90
+      }
+    },
+    "South Korea": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Spain": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free"
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "Sweden": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free"
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa free",
+        "days": 30
+      },
+      "Croatia": {
+        "status": "visa free"
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free"
+      },
+      "Germany": {
+        "status": "visa free"
+      },
+      "Greece": {
+        "status": "visa free"
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free"
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free"
+      },
+      "Poland": {
+        "status": "visa free"
+      },
+      "Portugal": {
+        "status": "visa free"
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free"
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free"
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free"
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free"
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free"
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "United Kingdom": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Canada": {
+        "status": "eta",
+        "days": 180
+      },
+      "China": {
+        "status": "visa required"
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 30
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United States": {
+        "status": "eta",
+        "days": 90
+      },
+      "Vietnam": {
+        "status": "visa free",
+        "days": 45
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 240
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free"
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free"
+      },
+      "Jamaica": {
+        "status": "visa free"
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 180
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    },
+    "United States": {
+      "Australia": {
+        "status": "eta",
+        "days": 90
+      },
+      "Austria": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Brazil": {
+        "status": "e-visa"
+      },
+      "Canada": {
+        "status": "visa free",
+        "days": 180
+      },
+      "China": {
+        "status": "visa required"
+      },
+      "Croatia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Egypt": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "France": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Germany": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Greece": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guatemala": {
+        "status": "visa free",
+        "days": 90
+      },
+      "India": {
+        "status": "e-visa",
+        "days": 30
+      },
+      "Indonesia": {
+        "status": "visa on arrival",
+        "days": 30
+      },
+      "Italy": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Japan": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Malaysia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Mexico": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Morocco": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Netherlands": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Poland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Portugal": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Saudi Arabia": {
+        "status": "visa on arrival",
+        "days": 90
+      },
+      "Singapore": {
+        "status": "visa free",
+        "days": 30
+      },
+      "South Korea": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Spain": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Thailand": {
+        "status": "visa free",
+        "days": 60
+      },
+      "Turkey": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Arab Emirates": {
+        "status": "visa free",
+        "days": 90
+      },
+      "United Kingdom": {
+        "status": "eta",
+        "days": 180
+      },
+      "Vietnam": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Bahamas": {
+        "status": "visa free",
+        "days": 240
+      },
+      "Barbados": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Belize": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Botswana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Denmark": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Dominica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Finland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ghana": {
+        "status": "visa required"
+      },
+      "Grenada": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Guyana": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Ireland": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Jamaica": {
+        "status": "visa free",
+        "days": 180
+      },
+      "Kenya": {
+        "status": "eta",
+        "days": 90
+      },
+      "Malta": {
+        "status": "visa free",
+        "days": 90
+      },
+      "New Zealand": {
+        "status": "eta",
+        "days": 90
+      },
+      "Nigeria": {
+        "status": "e-visa",
+        "days": 90
+      },
+      "Norway": {
+        "status": "visa free",
+        "days": 90
+      },
+      "South Africa": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Sweden": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Uganda": {
+        "status": "e-visa"
+      },
+      "Zambia": {
+        "status": "visa free",
+        "days": 90
+      },
+      "Zimbabwe": {
+        "status": "visa on arrival",
+        "days": 90
+      }
+    }
+  }
+}

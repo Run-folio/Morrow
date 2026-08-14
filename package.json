@@ -18,7 +18,8 @@
     "test:trip-cascade": "node --experimental-strip-types --test tests/cascade.test.ts",
     "test:trip-health": "node --experimental-strip-types --test tests/trip-health.test.ts",
     "test:booking-readiness": "node --experimental-strip-types --test tests/booking-readiness.test.ts",
-    "test:visa-requirements": "node --experimental-strip-types --test tests/visa-requirements.test.ts"
+    "test:visa-requirements": "node --experimental-strip-types --test tests/visa-requirements.test.ts",
+    "import:passport-index": "node --experimental-strip-types scripts/import-passport-index.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
