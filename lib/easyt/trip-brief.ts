@@ -6,6 +6,10 @@ export type ParsedTripBrief = {
   routeHints: string[];
   anchor?: string;
   durationDays?: number;
+  travellerCount?: number;
+  transportModes?: Array<"flight" | "train" | "drive">;
+  avoidDriving?: boolean;
+  pace?: "relaxed" | "balanced" | "packed";
 };
 
 type Place = { name: string; terms: string[] };
@@ -56,15 +60,35 @@ function findPlaces(value: string) {
 
 function findDurationDays(value: string) {
   const text = normalise(value);
-  const numeric = text.match(/\b(\d{1,2})\s*(days?|dias?|weeks?|semanas?)\b/);
+  const numeric = text.match(/\b(\d{1,2})\s*[- ]?\s*(days?|dias?|weeks?|semanas?)\b/);
   if (numeric) return Number(numeric[1]) * (/week|semana/.test(numeric[2]) ? 7 : 1);
+  if (/\b(?:a\s+)?fortnight\b/.test(text)) return 14;
   if (/\b(one|a|una)\s+week\b|\buna semana\b/.test(text)) return 7;
   if (/\b(two|dos)\s+weeks?\b|\bdos semanas\b/.test(text)) return 14;
   if (/\bthree\s+weeks?\b|\btres semanas\b/.test(text)) return 21;
-  const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, un: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10 };
-  const wordDuration = text.match(/\b([a-záéíóú]+)\s+(days?|dias?|weeks?|semanas?)\b/);
+  const words: Record<string, number> = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+    eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20, "twenty-one": 21,
+    un: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
+  };
+  const wordDuration = text.match(/\b([a-záéíóú]+(?:-[a-záéíóú]+)?)\s+(days?|dias?|weeks?|semanas?)\b/);
   if (wordDuration && words[wordDuration[1]]) return words[wordDuration[1]] * (/week|semana/.test(wordDuration[2]) ? 7 : 1);
   return undefined;
+}
+
+function findTripPreferences(value: string): Pick<ParsedTripBrief, "travellerCount" | "transportModes" | "avoidDriving" | "pace"> {
+  const text = normalise(value);
+  const transportModes: Array<"flight" | "train" | "drive"> = [];
+  if (/\b(train|trains|rail|railway|tren(?:es)?)\b/.test(text)) transportModes.push("train");
+  if (/\b(driv(?:e|ing)|road trip|car|coche|conducir)\b/.test(text)) transportModes.push("drive");
+  if (/\b(fly|flight|flights|air|vuelo(?:s)?)\b/.test(text)) transportModes.push("flight");
+  const avoidDriving = /\b(avoid|no|without|sin|evitar)\s+(?:a\s+)?(?:driv(?:ing)?|car|coche|conducir)\b/.test(text);
+  const pace = /\b(relaxed|slow|slowly|without rushing|unhurried|tranquil[oa]?|sin prisa)\b/.test(text)
+    ? "relaxed"
+    : /\b(packed|fast-paced|intense|intenso)\b/.test(text) ? "packed" : undefined;
+  const travellerCount = text.match(/\b(\d{1,2})\s+(?:travellers?|travelers?|people|personas?)\b/)?.[1]
+    ?? (/\b(?:a couple|couple|two of us|dos personas)\b/.test(text) ? "2" : undefined);
+  return { transportModes, avoidDriving, pace, travellerCount: travellerCount ? Number(travellerCount) : undefined };
 }
 
 function findRouteHints(value: string) {
@@ -111,6 +135,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
   const origin = resolveMention(fromMatch?.[1]);
   const destination = resolveMention(toMatch?.[1]) ?? matchedPlaces.at(-1);
   const anchor = matchedPlaces.find((name) => /marathon|machu picchu|angkor|great wall|kilimanjaro|everest|taj mahal|sagrada familia/.test(text) && places.find((place) => place.name === name)?.terms.some((term) => text.includes(normalise(term))));
+  const preferences = findTripPreferences(value);
   return {
     origin,
     destination: destination === origin && matchedPlaces.length > 1 ? matchedPlaces.at(-1) : destination,
@@ -119,5 +144,6 @@ export function parseTripBrief(value: string): ParsedTripBrief {
     routeHints: findRouteHints(value),
     anchor,
     durationDays: findDurationDays(value),
+    ...preferences,
   };
 }

@@ -8,6 +8,7 @@ type Expected = { brief: string; origin?: string; stops: string[]; regions?: str
 // gains coverage permanently rather than relying on one-off manual checks.
 const cases: Expected[] = [
   { brief: "3 weeks from London through south east asia: Bangkok, Chiang Mai and Ankor Wat.", origin: "London", stops: ["Bangkok", "Chiang Mai", "Angkor Wat"], regions: ["Southeast Asia"], durationDays: 21 },
+  { brief: "Fourteen days in Japan by train, relaxed pace, for two travellers: Tokyo, Kanazawa, Kyoto and Osaka.", stops: ["Tokyo", "Kanazawa", "Kyoto", "Osaka"], durationDays: 14 },
   { brief: "Flying from London to Tokyo for three weeks in Japan, with Kyoto and the Japanese Alps. I want north and south too.", origin: "London", stops: ["Tokyo", "Kyoto"], regions: ["Japanese Alps"], durationDays: 21, routeHints: ["north-japan", "south-japan"] },
   { brief: "Two weeks in Japan this October — Tokyo, Kyoto and time in the Japanese Alps.", stops: ["Tokyo", "Kyoto"], regions: ["Japanese Alps"], durationDays: 14 },
   { brief: "10 days from Paris to Rome and Venice", origin: "Paris", stops: ["Rome", "Venice"], durationDays: 10 },

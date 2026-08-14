@@ -333,6 +333,7 @@ export default function TripBuilder() {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(oneWeekLater);
   const [datesConfirmed, setDatesConfirmed] = useState(false);
+  const [datesManuallyEdited, setDatesManuallyEdited] = useState(false);
   const [picker, setPicker] = useState<"start" | "end" | null>(null);
 
   const [filter, setFilter] = useState("All");
@@ -499,6 +500,14 @@ export default function TripBuilder() {
     window.localStorage.setItem(key, "1");
   }, [hydrated, intentReady, tripId, effectiveIntent, stops.length, totalDays]);
 
+  useEffect(() => {
+    if (!hydrated || step !== 0) return;
+    const key = `morrovia:budget-viewed:${tripId}`;
+    if (window.sessionStorage.getItem(key)) return;
+    trackEvent("budget_viewed", { budget_band: budget, stop_count: stops.length, duration_days: totalDays });
+    window.sessionStorage.setItem(key, "1");
+  }, [budget, hydrated, step, stops.length, totalDays, tripId]);
+
   const committed = useMemo(() => stops.length + stops.reduce((sum, stop) => {
     const titles = picks[stop.id] ?? [];
     return sum + placesFor(stop, discoveredPlaces).filter((p) => titles.includes(p.title)).reduce((a, p) => a + p.cost, 0);
@@ -652,6 +661,7 @@ export default function TripBuilder() {
     rememberStructuralChange(kind === "start" ? "change_start_date" : "change_end_date", stops.length);
     setStartDate(nextStart);
     setEndDate(nextEnd);
+    setDatesManuallyEdited(true);
     setDatesConfirmed(false);
   };
 
@@ -706,6 +716,17 @@ export default function TripBuilder() {
 
     setRouteHints(parsed.routeHints);
 
+    setTripIntent((current) => ({
+      ...current,
+      travellers: parsed.travellerCount ? Math.max(1, Math.min(12, parsed.travellerCount)) : current.travellers,
+      preferences: {
+        ...current.preferences,
+        transportModes: parsed.transportModes?.length ? parsed.transportModes : current.preferences.transportModes,
+        pace: parsed.pace ?? current.preferences.pace,
+      },
+      hardConstraints: { ...current.hardConstraints, avoidDriving: parsed.avoidDriving || current.hardConstraints.avoidDriving },
+    }));
+
     if (!origin.trim() && parsed.origin) {
       setOrigin(parsed.origin);
       setOriginTouched(true);
@@ -716,9 +737,10 @@ export default function TripBuilder() {
       for (const stop of parsed.stops) await addStop(stop);
     }
 
-    // Respect a date range the traveller has already chosen. The default range
-    // is the only one the brief is allowed to replace automatically.
-    if (parsed.durationDays && endDate === oneWeekLater) {
+    // Respect dates the traveller has actually edited. A saved, unconfirmed
+    // draft is still a draft: applying a new brief should make its stated
+    // duration visible rather than quietly retaining an old seven-day range.
+    if (parsed.durationDays && !datesManuallyEdited) {
       const date = new Date(`${startDate}T00:00:00`);
       date.setDate(date.getDate() + Math.max(1, parsed.durationDays - 1));
       setEndDate(iso(date));
