@@ -22,6 +22,7 @@ import { routeImages } from "@/lib/easyt/route-images";
 import { countryFlagFor, touristEntryRequirementFor } from "@/lib/easyt/visa-requirements";
 import RouteHeroImage from "./route-hero-image";
 import RouteAttractionImage from "./route-attraction-image";
+import RouteStopImage from "./route-stop-image";
 import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
 
@@ -180,7 +181,10 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
       <div className={styles.sectionIntro}><div><p className={styles.eyebrow}>The route · {story.rhythm}</p><h2>A clear sequence, with room to change it</h2></div><p>{story.promise}</p></div>
       <ol className={styles.stops}>{seed.stops.map((stop, index) => {
         const connection = route?.connections.find((item) => item.from === stop.name);
-        return <li key={stop.id}><b>{String(index + 1).padStart(2, "0")}</b><div><p><MapPin aria-hidden="true" /> {stop.country}</p><h3>{stop.name}</h3><span>{story.notes[index] ?? `Use ${stop.name} as an editable base for this part of the route.`}</span>{connection && <small>{connection.mode} · {formatMinutes(connection.planningMinutes)} to {connection.to}</small>}</div></li>;
+        return <li key={stop.id}>
+          <RouteStopImage routeKey={slug} stop={stop.name} country={stop.country} index={index} />
+          <div className={styles.stopCopy}><b>{String(index + 1).padStart(2, "0")}</b><div><p><MapPin aria-hidden="true" /> {stop.country}</p><h3>{stop.name}</h3><span>{story.notes[index] ?? `Use ${stop.name} as an editable base for this part of the route.`}</span>{connection && <small>{connection.mode} · {formatMinutes(connection.planningMinutes)} to {connection.to}</small>}</div></div>
+        </li>;
       })}</ol>
     </section>
 

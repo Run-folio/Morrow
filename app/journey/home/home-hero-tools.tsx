@@ -26,7 +26,10 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
         <p className={styles.eyebrow}>{text.eyebrow}</p><h1>{text.title}</h1><p className={styles.lede}>{text.lede}</p>
         <HomeTripStarter />
       </div>
-      <a href="#start-building" className={`${styles.heroCard} ${polish.heroCard}`} aria-label={text.exploreJapan}><div className={styles.heroImage} style={{ backgroundImage: "url(/journey/guatemala-skyline.jpg)" }} /><div className={styles.heroCardOverlay}><div className={styles.heroRouteMeta}><span>{text.routeMeta} · {text.routeStops}</span></div><small>{text.exploreJapan} <ArrowRight aria-hidden="true" /></small></div></a>
+      <div className={styles.heroProduct} aria-label={text.exploreJapan}>
+        <div className={styles.heroProductFrame}><img src="/journey/product-shots/map-plan-mobile.jpeg" alt="Morrovia map plan, itinerary and nearby options on a phone" /></div>
+        <div className={styles.heroProductNote}><span>{text.routeMeta}</span><strong>{text.routeStops}</strong><small>{text.exploreJapan} <ArrowRight aria-hidden="true" /></small></div>
+      </div>
     </section> : null}
     {showTools ? <section className={styles.tools}>
       <article className={`${styles.toolCard} ${styles.restaurantCard} ${polish.toolCard}`}><div className={styles.toolIcon}><Utensils aria-hidden="true" /></div><p className={styles.eyebrow}>{text.out}</p><h2>{text.nearby}</h2><p>{text.nearbyText}</p><HomeRestaurantFinder /></article>

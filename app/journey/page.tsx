@@ -922,12 +922,14 @@ export default function JourneyPage() {
             <summary aria-label={planCopy.menu}><Menu aria-hidden="true" /></summary>
             <div>
               {isPlanningPreview ? <Link href={editTripHref}>{planCopy.backToItinerary}</Link> : null}
+              {isPlanningPreview && customTrip ? <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`}>Try the new map view</Link> : null}
               {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`}>Trip prep</Link> : null}
               <Link href="/journey/dashboard">{planCopy.myTrips}</Link>
               {isPlanningPreview && customTrip && session?.user ? <button type="button" onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.exportPdf}</button> : null}
             </div>
           </details>
           <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="Morrovia account navigation">
+            {isPlanningPreview && customTrip ? <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>New map view</Link> : null}
             {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>Trip prep</Link> : null}
             <Link href="/journey/dashboard" className={styles.myTripsLink}>{planCopy.myTrips}</Link>
             {isPlanningPreview && customTrip && session?.user ? <button type="button" className={styles.exportPlanLink} onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.export}</button> : null}
