@@ -26,6 +26,7 @@ type ExtractedCapture = { mentions: ExtractedMention[]; regions: string[]; durat
 // accepted in the wrong country (for example London, Ontario for London, UK).
 // Unknown names remain open to the general geocoder and the traveller review.
 const knownCountries: Record<string, string> = {
+  Spain: "Spain", Japan: "Japan", China: "China", Portugal: "Portugal", France: "France", Italy: "Italy", Vietnam: "Vietnam", Thailand: "Thailand", Cambodia: "Cambodia", Peru: "Peru", Bolivia: "Bolivia",
   London: "United Kingdom", Tokyo: "Japan", Kyoto: "Japan", Osaka: "Japan", Kanazawa: "Japan", Takayama: "Japan", Hiroshima: "Japan",
   "Machu Picchu": "Peru", Cusco: "Peru", Lima: "Peru", Bogotá: "Colombia", Medellín: "Colombia", Quito: "Ecuador", "La Paz": "Bolivia",
   Bangkok: "Thailand", "Chiang Mai": "Thailand", Krabi: "Thailand", "Angkor Wat": "Cambodia", "Siem Reap": "Cambodia", Hanoi: "Vietnam", "Hoi An": "Vietnam", "Ho Chi Minh City": "Vietnam", "Luang Prabang": "Laos", "Vang Vieng": "Laos",
@@ -114,11 +115,16 @@ async function extractWithModel(brief: string): Promise<ExtractedCapture | null>
 
 function reconcile(brief: string, model: ExtractedCapture | null) {
   const fallback = parseTripBrief(brief);
+  const hasExplicitOrigin = /(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+/i.test(brief);
   const deterministic: ExtractedMention[] = [
     ...(fallback.origin ? [{ sourceText: fallback.origin, canonicalName: fallback.origin, role: "origin" as const, intent: "place" as const, order: -1 }] : []),
     ...fallback.stops.filter((name) => name !== fallback.origin).map((name, order) => ({ sourceText: name, canonicalName: name, role: "stop" as const, intent: name === fallback.anchor ? "landmark" as const : "place" as const, order })),
   ];
-  const combined = [...(model?.mentions ?? []), ...deterministic]
+  // A model may mistake the first country for an origin. Only keep a model
+  // origin when the traveller gave an explicit departure phrase; the
+  // deterministic extractor remains the conservative source of truth.
+  const modelMentions = (model?.mentions ?? []).filter((mention) => mention.role !== "origin" || hasExplicitOrigin);
+  const combined = [...modelMentions, ...deterministic]
     .sort((a, b) => a.order - b.order)
     .filter((mention, index, all) => all.findIndex((other) => other.canonicalName.toLocaleLowerCase() === mention.canonicalName.toLocaleLowerCase() && other.role === mention.role) === index);
   const origin = combined.find((mention) => mention.role === "origin");

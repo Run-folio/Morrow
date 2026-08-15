@@ -15,6 +15,16 @@ export type ParsedTripBrief = {
 type Place = { name: string; terms: string[] };
 
 const places: Place[] = [
+  // Countries are valid trip intent, not failed city searches. Keeping them
+  // as structured stops means "Spain, Japan and China" survives the handoff
+  // and can be refined into cities later rather than silently disappearing.
+  { name: "Spain", terms: ["spain", "espana", "españa"] },
+  { name: "Japan", terms: ["japan", "japón", "japon"] },
+  { name: "China", terms: ["china"] },
+  { name: "Portugal", terms: ["portugal"] }, { name: "France", terms: ["france", "francia"] },
+  { name: "Italy", terms: ["italy", "italia"] }, { name: "Vietnam", terms: ["vietnam", "việt nam"] },
+  { name: "Thailand", terms: ["thailand", "tailandia"] }, { name: "Cambodia", terms: ["cambodia", "camboya"] },
+  { name: "Peru", terms: ["peru", "perú"] }, { name: "Bolivia", terms: ["bolivia"] },
   { name: "London", terms: ["london", "londres", "lhr", "lgw"] },
   { name: "Tokyo", terms: ["tokyo", "tokio", "hnd", "nrt", "tokyo marathon"] },
   { name: "Kyoto", terms: ["kyoto", "kioto"] }, { name: "Osaka", terms: ["osaka", "kix"] },
@@ -132,6 +142,9 @@ export function parseTripBrief(value: string): ParsedTripBrief {
   const matchedPlaces = findPlaces(value);
   const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
   const toMatch = value.match(/(?:\bto|finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde|\ba|hasta)\s+([^,.\n;]+)/i);
+  // A departure is only an origin when the traveller has actually stated a
+  // departure phrase. Country-level destinations must never be promoted to
+  // an origin simply because they appear first in an open-ended brief.
   const origin = resolveMention(fromMatch?.[1]);
   const destination = resolveMention(toMatch?.[1]) ?? matchedPlaces.at(-1);
   const anchor = matchedPlaces.find((name) => /marathon|machu picchu|angkor|great wall|kilimanjaro|everest|taj mahal|sagrada familia/.test(text) && places.find((place) => place.name === name)?.terms.some((term) => text.includes(normalise(term))));

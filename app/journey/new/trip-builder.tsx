@@ -1175,7 +1175,8 @@ export default function TripBuilder() {
           )}
 
           {step === 1 && (
-            <div>
+            <div className={styles.routeStep}>
+              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>Choose the journey that feels right.</h2><span>We found a clear route. Compare the trade-off before you continue.</span></header>
               <div className={styles.filters}>
                 {FILTERS.map((label) => (
                   <button type="button" key={label} onClick={() => setFilter(label)}
@@ -1225,7 +1226,8 @@ export default function TripBuilder() {
           )}
 
           {step === 2 && (
-            <div className={styles.stack}>
+            <div className={`${styles.stack} ${styles.timeStep}`}>
+              <header className={styles.stepHero}><p>STEP 3 OF 3</p><h2>Make the time feel right.</h2><span>A realistic first rhythm, with room to change it.</span></header>
               <section className={styles.allocationPanel} aria-labelledby="day-allocation-title">
                 <div className={styles.allocationHead}>
                   <div>
