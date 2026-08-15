@@ -14,6 +14,8 @@ type JourneyPlannerMapProps = {
   focusCoordinates: [number, number] | null;
   draftPinCoordinates: [number, number] | null;
   pinPlacementMode: boolean;
+  /** Show the whole route on first load rather than opening at the selected city. */
+  overviewMode?: boolean;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
   onSelect: (id: string) => void;
@@ -51,6 +53,7 @@ export function JourneyPlannerMap({
   focusCoordinates,
   draftPinCoordinates,
   pinPlacementMode,
+  overviewMode = false,
   onMapPinDrop,
   onPlannerPinSelect,
   onSelect,
@@ -114,14 +117,22 @@ export function JourneyPlannerMap({
         // On first mount the focus effect can run before the map is ready.
         // Start at the pin itself so opening/adding a pin never leaves it
         // outside the visible map.
-        map.jumpTo({ center: focusCoordinates ?? activeStop.coordinates, zoom: focusCoordinates ? 14 : 11 });
+        if (overviewMode && !focusCoordinates && mappedStops.length > 1) {
+          const bounds = mappedStops.slice(1).reduce(
+            (result, stop) => result.extend(stop.coordinates),
+            new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+          );
+          map.fitBounds(bounds, { padding: { top: 90, right: 110, bottom: 150, left: 110 }, maxZoom: 7, duration: 0 });
+        } else {
+          map.jumpTo({ center: focusCoordinates ?? activeStop.coordinates, zoom: focusCoordinates ? 14 : 11 });
+        }
       }
     };
 
     if (map.isStyleLoaded()) drawRoute();
     else map.once("load", drawRoute);
     return () => { map.off("load", drawRoute); };
-  }, [focusCoordinates, legs, selectedId, stops]);
+  }, [focusCoordinates, legs, overviewMode, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -196,9 +207,9 @@ export function JourneyPlannerMap({
   useEffect(() => {
     const map = mapRef.current;
     const stop = stops.find((candidate) => candidate.id === selectedId);
-    if (!map || !stop?.coordinates || !hasInitialisedViewRef.current) return;
+    if (!map || !stop?.coordinates || !hasInitialisedViewRef.current || overviewMode) return;
     map.easeTo({ center: stop.coordinates, zoom: Math.max(map.getZoom(), 11), duration: 550 });
-  }, [selectedId, stops]);
+  }, [overviewMode, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -24,7 +24,7 @@ function formatDuration(minutes: number | null) {
   return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim();
 }
 
-function mapData(trip: EasyTTrip): { stops: JourneyStop[]; legs: JourneyLeg[] } {
+function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, number]>): { stops: JourneyStop[]; legs: JourneyLeg[] } {
   const stops = [...trip.stops]
     .sort((a, b) => a.order - b.order)
     .map((stop): JourneyStop => ({
@@ -32,7 +32,7 @@ function mapData(trip: EasyTTrip): { stops: JourneyStop[]; legs: JourneyLeg[] } 
       city: stop.name,
       country: stop.country,
       date: stop.arrivalDate ? formatDate(stop.arrivalDate) : "Dates to confirm",
-      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : null,
+      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : resolvedCoordinates[stop.id] ?? null,
       theme: "city",
       marker: "skyline",
       description: `${stop.nights ?? 0} night${stop.nights === 1 ? "" : "s"} planned in ${stop.name}.`,
@@ -57,6 +57,7 @@ export default function MapPlanNext() {
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState("");
+  const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
   const [finderTab, setFinderTab] = useState<FinderTab>("plan");
   const [showDecisions, setShowDecisions] = useState(true);
 
@@ -75,7 +76,23 @@ export default function MapPlanNext() {
     return () => { active = false; };
   }, [tripId]);
 
-  const map = useMemo(() => trip ? mapData(trip) : { stops: [], legs: [] }, [trip]);
+  useEffect(() => {
+    if (!trip) return;
+    const missingStops = trip.stops.filter((stop) => stop.longitude === null || stop.latitude === null);
+    if (!missingStops.length) return;
+    let active = true;
+    void Promise.all(missingStops.map(async (stop) => {
+      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(stop.name)}&country=${encodeURIComponent(stop.country)}`);
+      const payload = await response.json() as { result?: { coordinates?: [number, number] } | null };
+      return [stop.id, payload.result?.coordinates] as const;
+    })).then((results) => {
+      if (!active) return;
+      setResolvedCoordinates(Object.fromEntries(results.filter((entry): entry is [string, [number, number]] => Boolean(entry[1]))));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [trip]);
+
+  const map = useMemo(() => trip ? mapData(trip, resolvedCoordinates) : { stops: [], legs: [] }, [resolvedCoordinates, trip]);
   const selectedStop = map.stops.find((stop) => stop.id === selectedStopId) ?? map.stops[0];
   const selectedTripStop = trip?.stops.find((stop) => stop.id === selectedStop?.id);
   const selectedItems = useMemo(() => trip?.planItems.filter((item) => item.stopId === selectedStop?.id).sort((a, b) => a.dayNumber - b.dayNumber) ?? [], [selectedStop?.id, trip?.planItems]);
@@ -119,7 +136,7 @@ export default function MapPlanNext() {
       </aside>
 
       <section className={styles.mapSurface} aria-label="Interactive trip map">
-        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
+        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
       </section>
 
       <aside className={styles.decisions}>

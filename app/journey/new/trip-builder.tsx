@@ -11,7 +11,7 @@
 
 import {
   CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
-  Clock, GripVertical, Lock, MapPin, Plane, Plus, Users, X,
+  Check, Clock, GripVertical, Lock, MapPin, Plane, Plus, Sparkles, Users, X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
@@ -303,6 +303,7 @@ export default function TripBuilder() {
   const [hydrated, setHydrated] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "local">("saving");
   const [step, setStep] = useState(0);
+  const [showTripDetails, setShowTripDetails] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [activeDay, setActiveDay] = useState(0);
   const [draftImages, setDraftImages] = useState<Record<string, JourneyImage>>({});
@@ -1003,11 +1004,16 @@ export default function TripBuilder() {
         <strong>{stepGuidance[step][0]}</strong>
         <span>{stepGuidance[step][1]}</span>
       </p>
+      {step === 0 && <header className={styles.confirmHero}>
+        <p>{language === "es" ? "PASO 1 DE 3" : "STEP 1 OF 3"}</p>
+        <h1>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</h1>
+        <span>{language === "es" ? "Una comprobación rápida para crear el viaje adecuado para ti." : "A quick check so we can build the right trip for you."}</span>
+      </header>}
       <div className={styles.wizardBody}>
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
-              {intakeMentions.length > 0 && <section className={styles.intakeReview} aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
+              <section className={styles.intakeReview} aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
                 <div><span>{language === "es" ? "RESUMEN DEL VIAJE" : "TRIP INTAKE"}</span><h2>{language === "es" ? "Esto es lo que llevaremos al plan." : "This is what will shape your plan."}</h2><p>{language === "es" ? "Edita cualquier detalle antes de repartir los días." : "Edit anything now, before we start allocating your days."}</p></div>
                 <dl>
                   <div><dt>{language === "es" ? "Salida" : "Departure"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Añade tu salida" : "Add your departure")}</dd></div>
@@ -1015,7 +1021,7 @@ export default function TripBuilder() {
                   <div><dt>{language === "es" ? "Ruta" : "Route"}</dt><dd>{stops.length ? stops.map((stop) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{stop.name}, {stop.country} <X aria-hidden="true" /></button>) : (language === "es" ? "Aún no hay paradas" : "No stops yet")}</dd></div>
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt>{language === "es" ? "Necesita atención" : "Needs attention"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") setOrigin(mention.canonicalName); else setStopInput(mention.canonicalName); }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
-              </section>}
+              </section>
               <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><MapPin /> {ui.tripBriefLabel}</span>
                 <h2>{ui.tripBriefTitle}</h2>
@@ -1057,6 +1063,8 @@ export default function TripBuilder() {
               </div>}
 
               <section className={styles.intentPanel} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
+                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar preferencias" : "Hide trip preferences") : (language === "es" ? "Añadir preferencias o una reserva fija" : "Add preferences or a fixed booking")}</button>
+                {showTripDetails && <>
                 <header><p>{language === "es" ? "INTENCIÓN DEL VIAJE" : "TRIP INTENT"}</p><h3>{language === "es" ? "Protege lo que no puede cambiar." : "Protect what cannot move."}</h3><span>{language === "es" ? "Lo imprescindible no se pierde al replantear la ruta. Las preferencias ayudan a decidir entre opciones." : "Must-keeps stay protected when the route changes. Preferences guide the trade-offs."}</span></header>
                 <div className={styles.intentGrid}>
                   <section className={styles.intentHard}>
@@ -1096,6 +1104,7 @@ export default function TripBuilder() {
                   </section>
                 </div>
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
+                </>}
               </section>
 
               {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
@@ -1258,7 +1267,16 @@ export default function TripBuilder() {
           )}
         </div>
 
-        <aside className={styles.rail} aria-label={ui.route}>
+        {step === 0 ? <aside className={styles.confirmAside} aria-label="What happens next">
+          <div className={styles.confirmIllustration}><MapPin /><span>✦</span><span>⛩</span><span>⌁</span></div>
+          <h2>{language === "es" ? "Esto es lo que ocurre después" : "Here’s what happens next"}</h2>
+          <div className={styles.nextSteps}>
+            <p><MapPin /><span><b>{language === "es" ? "Ordenaremos tu ruta" : "We’ll order your route"}</b>{language === "es" ? "Encontramos el mejor flujo entre tus paradas." : "Morrovia finds the best flow between your stops."}</span></p>
+            <p><span className={styles.bed}>▰</span><span><b>{language === "es" ? "Recomendaremos noches" : "We’ll recommend nights"}</b>{language === "es" ? "Según el tiempo de viaje y lo que hay cerca." : "Based on travel time and what’s nearby."}</span></p>
+            <p><Sparkles /><span><b>{language === "es" ? "Señalaremos compromisos" : "We’ll flag trade-offs"}</b>{language === "es" ? "Para que puedas decidir con confianza." : "So you can decide with confidence."}</span></p>
+          </div>
+          <div className={styles.confirmAsideFoot}><CalendarDays /><span>{language === "es" ? "Puedes editar cada decisión después." : "Every decision stays editable afterwards."}</span></div>
+        </aside> : <aside className={styles.rail} aria-label={ui.route}>
           <div className={styles.railBlock}>
             <small className={styles.railLabel}>{ui.route}</small>
             <div className={styles.railRoute}>
@@ -1327,7 +1345,7 @@ export default function TripBuilder() {
               </div>
             ) : <p className={styles.railEmptyText}>{ui.nothingSelected}</p>}
           </div>
-        </aside>
+        </aside>}
       </div>
 
       <div className={styles.wizardFoot}>
@@ -1342,7 +1360,7 @@ export default function TripBuilder() {
               if (step === 0) acceptCurrentRoute("continue");
               if (step === 2) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
             }}>
-            {step === 2 ? copy.buildDraft : copy.continue} →
+            {step === 0 ? <><Sparkles />{language === "es" ? "Crear una primera ruta" : "Make a first route"}</> : step === 2 ? copy.buildDraft : copy.continue} →
           </button>
         </div>
       </div>
