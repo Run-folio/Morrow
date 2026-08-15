@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight, Plus, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -13,10 +12,10 @@ type Capture = { rawBrief: string; parserVersion: string; durationDays?: number;
 
 const copy = {
   en: {
-    briefLabel: "YOUR TRIP BRIEF", briefPlaceholder: "For example: Two weeks in Japan this October — Tokyo, Kyoto and time in the Japanese Alps.", continue: "Make my plan", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "See featured routes",
+    briefLabel: "WHERE, WHEN, AND WHAT MATTERS?", briefPlaceholder: "For example: Three weeks from London through Bangkok, Hoi An and Siem Reap this September. We like a balanced pace, food and time outdoors.", continue: "Shape my route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
   },
   es: {
-    briefLabel: "TU IDEA DE VIAJE", briefPlaceholder: "Por ejemplo: Dos semanas en Japón este octubre — Tokio, Kioto y tiempo en los Alpes japoneses.", continue: "Crear mi plan", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Ver rutas destacadas",
+    briefLabel: "¿DÓNDE, CUÁNDO Y QUÉ IMPORTA?", briefPlaceholder: "Por ejemplo: Tres semanas desde Londres por Bangkok, Hoi An y Siem Reap este septiembre. Preferimos un ritmo equilibrado, comida y tiempo al aire libre.", continue: "Dar forma a mi ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
   },
 } as const;
 
@@ -77,6 +76,6 @@ export default function HomeTripStarter() {
       </div>
     </div>
     {captureError ? <p className={styles.captureError} role="alert">{captureError}</p> : null}
-    <div className={styles.startBuilderSecondary}><Link href="/journey/new"><Plus aria-hidden="true" /> {text.newTrip}</Link><a href="#routes"><Sparkles aria-hidden="true" /> {text.routes}</a></div>
+    <div className={styles.startBuilderSecondary}><a href="#routes"><Sparkles aria-hidden="true" /> {text.routes}</a></div>
   </form>;
 }

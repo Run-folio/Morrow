@@ -1,27 +1,25 @@
 "use client";
 
-import { Clock3, MapPinned, PencilRuler, Stamp } from "lucide-react";
+import { MapPinned, Route, Scale } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./home.module.css";
 
 const copy = {
   en: {
-    eyebrow: "Made for real travel", title: "Less time wrestling with a plan. More room to enjoy it.",
+    eyebrow: "Decisions first", title: "See the decision before the detail.",
     items: [
-      [PencilRuler, "Plans shaped, not packaged", "Start with a thoughtful route, then change every day, place and suggestion."],
-      [MapPinned, "Real places nearby", "Find food and stays around you when you are actually out there."],
-      [Clock3, "Time protected", "See transfer and pacing signals before a day becomes too ambitious."],
-      [Stamp, "Memories kept", "Turn countries, notes and small moments into a record you will want to revisit."],
+      [MapPinned, "Your trip, in your words", "Share the places, dates and priorities that matter. Morrovia keeps the important parts in view."],
+      [Route, "We build the best flow", "See the route order, transfers and the reason the sequence works before you commit to it."],
+      [Scale, "Nights, trade-offs, your call", "Compare a realistic rhythm with faster or slower alternatives, then make the plan your own."],
     ],
   },
   es: {
-    eyebrow: "Hecho para viajar de verdad", title: "Menos tiempo peleando con un plan. Más espacio para disfrutarlo.",
+    eyebrow: "Decisiones primero", title: "Ve la decisión antes que el detalle.",
     items: [
-      [PencilRuler, "Planes a tu medida, no paquetes", "Empieza con una ruta pensada y cambia cada día, lugar y sugerencia."],
-      [MapPinned, "Lugares reales cerca", "Encuentra comida y alojamiento cerca de ti cuando ya estás en el viaje."],
-      [Clock3, "Tiempo protegido", "Ve señales de traslados y ritmo antes de que un día sea demasiado ambicioso."],
-      [Stamp, "Recuerdos guardados", "Convierte países, notas y pequeños momentos en un registro que querrás revisitar."],
+      [MapPinned, "Tu viaje, en tus palabras", "Comparte los lugares, fechas y prioridades que importan. Morrovia mantiene lo importante a la vista."],
+      [Route, "Creamos el mejor flujo", "Ve el orden de la ruta, los traslados y por qué funciona la secuencia antes de decidir."],
+      [Scale, "Noches, alternativas, tu decisión", "Compara un ritmo realista con alternativas más rápidas o más lentas y haz el plan tuyo."],
     ],
   },
 } as const;

@@ -1,90 +1,51 @@
-# Design QA — Rio hero artifact test
+**Findings**
 
-source visual truth path: `/Users/shaun/.codex/generated_images/019f51b2-d2b2-7e21-a4e1-71fd84a4dd81/exec-553dc603-7a6b-467f-9e5d-e9265fe477e0.png`
-implementation screenshot path: `/Users/shaun/Documents/New project/rio-hero-test.png`
-viewport: 1280 × 720 browser viewport
-state: Rio case study with `?layout=hero-artifact`, light theme, page at scroll top
+- No actionable P0, P1, or P2 differences for the requested change.
+  Scope: homepage hero at `/journey/home`.
+  Evidence: the source hero pairs a left-side prompt with a Portugal–Spain–Morocco route visual and an itinerary strip; the browser-rendered implementation uses the same composition, a Lisbon → Seville → Marrakech illustrated route, and a three-stop transfer/nights strip.
+  Accepted implementation difference: the mock's static chips are a functioning free-text trip prompt. This keeps the existing prompt-first creation flow rather than replacing it with non-functional visual controls.
 
-## Full-view comparison evidence
+**Open Questions**
 
-The implementation preserves the preferred inset composition: large left-aligned outcome headline, right-side project summary and metadata, a centered Rio product visual using its own soft blue gradient, and the existing black metrics band below it without an extra gray container.
+- The source mock uses a simplified public-navigation header. The implementation preserves the existing signed-in-aware navigation, language control, Trips and Stamps access. This is intentionally outside the requested hero-only scope.
 
-## Focused region comparison evidence
+**Implementation Checklist**
 
-The hero visual was checked at the same desktop viewport. The real Rio interface asset loads inside the pale background treatment without an additional hero label or caption. The original “The redesign at a glance” section is also restored after the context row, so the case study keeps its original narrative sequence.
+- [x] Add a destination-specific illustrated route asset rather than a generic product screenshot.
+- [x] Add stop order, nights, transfer duration and transport mode beneath the illustration.
+- [x] Reframe hero copy around route confidence and trade-offs.
+- [x] Keep the homepage prompt and route links functional.
+- [x] Verify browser rendering and check console errors.
 
-## Findings
+**Follow-up Polish**
 
-No actionable P0, P1, or P2 differences remain for this test layout.
-
-- [P3] The image continues below the first viewport on smaller laptop heights. This is consistent with the source concept's editorial pacing and keeps the headline readable.
-  Fix: optional future refinement only; consider a shorter crop if mobile/short-height desktop testing shows the metrics band is too far below the fold.
-
-## Fidelity surfaces
-
-- Fonts and typography: existing portfolio type scale, display weight, tracking, and pink mono labels are retained.
-- Spacing and layout rhythm: hero grid, image inset, pale band, and metrics transition follow the source concept.
-- Colors and visual tokens: paper, mist, ink, signal pink, and the Rio pale blue gradient are consistent with the supplied visual target and existing site tokens.
-- Image quality and asset fidelity: the supplied `/Rio.png` interface is used directly; no placeholder or CSS-drawn replacement is introduced.
-- Copy and content: Rio's existing title, summary, metadata, caption, and four metrics are preserved.
-
-## Interaction check
-
-- Loaded the new preview state at `/case-study/rio?layout=hero-artifact`.
-- Verified the hero image, metadata, and metrics/context transition in the rendered page.
-- No console errors were observed during the browser check.
-
-## Comparison history
-
-1. Initial test used the Rio overview video as the hero artifact; the above-fold area rendered as an empty video frame before playback and did not match the selected source concept closely enough.
-2. Updated the test to use the existing Rio interface image from Decision 01, keeping the same content and background treatment. Re-captured the page and verified the visible interface and metrics transition.
-3. Compared against `Generated image 2.png`: tested the full-width treatment, then reverted to the preferred inset treatment while keeping the hero visual label-free. Restored the original “The redesign at a glance” section after context and re-captured the page.
-4. Removed the redundant outer mist-gray hero background so the Rio artwork's native gradient carries the treatment. Re-captured the page and reran the build check.
-5. Removed the test hero's bottom padding so the visual is flush with the black metrics band. Re-captured the join and reran the build check.
-6. Added dedicated desktop and mobile hero-asset slots for Rio, with temporary copies of the current image so the test remains functional until the art-directed replacements are ready. Re-captured the desktop state and reran the build check.
-7. Aligned tablet and desktop rendering to the same 16:5 crop so one widescreen hero asset is composed and displayed consistently above the mobile breakpoint. Reran the build check.
-
-final result: passed
+- [P3] If the public-navigation redesign is approved, align the primary navigation with the lighter mock header while retaining language and signed-in account access.
 
 ---
 
-# Design QA — Home About compact tags
+### QA evidence
 
-source visual truth path: `/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/TemporaryItems/NSIRD_screencaptureui_xu55O4/Screenshot 2026-07-27 at 2.05.22 PM.png`
+- **Source visual truth:** `/Users/shaun/Documents/Moro design/Codex Image Aug 15, 2026, 08_19_02 AM.png`
+- **Implementation screenshot:** `/Users/shaun/Documents/Morrovia/homepage-implementation.png`
+- **Implementation URL:** `http://localhost:3010/journey/home`
+- **Viewport:** default in-app-browser desktop viewport, `1280 × 720 CSS px`, device scale factor `1`.
+- **Source pixels:** `1487 × 1058`; **implementation pixels:** `1280 × 720`. No density adjustment was required for the visual review; comparison focused on the above-the-fold hero region rather than browser chrome or the mock's full-page crop.
+- **State:** English homepage, default empty prompt, desktop.
+- **Full-view comparison:** checked hero hierarchy, two-column layout, map placement, itinerary strip and CTA.
+- **Focused region comparison:** checked the hero illustration and stop strip; the source's Lisbon, Seville and Marrakech route is represented by a purpose-built route illustration rather than a placeholder or code-drawn substitute.
+- **Primary interaction checked:** prompt is present and the `Shape my route` CTA is enabled; multi-country route link is present.
+- **Console errors checked:** none.
 
-implementation screenshot: in-app browser capture of `http://127.0.0.1:3000/#about` (1280 × 720 CSS px, 1× density; captured during this QA run)
+### Fidelity surfaces
 
-state: desktop light theme, About anchor selected.
+- **Fonts and typography:** implementation uses a large serif display heading and compact uppercase pink eyebrow to match the source hierarchy; functional prompt copy stays legible at standard UI sizing.
+- **Spacing and layout rhythm:** implementation keeps a balanced desktop two-column hero, roomy hero margin and a separate, bordered itinerary strip beneath the map.
+- **Colors and visual tokens:** deep indigo, pale lilac background, restrained pink accents and low-contrast borders match the supplied visual direction.
+- **Image quality and asset fidelity:** the map is a dedicated raster illustration with Portugal, Spain, Morocco, markers and intercity route; it is not a gradient/placeholder substitute.
+- **Copy and content:** hero wording now communicates the route-and-trade-off proposition; the supplied map's stops and journey data are mirrored in the route strip.
 
-## Full-view comparison evidence
+### Comparison history
 
-The four lime capability cards have been replaced by one short row of neutral portfolio tags. The requested `Fintech` tag is absent. The compact tag strip sits under the existing About copy and Selected work begins directly beneath the shorter section.
+1. Initial implementation review: no P0/P1/P2 issues found within the requested right and bottom hero scope; no visual-fidelity iteration was required.
 
-## Focused region comparison evidence
-
-The tag row uses the existing site treatment: rounded mist pills, mono uppercase labels, ink text, and modest horizontal gaps. No new imagery, iconography, or decorative assets were introduced, so a focused asset comparison was not required.
-
-## Findings
-
-No actionable P0, P1, or P2 differences remain for the requested change.
-
-## Fidelity surfaces
-
-- Fonts and typography: tag labels use the existing monospace uppercase metadata style; the established display and body typography is unchanged.
-- Spacing and layout rhythm: vertical About padding is reduced from the previous card-led composition while maintaining a clear separation before Selected work.
-- Colors and visual tokens: the lime capability-card fill has been removed; tags use the existing `mist`, `ink`, and dark-mode tokens.
-- Image quality and asset fidelity: no image asset applies to this tag-only reference.
-- Copy and content: includes AI, B2B SaaS, Logistics, Ecommerce, Design systems, and UX strategy; Fintech is removed.
-
-## Interaction check
-
-- Loaded the homepage at the About anchor in the in-app browser.
-- Verified the six requested tags render and the previous capability-card labels are absent.
-- No browser console errors observed.
-
-## Comparison history
-
-1. Replaced the four large cards with the compact tag treatment and reduced the About section padding.
-2. Re-captured the About anchor in the browser; confirmed visual hierarchy and selected-work proximity.
-
-final result: passed
+**final result: passed**
