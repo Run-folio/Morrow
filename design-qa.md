@@ -35,6 +35,7 @@
 - **Focused region comparison:** checked the hero illustration and stop strip; the source's Lisbon, Seville and Marrakech route is represented by a purpose-built route illustration rather than a placeholder or code-drawn substitute.
 - **Primary interaction checked:** prompt is present and the `Shape my route` CTA is enabled; multi-country route link is present.
 - **Console errors checked:** none.
+- **Mobile follow-up:** rendered at `390 × 844 CSS px` after the wordmark update. The hero is a single-column flow; the prompt CTA remains visible and reachable, the illustration scales to the content width, and the fixed mobile dock does not obscure the primary action. Evidence: `/Users/shaun/Documents/Morrovia/homepage-mobile-after-logo.png`.
 
 ### Fidelity surfaces
 
@@ -47,5 +48,13 @@
 ### Comparison history
 
 1. Initial implementation review: no P0/P1/P2 issues found within the requested right and bottom hero scope; no visual-fidelity iteration was required.
+2. Mobile + wordmark follow-up: replaced the legacy wave mark with the serif Morrovia wordmark and pink sparkle. At 390px the header reduces to the wordmark and the existing dock supplies navigation; no P0/P1/P2 issues found.
+3. Full landing-page follow-up: a new Southeast Asia illustration initially retained the Iberia stop strip. **[P1] Content mismatch:** the geographical illustration and route metadata described different trips. Fixed by changing the strip to Bangkok → Hoi An → Siem Reap with matching flight legs and nights. Post-fix browser evidence: `/Users/shaun/Documents/Morrovia/homepage-full-redesign-preview.png`.
+
+### Landing-page follow-up evidence
+
+- Public desktop navigation now presents How it works, Routes, Passport guide and Sign in, while the existing language/account submenu remains available through Menu.
+- The live homepage prompt remains the same `HomeTripStarter` component: it retains prompt parsing, structured handoff and all existing analytics. A local API request to `/api/journey-capture` returned HTTP 200 for a three-country prompt.
+- Generated hero illustration: `/Users/shaun/Documents/Morrovia/public/journey/illustrations/southeast-asia-route-hero.png`.
 
 **final result: passed**

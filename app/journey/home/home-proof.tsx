@@ -34,7 +34,7 @@ export default function HomeProof() {
   }, []);
   const text = copy[language];
 
-  return <section className={styles.proofSection} aria-labelledby="real-travel-proof">
+  return <section className={styles.proofSection} id="how-it-works" aria-labelledby="real-travel-proof">
     <header><p>{text.eyebrow}</p><h2 id="real-travel-proof">{text.title}</h2></header>
     <div className={styles.proofGrid}>{text.items.map(([Icon, title, detail]) => <article key={title}><span><Icon aria-hidden="true" /></span><h3>{title}</h3><p>{detail}</p></article>)}</div>
   </section>;

@@ -45,22 +45,26 @@
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 13px;
   line-height: 1;
-}
-.brandMark {
-  display: block;
-  width: 48px;
-  height: auto;
-  flex: 0 0 auto;
 }
 .brandName {
-  color: #201c4d;
-  font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: .06em;
+  position: relative;
+  color: #18126d;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(25px, 2.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -.055em;
   line-height: 1;
+}
+.brandName::after {
+  content: "✦";
+  position: absolute;
+  top: -0.45em;
+  right: -0.5em;
+  color: #f62880;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: .58em;
+  letter-spacing: 0;
 }
 .actions {
   justify-self: end;
@@ -68,6 +72,47 @@
   align-items: center;
   gap: 7px;
 }
+.landingHeader {
+  grid-template-columns: auto 1fr auto;
+  min-height: 76px;
+  padding-inline: clamp(24px, 3vw, 52px);
+  background: rgba(251, 250, 255, .94);
+  border-color: #dedcf1;
+}
+.landingHeader .portfolioSpacer { display: none; }
+.landingHeader .brand { grid-column: 1; }
+.landingActions {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.3vw, 36px);
+  color: #1f1983;
+}
+.landingActions > a {
+  color: inherit;
+  font: 600 13px var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.landingActions > a:hover { color: #f62880; }
+.landingDivider { width: 1px; height: 22px; background: #d9d6eb; }
+.landingMenuTrigger {
+  min-height: 36px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d9d6eb;
+  border-radius: 999px;
+  color: #201c72;
+  background: #fff;
+  font: 700 11px var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  cursor: pointer;
+  list-style: none;
+}
+.landingMenuTrigger::-webkit-details-marker { display: none; }
+.landingMenuTrigger svg { width: 14px; height: 14px; }
 .quietLink,
 .primaryLink,
 .accountTrigger {
@@ -269,6 +314,10 @@
   .accountTrigger > svg:last-child {
     display: none;
   }
+  .landingHeader { grid-template-columns: 1fr auto; min-height: 66px; padding-inline: 16px; }
+  .landingActions { grid-column: 2; gap: 8px; }
+  .landingActions > a, .landingDivider { display: none; }
+  .landingMenuTrigger { min-height: 36px; }
 }
 @media (max-width: 520px) {
   .actions {
@@ -288,13 +337,9 @@
     width: 36px;
     padding: 0;
   }
-  .brandMark {
-    width: 42px;
-  }
   .brandName {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: .04em;
+    font-size: 25px;
+    letter-spacing: -.055em;
   }
   .accountPopover {
     position: fixed;

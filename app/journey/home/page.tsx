@@ -3,13 +3,14 @@ import InspirationExplorer from "./inspiration-explorer";
 import styles from "./home.module.css";
 import HomeProof from "./home-proof";
 import HomeHeroTools from "./home-hero-tools";
+import HomeFooter from "./home-footer";
 
 export const metadata = { title: "Travel your way · Morrovia" };
 
 export default function EasyTHomePage() {
   return (
     <main className={styles.page}>
-      <EasyTNavigation current="home" />
+      <EasyTNavigation current="home" landing />
       <HomeHeroTools showTools={false} />
 
       <HomeProof />
@@ -17,6 +18,7 @@ export default function EasyTHomePage() {
       <InspirationExplorer />
 
       <HomeHeroTools showHero={false} />
+      <HomeFooter />
 
     </main>
   );

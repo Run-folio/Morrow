@@ -27,6 +27,7 @@ type EasyTNavigationProps = {
   current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport";
   account?: { name?: string | null; email: string; language?: Language };
   showBack?: boolean;
+  landing?: boolean;
 };
 
 type Language = EasyTLanguage;
@@ -35,6 +36,7 @@ export default function EasyTNavigation({
   current,
   account,
   showBack = true,
+  landing = false,
 }: EasyTNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -106,7 +108,7 @@ export default function EasyTNavigation({
 
   return (
     <>
-      <header className={styles.header} data-easyt-app>
+      <header className={`${styles.header} ${landing ? styles.landingHeader : ""}`} data-easyt-app>
       {!showBack || pathname === "/journey/home" ? (
         <span className={styles.portfolioSpacer} aria-hidden="true" />
       ) : (
@@ -129,15 +131,38 @@ export default function EasyTNavigation({
         href="/journey/home"
         aria-label="Morrovia home"
       >
-        <img
-          className={styles.brandMark}
-          src="/brand/morrow-route-wordmark.svg"
-          alt=""
-        />
-        <span className={styles.brandName}>morrovia</span>
+        <span className={styles.brandName}>Morrovia</span>
       </Link>
 
-      <nav className={styles.actions} aria-label="Morrovia navigation">
+      {landing ? <nav className={styles.landingActions} aria-label="Morrovia navigation">
+        <a href="#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</a>
+        <a href="#routes">{language === "es" ? "Rutas" : "Routes"}</a>
+        <Link href="/journey/passport">{language === "es" ? "Guía de pasaporte" : "Passport guide"}</Link>
+        <span className={styles.landingDivider} aria-hidden="true" />
+        <Link href="/journey/dashboard">{activeAccount ? labels.account : (language === "es" ? "Iniciar sesión" : "Sign in")}</Link>
+        <details className={styles.accountMenu}>
+          <summary className={styles.landingMenuTrigger}>
+            <Languages aria-hidden="true" />
+            <span>{language === "es" ? "Menú" : "Menu"}</span>
+            <ChevronDown aria-hidden="true" />
+          </summary>
+          <div className={styles.accountPopover}>
+            <Link href="/journey/discover"><Map aria-hidden="true" /><span>{language === "es" ? "Rutas destacadas" : "Featured routes"}</span></Link>
+            <Link href="/journey/passport"><Compass aria-hidden="true" /><span>{language === "es" ? "Pasaporte al destino" : "Passport to Destination"}</span></Link>
+            <Link href="/journey/prep"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Preparativos" : "Travel prep"}</span></Link>
+            {activeAccount ? <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link> : null}
+            <label className={styles.languageControl}>
+              <Languages aria-hidden="true" />
+              <span>{labels.language}</span>
+              <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            {activeAccount ? <button type="button" onClick={signOut}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button> : null}
+          </div>
+        </details>
+      </nav> : <nav className={styles.actions} aria-label="Morrovia navigation">
         {current !== "new" ? (
           <EasyTLinkButton
             className={styles.primaryLink}
@@ -273,7 +298,7 @@ export default function EasyTNavigation({
             </div>
           </details>
         ) : null}
-      </nav>
+      </nav>}
       </header>
       {current !== "prototype" ? (
         <nav className={styles.mobileDock} aria-label="EasyT mobile navigation">
