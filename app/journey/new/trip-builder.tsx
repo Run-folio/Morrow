@@ -1270,7 +1270,7 @@ export default function TripBuilder() {
         </div>
 
         {step === 0 ? <aside className={styles.confirmAside} aria-label="What happens next">
-          <div className={styles.confirmIllustration}><MapPin /><span>✦</span><span>⛩</span><span>⌁</span></div>
+          <img className={styles.confirmIllustration} src={stops.some((stop) => stop.country === "Japan") ? "/journey/illustrations/japan-route-confirm.png" : "/journey/illustrations/global-route-confirm.png"} alt={stops.some((stop) => stop.country === "Japan") ? "Illustrated route through Japan" : "Illustrated international route"} />
           <h2>{language === "es" ? "Esto es lo que ocurre después" : "Here’s what happens next"}</h2>
           <div className={styles.nextSteps}>
             <p><MapPin /><span><b>{language === "es" ? "Ordenaremos tu ruta" : "We’ll order your route"}</b>{language === "es" ? "Encontramos el mejor flujo entre tus paradas." : "Morrovia finds the best flow between your stops."}</span></p>

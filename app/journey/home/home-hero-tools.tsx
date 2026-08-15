@@ -27,7 +27,7 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
         <HomeTripStarter />
       </div>
       <div className={styles.heroProduct} aria-label={text.exploreJapan}>
-        <div className={styles.heroProductFrame}><img src="/journey/product-shots/map-plan-mobile.jpeg" alt="Morrovia map plan, itinerary and nearby options on a phone" /></div>
+        <div className={styles.heroProductFrame}><img src="/journey/product-shots/map-plan-hero-clean.png" alt="Morrovia map plan, itinerary and nearby options" /></div>
         <div className={styles.heroProductNote}><span>{text.routeMeta}</span><strong>{text.routeStops}</strong><small>{text.exploreJapan} <ArrowRight aria-hidden="true" /></small></div>
       </div>
     </section> : null}

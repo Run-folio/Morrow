@@ -9,6 +9,7 @@
   --muted: #7675a0;
 }
 .stepHero{display:grid;gap:12px;margin:0 0 32px}.stepHero p{margin:0;color:var(--signal);font:800 11px var(--font-geist-mono,monospace);letter-spacing:.13em}.stepHero h2{max-width:720px;margin:0;color:var(--ink);font-family:var(--font-instrument-serif,Georgia,serif);font-size:clamp(40px,5vw,68px);font-weight:600;line-height:.95;letter-spacing:-.055em}.stepHero span{color:var(--muted);font-size:16px;line-height:1.45}.routeStep .filters{padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}.routeStep .panels{gap:18px;margin-top:22px}.routeStep .panelHead{padding:0 5px}.timeStep .allocationPanel{border-color:#d8d8ef;border-radius:14px;background:#fff}.timeStep .allocationRow{grid-template-columns:minmax(150px,.9fr) minmax(120px,1.4fr) 65px;padding:16px 0}.timeStep .allocationRow strong{color:var(--ink);font-family:var(--font-instrument-serif,Georgia,serif);font-size:25px}.timeStep .durationSignal{border-color:#d9d8f0;background:#f7f6ff}
+.confirmIllustration{display:block!important;width:100%!important;height:auto!important;max-height:214px;object-fit:contain;margin:0 0 4px;background:transparent!important}
 
 .shellWide {
   position: relative; max-width: 1360px; margin: 0 auto;

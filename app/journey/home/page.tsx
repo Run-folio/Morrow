@@ -1,7 +1,6 @@
 import EasyTNavigation from "../easyt-navigation";
 import InspirationExplorer from "./inspiration-explorer";
 import styles from "./home.module.css";
-import ProductShowcase from "./product-showcase";
 import HomeProof from "./home-proof";
 import HomeHeroTools from "./home-hero-tools";
 
@@ -14,8 +13,6 @@ export default function EasyTHomePage() {
       <HomeHeroTools showTools={false} />
 
       <HomeProof />
-
-      <ProductShowcase />
 
       <InspirationExplorer />
 
