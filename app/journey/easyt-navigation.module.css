@@ -15,6 +15,13 @@
   color: #17152f;
   font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
 }
+
+@media (min-width: 1181px) {
+  .landingHeader {
+    padding-left: calc((100vw - 1180px) / 2);
+    padding-right: calc((100vw - 1180px) / 2);
+  }
+}
 .portfolio,
 .brand,
 .quietLink,
@@ -387,5 +394,13 @@
   .mobileDock .dockPrimary {
     color: #fff;
     background: #17152f;
+  }
+}
+
+/* Keep the public landing header on the same 1180px visual grid as its content. */
+@media (min-width: 1181px) {
+  .landingHeader {
+    padding-left: calc((100vw - 1180px) / 2);
+    padding-right: calc((100vw - 1180px) / 2);
   }
 }

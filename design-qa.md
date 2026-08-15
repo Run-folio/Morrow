@@ -57,4 +57,13 @@
 - The live homepage prompt remains the same `HomeTripStarter` component: it retains prompt parsing, structured handoff and all existing analytics. A local API request to `/api/journey-capture` returned HTTP 200 for a three-country prompt.
 - Generated hero illustration: `/Users/shaun/Documents/Morrovia/public/journey/illustrations/southeast-asia-route-hero.png`.
 
+### Full reference-page fidelity follow-up
+
+- Reworked the homepage into the reference page's complete content sequence: editorial route hero, prompt, route strip, benefits rail, multi-country route cards, decision-process illustrations, useful-before-book cards, closing illustrated CTA and footer.
+- Replaced generic visual panels with the dedicated triptych assets in `public/journey/illustrations/route-card-triptych.png`, `decision-triptych.png` and `prep-triptych.png`.
+- Header and main content now share a verified 1180px desktop grid: both the wordmark and hero begin at `50px` in the 1280px review viewport.
+- Mobile review at `390 × 844` confirmed that the hero changes to a single column: copy and working prompt appear before the illustration, with no map overlap.
+- Prompt behaviour remains functional: the free-text capture endpoint, structured local-storage handoff, analytics and builder navigation were preserved. Only its label and CTA were brought into line with the supplied reference.
+- Build verification: `npm run build:check` completed successfully after these changes.
+
 **final result: passed**

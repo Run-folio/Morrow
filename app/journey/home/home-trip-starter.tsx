@@ -12,10 +12,10 @@ type Capture = { rawBrief: string; parserVersion: string; durationDays?: number;
 
 const copy = {
   en: {
-    briefLabel: "WHERE, WHEN, AND WHAT MATTERS?", briefPlaceholder: "For example: Three weeks from London through Bangkok, Hoi An and Siem Reap this September. We like a balanced pace, food and time outdoors.", continue: "Shape my route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
+    briefLabel: "TELL US THE SHAPE OF YOUR TRIP", briefPlaceholder: "For example: Three weeks from London through Bangkok, Hoi An and Siem Reap this September. We like a balanced pace, food and time outdoors.", continue: "Make my first route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
   },
   es: {
-    briefLabel: "¿DÓNDE, CUÁNDO Y QUÉ IMPORTA?", briefPlaceholder: "Por ejemplo: Tres semanas desde Londres por Bangkok, Hoi An y Siem Reap este septiembre. Preferimos un ritmo equilibrado, comida y tiempo al aire libre.", continue: "Dar forma a mi ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
+    briefLabel: "CUÉNTANOS LA FORMA DE TU VIAJE", briefPlaceholder: "Por ejemplo: Tres semanas desde Londres por Bangkok, Hoi An y Siem Reap este septiembre. Preferimos un ritmo equilibrado, comida y tiempo al aire libre.", continue: "Crear mi primera ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
   },
 } as const;
 
