@@ -9,6 +9,7 @@ import { canonicalCountry, entrySourcesByCountry, type EntrySource } from "@/lib
 import { countryFlagFor, supportedPassportCountries, touristEntryRequirementFor, type TouristEntryRequirement } from "@/lib/easyt/visa-requirements";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./passport.module.css";
+import editorial from "../surface-editorial.module.css";
 
 export default function PassportDestinationClient() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
@@ -35,7 +36,7 @@ export default function PassportDestinationClient() {
     setRequirement(touristEntryRequirementFor(nationality, country, language));
   };
 
-  return <main className={styles.page}>
+  return <main className={`${styles.page} ${editorial.surface} ${editorial.passport} morrovia-editorial-page`}>
     <EasyTNavigation current="passport" showBack={false} />
     <section className={styles.hero}>
       <div className={styles.copy}><p>{t.eyebrow}</p><h1>{t.title}</h1><span>{t.intro}</span></div>

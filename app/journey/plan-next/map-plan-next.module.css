@@ -2,3 +2,28 @@
 @media(max-width:1000px){.workspace{grid-template-columns:245px minmax(0,1fr)}.decisions{display:none}.daySheet{width:min(610px,calc(100% - 44px))}}@media(max-width:720px){.header{grid-template-columns:1fr auto;padding:12px 16px}.header>div{display:none}.prep{padding:8px 11px}.timeline{padding:10px 12px}.timeline button{min-width:152px}.workspace{display:block;min-height:0}.stopPanel{border-right:0;border-bottom:1px solid #e0e2eb;padding:22px 18px}.stopPanel h1{font-size:39px}.mapSurface{height:390px;min-height:390px}.daySheet{width:calc(100% - 24px);margin:-24px auto 24px;padding:18px}.finderTabs{margin-top:16px}.mapSurface :global(.maplibregl-ctrl-top-right){top:10px;right:10px}}
 
 @media(min-width:721px){.page{height:100vh;overflow:hidden}.workspace{height:calc(100vh - 153px);min-height:0}.mapSurface{min-height:0}.daySheet{position:fixed;bottom:22px;left:50%;z-index:10;max-height:min(330px,calc(100vh - 210px));margin:0;overflow:auto;transform:translateX(-50%)}}
+
+/* Shared Morrovia editorial system — deliberately layered onto the comparison
+   planner so its map, state and controls remain unchanged. */
+.page{background:var(--morrovia-paper,#fbfaff);color:var(--morrovia-ink,#17106f)}
+.header,.timeline,.stopPanel,.decisions,.daySheet{border-color:var(--morrovia-line,#d9d8ee);background:rgba(255,255,255,.94)}
+.header{min-height:78px;padding-inline:clamp(18px,3vw,44px)}
+.header strong{color:var(--morrovia-ink,#17106f);font-family:var(--morrovia-display,Georgia,serif);font-size:16px;letter-spacing:-.025em}
+.header small{color:var(--morrovia-muted,#7673a4)}
+.switch,.prep,.editLink,.finderPrompt a{color:var(--morrovia-ink,#17106f)}
+.prep{border-color:var(--morrovia-line,#d9d8ee);border-radius:8px;background:var(--morrovia-paper,#fbfaff)}
+.timeline{padding-inline:clamp(18px,3vw,44px);background:rgba(255,255,255,.78)}
+.timeline button{border-color:var(--morrovia-line,#d9d8ee)}
+.timeline button>span,.eyebrow{color:var(--morrovia-signal,#f42b7a)}
+.timeline button b,.stopPanel h1,.decisionsHeading h2,.sheetHeading h2{color:var(--morrovia-ink,#17106f)}
+.timeline .activeStop{border-color:#f6a9ca;background:#fff7fb;box-shadow:inset 0 0 0 1px rgba(244,43,122,.12)}
+.stopPanel,.decisions{background:rgba(255,255,255,.9)}
+.stopPanel h1,.decisionsHeading h2,.sheetHeading h2{font-family:var(--morrovia-display,Georgia,serif)}
+.stopReason,.stopPanel dl,.editLink,.decisionsHeading,.decisionList article{border-color:var(--morrovia-line,#d9d8ee)}
+.mapSurface :global(.planner-map__stop){color:var(--morrovia-ink,#17106f);border-color:var(--morrovia-ink,#17106f)}
+.mapSurface :global(.planner-map__stop.is-active){background:var(--morrovia-signal,#f42b7a);border-color:var(--morrovia-signal,#f42b7a)}
+.daySheet{border-color:var(--morrovia-line,#d9d8ee);border-radius:15px;box-shadow:0 20px 48px rgba(23,16,111,.15)}
+.sheetHeading>span{background:var(--morrovia-lilac,#f2f0ff);color:var(--morrovia-ink-soft,#4f4a92)}
+.finderTabs{border-color:var(--morrovia-line,#d9d8ee);border-radius:10px;background:var(--morrovia-paper,#fbfaff)}
+.finderTabs .activeTab{background:var(--morrovia-ink,#17106f)}
+@media(max-width:720px){.header{min-height:66px}.stopPanel{background:var(--morrovia-paper,#fbfaff)}.daySheet{border-radius:15px}.timeline{padding-inline:12px}}

@@ -10,6 +10,7 @@ import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import { tripHealth } from "@/lib/easyt/review";
 import styles from "./map-plan-next.module.css";
+import editorial from "../surface-editorial.module.css";
 
 type FinderTab = "plan" | "stay" | "eat" | "see";
 
@@ -109,7 +110,7 @@ export default function MapPlanNext() {
   const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : "Road"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
   const decisions = (health?.issues ?? []).filter((issue) => issue.status === "open").slice(0, 3);
 
-  return <main className={styles.page}>
+  return <main className={`${styles.page} ${editorial.surface} ${editorial.map} morrovia-editorial-page`}>
     <header className={styles.header}>
       <Link href={currentHref} className={styles.switch}>← Current map planner</Link>
       <div><strong>{trip.title}</strong><small>{formatDate(trip.startDate)} – {formatDate(trip.endDate)} · {trip.travellers} travellers</small></div>

@@ -147,3 +147,51 @@
 
 /* Closing banner matches the wide illustrated composition in the approved homepage mock. */
 .footerCta{display:block;min-height:336px;padding:0;border-color:#d8d4ef;border-radius:14px;background:#fff8fc}.footerCta>img{inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:1;mix-blend-mode:multiply}.footerCtaCopy{position:relative;z-index:1;width:min(46%,470px);padding:44px 0 0 46px}.footerCta h2{max-width:390px;font-size:clamp(36px,3.55vw,55px)}.footerCta p:not(.eyebrow){max-width:375px}.footerCtaActions{display:flex;align-items:stretch;gap:8px;margin-top:24px}.footerPrompt,.footerAction{display:inline-flex;align-items:center;justify-content:center;min-height:48px;border-radius:7px;font:650 12px var(--font-geist-sans,Inter,Arial,sans-serif);text-decoration:none}.footerPrompt{flex:1;padding:0 14px;color:#77749a;border:1px solid #cbc7ea;background:rgba(255,255,255,.82)}.footerAction{gap:8px;flex:0 0 auto;padding:0 17px;color:#fff;background:#251dc0;box-shadow:0 12px 23px rgba(37,29,192,.18)}.footerAction:hover{background:#f62880}.footerAction svg{width:15px}.footerCta>a{display:none}@media(max-width:760px){.footerCta{min-height:450px}.footerCta>img{object-position:63% center;opacity:.78}.footerCtaCopy{width:auto;padding:31px 24px}.footerCta h2{max-width:310px;font-size:40px}.footerCta p:not(.eyebrow){max-width:305px}.footerCtaActions{display:grid;gap:8px;margin-top:20px}.footerPrompt,.footerAction{min-height:46px}.footerAction{width:max-content}}
+
+/* Home layout containment and spacing: the hero artwork may layer with its own
+   route strip, but never with the prompt, the following rail, or route cards. */
+.hero{position:relative;isolation:isolate;align-items:start;padding-bottom:76px}
+.hero .heroCopy{position:relative;z-index:2}
+.heroRoute{position:relative;z-index:1;min-height:530px;overflow:hidden;padding-bottom:72px}
+.heroRouteMap{width:100%;max-width:100%;height:458px;margin:0;object-fit:contain;object-position:center top;mix-blend-mode:multiply}
+.heroRouteStrip{position:absolute;right:0;bottom:0;left:12%;width:auto;max-width:none;margin:0;z-index:2}
+.hero .startBuilderBrief{overflow:hidden}
+.hero .startBuilderPromptField{min-height:131px}
+.hero .startBuilderBrief textarea{min-height:131px;padding:14px 17px 69px}
+.startBuilderPromptAction{right:14px;bottom:13px;max-width:calc(100% - 28px)}
+.startBuilderPromptAction button{max-width:100%}
+.homeBenefits{margin-bottom:70px}
+
+/* Route photographs should always fill the visual field of their card. */
+.routeImage{display:block;width:100%;min-width:0;height:238px!important;background-repeat:no-repeat!important;background-size:cover!important;background-position:center!important}
+
+/* Only show a destination panel as interactive when we have a useful route. */
+.prepCardLink{color:inherit;text-decoration:none;transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.prepCardLink:hover{border-color:#a7a2e4;box-shadow:0 14px 28px rgba(37,29,192,.1);transform:translateY(-2px)}
+.prepCardLink:focus-visible{outline:3px solid rgba(246,40,128,.35);outline-offset:3px}
+.prepCardAction{display:inline-flex;align-items:center;gap:7px;justify-self:start;margin-top:7px;color:#251dbd;font-size:12px;font-weight:700}
+.prepCardAction svg{width:14px;color:#ff3d8b}
+
+/* Give the illustrated closing banner and the page footer the breathing room
+   present in the approved composition. */
+.homeFooter{padding-bottom:62px}
+.footerCta{margin-bottom:24px}
+.footerBottom{padding-bottom:16px}
+
+@media(max-width:960px){
+  .hero{padding-bottom:58px}
+  .heroRoute{min-height:0;overflow:visible;padding-bottom:0}
+  .heroRouteMap{height:auto;object-fit:initial}
+  .heroRouteStrip{position:relative;right:auto;bottom:auto;left:auto;margin:-14px 0 0}
+  .homeBenefits{margin-bottom:54px}
+}
+@media(max-width:560px){
+  .hero{padding-bottom:46px}
+  .hero .startBuilderPromptField{min-height:145px}
+  .hero .startBuilderBrief textarea{min-height:145px;padding-bottom:69px}
+  .startBuilderPromptAction{right:12px;bottom:12px}
+  .homeBenefits{margin-bottom:42px}
+  .routeImage{height:218px!important}
+  .homeFooter{padding-bottom:42px}
+  .footerCta{margin-bottom:16px}
+}

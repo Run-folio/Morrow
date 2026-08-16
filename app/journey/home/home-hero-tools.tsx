@@ -37,9 +37,9 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
     {showTools ? <section className={styles.tools}>
       <header className={styles.toolsHeader}><p className={styles.eyebrow}>{text.out}</p><h2>{language === "es" ? "Todo en un solo lugar, antes de partir." : "Everything in one place, before you go."}</h2></header>
       <div className={styles.prepGrid}>
-        <article className={styles.prepCard}><div className={`${styles.prepArtwork} ${styles.prepArt1}`} /><Compass aria-hidden="true" /><h3>{text.nearby}</h3><p>{text.nearbyText}</p><Link href="/journey/passport">{text.openMap} <ArrowRight aria-hidden="true" /></Link></article>
-        <article className={styles.prepCard}><div className={`${styles.prepArtwork} ${styles.prepArt2}`} /><BedDouble aria-hidden="true" /><h3>{text.stamps}</h3><p>{text.stampsText}</p><Link href="/journey/new">{language === "es" ? "Empezar una ruta" : "Start with a route"} <ArrowRight aria-hidden="true" /></Link></article>
-        <article className={styles.prepCard}><div className={`${styles.prepArtwork} ${styles.prepArt3}`} /><Luggage aria-hidden="true" /><h3>{text.prep}</h3><p>{text.prepText}</p><Link href="/journey/prep">{text.openPrep} <ArrowRight aria-hidden="true" /></Link></article>
+        <Link className={`${styles.prepCard} ${styles.prepCardLink}`} href="/journey/passport"><div className={`${styles.prepArtwork} ${styles.prepArt1}`} /><Compass aria-hidden="true" /><h3>{text.nearby}</h3><p>{text.nearbyText}</p><span className={styles.prepCardAction}>{text.openMap} <ArrowRight aria-hidden="true" /></span></Link>
+        <article className={styles.prepCard}><div className={`${styles.prepArtwork} ${styles.prepArt2}`} /><BedDouble aria-hidden="true" /><h3>{text.stamps}</h3><p>{text.stampsText}</p></article>
+        <article className={styles.prepCard}><div className={`${styles.prepArtwork} ${styles.prepArt3}`} /><Luggage aria-hidden="true" /><h3>{text.prep}</h3><p>{text.prepText}</p></article>
       </div>
     </section> : null}
   </>;

@@ -25,6 +25,7 @@ import RouteAttractionImage from "./route-attraction-image";
 import RouteStopImage from "./route-stop-image";
 import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
+import editorial from "../../surface-editorial.module.css";
 
 type RouteStory = {
   eyebrow: string;
@@ -146,7 +147,7 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
   const primaryNationality = preferences?.travelReadinessProfile.nationalities[0];
   const entryChecks = primaryNationality ? countryNames.map((country) => ({ country, requirement: touristEntryRequirementFor(primaryNationality, country, preferences?.language) })) : [];
 
-  return <main className={styles.page}>
+  return <main className={`${styles.page} ${editorial.surface} ${editorial.route} morrovia-editorial-page`}>
     <EasyTNavigation current="home" account={session?.user ? { name: session.user.name, email: session.user.email, language: preferences?.language } : undefined} />
 
     <section className={styles.hero}>

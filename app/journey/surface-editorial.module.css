@@ -1,0 +1,37 @@
+.surface{background:var(--morrovia-paper,#fbfaff);color:var(--morrovia-ink,#17106f)}
+
+/* Map planner: its spatial controls stay deliberately compact, with the
+   editorial system reserved for the framing and decision surfaces. */
+.map :global([class*="map-plan-next_header"]),.map :global([class*="map-plan-next_timeline"]),.map :global([class*="map-plan-next_stopPanel"]),.map :global([class*="map-plan-next_decisions"]),.map :global([class*="map-plan-next_daySheet"]){border-color:var(--morrovia-line,#d9d8ee);background:rgba(255,255,255,.95)}
+.map :global([class*="map-plan-next_header"] strong),.map :global([class*="map-plan-next_stopPanel"] h1),.map :global([class*="map-plan-next_decisionsHeading"] h2),.map :global([class*="map-plan-next_sheetHeading"] h2){font-family:var(--morrovia-display,Georgia,serif);color:var(--morrovia-ink,#17106f)}
+.map :global([class*="map-plan-next_eyebrow"]),.map :global([class*="map-plan-next_timeline"] button>span){color:var(--morrovia-signal,#f42b7a)}
+.map :global([class*="map-plan-next_prep"]){border-color:var(--morrovia-line,#d9d8ee);border-radius:9px;color:var(--morrovia-ink,#17106f)}
+
+/* Route detail: a quiet editorial frame around the real map and route data. */
+.route :global([class*="route-overview_hero"]),.route :global([class*="route-overview_mapCard"]),.route :global([class*="route-overview_tripContext"]),.route :global([class*="route-overview_countrySection"]),.route :global([class*="route-overview_sources"]){border-color:var(--morrovia-line,#d9d8ee);box-shadow:0 14px 38px rgba(23,16,111,.055)}
+.route :global([class*="route-overview_hero"]){border-radius:18px}.route :global([class*="route-overview_heroCopy"]){background:linear-gradient(140deg,#fff,#fbfaff 70%,#f2f0ff)}
+.route :global([class*="route-overview_heroCopy"] h1),.route :global([class*="route-overview_cardHeading"] h2),.route :global([class*="route-overview_tripContext"] h2),.route :global([class*="route-overview_sectionIntro"] h2),.route :global([class*="route-overview_countrySection"] h2),.route :global([class*="route-overview_cta"] h2),.route :global([class*="route-overview_stops"] h3),.route :global([class*="route-overview_attractionGrid"] h3){font-family:var(--morrovia-display,Georgia,serif);color:var(--morrovia-ink,#17106f)}
+.route :global([class*="route-overview_primary"]){border-radius:10px;background:var(--morrovia-ink,#17106f)}.route :global([class*="route-overview_primary"]):hover{background:var(--morrovia-signal,#f42b7a)}
+.route :global([class*="route-overview_stops"] li),.route :global([class*="route-overview_attractionGrid"] article){border-color:var(--morrovia-line,#d9d8ee);border-radius:15px;box-shadow:0 9px 24px rgba(23,16,111,.04)}
+.route :global([class*="route-overview_cta"]){border:1px solid var(--morrovia-line,#d9d8ee);border-radius:18px;background:linear-gradient(110deg,#fff4f8,#f2f0ff)}
+
+/* Prep: keeps operational panels practical, but gives the route context a
+   more deliberate hierarchy. */
+.prep :global([class*="trip-prep_hero"] h1),.prep :global([class*="trip-prep_side"] h2),.prep :global([class*="trip-prep_empty"] h1){font-family:var(--morrovia-display,Georgia,serif);color:var(--morrovia-ink,#17106f)}
+.prep :global([class*="trip-prep_hero"] p),.prep :global([class*="trip-prep_side"]>p),.prep :global([class*="trip-prep_summary"] small),.prep :global([class*="trip-prep_empty"] p){color:var(--morrovia-signal,#f42b7a)}
+.prep :global([class*="trip-prep_hero"]),.prep :global([class*="trip-prep_summary"]),.prep :global([class*="trip-prep_content"]){width:var(--morrovia-page)}
+.prep :global([class*="trip-prep_summary"] article){border-color:var(--morrovia-line,#d9d8ee);border-radius:14px;box-shadow:0 10px 25px rgba(23,16,111,.04)}
+.prep :global([class*="trip-prep_side"]){border:1px solid var(--morrovia-line,#d9d8ee);border-radius:16px;background:linear-gradient(145deg,var(--morrovia-ink,#17106f),#302a8b);box-shadow:0 18px 42px rgba(23,16,111,.16)}
+.prep :global([class*="trip-prep_switcher"]>*){border-color:var(--morrovia-line,#d9d8ee);border-radius:9px;color:var(--morrovia-ink,#17106f)}.prep :global([class*="trip-prep_switcher"] span){background:var(--morrovia-ink,#17106f);color:#fff}
+
+/* Passport: form remains fast, with a stronger, trustworthy information card. */
+.passport :global([class*="passport_hero"]),.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){width:var(--morrovia-page)}
+.passport :global([class*="passport_hero"] h1),.passport :global([class*="passport_bottom"] h2),.passport :global([class*="passport_result"] h2){font-family:var(--morrovia-display,Georgia,serif);color:var(--morrovia-ink,#17106f)}
+.passport :global([class*="passport_hero"] p),.passport :global([class*="passport_result"]>p),.passport :global([class*="passport_bottom"] p),.passport :global([class*="passport_resultHeading"] p){color:var(--morrovia-signal,#f42b7a)}
+.passport :global([class*="passport_tool"]){border-color:var(--morrovia-line,#d9d8ee);border-radius:18px;box-shadow:0 18px 46px rgba(23,16,111,.07)}
+.passport :global([class*="passport_form"] select){border-color:var(--morrovia-line,#d9d8ee);border-radius:10px;color:var(--morrovia-ink,#17106f)}
+.passport :global([class*="passport_form"] button),.passport :global([class*="passport_bottom"] a){border-radius:10px;background:var(--morrovia-ink,#17106f)}.passport :global([class*="passport_form"] button):hover,.passport :global([class*="passport_bottom"] a):hover{background:var(--morrovia-signal,#f42b7a)}
+.passport :global([class*="passport_result"]){border:1px solid #f5d8e6;border-radius:15px;background:linear-gradient(145deg,#fff7fb,#fff)}
+.passport :global([class*="passport_facts"] section){border-color:var(--morrovia-line,#d9d8ee);border-radius:11px}.passport :global([class*="passport_bottom"]){border:1px solid var(--morrovia-line,#d9d8ee);border-radius:18px;background:linear-gradient(110deg,#fff4f8,#f2f0ff)}
+@media(max-width:760px){.prep :global([class*="trip-prep_hero"]),.prep :global([class*="trip-prep_summary"]),.prep :global([class*="trip-prep_content"]){width:var(--morrovia-page)}}
+@media(max-width:720px){.passport :global([class*="passport_hero"]),.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){width:var(--morrovia-page)}.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){border-radius:15px}}
