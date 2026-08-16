@@ -14,11 +14,8 @@ export default function EasyTHomePage() {
       <EasyTNavigation current="home" landing />
       <HomeHeroTools showTools={false} />
       <HomeBenefits />
-
-      <HomeProof />
-
       <InspirationExplorer />
-
+      <HomeProof />
       <HomeHeroTools showHero={false} />
       <HomeFooter />
 

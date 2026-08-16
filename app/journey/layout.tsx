@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "./journey-design.css";
 
 export const metadata: Metadata = {
   title: {

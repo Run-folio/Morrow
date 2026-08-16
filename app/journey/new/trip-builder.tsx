@@ -1177,6 +1177,24 @@ export default function TripBuilder() {
           {step === 1 && (
             <div className={styles.routeStep}>
               <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>Choose the journey that feels right.</h2><span>We found a clear route. Compare the trade-off before you continue.</span></header>
+              <section className={styles.routeDecisionStage} aria-label={language === "es" ? "Opciones de ruta" : "Route options"}>
+                <div className={styles.routeIllustratedMap}>
+                  <img src={stops.some((stop) => stop.country === "Japan") ? "/journey/illustrations/japan-route-confirm.png" : "/journey/illustrations/global-route-confirm.png"} alt="" />
+                  <ol>{stops.slice(0, 4).map((stop, index) => <li key={stop.id}><b>{index + 1}</b><span>{stop.name}</span></li>)}</ol>
+                </div>
+                <div className={styles.routeChoices}>
+                  <button type="button" className={styles.routeRecommended} onClick={applyRecommendedOrder} disabled={!routeRecommendationVisible}>
+                    <small>{language === "es" ? "RECOMENDACIÓN DE MORROVIA" : "MORROVIA RECOMMENDS"}</small>
+                    <strong>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join("  →  ") || stops.map((stop) => stop.name).join("  →  ")}</strong>
+                    <span>{routeRecommendationVisible ? routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0) : (language === "es" ? "Tu orden ya tiene un buen flujo." : "Your order already has a good flow.")}</span>
+                  </button>
+                  <button type="button" className={styles.routeAlternative} onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>
+                    <small>{language === "es" ? "TU ORDEN" : "YOUR ORDER"}</small>
+                    <strong>{stops.map((stop) => stop.name).join("  →  ") || (language === "es" ? "Añade paradas" : "Add stops")}</strong>
+                    <span>{language === "es" ? "Mantén tu secuencia y ajusta el ritmo después." : "Keep your sequence and adjust the rhythm next."}</span>
+                  </button>
+                </div>
+              </section>
               <div className={styles.filters}>
                 {FILTERS.map((label) => (
                   <button type="button" key={label} onClick={() => setFilter(label)}

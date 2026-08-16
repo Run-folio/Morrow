@@ -17,9 +17,8 @@ export default function HomeFooter() {
   const text = copy[language];
   return <footer className={styles.homeFooter}>
     <section className={styles.footerCta}>
-      <div><p className={styles.eyebrow}>{language === "es" ? "EMPIEZA CON LA RUTA" : "START WITH THE ROUTE"}</p><h2>{text.title}</h2><p>{text.lede}</p></div>
-      <img src="/journey/illustrations/japan-route-confirm.png" alt="" />
-      <Link href="/journey/new"><Sparkles aria-hidden="true" /> {text.action} <ArrowRight aria-hidden="true" /></Link>
+      <img src="/journey/illustrations/home-closing-banner-v2.png" alt="" />
+      <div className={styles.footerCtaCopy}><p className={styles.eyebrow}>{language === "es" ? "EMPIEZA CON LA RUTA" : "START WITH THE ROUTE"}</p><h2>{text.title}</h2><p>{text.lede}</p><div className={styles.footerCtaActions}><Link className={styles.footerPrompt} href="/journey/new">{language === "es" ? "¿Dónde, cuándo y qué importa más?" : "Where to, when, and what matters most?"}</Link><Link className={styles.footerAction} href="/journey/new"><Sparkles aria-hidden="true" /> {text.action} <ArrowRight aria-hidden="true" /></Link></div></div>
     </section>
     <div className={styles.footerBottom}>
       <Link className={styles.footerBrand} href="/journey/home">Morrovia</Link>

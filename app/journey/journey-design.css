@@ -1,0 +1,30 @@
+:root {
+  --morrovia-ink: #17106f;
+  --morrovia-ink-soft: #4f4a92;
+  --morrovia-signal: #f42b7a;
+  --morrovia-paper: #fbfaff;
+  --morrovia-lilac: #f2f0ff;
+  --morrovia-lilac-strong: #e8e5ff;
+  --morrovia-line: #d9d8ee;
+  --morrovia-muted: #7673a4;
+  --morrovia-display: Georgia, "Times New Roman", serif;
+  --morrovia-ui: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  --morrovia-meta: var(--font-geist-mono, ui-monospace, monospace);
+  --morrovia-page: min(1180px, calc(100% - 48px));
+}
+
+.morrovia-editorial-page {
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.morrovia-editorial-page h1,
+.morrovia-editorial-page h2,
+.morrovia-editorial-page h3 {
+  font-family: var(--morrovia-display);
+}
+
+@media (max-width: 700px) {
+  :root { --morrovia-page: min(100% - 32px, 1180px); }
+}
