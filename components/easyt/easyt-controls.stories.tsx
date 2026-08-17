@@ -35,6 +35,20 @@ export const Buttons: Story = {
   ),
 };
 
+export const FocusAndValidation: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: 20, maxWidth: 520 }}>
+      <EasyTButton autoFocus icon={ArrowRight}>Focused primary action</EasyTButton>
+      <EasyTField label="Destination" defaultValue="Atlantis" error="Choose a real mapped place." />
+      <EasyTSelect label="Travel style" defaultValue="">
+        <option value="">Choose a pace</option>
+        <option value="light">Keep travel days light</option>
+        <option value="full">Fit more in</option>
+      </EasyTSelect>
+    </div>
+  ),
+};
+
 export const Fields: Story = {
   render: () => (
     <div style={{ display: "grid", gap: 20, maxWidth: 520 }}>

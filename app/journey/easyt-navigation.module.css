@@ -15,6 +15,12 @@
   color: #17152f;
   font-family: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
 }
+.header:not(.landingHeader) {
+  background: color-mix(in srgb, var(--morrovia-paper, #fbfaff) 92%, white);
+  border-bottom-color: var(--morrovia-line, #d9d8ee);
+  color: var(--morrovia-ink, #17106f);
+  font-family: var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
+}
 
 @media (min-width: 1181px) {
   .landingHeader {
@@ -53,6 +59,14 @@
   font-family: Georgia, "Times New Roman", serif;
   font-size: .58em;
   letter-spacing: 0;
+}
+.header:not(.landingHeader) .brandName {
+  color: var(--morrovia-ink, #17106f);
+  font-family: var(--morrovia-display, Georgia, "Times New Roman", serif);
+}
+.header:not(.landingHeader) .brandName::after {
+  color: var(--morrovia-signal, #f42b7a);
+  font-family: var(--morrovia-display, Georgia, "Times New Roman", serif);
 }
 .actions {
   grid-column: 3;
@@ -119,15 +133,14 @@
 .quietLink,
 .primaryLink,
 .accountTrigger {
-  min-height: 40px;
-  padding: 0 15px;
-  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 13px;
-  font-weight: 600;
+  font: 700 12px/1 var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
   text-transform: none;
   font-variant-caps: normal;
   transition:
@@ -137,16 +150,17 @@
     border-color 0.18s;
 }
 .quietLink {
-  border: 1px solid #dddade;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--morrovia-ink-soft, #4f4a92);
 }
 .quietLink:hover,
 .quietLink.current,
 .accountTrigger:hover,
 .accountTrigger.current {
-  background: #fff;
-  border-color: #ff3d8b;
-  color: #ff3d8b;
+  background: var(--morrovia-lilac, #f2f0ff);
+  border-color: var(--morrovia-line, #d9d8ee);
+  color: var(--morrovia-ink, #17106f);
 }
 .quietLink svg,
 .primaryLink svg,
@@ -155,14 +169,14 @@
   height: 14px;
 }
 .primaryLink {
-  background: #17152f;
-  border: 1px solid #17152f;
+  background: var(--morrovia-ink, #17106f);
+  border: 1px solid var(--morrovia-ink, #17106f);
   color: #fff;
 }
 .primaryLink:hover {
   transform: translateY(-1px);
-  background: #ff3d8b;
-  border-color: #ff3d8b;
+  background: var(--morrovia-signal, #f42b7a);
+  border-color: var(--morrovia-signal, #f42b7a);
 }
 .accountMenu {
   position: relative;
@@ -175,8 +189,8 @@
   display: none;
 }
 .accountTrigger {
-  border: 1px solid #dddade;
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--morrovia-line, #d9d8ee);
+  background: #fff;
 }
 .avatar {
   width: 25px;
@@ -184,8 +198,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #fff0f5;
-  color: #ff3d8b;
+  background: var(--morrovia-lilac, #f2f0ff);
+  color: var(--morrovia-ink, #17106f);
   font-weight: 800;
 }
 .accountName {
@@ -201,15 +215,15 @@
   width: 250px;
   padding: 8px;
   background: #fff;
-  border: 1px solid #dddade;
-  border-radius: 18px;
-  box-shadow: 0 20px 55px rgba(23, 21, 47, 0.14);
+  border: 1px solid var(--morrovia-line, #d9d8ee);
+  border-radius: var(--morrovia-radius, 14px);
+  box-shadow: var(--morrovia-shadow-overlay, 0 28px 80px rgba(23, 16, 111, .22));
   display: grid;
   z-index: 40;
 }
 .accountIdentity {
   padding: 11px 12px 13px;
-  border-bottom: 1px solid #eceaec;
+  border-bottom: 1px solid var(--morrovia-line, #d9d8ee);
   margin-bottom: 4px;
   min-width: 0;
 }
@@ -221,11 +235,12 @@
   white-space: nowrap;
 }
 .accountIdentity strong {
+  color: var(--morrovia-ink, #17106f);
   font-size: 13px;
 }
 .accountIdentity span {
   font-size: 11px;
-  color: #777482;
+  color: var(--morrovia-muted, #7673a4);
   margin-top: 3px;
 }
 .accountPopover > a,
@@ -235,9 +250,9 @@
   min-height: 42px;
   padding: 0 11px;
   border: 0;
-  border-radius: 11px;
+  border-radius: 8px;
   background: transparent;
-  color: #17152f;
+  color: var(--morrovia-ink, #17106f);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -248,32 +263,51 @@
 .accountPopover > a:hover,
 .accountPopover > button:hover,
 .languageControl:hover {
-  background: #f7f5f6;
+  background: var(--morrovia-lilac, #f2f0ff);
 }
 .accountPopover > a.submenuCurrent {
-  background: #fff0f5;
-  color: #ff3d8b;
+  background: var(--morrovia-lilac-strong, #e8e5ff);
+  color: var(--morrovia-ink, #17106f);
 }
 .accountPopover svg {
   width: 16px;
   height: 16px;
-  color: #ff3d8b;
+  color: var(--morrovia-ink-soft, #4f4a92);
   flex: none;
 }
 .accountPopover > button {
   cursor: pointer;
+}
+.accountPopover > button:hover {
+  color: var(--morrovia-danger, #a91f55);
+}
+.accountPopover > button:hover svg {
+  color: var(--morrovia-danger, #a91f55);
+}
+.accountPopover > a.submenuCurrent svg {
+  color: var(--morrovia-signal, #f42b7a);
 }
 .languageControl select {
   margin-left: auto;
   max-width: 94px;
   border: 0;
   background: transparent;
-  color: #17152f;
+  color: var(--morrovia-ink, #17106f);
   font: 600 12px var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
   outline: none;
   cursor: pointer;
 }
-.languageControl{min-height:46px;padding:0 13px;border:1px solid #ddd9ef;border-radius:14px;background:#faf9ff}.languageControl:hover{background:#f3f0ff}.languageControl select{appearance:none;margin-left:auto;min-width:108px;padding:8px 28px 8px 11px;border:1px solid #d5d0ec;border-radius:10px;background:#fff;color:#211a7d;font-weight:700;text-align:center}
+.languageControl{min-height:44px;padding:0 12px;border:1px solid var(--morrovia-line,#d9d8ee);border-radius:8px;background:var(--morrovia-paper,#fbfaff)}.languageControl:hover{background:var(--morrovia-lilac,#f2f0ff)}.languageControl select{appearance:none;margin-left:auto;min-width:108px;padding:8px 28px 8px 11px;border:1px solid var(--morrovia-line,#d9d8ee);border-radius:8px;background:#fff;color:var(--morrovia-ink,#17106f);font-weight:700;text-align:center}
+.quietLink:focus-visible,
+.primaryLink:focus-visible,
+.accountTrigger:focus-visible,
+.accountPopover > a:focus-visible,
+.accountPopover > button:focus-visible,
+.languageControl:focus-within,
+.languageControl select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24));
+}
 .mobileDock {
   display: none;
 }
@@ -358,10 +392,10 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;
     gap: 3px;
-    border: 1px solid rgba(221, 218, 222, 0.95);
-    border-radius: 21px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 15px 38px rgba(23, 21, 47, 0.18);
+    border: 1px solid var(--morrovia-line, #d9d8ee);
+    border-radius: var(--morrovia-radius, 14px);
+    background: color-mix(in srgb, #fff 92%, var(--morrovia-paper, #fbfaff));
+    box-shadow: 0 16px 40px rgba(23, 16, 111, .16);
     backdrop-filter: blur(18px);
   }
   .mobileDock a {
@@ -370,8 +404,8 @@
     display: grid;
     place-items: center;
     gap: 2px;
-    border-radius: 15px;
-    color: #777482;
+    border-radius: 9px;
+    color: var(--morrovia-muted, #7673a4);
     text-decoration: none;
     font: 700 9px/1.1 var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
   }
@@ -380,12 +414,16 @@
     height: 18px;
   }
   .mobileDock .dockCurrent {
-    color: #ff3d8b;
-    background: #fff0f5;
+    color: var(--morrovia-ink, #17106f);
+    background: var(--morrovia-lilac, #f2f0ff);
   }
   .mobileDock .dockPrimary {
     color: #fff;
-    background: #17152f;
+    background: var(--morrovia-ink, #17106f);
+  }
+  .mobileDock a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24));
   }
 }
 

@@ -26,3 +26,31 @@
 .page{background:#f6f7fb}.mapPanel{background:linear-gradient(135deg,#fff,#f3f5fa)}
 .statusFilter{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:18px 0 14px;padding:6px;border:1px solid #dfdde5;border-radius:24px;background:#f5f4f7}.statusFilter button{display:grid;place-items:center;min-width:0;min-height:52px;border:0;border-radius:18px;background:transparent;padding:10px 12px;color:#656373;font:700 14px/1.15 ui-sans-serif,system-ui,sans-serif;text-align:center;cursor:pointer;transition:background .18s,color .18s,box-shadow .18s}.statusFilter button:hover{background:#fff;color:#27243d}.statusFilter button[aria-pressed="true"]{background:#201b46;color:#fff;box-shadow:0 3px 9px #201b4626}.countryFilteredOut{fill:#e9e8ed!important;opacity:.4;pointer-events:none;filter:none!important}@media(max-width:560px){.statusFilter{margin-top:15px}.statusFilter button{min-height:50px;padding:9px 8px;font-size:12px}}
 .page{background:#fbfaff}.shell{padding-top:68px;padding-bottom:96px}.intro h1{color:#211a7d;font-family:Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.065em}.workspace{border-color:#d9d5ef;box-shadow:0 20px 56px rgba(36,27,192,.08)}
+
+/* Current Morrovia Stamps alignment. */
+.page{background:var(--morrovia-paper);color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
+.eyebrow{color:var(--morrovia-signal);font-family:var(--morrovia-meta)}
+.intro h1,.listTop h2{color:var(--morrovia-ink);font-family:var(--morrovia-display)}
+.intro p:not(.eyebrow),.stat span,.mapHeader,.mapCallout span,.guestNote,.starterPrompt span{color:var(--morrovia-muted)}
+.workspace{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);box-shadow:0 14px 32px rgba(23,16,111,.07)}
+.mapPanel{background:linear-gradient(135deg,#fff,var(--morrovia-lilac))}
+.mapCallout,.svgLabel>div,.svgCallout .mapCallout{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);box-shadow:0 10px 24px rgba(23,16,111,.1)}
+.listTop button,.filters button,.calloutActions button,.svgCallout .calloutActions button{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);background:#fff}
+.filters .activeFilter,.calloutActions .calloutActive,.svgCallout .calloutActions .calloutActive{border-color:var(--morrovia-signal);background:var(--morrovia-lilac);color:var(--morrovia-signal)}
+.searchBox{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-muted)}
+.searchBox:focus-within{border-color:var(--morrovia-signal);box-shadow:0 0 0 3px var(--morrovia-focus-ring)}
+.searchBox input{color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
+.searchBox input::placeholder{color:var(--morrovia-muted)}
+.statusFilter{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-lilac)}
+.statusFilter button{border-radius:7px;color:var(--morrovia-ink-soft);font-family:var(--morrovia-ui)}
+.statusFilter button:hover{background:var(--morrovia-lilac-strong);color:var(--morrovia-ink)}
+.statusFilter button[aria-pressed="true"]{background:var(--morrovia-ink);box-shadow:none;color:#fff}
+.savePrompt,.starterPrompt{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac);color:var(--morrovia-ink)}
+.savePrompt a,.starterPrompt button{border-radius:var(--morrovia-control-radius);background:var(--morrovia-ink)}
+.savePrompt button{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink)}
+.searchEmpty{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac);color:var(--morrovia-ink-soft)}
+.searchEmpty button,.guestNote a{color:var(--morrovia-signal)}
+.rowSelected{background:var(--morrovia-lilac)}
+.rowActions span{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink-soft);background:#fff}
+.rowActions span:hover{background:var(--morrovia-lilac)}
+.listPanel button:focus-visible,.searchBox input:focus-visible,.row:focus-visible,.savePrompt a:focus-visible,.savePrompt button:focus-visible,.starterPrompt button:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:2px}

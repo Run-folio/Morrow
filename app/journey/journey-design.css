@@ -12,8 +12,13 @@
   --morrovia-meta: var(--font-geist-mono, ui-monospace, monospace);
   --morrovia-page: min(1180px, calc(100% - 48px));
   --morrovia-radius: 14px;
+  --morrovia-control-radius: 10px;
   --morrovia-shadow-overlay: 0 28px 80px rgba(23, 16, 111, .22);
   --morrovia-overlay: rgba(23, 16, 111, .28);
+  --morrovia-focus-ring: rgba(244, 43, 122, .24);
+  --morrovia-danger: #a91f55;
+  --morrovia-danger-soft: #fff1f7;
+  --morrovia-disabled: #efedf5;
 }
 
 .morrovia-editorial-page {

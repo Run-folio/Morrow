@@ -1,4 +1,4 @@
-.journey{--paper:#fff;--mist:#f7f7f5;--ink:#000;--accent:#1f1d3d;--signal:#ff3d8b;--hairline:#e6e6e6;height:100svh;min-height:680px;overflow:hidden;position:relative;color:var(--ink);background:var(--paper);font-family:var(--font-geist-sans,Geist,Inter,Arial,sans-serif)}
+.journey{--paper:var(--morrovia-paper,#fbfaff);--mist:var(--morrovia-lilac,#f2f0ff);--ink:var(--morrovia-ink,#17106f);--accent:var(--morrovia-ink,#17106f);--signal:var(--morrovia-signal,#f42b7a);--hairline:var(--morrovia-line,#d9d8ee);--workspace-shadow:0 16px 38px rgba(23,16,111,.14);height:100svh;min-height:680px;overflow:hidden;position:relative;color:var(--ink);background:var(--paper);font-family:var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,Arial,sans-serif))}
 .planLoading{display:grid;place-content:center;gap:16px;text-align:center;background:radial-gradient(circle at 50% 45%,#fff 0,#fff8fb 42%,#f7f7f5 100%)}.planLoadingMark{display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:650;letter-spacing:-.06em;color:var(--accent)}.planLoadingMark b{display:grid;place-items:center;width:34px;height:34px;margin-left:4px;border-radius:8px;background:var(--signal);color:#fff;font:700 20px var(--font-geist-mono,monospace);letter-spacing:0}.planLoading p{margin:0;color:#777;font:650 12px var(--font-geist-mono,monospace);letter-spacing:.08em}
 
 .createTripLink{justify-self:end;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;color:#fff;background:#000;border:1px solid #000;border-radius:999px;font:500 14px var(--font-geist-sans,Geist,Inter,sans-serif);letter-spacing:-.01em;text-decoration:none;text-transform:none;font-variant-caps:normal;transition:background .18s,border-color .18s,transform .18s}.createTripLink svg{width:14px;height:14px}.createTripLink:hover{color:#fff;background:var(--signal);border-color:var(--signal);transform:translateY(-1px)}
@@ -399,3 +399,114 @@
 .carouselControls button,.localCandidates button,.nextDay{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-weight:500;letter-spacing:-.01em}
 .mapCoach{position:absolute;z-index:13;top:190px;left:26px;display:grid;gap:7px;max-width:310px;max-height:calc(100svh - 230px);padding:17px 18px;overflow:auto;border:1px solid rgba(32,29,61,.16);border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 15px 35px rgba(32,29,61,.16)}.mapCoach small{color:#ff3d8b;font:700 9px var(--font-geist-mono,monospace);letter-spacing:.14em;text-transform:uppercase}.mapCoach strong{color:#201d3d;font-size:17px;line-height:1.1}.mapCoach p{margin:0;color:#716b75;font-size:12px;line-height:1.45}.mapCoach button{justify-self:start;margin-top:3px;padding:8px 11px;border:0;border-radius:999px;color:#fff;background:#201d3d;font-size:11px;font-weight:700;cursor:pointer}
 @media(max-width:760px){.mapCoach{position:fixed;z-index:30;top:auto;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));left:12px;max-width:none;max-height:calc(100svh - 170px);padding:15px 16px}.mapCoach strong{font-size:16px}.mapCoach p{font-size:11px}}
+
+/* Morrovia workspace alignment: keep the dense planning layout, but give its
+   existing surfaces, states and controls the same visual grammar as Journey. */
+.planLoading{background:radial-gradient(circle at 50% 45%,#fff 0,var(--morrovia-danger-soft,#fff1f7) 42%,var(--mist) 100%)}
+.planLoading p{color:var(--morrovia-muted,#7673a4)}
+
+.createTripLink,.myTripsLink,.savePlanLink,.exportPlanLink{
+  min-height:38px;
+  border-radius:8px;
+  font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);
+  font-size:12px;
+  font-weight:700;
+}
+.createTripLink{background:var(--accent);border-color:var(--accent)}
+.myTripsLink,.savePlanLink,.exportPlanLink{border-color:var(--hairline);color:var(--accent);background:#fff}
+.myTripsLink:hover,.savePlanLink:hover:not(:disabled),.exportPlanLink:hover:not(:disabled){border-color:var(--signal);color:var(--accent);background:var(--mist)}
+.savePlanError{border-color:color-mix(in srgb,var(--signal) 35%,var(--hairline));border-radius:var(--morrovia-control-radius,10px);color:var(--morrovia-danger,#a91f55);background:var(--morrovia-danger-soft,#fff1f7)}
+.saveState{color:var(--morrovia-muted,#7673a4)}
+.saveStateError{color:var(--morrovia-danger,#a91f55)}
+
+.journey :global(.journey-map){background:var(--morrovia-lilac,#f2f0ff)}
+.journey :global(.journey-map__land){stroke:var(--accent)}
+.journey :global(.journey-map__graticule),.journey :global(.journey-map__routes path){stroke:var(--accent)}
+.journey :global(.journey-map__planner-pin circle),.journey :global(.journey-map__planner-pin text){fill:var(--accent)}
+.journey :global(.journey-map__planner-pin-card text){fill:var(--accent)}
+.journey :global(.journey-map__planner-pin-card a text){fill:var(--signal)}
+.journey :global(.journey-map__place-detail),.journey :global(.journey-map__controls){border-color:var(--hairline);box-shadow:var(--workspace-shadow)}
+.journey :global(.journey-map__place-detail h3){color:var(--ink);font-family:var(--morrovia-display,Georgia,serif)}
+.journey :global(.journey-map__stop:focus-visible .journey-map__dot){stroke:var(--accent)}
+.journey :global(.planner-map){background:var(--morrovia-lilac,#f2f0ff)}
+.journey :global(.planner-map .maplibregl-ctrl-group){border-color:var(--hairline);box-shadow:0 8px 20px rgba(23,16,111,.12)}
+.journey :global(.planner-map__stop){color:var(--accent);border-color:var(--accent);box-shadow:0 5px 14px rgba(23,16,111,.18)}
+.journey :global(.planner-map__stop:hover),.journey :global(.planner-map__stop.is-active){background:var(--signal);border-color:var(--signal)}
+.journey :global(.planner-map__pin){background:var(--accent);box-shadow:0 5px 14px rgba(23,16,111,.2)}
+.journey :global(.planner-map__draft-pin){color:var(--signal);border-color:var(--signal);box-shadow:0 5px 14px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
+.mapModeControl{border-color:var(--hairline);border-radius:var(--morrovia-radius,14px);box-shadow:0 10px 26px rgba(23,16,111,.12)}
+.mapModeControl button{border-radius:8px}
+
+.topbar{background:color-mix(in srgb,var(--paper) 94%,white);border-bottom-color:var(--hairline);box-shadow:0 5px 18px rgba(23,16,111,.06)}
+.headerRow{font-family:var(--morrovia-meta,var(--font-geist-mono,monospace))}
+.titleLockup{color:var(--accent);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:600}
+.titleLockup small{color:var(--morrovia-muted,#7673a4);font-family:var(--morrovia-meta,var(--font-geist-mono,monospace))}
+.playButton{border-radius:10px;background:var(--accent);box-shadow:0 10px 26px rgba(23,16,111,.22);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
+.playButton:hover{background:var(--signal);box-shadow:0 13px 30px rgba(23,16,111,.24)}
+.playButton>span{color:var(--accent)}
+.stop{border-radius:8px;color:var(--morrovia-muted,#7673a4)}
+.stopNode,.stopNode i{border-color:var(--accent);background:var(--accent)}
+.stopNode{background:#fff}
+.stop:hover{color:var(--accent);background:var(--mist)}
+.stop.active{color:var(--accent);background:var(--mist);border-color:color-mix(in srgb,var(--signal) 40%,var(--hairline));box-shadow:inset 0 -2px 0 var(--signal)}
+.stop.active .stopNode{box-shadow:0 0 0 4px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
+.transportChoices,.transportChoiceList button{border-color:var(--hairline);background:color-mix(in srgb,#fff 86%,var(--paper))}
+.transportChoices{border-radius:var(--morrovia-control-radius,10px)}
+.transportChoiceList button{border-radius:8px}
+.transportChoiceSelected{background:var(--morrovia-danger-soft,#fff1f7)!important}
+
+.destination,.itineraryPanel,.pinDock,.finderDock{
+  border-color:var(--hairline);
+  border-radius:var(--morrovia-radius,14px);
+  box-shadow:var(--workspace-shadow);
+}
+.destination,.itineraryPanel{background:color-mix(in srgb,#fff 95%,var(--paper))}
+.pinDock,.finderDock{background:color-mix(in srgb,#fff 96%,var(--paper))}
+.destinationTitle h1,.itineraryPanel h2{color:var(--ink);font-family:var(--morrovia-display,Georgia,serif);font-weight:500}
+.destinationTitle>span{color:var(--signal);background:var(--morrovia-danger-soft,#fff1f7);border-color:color-mix(in srgb,var(--signal) 28%,var(--hairline))}
+.description,.itineraryLocation,.itineraryPanel li,.detailSections details p{color:var(--morrovia-muted,#7673a4)}
+.weatherCard,.restaurantFinder,.reviewPanel,.dayPlan,.notesToSelf,.pinComposer{border-color:var(--hairline);background:var(--mist)}
+.restaurantFinder,.reviewPanel,.dayPlan{border-radius:var(--morrovia-control-radius,10px)}
+.weatherCard{border-radius:8px}
+.carouselViewport{border-radius:var(--morrovia-control-radius,10px)}
+.carouselControls button{border-radius:8px}
+.imageCount{border-radius:6px;background:color-mix(in srgb,var(--accent) 78%,transparent)}
+.reviewItem{border-radius:0 8px 8px 0}
+.reviewActions button,.finderQuickStart button,.restaurantActions a,.restaurantActions button,.pinPlacement button,.pinCategories button{border-radius:8px}
+.restaurantActions button:last-child{border-radius:50%}
+.finderQuickStart{border-color:color-mix(in srgb,var(--signal) 28%,var(--hairline));background:var(--morrovia-danger-soft,#fff1f7)}
+.mealPicker>div{border-color:var(--hairline);border-radius:8px}
+.mealPicker button+button{border-left-color:var(--hairline)}
+.restaurantQuestion button{border-color:var(--hairline);border-radius:8px}
+.restaurantQuestion button:hover{background:var(--accent);border-color:var(--accent)}
+.restaurantResult>p.restaurantFit,.restaurantContext{background:#fff}
+.exploreMore,.dayPlan{border-color:var(--hairline)}
+.itineraryPanel li.savedRestaurant{background:var(--morrovia-danger-soft,#fff1f7);border-bottom-color:color-mix(in srgb,var(--signal) 28%,var(--hairline))}
+.savedRestaurantIcon,.selectedPinDetail{border-color:color-mix(in srgb,var(--signal) 28%,var(--hairline))}
+.scheduleHealth{border-color:color-mix(in srgb,#1e7d58 28%,var(--hairline));background:#fcfffd}
+.pinPlacement button[aria-pressed="true"],.pinCategories button[aria-pressed="true"],.finderTabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.undoToast{border-radius:10px;background:var(--accent);box-shadow:0 9px 22px rgba(23,16,111,.22)}
+.undoToast button{border-radius:6px;color:var(--accent)}
+.plannerWarning{border-left-color:#d08a19}
+.customActivityInput,.addActivity input,.notesToSelf input,.pinComposer input,.editingNoteForm input,.selectedPinDetail input{border-color:var(--hairline);border-radius:6px}
+.customActivityInput:focus,.addActivity input:focus,.notesToSelf input:focus,.pinComposer input:focus,.editingNoteForm input:focus,.selectedPinDetail input:focus{border-color:var(--signal);box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
+.addActivity button,.notesToSelf form button,.pinComposer form button,.editingNoteForm button,.selectedPinDetail form button{border-radius:6px;background:var(--accent)}
+
+.mapCoach{border-color:var(--hairline);border-radius:var(--morrovia-radius,14px);background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow)}
+.mapCoach small{color:var(--signal)}
+.mapCoach strong{color:var(--accent);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
+.mapCoach p{color:var(--morrovia-muted,#7673a4)}
+.mapCoach button{border-radius:8px;background:var(--accent)}
+.mapCoach button:hover{background:var(--signal)}
+
+.journey :is(button,a,input,summary):focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24));
+}
+
+@media(max-width:980px){
+  .journey{background:var(--paper)}
+  .destination,.itineraryPanel,.pinDock,.finderDock{border-radius:var(--morrovia-radius,14px)}
+  .mobileDayMove,.mobileActivityMove button{border-color:var(--hairline);background:var(--mist)}
+  .mobileDayMove button{border-color:var(--hairline);border-radius:6px}
+}

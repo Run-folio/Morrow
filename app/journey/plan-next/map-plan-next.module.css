@@ -27,3 +27,34 @@
 .finderTabs{border-color:var(--morrovia-line,#d9d8ee);border-radius:10px;background:var(--morrovia-paper,#fbfaff)}
 .finderTabs .activeTab{background:var(--morrovia-ink,#17106f)}
 @media(max-width:720px){.header{min-height:66px}.stopPanel{background:var(--morrovia-paper,#fbfaff)}.daySheet{border-radius:15px}.timeline{padding-inline:12px}}
+
+/* Complete the shared Journey treatment without changing the comparison-map
+   layout, recommendation model or map interaction. */
+.header,.timeline{background:color-mix(in srgb,var(--morrovia-paper,#fbfaff) 92%,white)}
+.switch,.prep,.editLink,.finderPrompt a{font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
+.switch:hover,.prep:hover,.editLink:hover,.finderPrompt a:hover{color:var(--morrovia-signal,#f42b7a)}
+.timeline button{color:var(--morrovia-muted,#7673a4)}
+.timeline button small,.stopMeta,.stopReason p,.stopPanel dd,.decisionList p,.clear,.planList p{color:var(--morrovia-muted,#7673a4)}
+.timeline .activeStop{border-color:color-mix(in srgb,var(--morrovia-signal,#f42b7a) 34%,var(--morrovia-line,#d9d8ee));background:var(--morrovia-lilac,#f2f0ff);box-shadow:inset 0 -2px 0 var(--morrovia-signal,#f42b7a)}
+.stopReason{background:transparent}
+.mapSurface{background:var(--morrovia-lilac,#f2f0ff)}
+.mapSurface :global(.planner-map){background:var(--morrovia-lilac,#f2f0ff)}
+.mapSurface :global(.maplibregl-ctrl-group){border-color:var(--morrovia-line,#d9d8ee);box-shadow:0 8px 20px rgba(23,16,111,.12)}
+.mapSurface :global(.planner-map__stop){box-shadow:0 5px 14px rgba(23,16,111,.18)}
+.mapSurface :global(.planner-map__pin){background:var(--morrovia-ink,#17106f);box-shadow:0 5px 14px rgba(23,16,111,.2)}
+.decisionsHeading button{color:var(--morrovia-ink-soft,#4f4a92)}
+.decisionsHeading button:hover{color:var(--morrovia-signal,#f42b7a)}
+.decisionList article{padding:12px 0}
+.decisionList article>svg{color:#a56f10}
+.decisionList article.critical>svg{color:var(--morrovia-danger,#a91f55)}
+.decisionList a{color:var(--morrovia-ink,#17106f)}
+.daySheet{border-radius:var(--morrovia-radius,14px);box-shadow:0 16px 38px rgba(23,16,111,.14)}
+.finderTabs button{border-radius:8px;color:var(--morrovia-ink-soft,#4f4a92);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
+.planList article{border-color:var(--morrovia-line,#d9d8ee)}
+.planList b,.finderPrompt strong{color:var(--morrovia-ink,#17106f)}
+.loading,.empty{background:var(--morrovia-paper,#fbfaff);color:var(--morrovia-ink,#17106f);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
+.empty h1{font-family:var(--morrovia-display,Georgia,serif)}
+.empty p:not(.eyebrow){color:var(--morrovia-muted,#7673a4)}
+.empty a{border-radius:8px;background:var(--morrovia-ink,#17106f)}
+.empty a:hover{background:var(--morrovia-signal,#f42b7a)}
+.page :is(button,a):focus-visible{outline:none;box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24))}

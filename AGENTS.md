@@ -36,15 +36,15 @@ The product can support broader travel use cases, but product decisions should p
 - Reuse existing design-system and interaction patterns wherever possible.
 - Avoid adding complexity unless it materially improves the core job.
 
-## Jobs To Be Done reference
+## Product context references
 
-For product behaviour, user intent, UX decisions and travel-planning logic, consult:
+For additional product context, consult only the source relevant to the current task:
 
-`docs/product/morrovia-jtbd.md`
+- `docs/easyt-business-plan.md` for product strategy, target customer, prioritisation, beta scope and roadmap context.
+- `docs/product/jtbd-analytics.md` for product-event semantics and privacy-safe measurement.
+- `easyt-content-engine-plan.md` for route-content, source quality and deterministic planning boundaries.
 
-Use the JTBD document as product context and a decision-making framework.
-
-Do **not** automatically implement every idea in that document. Only build what the current task requires.
+Use these documents as context and decision-making input. Do **not** automatically implement every idea they contain; only build what the current task requires.
 
 ## First-principles product thinking
 
@@ -108,6 +108,19 @@ Before making changes:
 8. Avoid speculative abstractions or infrastructure that the current product does not yet need.
 9. Run the relevant lint, typecheck, tests or build checks before completing a task.
 10. Summarise meaningful changes and call out unresolved risks or assumptions.
+
+## Implementation context routing
+
+Read only the context relevant to the current task. Do not load unrelated project documentation unnecessarily.
+
+- **UI/UX changes:** inspect `app/journey/journey-design.css`, `app/journey/easyt-navigation.tsx`, `components/easyt/easyt-controls.tsx`, and the closest existing Journey surface before introducing a new pattern.
+  - For current Morrovia UI work, treat `app/journey/journey-design.css`, the current Journey homepage, shared navigation and current live components as the visual source of truth.
+  - Historical QA files such as `easyt-design-qa.md` may provide context but must not override the current Morrovia visual system.
+  - Reuse existing components and tokens where they represent the current Morrovia system; inspect nearby live surfaces before visual decisions; do not reintroduce older EasyT/portfolio styling simply because it exists in legacy components.
+- **Trip model and persistence:** inspect `lib/easyt/trip.ts`, `lib/easyt/repository.ts`, and `db/migrations/`.
+- **Builder and route logic:** inspect `app/journey/new/trip-builder.tsx`, `lib/easyt/planner.ts`, `lib/easyt/cascade.ts`, and relevant tests.
+- **Map, trip health and repair behaviour:** inspect `app/journey/plan-next/`, `lib/easyt/review.ts`, `lib/easyt/trip-replan.ts`, and relevant map components/tests.
+- **Auth, analytics and deployment-sensitive changes:** inspect `auth.config.ts`, `.env.example`, `docs/easyt-google-sign-in.md`, `docs/product/jtbd-analytics.md`, and `docs/easyt-accessibility-privacy-audit.md`.
 
 ## Product metrics
 

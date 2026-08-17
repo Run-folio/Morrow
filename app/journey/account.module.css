@@ -811,3 +811,444 @@
   .profileGuide{display:grid;align-items:start}.profileGuide a{justify-self:start}
   .firstTripGuide{margin-bottom:24px;padding:21px 18px;border-radius:22px}.guideHead h2{font-size:25px}.guideSteps{grid-template-columns:1fr 1fr}.guideStep{min-height:74px;padding:12px;border-bottom:1px solid #e4dfe5}.guideStep:nth-child(2){border-right:0}.guideStep:nth-child(n+3){border-bottom:0}.guideAction{display:grid;gap:15px}.guideAction a{justify-content:center;width:100%;box-sizing:border-box}.guideAction p{font-size:12px}
 }
+
+/* Current Morrovia account alignment: preserve the account flows, while using the
+   same paper, ink, signal and control language as the live Journey surfaces. */
+.page {
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.authGrid,
+.tripCard,
+.profileCard,
+.giftDialog,
+.giftClaimCard,
+.firstTripGuide {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  box-shadow: 0 14px 32px rgba(23, 16, 111, 0.07);
+}
+
+.authPanel {
+  background: #fff;
+}
+
+.authPanel .eyebrow,
+.eyebrow,
+.tripMeta,
+.guideAction small {
+  color: var(--morrovia-signal);
+  font-family: var(--morrovia-meta);
+}
+
+.authPanel h2,
+.dashTop h1,
+.profileWrap > h1,
+.giftDialog h2,
+.giftClaimCard h1,
+.empty h2 {
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-display);
+  font-weight: 600;
+}
+
+.muted,
+.userLine,
+.tripStops,
+.giftClaimCopy,
+.giftRecipient,
+.giftComplete p,
+.guideAction p,
+.legalLink,
+.feedback p {
+  color: var(--morrovia-muted);
+}
+
+.forgotLink,
+.legalLink a,
+.tripFooter a,
+.editTripLink,
+.guideHead button {
+  color: var(--morrovia-ink);
+}
+
+.forgotLink:hover,
+.legalLink a:hover,
+.tripCardLink:hover h2,
+.editTripLink:hover {
+  color: var(--morrovia-signal) !important;
+}
+
+.tabs,
+.tripViews {
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.tabs :global(.segment),
+.tripViews button {
+  border-radius: 7px;
+  color: var(--morrovia-ink-soft);
+}
+
+.tabs :global(button) {
+  border-radius: 7px;
+  color: var(--morrovia-ink-soft);
+}
+
+.tabs :global(.segment:hover),
+.tabs :global(.segment:not(.segmentActive):hover),
+.tripViews button:hover {
+  background: var(--morrovia-lilac-strong);
+  color: var(--morrovia-ink);
+}
+
+.tabs :global(.segmentActive),
+.tabs :global(.segmentActive:hover),
+.tripViews .tripViewActive {
+  background: var(--morrovia-ink);
+  color: #fff;
+  box-shadow: none;
+}
+
+.tabs :global(button[aria-pressed="true"]) {
+  background: var(--morrovia-ink);
+  color: #fff;
+  box-shadow: none;
+}
+
+.tabs :global(button[aria-pressed="true"]:hover) {
+  background: var(--morrovia-ink);
+  color: #fff;
+}
+
+.tabs :global(.segment:focus-visible),
+.tripViews button:focus-visible,
+.tripMenu summary:focus-visible,
+.tripMenu button:focus-visible,
+.guideHead button:focus-visible,
+.feedback button:focus-visible,
+.profileCard button:focus-visible,
+.profileCard select:focus-visible,
+.giftClose:focus-visible,
+.giftDialog textarea:focus-visible,
+.giftComplete input:focus-visible,
+.readinessFields input:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid var(--morrovia-signal);
+  outline-offset: 2px;
+}
+
+.field input,
+.profileCard select,
+.giftDialog textarea,
+.giftComplete input,
+.readinessFields input,
+.feedback textarea {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink);
+  background: #fff;
+}
+
+.field input:focus,
+.profileCard select:focus,
+.giftDialog textarea:focus,
+.readinessFields input:focus,
+.feedback textarea:focus {
+  border-color: var(--morrovia-signal);
+  box-shadow: var(--morrovia-focus-ring);
+}
+
+.authSubmit:hover:not(:disabled),
+.primaryLink:hover,
+.showMoreTrips:hover,
+.guideAction a:hover,
+.profileGuide a:hover {
+  background: var(--morrovia-signal);
+  border-color: var(--morrovia-signal);
+  color: #fff;
+  box-shadow: none;
+}
+
+.button,
+.primaryLink,
+.showMoreTrips,
+.guideAction a,
+.profileGuide a,
+.feedbackSend {
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-ink);
+  color: #fff;
+}
+
+.secondary,
+.secondaryLink {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink);
+  background: #fff;
+}
+
+.secondary:hover,
+.secondaryLink:hover {
+  border-color: var(--morrovia-ink-soft);
+  background: var(--morrovia-lilac);
+}
+
+.error,
+.syncError,
+.profileMessage {
+  border: 1px solid color-mix(in srgb, var(--morrovia-danger) 28%, transparent);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-danger-soft);
+  color: var(--morrovia-danger);
+}
+
+.syncMessage,
+.setupNotice {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+}
+
+.tripCard {
+  background: #fff;
+}
+
+.tripMenu summary,
+.giftClose {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink);
+  background: #fff;
+}
+
+.tripMenu summary:hover,
+.tripMenu[open] summary,
+.giftClose:hover {
+  border-color: var(--morrovia-signal);
+  color: var(--morrovia-signal);
+}
+
+.tripMenu > div {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+
+.tripMenu button {
+  color: var(--morrovia-ink);
+}
+
+.tripMenu button:hover {
+  background: var(--morrovia-lilac);
+}
+
+.tripMenu button svg,
+.giftDialogIcon,
+.giftClaimIcon,
+.feedbackIcon {
+  color: var(--morrovia-signal);
+}
+
+.giftOverlay {
+  background: rgba(23, 16, 111, 0.3);
+}
+
+.giftDialogIcon,
+.giftClaimIcon {
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.giftNote,
+.readinessProfile {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+}
+
+.emailEventList {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-line);
+}
+
+.emailEventRow {
+  background: #fff;
+}
+
+.emailEventRow strong,
+.readinessProfile h3 {
+  color: var(--morrovia-ink);
+}
+
+.emailEventRow span,
+.emailEventRow time,
+.readinessProfile p:not(.eyebrow) {
+  color: var(--morrovia-muted);
+}
+
+.emailStatus {
+  border-radius: 999px;
+}
+
+.danger {
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-danger-soft);
+  color: var(--morrovia-danger);
+}
+
+.empty {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-lilac);
+}
+
+.profileGuide,
+.preferenceDial,
+.preferenceChoices,
+.preferenceMoves {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+}
+
+.preferenceHead span,
+.readinessFields span {
+  color: var(--morrovia-ink-soft);
+  font-family: var(--morrovia-meta);
+}
+
+.preferenceHead b,
+.dialActive svg,
+.moveActive svg {
+  color: var(--morrovia-signal);
+}
+
+.dialOptions button,
+.preferenceChoices button,
+.preferenceMoves button {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+}
+
+.dialOptions button:hover,
+.preferenceMoves button:hover {
+  border-color: var(--morrovia-ink-soft);
+  background: var(--morrovia-lilac);
+}
+
+.dialOptions .dialActive,
+.preferenceMoves .moveActive {
+  border-color: var(--morrovia-signal);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+  box-shadow: inset 3px 0 0 var(--morrovia-signal);
+}
+
+.preferenceChoices .choiceActive {
+  border-color: var(--morrovia-ink);
+  background: var(--morrovia-ink);
+  color: #fff;
+}
+
+.preferenceRange {
+  background: linear-gradient(90deg, var(--morrovia-signal) 0 50%, var(--morrovia-lilac-strong) 50% 100%);
+  accent-color: var(--morrovia-signal);
+}
+
+.preferenceRange::-webkit-slider-thumb {
+  background: var(--morrovia-ink);
+  box-shadow: 0 2px 8px rgba(23, 16, 111, 0.2);
+}
+
+.firstTripGuide {
+  background: #fff;
+}
+
+.guideSteps {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+}
+
+.guideStep {
+  border-color: var(--morrovia-line);
+}
+
+.guideStep>span {
+  border-color: var(--morrovia-line);
+  color: var(--morrovia-ink-soft);
+}
+
+.guideActive {
+  background: var(--morrovia-lilac);
+  box-shadow: inset 0 -3px 0 var(--morrovia-signal);
+}
+
+.guideActive>span {
+  border-color: var(--morrovia-signal);
+  color: var(--morrovia-signal);
+}
+
+.guideDone>span {
+  border-color: var(--morrovia-ink);
+  background: var(--morrovia-ink);
+}
+
+.feedback {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+
+.feedbackFaces button {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+}
+
+.feedbackFaces button:hover,
+.feedbackFaceActive {
+  border-color: var(--morrovia-signal) !important;
+  background: var(--morrovia-lilac) !important;
+}
+
+.feedbackSend {
+  border-radius: var(--morrovia-control-radius);
+}
+
+/* Stamps summary remains a dashboard detail, but now shares the same account surface. */
+.stampsSummary {
+  border-color: var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(23, 16, 111, 0.07);
+}
+
+.stampsSummary h2,
+.stampsStats b {
+  color: var(--morrovia-ink);
+}
+
+.stampsSummary p:not(.eyebrow),
+.stampsStats span {
+  color: var(--morrovia-muted);
+}
+
+.stampsLink {
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+}
+
+.stampsLink:hover {
+  background: var(--morrovia-lilac-strong);
+  color: var(--morrovia-ink);
+}

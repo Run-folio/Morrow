@@ -3,13 +3,13 @@
   --control-padding: 22px;
   min-height: var(--control-height);
   padding: 0 var(--control-padding);
-  border: 1px solid transparent;
-  border-radius: 999px;
+  border: 1px solid var(--morrovia-ink, #17106f);
+  border-radius: var(--morrovia-control-radius, 10px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  font: 720 13px/1 var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  font: 700 13px/1 var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
   letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
@@ -36,60 +36,63 @@
 .fieldControl:focus-visible,
 .segment:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 61, 139, 0.2);
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24));
 }
 
 .control:disabled,
 .disabled {
-  opacity: 0.48;
+  opacity: 0.62;
+  border-color: var(--morrovia-line, #d9d8ee);
+  background: var(--morrovia-disabled, #efedf5);
+  color: var(--morrovia-muted, #7673a4);
   cursor: not-allowed;
   transform: none;
 }
 
 .primary {
-  background: #17152f;
-  border-color: #17152f;
+  background: var(--morrovia-ink, #17106f);
+  border-color: var(--morrovia-ink, #17106f);
   color: #fff;
 }
 
 .primary:hover:not(:disabled) {
-  background: #ff3d8b;
-  border-color: #ff3d8b;
+  background: var(--morrovia-signal, #f42b7a);
+  border-color: var(--morrovia-signal, #f42b7a);
 }
 
 .secondary {
-  background: rgba(255, 255, 255, 0.86);
-  border-color: #d8d5dc;
-  color: #17152f;
+  background: #fff;
+  border-color: var(--morrovia-line, #d9d8ee);
+  color: var(--morrovia-ink, #17106f);
 }
 
 .secondary:hover:not(:disabled),
 .secondaryActive {
-  background: #fff;
-  border-color: #ff3d8b;
-  color: #d82870;
+  background: var(--morrovia-lilac, #f2f0ff);
+  border-color: var(--morrovia-signal, #f42b7a);
+  color: var(--morrovia-ink, #17106f);
 }
 
 .quiet {
   background: transparent;
   border-color: transparent;
-  color: #5f5b69;
+  color: var(--morrovia-ink-soft, #4f4a92);
 }
 
 .quiet:hover:not(:disabled) {
-  background: #f2f0f2;
-  color: #17152f;
+  background: var(--morrovia-lilac, #f2f0ff);
+  color: var(--morrovia-ink, #17106f);
 }
 
 .danger {
   background: transparent;
-  border-color: #e4b8c9;
-  color: #b21351;
+  border-color: color-mix(in srgb, var(--morrovia-danger, #a91f55) 32%, white);
+  color: var(--morrovia-danger, #a91f55);
 }
 
 .danger:hover:not(:disabled) {
-  background: #fff0f5;
-  border-color: #d82870;
+  background: var(--morrovia-danger-soft, #fff1f7);
+  border-color: var(--morrovia-danger, #a91f55);
 }
 
 .small {
@@ -129,21 +132,21 @@
 }
 
 .fieldLabel {
-  font: 700 11px/1.2 var(--font-geist-mono, ui-monospace, monospace);
+  font: 700 10px/1.2 var(--morrovia-meta, var(--font-geist-mono, ui-monospace, monospace));
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #17152f;
+  color: var(--morrovia-ink, #17106f);
 }
 
 .fieldControl {
   width: 100%;
   min-height: 50px;
-  border: 1px solid #d8d5dc;
-  border-radius: 14px;
+  border: 1px solid var(--morrovia-line, #d9d8ee);
+  border-radius: var(--morrovia-control-radius, 10px);
   padding: 0 16px;
   background: #fff;
-  color: #17152f;
-  font: 500 15px/1.2 var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  color: var(--morrovia-ink, #17106f);
+  font: 500 15px/1.2 var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -151,21 +154,21 @@
 }
 
 .fieldControl:hover:not(:disabled) {
-  border-color: #aaa6b0;
+  border-color: var(--morrovia-ink-soft, #4f4a92);
 }
 
 .fieldControl:focus-visible {
-  border-color: #ff3d8b;
+  border-color: var(--morrovia-signal, #f42b7a);
 }
 
 .fieldControl:disabled {
-  background: #f4f2f4;
-  color: #8b8791;
+  background: var(--morrovia-disabled, #efedf5);
+  color: var(--morrovia-muted, #7673a4);
   cursor: not-allowed;
 }
 
 .fieldControl::placeholder {
-  color: #9a97a1;
+  color: var(--morrovia-muted, #7673a4);
 }
 
 .fieldHint,
@@ -176,16 +179,16 @@
 }
 
 .fieldHint {
-  color: #777482;
+  color: var(--morrovia-muted, #7673a4);
 }
 
 .fieldError {
-  color: #b21351;
+  color: var(--morrovia-danger, #a91f55);
 }
 
 .fieldInvalid .fieldControl {
-  border-color: #b21351;
-  box-shadow: 0 0 0 3px rgba(178, 19, 81, 0.1);
+  border-color: var(--morrovia-danger, #a91f55);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--morrovia-danger, #a91f55) 16%, transparent);
 }
 
 .selectWrap {
@@ -203,7 +206,7 @@
   top: 50%;
   width: 16px;
   height: 16px;
-  color: #777482;
+  color: var(--morrovia-ink-soft, #4f4a92);
   pointer-events: none;
   transform: translateY(-50%);
 }
@@ -214,19 +217,19 @@
   grid-auto-columns: minmax(0, 1fr);
   gap: 4px;
   padding: 4px;
-  border: 1px solid #dddade;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--morrovia-line, #d9d8ee);
+  border-radius: 12px;
+  background: var(--morrovia-lilac, #f2f0ff);
 }
 
 .segment {
   min-height: 40px;
   padding: 0 17px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 8px;
   background: transparent;
-  color: #777482;
-  font: 720 13px/1 var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
+  color: var(--morrovia-ink-soft, #4f4a92);
+  font: 700 13px/1 var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
   cursor: pointer;
   transition:
     background-color 180ms ease,
@@ -235,11 +238,11 @@
 }
 
 .segment:hover {
-  color: #17152f;
+  color: var(--morrovia-ink, #17106f);
 }
 
 .segmentActive {
-  background: #17152f;
+  background: var(--morrovia-ink, #17106f);
   color: #fff;
 }
 
@@ -254,15 +257,15 @@
   height: 21px;
   margin-left: 6px;
   padding-inline: 5px;
-  border-radius: 999px;
-  background: #eeecef;
-  color: #5f5b69;
+  border-radius: 99px;
+  background: #fff;
+  color: var(--morrovia-ink-soft, #4f4a92);
   font-size: 11px;
 }
 
 .segmentActive .segmentCount {
-  background: #ff3d8b;
-  color: #fff;
+  background: var(--morrovia-lilac-strong, #e8e5ff);
+  color: var(--morrovia-ink, #17106f);
 }
 
 @keyframes spin {
