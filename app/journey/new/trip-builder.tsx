@@ -11,12 +11,12 @@
 
 import {
   CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
-  Check, Clock, GripVertical, Lock, MapPin, Plane, Plus, Sparkles, Users, X,
+  Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Users, X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
-import { assessRouteIntelligence, buildCredibleItinerary, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { trackEvent } from "@/lib/analytics";
 import { journeyMedia, type JourneyImage } from "@/lib/journey";
@@ -302,8 +302,11 @@ export default function TripBuilder() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [hydrated, setHydrated] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "local">("saving");
+  // Keeps the three builder stages directly reviewable and shareable without
+  // changing the normal first-step entry point.
   const [step, setStep] = useState(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
+  const [summaryFocus, setSummaryFocus] = useState<"origin" | "stops" | "dates" | "constraints" | null>(null);
   const [generated, setGenerated] = useState(false);
   const [activeDay, setActiveDay] = useState(0);
   const [draftImages, setDraftImages] = useState<Record<string, JourneyImage>>({});
@@ -372,6 +375,10 @@ export default function TripBuilder() {
     };
     const hydrate = async () => {
       const params = new URLSearchParams(window.location.search);
+      const requestedStep = Number(params.get("step"));
+      if (Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep <= 2) {
+        setStep(requestedStep);
+      }
       const tripIdFromUrl = params.get("trip");
       const showItinerary = params.get("view") === "itinerary";
       if (tripIdFromUrl) {
@@ -526,11 +533,11 @@ export default function TripBuilder() {
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
   const stepLabels = language === "es"
-    ? ["Confirmar", "Lugares", "Tiempo"]
-    : ["Confirm", "Places", "Time"];
+    ? ["Confirmar", "Ruta", "Tiempo"]
+    : ["Confirm", "Route", "Time"];
   const stepNotes = language === "es"
-    ? ["Ruta y fechas", "Elige lo importante", "Haz sitio para todo"]
-    : ["Route & dates", "Choose what matters", "Make room for it all"];
+    ? ["Lo esencial", "El mejor flujo", "Haz sitio para todo"]
+    : ["The essentials", "The best flow", "Make room for it all"];
   const stepGuidance = language === "es"
     ? [
       ["Comprueba lo esencial.", "Confirma cada lugar y las fechas antes de que Morrovia dé forma al viaje."],
@@ -543,6 +550,11 @@ export default function TripBuilder() {
       ["Make the days fit.", "You can edit every detail later."],
     ];
   const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "") : "";
+  const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
+    if (step !== 0) setStep(0);
+    setSummaryFocus(target);
+    window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  };
 
   const routeIntelligence = useMemo(() => assessRouteIntelligence({
     origin: { name: origin.trim(), coordinates: originCoordinates },
@@ -1014,23 +1026,24 @@ export default function TripBuilder() {
           {step === 0 && (
             <div className={styles.stack}>
               <section className={styles.intakeReview} aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
-                <div><span>{language === "es" ? "RESUMEN DEL VIAJE" : "TRIP INTAKE"}</span><h2>{language === "es" ? "Esto es lo que llevaremos al plan." : "This is what will shape your plan."}</h2><p>{language === "es" ? "Edita cualquier detalle antes de repartir los días." : "Edit anything now, before we start allocating your days."}</p></div>
+                <div><span>{language === "es" ? "RESUMEN EXTRAÍDO" : "EXTRACTED SUMMARY"}</span><h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2><p>{language === "es" ? "Edita un detalle para rellenar un hueco o corregir una suposición." : "Edit a detail to fill a gap or correct an assumption."}</p></div>
                 <dl>
-                  <div><dt>{language === "es" ? "Salida" : "Departure"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Añade tu salida" : "Add your departure")}</dd></div>
-                  <div><dt>{language === "es" ? "Fechas" : "Dates"}</dt><dd>{startDate} → {endDate} · {totalDays} {totalDays === 1 ? ui.day : ui.days}</dd></div>
-                  <div><dt>{language === "es" ? "Ruta" : "Route"}</dt><dd>{stops.length ? stops.map((stop) => <button type="button" key={stop.id} onClick={() => setStops((current) => current.filter((item) => item.id !== stop.id))}>{stop.name}, {stop.country} <X aria-hidden="true" /></button>) : (language === "es" ? "Aún no hay paradas" : "No stops yet")}</dd></div>
-                  {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt>{language === "es" ? "Necesita atención" : "Needs attention"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") setOrigin(mention.canonicalName); else setStopInput(mention.canonicalName); }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
+                  <div><dt><Plane />{language === "es" ? "Salida" : "Leaving from"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Necesita confirmación" : "Needs confirmation")}</dd><button type="button" onClick={() => openSummaryEditor("origin")} aria-label={language === "es" ? "Editar salida" : "Edit departure"}><Pencil /></button></div>
+                  <div><dt><MapPin />{language === "es" ? "Paradas" : "Stops"}</dt><dd>{stops.length ? stops.map((stop) => `${stop.name}${stop.country ? `, ${stop.country}` : ""}`).join(" · ") : (language === "es" ? "Añade las paradas imprescindibles" : "Add the places you must see")}</dd><button type="button" onClick={() => openSummaryEditor("stops")} aria-label={language === "es" ? "Editar paradas" : "Edit stops"}><Pencil /></button></div>
+                  <div><dt><CalendarDays />{language === "es" ? "Fechas" : "Timing"}</dt><dd>{datesManuallyEdited || datesConfirmed ? `${fmtLong(startDate)} – ${fmtLong(endDate)} · ${totalDays} ${totalDays === 1 ? ui.day : ui.days}` : (language === "es" ? `${totalDays} días aproximados · confirma las fechas` : `Around ${totalDays} days · confirm dates`)}</dd><button type="button" onClick={() => openSummaryEditor("dates")} aria-label={language === "es" ? "Editar fechas" : "Edit timing"}><Pencil /></button></div>
+                  <div><dt><Sparkles />{language === "es" ? "Imprescindibles" : "Fixed item"}</dt><dd>{effectiveIntent.hardConstraints.fixedCommitments.length ? effectiveIntent.hardConstraints.fixedCommitments.map((item) => item.date ? `${item.label}, ${fmtLong(item.date)}` : item.label).join(" · ") : (language === "es" ? "Nada fijo todavía" : "Nothing fixed yet")}</dd><button type="button" onClick={() => { setShowTripDetails(true); openSummaryEditor("constraints"); }} aria-label={language === "es" ? "Editar condiciones" : "Edit constraints"}><Pencil /></button></div>
+                  {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt><Sparkles />{language === "es" ? "Revisar" : "Check"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
               </section>
               <div className={`${styles.card} ${styles.tripBriefCard}`}>
-                <span className={styles.cardLabel}><MapPin /> {ui.tripBriefLabel}</span>
-                <h2>{ui.tripBriefTitle}</h2>
-                <p>{ui.tripBriefHelp}</p>
+                <span className={styles.cardLabel}><Sparkles /> {language === "es" ? "TU IDEA DE VIAJE" : "YOUR TRIP BRIEF"}</span>
+                <h2>{tripBrief.trim() ? (language === "es" ? "Esto es lo que estás planeando." : "This is what you’re planning.") : ui.tripBriefTitle}</h2>
+                <p>{language === "es" ? "Escribe como se lo contarías a un compañero de viaje. Extraeremos lo que importa." : "Write it as you would tell a travel companion. We’ll pull out what matters."}</p>
                 <textarea className={styles.tripBriefTextarea} aria-label={ui.tripBriefLabel} value={tripBrief} maxLength={600} onChange={(event) => setTripBrief(event.target.value)} placeholder={ui.tripBriefPlaceholder} />
                 <button type="button" className={styles.ghost} onClick={() => void applyTripBrief()} disabled={!tripBrief.trim()}>{ui.tripBriefApply}</button>
-                <small className={styles.hint}>{ui.tripBriefHint}</small>
+                <small className={styles.hint}>{language === "es" ? "Puedes ajustar todo lo que extraigamos." : "You can adjust anything we extract."}</small>
               </div>
-              <div className={`${styles.card} ${originMissing ? styles.cardError : ""}`}>
+              <div id="builder-origin" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
                 <span className={styles.cardLabel}><Plane /> {copy.startFrom}</span>
                 <input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}
                   onChange={(e) => { setOrigin(e.target.value); setOriginTouched(true); setOriginCoordinates(undefined); setOriginError(""); }}
@@ -1040,7 +1053,7 @@ export default function TripBuilder() {
                 </small>
               </div>
 
-              <div className={`${styles.card} ${stopError ? styles.cardError : ""}`}>
+              <div id="builder-stops" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                 <span className={styles.cardLabel}><MapPin /> {copy.addDestination}</span>
                 <input value={stopInput} placeholder={copy.destinationPlaceholder} aria-label={copy.addDestination}
                   onChange={(e) => { setStopInput(e.target.value); setStopError(""); }}
@@ -1062,7 +1075,7 @@ export default function TripBuilder() {
                 <div>{stops.map((stop, index) => <button type="button" key={stop.id} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-label={language === "es" ? "Parada bloqueada" : "Stop locked"} /> : <X aria-hidden="true" />}</button>)}</div>
               </div>}
 
-              <section className={styles.intentPanel} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
+              <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
                 <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar preferencias" : "Hide trip preferences") : (language === "es" ? "Añadir preferencias o una reserva fija" : "Add preferences or a fixed booking")}</button>
                 {showTripDetails && <>
                 <header><p>{language === "es" ? "INTENCIÓN DEL VIAJE" : "TRIP INTENT"}</p><h3>{language === "es" ? "Protege lo que no puede cambiar." : "Protect what cannot move."}</h3><span>{language === "es" ? "Lo imprescindible no se pierde al replantear la ruta. Las preferencias ayudan a decidir entre opciones." : "Must-keeps stay protected when the route changes. Preferences guide the trade-offs."}</span></header>
@@ -1129,7 +1142,7 @@ export default function TripBuilder() {
                 </div>}
               </section>}
 
-              <section className={styles.dateConfirmSection} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
+              <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
                 <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
                 <div className={styles.dateRow}>
                   {([
@@ -1176,25 +1189,34 @@ export default function TripBuilder() {
 
           {step === 1 && (
             <div className={styles.routeStep}>
-              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>Choose the journey that feels right.</h2><span>We found a clear route. Compare the trade-off before you continue.</span></header>
-              <section className={styles.routeDecisionStage} aria-label={language === "es" ? "Opciones de ruta" : "Route options"}>
-                <div className={styles.routeIllustratedMap}>
-                  <img src={stops.some((stop) => stop.country === "Japan") ? "/journey/illustrations/japan-route-confirm.png" : "/journey/illustrations/global-route-confirm.png"} alt="" />
-                  <ol>{stops.slice(0, 4).map((stop, index) => <li key={stop.id}><b>{index + 1}</b><span>{stop.name}</span></li>)}</ol>
-                </div>
-                <div className={styles.routeChoices}>
-                  <button type="button" className={styles.routeRecommended} onClick={applyRecommendedOrder} disabled={!routeRecommendationVisible}>
-                    <small>{language === "es" ? "RECOMENDACIÓN DE MORROVIA" : "MORROVIA RECOMMENDS"}</small>
-                    <strong>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join("  →  ") || stops.map((stop) => stop.name).join("  →  ")}</strong>
-                    <span>{routeRecommendationVisible ? routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0) : (language === "es" ? "Tu orden ya tiene un buen flujo." : "Your order already has a good flow.")}</span>
-                  </button>
-                  <button type="button" className={styles.routeAlternative} onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>
-                    <small>{language === "es" ? "TU ORDEN" : "YOUR ORDER"}</small>
-                    <strong>{stops.map((stop) => stop.name).join("  →  ") || (language === "es" ? "Añade paradas" : "Add stops")}</strong>
-                    <span>{language === "es" ? "Mantén tu secuencia y ajusta el ritmo después." : "Keep your sequence and adjust the rhythm next."}</span>
-                  </button>
+              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>{language === "es" ? "Una ruta que tiene sentido." : "A route that makes sense."}</h2><span>{language === "es" ? "Hemos ordenado el viaje para que sea más ligero, sin perder lo que pediste." : "We’ve ordered the trip to keep the journey lighter, without losing what you asked for."}</span></header>
+              <section className={styles.routeSequence} aria-label={language === "es" ? "Ruta recomendada" : "Recommended route"}>
+                {stops.map((stop, index) => {
+                  const duration = routeIntelligence.durations[stop.id];
+                  const arrival = arrivalDateForStop(stop.id);
+                  const departure = new Date(`${arrival}T00:00:00`);
+                  departure.setDate(departure.getDate() + (allocation[stop.id] ?? 1));
+                  const next = stops[index + 1];
+                  const leg = next ? estimateLeg(stop, next) : null;
+                  const durationReason = duration?.reason || (language === "es" ? "Tiempo suficiente para instalarte y disfrutar del lugar." : "Enough time to settle in and experience the place." );
+                  return <div className={styles.routeSequenceGroup} key={stop.id}>
+                    <article className={styles.routeStopCard}>
+                      <span className={styles.routeNumber}>{index + 1}</span>
+                      <div className={styles.routeStopPlace}><small>{(stop.country || "verified stop").toUpperCase()}</small><h3>{stop.name}</h3></div>
+                      <div className={styles.routeStopTiming}><strong><Clock /> {allocation[stop.id] ?? 1} {(allocation[stop.id] ?? 1) === 1 ? "night" : "nights"}</strong><span><CalendarDays /> {fmtLong(arrival)} – {fmtLong(iso(departure))}</span></div>
+                      <p>{durationReason}</p>
+                      <div className={styles.routeStopActions}><button type="button" onClick={() => openSummaryEditor("stops")}><Pencil /> {language === "es" ? "Editar" : "Edit"}</button><button type="button" onClick={() => moveStop(index, Math.max(0, index - 1))} disabled={index === 0}><GripVertical /> {language === "es" ? "Reordenar" : "Reorder"}</button></div>
+                    </article>
+                    {leg && <div className={styles.routeTransfer}><span>{leg.mode === "train" ? "▰" : leg.mode === "flight" ? "✈" : "→"}</span><p><b>{leg.mode === "train" ? (language === "es" ? `Tren a ${next.name}` : `Train to ${next.name}`) : leg.mode === "flight" ? (language === "es" ? `Vuelo a ${next.name}` : `Flight to ${next.name}`) : (language === "es" ? `Traslado a ${next.name}` : `Transfer to ${next.name}`)}</b><small>{leg.durationMinutes ? `~${Math.floor(leg.durationMinutes / 60)}h ${leg.durationMinutes % 60}m` : (language === "es" ? "Tiempo por confirmar" : "Time to confirm")}</small></p></div>}
+                  </div>;
+                })}
+                <div className={styles.routeWhy}><Sparkles /><span><b>{language === "es" ? "Por qué este orden:" : "Why this order:"}</b> {routeIntelligence.route.summary || (language === "es" ? "La ruta reduce retrocesos y deja espacio para cada parada." : "This order reduces backtracking and leaves room for every stop.")}</span></div>
+                <div className={styles.routeChoiceBar}>
+                  <button type="button" className={styles.routeRecommended} onClick={applyRecommendedOrder} disabled={!routeRecommendationVisible}><Sparkles />{routeRecommendationVisible ? (language === "es" ? "Usar el orden recomendado" : "Use Morrovia’s order") : (language === "es" ? "Este orden ya funciona" : "This order already works")}</button>
+                  {routeRecommendationVisible && <button type="button" className={styles.routeAlternative} onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>{language === "es" ? "Mantener mi orden" : "Keep my order"}</button>}
                 </div>
               </section>
+              <section className={styles.routePlacesIntro}><p>{language === "es" ? "LO QUE QUIERES VIVIR" : "WHAT YOU WANT TO EXPERIENCE"}</p><h3>{language === "es" ? "Elige lo que merece tiempo." : "Choose what deserves time."}</h3><span>{language === "es" ? "Tus elecciones ajustan las noches recomendadas en el siguiente paso." : "Your choices shape the night recommendations in the next step."}</span></section>
               <div className={styles.filters}>
                 {FILTERS.map((label) => (
                   <button type="button" key={label} onClick={() => setFilter(label)}
@@ -1296,7 +1318,7 @@ export default function TripBuilder() {
             <p><Sparkles /><span><b>{language === "es" ? "Señalaremos compromisos" : "We’ll flag trade-offs"}</b>{language === "es" ? "Para que puedas decidir con confianza." : "So you can decide with confidence."}</span></p>
           </div>
           <div className={styles.confirmAsideFoot}><CalendarDays /><span>{language === "es" ? "Puedes editar cada decisión después." : "Every decision stays editable afterwards."}</span></div>
-        </aside> : <aside className={styles.rail} aria-label={ui.route}>
+        </aside> : <aside className={`${styles.rail} ${step === 1 ? styles.routeSummaryRail : styles.timeSummaryRail}`} aria-label={ui.route}>
           <div className={styles.railBlock}>
             <small className={styles.railLabel}>{ui.route}</small>
             <div className={styles.railRoute}>

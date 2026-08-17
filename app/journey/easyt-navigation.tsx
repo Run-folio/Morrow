@@ -48,6 +48,11 @@ export default function EasyTNavigation({
     (session?.user
       ? { name: session.user.name, email: session.user.email }
       : undefined);
+  const usesPublicNavigation =
+    landing ||
+    pathname === "/journey/discover" ||
+    pathname === "/journey/passport" ||
+    pathname.startsWith("/journey/routes/");
 
   useEffect(() => {
     if (account?.language) {
@@ -108,7 +113,7 @@ export default function EasyTNavigation({
 
   return (
     <>
-      <header className={`${styles.header} ${landing ? styles.landingHeader : ""}`} data-easyt-app>
+      <header className={`${styles.header} ${usesPublicNavigation ? styles.landingHeader : ""}`} data-easyt-app>
       {!showBack || pathname === "/journey/home" ? (
         <span className={styles.portfolioSpacer} aria-hidden="true" />
       ) : (
@@ -134,9 +139,9 @@ export default function EasyTNavigation({
         <span className={styles.brandName}>Morrovia</span>
       </Link>
 
-      {landing ? <nav className={styles.landingActions} aria-label="Morrovia navigation">
-        <a href="#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</a>
-        <a href="#routes">{language === "es" ? "Rutas" : "Routes"}</a>
+      {usesPublicNavigation ? <nav className={styles.landingActions} aria-label="Morrovia navigation">
+        <Link href="/journey/home#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</Link>
+        <Link href="/journey/home#routes">{language === "es" ? "Rutas" : "Routes"}</Link>
         <span className={styles.landingTour}>
           <EasyTProductTour triggerLabel={language === "es" ? "Guía" : "Guide"} />
         </span>
