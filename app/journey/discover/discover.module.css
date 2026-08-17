@@ -6,3 +6,4 @@
 
 /* The credit is a sibling of the route link, never a nested anchor. */
 .card{color:#201d3d;text-decoration:none}.cardBody{display:block;color:#201d3d;text-decoration:none}.image:after{pointer-events:none}.imageLink{position:absolute;z-index:0;inset:0}.image span{pointer-events:none}
+.page{background:#fbfaff;padding-bottom:96px}.hero{padding-top:82px;padding-bottom:52px}.hero h1{color:#211a7d;font-family:Georgia,'Times New Roman',serif;font-weight:600;letter-spacing:-.065em}.grid{gap:22px}

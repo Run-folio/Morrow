@@ -18,8 +18,9 @@
 
 @media (min-width: 1181px) {
   .landingHeader {
-    padding-left: calc((100vw - 1180px) / 2);
-    padding-right: calc((100vw - 1180px) / 2);
+    /* Keep the public header on the same editorial grid as the homepage hero. */
+    padding-left: max(48px, calc((100vw - 1840px) / 2));
+    padding-right: max(48px, calc((100vw - 1840px) / 2));
   }
 }
 .portfolio,
@@ -277,6 +278,7 @@
   outline: none;
   cursor: pointer;
 }
+.languageControl{min-height:46px;padding:0 13px;border:1px solid #ddd9ef;border-radius:14px;background:#faf9ff}.languageControl:hover{background:#f3f0ff}.languageControl select{appearance:none;margin-left:auto;min-width:108px;padding:8px 28px 8px 11px;border:1px solid #d5d0ec;border-radius:10px;background:#fff;color:#211a7d;font-weight:700;text-align:center}
 .mobileDock {
   display: none;
 }

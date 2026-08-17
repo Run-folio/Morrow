@@ -137,7 +137,8 @@ export default function EasyTNavigation({
       {landing ? <nav className={styles.landingActions} aria-label="Morrovia navigation">
         <a href="#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</a>
         <a href="#routes">{language === "es" ? "Rutas" : "Routes"}</a>
-        <Link href="/journey/passport">{language === "es" ? "Guía de pasaporte" : "Passport guide"}</Link>
+        <Link href="/journey/prep">{language === "es" ? "Guía" : "Guide"}</Link>
+        <Link href="/journey/discover">{language === "es" ? "Rutas destacadas" : "Featured routes"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
         <Link href="/journey/dashboard">{activeAccount ? labels.account : (language === "es" ? "Iniciar sesión" : "Sign in")}</Link>
         <details className={styles.accountMenu}>
@@ -147,7 +148,6 @@ export default function EasyTNavigation({
             <ChevronDown aria-hidden="true" />
           </summary>
           <div className={styles.accountPopover}>
-            <Link href="/journey/discover"><Map aria-hidden="true" /><span>{language === "es" ? "Rutas destacadas" : "Featured routes"}</span></Link>
             <Link href="/journey/passport"><Compass aria-hidden="true" /><span>{language === "es" ? "Pasaporte al destino" : "Passport to Destination"}</span></Link>
             <Link href="/journey/prep"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Preparativos" : "Travel prep"}</span></Link>
             {activeAccount ? <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link> : null}

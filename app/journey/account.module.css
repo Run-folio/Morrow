@@ -10,6 +10,7 @@
 .page:before {
   content: none;
 }
+.page{background:#fbfaff}.authWrap{width:min(640px,calc(100% - 40px));margin:clamp(56px,10vh,112px) auto}.authGrid{border-color:#d9d5ef;border-radius:18px;box-shadow:0 24px 70px rgba(36,27,192,.08)}.authPanel{padding:clamp(36px,6vw,58px)}.authPanel .eyebrow{color:#ff3d8b;font-size:10px;letter-spacing:.16em}.authPanel h2{color:#211a7d;font-family:Georgia,'Times New Roman',serif;font-weight:600;font-size:clamp(42px,5vw,62px);line-height:.98}.muted{color:#6868a4}
 .header {
   height: 84px;
   padding: 0 clamp(24px, 5vw, 76px);

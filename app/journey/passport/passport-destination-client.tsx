@@ -55,10 +55,7 @@ export default function PassportDestinationClient() {
           <section><span>{t.visa}</span><strong>{requirement.visaAnswer}</strong></section>
           <section><span>{t.stay}</span><strong>{requirement.permittedStay}</strong></section>
         </div>
-        <p className={styles.detail}>{requirement.detail}</p>
-        <ul>{requirement.conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
         <div className={styles.sourceRow}><div><p>{t.verify}</p>{requirement.dataUpdatedAt && <small>{t.updated}: {requirement.dataUpdatedAt}</small>}</div><a href={requirement.sourceHref} target="_blank" rel="noreferrer">{t.open}<ExternalLink aria-hidden="true" /></a></div>
-        <small>{t.note}</small>
       </article>}
     </section>
     <section className={styles.bottom}><div><p>{language === "es" ? "CUANDO LA RUTA ES REAL" : "WHEN THE ROUTE IS REAL"}</p><h2>{language === "es" ? "La preparación completa vive junto a tu viaje." : "Full trip prep lives alongside your route."}</h2></div><Link href="/journey/home#start-building">{t.plan}<ArrowRight /></Link></section>
