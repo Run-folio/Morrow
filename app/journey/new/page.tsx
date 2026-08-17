@@ -5,7 +5,7 @@ import styles from "./new-trip.module.css";
 export default function NewTripPage() {
   return (
     <main className={`${styles.page} morrovia-editorial-page`}>
-      <EasyTNavigation current="new" showBack={false} />
+      <EasyTNavigation current="new" />
       <TripBuilder />
     </main>
   );

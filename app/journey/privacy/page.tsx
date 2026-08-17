@@ -10,7 +10,7 @@ export const metadata = {
 export default function EasyTPrivacyPage() {
   return (
     <main id="main-content">
-      <EasyTNavigation current="privacy" showBack={false} />
+      <EasyTNavigation current="privacy" />
       <PrivacyNotice />
     </main>
   );

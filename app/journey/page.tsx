@@ -23,6 +23,7 @@ import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
 import { trackEvent } from "@/lib/analytics";
+import EasyTNavigation from "./easyt-navigation";
 import styles from "./journey.module.css";
 import mobileNav from "./plan-mobile-nav.module.css";
 import mobileLayout from "./plan-mobile-layout.module.css";
@@ -832,6 +833,7 @@ export default function JourneyPage() {
   if (isPlanningPreview && !planHydrated) {
     return (
       <main className={`${styles.journey} ${styles.planLoading}`} aria-busy="true">
+        <EasyTNavigation current="prototype" />
         <div className={styles.planLoadingMark}><span>Easy</span><b>T</b></div>
         <p>Opening your journey…</p>
       </main>
@@ -840,6 +842,7 @@ export default function JourneyPage() {
 
   return (
     <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan}`}>
+      <EasyTNavigation current="prototype" />
       {isPlanningPreview && isCustomJourney ? (
         <>
           <div className={`${styles.mapOverviewLayer} ${mapMode === "overview" ? styles.mapLayerActive : styles.mapLayerHidden}`}>

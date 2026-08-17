@@ -37,7 +37,7 @@ export default function PassportDestinationClient() {
   };
 
   return <main className={`${styles.page} ${editorial.surface} ${editorial.passport} morrovia-editorial-page`}>
-    <EasyTNavigation current="passport" showBack={false} />
+    <EasyTNavigation current="passport" />
     <section className={styles.hero}>
       <div className={styles.copy}><p>{t.eyebrow}</p><h1>{t.title}</h1><span>{t.intro}</span></div>
       <Globe2 aria-hidden="true" />

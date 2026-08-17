@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronRight, CircleAlert, MapPin, Route, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import EasyTNavigation from "../easyt-navigation";
 import { loadActiveTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
@@ -104,13 +105,14 @@ export default function MapPlanNext() {
   const noopPin = useCallback((_pin: PlannerMapPin) => undefined, []);
   const noopDrop = useCallback((_coordinates: [number, number]) => undefined, []);
 
-  if (loading) return <main className={styles.loading}>Loading your map plan…</main>;
-  if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></main>;
+  if (loading) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
+  if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></section></main>;
 
   const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : "Road"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
   const decisions = (health?.issues ?? []).filter((issue) => issue.status === "open").slice(0, 3);
 
   return <main className={`${styles.page} ${editorial.surface} ${editorial.map} morrovia-editorial-page`}>
+    <EasyTNavigation current="trips" />
     <header className={styles.header}>
       <Link href={currentHref} className={styles.switch}>← Current map planner</Link>
       <div><strong>{trip.title}</strong><small>{formatDate(trip.startDate)} – {formatDate(trip.endDate)} · {trip.travellers} travellers</small></div>
