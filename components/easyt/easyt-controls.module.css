@@ -50,14 +50,14 @@
 }
 
 .primary {
-  background: var(--morrovia-ink, #17106f);
-  border-color: var(--morrovia-ink, #17106f);
+  background: var(--morrovia-action, #3025ce);
+  border-color: var(--morrovia-action, #3025ce);
   color: #fff;
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--morrovia-signal, #f42b7a);
-  border-color: var(--morrovia-signal, #f42b7a);
+  background: var(--morrovia-action-hover, #251dc0);
+  border-color: var(--morrovia-action-hover, #251dc0);
 }
 
 .secondary {
@@ -242,7 +242,7 @@
 }
 
 .segmentActive {
-  background: var(--morrovia-ink, #17106f);
+  background: var(--morrovia-action, #3025ce);
   color: #fff;
 }
 

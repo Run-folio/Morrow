@@ -44,9 +44,9 @@
 .statusFilter{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-lilac)}
 .statusFilter button{border-radius:7px;color:var(--morrovia-ink-soft);font-family:var(--morrovia-ui)}
 .statusFilter button:hover{background:var(--morrovia-lilac-strong);color:var(--morrovia-ink)}
-.statusFilter button[aria-pressed="true"]{background:var(--morrovia-ink);box-shadow:none;color:#fff}
+.statusFilter button[aria-pressed="true"]{background:var(--morrovia-action);box-shadow:none;color:#fff}
 .savePrompt,.starterPrompt{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac);color:var(--morrovia-ink)}
-.savePrompt a,.starterPrompt button{border-radius:var(--morrovia-control-radius);background:var(--morrovia-ink)}
+.savePrompt a,.starterPrompt button{border-radius:var(--morrovia-control-radius);background:var(--morrovia-action)}
 .savePrompt button{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink)}
 .searchEmpty{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac);color:var(--morrovia-ink-soft)}
 .searchEmpty button,.guestNote a{color:var(--morrovia-signal)}

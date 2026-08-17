@@ -57,8 +57,8 @@
 .profileFields label span { color: var(--morrovia-ink-soft, #4f4a92); font: 700 9px/1.2 var(--morrovia-meta, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; }
 .profileFields input { width: 100%; min-height: 40px; padding: 0 10px; border: 1px solid var(--morrovia-line, #d9d8ee); border-radius: var(--morrovia-control-radius, 10px); color: var(--morrovia-ink, #17106f); background: #fff; font: 12px var(--morrovia-ui, Geist, Inter, Arial, sans-serif); outline: none; }
 .profileFields input:focus-visible { border-color: var(--morrovia-signal, #f42b7a); box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24)); }
-.profileFields > button { align-self: end; display: inline-flex; align-items: center; gap: 4px; justify-content: center; min-height: 40px; padding: 0 13px; border: 1px solid var(--morrovia-ink, #17106f); border-radius: 8px; color: #fff; background: var(--morrovia-ink, #17106f); font: 750 11px/1 var(--morrovia-ui, Geist, Inter, Arial, sans-serif); white-space: nowrap; cursor: pointer; }
-.profileFields > button:hover { background: var(--morrovia-signal, #f42b7a); border-color: var(--morrovia-signal, #f42b7a); }
+.profileFields > button { align-self: end; display: inline-flex; align-items: center; gap: 4px; justify-content: center; min-height: 40px; padding: 0 13px; border: 1px solid var(--morrovia-action, #3025ce); border-radius: 8px; color: #fff; background: var(--morrovia-action, #3025ce); font: 750 11px/1 var(--morrovia-ui, Geist, Inter, Arial, sans-serif); white-space: nowrap; cursor: pointer; }
+.profileFields > button:hover { background: var(--morrovia-action-hover, #251dc0); border-color: var(--morrovia-action-hover, #251dc0); }
 .profileFields > button svg { width: 13px; height: 13px; }
 .disclosure { display: block !important; margin-top: 6px !important; color: var(--morrovia-muted, #7673a4) !important; font-size: 9px !important; letter-spacing: 0 !important; line-height: 1.35 !important; text-transform: none !important; }
 .entrySources { display: grid; gap: 7px; margin: 12px 0 0; padding: 11px 0 0; border-top: 1px solid var(--morrovia-line, #d9d8ee); list-style: none; }

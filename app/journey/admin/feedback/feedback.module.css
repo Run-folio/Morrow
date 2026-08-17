@@ -15,6 +15,6 @@
 .triage{border-color:var(--morrovia-line)}
 .triage label{color:var(--morrovia-ink-soft)}
 .triage textarea{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
-.save{border-radius:var(--morrovia-control-radius);background:var(--morrovia-ink)}
-.save:hover:not(:disabled){background:var(--morrovia-signal)}
+.save{border-radius:var(--morrovia-control-radius);background:var(--morrovia-action)}
+.save:hover:not(:disabled){background:var(--morrovia-action-hover)}
 .status:focus-visible,.triage textarea:focus-visible,.save:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:2px}

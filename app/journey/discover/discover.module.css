@@ -21,7 +21,7 @@
 /* Discovery layout and cards are current; only secondary controls use this cleanup. */
 .pills button,.select,.moreButton{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
 .pills button:hover,.select:focus{border-color:var(--morrovia-ink-soft);box-shadow:0 0 0 3px var(--morrovia-focus-ring)}
-.pills .selected{border-color:var(--morrovia-ink);background:var(--morrovia-ink);color:#fff}
+.pills .selected{border-color:var(--morrovia-action);background:var(--morrovia-action);color:#fff}
 .moreButton:hover{background:var(--morrovia-signal);border-color:var(--morrovia-signal)}
 .moreButton:focus-visible,.pills button:focus-visible,.select:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:2px}
 .empty{border-color:var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac)}

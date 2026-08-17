@@ -16,8 +16,8 @@
 .eyebrow,.heroCopy dt,.stops li>b,.attractionGrid article>span,.sources>p,.cta p{color:var(--morrovia-signal);font-family:var(--morrovia-meta)}
 .heroCopy h1,.cardHeading h2,.tripContext h2,.sectionIntro h2,.countrySection h2,.cta h2{color:var(--morrovia-ink);font-family:var(--morrovia-display);font-weight:600}
 .heroCopy>p:not(.eyebrow),.heroCopy dd,.mapNote,.contextItem p,.sectionIntro>p,.stops span,.stops small,.attractionGrid p,.countrySection>div:first-child>p:last-child,.seasonPanel ul,.seasonPanel>p:not(.eyebrow):not(.reviewed),.reviewed,.sources a small,.entryCheckHeading p,.entryCheck li p{color:var(--morrovia-muted)}
-.primary{border-radius:var(--morrovia-control-radius);background:var(--morrovia-ink)}
-.primary:hover{background:var(--morrovia-signal)}
+.primary{border-radius:var(--morrovia-control-radius);background:var(--morrovia-action)}
+.primary:hover{background:var(--morrovia-action-hover)}
 .primary:focus-visible,.sources a:focus-visible,.entryCheck a:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:3px}
 .cardHeading>span{background:var(--morrovia-lilac);color:var(--morrovia-ink-soft)}
 .seasonPanel,.cta{background:var(--morrovia-lilac);border-radius:var(--morrovia-radius)}

@@ -7,13 +7,13 @@
 .hero p,.empty>p,.bookings header p,.ready header p,.context>p{color:var(--morrovia-signal,#f42b7a);font-family:var(--morrovia-meta,ui-monospace,monospace)}
 .hero h1,.empty h1,.dayCard h2,.bookings h2,.ready h2{color:var(--morrovia-ink,#17106f);font-family:var(--morrovia-display,Georgia,serif)}
 .hero span,.empty>span,.dayCard>span,.bookings header>span,.ready header>span,.bookingList span,.emptyState{color:var(--morrovia-muted,#7673a4)}
-.hero>a,.empty>a{border-radius:8px;background:var(--morrovia-ink,#17106f);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
-.hero>a:hover,.empty>a:hover{background:var(--morrovia-signal,#f42b7a)}
+.hero>a,.empty>a{border-radius:8px;background:var(--morrovia-action,#3025ce);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
+.hero>a:hover,.empty>a:hover{background:var(--morrovia-action-hover,#251dc0)}
 
 .tabs{gap:4px;padding:4px;border:1px solid var(--morrovia-line,#d9d8ee);border-radius:12px;background:var(--morrovia-lilac,#f2f0ff)}
 .tabs button{border:0;border-radius:8px;color:var(--morrovia-ink-soft,#4f4a92);background:transparent;font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
 .tabs button span{color:inherit}
-.tabs .active{background:var(--morrovia-ink,#17106f);border-color:var(--morrovia-ink,#17106f)}
+.tabs .active{background:var(--morrovia-action,#3025ce);border-color:var(--morrovia-action,#3025ce)}
 
 .dayCard,.bookingList article{border-color:var(--morrovia-line,#d9d8ee);border-radius:var(--morrovia-radius,14px);background:#fff}
 .dayCard{padding:24px}
@@ -32,8 +32,8 @@
 .bookingForm{border:1px solid var(--morrovia-line,#d9d8ee);border-radius:var(--morrovia-radius,14px);background:var(--morrovia-lilac,#f2f0ff)}
 .bookingForm input,.bookingForm select{border-color:var(--morrovia-line,#d9d8ee);border-radius:var(--morrovia-control-radius,10px);color:var(--morrovia-ink,#17106f);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
 .bookingForm input:focus-visible,.bookingForm select:focus-visible{outline:none;border-color:var(--morrovia-signal,#f42b7a);box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
-.bookingForm button{border-radius:8px;background:var(--morrovia-ink,#17106f);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
-.bookingForm button:hover{background:var(--morrovia-signal,#f42b7a)}
+.bookingForm button{border-radius:8px;background:var(--morrovia-action,#3025ce);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
+.bookingForm button:hover{background:var(--morrovia-action-hover,#251dc0)}
 
 .ready i{border-color:var(--morrovia-line,#d9d8ee);background:#fff}
 .ready .complete span{color:var(--morrovia-muted,#7673a4)}

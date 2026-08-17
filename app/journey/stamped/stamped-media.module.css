@@ -6,5 +6,5 @@
 .mediaCard label{border-color:var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
 .mediaCard label:focus-within{outline:2px solid var(--morrovia-signal);outline-offset:2px}
 .mediaCard figure{border-radius:var(--morrovia-control-radius);background:var(--morrovia-lilac-strong)}
-.mediaCard button{border-radius:7px;background:var(--morrovia-ink);font-family:var(--morrovia-meta)}
+.mediaCard button{border-radius:7px;background:var(--morrovia-action);font-family:var(--morrovia-meta)}
 .mediaCard button:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:2px}

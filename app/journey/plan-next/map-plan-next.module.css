@@ -25,7 +25,7 @@
 .daySheet{border-color:var(--morrovia-line,#d9d8ee);border-radius:15px;box-shadow:0 20px 48px rgba(23,16,111,.15)}
 .sheetHeading>span{background:var(--morrovia-lilac,#f2f0ff);color:var(--morrovia-ink-soft,#4f4a92)}
 .finderTabs{border-color:var(--morrovia-line,#d9d8ee);border-radius:10px;background:var(--morrovia-paper,#fbfaff)}
-.finderTabs .activeTab{background:var(--morrovia-ink,#17106f)}
+.finderTabs .activeTab{background:var(--morrovia-action,#3025ce)}
 @media(max-width:720px){.header{min-height:66px}.stopPanel{background:var(--morrovia-paper,#fbfaff)}.daySheet{border-radius:15px}.timeline{padding-inline:12px}}
 
 /* Complete the shared Journey treatment without changing the comparison-map
@@ -55,6 +55,6 @@
 .loading,.empty{background:var(--morrovia-paper,#fbfaff);color:var(--morrovia-ink,#17106f);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
 .empty h1{font-family:var(--morrovia-display,Georgia,serif)}
 .empty p:not(.eyebrow){color:var(--morrovia-muted,#7673a4)}
-.empty a{border-radius:8px;background:var(--morrovia-ink,#17106f)}
-.empty a:hover{background:var(--morrovia-signal,#f42b7a)}
+.empty a{border-radius:8px;background:var(--morrovia-action,#3025ce)}
+.empty a:hover{background:var(--morrovia-action-hover,#251dc0)}
 .page :is(button,a):focus-visible{outline:none;box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24))}

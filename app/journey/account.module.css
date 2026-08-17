@@ -909,19 +909,19 @@
 .tabs :global(.segmentActive),
 .tabs :global(.segmentActive:hover),
 .tripViews .tripViewActive {
-  background: var(--morrovia-ink);
+  background: var(--morrovia-action);
   color: #fff;
   box-shadow: none;
 }
 
 .tabs :global(button[aria-pressed="true"]) {
-  background: var(--morrovia-ink);
+  background: var(--morrovia-action);
   color: #fff;
   box-shadow: none;
 }
 
 .tabs :global(button[aria-pressed="true"]:hover) {
-  background: var(--morrovia-ink);
+  background: var(--morrovia-action);
   color: #fff;
 }
 
@@ -981,7 +981,7 @@
 .profileGuide a,
 .feedbackSend {
   border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-ink);
+  background: var(--morrovia-action);
   color: #fff;
 }
 
@@ -1155,8 +1155,8 @@
 }
 
 .preferenceChoices .choiceActive {
-  border-color: var(--morrovia-ink);
-  background: var(--morrovia-ink);
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-action);
   color: #fff;
 }
 
@@ -1199,8 +1199,8 @@
 }
 
 .guideDone>span {
-  border-color: var(--morrovia-ink);
-  background: var(--morrovia-ink);
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-action);
 }
 
 .feedback {

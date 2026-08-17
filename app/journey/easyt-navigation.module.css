@@ -97,7 +97,13 @@
   text-decoration: none;
   white-space: nowrap;
 }
+.landingActions > a.primaryLink {
+  color: #fff;
+}
 .landingActions > a:hover { color: #f62880; }
+.landingActions > a.primaryLink:hover {
+  color: #fff;
+}
 .landingTour { display: inline-flex; align-items: center; }
 .landingTour button {
   appearance: none;
@@ -170,14 +176,14 @@
   height: 14px;
 }
 .primaryLink {
-  background: var(--morrovia-ink, #17106f);
-  border: 1px solid var(--morrovia-ink, #17106f);
+  background: var(--morrovia-action, #3025ce);
+  border: 1px solid var(--morrovia-action, #3025ce);
   color: #fff;
 }
 .primaryLink:hover {
   transform: translateY(-1px);
-  background: var(--morrovia-signal, #f42b7a);
-  border-color: var(--morrovia-signal, #f42b7a);
+  background: var(--morrovia-action-hover, #251dc0);
+  border-color: var(--morrovia-action-hover, #251dc0);
 }
 .accountMenu {
   position: relative;
@@ -486,7 +492,7 @@
   }
   .mobileDock .dockPrimary {
     color: #fff;
-    background: var(--morrovia-ink, #17106f);
+    background: var(--morrovia-action, #3025ce);
   }
   .mobileDock a:focus-visible {
     outline: none;
