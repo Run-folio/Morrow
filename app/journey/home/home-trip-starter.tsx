@@ -6,16 +6,17 @@ import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import styles from "./home.module.css";
+import fidelity from "./home-fidelity.module.css";
 
 type CapturedMention = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent: "place" | "landmark"; locality?: string };
 type Capture = { rawBrief: string; parserVersion: string; durationDays?: number; regions: string[]; routeHints: string[]; mentions: CapturedMention[] };
 
 const copy = {
   en: {
-    briefLabel: "TELL US THE SHAPE OF YOUR TRIP", briefPlaceholder: "For example: Three weeks from London through Bangkok, Hoi An and Siem Reap this September. We like a balanced pace, food and time outdoors.", continue: "Make my first route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
+    briefLabel: "TELL US THE SHAPE OF YOUR TRIP", briefPlaceholder: "For example: Two weeks in Japan in October — Tokyo, Kyoto and time outdoors.", continue: "Make my first route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
   },
   es: {
-    briefLabel: "CUÉNTANOS LA FORMA DE TU VIAJE", briefPlaceholder: "Por ejemplo: Tres semanas desde Londres por Bangkok, Hoi An y Siem Reap este septiembre. Preferimos un ritmo equilibrado, comida y tiempo al aire libre.", continue: "Crear mi primera ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
+    briefLabel: "CUÉNTANOS LA FORMA DE TU VIAJE", briefPlaceholder: "Por ejemplo: Dos semanas en Japón en octubre: Tokio, Kioto y tiempo al aire libre.", continue: "Crear mi primera ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
   },
 } as const;
 
@@ -25,12 +26,13 @@ export default function HomeTripStarter() {
   const router = useRouter();
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [brief, setBrief] = useState("");
+  const [selectedShapes, setSelectedShapes] = useState<string[]>([]);
   const [startDate, setStartDate] = useState(() => iso(new Date()));
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
   const text = copy[language];
-  const addShape = (shape: string) => setBrief((current) => current.trim() ? `${current.trim()} ${shape}.` : `${shape}.`);
+  const toggleShape = (shape: string) => setSelectedShapes((current) => current.includes(shape) ? current.filter((item) => item !== shape) : [...current, shape]);
 
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -41,12 +43,13 @@ export default function HomeTripStarter() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!brief.trim()) return;
+    const shapedBrief = [brief.trim(), selectedShapes.length ? `Preferences: ${selectedShapes.join("; ")}.` : ""].filter(Boolean).join(" ");
+    if (!shapedBrief) return;
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: true });
     setLoading(true);
     setCaptureError("");
     try {
-      const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief }) });
+      const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: shapedBrief }) });
       const payload = await response.json() as Capture & { message?: string };
       if (!response.ok) throw new Error(payload.message || "Capture failed");
       const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
@@ -64,15 +67,17 @@ export default function HomeTripStarter() {
   };
 
   return <form id="start-building" className={styles.startBuilder} onSubmit={(event) => void submit(event)}>
-    <div className={styles.startBuilderBrief}>
+    <div className={`${styles.startBuilderBrief} ${fidelity.promptCard}`}>
       <span>{text.briefLabel}</span>
-      <div className={styles.startBuilderPromptField}>
+      <div className={`${styles.startBuilderPromptField} ${fidelity.promptField}`}>
         <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
-        <div className={styles.startBuilderPromptAction}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
-      </div>
-      <div className={styles.shapePlan}>
-        <span className={styles.shapePlanLabel}>{text.startersLabel}</span>
-        <div className={styles.shapePlanChoices}>{text.starters.map((shape) => <button type="button" key={shape} onClick={() => addShape(shape)}><Sparkles aria-hidden="true" /> {shape}</button>)}</div>
+        <div className={fidelity.promptFooter}>
+          <div className={fidelity.shapePlan}>
+            <span className={fidelity.shapePlanLabel}>{text.startersLabel}</span>
+            <div className={fidelity.shapeChoices}>{text.starters.map((shape) => <button className={fidelity.shapeChoice} type="button" key={shape} aria-pressed={selectedShapes.includes(shape)} onClick={() => toggleShape(shape)}><Sparkles aria-hidden="true" /> {shape}</button>)}</div>
+          </div>
+          <div className={`${styles.startBuilderPromptAction} ${fidelity.promptAction}`}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
+        </div>
       </div>
     </div>
     {captureError ? <p className={styles.captureError} role="alert">{captureError}</p> : null}

@@ -1,0 +1,118 @@
+.promptCard {
+  padding: 24px !important;
+  overflow: hidden !important;
+}
+
+.promptField {
+  display: grid !important;
+  min-height: 0 !important;
+  gap: 14px !important;
+  padding: 14px !important;
+  border: 1px solid #d9d6ef !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+
+.promptField textarea {
+  min-height: 88px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  resize: vertical !important;
+}
+
+.promptFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e7e5f3;
+}
+
+.shapePlan {
+  display: grid !important;
+  flex: 1 1 auto;
+  gap: 7px;
+  margin: 0 !important;
+}
+
+.shapePlanLabel {
+  color: #5e5a70;
+  font: 700 10px/1.2 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: .14em;
+}
+
+.shapeChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.shapeChoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid #d9d6ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #59556b;
+  font: 600 11px/1.1 var(--font-sans, Arial, sans-serif);
+  cursor: pointer;
+}
+
+.shapeChoice svg { width: 13px; height: 13px; color: #ff4790; }
+.shapeChoice[aria-pressed="true"] { border-color: #ff4790; background: #fff1f8; color: #27215a; }
+
+.promptAction { position: static !important; flex: 0 0 auto; }
+
+.promptAction button {
+  min-height: 44px !important;
+  padding: 0 18px !important;
+  white-space: nowrap;
+}
+
+.routeCard { display: flex !important; flex-direction: column !important; }
+
+.routeImage {
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  align-self: stretch !important;
+  height: 238px !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.proofArtwork {
+  width: 100% !important;
+  height: 208px !important;
+  background-size: 300% 100% !important;
+  background-position-y: center !important;
+  background-repeat: no-repeat !important;
+}
+
+.footerCta {
+  min-height: 360px !important;
+  padding-bottom: 42px !important;
+}
+
+.footerCtaCopy { padding-bottom: 44px !important; }
+
+@media (max-width: 720px) {
+  .promptCard { padding: 18px !important; }
+  .promptField { padding: 13px !important; }
+  .promptFooter { align-items: stretch; flex-direction: column; }
+  .promptAction { width: 100%; }
+  .promptAction button { width: 100%; }
+  .shapeChoice { font-size: 10px; }
+  .routeImage { height: 218px !important; }
+  .proofArtwork { height: 184px !important; }
+  .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
+  .footerCtaCopy { padding-bottom: 26px !important; }
+}

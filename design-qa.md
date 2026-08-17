@@ -1,45 +1,45 @@
-# Editorial-system rollout QA
+# Homepage fidelity follow-up QA
 
 ## Comparison target
 
-- **Source visual truth:** the approved Morrovia homepage and builder editorial references supplied on 14–15 August 2026: indigo editorial display type, pale paper/lilac surfaces, pink mono labels, restrained rounded panels and practical content hierarchy.
-- **Implementation:** `http://localhost:3010/journey/plan-next`, `http://localhost:3010/journey/routes/japan-slow`, `http://localhost:3010/journey/prep`, and `http://localhost:3010/journey/passport`.
-- **Viewports:** desktop browser viewport for the route, prep empty state and passport tool. Existing mobile CSS breakpoints and app-specific controls were retained; no interaction or data model was replaced.
+- **Source visual truth:** the homepage screenshots supplied on 16 August 2026: contained prompt controls, generous visual framing, full-width route photography, complete decision illustrations, and a padded closing banner.
+- **Implementation:** `http://localhost:3000/journey/home`.
+- **Viewport:** desktop browser viewport. The new prompt footer stacks at the existing mobile breakpoint.
 
 ## Evidence
 
-- Route detail: verified the live Japan route hero retains its photograph, route facts and working primary action inside the editorial frame.
-- Passport: verified the public checker retains passport/destination selects and the requirements CTA, now with the shared typography, borders and calm result surface.
-- Trip prep: verified the no-trip state retains its actionable empty state and adopts the same display hierarchy.
-- Map planner: review was limited to the existing state-preserving visual scope because there was no saved trip available in this browser session. The implementation changes only its outer framing selectors; map rendering, stop selection, decisions and tabs are untouched.
-- Browser console: no errors on the tested route and prep pages.
+- Prompt: verified a shorter, explicitly illustrative prompt example; controls remain inside a single bounded prompt panel.
+- Prompt suggestions: verified a selected suggestion exposes `aria-pressed=true`; the selected values are appended to the capture payload at submit time without overwriting the traveller's typed brief.
+- Route photography: verified all three route-image elements have active Unsplash backgrounds and measure 377px within 379px route cards (effectively full width).
+- Decision illustrations: verified all three source illustrations fit their panels rather than being vertically clipped.
+- Closing banner: verified its copy area retains visible bottom space rather than sitting against the banner edge.
 
 ## Required fidelity surfaces
 
-- **Typography:** display headings use the Morrovia editorial serif; controls preserve their readable product UI type.
-- **Colour and surfaces:** deep indigo, signal pink, paper/lilac backgrounds and fine lilac rules are now shared across all four surfaces.
-- **Information hierarchy:** route evidence and personalised entry checks remain primary; prep remains practical; passport remains a fast public tool; map controls remain map-first.
-- **Interaction integrity:** no links, selections, live-map components, dynamic route imagery, readiness components or passport data calls were removed.
-- **Responsive integrity:** existing responsive breakpoints remain active; the shared rules only alter visual tokens and panel geometry.
+- **Prompt hierarchy:** label, free text, optional shape choices and submit action sit in one clear reading order.
+- **Photography:** the image frame is a real full-width card area, with `cover` framing rather than a content-width strip.
+- **Illustration framing:** triptych panels render at the panel aspect ratio so their intended scenes remain legible.
+- **Interaction integrity:** no routes or prompt capture flow was removed; suggestion choices are additive structured context.
+- **Responsive integrity:** prompt footer becomes a vertical, full-width-action layout at the existing narrow breakpoint.
 
 ## Findings
 
-No P0, P1 or P2 issues found in the tested pages.
+No P0, P1 or P2 issues found in the tested homepage.
 
-- [P3] A populated saved-trip visual pass is still worthwhile for map planner and prep: it will validate long stop names, 4–6-stop maps and full booking-readiness content in the new frame.
+- [P3] A slow-network visual pass would be useful to observe the initial route-photo loading state before Unsplash responses arrive.
 
 ## Checks completed
 
 - [x] Production build, type and lint checks.
-- [x] Route-detail visual and console review.
-- [x] Passport checker visual review.
-- [x] Trip-prep empty-state visual and console review.
-- [x] Shared map-planner selectors scoped without touching functionality.
+- [x] Desktop homepage visual review.
+- [x] Prompt-suggestion selection state.
+- [x] Route-photo width measurement and loaded-image verification.
+- [x] Decision-illustration and closing-banner frame verification.
 
 ## Comparison history
 
-1. Homepage and builder established the editorial visual vocabulary.
-2. Map planner, route detail, trip preparation and passport now consume the same tokens and hierarchy in that order.
-3. Functional route and public-checker screens were verified in-browser; no console errors found.
+1. The updated homepage preserves the editorial visual vocabulary.
+2. The prompt is now an interaction-first unit rather than an overlapping text area and button.
+3. Image and illustration framing has been constrained at the component level, so it does not depend on old homepage CSS ordering.
 
 **final result: passed**

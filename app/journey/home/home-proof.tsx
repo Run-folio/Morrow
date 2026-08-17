@@ -4,6 +4,7 @@ import { MapPinned, Route, Scale } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./home.module.css";
+import fidelity from "./home-fidelity.module.css";
 
 const copy = {
   en: {
@@ -36,6 +37,6 @@ export default function HomeProof() {
 
   return <section className={styles.proofSection} id="how-it-works" aria-labelledby="real-travel-proof">
     <header><p>{language === "es" ? "VE LA DECISIÓN ANTES QUE EL DETALLE" : "SEE THE DECISION BEFORE THE DETAIL"}</p><h2 id="real-travel-proof">{language === "es" ? "Un camino más claro de la idea al itinerario." : "A clearer path from idea to itinerary."}</h2></header>
-    <div className={styles.proofGrid}>{text.items.map(([Icon, title, detail], index) => <article key={title}><div className={`${styles.proofArtwork} ${styles[`proofArt${index + 1}`]}`} /><span><b>{index + 1}</b><Icon aria-hidden="true" /></span><h3>{title}</h3><p>{detail}</p></article>)}</div>
+    <div className={styles.proofGrid}>{text.items.map(([Icon, title, detail], index) => <article key={title}><div className={`${styles.proofArtwork} ${styles[`proofArt${index + 1}`]} ${fidelity.proofArtwork}`} /><span><b>{index + 1}</b><Icon aria-hidden="true" /></span><h3>{title}</h3><p>{detail}</p></article>)}</div>
   </section>;
 }

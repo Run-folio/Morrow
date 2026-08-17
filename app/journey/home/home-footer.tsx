@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./home.module.css";
+import fidelity from "./home-fidelity.module.css";
 
 const copy = {
   en: { title: "A first route is a better place to start.", lede: "Tell us the shape of your trip and we’ll do the hard part—then leave the rest in your hands.", action: "Start my trip", copyright: "© 2026 Morrovia Ltd. All rights reserved.", about: "About", privacy: "Privacy", terms: "Terms", help: "Help" },
@@ -16,9 +17,9 @@ export default function HomeFooter() {
   useEffect(() => { setLanguage(languageFromStorage()); const update = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail); window.addEventListener("easyt-language-change", update); return () => window.removeEventListener("easyt-language-change", update); }, []);
   const text = copy[language];
   return <footer className={styles.homeFooter}>
-    <section className={styles.footerCta}>
+    <section className={`${styles.footerCta} ${fidelity.footerCta}`}>
       <img src="/journey/illustrations/home-closing-banner-v2.png" alt="" />
-      <div className={styles.footerCtaCopy}><p className={styles.eyebrow}>{language === "es" ? "EMPIEZA CON LA RUTA" : "START WITH THE ROUTE"}</p><h2>{text.title}</h2><p>{text.lede}</p><div className={styles.footerCtaActions}><Link className={styles.footerPrompt} href="/journey/new">{language === "es" ? "¿Dónde, cuándo y qué importa más?" : "Where to, when, and what matters most?"}</Link><Link className={styles.footerAction} href="/journey/new"><Sparkles aria-hidden="true" /> {text.action} <ArrowRight aria-hidden="true" /></Link></div></div>
+      <div className={`${styles.footerCtaCopy} ${fidelity.footerCtaCopy}`}><p className={styles.eyebrow}>{language === "es" ? "EMPIEZA CON LA RUTA" : "START WITH THE ROUTE"}</p><h2>{text.title}</h2><p>{text.lede}</p><div className={styles.footerCtaActions}><Link className={styles.footerPrompt} href="/journey/new">{language === "es" ? "¿Dónde, cuándo y qué importa más?" : "Where to, when, and what matters most?"}</Link><Link className={styles.footerAction} href="/journey/new"><Sparkles aria-hidden="true" /> {text.action} <ArrowRight aria-hidden="true" /></Link></div></div>
     </section>
     <div className={styles.footerBottom}>
       <Link className={styles.footerBrand} href="/journey/home">Morrovia</Link>
