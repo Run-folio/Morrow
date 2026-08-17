@@ -144,29 +144,20 @@ export async function POST(request: NextRequest) {
   const brief = typeof body.brief === "string" ? body.brief.trim().slice(0, 600) : "";
   if (!brief) return NextResponse.json({ message: "Add a trip brief first." }, { status: 400 });
 
-  const extracted = reconcile(brief, await extractWithModel(brief));
-  const candidates = extracted.mentions.map((mention) => ({ name: mention.canonicalName, sourceText: mention.sourceText, role: mention.role, intent: mention.intent, country: knownCountries[mention.canonicalName] }));
-
-  const mentions: CapturedMention[] = [];
-  // Public Nominatim permits at most one request per second. Resolving in order
-  // also means a later place can never disappear because a parallel request was
-  // throttled. Replace this adapter with a production geocoder as traffic grows.
-  for (const [order, candidate] of candidates.entries()) {
-    if (order) await pause(1_050);
-    const result = await resolve(request, candidate.name, candidate.country).catch(() => null);
-    mentions.push({
-      sourceText: candidate.sourceText,
-      canonicalName: result?.name?.split(",")[0]?.trim() || candidate.name,
-      role: candidate.role,
-      order,
-      status: result?.coordinates && result.country ? "resolved" : "unresolved",
-      country: result?.country,
-      coordinates: result?.coordinates,
-      kind: result?.kind,
-      intent: candidate.intent,
-      locality: result?.locality,
-    });
-  }
+  // The home-page action is a handoff, not a validation gate. Both the model
+  // request (which can take 20 seconds) and serial Nominatim lookups made this
+  // button appear stuck for a multi-stop trip. Capture the reliable local
+  // intent now; the builder verifies places in the background where its review
+  // controls can handle ambiguity without blocking the traveller.
+  const extracted = reconcile(brief, null);
+  const mentions: CapturedMention[] = extracted.mentions.map((mention, order) => ({
+    sourceText: mention.sourceText,
+    canonicalName: mention.canonicalName,
+    role: mention.role,
+    order,
+    status: "unresolved",
+    intent: mention.intent,
+  }));
 
   return NextResponse.json({
     rawBrief: brief,

@@ -212,7 +212,12 @@ function permutations<T>(items: T[]): T[][] {
 }
 
 function routeEstimate(origin: { name: string; coordinates?: [number, number] }, stops: PlannerStop[]) {
-  const legs = stops.map((stop, index) => estimateLeg(index ? stops[index - 1] : origin, stop));
+  // An origin is useful for choosing the direction of the trip, but it should
+  // not prevent us from spotting an obvious loop within the requested stops.
+  // Prompt-first trips often do not include a departure airport yet.
+  const legs = origin.coordinates
+    ? stops.map((stop, index) => estimateLeg(index ? stops[index - 1] : origin, stop))
+    : stops.slice(1).map((stop, index) => estimateLeg(stops[index], stop));
   if (legs.some((leg) => leg.durationMinutes === null)) return { legs, minutes: null };
   return { legs, minutes: legs.reduce((total, leg) => total + (leg.durationMinutes ?? 0), 0) };
 }
@@ -239,7 +244,7 @@ export function assessRouteOrder(input: {
   constraints?: RoutePlanningConstraints;
 }): RouteOrderAssessment {
   const currentStopIds = input.stops.map((stop) => stop.id);
-  if (input.stops.length < 2 || input.stops.length > 6 || !input.origin.coordinates || input.stops.some((stop) => !stop.coordinates)) {
+  if (input.stops.length < 2 || input.stops.length > 6 || input.stops.some((stop) => !stop.coordinates)) {
     return {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,

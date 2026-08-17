@@ -29,6 +29,20 @@ test("does not make an order recommendation without verified coordinates", () =>
   assert.equal(assessment.state, "insufficient-data");
 });
 
+test("can flag backtracking before a departure airport is known", () => {
+  const assessment = assessRouteOrder({
+    origin: { name: "" },
+    stops: [
+      { id: "c", name: "C", country: "Testland", coordinates: [5, 0] },
+      { id: "a", name: "A", country: "Testland", coordinates: [0.1, 0] },
+      { id: "b", name: "B", country: "Testland", coordinates: [2, 0] },
+    ],
+  });
+
+  assert.equal(assessment.state, "recommendation");
+  assert.notDeepEqual(assessment.recommendedStopIds, ["c", "a", "b"]);
+});
+
 test("does not pretend to optimise an excessive number of stops", () => {
   const assessment = assessRouteOrder({
     origin,

@@ -20,6 +20,7 @@ const places: Place[] = [
   // and can be refined into cities later rather than silently disappearing.
   { name: "Spain", terms: ["spain", "espana", "españa"] },
   { name: "Japan", terms: ["japan", "japón", "japon"] },
+  { name: "South Korea", terms: ["south korea", "korea", "corea del sur"] },
   { name: "China", terms: ["china"] },
   { name: "Portugal", terms: ["portugal"] }, { name: "France", terms: ["france", "francia"] },
   { name: "Italy", terms: ["italy", "italia"] }, { name: "Vietnam", terms: ["vietnam", "việt nam"] },
@@ -27,6 +28,7 @@ const places: Place[] = [
   { name: "Peru", terms: ["peru", "perú"] }, { name: "Bolivia", terms: ["bolivia"] },
   { name: "London", terms: ["london", "londres", "lhr", "lgw"] },
   { name: "Tokyo", terms: ["tokyo", "tokio", "hnd", "nrt", "tokyo marathon"] },
+  { name: "Seoul", terms: ["seoul", "seúl", "sel", "icn"] }, { name: "Busan", terms: ["busan", "pusan"] },
   { name: "Kyoto", terms: ["kyoto", "kioto"] }, { name: "Osaka", terms: ["osaka", "kix"] },
   { name: "Kanazawa", terms: ["kanazawa"] }, { name: "Takayama", terms: ["takayama"] },
   { name: "Hiroshima", terms: ["hiroshima"] }, { name: "Hong Kong", terms: ["hong kong", "hkg"] },

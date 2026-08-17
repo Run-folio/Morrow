@@ -10,8 +10,8 @@
  */
 
 import {
-  CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
-  Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Users, X,
+  ArrowDown, ArrowUp, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
+  Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Train, Trash2, Users, X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
@@ -308,6 +308,8 @@ export default function TripBuilder() {
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [summaryFocus, setSummaryFocus] = useState<"origin" | "stops" | "dates" | "constraints" | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [editingRouteStopId, setEditingRouteStopId] = useState<string | null>(null);
+  const [routeNightDraft, setRouteNightDraft] = useState<Record<string, number> | null>(null);
   const [activeDay, setActiveDay] = useState(0);
   const [draftImages, setDraftImages] = useState<Record<string, JourneyImage>>({});
 
@@ -418,27 +420,32 @@ export default function TripBuilder() {
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
           if (homeDraft.locationMentions?.length) {
-            setIntakeMentions(homeDraft.locationMentions);
+            const locationMentions = homeDraft.locationMentions;
+            setIntakeMentions(locationMentions);
             setResolvingLocations(true);
-            const selections = await Promise.all(homeDraft.locationMentions.map(async (mention) => {
-              try {
-                const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1`);
-                const payload = await response.json() as { candidates?: LocationChoice[] };
-                return { mention, choices: payload.candidates ?? [] };
-              } catch { return { mention, choices: [] }; }
-            }));
-            if (!active) return;
-            const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
-            const uncertainKeys = new Set(uncertain.map(({ mention }) => `${mention.role}-${mention.order}`));
-            const automatic = selections.filter(({ mention }) => !uncertainKeys.has(`${mention.role}-${mention.order}`));
-            for (const { mention, choices } of automatic) {
-              const chosen = choices[0] ?? (mention.coordinates && mention.country ? { name: mention.canonicalName, country: mention.country, coordinates: mention.coordinates, kind: mention.kind, locality: mention.locality } : undefined);
-              if (!chosen) continue;
-              if (mention.role === "origin") { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
-              else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
-            }
-            setLocationChoices(uncertain);
-            setResolvingLocations(false);
+            // Let the builder render immediately. These requests enrich the
+            // route after arrival instead of holding the homepage transition.
+            void (async () => {
+              const selections = await Promise.all(locationMentions.map(async (mention) => {
+                try {
+                  const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1`);
+                  const payload = await response.json() as { candidates?: LocationChoice[] };
+                  return { mention, choices: payload.candidates ?? [] };
+                } catch { return { mention, choices: [] }; }
+              }));
+              if (!active) return;
+              const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
+              const uncertainKeys = new Set(uncertain.map(({ mention }) => `${mention.role}-${mention.order}`));
+              const automatic = selections.filter(({ mention }) => !uncertainKeys.has(`${mention.role}-${mention.order}`));
+              for (const { mention, choices } of automatic) {
+                const chosen = choices[0] ?? (mention.coordinates && mention.country ? { name: mention.canonicalName, country: mention.country, coordinates: mention.coordinates, kind: mention.kind, locality: mention.locality } : undefined);
+                if (!chosen) continue;
+                if (mention.role === "origin") { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
+                else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
+              }
+              setLocationChoices(uncertain);
+              setResolvingLocations(false);
+            })();
           }
           window.localStorage.removeItem("easyt-home-trip-draft");
         } else {
@@ -533,25 +540,26 @@ export default function TripBuilder() {
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
   const stepLabels = language === "es"
-    ? ["Confirmar", "Ruta", "Tiempo"]
-    : ["Confirm", "Route", "Time"];
+    ? ["Lugares", "Tiempo", "Ruta"]
+    : ["Places", "Time", "Route"];
   const stepNotes = language === "es"
-    ? ["Lo esencial", "El mejor flujo", "Haz sitio para todo"]
-    : ["The essentials", "The best flow", "Make room for it all"];
+    ? ["El viaje", "Fechas y noches", "Ruta y experiencias"]
+    : ["The trip", "Dates and nights", "Route and experiences"];
   const stepGuidance = language === "es"
     ? [
-      ["Comprueba lo esencial.", "Confirma cada lugar y las fechas antes de que Morrovia dé forma al viaje."],
-      ["Elige lo que importa.", "Marca los lugares y experiencias para los que quieres dejar tiempo."],
-      ["Haz que los días encajen.", "Podrás editar cada detalle más adelante."],
+      ["Elige los lugares.", "Añade tus paradas, punto de partida y cualquier condición importante."],
+      ["Define el tiempo.", "Confirma las fechas y ajusta cómo se reparten las noches."],
+      ["Haz que la ruta funcione.", "Compara el orden y elige las experiencias que merecen tiempo."],
     ]
     : [
-      ["Check the essentials.", "Confirm every place and the dates before Morrovia starts shaping the trip."],
-      ["Choose what matters.", "Pick the places and experiences worth making room for."],
-      ["Make the days fit.", "You can edit every detail later."],
+      ["Choose the places.", "Add your stops, departure point and anything that must be protected."],
+      ["Set the time.", "Confirm dates, then shape how nights are distributed."],
+      ["Make the route work.", "Compare the order and choose the experiences worth making time for."],
     ];
-  const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "") : "";
+  const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : "") : step === 1 && !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "";
   const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
-    if (step !== 0) setStep(0);
+    const targetStep = target === "dates" ? 1 : 0;
+    if (step !== targetStep) setStep(targetStep);
     setSummaryFocus(target);
     window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   };
@@ -615,6 +623,9 @@ export default function TripBuilder() {
     () => rebalanceDays(stops, totalDays, dayAllocations, recommendedDays),
     [stops, totalDays, dayAllocations, recommendedDays],
   );
+  const routeAllocation = routeNightDraft ?? allocation;
+  const routeNights = stops.reduce((total, stop) => total + (routeAllocation[stop.id] ?? 1), 0);
+  const routeNightDifference = routeNights - totalDays;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
     setLastStructuralChange({ stops, allocations: dayAllocations, startDate, endDate, locks: scheduleLocks, summary });
@@ -701,6 +712,36 @@ export default function TripBuilder() {
       nextAllocation[receiver.id] += Math.abs(difference);
     }
     setDayAllocations(nextAllocation);
+  };
+
+  const beginRouteEdit = (stopId: string) => {
+    setEditingRouteStopId(stopId);
+    setRouteNightDraft((current) => current ?? { ...allocation });
+  };
+
+  const updateRouteNightDraft = (stopId: string, requested: number) => {
+    setRouteNightDraft((current) => ({ ...(current ?? allocation), [stopId]: Math.max(1, Math.min(60, Math.round(requested) || 1)) }));
+  };
+
+  const applyRouteNightsToDates = () => {
+    if (!routeNightDraft) return;
+    rememberStructuralChange("change_nights", stops.length);
+    const nextEnd = new Date(`${startDate}T00:00:00`);
+    nextEnd.setDate(nextEnd.getDate() + Math.max(0, routeNights - 1));
+    setDayAllocations(routeNightDraft);
+    setEndDate(iso(nextEnd));
+    setDatesManuallyEdited(true);
+    setDatesConfirmed(false);
+    setRouteNightDraft(null);
+    setEditingRouteStopId(null);
+  };
+
+  const rebalanceRouteNightsToDates = () => {
+    if (!routeNightDraft) return;
+    rememberStructuralChange("change_nights", stops.length);
+    setDayAllocations(rebalanceDays(stops, totalDays, routeNightDraft, recommendedDays));
+    setRouteNightDraft(null);
+    setEditingRouteStopId(null);
   };
 
   const addStop = async (name?: string) => {
@@ -1030,7 +1071,6 @@ export default function TripBuilder() {
                 <dl>
                   <div><dt><Plane />{language === "es" ? "Salida" : "Leaving from"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Necesita confirmación" : "Needs confirmation")}</dd><button type="button" onClick={() => openSummaryEditor("origin")} aria-label={language === "es" ? "Editar salida" : "Edit departure"}><Pencil /></button></div>
                   <div><dt><MapPin />{language === "es" ? "Paradas" : "Stops"}</dt><dd>{stops.length ? stops.map((stop) => `${stop.name}${stop.country ? `, ${stop.country}` : ""}`).join(" · ") : (language === "es" ? "Añade las paradas imprescindibles" : "Add the places you must see")}</dd><button type="button" onClick={() => openSummaryEditor("stops")} aria-label={language === "es" ? "Editar paradas" : "Edit stops"}><Pencil /></button></div>
-                  <div><dt><CalendarDays />{language === "es" ? "Fechas" : "Timing"}</dt><dd>{datesManuallyEdited || datesConfirmed ? `${fmtLong(startDate)} – ${fmtLong(endDate)} · ${totalDays} ${totalDays === 1 ? ui.day : ui.days}` : (language === "es" ? `${totalDays} días aproximados · confirma las fechas` : `Around ${totalDays} days · confirm dates`)}</dd><button type="button" onClick={() => openSummaryEditor("dates")} aria-label={language === "es" ? "Editar fechas" : "Edit timing"}><Pencil /></button></div>
                   <div><dt><Sparkles />{language === "es" ? "Imprescindibles" : "Fixed item"}</dt><dd>{effectiveIntent.hardConstraints.fixedCommitments.length ? effectiveIntent.hardConstraints.fixedCommitments.map((item) => item.date ? `${item.label}, ${fmtLong(item.date)}` : item.label).join(" · ") : (language === "es" ? "Nada fijo todavía" : "Nothing fixed yet")}</dd><button type="button" onClick={() => { setShowTripDetails(true); openSummaryEditor("constraints"); }} aria-label={language === "es" ? "Editar condiciones" : "Edit constraints"}><Pencil /></button></div>
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt><Sparkles />{language === "es" ? "Revisar" : "Check"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
@@ -1142,60 +1182,22 @@ export default function TripBuilder() {
                 </div>}
               </section>}
 
-              <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
-                <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
-                <div className={styles.dateRow}>
-                  {([
-                    { key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => updateTravelDate("start", value) },
-                    { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => updateTravelDate("end", value) },
-                  ]).map((field) => (
-                    <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}>
-                      <button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key}
-                        onClick={() => setPicker(picker === field.key ? null : field.key)}>
-                        <span className={styles.cardLabel}><CalendarDays /> {field.label}</span>
-                        <span className={styles.cardValue}>
-                          <strong>{fmtLong(field.value) || ui.pickDate}</strong>
-                          <ChevronDown />
-                        </span>
-                      </button>
-                      {picker === field.key && (
-                        <div className={styles.popover}>
-                          <Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} />
-                          <label className={styles.typeIt}>{ui.typeIt}
-                            <input defaultValue={fmtLong(field.value)}
-                              onChange={(event) => { const value = parseTyped(event.target.value); if (value) field.set(value); }} />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className={styles.dateConfirmFoot}>
-                  <p className={styles.dateConfirmNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa tus fechas y confírmalas para continuar." : "Review your dates, then confirm them to continue.")}</p>
-                  {!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}
-                </div>
-                {stops.length > 0 && <div className={styles.scheduleLocks}>
-                  <span>{language === "es" ? "BLOQUEAR LLEGADA" : "LOCK ARRIVAL"}</span>
-                  <div>{stops.map((stop) => <button type="button" key={stop.id} className={scheduleLocks.arrivalDates[stop.id] ? styles.intentChoiceOn : ""} onClick={() => toggleArrivalLock(stop.id)}><Lock /> {stop.name}{scheduleLocks.arrivalDates[stop.id] ? ` · ${fmtLong(scheduleLocks.arrivalDates[stop.id])}` : ""}</button>)}</div>
-                </div>}
-                {(lastStructuralChange || activeTripDocument.brief.cascadeStatus?.conflicts.length || activeTripDocument.brief.cascadeStatus?.affectedPlanItemCount) && <div className={styles.cascadeSummary} aria-live="polite">
-                  <div><strong>{language === "es" ? "PLAN ACTUALIZADO" : "PLAN UPDATED"}</strong><span>{activeTripDocument.brief.cascadeStatus?.conflicts[0] ?? (activeTripDocument.brief.cascadeStatus?.affectedPlanItemCount ? (language === "es" ? `${activeTripDocument.brief.cascadeStatus.affectedPlanItemCount} días posteriores se han actualizado.` : `${activeTripDocument.brief.cascadeStatus.affectedPlanItemCount} downstream days were updated.`) : (language === "es" ? "Las fechas posteriores se actualizarán juntas." : "Later dates will move together."))}</span></div>
-                  {lastStructuralChange && <button type="button" onClick={undoStructuralChange}>{language === "es" ? "Deshacer" : "Undo"}</button>}
-                </div>}
-              </section>
-
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className={styles.routeStep}>
-              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>{language === "es" ? "Una ruta que tiene sentido." : "A route that makes sense."}</h2><span>{language === "es" ? "Hemos ordenado el viaje para que sea más ligero, sin perder lo que pediste." : "We’ve ordered the trip to keep the journey lighter, without losing what you asked for."}</span></header>
+              <header className={styles.stepHero}><p>STEP 3 OF 3</p><h2>{language === "es" ? "Una ruta que tiene sentido." : "A route that makes sense."}</h2><span>{language === "es" ? "Hemos comprobado el orden y mostraremos una alternativa más directa cuando la haya. Tú decides si aplicarla." : "We’ve checked the order and will show a cleaner alternative when there is one. You choose whether to apply it."}</span></header>
               <section className={styles.routeSequence} aria-label={language === "es" ? "Ruta recomendada" : "Recommended route"}>
                 {stops.map((stop, index) => {
                   const duration = routeIntelligence.durations[stop.id];
-                  const arrival = arrivalDateForStop(stop.id);
+                  let routeOffset = 0;
+                  for (const priorStop of stops) { if (priorStop.id === stop.id) break; routeOffset += routeAllocation[priorStop.id] ?? 1; }
+                  const routeArrivalDate = new Date(`${startDate}T00:00:00`);
+                  routeArrivalDate.setDate(routeArrivalDate.getDate() + routeOffset);
+                  const arrival = iso(routeArrivalDate);
                   const departure = new Date(`${arrival}T00:00:00`);
-                  departure.setDate(departure.getDate() + (allocation[stop.id] ?? 1));
+                  departure.setDate(departure.getDate() + (routeAllocation[stop.id] ?? 1));
                   const next = stops[index + 1];
                   const leg = next ? estimateLeg(stop, next) : null;
                   const durationReason = duration?.reason || (language === "es" ? "Tiempo suficiente para instalarte y disfrutar del lugar." : "Enough time to settle in and experience the place." );
@@ -1203,13 +1205,14 @@ export default function TripBuilder() {
                     <article className={styles.routeStopCard}>
                       <span className={styles.routeNumber}>{index + 1}</span>
                       <div className={styles.routeStopPlace}><small>{(stop.country || "verified stop").toUpperCase()}</small><h3>{stop.name}</h3></div>
-                      <div className={styles.routeStopTiming}><strong><Clock /> {allocation[stop.id] ?? 1} {(allocation[stop.id] ?? 1) === 1 ? "night" : "nights"}</strong><span><CalendarDays /> {fmtLong(arrival)} – {fmtLong(iso(departure))}</span></div>
+                      <div className={styles.routeStopTiming}><strong><Clock /> {editingRouteStopId === stop.id ? <input aria-label={`Nights in ${stop.name}`} type="number" min="1" max="60" value={routeAllocation[stop.id] ?? 1} onChange={(event) => updateRouteNightDraft(stop.id, Number(event.target.value))} /> : <>{routeAllocation[stop.id] ?? 1} {(routeAllocation[stop.id] ?? 1) === 1 ? "night" : "nights"}</>}</strong><span><CalendarDays /> {fmtLong(arrival)} – {fmtLong(iso(departure))}</span></div>
                       <p>{durationReason}</p>
-                      <div className={styles.routeStopActions}><button type="button" onClick={() => openSummaryEditor("stops")}><Pencil /> {language === "es" ? "Editar" : "Edit"}</button><button type="button" onClick={() => moveStop(index, Math.max(0, index - 1))} disabled={index === 0}><GripVertical /> {language === "es" ? "Reordenar" : "Reorder"}</button></div>
+                      <div className={styles.routeStopActions}>{editingRouteStopId === stop.id ? <><span className={styles.routeReorderLabel}><GripVertical /> {language === "es" ? "REORDENAR" : "REORDER"}</span><div className={styles.routeEditorButtons}><button type="button" aria-label={`Move ${stop.name} up`} onClick={() => moveStop(index, index - 1)} disabled={index === 0}><ArrowUp /></button><button type="button" aria-label={`Move ${stop.name} down`} onClick={() => moveStop(index, index + 1)} disabled={index === stops.length - 1}><ArrowDown /></button><button type="button" onClick={() => removeStop(stop.id)} disabled={scheduleLocks.stopIds.includes(stop.id)}><Trash2 /> {language === "es" ? "Quitar" : "Remove"}</button></div><button type="button" onClick={() => setEditingRouteStopId(null)}><Check /> {language === "es" ? "Listo" : "Done"}</button></> : <button type="button" onClick={() => beginRouteEdit(stop.id)}><Pencil /> {language === "es" ? "Editar" : "Edit"}</button>}</div>
                     </article>
-                    {leg && <div className={styles.routeTransfer}><span>{leg.mode === "train" ? "▰" : leg.mode === "flight" ? "✈" : "→"}</span><p><b>{leg.mode === "train" ? (language === "es" ? `Tren a ${next.name}` : `Train to ${next.name}`) : leg.mode === "flight" ? (language === "es" ? `Vuelo a ${next.name}` : `Flight to ${next.name}`) : (language === "es" ? `Traslado a ${next.name}` : `Transfer to ${next.name}`)}</b><small>{leg.durationMinutes ? `~${Math.floor(leg.durationMinutes / 60)}h ${leg.durationMinutes % 60}m` : (language === "es" ? "Tiempo por confirmar" : "Time to confirm")}</small></p></div>}
+                    {leg && <div className={styles.routeTransfer}><span>{leg.mode === "train" ? <Train aria-label="Train" /> : leg.mode === "flight" ? <Plane aria-label="Flight" /> : "→"}</span><p><b>{leg.mode === "train" ? (language === "es" ? `Tren a ${next.name}` : `Train to ${next.name}`) : leg.mode === "flight" ? (language === "es" ? `Vuelo a ${next.name}` : `Flight to ${next.name}`) : (language === "es" ? `Traslado a ${next.name}` : `Transfer to ${next.name}`)}</b><small>{leg.durationMinutes ? `~${Math.floor(leg.durationMinutes / 60)}h ${leg.durationMinutes % 60}m` : (language === "es" ? "Tiempo por confirmar" : "Time to confirm")}</small></p></div>}
                   </div>;
                 })}
+                {routeNightDraft && <div className={styles.routeNightsWarning} role="status"><div><b>{routeNightDifference > 0 ? (language === "es" ? `${routeNightDifference} noches superan las fechas actuales.` : `${routeNightDifference} nights exceed the current dates.`) : routeNightDifference < 0 ? (language === "es" ? `${Math.abs(routeNightDifference)} noches siguen sin asignar.` : `${Math.abs(routeNightDifference)} nights are still unassigned.`) : (language === "es" ? "La nueva distribución conserva tus fechas." : "This new night split keeps your dates.")}</b><span>{routeNightDifference > 0 ? (language === "es" ? "Acepta el cambio de duración antes de continuar." : "Accept the trip-length change before continuing.") : routeNightDifference < 0 ? (language === "es" ? "Añádelas a una parada o acepta unas fechas más cortas." : "Add them to a stop or accept shorter dates.") : (language === "es" ? "Aplica esta distribución para actualizar el plan." : "Apply this split to update the plan.")}</span></div><div>{routeNightDifference !== 0 && <button type="button" onClick={rebalanceRouteNightsToDates}>{language === "es" ? "Mantener fechas" : "Keep current dates"}</button>}<button type="button" onClick={routeNightDifference === 0 ? rebalanceRouteNightsToDates : applyRouteNightsToDates}>{routeNightDifference > 0 ? (language === "es" ? "Aceptar nueva duración" : "Accept new trip length") : routeNightDifference < 0 ? (language === "es" ? "Aceptar fechas más cortas" : "Accept shorter dates") : (language === "es" ? "Aplicar noches" : "Apply nights")}</button></div></div>}
                 <div className={styles.routeWhy}><Sparkles /><span><b>{language === "es" ? "Por qué este orden:" : "Why this order:"}</b> {routeIntelligence.route.summary || (language === "es" ? "La ruta reduce retrocesos y deja espacio para cada parada." : "This order reduces backtracking and leaves room for every stop.")}</span></div>
                 <div className={styles.routeChoiceBar}>
                   <button type="button" className={styles.routeRecommended} onClick={applyRecommendedOrder} disabled={!routeRecommendationVisible}><Sparkles />{routeRecommendationVisible ? (language === "es" ? "Usar el orden recomendado" : "Use Morrovia’s order") : (language === "es" ? "Este orden ya funciona" : "This order already works")}</button>
@@ -1265,9 +1268,15 @@ export default function TripBuilder() {
             </div>
           )}
 
-          {step === 2 && (
+          {step === 1 && (
             <div className={`${styles.stack} ${styles.timeStep}`}>
-              <header className={styles.stepHero}><p>STEP 3 OF 3</p><h2>Make the time feel right.</h2><span>A realistic first rhythm, with room to change it.</span></header>
+              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>Make the time feel right.</h2><span>Set the dates first, then shape a realistic rhythm with room to change it.</span></header>
+              <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
+                <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
+                <div className={styles.dateRow}>{([{ key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => updateTravelDate("start", value) }, { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => updateTravelDate("end", value) }]).map((field) => <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}><button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key} onClick={() => setPicker(picker === field.key ? null : field.key)}><span className={styles.cardLabel}><CalendarDays /> {field.label}</span><span className={styles.cardValue}><strong>{fmtLong(field.value) || ui.pickDate}</strong><ChevronDown /></span></button>{picker === field.key && <div className={styles.popover}><Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} /><label className={styles.typeIt}>{ui.typeIt}<input defaultValue={fmtLong(field.value)} onChange={(event) => { const value = parseTyped(event.target.value); if (value) field.set(value); }} /></label></div>}</div>)}</div>
+                <div className={styles.dateConfirmFoot}><p className={styles.dateConfirmNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa tus fechas y confírmalas para continuar." : "Review your dates, then confirm them to continue.")}</p>{!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}</div>
+                {stops.length > 0 && <div className={styles.scheduleLocks}><span>{language === "es" ? "BLOQUEAR LLEGADA" : "LOCK ARRIVAL"}</span><div>{stops.map((stop) => <button type="button" key={stop.id} className={scheduleLocks.arrivalDates[stop.id] ? styles.intentChoiceOn : ""} onClick={() => toggleArrivalLock(stop.id)}><Lock /> {stop.name}{scheduleLocks.arrivalDates[stop.id] ? ` · ${fmtLong(scheduleLocks.arrivalDates[stop.id])}` : ""}</button>)}</div></div>}
+              </section>
               <section className={styles.allocationPanel} aria-labelledby="day-allocation-title">
                 <div className={styles.allocationHead}>
                   <div>
@@ -1318,7 +1327,7 @@ export default function TripBuilder() {
             <p><Sparkles /><span><b>{language === "es" ? "Señalaremos compromisos" : "We’ll flag trade-offs"}</b>{language === "es" ? "Para que puedas decidir con confianza." : "So you can decide with confidence."}</span></p>
           </div>
           <div className={styles.confirmAsideFoot}><CalendarDays /><span>{language === "es" ? "Puedes editar cada decisión después." : "Every decision stays editable afterwards."}</span></div>
-        </aside> : <aside className={`${styles.rail} ${step === 1 ? styles.routeSummaryRail : styles.timeSummaryRail}`} aria-label={ui.route}>
+        </aside> : <aside className={`${styles.rail} ${step === 2 ? styles.routeSummaryRail : styles.timeSummaryRail}`} aria-label={ui.route}>
           <div className={styles.railBlock}>
             <small className={styles.railLabel}>{ui.route}</small>
             <div className={styles.railRoute}>
@@ -1399,10 +1408,9 @@ export default function TripBuilder() {
             onClick={async () => {
               if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;
-              if (step === 0) acceptCurrentRoute("continue");
               if (step === 2) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
             }}>
-            {step === 0 ? <><Sparkles />{language === "es" ? "Crear una primera ruta" : "Make a first route"}</> : step === 2 ? copy.buildDraft : copy.continue} →
+            {step === 0 ? copy.continue : step === 2 ? copy.buildDraft : copy.continue} →
           </button>
         </div>
       </div>
