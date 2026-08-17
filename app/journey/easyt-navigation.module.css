@@ -104,6 +104,9 @@
   white-space: nowrap;
 }
 .landingActions > a:hover { color: #f62880; }
+.landingTour{display:inline-flex;align-items:center}
+.landingTour button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0}
+.landingTour button:hover{color:#f62880}
 .landingDivider { width: 1px; height: 22px; background: #d9d6eb; }
 .landingMenuTrigger {
   min-height: 36px;

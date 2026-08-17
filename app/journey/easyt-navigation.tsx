@@ -137,7 +137,9 @@ export default function EasyTNavigation({
       {landing ? <nav className={styles.landingActions} aria-label="Morrovia navigation">
         <a href="#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</a>
         <a href="#routes">{language === "es" ? "Rutas" : "Routes"}</a>
-        <Link href="/journey/prep">{language === "es" ? "Guía" : "Guide"}</Link>
+        <span className={styles.landingTour}>
+          <EasyTProductTour triggerLabel={language === "es" ? "Guía" : "Guide"} />
+        </span>
         <Link href="/journey/discover">{language === "es" ? "Rutas destacadas" : "Featured routes"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
         <Link href="/journey/dashboard">{activeAccount ? labels.account : (language === "es" ? "Iniciar sesión" : "Sign in")}</Link>
