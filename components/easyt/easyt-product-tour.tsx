@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-product-tour.module.css";
 import mobileStyles from "./easyt-product-tour-mobile.module.css";
@@ -33,6 +33,8 @@ export default function EasyTProductTour({ triggerLabel }: { triggerLabel?: stri
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const text = copy[language];
   const current = text.steps[step];
   const close = () => { window.localStorage.setItem("easyt-product-tour-complete", "1"); setOpen(false); };
@@ -45,15 +47,37 @@ export default function EasyTProductTour({ triggerLabel }: { triggerLabel?: stri
   }, []);
 
   useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>("button, [href], select, textarea, input, [tabindex]:not([tabindex='-1'])"))
+      .filter((element) => !element.hasAttribute("disabled"));
+    const first = focusable()[0];
+    first?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { close(); return; }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const firstItem = items[0];
+      const lastItem = items.at(-1);
+      if (!firstItem || !lastItem) return;
+      if (event.shiftKey && document.activeElement === firstItem) { event.preventDefault(); lastItem.focus(); }
+      if (!event.shiftKey && document.activeElement === lastItem) { event.preventDefault(); firstItem.focus(); }
+    };
+    dialog.addEventListener("keydown", trapFocus);
+    return () => { dialog.removeEventListener("keydown", trapFocus); triggerRef.current?.focus(); };
+  }, [open]);
+
+  useEffect(() => {
     const openTour = () => { setStep(0); setOpen(true); };
     window.addEventListener("easyt-open-product-tour", openTour);
     return () => window.removeEventListener("easyt-open-product-tour", openTour);
   }, []);
 
   return <div className={mobileStyles.tour}>
-    <button className={styles.trigger} type="button" aria-label={triggerLabel ?? text.trigger} onClick={() => { setStep(0); setOpen(true); }}>{triggerLabel ?? text.trigger}</button>
+    <button ref={triggerRef} className={styles.trigger} type="button" aria-label={triggerLabel ?? text.trigger} onClick={() => { setStep(0); setOpen(true); }}>{triggerLabel ?? text.trigger}</button>
     {open ? <div className={styles.overlay} role="presentation" onMouseDown={close}>
-      <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" onMouseDown={(event) => event.stopPropagation()}>
+      <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" onMouseDown={(event) => event.stopPropagation()}>
         <button className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></button>
         <div className={styles.visual}><div className={styles.phone}><div className={styles.speaker} /><div className={styles.screen}><img src={current.image} alt={current.alt} /></div></div></div>
         <div className={styles.content}><p className={styles.label}>{current.label}</p><h2 id="easyt-tour-title">{current.title}</h2><p>{current.copy}</p><div className={styles.dots} aria-label={`${text.step} ${step + 1} ${text.of} ${text.steps.length}`}>{text.steps.map((item, index) => <i className={index === step ? styles.dotActive : ""} key={item.label} />)}</div><div className={styles.actions}>{step > 0 ? <button className={styles.back} type="button" onClick={() => setStep(step - 1)}><ArrowLeft aria-hidden="true" /> {text.back}</button> : <span />}{step === text.steps.length - 1 ? <button className={styles.next} type="button" onClick={close}><Check aria-hidden="true" /> {text.finish}</button> : <button className={styles.next} type="button" onClick={() => setStep(step + 1)}>{text.next} <ArrowRight aria-hidden="true" /></button>}</div><button className={styles.skip} type="button" onClick={close}>{text.skip}</button></div>

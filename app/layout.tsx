@@ -44,7 +44,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="bg-paper font-sans text-ink antialiased dark:bg-[#0d0d0c] dark:text-[#f4f3ef]">
         {children}
-        <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async />
+        {process.env.NODE_ENV === "development" ? <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async /> : null}
         <Analytics />
         <PrivacyConsent />
         <EasyTPwaRegister />

@@ -27,7 +27,7 @@ body {
 
 @media (max-width: 520px) {
   body.easyt-mobile-shell {
-    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+    padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom)));
   }
 }
 

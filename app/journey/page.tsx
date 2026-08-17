@@ -22,7 +22,7 @@ import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/t
 import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
-import { trackEvent } from "@/lib/analytics";
+import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import EasyTNavigation from "./easyt-navigation";
 import styles from "./journey.module.css";
 import mobileNav from "./plan-mobile-nav.module.css";
@@ -398,6 +398,7 @@ export default function JourneyPage() {
   const reviewRecommendations = health?.issues ?? [];
   useEffect(() => {
     if (!isPlanningPreview || !customTrip || !health) return;
+    if (!hasAnalyticsConsent()) return;
     const key = `morrovia:health-shown:${customTrip.id}:${health.blockingCount}:${health.cautionCount}:${health.issues.length}`;
     if (window.sessionStorage.getItem(key)) return;
     trackEvent("health_check_shown", { blocking_count: health.blockingCount, caution_count: health.cautionCount, issue_count: health.issues.length });
@@ -405,6 +406,7 @@ export default function JourneyPage() {
   }, [isPlanningPreview, customTrip, health]);
   useEffect(() => {
     if (!isPlanningPreview || !customTrip || !health?.isReady) return;
+    if (!hasAnalyticsConsent()) return;
     const key = `morrovia:trip-ready:${customTrip.id}`;
     if (window.localStorage.getItem(key)) return;
     trackEvent("trip_ready", { stop_count: customTrip.stops.length, duration_days: customTrip.planItems.length });
@@ -832,17 +834,24 @@ export default function JourneyPage() {
 
   if (isPlanningPreview && !planHydrated) {
     return (
-      <main className={`${styles.journey} ${styles.planLoading}`} aria-busy="true">
+      <>
+        <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" />
+        </div>
+        <main className={`${styles.journey} ${styles.planLoading}`} aria-busy="true">
         <div className={styles.planLoadingMark}><span>Easy</span><b>T</b></div>
         <p>Opening your journey…</p>
-      </main>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan}`}>
-      <EasyTNavigation current="prototype" />
+    <>
+      <div className={styles.productNavigation}>
+        <EasyTNavigation current="prototype" />
+      </div>
+      <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan}`}>
       {isPlanningPreview && isCustomJourney ? (
         <>
           <div className={`${styles.mapOverviewLayer} ${mapMode === "overview" ? styles.mapLayerActive : styles.mapLayerHidden}`}>
@@ -1133,6 +1142,7 @@ export default function JourneyPage() {
       {exportState === "error" ? <p className={styles.savePlanError}>{exportError || (language === "es" ? "No se pudo preparar el PDF." : "The PDF could not be prepared.")}</p> : null}
       {cloudSaveState === "error" ? <p className={styles.savePlanError}>{language === "es" ? "No se pudo guardar este viaje ahora. Tu plan sigue seguro en este dispositivo." : "Couldn’t save this trip just now. Your plan is still safe on this device."}</p> : null}
 
-    </main>
+      </main>
+    </>
   );
 }

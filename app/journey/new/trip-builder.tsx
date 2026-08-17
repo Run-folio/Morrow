@@ -18,7 +18,7 @@ import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/s
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
-import { trackEvent } from "@/lib/analytics";
+import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { journeyMedia, type JourneyImage } from "@/lib/journey";
 import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
@@ -502,6 +502,7 @@ export default function TripBuilder() {
 
   useEffect(() => {
     if (!hydrated || !intentReady) return;
+    if (!hasAnalyticsConsent()) return;
     const key = `morrovia:trip-intent-tracked:${tripId}`;
     if (window.localStorage.getItem(key)) return;
     trackEvent("trip_intent_created", {
@@ -517,6 +518,7 @@ export default function TripBuilder() {
 
   useEffect(() => {
     if (!hydrated || step !== 0) return;
+    if (!hasAnalyticsConsent()) return;
     const key = `morrovia:budget-viewed:${tripId}`;
     if (window.sessionStorage.getItem(key)) return;
     trackEvent("budget_viewed", { budget_band: budget, stop_count: stops.length, duration_days: totalDays });
@@ -581,6 +583,7 @@ export default function TripBuilder() {
   const routeAnalyticsKey = `${tripId}:${routeKey}:${startDate}:${endDate}:${effectiveIntent.hardConstraints.fixedCommitments.length}:${effectiveIntent.hardConstraints.avoidDriving}`;
   useEffect(() => {
     if (!hydrated || routeIntelligence.route.state === "insufficient-data") return;
+    if (!hasAnalyticsConsent()) return;
     const key = `morrovia:route-generated:${routeAnalyticsKey}`;
     if (window.localStorage.getItem(key)) return;
     trackEvent("route_generated", {
@@ -827,6 +830,10 @@ export default function TripBuilder() {
   };
 
   const acceptCurrentRoute = (method: "continue" | "keep_order") => {
+    if (!hasAnalyticsConsent()) {
+      setDecisionSelections((current) => ({ ...current, routeOrder: method === "keep_order" ? "entered" : current.routeOrder ?? "entered" }));
+      return;
+    }
     const key = `morrovia:route-accepted:${tripId}:${routeKey}`;
     if (window.localStorage.getItem(key)) return;
     trackEvent("route_accepted", { method, stop_count: stops.length, duration_days: totalDays, has_recommendation: routeIntelligence.route.state === "recommendation" });

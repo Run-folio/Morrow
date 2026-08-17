@@ -1,4 +1,5 @@
 import EasyTNavigation from "../easyt-navigation";
+import MorroviaFooter from "@/components/morrovia-footer";
 import PrivacyNotice from "./privacy-notice";
 
 export const metadata = {
@@ -12,6 +13,7 @@ export default function EasyTPrivacyPage() {
     <main id="main-content">
       <EasyTNavigation current="privacy" />
       <PrivacyNotice />
+      <MorroviaFooter />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import { ChevronLeft, Database, Eye, MapPin, Mail, ShieldCheck } from "lucide-re
 import { setAnalyticsConsent } from "@/components/privacy-consent";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./privacy.module.css";
+import currentStyles from "./privacy-current.module.css";
 
 const copy = {
   en: {
@@ -25,11 +26,13 @@ const copy = {
     location: "Location and nearby search",
     locationText: "If you choose “Use my location” or start a nearby search, your browser asks first. The coordinates are sent to Morrovia to return nearby places and may be passed to OpenStreetMap-powered search services. Morrovia does not add those coordinates to your saved profile or trip unless you deliberately save a place or pin.",
     device: "Data kept on this device",
-    deviceText: "Before you sign in, Morrovia can keep a draft trip, language choice and finder selections in this browser so your work is not lost. This data stays on the device until it is saved to an account or you clear your browser’s site data.",
+    deviceText: "Morrovia keeps some information locally on your device so the product works reliably: trip drafts and active plans, language and UI preferences, travel profile and readiness information, finder choices, and stamps or memories. This data stays on the device until it is saved to an account where applicable or you clear your browser’s site data.",
+    cookies: "Necessary cookies and browser technology",
+    cookiesText: "When you sign in, Morrovia uses necessary session and security cookies to keep your account secure and working. We also use functional Cache Storage and a service worker for the public application shell where your browser supports them.",
     providers: "Services we rely on",
-    providersText: "Morrovia uses a database and authentication service to operate accounts and saved plans, Resend to deliver transactional email, and OpenStreetMap-based services including Nominatim, Overpass and Photon for maps, place search and nearby results. External map and booking links take you to those services under their own policies.",
+    providersText: "Morrovia uses a database and authentication service to operate accounts and saved plans, Resend to deliver transactional email, CARTO and OpenStreetMap-based services including Nominatim, Overpass and Photon for maps, place search and nearby results. External map and booking links take you to those services under their own policies.",
     analytics: "Optional analytics",
-    analyticsText: "When configured for the live site, Google Analytics and Microsoft Clarity help us understand aggregate use and product issues. They do not load until you choose to allow optional analytics. You can change this choice here at any time.",
+    analyticsText: "When configured for the live site, Google Analytics and Microsoft Clarity help us understand aggregate use and product issues. They do not load until you choose to allow optional analytics, and declining them does not affect core Morrovia functionality. You can change this choice here at any time. Changing your choice controls future analytics activity; it does not claim to remove third-party cookies that may already exist.",
     allow: "Allow optional analytics",
     decline: "Continue without analytics",
     sharing: "Sharing a trip",
@@ -59,11 +62,13 @@ const copy = {
     location: "Ubicación y búsqueda cercana",
     locationText: "Si eliges “Usar mi ubicación” o inicias una búsqueda cercana, tu navegador pide permiso primero. Las coordenadas se envían a Morrovia para mostrar lugares cercanos y pueden compartirse con servicios de búsqueda basados en OpenStreetMap. Morrovia no añade estas coordenadas a tu perfil ni a tus viajes, a menos que guardes deliberadamente un lugar o un pin.",
     device: "Datos guardados en este dispositivo",
-    deviceText: "Antes de iniciar sesión, Morrovia puede conservar un borrador del viaje, tu idioma y las selecciones del buscador en este navegador para que no pierdas tu trabajo. Estos datos permanecen en el dispositivo hasta que los guardes en una cuenta o borres los datos del sitio en el navegador.",
+    deviceText: "Morrovia guarda parte de la información localmente en tu dispositivo para que el producto funcione de forma fiable: borradores y planes activos, idioma y preferencias de interfaz, perfil e información de preparación, elecciones del buscador y sellos o recuerdos. Estos datos permanecen en el dispositivo hasta que se guardan en una cuenta cuando corresponde o borras los datos del sitio en tu navegador.",
+    cookies: "Cookies necesarias y tecnología del navegador",
+    cookiesText: "Al iniciar sesión, Morrovia usa cookies necesarias de sesión y seguridad para que tu cuenta siga siendo segura y funcione. También usamos Cache Storage funcional y un service worker para la aplicación pública cuando tu navegador los admite.",
     providers: "Servicios que utilizamos",
-    providersText: "Morrovia usa una base de datos y un servicio de autenticación para operar cuentas y planes guardados, Resend para enviar correos transaccionales y servicios basados en OpenStreetMap, incluidos Nominatim, Overpass y Photon, para mapas, búsqueda de lugares y resultados cercanos. Los enlaces externos de mapas y reservas te llevan a esos servicios con sus propias políticas.",
+    providersText: "Morrovia usa una base de datos y un servicio de autenticación para operar cuentas y planes guardados, Resend para enviar correos transaccionales, CARTO y servicios basados en OpenStreetMap, incluidos Nominatim, Overpass y Photon, para mapas, búsqueda de lugares y resultados cercanos. Los enlaces externos de mapas y reservas te llevan a esos servicios con sus propias políticas.",
     analytics: "Analítica opcional",
-    analyticsText: "Cuando está configurada para el sitio en vivo, Google Analytics y Microsoft Clarity nos ayudan a comprender el uso general y los problemas del producto. No se cargan hasta que permites la analítica opcional. Puedes cambiar esta elección aquí en cualquier momento.",
+    analyticsText: "Cuando están configurados para el sitio en vivo, Google Analytics y Microsoft Clarity nos ayudan a comprender el uso general y los problemas del producto. No se cargan hasta que permites la analítica opcional, y rechazarlos no afecta a las funciones principales de Morrovia. Puedes cambiar esta elección aquí en cualquier momento. Cambiar tu elección controla la actividad analítica futura; no afirma eliminar cookies de terceros que ya puedan existir.",
     allow: "Permitir analítica opcional",
     decline: "Continuar sin analítica",
     sharing: "Compartir un viaje",
@@ -104,16 +109,16 @@ export default function PrivacyNotice() {
   };
 
   return (
-    <div className={styles.page}>
-      <a className={styles.skipLink} href="#privacy-content">Skip to privacy notice</a>
-      <section className={styles.hero} aria-labelledby="privacy-title">
+    <div className={`${styles.page} ${currentStyles.page}`}>
+      <a className={`${styles.skipLink} ${currentStyles.skipLink}`} href="#privacy-content">Skip to privacy notice</a>
+      <section className={`${styles.hero} ${currentStyles.hero}`} aria-labelledby="privacy-title">
         <p>{t.eyebrow}</p>
         <h1 id="privacy-title">{t.title}</h1>
         <span>{t.intro}</span>
         <small>{t.updated}</small>
       </section>
 
-      <section id="privacy-content" className={styles.content} tabIndex={-1}>
+      <section id="privacy-content" className={`${styles.content} ${currentStyles.content}`} tabIndex={-1}>
         <article className={`${styles.card} ${styles.summary}`}>
           <ShieldCheck aria-hidden="true" />
           <div><h2>{t.summary}</h2><p>{t.summaryText}</p></div>
@@ -131,9 +136,11 @@ export default function PrivacyNotice() {
           <article className={styles.card}><Database aria-hidden="true" /><h2>{t.device}</h2><p>{t.deviceText}</p></article>
         </section>
 
+        <article className={styles.card}><ShieldCheck aria-hidden="true" /><h2>{t.cookies}</h2><p>{t.cookiesText}</p></article>
+
         <article className={styles.card}><Eye aria-hidden="true" /><h2>{t.providers}</h2><p>{t.providersText}</p></article>
 
-        <section className={`${styles.card} ${styles.analytics}`} aria-labelledby="analytics-title">
+        <section id="analytics-settings" className={`${styles.card} ${styles.analytics}`} aria-labelledby="analytics-title">
           <div><p className={styles.kicker}>{t.analytics}</p><h2 id="analytics-title">{t.analytics}</h2><p>{t.analyticsText}</p><small>{choice === "granted" ? (language === "es" ? "La analítica opcional está permitida." : "Optional analytics are currently allowed.") : choice === "declined" ? (language === "es" ? "La analítica opcional está desactivada." : "Optional analytics are currently off.") : ""}</small></div>
           <div className={styles.choiceButtons}>
             <button type="button" onClick={() => setChoiceAndRefresh("declined")}>{t.decline}</button>

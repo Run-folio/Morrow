@@ -16,3 +16,4 @@
   .tour :global([class*="skip"]){justify-self:center}
 }
 @media(max-width:380px){.tour :global([class*="visual"]){display:none}.tour :global([class*="content"]){padding-top:52px}.tour :global([class*="content"] h2){font-size:28px}}
+@media(max-width:520px){.tour :global([class*="overlay"]){padding-bottom:var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom)))}.tour :global([class*="dialog"]){max-height:calc(100svh - var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom))) - 12px)}}

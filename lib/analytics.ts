@@ -49,6 +49,17 @@ declare global {
 }
 
 const isBrowser = () => typeof window !== "undefined";
+const ANALYTICS_CONSENT_KEY = "easyt-analytics-consent";
+
+/** Optional analytics must not run, or leave analytics-only browser state, without consent. */
+export function hasAnalyticsConsent() {
+  if (!isBrowser()) return false;
+  try {
+    return window.localStorage.getItem(ANALYTICS_CONSENT_KEY) === "granted";
+  } catch {
+    return false;
+  }
+}
 
 function cleanProperties(properties: AnalyticsEventProperties = {}) {
   return Object.fromEntries(
@@ -65,7 +76,7 @@ export function getPagePath() {
 }
 
 export function pageView(path = getPagePath()) {
-  if (!isBrowser() || !window.gtag) {
+  if (!hasAnalyticsConsent() || !window.gtag) {
     return;
   }
 
@@ -81,7 +92,7 @@ export function pageView(path = getPagePath()) {
 }
 
 export function trackEvent(eventName: AnalyticsEventName, properties: AnalyticsEventProperties = {}) {
-  if (!isBrowser()) {
+  if (!hasAnalyticsConsent()) {
     return;
   }
 

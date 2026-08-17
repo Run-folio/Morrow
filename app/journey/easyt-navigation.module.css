@@ -8,7 +8,7 @@
   gap: 18px;
   position: sticky;
   top: 0;
-  z-index: 80;
+  z-index: var(--morrovia-layer-header, 80);
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid rgba(221, 218, 222, 0.72);
@@ -88,7 +88,7 @@
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: clamp(16px, 2.3vw, 36px);
+  gap: clamp(11px, 1.4vw, 22px);
   color: #1f1983;
 }
 .landingActions > a {
@@ -130,6 +130,7 @@
 .landingMenuTrigger::-webkit-details-marker { display: none; }
 .landingMenuTrigger svg { width: 14px; height: 14px; }
 .landingLanguage{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 8px;border:1px solid #d9d6eb;border-radius:999px;background:#fff;color:#201c72}.landingLanguage svg{width:13px;height:13px}.landingLanguage select{appearance:none;min-width:31px;border:0;background:transparent;color:inherit;font:700 11px var(--font-geist-sans,Geist,Inter,Arial,sans-serif);outline:none;cursor:pointer}
+.compactMenu { display: none; }
 .quietLink,
 .primaryLink,
 .accountTrigger {
@@ -348,9 +349,71 @@
   }
   .landingHeader { grid-template-columns: auto 1fr auto; min-height: 66px; padding-inline: 16px; }
   .landingActions { grid-column: 3; gap: 8px; }
-  .landingActions > a, .landingDivider { display: none; }
-  .landingLanguage { min-height:36px; padding-inline:7px; }
-  .landingMenuTrigger { min-height: 36px; }
+  .landingActions > a, .landingDivider, .landingTour, .landingLanguage, .landingActions > .accountMenu { display: none; }
+  .compactMenu { position: relative; display: block; }
+  .compactMenu summary {
+    min-height: 40px;
+    padding: 0 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--morrovia-line, #d9d8ee);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--morrovia-ink, #17106f);
+    font: 700 12px var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
+    cursor: pointer;
+    list-style: none;
+  }
+  .compactMenu summary::-webkit-details-marker { display: none; }
+  .compactMenu summary svg { width: 16px; height: 16px; }
+  .compactMenu summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24)); }
+  .compactPopover {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 1;
+    width: min(312px, calc(100vw - 32px));
+    padding: 8px;
+    display: grid;
+    border: 1px solid var(--morrovia-line, #d9d8ee);
+    border-radius: var(--morrovia-radius, 14px);
+    background: #fff;
+    box-shadow: var(--morrovia-shadow-overlay, 0 28px 80px rgba(23, 16, 111, .22));
+  }
+  .compactPopover > a,
+  .compactPopover > button,
+  .compactLanguage,
+  .compactTour button {
+    min-height: 44px;
+    padding: 0 11px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--morrovia-ink, #17106f);
+    font: 650 13px var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
+    text-align: left;
+    text-decoration: none;
+  }
+  .compactPopover > button,
+  .compactTour button { cursor: pointer; }
+  .compactPopover > a:hover,
+  .compactPopover > button:hover,
+  .compactLanguage:hover,
+  .compactTour button:hover { background: var(--morrovia-lilac, #f2f0ff); color: var(--morrovia-ink, #17106f); }
+  .compactPopover > a:focus-visible,
+  .compactPopover > button:focus-visible,
+  .compactTour button:focus-visible,
+  .compactLanguage:focus-within { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24)); }
+  .compactPopover svg { width: 16px; height: 16px; flex: none; color: var(--morrovia-ink-soft, #4f4a92); }
+  .compactDivider { height: 1px; margin: 5px 4px; background: var(--morrovia-line, #d9d8ee); }
+  .compactTour { display: block; }
+  .compactTour button { width: 100%; font-size: 13px; }
+  .compactTour button::after { content: none; }
+  .compactLanguage select { margin-left: auto; border: 0; background: transparent; color: inherit; font: 700 12px var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif)); outline: none; cursor: pointer; }
 }
 @media (max-width: 520px) {
   .actions {
@@ -380,13 +443,16 @@
     right: 12px;
     width: min(280px, calc(100vw - 24px));
   }
+  .landingActions { gap: 0; }
+  .compactMenu summary { width: 40px; padding: 0; justify-content: center; }
+  .compactMenu summary span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .mobileDock {
     position: fixed;
-    z-index: 90;
+    z-index: var(--morrovia-layer-dock, 90);
     left: 12px;
     right: 12px;
-    bottom: max(10px, env(safe-area-inset-bottom));
-    min-height: 62px;
+    bottom: var(--morrovia-mobile-dock-inset, max(10px, env(safe-area-inset-bottom)));
+    min-height: var(--morrovia-mobile-dock-height, 62px);
     padding: 5px;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -400,6 +466,7 @@
   }
   .mobileDock a {
     min-width: 0;
+    min-height: 44px;
     padding: 4px 2px;
     display: grid;
     place-items: center;

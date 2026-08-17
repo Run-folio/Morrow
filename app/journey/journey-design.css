@@ -19,6 +19,12 @@
   --morrovia-danger: #a91f55;
   --morrovia-danger-soft: #fff1f7;
   --morrovia-disabled: #efedf5;
+  --morrovia-layer-header: 80;
+  --morrovia-layer-dock: 90;
+  --morrovia-layer-modal: 200;
+  --morrovia-mobile-dock-height: 62px;
+  --morrovia-mobile-dock-inset: max(10px, env(safe-area-inset-bottom));
+  --morrovia-mobile-dock-offset: calc(var(--morrovia-mobile-dock-height) + var(--morrovia-mobile-dock-inset) + 10px);
 }
 
 .morrovia-editorial-page {
