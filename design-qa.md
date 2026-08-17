@@ -13,6 +13,9 @@
 - Route photography: verified all three route-image elements have active Unsplash backgrounds and measure 377px within 379px route cards (effectively full width).
 - Decision illustrations: verified all three source illustrations fit their panels rather than being vertically clipped.
 - Closing banner: verified its copy area retains visible bottom space rather than sitting against the banner edge.
+- Option 1 hero emphasis: verified the prompt composer is the dominant action, with a wider field, taller writing area, and contained primary button.
+- Hero illustration: verified it remains supportive on the right without overlapping the prompt or route section below.
+- Shape-plan controls: verified the chips remain inside the composer so selections are visible before route creation.
 
 ## Required fidelity surfaces
 
@@ -35,6 +38,7 @@ No P0, P1 or P2 issues found in the tested homepage.
 - [x] Prompt-suggestion selection state.
 - [x] Route-photo width measurement and loaded-image verification.
 - [x] Decision-illustration and closing-banner frame verification.
+- [x] Option 1 hero prominence and containment review.
 
 ## Comparison history
 
