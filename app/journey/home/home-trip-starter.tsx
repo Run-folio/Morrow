@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
+import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
@@ -13,29 +14,47 @@ type Capture = { rawBrief: string; parserVersion: string; durationDays?: number;
 
 const copy = {
   en: {
-    briefLabel: "TELL US THE SHAPE OF YOUR TRIP", briefPlaceholder: "For example: Two weeks in Japan in October — Tokyo, Kyoto and time outdoors.", continue: "Make my first route", checking: "Understanding your trip…", startersLabel: "SHAPE THE PLAN", starters: ["Keep travel days light", "Make food a daily anchor", "Mix cities with time outdoors"], newTrip: "New trip", routes: "Explore multi-country routes",
+    briefLabel: "TELL US ABOUT YOUR TRIP", briefPlaceholder: "Thinking Japan and South Korea for about two weeks. Tokyo and the Japanese Alps, then Seoul and Busan. We like good food and some time outdoors.", continue: "Plan my trip", checking: "Understanding your trip…", travelStyle: "YOUR TRAVEL STYLE", edit: "Edit", routes: "Explore multi-country routes",
   },
   es: {
-    briefLabel: "CUÉNTANOS LA FORMA DE TU VIAJE", briefPlaceholder: "Por ejemplo: Dos semanas en Japón en octubre: Tokio, Kioto y tiempo al aire libre.", continue: "Crear mi primera ruta", checking: "Entendiendo tu viaje…", startersLabel: "DA FORMA AL PLAN", starters: ["Días de viaje ligeros", "La comida como hilo conductor", "Ciudades y tiempo al aire libre"], newTrip: "Nuevo viaje", routes: "Explorar rutas multicountry",
+    briefLabel: "CUÉNTANOS SOBRE TU VIAJE", briefPlaceholder: "Estoy pensando en Japón y Corea del Sur durante unas dos semanas. Tokio y los Alpes japoneses, después Seúl y Busan. Nos gusta comer bien y pasar tiempo al aire libre.", continue: "Planificar mi viaje", checking: "Entendiendo tu viaje…", travelStyle: "TU ESTILO DE VIAJE", edit: "Editar", routes: "Explorar rutas multicountry",
   },
 } as const;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
 function addDays(value: string, days: number) { const date = new Date(`${value}T00:00:00`); date.setDate(date.getDate() + Math.max(0, days - 1)); return iso(date); }
+function travelStyleLabels(profile: TravelProfile, language: EasyTLanguage) {
+  const labels = language === "es"
+    ? {
+        pace: { slow: "Ritmo tranquilo", balanced: "Ritmo equilibrado", full: "Días completos" },
+        priority: { food: "Gastronomía", nature: "Naturaleza", culture: "Cultura", mix: "Un poco de todo" },
+        hotelMoves: { few: "Pocas mudanzas de hotel", some: "Algunos cambios de base", open: "Abierto a moverse" },
+        budget: { value: "Buena relación calidad-precio", mid: "Gama media", high: "Lo mejor disponible" },
+      }
+    : {
+        pace: { slow: "Slow pace", balanced: "Balanced pace", full: "Full days" },
+        priority: { food: "Food", nature: "Nature", culture: "Culture", mix: "A mix" },
+        hotelMoves: { few: "Fewer hotel moves", some: "A few hotel moves", open: "Open to moving" },
+        budget: { value: "Good value", mid: "Mid-range", high: "Best available" },
+      };
+  return [labels.pace[profile.pace], labels.priority[profile.priority], labels.hotelMoves[profile.hotelMoves], labels.budget[profile.budget]];
+}
 export default function HomeTripStarter() {
   const router = useRouter();
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [brief, setBrief] = useState("");
-  const [selectedShapes, setSelectedShapes] = useState<string[]>([]);
+  const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
   const [startDate, setStartDate] = useState(() => iso(new Date()));
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
   const text = copy[language];
-  const toggleShape = (shape: string) => setSelectedShapes((current) => current.includes(shape) ? current.filter((item) => item !== shape) : [...current, shape]);
-
   useEffect(() => {
     setLanguage(languageFromStorage());
+    try {
+      const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
+      setTravelProfile(isTravelProfile(savedProfile) ? savedProfile : null);
+    } catch { setTravelProfile(null); }
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
@@ -43,13 +62,13 @@ export default function HomeTripStarter() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const shapedBrief = [brief.trim(), selectedShapes.length ? `Preferences: ${selectedShapes.join("; ")}.` : ""].filter(Boolean).join(" ");
-    if (!shapedBrief) return;
+    const tripBrief = brief.trim();
+    if (!tripBrief) return;
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: true });
     setLoading(true);
     setCaptureError("");
     try {
-      const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: shapedBrief }) });
+      const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: tripBrief }) });
       const payload = await response.json() as Capture & { message?: string };
       if (!response.ok) throw new Error(payload.message || "Capture failed");
       const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
@@ -72,10 +91,10 @@ export default function HomeTripStarter() {
       <div className={`${styles.startBuilderPromptField} ${fidelity.promptField}`}>
         <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
         <div className={fidelity.promptFooter}>
-          <div className={fidelity.shapePlan}>
-            <span className={fidelity.shapePlanLabel}>{text.startersLabel}</span>
-            <div className={fidelity.shapeChoices}>{text.starters.map((shape) => <button className={fidelity.shapeChoice} type="button" key={shape} aria-pressed={selectedShapes.includes(shape)} onClick={() => toggleShape(shape)}><Sparkles aria-hidden="true" /> {shape}</button>)}</div>
-          </div>
+          {travelProfile && <section className={fidelity.travelStyle} aria-label={text.travelStyle}>
+            <div className={fidelity.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
+            <div className={fidelity.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
+          </section>}
           <div className={`${styles.startBuilderPromptAction} ${fidelity.promptAction}`}><button type="submit" disabled={loading}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</button></div>
         </div>
       </div>

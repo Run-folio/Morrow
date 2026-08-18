@@ -32,41 +32,50 @@
   border-top: 1px solid #e7e5f3;
 }
 
-.shapePlan {
+.travelStyle {
   display: grid !important;
   flex: 1 1 auto;
   gap: 7px;
   margin: 0 !important;
 }
 
-.shapePlanLabel {
-  color: #5e5a70;
-  font: 700 10px/1.2 var(--font-mono, ui-monospace, monospace);
+.travelStyleHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--morrovia-muted, #5e5a70);
+  font: 700 10px/1.2 var(--morrovia-meta, ui-monospace, monospace);
   letter-spacing: .14em;
 }
 
-.shapeChoices {
+.travelStyleHead a {
+  color: var(--morrovia-action, #3025ce);
+  font: 700 12px/1.2 var(--morrovia-ui, Arial, sans-serif);
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.travelStyleHead a:hover { color: var(--morrovia-action-hover, #f42b7a); }
+
+.travelStyleChips {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
 }
 
-.shapeChoice {
+.travelStyleChips span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 6px 9px;
-  border: 1px solid #d9d6ef;
+  min-height: 27px;
+  padding: 5px 9px;
+  border: 1px solid var(--morrovia-line, #d9d6ef);
   border-radius: 999px;
-  background: #fff;
-  color: #59556b;
-  font: 600 11px/1.1 var(--font-sans, Arial, sans-serif);
-  cursor: pointer;
+  background: var(--morrovia-paper, #fbfaff);
+  color: var(--morrovia-ink-soft, #59556b);
+  font: 600 11px/1.1 var(--morrovia-ui, Arial, sans-serif);
 }
-
-.shapeChoice svg { width: 13px; height: 13px; color: #ff4790; }
-.shapeChoice[aria-pressed="true"] { border-color: #ff4790; background: #fff1f8; color: #27215a; }
 
 .promptAction { position: static !important; flex: 0 0 auto; }
 
@@ -110,7 +119,7 @@
   .promptFooter { align-items: stretch; flex-direction: column; }
   .promptAction { width: 100%; }
   .promptAction button { width: 100%; }
-  .shapeChoice { font-size: 10px; }
+  .travelStyleChips span { font-size: 10px; }
   .routeImage { height: 218px !important; }
   .proofArtwork { height: 184px !important; }
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
