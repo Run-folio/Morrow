@@ -302,8 +302,8 @@ export default function TripBuilder() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [hydrated, setHydrated] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "local">("saving");
-  // Keeps the three builder stages directly reviewable and shareable without
-  // changing the normal first-step entry point.
+  // Existing draft links may still name an old third stage; they now resolve
+  // to Time instead of stranding a traveller in removed setup UI.
   const [step, setStep] = useState(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [summaryFocus, setSummaryFocus] = useState<"origin" | "stops" | "dates" | "constraints" | null>(null);
@@ -350,6 +350,9 @@ export default function TripBuilder() {
 
   const [budget, setBudget] = useState<"value" | "mid" | "high">("value");
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(defaultTravelProfile);
+  const [showBudgetOverride, setShowBudgetOverride] = useState(false);
+  const [hasPromptContext, setHasPromptContext] = useState(false);
+  const [buildRequested, setBuildRequested] = useState(false);
 
   const pickerRef = useDismiss(Boolean(picker), () => setPicker(null));
 
@@ -379,7 +382,7 @@ export default function TripBuilder() {
       const params = new URLSearchParams(window.location.search);
       const requestedStep = Number(params.get("step"));
       if (Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep <= 2) {
-        setStep(requestedStep);
+        setStep(Math.min(1, requestedStep));
       }
       const tripIdFromUrl = params.get("trip");
       const showItinerary = params.get("view") === "itinerary";
@@ -408,6 +411,7 @@ export default function TripBuilder() {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
         if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length) {
+          setHasPromptContext(true);
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
           // `destination` is retained for drafts created before prompt-first
@@ -451,6 +455,7 @@ export default function TripBuilder() {
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
           if (seed) {
+          setHasPromptContext(true);
           setOrigin(seed.origin);
           setOriginCoordinates(seed.originCoordinates);
           setStops(seed.stops);
@@ -517,7 +522,7 @@ export default function TripBuilder() {
   }, [hydrated, intentReady, tripId, effectiveIntent, stops.length, totalDays]);
 
   useEffect(() => {
-    if (!hydrated || step !== 0) return;
+    if (!hydrated || step !== 1) return;
     if (!hasAnalyticsConsent()) return;
     const key = `morrovia:budget-viewed:${tripId}`;
     if (window.sessionStorage.getItem(key)) return;
@@ -542,21 +547,19 @@ export default function TripBuilder() {
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
   const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
   const stepLabels = language === "es"
-    ? ["Lugares", "Tiempo", "Ruta"]
-    : ["Places", "Time", "Route"];
+    ? ["Lugares", "Tiempo"]
+    : ["Places", "Time"];
   const stepNotes = language === "es"
-    ? ["El viaje", "Fechas y noches", "Ruta y experiencias"]
-    : ["The trip", "Dates and nights", "Route and experiences"];
+    ? ["El viaje", "Fechas y noches"]
+    : ["The trip", "Dates and nights"];
   const stepGuidance = language === "es"
     ? [
-      ["Elige los lugares.", "Añade tus paradas, punto de partida y cualquier condición importante."],
-      ["Define el tiempo.", "Confirma las fechas y ajusta cómo se reparten las noches."],
-      ["Haz que la ruta funcione.", "Compara el orden y elige las experiencias que merecen tiempo."],
+      ["Elige los lugares.", "Morrovia ya ha recogido lo que pudo de tu idea. Corrige solo lo necesario."],
+      ["Define el tiempo.", "Confirma las fechas y ajusta las noches antes de crear el viaje."],
     ]
     : [
-      ["Choose the places.", "Add your stops, departure point and anything that must be protected."],
-      ["Set the time.", "Confirm dates, then shape how nights are distributed."],
-      ["Make the route work.", "Compare the order and choose the experiences worth making time for."],
+      ["Choose the places.", "We’ve picked up what we can from your idea. Correct only what needs it."],
+      ["Set the time.", "Confirm dates, then adjust nights before we build your trip."],
     ];
   const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : "") : step === 1 && !datesConfirmed ? (language === "es" ? "Confirma tus fechas para continuar" : "Confirm your dates to continue") : "";
   const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
@@ -771,6 +774,8 @@ export default function TripBuilder() {
     const parsed = parseTripBrief(tripBrief);
     if (!tripBrief.trim()) return;
 
+    setHasPromptContext(true);
+
     setRouteHints(parsed.routeHints);
 
     setTripIntent((current) => ({
@@ -930,6 +935,30 @@ export default function TripBuilder() {
     return () => window.clearTimeout(timer);
   }, [hydrated, activeTripDocument]);
 
+  const openBuiltTrip = () => {
+    acceptCurrentRoute("continue");
+    saveActiveTrip(activeTripDocument);
+    window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+  };
+
+  const buildTrip = () => {
+    // The traveller has supplied the facts; apply a materially cleaner route
+    // before opening the editable trip, unless they already protected an order.
+    if (routeRecommendationVisible && !scheduleLocks.stopIds.length && !Object.keys(scheduleLocks.arrivalDates).length) {
+      applyRecommendedOrder();
+      setBuildRequested(true);
+      return;
+    }
+    openBuiltTrip();
+  };
+
+  useEffect(() => {
+    if (!buildRequested) return;
+    setBuildRequested(false);
+    saveActiveTrip(activeTripDocument);
+    window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+  }, [buildRequested, activeTripDocument]);
+
   // Generated itineraries are not limited to the small editorial media pack.
   // Resolve a real contextual image for every planned day, then retain the
   // local media pack as a fast first choice when it exists.
@@ -972,7 +1001,7 @@ export default function TripBuilder() {
             <p className={styles.eyebrow}>{ui.draft}</p>
             <h2>{origin} to {stops.map((s) => s.name).join(" & ")}</h2>
           </div>
-          <button type="button" className={styles.primary} onClick={() => { setGenerated(false); setStep(2); }}>{ui.editBrief}</button>
+          <button type="button" className={styles.primary} onClick={() => { setGenerated(false); setStep(1); }}>{ui.editBrief}</button>
         </div>
 
         <div className={styles.draftSummary}>
@@ -1065,7 +1094,7 @@ export default function TripBuilder() {
         <span>{stepGuidance[step][1]}</span>
       </p>
       {step === 0 && <header className={styles.confirmHero}>
-        <p>{language === "es" ? "PASO 1 DE 3" : "STEP 1 OF 3"}</p>
+        <p>{language === "es" ? "PASO 1 DE 2" : "STEP 1 OF 2"}</p>
         <h1>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</h1>
         <span>{language === "es" ? "Una comprobación rápida para crear el viaje adecuado para ti." : "A quick check so we can build the right trip for you."}</span>
       </header>}
@@ -1073,7 +1102,7 @@ export default function TripBuilder() {
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
-              <section className={styles.intakeReview} aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
+              <section className={styles.intakeReview} hidden aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
                 <div><span>{language === "es" ? "RESUMEN EXTRAÍDO" : "EXTRACTED SUMMARY"}</span><h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2><p>{language === "es" ? "Edita un detalle para rellenar un hueco o corregir una suposición." : "Edit a detail to fill a gap or correct an assumption."}</p></div>
                 <dl>
                   <div><dt><Plane />{language === "es" ? "Salida" : "Leaving from"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Necesita confirmación" : "Needs confirmation")}</dd><button type="button" onClick={() => openSummaryEditor("origin")} aria-label={language === "es" ? "Editar salida" : "Edit departure"}><Pencil /></button></div>
@@ -1082,14 +1111,14 @@ export default function TripBuilder() {
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt><Sparkles />{language === "es" ? "Revisar" : "Check"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
               </section>
-              <div className={`${styles.card} ${styles.tripBriefCard}`}>
+              {!hasPromptContext && <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><Sparkles /> {language === "es" ? "TU IDEA DE VIAJE" : "YOUR TRIP BRIEF"}</span>
                 <h2>{tripBrief.trim() ? (language === "es" ? "Esto es lo que estás planeando." : "This is what you’re planning.") : ui.tripBriefTitle}</h2>
                 <p>{language === "es" ? "Escribe como se lo contarías a un compañero de viaje. Extraeremos lo que importa." : "Write it as you would tell a travel companion. We’ll pull out what matters."}</p>
                 <textarea className={styles.tripBriefTextarea} aria-label={ui.tripBriefLabel} value={tripBrief} maxLength={600} onChange={(event) => setTripBrief(event.target.value)} placeholder={ui.tripBriefPlaceholder} />
                 <button type="button" className={styles.ghost} onClick={() => void applyTripBrief()} disabled={!tripBrief.trim()}>{ui.tripBriefApply}</button>
                 <small className={styles.hint}>{language === "es" ? "Puedes ajustar todo lo que extraigamos." : "You can adjust anything we extract."}</small>
-              </div>
+              </div>}
               <div id="builder-origin" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
                 <span className={styles.cardLabel}><Plane /> {copy.startFrom}</span>
                 <input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}
@@ -1123,9 +1152,9 @@ export default function TripBuilder() {
               </div>}
 
               <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
-                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar preferencias" : "Hide trip preferences") : (language === "es" ? "Añadir preferencias o una reserva fija" : "Add preferences or a fixed booking")}</button>
+                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar fecha o reserva" : "Hide fixed date or booking") : (language === "es" ? "Añadir fecha o reserva fija" : "Add a fixed date or booking")}</button>
                 {showTripDetails && <>
-                <header><p>{language === "es" ? "INTENCIÓN DEL VIAJE" : "TRIP INTENT"}</p><h3>{language === "es" ? "Protege lo que no puede cambiar." : "Protect what cannot move."}</h3><span>{language === "es" ? "Lo imprescindible no se pierde al replantear la ruta. Las preferencias ayudan a decidir entre opciones." : "Must-keeps stay protected when the route changes. Preferences guide the trade-offs."}</span></header>
+                <header><p>{language === "es" ? "YA RESERVADO" : "ALREADY BOOKED"}</p><h3>{language === "es" ? "Mantén visible lo que no puede cambiar." : "Keep what cannot move visible."}</h3><span>{language === "es" ? "Añade una fecha o reserva fija y la protegeremos mientras se construye la ruta." : "Add a fixed date or booking and we’ll protect it while we build the route."}</span></header>
                 <div className={styles.intentGrid}>
                   <section className={styles.intentHard}>
                     <p>{language === "es" ? "DEBE MANTENERSE" : "MUST KEEP"}</p>
@@ -1277,12 +1306,15 @@ export default function TripBuilder() {
 
           {step === 1 && (
             <div className={`${styles.stack} ${styles.timeStep}`}>
-              <header className={styles.stepHero}><p>STEP 2 OF 3</p><h2>Make the time feel right.</h2><span>Set the dates first, then shape a realistic rhythm with room to change it.</span></header>
+              <header className={styles.stepHero}><p>STEP 2 OF 2</p><h2>Make the time feel right.</h2><span>Set the dates, then give each stop a realistic amount of time.</span></header>
               <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
                 <span className={styles.cardLabel}><CalendarDays /> {language === "es" ? "CUÁNDO VIAJAS" : "WHEN YOU’RE TRAVELLING"}</span>
                 <div className={styles.dateRow}>{([{ key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => updateTravelDate("start", value) }, { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => updateTravelDate("end", value) }]).map((field) => <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}><button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key} onClick={() => setPicker(picker === field.key ? null : field.key)}><span className={styles.cardLabel}><CalendarDays /> {field.label}</span><span className={styles.cardValue}><strong>{fmtLong(field.value) || ui.pickDate}</strong><ChevronDown /></span></button>{picker === field.key && <div className={styles.popover}><Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} /><label className={styles.typeIt}>{ui.typeIt}<input defaultValue={fmtLong(field.value)} onChange={(event) => { const value = parseTyped(event.target.value); if (value) field.set(value); }} /></label></div>}</div>)}</div>
                 <div className={styles.dateConfirmFoot}><p className={styles.dateConfirmNote}>{datesConfirmed ? <><strong>{totalDays} {totalDays === 1 ? ui.day : ui.days}</strong> · {language === "es" ? "listo para planificar" : "ready to plan"}</> : (language === "es" ? "Revisa tus fechas y confírmalas para continuar." : "Review your dates, then confirm them to continue.")}</p>{!datesConfirmed && <button type="button" className={styles.confirmDatesButton} onClick={() => setDatesConfirmed(true)}>{language === "es" ? "Confirmar fechas" : "Confirm dates"}</button>}</div>
-                {stops.length > 0 && <div className={styles.scheduleLocks}><span>{language === "es" ? "BLOQUEAR LLEGADA" : "LOCK ARRIVAL"}</span><div>{stops.map((stop) => <button type="button" key={stop.id} className={scheduleLocks.arrivalDates[stop.id] ? styles.intentChoiceOn : ""} onClick={() => toggleArrivalLock(stop.id)}><Lock /> {stop.name}{scheduleLocks.arrivalDates[stop.id] ? ` · ${fmtLong(scheduleLocks.arrivalDates[stop.id])}` : ""}</button>)}</div></div>}
+              </section>
+              <section className={styles.tripEssentials} aria-label={language === "es" ? "Viajeros y presupuesto" : "Travellers and budget"}>
+                <label><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) }))} /></label>
+                <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><p>{language === "es" ? "Usando tu preferencia habitual." : "Using your usual preference."}</p><button type="button" onClick={() => setShowBudgetOverride((current) => !current)}>{showBudgetOverride ? (language === "es" ? "Listo" : "Done") : (language === "es" ? "Cambiar para este viaje" : "Change for this trip")}</button>{showBudgetOverride && <div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div>}</div>
               </section>
               <section className={styles.allocationPanel} aria-labelledby="day-allocation-title">
                 <div className={styles.allocationHead}>
@@ -1304,14 +1336,9 @@ export default function TripBuilder() {
                     const days = allocation[stop.id] ?? 1;
                     const suggestion = recommendedDays[stop.id] ?? 1;
                     const duration = routeIntelligence.durations[stop.id];
-                    const durationReason = duration?.arrivalLoad === "travel-heavy" ? routeCopy.heavyArrival
-                      : duration?.arrivalLoad === "substantial" ? routeCopy.substantialArrival
-                        : stop.intent === "landmark" ? routeCopy.landmark
-                          : (picks[stop.id] ?? []).length >= 3 ? routeCopy.selectedPlaces((picks[stop.id] ?? []).length)
-                            : routeCopy.lightArrival;
                     return (
                       <label className={styles.allocationRow} key={stop.id}>
-                        <span><strong>{stop.name}</strong><small>{stop.intent === "landmark" ? `${language === "es" ? "Lugar emblemático" : "Landmark"}${stop.locality ? ` · ${language === "es" ? "vía" : "via"} ${stop.locality}` : ""} · ` : ""}{(picks[stop.id] ?? []).length} {ui.placesSelected} · {ui.suggested} {suggestion} {suggestion === 1 ? ui.day : ui.days}</small><em className={styles.allocationInsight}>{durationReason}{duration ? ` · ${routeCopy.usable(duration.usableDays)}` : ""}</em></span>
+                        <span><strong>{stop.name}</strong><small>{language === "es" ? `Morrovia recomienda ${suggestion} ${suggestion === 1 ? "día" : "días"}` : `Morrovia recommends ${suggestion} ${suggestion === 1 ? "day" : "days"}`}</small><em className={styles.allocationInsight}>{duration?.arrivalLoad === "travel-heavy" ? (language === "es" ? "El viaje de llegada ocupa buena parte del día." : "Arrival travel uses much of the day.") : (language === "es" ? "Puedes ajustar esto después en tu viaje." : "You can adjust this later in your trip.")}</em></span>
                         <input type="range" min="1" max={Math.max(1, totalDays - Math.max(0, stops.length - 1))} value={days}
                           onChange={(event) => updateAllocatedDays(stop.id, Number(event.target.value))}
                           aria-label={`${stop.name}: ${days} days`} />
@@ -1325,7 +1352,7 @@ export default function TripBuilder() {
           )}
         </div>
 
-        {step === 0 ? <aside className={styles.confirmAside} aria-label="What happens next">
+        {step === 0 ? <aside className={styles.confirmAside} hidden aria-label="What happens next">
           <img className={styles.confirmIllustration} src={stops.some((stop) => stop.country === "Japan") ? "/journey/illustrations/japan-route-confirm.png" : "/journey/illustrations/global-route-confirm.png"} alt={stops.some((stop) => stop.country === "Japan") ? "Illustrated route through Japan" : "Illustrated international route"} />
           <h2>{language === "es" ? "Esto es lo que ocurre después" : "Here’s what happens next"}</h2>
           <div className={styles.nextSteps}>
@@ -1334,7 +1361,7 @@ export default function TripBuilder() {
             <p><Sparkles /><span><b>{language === "es" ? "Señalaremos compromisos" : "We’ll flag trade-offs"}</b>{language === "es" ? "Para que puedas decidir con confianza." : "So you can decide with confidence."}</span></p>
           </div>
           <div className={styles.confirmAsideFoot}><CalendarDays /><span>{language === "es" ? "Puedes editar cada decisión después." : "Every decision stays editable afterwards."}</span></div>
-        </aside> : <aside className={`${styles.rail} ${step === 2 ? styles.routeSummaryRail : styles.timeSummaryRail}`} aria-label={ui.route}>
+        </aside> : <aside className={`${styles.rail} ${styles.timeSummaryRail}`} aria-label={ui.route}>
           <div className={styles.railBlock}>
             <small className={styles.railLabel}>{ui.route}</small>
             <div className={styles.railRoute}>
@@ -1363,7 +1390,7 @@ export default function TripBuilder() {
                   </span>
                     <span>
                       <span className={styles.railNodeHead}><GripVertical className={styles.railGrip} aria-hidden /><strong>{stop.name}</strong></span>
-                      <small>{(picks[stop.id] ?? []).length} {ui.selected} · {allocation[stop.id] ?? 1} {(allocation[stop.id] ?? 1) === 1 ? ui.day : ui.days}</small>
+                      <small>{allocation[stop.id] ?? 1} {(allocation[stop.id] ?? 1) === 1 ? ui.day : ui.days}</small>
                       <span className={styles.railNodeActions}>
                         <button type="button" className={scheduleLocks.stopIds.includes(stop.id) ? styles.intentChoiceOn : ""} onClick={() => toggleStopLock(stop.id)} aria-label={`${scheduleLocks.stopIds.includes(stop.id) ? (language === "es" ? "Desbloquear" : "Unlock") : (language === "es" ? "Bloquear" : "Lock")} ${stop.name}`}><Lock /></button>
                         <button type="button" disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)} aria-label={`${language === "es" ? "Quitar" : "Remove"} ${stop.name}`}><X /></button>
@@ -1386,11 +1413,11 @@ export default function TripBuilder() {
               <span className={over ? styles.budgetFillOver : styles.budgetFill}
                 style={{ width: `${Math.min(100, (committed / Math.max(1, totalDays)) * 100)}%` }} />
             </div>
-            <p className={styles.budgetLine}>{totalDays} {ui.available} · {half(committed)} {ui.committed} · {half(openDays)} {ui.open}</p>
+            <p className={styles.budgetLine}>{language === "es" ? `${totalDays} días repartidos entre ${stops.length} paradas` : `${totalDays} days across ${stops.length} stops`}</p>
             {over && <p className={styles.railOver}>{ui.overHint}</p>}
           </div>
 
-          <div className={styles.railBlock}>
+          <div className={styles.railBlock} hidden>
             <small className={styles.railLabel}>{ui.selectedPlaces}</small>
             {selected.length ? (
               <div className={styles.chips}>
@@ -1415,9 +1442,9 @@ export default function TripBuilder() {
             onClick={async () => {
               if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;
-              if (step === 2) { setGenerated(true); setActiveDay(0); } else setStep(step + 1);
+              if (step === 1) buildTrip(); else setStep(1);
             }}>
-            {step === 0 ? copy.continue : step === 2 ? copy.buildDraft : copy.continue} →
+            {step === 0 ? copy.continue : (language === "es" ? "Crear viaje" : "Build trip")} →
           </button>
         </div>
       </div>

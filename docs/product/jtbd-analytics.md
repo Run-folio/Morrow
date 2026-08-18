@@ -25,7 +25,13 @@ Analytics remain optional: events are sent only after the visitor has allowed op
 | `health_check_shown` | Map-plan health summary is first shown for a particular health state. | `blocking_count`, `caution_count`, `issue_count` | Once per trip and health-state signature per browser session. |
 | `health_issue_resolved` | Traveller applies a safe health recommendation. | `rule` | Once per explicit apply action. |
 | `trip_ready` | Trip first meets the existing readiness rule: no blocking issue and core booking decisions can be actioned. | `stop_count`, `duration_days` | Once per trip in browser storage. It is not re-fired merely because the view is reopened. |
-| `budget_viewed` | The structured trip-intent budget control is visible in the Confirm step. | `budget_band`, `stop_count`, `duration_days` | Once per trip per browser session. |
+| `budget_viewed` | The optional per-trip budget control is visible in the Time step. | `budget_band`, `stop_count`, `duration_days` | Once per trip per browser session. |
+| `accommodation_action_viewed` | A destination's itinerary accommodation action is shown. | `trip_id`, `stop_id`, `sorted_count`, `stay_count` | Once per trip, stop and browser session. |
+| `accommodation_map_opened` | Traveller opens the existing Stay Finder from itinerary accommodation. | `trip_id`, `stop_id` | Every deliberate open. |
+| `attraction_refinement_viewed` | A destination's itinerary refinement panel is shown. | `trip_id`, `stop_id`, `selected_count` | Once per trip, stop and browser session. |
+| `attraction_selected` / `attraction_removed` | Traveller adds or removes a destination attraction. | `trip_id`, `stop_id` | Every deliberate change. |
+| `attraction_filter_used` | Traveller narrows the destination shortlist by category. | `trip_id`, `stop_id`, `filter` | Every deliberate filter change away from All. |
+| `attraction_map_opened` | Traveller opens deeper map discovery from destination refinement. | `trip_id`, `stop_id` | Every deliberate open. |
 | `affiliate_click` | Traveller deliberately opens an affiliate-supported next action. | `category`, `provider`, plus `trip_id` and `stop_id` when the surface has them | Each outbound click is counted; do not infer a booking from it. |
 | `booking_attributed` | A partner webhook, reporting export, or approved server-to-server attribution identifies a completed booking. | `provider`, `category`, `trip_id` when available, `commission_amount`, `commission_currency`, `commission_status` | Server-only. Unique provider conversion ID; updates amend the same conversion rather than creating a new event. |
 
