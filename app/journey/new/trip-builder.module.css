@@ -406,3 +406,26 @@
 @media(max-width:560px){.tripEssentials{grid-template-columns:1fr;gap:16px}.tripEssentials input{width:100%}}
 @media(max-width:520px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}.steps:before{left:calc(25% + 7px);right:calc(25% + 7px)}}
 .budgetChoices button.intentChoiceOn{background:var(--morrovia-lilac)!important}
+
+/* Time is a two-step decision: the connector belongs between markers, never labels. */
+.steps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;padding:28px 13% 26px}
+.steps:before{top:49px;left:calc(31.5% - 2px);right:calc(31.5% - 2px);height:1px;background:var(--line)}
+.stepTab{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:44px auto;justify-items:center;min-height:76px;padding:0;color:var(--muted)}
+.stepTab>b{grid-row:1;align-self:center;justify-self:center;z-index:1}
+.stepTab>span{grid-row:2;justify-self:center;display:grid;justify-items:center;gap:3px;min-width:0;text-align:center}
+.stepTab>span>span{overflow:visible;white-space:normal;text-align:center}
+.stepTab small{grid-column:auto;text-align:center}
+
+.allocationInsightWarning{color:#9d2359;font-weight:650}
+.timeSummaryRail{display:grid;align-content:start;gap:16px;background:linear-gradient(160deg,#fbfaff,#f5f3ff)}
+.timeSummaryRail .railBlock{display:none}
+.timingSummary,.timingAlerts{display:grid;gap:8px;padding:17px 0;border-bottom:1px solid var(--line)}
+.timingSummary small,.timingAlerts small{color:var(--signal);font:800 10px var(--morrovia-meta);letter-spacing:.11em}
+.timingSummary h2{margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:30px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.timingSummary p{margin:0;color:var(--muted);font-size:13px}
+.timingSummary strong{color:var(--ink);font-size:13px}
+.timingAlerts{gap:6px;padding-top:0;border-bottom:0}
+.timingAlerts p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.timingAlerts p strong{color:var(--ink)}
+@media(max-width:840px){.steps{padding:22px 6% 20px}.steps:before{top:43px;left:calc(28% - 2px);right:calc(28% - 2px)}.stepTab{min-height:70px}.timeSummaryRail{padding:28px 24px}}
+@media(max-width:520px){.steps{padding:18px 12px 17px}.steps:before{top:39px;left:calc(25% + 6px);right:calc(25% + 6px)}.stepTab{min-height:66px}.stepTab>b{width:28px;height:28px}.stepTab>span>span{font-size:14px}.stepTab small{display:block;font-size:9px;line-height:1.15}.timingSummary h2{font-size:27px}}

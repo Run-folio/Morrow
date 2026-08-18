@@ -319,6 +319,15 @@ function arrivalLoad(minutes: number | null): StopDurationRecommendation["arriva
   return "travel-heavy";
 }
 
+/** The part of a calendar allocation that remains useful after arriving. */
+export function usableStopDays(
+  calendarDays: number,
+  load: StopDurationRecommendation["arrivalLoad"],
+) {
+  const arrivalUsable = load === "light" ? 0.75 : load === "substantial" ? 0.5 : load === "travel-heavy" ? 0.15 : 0;
+  return Math.max(0, Math.round((Math.max(1, calendarDays) - 1 + arrivalUsable) * 4) / 4);
+}
+
 /** Recommend calendar days from usable time, not just from a stop count. */
 export function recommendStopDurations(input: {
   origin: { name: string; coordinates?: [number, number] };
@@ -331,12 +340,13 @@ export function recommendStopDurations(input: {
     const load = arrivalLoad(leg.durationMinutes);
     const selectedCount = input.picks[stop.id]?.length ?? 0;
     const activityDays = Math.max(1, Math.ceil(selectedCount / 2));
-    const protectedArrival = load === "travel-heavy" || load === "unknown" ? 1 : 0;
+    // A substantial transfer leaves only a partial arrival day. Protect a
+    // proper visit day rather than treating that partial day as a full stop.
+    const protectedArrival = load === "light" ? 0 : 1;
     const landmarkDay = stop.intent === "landmark" ? 1 : 0;
     const minimumDays = Math.max(1, protectedArrival + 1);
     const recommendedDays = Math.max(minimumDays, protectedArrival + activityDays + landmarkDay);
-    const arrivalUsable = load === "light" ? 0.75 : load === "substantial" ? 0.5 : load === "travel-heavy" ? 0.15 : 0;
-    const usableDays = Math.max(0, Math.round((recommendedDays - 1 + arrivalUsable) * 4) / 4);
+    const usableDays = usableStopDays(recommendedDays, load);
     const reason = load === "travel-heavy"
       ? `The arrival transfer takes most of the day, so one full day is protected here.`
       : load === "substantial"

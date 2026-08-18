@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessRouteIntelligence, assessRouteOrder, legDecisionAlternatives, recommendStopDurations } from "../lib/easyt/planner.ts";
+import { assessRouteIntelligence, assessRouteOrder, legDecisionAlternatives, recommendStopDurations, usableStopDays } from "../lib/easyt/planner.ts";
 
 const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
 
@@ -77,6 +77,19 @@ test("protects a full day when a transfer is travel-heavy", () => {
   assert.equal(durations.far.arrivalLoad, "travel-heavy");
   assert.equal(durations.far.minimumDays, 2);
   assert.ok(durations.far.usableDays >= 1);
+});
+
+test("does not count a substantial arrival as a full destination day", () => {
+  const durations = recommendStopDurations({
+    origin,
+    stops: [{ id: "connected", name: "Connected", country: "Elsewhere", coordinates: [2, 0] }],
+    picks: {},
+  });
+
+  assert.equal(durations.connected.arrivalLoad, "substantial");
+  assert.equal(durations.connected.minimumDays, 2);
+  assert.ok(usableStopDays(1, durations.connected.arrivalLoad) < 1);
+  assert.ok(durations.connected.usableDays >= 1);
 });
 
 test("exposes the time shortfall instead of hiding it in the allocation", () => {

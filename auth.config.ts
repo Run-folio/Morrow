@@ -15,8 +15,16 @@ function createAuth(databaseUrl: string, secret: string) {
       enabled: true,
       minPasswordLength: 8,
       requireEmailVerification: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
-      sendResetPassword: async ({ user, url }) => {
-        await sendEasyTEmail({ to: user.email, ...passwordResetEmail(url) });
+      sendResetPassword: async ({ user, token }) => {
+        // Better Auth's generated URL targets the API endpoint directly. Send
+        // travellers to Morrovia's reset form instead, which then submits the
+        // token through authClient.resetPassword().
+        const resetUrl = new URL(
+          "/journey/reset-password",
+          process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        );
+        resetUrl.searchParams.set("token", token);
+        await sendEasyTEmail({ to: user.email, ...passwordResetEmail(resetUrl.toString()) });
       },
     },
     emailVerification: {
