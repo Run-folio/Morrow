@@ -25,29 +25,21 @@
   }
 
   .plan :global([class*="pinDock"]) {
-    bottom:calc(min(430px, 100svh - 178px) + 38px);
-    left:50%;
-    width:min(300px, calc(100vw - 680px));
-    transform:translateX(-50%);
-  }
-
-  .plan :global([class*="bottomControls"]) {
-    right:auto;
-    bottom:24px;
-    left:clamp(18px,2.25vw,36px);
-    z-index:9;
-    width:min(220px,calc(100vw - 704px));
-    align-items:stretch;
-    flex-direction:column;
+    top:172px;
+    right:calc(clamp(12px, 1.25vw, 16px) + min(254px, calc(100vw - 704px)) + 20px);
+    bottom:auto;
+    left:auto;
+    width:min(210px, calc(100vw - 704px));
+    max-height:calc(100svh - 196px);
     transform:none;
   }
 
-  .plan :global([class*="bottomControls"]) > aside { width:100%; }
-  .plan :global([class*="mapModeControl"]) { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px; }
-  .plan :global([class*="mapModeControl"]) small { display:none; }
-  .plan :global([class*="mapModeControl"]) button { width:100%;min-height:27px;border-radius:7px; }
-  .plan :global([class*="playButton"]) { grid-template-columns:22px 1fr auto;min-width:0;padding:7px 8px 7px 7px;border-radius:8px; }
-  .plan :global([class*="playButton"]) small { display:none; }
+  .plan :global([class*="pinDock"]) summary { min-height:40px;padding:7px 9px;gap:6px; }
+  .plan :global([class*="pinDock"]) summary > svg { width:15px;height:15px; }
+  .plan :global([class*="pinDock"]) summary small { display:none; }
+  .plan :global([class*="pinDock"]) summary strong { font-size:9px; }
+  .plan :global([class*="pinDock"]) summary b { width:18px;height:18px;font-size:7px; }
+
   .plan :global([class*="undoToast"]) { top:172px;bottom:auto;z-index:12; }
 }
 
@@ -83,18 +75,18 @@
     height:min(58svh,480px);
     max-height:calc(100svh - 175px);
     margin:0;
-    padding:0 14px calc(14px + env(safe-area-inset-bottom));
+    padding:0 14px calc(18px + env(safe-area-inset-bottom));
     overflow:hidden;
     border-radius:18px 18px 0 0;
     transform:none;
   }
 
-  .plan :global([class*="finderDock"]) > header { flex:0 0 auto; padding-top:17px; }
+  .plan :global([class*="finderDock"]) > header { position:relative;flex:0 0 auto;padding-top:14px; }
   .plan :global([class*="finderDock"]) > header::before {
     display:block;
     width:34px;
     height:4px;
-    margin:0 auto 8px;
+    margin:0 auto 10px;
     border-radius:999px;
     background:var(--hairline);
     content:"";
@@ -107,11 +99,12 @@
     margin:10px 0 0;
     overflow-y:auto;
     overscroll-behavior:contain;
-    padding-right:2px;
+    padding:0 2px calc(var(--morrovia-mobile-dock-offset, 82px) + 10px) 0;
   }
 
   .plan :global([class*="mobileTripStatus"]) { display:block; }
-  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:30px;padding:0 2px;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
+  .plan :global([class*="mobileTripStatus"]) { position:absolute;top:21px;right:0;z-index:1; }
+  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
   .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--font-geist-mono,monospace); }
   .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:calc(min(58svh,480px) + 48px);left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
@@ -122,12 +115,44 @@
     z-index:15;
     bottom:calc(min(58svh,480px) + 10px);
     left:12px;
-    width:min(300px,calc(100vw - 24px));
-    max-height:136px;
+    width:auto;
+    max-width:calc(100vw - 24px);
+    max-height:calc(100svh - min(58svh,480px) - 24px);
     margin:0;
-    overflow:auto;
+    overflow:visible;
     transform:none;
   }
 
-  .plan :global([class*="bottomControls"]) { display:none; }
+  .plan :global([class*="pinDock"]) summary { min-height:38px;padding:6px 8px;gap:6px; }
+  .plan :global([class*="pinDock"]) summary > svg { width:14px;height:14px; }
+  .plan :global([class*="pinDock"]) summary small { display:none; }
+  .plan :global([class*="pinDock"]) summary strong { font-size:8px; }
+  .plan :global([class*="pinDock"]) summary b { width:18px;height:18px;font-size:7px; }
+  .plan :global([class*="pinDock"]) details[open] { max-height:calc(100svh - min(58svh,480px) - 24px);overflow:auto; }
+
+}
+
+@media (max-width:680px) {
+  .plan :global([class*="finderDock"]) > header { display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding-top:13px; }
+  .plan :global([class*="finderDock"]) > header > small { max-width:calc(100% - 112px);font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .plan :global([class*="finderDock"]) > header > span { display:flex;align-items:baseline;justify-content:space-between;gap:8px; }
+  .plan :global([class*="finderDock"]) > header strong { font-size:17px;line-height:1; }
+  .plan :global([class*="finderDock"]) > header em { font-size:8px;white-space:nowrap; }
+  .plan :global([class*="finderTabs"]) { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;margin-top:5px; }
+  .plan :global([class*="finderTabs"]) button { min-width:0;min-height:36px;padding:0 4px;border-radius:8px;font:700 10px var(--font-geist-sans,Geist,Inter,sans-serif);white-space:nowrap; }
+  .plan :global([class*="shapeDayPlan"]) { padding-top:0; }
+  .plan :global([class*="shapeDayContext"]) { margin:8px 0;font-size:8px; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:28px minmax(0,1fr) auto auto !important;gap:7px;padding:13px 0; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li > :global([class*="mobileActivityMove"]) { grid-column:3; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li > :global([class*="removeActivity"]) { grid-column:4; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li:not(:has(input)) { font-size:14px;line-height:1.35; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="scheduleHealth"]) { margin-top:9px;padding:10px; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="scheduleHealth"]) p { font-size:9px;line-height:1.45; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="notesToSelf"]) { margin-bottom:8px; }
+}
+
+@media (max-width:520px) {
+  .plan :global([class*="finderDock"]) { bottom:var(--morrovia-mobile-dock-offset,82px);height:min(58svh,480px);max-height:calc(100svh - 175px - var(--morrovia-mobile-dock-offset,82px)); }
+  .plan :global([class*="pinDock"]) { bottom:calc(min(58svh,480px) + var(--morrovia-mobile-dock-offset,82px) + 10px); }
+  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { bottom:calc(min(58svh,480px) + var(--morrovia-mobile-dock-offset,82px) + 48px); }
 }

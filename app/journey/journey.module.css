@@ -134,7 +134,6 @@
 .journey :global(.planner-map__pin.is-restaurant){background:#287952}.journey :global(.planner-map__pin.is-stay){background:#6446a6}.journey :global(.planner-map__pin.is-activity){background:#d57418}.journey :global(.planner-map__pin.is-transport){background:#2767b2}.journey :global(.planner-map__pin.is-custom){background:#ff3d8b}
 .journey :global(.planner-map__draft-pin){display:grid;width:34px;height:34px;place-items:center;color:#ff3d8b;background:#fff;border:2px dashed #ff3d8b;border-radius:50% 50% 50% 0;box-shadow:0 5px 15px rgba(255,61,139,.25);font:800 17px/1 sans-serif;pointer-events:none;transform:rotate(-45deg)}.journey :global(.planner-map__draft-pin span){transform:rotate(45deg)}
 .mapOverviewLayer,.mapDetailLayer{position:absolute;inset:0;z-index:0}.mapOverviewLayer{opacity:1;transition:opacity .34s ease}.mapLayerHidden{opacity:0;pointer-events:none}.mapLayerActive{opacity:1}.mapDetailLayer{animation:map-detail-in .34s ease both}@keyframes map-detail-in{from{opacity:0;transform:scale(1.012)}to{opacity:1;transform:scale(1)}}
-.mapModeControl{display:grid;gap:5px;justify-items:center;padding:8px 10px;background:rgba(255,255,255,.94);border:1px solid rgba(31,29,61,.14);border-radius:12px;box-shadow:0 10px 28px rgba(31,29,61,.14);backdrop-filter:blur(10px)}.mapModeControl small{color:var(--signal);font:750 6.5px var(--font-geist-mono,monospace);letter-spacing:.12em}.mapModeControl button{min-height:30px;padding:0 11px;color:#fff;background:var(--accent);border:0;border-radius:999px;font:700 8px var(--font-geist-mono,monospace);cursor:pointer}.mapModeControl button:hover{background:var(--signal)}
 
 /* One connected navigation and timeline bar */
 .topbar{position:relative;z-index:8;background:rgba(255,255,255,.94);border-bottom:1px solid #dedfe3;box-shadow:0 6px 20px rgba(31,29,61,.035);backdrop-filter:blur(16px)}
@@ -143,12 +142,7 @@
 .titleLockup{min-width:0;max-width:min(42vw,560px);overflow:hidden;text-align:center;font-family:Geist,Inter,"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;font-size:18px;font-weight:340;line-height:1;letter-spacing:-.025em;text-transform:none;text-overflow:ellipsis;white-space:nowrap}
 .titleLockup>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .titleLockup small{display:block;margin-top:7px;font-family:"Geist Mono","JetBrains Mono",SFMono-Regular,Menlo,monospace;font-size:8px;font-weight:600;line-height:1;letter-spacing:.14em;color:rgba(0,0,0,.48);text-transform:uppercase}
-.bottomControls{position:absolute;z-index:10;bottom:24px;left:50%;display:flex;align-items:center;gap:9px;transform:translateX(-50%)}.playButton{position:relative;display:grid;grid-template-columns:24px auto auto;align-items:center;gap:9px;min-width:190px;padding:8px 10px 8px 8px;color:#fff;background:var(--accent);border:1px solid rgba(255,255,255,.65);border-radius:999px;box-shadow:0 10px 30px rgba(31,29,61,.24);font-family:var(--font-geist-mono,monospace);cursor:pointer;transition:background .2s,box-shadow .2s,transform .2s}
-.playButton>span{display:grid;width:24px;height:24px;place-items:center;border-radius:50%;color:var(--accent);background:#fff;font-size:8px}
-.playButton strong{font-size:9px;font-weight:700;letter-spacing:.035em}
-.playButton small{justify-self:end;padding-left:7px;color:rgba(255,255,255,.6);font-size:7px;border-left:1px solid rgba(255,255,255,.18)}
-.playButton:hover{background:#000;box-shadow:0 13px 34px rgba(31,29,61,.3);transform:translateY(-2px)}
-.playButton.playing{background:var(--signal)}
+.journeyPlayback{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 10px;color:#fff;background:var(--accent);border:1px solid var(--accent);border-radius:8px;font:700 10px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}.journeyPlayback:hover{background:var(--signal);border-color:var(--signal);transform:translateY(-1px)}.journeyPlayback.playing{background:var(--signal);border-color:var(--signal)}.journeyPlayback span{font-size:9px}.mapAssistant{position:absolute;z-index:10;bottom:20px;left:16px}.mapFocusControl{position:absolute;z-index:7;top:173px;left:calc(50% + 66px)}.mapFocusControl button{display:grid;width:34px;height:34px;place-items:center;padding:0;color:var(--accent);background:rgba(255,255,255,.94);border:1px solid var(--hairline);border-radius:8px;box-shadow:0 7px 18px rgba(23,16,111,.12);cursor:pointer;backdrop-filter:blur(10px);transition:border-color .18s,color .18s,background .18s}.mapFocusControl button:hover{color:#fff;background:var(--accent);border-color:var(--accent)}.mapFocusControl svg{width:16px;height:16px}
 .timeline{padding:0 clamp(12px,3.4vw,56px) 9px}
 .track{display:grid;overflow-x:auto;scrollbar-width:none;padding:12px 0 10px;scroll-padding-inline:50%;scroll-behavior:smooth;overscroll-behavior-inline:contain;touch-action:pan-x;overscroll-behavior-y:none}
 .track::-webkit-scrollbar{display:none}
@@ -216,7 +210,7 @@
 .carouselDots button{width:13px;height:2px;padding:0;background:rgba(31,29,61,.18);border:0;cursor:pointer;transition:width .2s,background .2s}
 .carouselDots button.currentDot{width:22px;background:var(--signal)}
 .restaurantFinder{margin-top:13px;padding:12px;background:var(--mist);border:1px solid rgba(31,29,61,.12);border-radius:12px}
-.reviewPanel{margin:14px 0;padding:12px;background:rgba(255,255,255,.72);border:1px solid rgba(31,29,61,.12);border-radius:12px}.reviewHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(31,29,61,.1)}.reviewHeader div{display:grid;gap:3px}.reviewHeader small{color:var(--signal);font:750 7px var(--font-geist-mono,monospace);letter-spacing:.12em}.reviewHeader strong{color:var(--ink);font-size:12px}.reviewHeader>span{color:rgba(31,29,61,.5);font:7px var(--font-geist-mono,monospace);white-space:nowrap}.reviewList{display:grid;gap:7px;margin-top:10px}.reviewItem{padding:9px;background:#fff;border-left:2px solid var(--signal)}.reviewItem>div{display:grid;gap:3px}.reviewItem b{color:var(--signal);font:750 7px var(--font-geist-mono,monospace);letter-spacing:.1em;text-transform:uppercase}.reviewItem strong{color:var(--ink);font-size:11px;line-height:1.28}.reviewItem p{margin:6px 0 0;color:rgba(31,29,61,.7);font:8px/1.35 var(--font-geist-mono,monospace)}.reviewItem small{display:block;margin-top:6px;color:rgba(31,29,61,.48);font:7px var(--font-geist-mono,monospace)}.reviewWarning{border-left-color:#f0a62a}.reviewWarning b{color:#b66d00}.reviewCritical{border-left-color:#d53f5f}.reviewCritical b{color:#b21f41}.reviewResolved{opacity:.72;border-left-color:#77a64d}.reviewResolved b{color:#53812c}.reviewImpact{color:rgba(31,29,61,.55)!important}.reviewActions{display:flex!important;justify-content:flex-end;margin-top:7px}.reviewActions button{min-height:25px;padding:0 10px;border:1px solid rgba(31,29,61,.16);border-radius:999px;background:#fff;color:var(--accent);font:700 7px var(--font-geist-mono,monospace);cursor:pointer}.reviewActions button:hover{color:#fff;background:var(--signal);border-color:var(--signal)}.reviewDetails{margin-top:6px}.reviewDetails summary,.moreReviewItems summary{color:var(--accent);font:700 7px var(--font-geist-mono,monospace);cursor:pointer}.reviewDetails p{margin-top:5px}.moreReviewItems{padding-top:2px}.moreReviewItems>div{display:grid;gap:7px;margin-top:7px}.reviewEmpty{margin:10px 0 0;color:rgba(31,29,61,.64);font:8px/1.4 var(--font-geist-mono,monospace)}
+.reviewPanel{margin:14px 0;padding:13px;background:rgba(255,255,255,.72);border:1px solid rgba(31,29,61,.12);border-radius:12px}.reviewHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid rgba(31,29,61,.1)}.reviewHeader div{display:grid;gap:3px}.reviewHeader small{color:var(--signal);font:750 8px var(--font-geist-mono,monospace);letter-spacing:.12em}.reviewHeader strong{color:var(--ink);font-size:13px}.reviewHeader>span{color:rgba(31,29,61,.5);font:8px var(--font-geist-mono,monospace);white-space:nowrap}.reviewList{display:grid;gap:8px;margin-top:11px}.reviewItem{padding:10px;background:#fff;border-left:2px solid var(--signal)}.reviewItem>div{display:grid;gap:4px}.reviewItem b{color:var(--signal);font:750 8px var(--font-geist-mono,monospace);letter-spacing:.1em;text-transform:uppercase}.reviewItem strong{color:var(--ink);font-size:12px;line-height:1.35}.reviewItem p{margin:6px 0 0;color:rgba(31,29,61,.7);font:10px/1.45 var(--font-geist-sans,Geist,Inter,sans-serif)}.reviewItem small{display:block;margin-top:6px;color:rgba(31,29,61,.58);font:8px/1.35 var(--font-geist-mono,monospace)}.reviewWarning{border-left-color:#f0a62a}.reviewWarning b{color:#b66d00}.reviewCritical{border-left-color:#d53f5f}.reviewCritical b{color:#b21f41}.reviewResolved{opacity:.72;border-left-color:#77a64d}.reviewResolved b{color:#53812c}.reviewImpact{color:rgba(31,29,61,.66)!important}.reviewActions{display:flex!important;justify-content:flex-end;margin-top:8px}.reviewActions button{min-height:29px;padding:0 11px;border:1px solid rgba(31,29,61,.16);border-radius:8px;background:#fff;color:var(--accent);font:700 8px var(--font-geist-mono,monospace);cursor:pointer}.reviewActions button:hover{color:#fff;background:var(--signal);border-color:var(--signal)}.reviewDetails{margin-top:7px}.reviewDetails summary,.moreReviewItems summary{color:var(--accent);font:700 8px var(--font-geist-mono,monospace);cursor:pointer}.reviewDetails p{margin-top:6px}.moreReviewItems{padding-top:2px}.moreReviewItems>div{display:grid;gap:8px;margin-top:8px}.reviewEmpty{margin:10px 0 0;color:rgba(31,29,61,.64);font:9px/1.45 var(--font-geist-sans,Geist,Inter,sans-serif)}
 .restaurantFinder>header{display:flex;align-items:center;gap:9px;padding-bottom:10px;border-bottom:1px solid rgba(31,29,61,.1)}
 .restaurantFinder>header>span{display:grid;width:28px;height:28px;place-items:center;color:var(--signal);background:#fff;border:1px solid rgba(31,29,61,.1);border-radius:8px}
 .restaurantFinder>header svg{width:13px;height:13px;stroke-width:1.7}
@@ -359,11 +353,9 @@
   .itineraryPanel h2{font-size:25px}
   .itineraryPanel li{padding:12px 0;font-size:12px}
   .itineraryPanel{padding-bottom:22px}.editingHint{font-size:9px}.mobileDayMove{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px;background:#f7f7f5;border:1px solid rgba(31,29,61,.1)}.mobileDayMove span{margin-right:auto;color:rgba(31,29,61,.5);font:700 6.5px var(--font-geist-mono,monospace);letter-spacing:.08em}.mobileDayMove button{display:flex;align-items:center;gap:3px;min-height:28px;padding:0 7px;color:var(--accent);background:#fff;border:1px solid rgba(31,29,61,.14);border-radius:4px;font:700 7px var(--font-geist-mono,monospace)}.mobileDayMove button:disabled{opacity:.35}.mobileDayMove svg{width:11px}.mobileActivityMove{display:flex;gap:2px}.mobileActivityMove button{display:grid;width:22px;height:22px;place-items:center;padding:0;color:var(--accent);background:#f7f7f5;border:1px solid rgba(31,29,61,.11);border-radius:3px}.mobileActivityMove button:disabled{opacity:.3}.mobileActivityMove svg{width:10px}.itineraryPanel .editableActivities li{grid-template-columns:18px 11px minmax(0,1fr) auto auto 18px;gap:4px}.activityGrip{display:none}.yourActivity{display:none}.removeActivity{width:22px;height:22px}.customActivityInput{font-size:12px}
-  .bottomControls{position:fixed;bottom:12px;width:calc(100% - 24px);justify-content:center;gap:7px;flex-wrap:wrap}.bottomControls>aside{width:min(100%,320px)}.playButton{min-width:0}.playButton small{display:none}
   .undoToast{position:fixed;bottom:60px}
   .journey :global(.journey-map__controls){top:12px}
   .journey :global(.journey-map__zoom-readout){top:22px}
-  .mapModeControl{max-width:calc(100vw - 225px);padding:7px 8px}.mapModeControl small{display:none}.mapModeControl button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .journey :global(.journey-map__ocean-label){font-size:11px}
   .journey :global(.journey-map__stop-label){font-size:9px}
   .journey :global(.journey-map__place text){font-size:9px}
@@ -377,7 +369,7 @@
   .destinationTitle h1{max-width:calc(100% - 42px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .journey :global(.journey-map__stop-label){paint-order:stroke;stroke:#f4f5f6;stroke-width:3px;stroke-linejoin:round}
   .mediaCarousel figcaption{gap:7px;font-size:8px}
-  .pinComposer .pinCategories{gap:6px}.pinComposer .pinCategories button{min-height:30px;padding-inline:9px;font-size:7px}.pinComposer form{grid-template-columns:minmax(0,1fr) auto}.finderDock{padding-bottom:calc(18px + env(safe-area-inset-bottom))}.bottomControls{bottom:calc(12px + env(safe-area-inset-bottom))}
+  .pinComposer .pinCategories{gap:6px}.pinComposer .pinCategories button{min-height:30px;padding-inline:9px;font-size:7px}.pinComposer form{grid-template-columns:minmax(0,1fr) auto}.finderDock{padding-bottom:calc(18px + env(safe-area-inset-bottom))}
 }
 
 @media(max-width:420px){
@@ -385,7 +377,6 @@
   .journey{padding-top:428px}
   .journey :global(.journey-map){height:286px}
   .journey :global(.planner-map){height:286px}
-  .bottomControls{width:calc(100% - 18px);gap:5px}.mapModeControl{max-width:calc(100vw - 194px)}.mapModeControl button{padding:0 8px}
   .titleLockup{max-width:46vw;font-size:13px}
   .destinationTitle{gap:9px}
   .destinationTitle h1{font-size:40px}
@@ -396,8 +387,6 @@
 
 /* Shared portfolio control language: simple sans actions, mono only for map metadata. */
 .back,.createTripLink{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-size:14px;font-weight:500;letter-spacing:-.01em}
-.playButton{min-height:44px;border-radius:999px;font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-size:13px;font-weight:500;letter-spacing:-.01em}
-.playButton strong{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-weight:500;letter-spacing:-.01em}
 .carouselControls button,.localCandidates button,.nextDay{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-weight:500;letter-spacing:-.01em}
 .mapCoach{position:absolute;z-index:13;top:190px;left:26px;display:grid;gap:7px;max-width:310px;max-height:calc(100svh - 230px);padding:17px 18px;overflow:auto;border:1px solid rgba(32,29,61,.16);border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 15px 35px rgba(32,29,61,.16)}.mapCoach small{color:#ff3d8b;font:700 9px var(--font-geist-mono,monospace);letter-spacing:.14em;text-transform:uppercase}.mapCoach strong{color:#201d3d;font-size:17px;line-height:1.1}.mapCoach p{margin:0;color:#716b75;font-size:12px;line-height:1.45}.mapCoach button{justify-self:start;margin-top:3px;padding:8px 11px;border:0;border-radius:999px;color:#fff;background:#201d3d;font-size:11px;font-weight:700;cursor:pointer}
 @media(max-width:760px){.mapCoach{position:fixed;z-index:30;top:auto;right:12px;bottom:calc(82px + env(safe-area-inset-bottom));left:12px;max-width:none;max-height:calc(100svh - 170px);padding:15px 16px}.mapCoach strong{font-size:16px}.mapCoach p{font-size:11px}}
@@ -436,16 +425,11 @@
 .journey :global(.planner-map__stop:hover),.journey :global(.planner-map__stop.is-active){background:var(--signal);border-color:var(--signal)}
 .journey :global(.planner-map__pin){background:var(--accent);box-shadow:0 5px 14px rgba(23,16,111,.2)}
 .journey :global(.planner-map__draft-pin){color:var(--signal);border-color:var(--signal);box-shadow:0 5px 14px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
-.mapModeControl{border-color:var(--hairline);border-radius:var(--morrovia-radius,14px);box-shadow:0 10px 26px rgba(23,16,111,.12)}
-.mapModeControl button{border-radius:8px}
 
 .topbar{background:color-mix(in srgb,var(--paper) 94%,white);border-bottom-color:var(--hairline);box-shadow:0 5px 18px rgba(23,16,111,.06)}
 .headerRow{font-family:var(--morrovia-meta,var(--font-geist-mono,monospace))}
 .titleLockup{color:var(--accent);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:600}
 .titleLockup small{color:var(--morrovia-muted,#7673a4);font-family:var(--morrovia-meta,var(--font-geist-mono,monospace))}
-.playButton{border-radius:10px;background:var(--accent);box-shadow:0 10px 26px rgba(23,16,111,.22);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif)}
-.playButton:hover{background:var(--signal);box-shadow:0 13px 30px rgba(23,16,111,.24)}
-.playButton>span{color:var(--accent)}
 .stop{border-radius:8px;color:var(--morrovia-muted,#7673a4)}
 .stopNode,.stopNode i{border-color:var(--accent);background:var(--accent)}
 .stopNode{background:#fff}
@@ -511,6 +495,8 @@
   .destination,.itineraryPanel,.pinDock,.finderDock{border-radius:var(--morrovia-radius,14px)}
   .mobileDayMove,.mobileActivityMove button{border-color:var(--hairline);background:var(--mist)}
   .mobileDayMove button{border-color:var(--hairline);border-radius:6px}
+  .mapAssistant{position:fixed;right:12px;bottom:calc(min(58svh,480px) + 10px);left:auto;z-index:15}
+  .mapFocusControl{top:160px;left:calc(50% + 54px)}
 }
 
 /* The shared header remains the global layer on compact tablets; the trip bar
@@ -527,6 +513,7 @@
    navigation remains available through the established bottom dock. */
 @media(max-width:520px){
   .productNavigation :global([data-easyt-app]){display:none}
+  .mapAssistant{bottom:calc(min(58svh,480px) + var(--morrovia-mobile-dock-offset,82px) + 10px)}
 }
 
 @media(min-width:981px){
@@ -553,12 +540,12 @@
    existing overlays recomposed around it. Compact layouts keep their current
    in-flow/mobile arrangement until the dedicated mobile migration. */
 @media(min-width:981px){
-  .destination{left:clamp(18px,2.25vw,36px);top:172px;width:min(310px,calc(100vw - 704px));max-height:calc(100svh - 244px);padding:16px 17px 18px}
+  .destination{left:clamp(12px,1.25vw,16px);top:172px;width:min(310px,calc(100vw - 704px));max-height:calc(100svh - 244px);padding:16px 17px 18px}
   .destinationWithPinDock{max-height:calc(100svh - 244px)}
   .destinationTitle h1{font-size:clamp(38px,5vw,54px)}
   .description{font-size:12px;line-height:1.48}
   .mediaCarousel{margin-top:14px}
-  .itineraryPanel{right:clamp(18px,2.25vw,36px);top:172px;width:min(270px,calc(100vw - 704px));max-height:calc(100svh - 244px);padding:15px 16px}
+  .itineraryPanel{right:clamp(12px,1.25vw,16px);top:172px;width:min(254px,calc(100vw - 704px));max-height:calc(100svh - 244px);padding:15px 16px}
   .itineraryWithFinder{max-height:calc(100svh - 244px)}
   .itineraryPanel .reviewPanel{margin-top:0}
   .finderDock{right:auto;left:50%;bottom:24px;width:min(680px,calc(100vw - 680px));height:min(430px,calc(100svh - 178px));padding:0 16px 14px;transform:translateX(-50%)}
@@ -577,4 +564,31 @@
   .finderTabs{gap:6px}
   .finderTabs button{border-radius:7px}
   .pinDock{bottom:calc(min(430px, 100svh - 178px) + 38px);width:min(300px,calc(100vw - 680px))}
+}
+
+/* Shape-the-day is the editorial planning surface over the map. These rules
+   only change hierarchy and density; the shared Plan workspace remains the
+   owner-free renderer for the existing planner callbacks. */
+.finderDock{border-radius:18px;background:color-mix(in srgb,#fff 98%,var(--paper));box-shadow:0 18px 42px rgba(23,16,111,.14)}
+.finderDock>header{gap:8px;padding:19px 2px 16px;border-bottom:0}
+.finderDock>header>small{color:var(--signal);font:750 9px/1 var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.14em}
+.finderDock>header>span{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.finderDock>header strong,.shapeDayHeader strong{color:var(--ink);font-family:var(--morrovia-display,Georgia,serif);font-size:27px;font-weight:500;letter-spacing:-.035em;line-height:1.05}
+.finderDock>header em{flex:0 0 auto;padding:7px 10px;color:var(--accent);background:var(--mist);border:0;border-radius:999px;font:700 9px/1 var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.04em;text-transform:none}
+.finderTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:9px;padding:4px;border:1px solid var(--hairline);border-radius:12px;background:color-mix(in srgb,var(--mist) 46%,#fff);overflow:hidden}
+.finderTabs button{min-height:38px;border:0;border-right:1px solid color-mix(in srgb,var(--hairline) 78%,transparent);border-radius:8px;color:color-mix(in srgb,var(--accent) 72%,var(--morrovia-muted,#7673a4));background:transparent;font:700 11px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0;transition:color .18s,background .18s}
+.finderTabs button:last-child{border-right:0}.finderTabs button:hover:not([aria-pressed="true"]){color:var(--accent);background:rgba(255,255,255,.72)}
+.finderTabs button[aria-pressed="true"],.finderTabActive{color:#fff!important;background:var(--accent)!important;border-color:transparent!important;box-shadow:0 4px 10px rgba(23,16,111,.16)}
+.shapeDayPlan{padding:20px 0 6px}.shapeDayContext{margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid var(--hairline);color:var(--accent);font:750 10px/1 var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.1em}
+.dayTravel{gap:10px;margin:0 0 14px;padding:0 0 14px;border-top:0;border-bottom:1px solid var(--hairline)}.dayTravel>svg{width:17px;height:17px;margin-top:1px}.dayTravel div{gap:3px}.dayTravel small{font-size:8px}.dayTravel strong{font:650 15px/1.25 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.dayTravel span{font:500 12px/1.45 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
+.editingHint{gap:7px;margin:12px 0 0;color:var(--morrovia-muted,#7673a4);font:500 11px/1.45 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}.editingHint svg{width:13px}
+.scheduleHealth{gap:3px;margin:14px 0 4px;padding:10px 0;border:0;border-top:1px solid color-mix(in srgb,#1e7d58 24%,var(--hairline));border-bottom:1px solid color-mix(in srgb,#1e7d58 24%,var(--hairline));border-left:0;background:transparent}.scheduleHealth span{font-size:8px}.scheduleHealth strong{font:650 13px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.scheduleHealth p{color:var(--morrovia-muted,#7673a4);font:500 11px/1.45 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
+.plannerWarning{margin:13px 0 0;padding:9px 11px;font:600 11px/1.45 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+.shapeDayPlan .editableActivities{margin-top:6px}.shapeDayPlan .editableActivities li{grid-template-columns:34px 14px minmax(0,1fr) auto 24px;gap:9px;min-height:62px;padding:15px 0;border-bottom:1px solid var(--hairline);color:var(--ink);font:500 17px/1.35 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.shapeDayPlan .editableActivities li b{color:var(--accent);font:700 12px var(--morrovia-meta,var(--font-geist-mono,monospace))}.activityGrip{width:14px;height:14px;color:color-mix(in srgb,var(--accent) 26%,transparent)}.shapeDayPlan .editableActivities li:hover .activityGrip,.shapeDayPlan .editableActivities li:focus-within .activityGrip{color:var(--signal)}.customActivityInput{padding:5px 6px;border-radius:6px;font:inherit}.yourActivity{padding:3px 5px;border-radius:4px;font-size:6px}.removeActivity{width:24px;height:24px;opacity:.55}.shapeDayPlan .editableActivities li:hover .removeActivity,.shapeDayPlan .editableActivities li:focus-within .removeActivity{opacity:1}.removeActivity svg{width:13px;height:13px}
+.addActivity{gap:8px;margin-top:16px}.addActivity input{height:36px;padding:0 11px;font:500 12px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.addActivity button{gap:5px;min-height:36px;padding:0 12px;font:700 10px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+.notesToSelf{gap:8px;margin-top:16px;padding:11px 12px;border-radius:9px;background:color-mix(in srgb,var(--mist) 62%,#fff)}.notesToSelf strong{font:650 11px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.notesToSelf p{font:500 11px/1.45 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}.notesToSelf input{height:34px;font:500 11px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.notesToSelf form button{min-height:34px;font:700 9px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+.shapeDayPlan .nextDay{margin-top:16px;padding:12px;border:1px solid var(--hairline);border-radius:9px;background:transparent}.shapeDayPlan .nextDay span{font:500 11px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}.shapeDayPlan .nextDay strong{font:650 12px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+
+@media(max-width:680px){
+  .finderDock>header{padding:15px 0 12px}.finderDock>header strong,.shapeDayHeader strong{font-size:24px}.finderDock>header em{padding:6px 9px;font-size:8px}.finderTabs{margin-top:8px}.finderTabs button{min-height:38px;font-size:11px}.shapeDayPlan{padding-top:16px}.shapeDayContext{margin-bottom:13px;padding-bottom:12px;font-size:9px}.dayTravel strong{font-size:14px}.dayTravel span,.editingHint,.scheduleHealth p{font-size:11px}.shapeDayPlan .editableActivities li{grid-template-columns:30px minmax(0,1fr) auto auto!important;min-height:64px;padding:15px 0;font-size:16px}.shapeDayPlan .editableActivities li b{font-size:11px}.addActivity input{font-size:12px}.notesToSelf p{font-size:11px}
 }

@@ -471,6 +471,15 @@ export default function JourneyPage() {
     setHasUnsavedChanges(true);
   }, [customTrip]);
 
+  useEffect(() => {
+    if (!lastPlannerTrip) return;
+    const timer = window.setTimeout(() => {
+      setLastPlannerTrip(null);
+      setUndoMessage("");
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [lastPlannerTrip, undoMessage]);
+
   const handleAttractionSelection = useCallback((stopId: string, title: string, selected: boolean) => {
     updatePlannerTrip((trip) => ({
       ...trip,
@@ -942,9 +951,8 @@ export default function JourneyPage() {
   const renderReviewItem = (item: (typeof reviewRecommendations)[number]) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}>
     <div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div>
     <small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan}</small>
-    <p className={styles.reviewImpact}>{recommendationImpact(item)}</p>
     <div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div>
-    <details className={styles.reviewDetails}><summary>{language === "es" ? "Ver detalles" : "View details"}</summary><p>{item.evidence}</p><small>{item.confidence} {planCopy.confidence}</small></details>
+    <details className={styles.reviewDetails}><summary>{language === "es" ? "Ver detalles" : "View details"}</summary><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><p>{item.evidence}</p><small>{item.confidence} {planCopy.confidence}</small></details>
   </article>;
 
   if (isPlanningPreview && !planHydrated) {
@@ -1043,12 +1051,12 @@ export default function JourneyPage() {
 
       <header className={styles.topbar}>
           <div className={styles.headerRow}>
-          {isPlanningPreview ? <Link href={editTripHref} className={styles.back}>← {planCopy.backToItinerary}</Link> : <Link href="/" className={styles.back}>← Shaun Whiting</Link>}
+          {isPlanningPreview ? <Link href={editTripHref} className={styles.back}>← {language === "es" ? "Volver" : "Back"}</Link> : <Link href="/" className={styles.back}>← Shaun Whiting</Link>}
           <div className={styles.titleLockup}><span>{journey.title}</span><small>{journey.dateRange}</small></div>
           <details className={mobileNav.menu}>
             <summary aria-label={planCopy.menu}><Menu aria-hidden="true" /></summary>
             <div>
-              {isPlanningPreview ? <Link href={editTripHref}>{planCopy.backToItinerary}</Link> : null}
+              {isPlanningPreview ? <Link href={editTripHref}>← {language === "es" ? "Volver" : "Back"}</Link> : null}
               {isPlanningPreview && customTrip ? <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`}>Try the new map view</Link> : null}
               {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`}>Trip prep</Link> : null}
               <Link href="/journey/dashboard">{planCopy.myTrips}</Link>
@@ -1056,6 +1064,7 @@ export default function JourneyPage() {
             </div>
           </details>
           <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="Morrovia account navigation">
+            {isPlanningPreview && isCustomJourney ? <button type="button" className={`${styles.journeyPlayback} ${isPlaying ? styles.playing : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? planCopy.pause : planCopy.play}><span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{isPlaying ? planCopy.pause : (language === "es" ? "Viaje" : "Journey")}</button> : null}
             {isPlanningPreview && customTrip ? <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>New map view</Link> : null}
             {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>Trip prep</Link> : null}
             <Link href="/journey/dashboard" className={styles.myTripsLink}>{planCopy.myTrips}</Link>
@@ -1225,20 +1234,12 @@ export default function JourneyPage() {
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
-      <div className={styles.bottomControls}>
-        {isPlanningPreview && isCustomJourney ? <EasyTTripCopilot surface="map" dayCount={journey.calendar.length} destination={selected.city} /> : null}
-        {isPlanningPreview && isCustomJourney ? <div className={styles.mapModeControl}>
-          <small>{mapMode === "overview" ? planCopy.tripOverview : planCopy.localDetail}</small>
-          <button type="button" onClick={() => setMapMode((mode) => mode === "overview" ? "detail" : "overview")}>
-            {mapMode === "overview" ? `${planCopy.zoomInto} ${selected.city}` : planCopy.viewOverview}
-          </button>
-        </div> : null}
-        <button className={`${styles.playButton} ${isPlaying ? styles.playing : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? planCopy.pause : planCopy.play}>
-          <span>{isPlaying ? "Ⅱ" : "▶"}</span>
-          <strong>{isPlaying ? planCopy.pause : planCopy.play}</strong>
-          <small>{selectedDayIndex + 1} / {journey.calendar.length}</small>
+      {isPlanningPreview && isCustomJourney ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} /></aside> : null}
+      {isPlanningPreview && isCustomJourney ? <div className={styles.mapFocusControl}>
+        <button type="button" onClick={() => setMapMode((mode) => mode === "overview" ? "detail" : "overview")} aria-label={mapMode === "overview" ? `${planCopy.zoomInto} ${selected.city}` : planCopy.viewOverview} title={mapMode === "overview" ? `${planCopy.zoomInto} ${selected.city}` : planCopy.viewOverview}>
+          <MapPin aria-hidden="true" />
         </button>
-      </div>
+      </div> : null}
       {isPlanningPreview && lastPlannerTrip ? <div className={styles.undoToast} role="status"><span>{undoMessage}</span><button type="button" onClick={undoPlannerEdit}>{planCopy.undo}</button></div> : null}
       {exportState === "error" ? <p className={styles.savePlanError}>{exportError || (language === "es" ? "No se pudo preparar el PDF." : "The PDF could not be prepared.")}</p> : null}
       {cloudSaveState === "error" ? <p className={styles.savePlanError}>{language === "es" ? "No se pudo guardar este viaje ahora. Tu plan sigue seguro en este dispositivo." : "Couldn’t save this trip just now. Your plan is still safe on this device."}</p> : null}
