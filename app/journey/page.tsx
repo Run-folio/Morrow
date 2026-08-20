@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, ArrowUpRight, Building2, Castle, Flower2, GripVertical, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Plus, StickyNote, Torus, Trash2, Utensils, Waves, type LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Building2, Castle, Flower2, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, Waves, type LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyCarousel } from "@/components/journey-carousel";
-import { JourneyRestaurantFinder } from "@/components/journey-restaurant-finder";
 import { JourneyLocalFinder } from "@/components/journey-local-finder";
 import { JourneyItineraryAccommodation } from "@/components/journey-itinerary-accommodation";
 import { JourneyItineraryRefinement } from "@/components/journey-itinerary-refinement";
+import { PlanWorkspace } from "@/components/journey-plan-workspace";
 import { MobileTripCompanion } from "@/components/mobile-trip-companion";
 import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
@@ -368,6 +368,7 @@ export default function JourneyPage() {
   const selectedDay = journey.calendar.find((day) => day.id === selectedDayId) ?? journey.calendar[0];
   const selectedDayIndex = journey.calendar.findIndex((day) => day.id === selectedDay.id);
   const selectedPlanItem = customTrip?.planItems.find((item) => item.dayNumber === selectedDayIndex + 1);
+  const selectedTripStop = customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
   const selectedLeg = customTrip?.legs.find((leg) => leg.toStopId === selectedPlanItem?.stopId);
   const transportAlternatives = useMemo(() => {
     if (!customTrip || !selectedLeg) return [];
@@ -573,6 +574,69 @@ export default function JourneyPage() {
     setEditingNote(null);
     setEditingNoteDraft("");
   };
+
+  const renameActivity = useCallback((location: { dayNumber: number; index: number }, title: string) => {
+    updatePlannerTrip((trip) => ({
+      ...trip,
+      brief: {
+        ...trip.brief,
+        customActivities: {
+          ...(trip.brief.customActivities ?? {}),
+          [location.dayNumber]: (trip.brief.customActivities?.[location.dayNumber] ?? []).map((activity) => activity === trip.planItems.find((item) => item.dayNumber === location.dayNumber)?.notes[location.index] ? title : activity),
+        },
+      },
+      planItems: trip.planItems.map((plan) => plan.dayNumber === location.dayNumber ? { ...plan, notes: plan.notes.map((activity, activityIndex) => activityIndex === location.index ? title : activity) } : plan),
+    }));
+  }, [updatePlannerTrip]);
+
+  const removeActivity = useCallback((location: { dayNumber: number; index: number }, title: string) => {
+    updatePlannerTrip((trip) => ({
+      ...trip,
+      brief: {
+        ...trip.brief,
+        customActivities: {
+          ...(trip.brief.customActivities ?? {}),
+          [location.dayNumber]: (trip.brief.customActivities?.[location.dayNumber] ?? []).filter((activity) => activity !== title),
+        },
+      },
+      planItems: trip.planItems.map((plan) => plan.dayNumber === location.dayNumber ? { ...plan, notes: plan.notes.filter((_, activityIndex) => activityIndex !== location.index) } : plan),
+    }));
+  }, [updatePlannerTrip]);
+
+  const removeDayNote = useCallback((location: { dayNumber: number; index: number }) => {
+    updatePlannerTrip((trip) => ({
+      ...trip,
+      brief: {
+        ...trip.brief,
+        dayNotes: {
+          ...(trip.brief.dayNotes ?? {}),
+          [location.dayNumber]: (trip.brief.dayNotes?.[location.dayNumber] ?? []).filter((_, noteIndex) => noteIndex !== location.index),
+        },
+      },
+    }), "Note removed");
+  }, [updatePlannerTrip]);
+
+  const startActivityDrag = useCallback((location: { dayNumber: number; index: number }) => {
+    setDraggedActivity(location);
+    setDraggedDayId(null);
+  }, []);
+
+  const dropActivity = useCallback((event: DragEvent<HTMLLIElement>, target: { dayNumber: number; index: number }) => {
+    event.preventDefault();
+    if (draggedActivity) moveActivity(draggedActivity, target);
+    setDraggedActivity(null);
+  }, [draggedActivity, moveActivity]);
+
+  const endActivityDrag = useCallback(() => setDraggedActivity(null), []);
+
+  const selectRelativeDay = useCallback((direction: "previous" | "next") => {
+    const index = direction === "previous" ? selectedDayIndex - 1 : selectedDayIndex + 1;
+    const day = journey.calendar[index];
+    if (!day) return;
+    setIsPlaying(false);
+    setSelectedDayId(day.id);
+    setSelectedId(day.stopId);
+  }, [journey.calendar, selectedDayIndex]);
 
   const addPin = () => {
     const title = pinDraft.trim();
@@ -1020,6 +1084,12 @@ export default function JourneyPage() {
               </div>
               <div className={styles.destinationTitle}><h1>{selected.city}</h1><span aria-hidden="true"><DestinationIcon /></span></div>
               <p className={styles.description}>{selected.description}</p>
+              {isPlanningPreview && selectedTripStop ? <dl className={styles.destinationFacts} aria-label={`${selected.city} stay details`}>
+                <div><dt>Arrival</dt><dd>{selectedTripStop.arrivalDate ? customDate(selectedTripStop.arrivalDate, 0) : selectedDay.date}</dd></div>
+                <div><dt>Nights</dt><dd>{selectedTripStop.nights ?? 0}</dd></div>
+                <div><dt>Check out</dt><dd>{selectedTripStop.departureDate ? customDate(selectedTripStop.departureDate, 0) : "To confirm"}</dd></div>
+              </dl> : null}
+              {isPlanningPreview && selectedDay.travel ? <div className={styles.destinationTransfer}><small>{selectedDay.travel.mode === "flight" ? planCopy.travelConnection : planCopy.localTransfer}</small><strong>{selectedDay.travel.from ? `${selectedDay.travel.from} → ${selectedDay.city}` : selectedDay.travel.detail}</strong><span>{selectedDay.travel.duration} · {selectedDay.travel.detail}</span></div> : null}
               {!isCustomJourney ? <div className={styles.highlights}>
                 {selected.highlights.map((highlight, index) => <span key={highlight}><b>0{index + 1}</b>{highlight}</span>)}
               </div> : null}
@@ -1046,9 +1116,7 @@ export default function JourneyPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: .32, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className={styles.itineraryEyebrow}>{selectedDay.date} <span /> {selectedDay.label}</p>
-          <h2>{selectedDay.title}</h2>
-          <p className={styles.itineraryLocation}>{selectedDay.city}</p>
+          {!isPlanningPreview || !customTrip ? <><p className={styles.itineraryEyebrow}>{selectedDay.date} <span /> {selectedDay.label}</p><h2>{selectedDay.title}</h2><p className={styles.itineraryLocation}>{selectedDay.city}</p></> : null}
           {isPlanningPreview && customTrip ? <section className={styles.reviewPanel} aria-label={healthCopy.title}>
             <div className={styles.reviewHeader}><div><small>{healthCopy.title}</small><strong>{health?.isReady ? healthCopy.ready : health?.blockingCount ? `${health.blockingCount} ${healthCopy.blocking}` : `${health?.cautionCount ?? 0} ${healthCopy.cautions}`}</strong></div><span>{planCopy.checks}</span></div>
             {reviewRecommendations.length ? <div className={styles.reviewList}>{reviewRecommendations.map((item) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}><div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div><p>{item.evidence}</p><small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan} · {item.confidence} {planCopy.confidence}</small><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div></article>)}</div> : <p className={styles.reviewEmpty}>{planCopy.coverage}</p>}
@@ -1062,7 +1130,6 @@ export default function JourneyPage() {
             setShapeDayTab("stay");
           }} /> : null}
           {isPlanningPreview && customTrip ? <JourneyItineraryRefinement trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={(stopId, title, selected) => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, selectedPlaces: { ...trip.brief.selectedPlaces, [stopId]: selected ? [...(trip.brief.selectedPlaces[stopId] ?? []), title] : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title) } } }), selected ? "Place added to trip" : "Place removed from trip")} onExploreMap={() => setMapMode("detail")} /> : null}
-          {selectedDay.travel ? <div className={styles.dayTravel}><Plane /><div><small>{selectedDay.travel.mode === "flight" ? planCopy.travelConnection : planCopy.localTransfer}</small><strong>{selectedDay.travel.from ? `${selectedDay.travel.from} → ${selectedDay.city}` : selectedDay.travel.detail}</strong><span>{selectedDay.travel.duration} · {selectedDay.travel.detail}</span></div></div> : null}
           {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <section className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
             <div><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong><span>{language === "es" ? "Estimaciones de puerta a puerta; verifica horarios y precios antes de reservar." : "Door-to-door planning estimates; verify live schedules and prices before booking."}</span></div>
             <div className={styles.transportChoiceList}>{transportAlternatives.map((option) => {
@@ -1070,63 +1137,6 @@ export default function JourneyPage() {
               return <button type="button" key={option.id} className={selectedOption ? styles.transportChoiceSelected : ""} onClick={() => chooseTransportAlternative(option)}><span><b>{option.label}</b>{option.recommended ? <em>{language === "es" ? "RECOMENDADO" : "RECOMMENDED"}</em> : null}</span><small>{option.estimatedMinutes ? `${Math.floor(option.estimatedMinutes / 60)}h ${option.estimatedMinutes % 60}m` : (language === "es" ? "Tiempo por verificar" : "Time to verify")}{option.timeImpactMinutes && option.timeImpactMinutes > 0 ? ` · +${Math.floor(option.timeImpactMinutes / 60)}h ${option.timeImpactMinutes % 60}m` : ""} · {option.costImpact}</small><p>{option.tradeoff}</p>{option.recommendationReason ? <i>{option.recommendationReason}</i> : null}</button>;
             })}</div>
           </section> : null}
-          {isPlanningPreview && customTrip && selectedPlanItem ? <>
-            <p className={styles.editingHint}><GripVertical /> {planCopy.editingHint}</p>
-            {plannerWarning ? <p className={styles.plannerWarning}>{plannerWarning}</p> : null}
-            <section className={styles.scheduleHealth} aria-label={planCopy.scheduleHealth}>
-              <div><span>{planCopy.scheduleHealth}</span><strong>{selectedScheduleSignals.length ? planCopy.needsCheck : planCopy.comfortable}</strong></div>
-              <p>{selectedScheduleSignals.length ? selectedScheduleSignals.join(" ") : planCopy.dayClear}</p>
-            </section>
-            <div className={styles.mobileDayMove} aria-label={planCopy.moveDay}>
-              <span>{planCopy.moveDay}</span>
-              <button type="button" disabled={selectedDayIndex === 0} onClick={() => moveDay(selectedDay.id, journey.calendar[selectedDayIndex - 1].id)}><ArrowUp /> {planCopy.earlier}</button>
-              <button type="button" disabled={selectedDayIndex >= journey.calendar.length - 1} onClick={() => moveDay(selectedDay.id, journey.calendar[selectedDayIndex + 1].id)}><ArrowDown /> {planCopy.later}</button>
-            </div>
-            <ol className={styles.editableActivities}>
-              {selectedActivities.map((item, index) => {
-                const isCustom = (customTrip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []).includes(item);
-                return <li key={`${item}-${index}`} draggable
-                onDragStart={() => { setDraggedActivity({ dayNumber: selectedPlanItem.dayNumber, index }); setDraggedDayId(null); }}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => { event.preventDefault(); if (draggedActivity) moveActivity(draggedActivity, { dayNumber: selectedPlanItem.dayNumber, index }); setDraggedActivity(null); }}
-                onDragEnd={() => setDraggedActivity(null)}>
-                <b>{String(index + 1).padStart(2, "0")}</b><GripVertical className={styles.activityGrip} />{isCustom ? <input className={styles.customActivityInput} value={item} onChange={(event) => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [selectedPlanItem.dayNumber]: (trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []).map((activity) => activity === item ? event.target.value : activity) } }, planItems: trip.planItems.map((plan) => plan.dayNumber === selectedPlanItem.dayNumber ? { ...plan, notes: plan.notes.map((activity, activityIndex) => activityIndex === index ? event.target.value : activity) } : plan) }))} aria-label={planCopy.editActivity} /> : <span>{item}</span>}{isCustom ? <small className={styles.yourActivity}>{planCopy.yours}</small> : null}
-                <span className={styles.mobileActivityMove}><button type="button" disabled={index === 0} onClick={() => moveActivity({ dayNumber: selectedPlanItem.dayNumber, index }, { dayNumber: selectedPlanItem.dayNumber, index: index - 1 })} aria-label={`Move ${item} earlier`}><ArrowUp /></button><button type="button" disabled={index === selectedActivities.length - 1} onClick={() => moveActivity({ dayNumber: selectedPlanItem.dayNumber, index }, { dayNumber: selectedPlanItem.dayNumber, index: index + 2 })} aria-label={`Move ${item} later`}><ArrowDown /></button></span>
-                <button type="button" className={styles.removeActivity} onClick={() => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [selectedPlanItem.dayNumber]: (trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []).filter((activity) => activity !== item) } }, planItems: trip.planItems.map((plan) => plan.dayNumber === selectedPlanItem.dayNumber ? { ...plan, notes: plan.notes.filter((_, activityIndex) => activityIndex !== index) } : plan) }))} aria-label={`Remove ${item}`}><Trash2 /></button>
-              </li>;
-              })}
-            </ol>
-            <form className={styles.addActivity} onSubmit={(event) => { event.preventDefault(); addActivity(); }}>
-              <input value={activityDraft} onChange={(event) => setActivityDraft(event.target.value)} placeholder={planCopy.addActivity} aria-label={planCopy.addActivity} />
-              <button type="submit" disabled={!activityDraft.trim()}><Plus /> {planCopy.add}</button>
-            </form>
-            <section className={styles.notesToSelf} aria-label={planCopy.notes}>
-              <div><StickyNote /><span><small>{planCopy.notes}</small><strong>{planCopy.dayOnly}</strong></span></div>
-              {selectedDayNotes.map((note, index) => editingNote?.dayNumber === selectedPlanItem.dayNumber && editingNote.index === index ? <form key={`${note}-${index}`} className={styles.editingNoteForm} onSubmit={(event) => { event.preventDefault(); saveNoteEdit(); }}><input value={editingNoteDraft} onChange={(event) => setEditingNoteDraft(event.target.value)} aria-label={planCopy.editNote} autoFocus /><button type="submit" disabled={!editingNoteDraft.trim()}>{planCopy.save}</button><button type="button" onClick={() => setEditingNote(null)}>{planCopy.cancel}</button></form> : <p key={`${note}-${index}`}><button type="button" className={styles.editNoteButton} onClick={() => beginNoteEdit(selectedPlanItem.dayNumber, index, note)}>{note}</button><button type="button" onClick={() => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, dayNotes: { ...(trip.brief.dayNotes ?? {}), [selectedPlanItem.dayNumber]: (trip.brief.dayNotes?.[selectedPlanItem.dayNumber] ?? []).filter((_, noteIndex) => noteIndex !== index) } } }), "Note removed")} aria-label={`${language === "es" ? "Eliminar nota" : "Remove note"} ${note}`}><Trash2 /></button></p>)}
-              <form onSubmit={(event) => { event.preventDefault(); addDayNote(); }}><input value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} placeholder={planCopy.addNote} /><button type="submit" disabled={!noteDraft.trim()}>{planCopy.addNoteButton}</button></form>
-            </section>
-          </> : <ol>
-            {selectedDay.items.map((item, index) => <li key={item}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span></li>)}
-            {selectedRestaurant ? <li className={styles.savedRestaurant}>
-              <b>{String(selectedDay.items.length + 1).padStart(2, "0")}</b>
-              <a href={selectedRestaurant.restaurant.mapsUrl} target="_blank" rel="noreferrer">
-                <span className={styles.savedRestaurantIcon}><Utensils /></span>
-                <span className={styles.savedRestaurantCopy}>
-                  <small>{selectedRestaurant.meal ?? planCopy.meal} · {planCopy.savedRestaurant}</small>
-                  <strong>{selectedRestaurant.restaurant.name}</strong>
-                  <em>{selectedRestaurant.restaurant.area}</em>
-                </span>
-                <ArrowUpRight />
-              </a>
-            </li> : null}
-          </ol>}
-          {selectedDayIndex < journey.calendar.length - 1 ? <button type="button" className={styles.nextDay} onClick={() => {
-            const nextDay = journey.calendar[selectedDayIndex + 1];
-            setIsPlaying(false);
-            setSelectedDayId(nextDay.id);
-            setSelectedId(nextDay.stopId);
-          }}><small>{planCopy.next}</small><span>{journey.calendar[selectedDayIndex + 1].date}</span><strong>{journey.calendar[selectedDayIndex + 1].city} →</strong></button> : null}
-          {!isCustomJourney ? <JourneyRestaurantFinder stopId={selected.id} city={selected.city} dayId={selectedDay.id} onSelectRestaurant={handleRestaurantSelect} /> : null}
         </motion.div>
       </aside>
 
@@ -1152,14 +1162,37 @@ export default function JourneyPage() {
       </aside> : null}
 
       {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={styles.finderDock} aria-label={planCopy.findPlaces}>
-        <header className={styles.shapeDayHeader}><small>{language === "es" ? "PLANIFICACIÓN DEL DÍA" : "DAY PLANNING"}</small><strong>Shape the day</strong><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
+        <header className={styles.shapeDayHeader}><small>{language === "es" ? "PLANIFICACIÓN DEL DÍA" : "DAY PLANNING"}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div></header>
-        {shapeDayTab === "plan" ? <section className={styles.shapeDayPlan} aria-label="Selected day plan">
-          <p className={styles.shapeDayContext}>{selectedDay.date} · {selectedDay.city}</p>
-          {selectedPlanItem ? <ol>{selectedActivities.slice(0, 4).map((item, index) => <li key={`${item}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span></li>)}</ol> : <p>{language === "es" ? "Selecciona un día para empezar." : "Select a day to start shaping it."}</p>}
-          <small>{language === "es" ? "Puedes editar, reordenar y añadir actividades en el plan del día." : "Edit, reorder and add activities in the day plan."}</small>
-        </section> : null}
+        {shapeDayTab === "plan" ? <PlanWorkspace
+          context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedDay.travel, savedRestaurant: selectedRestaurant }}
+          schedule={{ signals: selectedScheduleSignals, warning: plannerWarning }}
+          activity={{
+            items: selectedActivities,
+            customItems: customTrip?.brief.customActivities?.[selectedPlanItem?.dayNumber ?? -1] ?? [],
+            draft: activityDraft,
+            dragged: draggedActivity,
+            onDraftChange: setActivityDraft,
+            onAdd: addActivity,
+            onRename: renameActivity,
+            onRemove: removeActivity,
+            onMove: moveActivity,
+            onDragStart: startActivityDrag,
+            onDragOver: (event) => event.preventDefault(),
+            onDrop: dropActivity,
+            onDragEnd: endActivityDrag,
+          }}
+          notes={{ items: selectedDayNotes, draft: noteDraft, editing: editingNote, editingDraft: editingNoteDraft, onDraftChange: setNoteDraft, onAdd: addDayNote, onBeginEdit: (location, note) => beginNoteEdit(location.dayNumber, location.index, note), onEditingDraftChange: setEditingNoteDraft, onSaveEdit: saveNoteEdit, onCancelEdit: () => setEditingNote(null), onRemove: removeDayNote }}
+          navigation={{
+            previousDay: selectedDayIndex > 0 ? journey.calendar[selectedDayIndex - 1] : undefined,
+            nextDay: selectedDayIndex < journey.calendar.length - 1 ? journey.calendar[selectedDayIndex + 1] : undefined,
+            onMoveDay: (direction) => moveDay(selectedDay.id, journey.calendar[direction === "earlier" ? selectedDayIndex - 1 : selectedDayIndex + 1]?.id ?? selectedDay.id),
+            onPreviousDay: () => selectRelativeDay("previous"),
+            onNextDay: () => selectRelativeDay("next"),
+          }}
+          copy={planCopy}
+        /> : null}
         {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={(stopId, title, selected) => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, selectedPlaces: { ...trip.brief.selectedPlaces, [stopId]: selected ? [...(trip.brief.selectedPlaces[stopId] ?? []), title] : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title) } } }), selected ? "Place added to trip" : "Place removed from trip")} onExploreMap={() => setMapMode("detail")} /></div> : null}
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}

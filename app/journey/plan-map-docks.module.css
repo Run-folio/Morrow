@@ -31,3 +31,37 @@
 
   .plan :global([class*="pinDock"]) { bottom:92px; left:50%; transform:translateX(-50%); }
 }
+
+/* Desktop shell composition for the live planner. The map remains untouched;
+   these overrides only release the legacy left finder/elongated side rails so
+   the existing Shape-the-day surface can sit over the lower map centre. */
+@media (min-width: 981px) {
+  .plan :global([class*="itineraryWithFinder"]) {
+    bottom:auto;
+    height:auto;
+    max-height:calc(100svh - 244px);
+  }
+
+  .plan :global([class*="destinationWithPinDock"]) {
+    bottom:auto;
+    height:auto;
+    max-height:calc(100svh - 244px);
+  }
+
+  .plan :global([class*="finderDock"]) {
+    right:auto;
+    bottom:24px;
+    left:50%;
+    width:min(680px, calc(100vw - 680px));
+    height:min(430px, calc(100svh - 178px));
+    max-height:calc(100svh - 178px);
+    transform:translateX(-50%);
+  }
+
+  .plan :global([class*="pinDock"]) {
+    bottom:calc(min(430px, 100svh - 178px) + 38px);
+    left:50%;
+    width:min(300px, calc(100vw - 680px));
+    transform:translateX(-50%);
+  }
+}
