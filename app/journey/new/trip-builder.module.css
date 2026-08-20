@@ -444,3 +444,8 @@
 /* A light connector lets the numbered stops read as one journey. */
 .routeStopName>b{position:relative}.routeTimeRow:not(:last-child) .routeStopName>b:after{content:"";position:absolute;top:29px;left:50%;height:42px;border-left:1px solid #d9d7ec;transform:translateX(-50%)}
 @media(max-width:700px){.mobileTimingWarning{display:flex;align-items:flex-start;gap:9px;padding:13px;border:1px solid #f1dba2;border-radius:8px;background:#fff9e9;color:var(--ink)}.mobileTimingWarning>svg{flex:none;width:18px;color:#d99226}.mobileTimingWarning h3{margin:0 0 4px;font-size:13px}.mobileTimingWarning p{margin:0;font-size:12px;line-height:1.45}}
+
+/* Non-blocking timing cautions share the Journey warning semantic. */
+.allocationComplete,.timingSummary strong{color:var(--morrovia-success,#078b67)}
+.allocationIncomplete,.usableTimeWarning,.specificTimingWarning>svg,.mobileTimingWarning>svg{color:var(--morrovia-warning,#a56f10)}
+@media(max-width:700px){.mobileTimingWarning{background:var(--morrovia-warning-soft,#fff9e9)}}

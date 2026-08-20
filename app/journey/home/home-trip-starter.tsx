@@ -15,7 +15,7 @@ type Capture = { rawBrief: string; parserVersion: string; durationDays?: number;
 
 const copy = {
   en: {
-    briefLabel: "TELL US ABOUT YOUR TRIP", briefPlaceholder: "Thinking Japan and South Korea for about two weeks. Tokyo and the Japanese Alps, then Seoul and Busan. We like good food and some time outdoors.", continue: "Plan my trip", checking: "Understanding your trip…", travelStyle: "YOUR TRAVEL STYLE", edit: "Edit", routes: "Explore multi-country routes",
+    briefLabel: "TELL US ABOUT YOUR TRIP", briefPlaceholder: "Describe where you want to go, how long you have, and what matters to you. Add any must-see places, dates, interests or travel preferences.", continue: "Plan my trip", checking: "Understanding your trip…", travelStyle: "YOUR TRAVEL STYLE", edit: "Edit", routes: "Explore multi-country routes",
   },
   es: {
     briefLabel: "CUÉNTANOS SOBRE TU VIAJE", briefPlaceholder: "Estoy pensando en Japón y Corea del Sur durante unas dos semanas. Tokio y los Alpes japoneses, después Seúl y Busan. Nos gusta comer bien y pasar tiempo al aire libre.", continue: "Planificar mi viaje", checking: "Entendiendo tu viaje…", travelStyle: "TU ESTILO DE VIAJE", edit: "Editar", routes: "Explorar rutas multicountry",

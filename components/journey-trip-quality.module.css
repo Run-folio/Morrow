@@ -15,8 +15,8 @@
 .list article > svg { width: 17px; height: 17px; margin-top: 1px; }
 .complete { border-color: color-mix(in srgb, #1e7d58 30%, var(--morrovia-line, #d9d8ee)) !important; background: #fcfffd !important; }
 .complete > svg { color: #1e7d58; }
-.attention { border-color: color-mix(in srgb, #9a6500 30%, var(--morrovia-line, #d9d8ee)) !important; background: #fffdf7 !important; }
-.attention > svg { color: #9a6500; }
+.attention { border-color: color-mix(in srgb, var(--morrovia-warning, #a56f10) 30%, var(--morrovia-line, #d9d8ee)) !important; background: var(--morrovia-warning-soft, #fff9e9) !important; }
+.attention > svg { color: var(--morrovia-warning, #a56f10); }
 .missing { border-color: color-mix(in srgb, var(--morrovia-signal, #f42b7a) 32%, var(--morrovia-line, #d9d8ee)) !important; background: var(--morrovia-danger-soft, #fff1f7) !important; }
 .missing > svg { color: var(--morrovia-signal, #f42b7a); }
 .list strong { color: var(--morrovia-ink, #17106f); font: 700 12px/1.25 var(--morrovia-ui, Geist, Inter, Arial, sans-serif); }

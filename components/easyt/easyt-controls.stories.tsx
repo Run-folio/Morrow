@@ -10,7 +10,7 @@ import {
 } from "./easyt-controls";
 
 const meta = {
-  title: "EasyT/Controls",
+  title: "Components/Controls",
   component: EasyTButton,
   args: { children: "Button" },
   parameters: { layout: "padded" },
@@ -31,6 +31,17 @@ export const Buttons: Story = {
       <EasyTButton disabled>Disabled</EasyTButton>
       <EasyTButton icon={Plus} iconOnly aria-label="Add trip">Add trip</EasyTButton>
       <EasyTLinkButton href="#" variant="primary" size="large">New trip</EasyTLinkButton>
+    </div>
+  ),
+};
+
+export const PrimaryAndSecondary: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: 14, maxWidth: 520 }}>
+      <EasyTButton icon={ArrowRight}>Build my route</EasyTButton>
+      <EasyTButton variant="secondary">Save for later</EasyTButton>
+      <EasyTLinkButton href="#" variant="quiet">Read how it works</EasyTLinkButton>
+      <EasyTButton variant="danger">Remove this stop</EasyTButton>
     </div>
   ),
 };
@@ -81,9 +92,9 @@ export const Segmented: Story = {
 };
 
 export const NarrowScreen: Story = {
-  parameters: { viewport: { defaultViewport: "mobile1" } },
+  parameters: { viewport: { defaultViewport: "morrovia320" } },
   render: () => (
-    <div style={{ display: "grid", gap: 12 }}>
+    <div style={{ display: "grid", gap: 12, maxWidth: 320 }}>
       <EasyTButton fullWidth>Continue</EasyTButton>
       <EasyTField label="A very long field label" placeholder="Controls stay usable on narrow screens" />
     </div>

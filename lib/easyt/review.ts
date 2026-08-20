@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
+import { findDestinationIntegrityIssues } from "./planner.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -17,6 +18,24 @@ const recommendation = (
  */
 export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const results: TripRecommendation[] = [];
+  const destinationIntegrityIssues = findDestinationIntegrityIssues(trip.stops.map((stop) => ({
+    id: stop.id,
+    country: stop.country,
+    coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [number, number] : undefined,
+  })));
+  destinationIntegrityIssues.forEach((issue) => {
+    const stop = trip.stops.find((item) => item.id === issue.stopId);
+    const neighbour = trip.stops.find((item) => item.id === issue.neighbouringStopId);
+    results.push(recommendation(trip, {
+      rule: "destination-identity",
+      severity: "critical",
+      message: `Check ${stop?.name ?? "this destination"} before trusting the route.`,
+      evidence: `${stop?.name ?? "This stop"} and ${neighbour?.name ?? "the previous stop"} are both set in ${issue.country}, but their saved coordinates are ${issue.distanceKm.toLocaleString()} km apart. Confirm the intended place before using travel estimates.`,
+      affectedDays: trip.planItems.filter((item) => item.stopId === issue.stopId).map((item) => item.dayNumber),
+      confidence: "medium",
+      proposedChange: null,
+    }, results.length));
+  });
   const dayStopSequence = [...trip.planItems]
     .sort((a, b) => a.dayNumber - b.dayNumber)
     .reduce<string[]>((sequence, item) => sequence.at(-1) === item.stopId ? sequence : [...sequence, item.stopId], []);
@@ -255,7 +274,7 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const openIssues = current.filter((item) => item.status === "open");
   const blockingCount = openIssues.filter((item) => item.severity === "critical").length;
   const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
-  const hasUnresolvedTransport = openIssues.some((item) => item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
+  const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
   return { issues: current, blockingCount, cautionCount, isReady: blockingCount === 0 && !hasUnresolvedTransport };
 }
 

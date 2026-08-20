@@ -45,7 +45,7 @@
 .decisionsHeading button{color:var(--morrovia-ink-soft,#4f4a92)}
 .decisionsHeading button:hover{color:var(--morrovia-signal,#f42b7a)}
 .decisionList article{padding:12px 0}
-.decisionList article>svg{color:#a56f10}
+.decisionList article>svg{color:var(--morrovia-warning,#a56f10)}
 .decisionList article.critical>svg{color:var(--morrovia-danger,#a91f55)}
 .decisionList a{color:var(--morrovia-ink,#17106f)}
 .daySheet{border-radius:var(--morrovia-radius,14px);box-shadow:0 16px 38px rgba(23,16,111,.14)}

@@ -31,10 +31,10 @@ import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-
 /* ---------------------------------------------------------------- data */
 
 export type Place = PlannerPlace;
-export type Stop = { id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
+export type Stop = { id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; startDate: string; endDate: string; locks: TripScheduleLocks; summary: string };
 type CapturedLocation = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent?: "place" | "landmark"; locality?: string };
-type LocationChoice = { name: string; country: string; coordinates: [number, number]; kind?: string; locality?: string };
+type LocationChoice = { name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates: [number, number]; kind?: string; locality?: string };
 
 // TODO: replace with the live discovery API response.
 const CATALOG: Record<string, Place[]> = {
@@ -393,7 +393,7 @@ export default function TripBuilder() {
       setOrigin(saved.brief.origin);
       setTripBrief(saved.brief.mustDo);
       setOriginCoordinates(saved.brief.originCoordinates);
-      setStops(saved.stops.map(({ id, name, country, longitude, latitude }) => ({ id, name, country, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
+      setStops(saved.stops.map(({ id, name, country, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
       setStartDate(saved.startDate);
       setEndDate(saved.endDate);
       setPicks(saved.brief.selectedPlaces);
@@ -457,9 +457,11 @@ export default function TripBuilder() {
             // Let the builder render immediately. These requests enrich the
             // route after arrival instead of holding the homepage transition.
             void (async () => {
+              const preferredCountry = draftStops[0]?.country ?? locationMentions.find((mention) => mention.country)?.country;
               const selections = await Promise.all(locationMentions.map(async (mention) => {
                 try {
-                  const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1`);
+                  const country = mention.country ?? preferredCountry;
+                  const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`);
                   const payload = await response.json() as { candidates?: LocationChoice[] };
                   return { mention, choices: payload.candidates ?? [] };
                 } catch { return { mention, choices: [] }; }
@@ -472,7 +474,7 @@ export default function TripBuilder() {
                 const chosen = choices[0] ?? (mention.coordinates && mention.country ? { name: mention.canonicalName, country: mention.country, coordinates: mention.coordinates, kind: mention.kind, locality: mention.locality } : undefined);
                 if (!chosen) continue;
                 if (mention.role === "origin") { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
-                else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
+                else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, countryCode: chosen.countryCode, region: chosen.region, providerId: chosen.providerId, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
               }
               setLocationChoices(uncertain);
               setResolvingLocations(false);
@@ -775,13 +777,15 @@ export default function TripBuilder() {
     if (stops.some((s) => s.name.toLowerCase() === value.toLowerCase())) return setStopError(`${value} is already in your route.`);
     setStopError(ui.checking);
     try {
-      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(value)}`);
-      const payload = await response.json() as { result?: { name?: string; country?: string; coordinates?: [number, number] } | null };
+      const routeCountry = stops.length && stops.every((stop) => stop.country === stops[0].country) ? stops[0].country : undefined;
+      const nearby = stops.at(-1)?.coordinates;
+      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
+      const payload = await response.json() as { result?: { name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number] } | null };
       if (!payload.result?.coordinates || !payload.result.country) return setStopError(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
       const resolvedName = payload.result.name?.split(",")[0]?.trim() || value;
       const id = `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
       rememberStructuralChange("add_stop", 1);
-      setStops((current) => [...current, { id, name: resolvedName, country: payload.result!.country!, coordinates: payload.result!.coordinates }]);
+      setStops((current) => [...current, { id, name: resolvedName, country: payload.result!.country!, countryCode: payload.result!.countryCode, region: payload.result!.region, providerId: payload.result!.providerId, coordinates: payload.result!.coordinates }]);
       setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
       setStopInput(""); setStopError("");
     } catch {
@@ -1095,7 +1099,7 @@ export default function TripBuilder() {
   return (
     <div className={`${styles.shellWide} ${mobilePolish.builder}`}>
       {resolvingLocations ? <div className={styles.locationResolution} role="status">Checking your places…</div> : null}
-      {locationChoices.length ? <div className={styles.locationOverlay} role="dialog" aria-modal="true" aria-label="Confirm locations"><section className={styles.locationDialog}><p>ONE QUICK CHECK</p><h2>Which place did you mean?</h2><span>We only ask when a place name could point to more than one location.</span>{locationChoices.map(({ mention, choices }) => <div className={styles.locationQuestion} key={`${mention.role}-${mention.order}`}><strong>{mention.sourceText}</strong><div>{choices.map((choice) => <button type="button" key={`${choice.name}-${choice.country}`} onClick={() => { if (mention.role === "origin") { setOrigin(choice.name); setOriginCoordinates(choice.coordinates); } else setStops((current) => [...current, { id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: choice.name, country: choice.country, coordinates: choice.coordinates, intent: mention.intent, locality: choice.locality }]); setLocationChoices((current) => current.filter((item) => item.mention !== mention)); }}>{choice.name}, {choice.country}</button>)}</div></div>)}<button type="button" className={styles.locationSkip} onClick={() => setLocationChoices([])}>I’ll add these myself</button></section></div> : null}
+      {locationChoices.length ? <div className={styles.locationOverlay} role="dialog" aria-modal="true" aria-label="Confirm locations"><section className={styles.locationDialog}><p>ONE QUICK CHECK</p><h2>Which place did you mean?</h2><span>We only ask when a place name could point to more than one location.</span>{locationChoices.map(({ mention, choices }) => <div className={styles.locationQuestion} key={`${mention.role}-${mention.order}`}><strong>{mention.sourceText}</strong><div>{choices.map((choice) => <button type="button" key={`${choice.name}-${choice.country}`} onClick={() => { if (mention.role === "origin") { setOrigin(choice.name); setOriginCoordinates(choice.coordinates); } else setStops((current) => [...current, { id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: choice.name, country: choice.country, countryCode: choice.countryCode, region: choice.region, providerId: choice.providerId, coordinates: choice.coordinates, intent: mention.intent, locality: choice.locality }]); setLocationChoices((current) => current.filter((item) => item.mention !== mention)); }}>{choice.name}, {choice.country}</button>)}</div></div>)}<button type="button" className={styles.locationSkip} onClick={() => setLocationChoices([])}>I’ll add these myself</button></section></div> : null}
       <nav className={styles.steps} aria-label="Trip brief progress">
         {stepLabels.map((label, i) => {
           return (

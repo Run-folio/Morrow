@@ -20,6 +20,9 @@ export type PlannerStop = {
   id: string;
   name: string;
   country: string;
+  countryCode?: string;
+  region?: string;
+  providerId?: string;
   coordinates?: [number, number];
 };
 
@@ -29,6 +32,15 @@ export type EstimatedLeg = {
   durationMinutes: number | null;
   label: string;
   note: string;
+  /** Identity certainty is separate from the transport-duration estimate. */
+  confidence: "high" | "medium" | "unconfirmed";
+};
+
+export type DestinationIntegrityIssue = {
+  stopId: string;
+  neighbouringStopId: string;
+  distanceKm: number;
+  country: string;
 };
 
 export type DecisionAlternative = {
@@ -145,30 +157,56 @@ export function haversineKm(a?: [number, number], b?: [number, number]) {
   return Math.round(6371 * 2 * Math.atan2(Math.sqrt(q), Math.sqrt(1 - q)));
 }
 
+/**
+ * A declared domestic route that jumps thousands of kilometres is almost
+ * always a bad geocode, not a normal domestic flight. This deliberately does
+ * not judge international legs, preserving valid long-haul trips.
+ */
+export function findDestinationIntegrityIssues(stops: Array<Pick<PlannerStop, "id" | "country" | "coordinates">>) {
+  const issues: DestinationIntegrityIssue[] = [];
+  for (let index = 1; index < stops.length; index += 1) {
+    const previous = stops[index - 1];
+    const current = stops[index];
+    const distanceKm = haversineKm(previous.coordinates, current.coordinates);
+    if (!distanceKm || previous.country.trim().toLocaleLowerCase() !== current.country.trim().toLocaleLowerCase() || distanceKm < 3000) continue;
+    issues.push({ stopId: current.id, neighbouringStopId: previous.id, distanceKm, country: current.country });
+  }
+  return issues;
+}
+
 /** Conservative door-to-door estimate; tells people to verify real services. */
 export function estimateLeg(from: PlannerStop | { name: string; coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg {
   const distanceKm = haversineKm(from.coordinates, to.coordinates);
   const sameCountry = "country" in from && from.country.toLowerCase() === to.country.toLowerCase();
   const connectionKey = `${from.name.toLowerCase().trim()}|${to.name.toLowerCase().trim()}`;
   const known = knownConnections[connectionKey];
+  const suspiciousIdentity = sameCountry && distanceKm !== null && distanceKm >= 3000;
+  if (suspiciousIdentity) {
+    return {
+      mode: "flight", distanceKm, durationMinutes: null, label: `${from.name} → ${to.name}`,
+      note: `Check ${to.name} before trusting this route: both stops are set in ${to.country}, but their coordinates are ${distanceKm.toLocaleString()} km apart.`,
+      confidence: "unconfirmed",
+    };
+  }
   if (known) {
     return {
       ...known,
       distanceKm,
       label: `${from.name} → ${to.name}`,
+      confidence: "high",
     };
   }
   if (distanceKm === null) {
-    return { mode: sameCountry ? "road" : "flight", distanceKm: null, durationMinutes: null, label: `${from.name} → ${to.name}`, note: "Confirm the best connection before booking." };
+    return { mode: sameCountry ? "road" : "flight", distanceKm: null, durationMinutes: null, label: `${from.name} → ${to.name}`, note: "Confirm the best connection before booking.", confidence: "unconfirmed" };
   }
   if (distanceKm <= 45) {
-    return { mode: "road", distanceKm, durationMinutes: Math.max(35, Math.round(25 + distanceKm * 1.15)), label: `${from.name} → ${to.name}`, note: "Local transfer estimate; verify the route from your accommodation." };
+    return { mode: "road", distanceKm, durationMinutes: Math.max(35, Math.round(25 + distanceKm * 1.15)), label: `${from.name} → ${to.name}`, note: "Local transfer estimate; verify the route from your accommodation.", confidence: "medium" };
   }
   if (sameCountry && distanceKm <= 700) {
     const mode = distanceKm <= 180 ? "road" : "train";
-    return { mode, distanceKm, durationMinutes: Math.round((mode === "train" ? 55 : 48) + (distanceKm / (mode === "train" ? 105 : 62)) * 60), label: `${from.name} → ${to.name}`, note: "A planning estimate; compare rail and road schedules before booking." };
+    return { mode, distanceKm, durationMinutes: Math.round((mode === "train" ? 55 : 48) + (distanceKm / (mode === "train" ? 105 : 62)) * 60), label: `${from.name} → ${to.name}`, note: "A planning estimate; compare rail and road schedules before booking.", confidence: "medium" };
   }
-  return { mode: "flight", distanceKm, durationMinutes: Math.round(180 + (distanceKm / 760) * 60), label: `${from.name} → ${to.name}`, note: "Door-to-door flight estimate, including airport time. Verify flight schedules before booking." };
+  return { mode: "flight", distanceKm, durationMinutes: Math.round(180 + (distanceKm / 760) * 60), label: `${from.name} → ${to.name}`, note: "Door-to-door flight estimate, including airport time. Verify flight schedules before booking.", confidence: "medium" };
 }
 
 /**

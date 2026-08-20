@@ -29,7 +29,7 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
   const [liveInventory, setLiveInventory] = useState(false);
   const reportedSaveRef = useRef("");
   const storageKey = `journey:local-${kind}:v3`;
-  const label = kind === "restaurant" ? "Taste finder" : "Stay finder";
+  const label = kind === "restaurant" ? "Restaurant finder" : "Stay finder";
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
   const isReady = kind === "restaurant" ? Boolean(meal && pace && mood) : Boolean(stayStyle);
   const longitude = coordinates[0];
@@ -122,8 +122,8 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
     } catch { /* The in-memory finder state is still cleared. */ }
   };
 
-  return <section className={styles.restaurantFinder} aria-label={`${label} for ${city}`}>
-    <header><span><Icon /></span><div><small>{label}</small><strong>{city}</strong></div></header>
+  return <section className={`${styles.restaurantFinder} ${kind === "stay" ? styles.finderStay : styles.finderEat}`} aria-label={`${label} for ${city}`}>
+    <header><span><Icon /></span><div><small>{label} · {city}</small><strong>{loading ? "Finding nearby places…" : `${places.length} mapped ${kind === "stay" ? "stays" : "restaurants"}`}</strong></div></header>
     <p className={styles.restaurantContext}><b>{kind === "restaurant" ? "A short list, shaped for today" : liveInventory ? "Available stays for your dates" : "Choose a base for this part of the trip"}</b><span>{kind === "stay" ? liveInventory ? `These properties have a matching room product for ${staySearch?.checkIn} to ${staySearch?.checkOut}. Prices and rooms can change until you complete your booking.` : "Mapped stays are useful starting points. Check room availability and price for your dates before booking." : "Named mapped venues are ranked by distance, your travel profile and the moment you choose. Confirm opening hours before you go."}</span></p>
     {loading ? <p className={styles.restaurantLocalNote}>Checking actual local venues…</p> : null}
     {!loading && !places.length ? <p className={styles.restaurantLocalNote}>{searchUnavailable ? "Live venue search is temporarily unavailable. Open Maps to search around today’s location instead." : "No mapped venues came back for this area. Open Maps to search around the day’s location instead."}</p> : null}

@@ -20,6 +20,10 @@
   --morrovia-focus-ring: rgba(244, 43, 122, .24);
   --morrovia-danger: #a91f55;
   --morrovia-danger-soft: #fff1f7;
+  --morrovia-success: #078b67;
+  --morrovia-tint: #fff1f7;
+  --morrovia-warning: #a56f10;
+  --morrovia-warning-soft: #fff9e9;
   --morrovia-disabled: #efedf5;
   --morrovia-layer-header: 80;
   --morrovia-layer-dock: 90;

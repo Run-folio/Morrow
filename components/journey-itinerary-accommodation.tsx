@@ -4,22 +4,15 @@ import { ArrowUpRight, BedDouble, Map } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
-import type { EasyTTrip, TripBooking, TripStop } from "@/lib/easyt/trip";
+import { overnightAccommodationStops, stayBookingForStop } from "@/lib/easyt/accommodation";
+import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import styles from "./journey-itinerary-accommodation.module.css";
 
 const dateLabel = (value: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(`${value}T00:00:00`));
 
-function stayBookingForStop(trip: EasyTTrip, stop: TripStop): TripBooking | undefined {
-  return (trip.brief.bookings ?? []).find((booking) => booking.type === "stay" && (
-    booking.id === `stay-${stop.id}`
-    || (booking.date !== null && booking.date >= (stop.arrivalDate ?? "") && booking.date < (stop.departureDate ?? ""))
-    || booking.title.toLowerCase().includes(stop.name.toLowerCase())
-  ));
-}
-
 export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap, compact = false }: { trip: EasyTTrip; currentStopId: string; onExploreMap: (stop: TripStop) => void; compact?: boolean }) {
   const [actions, setActions] = useState<BookingReadinessAction[]>([]);
-  const overnightStops = useMemo(() => trip.stops.filter((stop) => (stop.nights ?? 0) > 0 && stop.arrivalDate && stop.departureDate), [trip.stops]);
+  const overnightStops = useMemo(() => overnightAccommodationStops(trip), [trip]);
   const sortedCount = overnightStops.filter((stop) => Boolean(stayBookingForStop(trip, stop))).length;
 
   useEffect(() => {

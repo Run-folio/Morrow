@@ -8,6 +8,7 @@ import EasyTNavigation from "../easyt-navigation";
 import { JourneyTripQuality } from "@/components/journey-trip-quality";
 import { JourneyTripReadiness } from "@/components/journey-trip-readiness";
 import { JourneyBookingReadiness } from "@/components/journey-booking-readiness";
+import { JourneyTripPrepAccommodation } from "@/components/journey-trip-prep-accommodation";
 import { loadActiveTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -38,7 +39,7 @@ export default function TripPrepClient() {
     </section>
     <section className={styles.summary}><article><CalendarDays /><small>DATES</small><strong>{trip.startDate} → {trip.endDate}</strong></article><article><Plane /><small>DEPARTURE</small><strong>{trip.brief.origin || "Add departure"}</strong></article><article><Route /><small>ROUTE</small><strong>{trip.stops.length} stops · {new Set(trip.stops.map((stop) => stop.country)).size} countries</strong></article></section>
     <section className={styles.content}>
-      <div className={styles.main}><JourneyTripQuality origin={trip.brief.origin} originCoordinates={trip.brief.originCoordinates} startDate={trip.startDate} endDate={trip.endDate} stops={trip.stops} mentions={mentions} language={language} /><JourneyBookingReadiness trip={trip} language={language} /><JourneyTripReadiness countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} language={language} hideConnectivity /></div>
+      <div className={styles.main}><JourneyTripQuality origin={trip.brief.origin} originCoordinates={trip.brief.originCoordinates} startDate={trip.startDate} endDate={trip.endDate} stops={trip.stops} mentions={mentions} language={language} /><JourneyTripPrepAccommodation trip={trip} /><JourneyBookingReadiness trip={trip} language={language} excludeCategories={["accommodation"]} /><JourneyTripReadiness countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} language={language} hideConnectivity /></div>
       <aside className={styles.side}><p>MAKE IT USEFUL</p><h2>Plan first. Prepare once the route is real.</h2><span>Entry guidance, connectivity and the practical decisions belong here—not in the route builder.</span><Link href={builderHref}>Edit the route <MapPin /></Link><Link href={mapHref}>Open map plan <Map /></Link></aside>
     </section>
   </main>;

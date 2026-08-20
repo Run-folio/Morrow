@@ -26,13 +26,15 @@
 
   .plan :global([class*="pinDock"]) {
     top:172px;
-    right:calc(clamp(12px, 1.25vw, 16px) + min(254px, calc(100vw - 704px)) + 20px);
+    right:calc(var(--planner-shell-gutter, 16px) + min(254px, calc(100vw - 704px)) + 20px);
     bottom:auto;
     left:auto;
     width:min(210px, calc(100vw - 704px));
     max-height:calc(100svh - 196px);
     transform:none;
   }
+
+  .plan :global([class*="pinDockExpanded"]) { width:min(320px, calc(100vw - 704px)); }
 
   .plan :global([class*="pinDock"]) summary { min-height:40px;padding:7px 9px;gap:6px; }
   .plan :global([class*="pinDock"]) summary > svg { width:15px;height:15px; }
@@ -99,11 +101,11 @@
     margin:10px 0 0;
     overflow-y:auto;
     overscroll-behavior:contain;
-    padding:0 2px calc(var(--morrovia-mobile-dock-offset, 82px) + 10px) 0;
+    padding:0 2px 18px 0;
   }
 
   .plan :global([class*="mobileTripStatus"]) { display:block; }
-  .plan :global([class*="mobileTripStatus"]) { position:absolute;top:21px;right:0;z-index:1; }
+  .plan :global([class*="mobileTripStatus"]) { position:static;justify-self:start;z-index:1; }
   .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
   .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--font-geist-mono,monospace); }
@@ -123,6 +125,8 @@
     transform:none;
   }
 
+  .plan :global([class*="pinDockExpanded"]) { width:min(320px, calc(100vw - 24px)); }
+
   .plan :global([class*="pinDock"]) summary { min-height:38px;padding:6px 8px;gap:6px; }
   .plan :global([class*="pinDock"]) summary > svg { width:14px;height:14px; }
   .plan :global([class*="pinDock"]) summary small { display:none; }
@@ -140,6 +144,7 @@
   .plan :global([class*="finderDock"]) > header em { font-size:8px;white-space:nowrap; }
   .plan :global([class*="finderTabs"]) { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;margin-top:5px; }
   .plan :global([class*="finderTabs"]) button { min-width:0;min-height:36px;padding:0 4px;border-radius:8px;font:700 10px var(--font-geist-sans,Geist,Inter,sans-serif);white-space:nowrap; }
+  .plan :global([class*="mobileTripStatus"]) { margin-top:1px; }
   .plan :global([class*="shapeDayPlan"]) { padding-top:0; }
   .plan :global([class*="shapeDayContext"]) { margin:8px 0;font-size:8px; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:28px minmax(0,1fr) auto auto !important;gap:7px;padding:13px 0; }
@@ -149,6 +154,13 @@
   .plan :global([class*="shapeDayPlan"]) :global([class*="scheduleHealth"]) { margin-top:9px;padding:10px; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="scheduleHealth"]) p { font-size:9px;line-height:1.45; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="notesToSelf"]) { margin-bottom:8px; }
+}
+
+@media (max-width:360px) {
+  .plan :global([class*="finderDock"]) { padding-right:11px;padding-left:11px; }
+  .plan :global([class*="finderTabs"]) { gap:3px;padding:3px; }
+  .plan :global([class*="finderTabs"]) button { min-height:34px;padding:0 2px;font-size:9px; }
+  .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:24px minmax(0,1fr) auto auto !important;gap:5px;padding:12px 0;font-size:13px; }
 }
 
 @media (max-width:520px) {

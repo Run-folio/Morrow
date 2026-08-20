@@ -14,6 +14,7 @@
     "test:trip-readiness": "node --experimental-strip-types --test tests/travel-readiness.test.ts",
     "test:trip-quality": "node --experimental-strip-types --test tests/trip-quality.test.ts",
     "test:route-intelligence": "node --experimental-strip-types --test tests/route-intelligence.test.ts",
+    "test:destination-integrity": "node --experimental-strip-types --test tests/destination-integrity.test.ts",
     "test:trip-replan": "node --experimental-strip-types --test tests/trip-replan.test.ts",
     "test:trip-cascade": "node --experimental-strip-types --test tests/cascade.test.ts",
     "test:trip-health": "node --experimental-strip-types --test tests/trip-health.test.ts",

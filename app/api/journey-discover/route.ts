@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
 
 type WikiPage = {
   pageid?: number;
@@ -100,6 +101,7 @@ export async function GET(request: NextRequest) {
           page.title
           && page.extract
           && coordinate
+          && isWithinDestinationRadius([longitude, latitude], [coordinate.lon ?? Number.NaN, coordinate.lat ?? Number.NaN])
           && !irrelevant.test(page.title)
           && !nonVisitPage.test(text)
           && strongPlaceSignal.test(text)

@@ -77,6 +77,9 @@ export type TripStop = {
   order: number;
   name: string;
   country: string;
+  countryCode?: string;
+  region?: string;
+  providerId?: string;
   latitude: number | null;
   longitude: number | null;
   arrivalDate: string | null;
@@ -260,7 +263,7 @@ export type BuilderDay = {
 export type BuilderTripInput = {
   id: string;
   origin: string;
-  stops: Array<{ id: string; name: string; country: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
+  stops: Array<{ id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
   picks: Record<string, string[]>;
@@ -296,6 +299,9 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       id: stop.id,
       name: stop.name,
       country: stop.country,
+      countryCode: stop.countryCode,
+      region: stop.region,
+      providerId: stop.providerId,
       order,
       latitude: stop.coordinates?.[1] ?? null,
       longitude: stop.coordinates?.[0] ?? null,
@@ -373,7 +379,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
         distanceKm: estimate.distanceKm,
         durationMinutes: estimate.durationMinutes,
         provider: estimate.note,
-        routeMetadata: { planningEstimate: true, label: estimate.label },
+        routeMetadata: { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence },
       };
     }),
     planItems,

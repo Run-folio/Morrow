@@ -11,7 +11,7 @@ const iconFor = (category: BookingReadinessAction["category"]) => ({
   accommodation: BedDouble, flight: Plane, activity: Landmark, "car-rental": CarFront, connectivity: Smartphone, "ground-transport": TrainFront,
 })[category];
 
-export function JourneyBookingReadiness({ trip, language = "en" }: { trip: EasyTTrip; language?: "en" | "es" }) {
+export function JourneyBookingReadiness({ trip, language = "en", excludeCategories = [] }: { trip: EasyTTrip; language?: "en" | "es"; excludeCategories?: BookingReadinessAction["category"][] }) {
   const [actions, setActions] = useState<BookingReadinessAction[]>([]);
   useEffect(() => {
     let active = true;
@@ -22,16 +22,17 @@ export function JourneyBookingReadiness({ trip, language = "en" }: { trip: EasyT
     return () => { active = false; };
   }, [trip]);
 
-  if (!actions.length) return null;
+  const visibleActions = actions.filter((action) => !excludeCategories.includes(action.category));
+  if (!visibleActions.length) return null;
   const labels = language === "es"
     ? { eyebrow: "LISTO PARA RESERVAR", title: "Completa el viaje, decisión a decisión.", intro: "Estas acciones utilizan las fechas y lugares estables de tu plan. Los precios y la disponibilidad se confirman siempre con el proveedor.", partner: "Enlace de socio", disclosure: "Algunos enlaces son enlaces de afiliado. Morrovia puede recibir una comisión sin coste adicional para ti." }
     : { eyebrow: "BOOKING READINESS", title: "Complete the trip, one decision at a time.", intro: "These actions use stable dates and places from your plan. Prices and availability are always confirmed by the provider.", partner: "Partner link", disclosure: "Some links are affiliate links. Morrovia may earn a commission at no extra cost to you." };
   return <section className={styles.panel} aria-labelledby="booking-readiness-title">
     <header><div><p>{labels.eyebrow}</p><h2 id="booking-readiness-title">{labels.title}</h2><span>{labels.intro}</span></div><BedDouble aria-hidden="true" /></header>
-    <div className={styles.groups}>{actions.map((action) => {
+    <div className={styles.groups}>{visibleActions.map((action) => {
       const Icon = iconFor(action.category);
       return <article key={action.id}><Icon aria-hidden="true" /><div><small>{action.category.replace("-", " ")}{action.affiliate ? ` · ${labels.partner}` : ""}</small><h3>{action.title}</h3><p>{action.detail}</p><a href={action.href} target="_blank" rel={action.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: action.category, provider: action.provider, trip_id: action.tripId, stop_id: action.stopId }); }}>{action.cta}<ArrowUpRight /></a></div></article>;
     })}</div>
-    {actions.some((action) => action.affiliate) ? <p className={styles.disclosure}>{labels.disclosure}</p> : null}
+    {visibleActions.some((action) => action.affiliate) ? <p className={styles.disclosure}>{labels.disclosure}</p> : null}
   </section>;
 }

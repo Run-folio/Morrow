@@ -38,3 +38,11 @@ test("treats a persisted transport alternative as a decision while retaining the
   trip.legs[0].routeMetadata.decisionOption = "fastest";
   assert.equal(reviewTrip(trip).some((item) => item.rule === "missing-transport-decision"), false);
 });
+
+test("blocks route readiness when a declared domestic stop is geographically implausible", () => {
+  const trip = baseTrip();
+  trip.stops[0] = { ...trip.stops[0], name: "Tokyo", country: "Japan", latitude: 35.6895, longitude: 139.6917 };
+  trip.stops[1] = { ...trip.stops[1], name: "Nikko", country: "Japan", latitude: -16.2902, longitude: -66.1568 };
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "destination-identity" && item.severity === "critical"), true);
+  assert.equal(tripHealth(trip).isReady, false);
+});

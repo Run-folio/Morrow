@@ -540,9 +540,9 @@ export function JourneyGlobe({ stops, legs, selectedId, selectedDayId, activeIte
       </g>
     </svg>
     <div className="journey-map__controls" aria-label="Map controls">
-      <button type="button" onClick={() => zoomAt(viewRef.current.scale * 1.45)} aria-label="Zoom in map"><Plus size={17} /></button>
-      <button type="button" onClick={() => zoomAt(viewRef.current.scale / 1.45)} aria-label="Zoom out map"><Minus size={17} /></button>
-      <button type="button" onClick={() => animateTo(variant === "planner" ? routeView : targetView)} aria-label={variant === "planner" ? "Fit all route destinations" : `Reset map to ${selected.city}`}><Scan size={16} /></button>
+      <button type="button" onClick={() => zoomAt(viewRef.current.scale * 1.45)} aria-label="Zoom in map" title="Zoom in"><Plus size={17} /></button>
+      <button type="button" onClick={() => zoomAt(viewRef.current.scale / 1.45)} aria-label="Zoom out map" title="Zoom out"><Minus size={17} /></button>
+      <button type="button" onClick={() => animateTo(variant === "planner" ? routeView : targetView)} aria-label={variant === "planner" ? "Fit all route destinations" : `Reset map to ${selected.city}`} title={variant === "planner" ? "Fit destination" : `Reset map to ${selected.city}`}><Scan size={16} /></button>
     </div>
     <div ref={zoomReadoutRef} className="journey-map__zoom-readout">{Math.round(targetView.scale * 10) / 10}×</div>
     {selectedPlace ? <aside className={`journey-map__place-detail ${selectedPlace.image ? "" : "is-text-only"}`} aria-live="polite">
