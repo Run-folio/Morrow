@@ -4,24 +4,23 @@ import { ArrowUpRight, BedDouble, Map } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
-import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
+import type { EasyTTrip, TripBooking, TripStop } from "@/lib/easyt/trip";
 import styles from "./journey-itinerary-accommodation.module.css";
 
 const dateLabel = (value: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(`${value}T00:00:00`));
 
-function stayIsSorted(trip: EasyTTrip, stop: TripStop) {
-  return (trip.brief.bookings ?? []).some((booking) => booking.type === "stay" && (
-    (booking.date !== null && booking.date >= (stop.arrivalDate ?? "") && booking.date < (stop.departureDate ?? ""))
+function stayBookingForStop(trip: EasyTTrip, stop: TripStop): TripBooking | undefined {
+  return (trip.brief.bookings ?? []).find((booking) => booking.type === "stay" && (
+    booking.id === `stay-${stop.id}`
+    || (booking.date !== null && booking.date >= (stop.arrivalDate ?? "") && booking.date < (stop.departureDate ?? ""))
     || booking.title.toLowerCase().includes(stop.name.toLowerCase())
   ));
 }
 
-export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap }: { trip: EasyTTrip; currentStopId: string; onExploreMap: () => void }) {
+export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap }: { trip: EasyTTrip; currentStopId: string; onExploreMap: (stop: TripStop) => void }) {
   const [actions, setActions] = useState<BookingReadinessAction[]>([]);
   const overnightStops = useMemo(() => trip.stops.filter((stop) => (stop.nights ?? 0) > 0 && stop.arrivalDate && stop.departureDate), [trip.stops]);
-  const sortedCount = overnightStops.filter((stop) => stayIsSorted(trip, stop)).length;
-  const currentStop = overnightStops.find((stop) => stop.id === currentStopId);
-  const currentAction = actions.find((action) => action.category === "accommodation" && action.stopId === currentStopId);
+  const sortedCount = overnightStops.filter((stop) => Boolean(stayBookingForStop(trip, stop))).length;
 
   useEffect(() => {
     let active = true;
@@ -40,18 +39,25 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
   }, [currentStopId, overnightStops.length, sortedCount, trip.id]);
 
   if (!overnightStops.length) return null;
-  const currentSorted = currentStop ? stayIsSorted(trip, currentStop) : false;
-
   return <section className={styles.panel} aria-labelledby="itinerary-accommodation-title">
     <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
-    <details className={styles.stayList}>
-      <summary>See stays by destination</summary>
-      <ul>{overnightStops.map((stop) => <li key={stop.id}><span><b>{stop.name}</b><small>{dateLabel(stop.arrivalDate!)}–{dateLabel(stop.departureDate!)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"}</small></span><em>{stayIsSorted(trip, stop) ? "Sorted" : "Needs a stay"}</em></li>)}</ul>
-    </details>
-    {currentStop ? <div className={styles.currentStay}>
-      <p>{currentStop.name} · {dateLabel(currentStop.arrivalDate!)}–{dateLabel(currentStop.departureDate!)} · {currentStop.nights} {currentStop.nights === 1 ? "night" : "nights"}</p>
-      {currentSorted ? <strong>Accommodation sorted</strong> : <><strong>Find a stay for this stop</strong><span>{trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"} · availability and final prices are confirmed by Booking.com.</span><div>{currentAction ? <a href={currentAction.href} target="_blank" rel={currentAction.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: currentAction.provider, trip_id: trip.id, stop_id: currentStop.id })}>Find a stay <ArrowUpRight /></a> : <span className={styles.loading}>Preparing stay search…</span>}<button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: currentStop.id }); onExploreMap(); }}>Explore on map <Map /></button></div></>}
-    </div> : null}
+    <div className={styles.stayList}>
+      {overnightStops.map((stop) => {
+        const booking = stayBookingForStop(trip, stop);
+        const action = actions.find((item) => item.category === "accommodation" && item.stopId === stop.id);
+        const sorted = Boolean(booking);
+        return <article key={stop.id} className={styles.stay}>
+          <div className={styles.stayHeader}>
+            <div><strong>{stop.name}</strong><small>{dateLabel(stop.arrivalDate!)}–{dateLabel(stop.departureDate!)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"} · {trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</small></div>
+            <em className={sorted ? styles.sorted : styles.needsStay}>{sorted ? "Stay sorted" : "Needs a stay"}</em>
+          </div>
+          {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></button></div></> : <div className={styles.stayActions}>
+            <button type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></button>
+            {action ? <a href={action.href} target="_blank" rel={action.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id })}>Check availability <ArrowUpRight /></a> : null}
+          </div>}
+        </article>;
+      })}
+    </div>
     {actions.some((action) => action.affiliate) ? <small className={styles.disclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
   </section>;
 }

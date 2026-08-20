@@ -26,6 +26,7 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
+import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 
 /* ---------------------------------------------------------------- data */
 
@@ -103,6 +104,22 @@ const OPEN_DAYS = [
 /* ------------------------------------------------------------- helpers */
 
 const pad = (n: number) => String(n).padStart(2, "0");
+function travelStyleLabels(profile: TravelProfile, language: EasyTLanguage) {
+  const labels = language === "es"
+    ? {
+        pace: { slow: "Ritmo tranquilo", balanced: "Ritmo equilibrado", full: "Días completos" },
+        priority: { food: "Gastronomía", nature: "Naturaleza", culture: "Cultura", mix: "Un poco de todo" },
+        hotelMoves: { few: "Pocas mudanzas de hotel", some: "Algunos cambios de base", open: "Abierto a moverse" },
+        budget: { value: "Buena relación calidad-precio", mid: "Gama media", high: "Lo mejor disponible" },
+      }
+    : {
+        pace: { slow: "Slow pace", balanced: "Balanced pace", full: "Full days" },
+        priority: { food: "Food", nature: "Nature", culture: "Culture", mix: "A mix" },
+        hotelMoves: { few: "Fewer hotel moves", some: "A few hotel moves", open: "Open to moving" },
+        budget: { value: "Good value", mid: "Mid-range", high: "Best available" },
+      };
+  return [labels.pace[profile.pace], labels.priority[profile.priority], labels.hotelMoves[profile.hotelMoves], labels.budget[profile.budget]];
+}
 const half = (n: number) => String(n).replace(".5", "½");
 const durationLabel = (minutes: number | null) => minutes === null ? "Transfer to confirm" : `~${Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)}h ` : ""}${minutes % 60 ? `${minutes % 60}m` : ""}`.trim();
 const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -300,7 +317,7 @@ export default function TripBuilder() {
     addOrigin: "Añade tu ciudad o aeropuerto de salida.", addStop: "Añade al menos una parada para continuar", typePlace: "Escribe primero una ciudad, región o lugar.", checking: "Comprobando este lugar…", unavailable: "No pudimos comprobar este lugar ahora. Inténtalo de nuevo.",
     verifyOrigin: "No pudimos verificar ese punto de partida.", originUnavailable: "No pudimos comprobar ese punto de partida ahora.", startDate: "Fecha de inicio", endDate: "Fecha de fin", pickDate: "Elige una fecha", typeIt: "O escríbela",
     day: "día", days: "días", split: "Elige exactamente cómo repartir tu tiempo entre destinos en el siguiente paso.", addStops: "Añade paradas y se repartirán entre ellas.", selected: "seleccionados", finding: "Buscando lugares y actividades reales cerca de", noSuggestions: "Aún no hay sugerencias fiables. Comprueba la ubicación o inténtalo de nuevo.",
-    tripBriefLabel: "TU IDEA DE VIAJE", tripBriefTitle: "¿Qué quieres hacer realidad?", tripBriefHelp: "Cuéntanos la ocasión, las fechas fijas, los lugares, el presupuesto o cualquier contexto que ayude a dar forma a este viaje.", tripBriefPlaceholder: "Por ejemplo: Tenemos tres semanas en Japón, una maratón en Tokio y queremos terminar en Hong Kong sin prisas.", tripBriefHint: "Opcional, pero útil cuando el viaje tiene mucho que encajar.", tripBriefApply: "Usar esta idea",
+    tripBriefLabel: "TU IDEA DE VIAJE", tripBriefTitle: "Cuéntanos sobre tu viaje.", tripBriefHelp: "Escríbelo como se lo contarías a un compañero de viaje. Extraeremos lo que importa.", tripBriefPlaceholder: "Estoy pensando en Japón y Corea del Sur durante unas dos semanas. Tokio y los Alpes japoneses, después Seúl y Busan. Nos gusta comer bien y pasar tiempo al aire libre.", tripBriefHint: "Puedes ajustar todo lo que extraigamos.", tripBriefApply: "Continuar",
     yourTime: "TU TIEMPO", shapeDays: "Organiza tus días", allocation: "Hemos sugerido una distribución inicial según tus lugares. Mueve un control y Morrovia reajustará el resto.", total: "días en total", suggested: "sugeridos", budget: "Presupuesto", budgetHelp: "Se usa para elegir dónde dormir y comer durante la investigación.", value: "Buena relación calidad-precio", valueNote: "Cómodo, sin excesos.", mid: "Gama media", midNote: "Algunos caprichos.", high: "Sin límite", highNote: "Lo mejor disponible.", route: "RUTA HASTA AHORA", departure: "Salida", routeEmpty: "Añade una parada y la ruta aparecerá aquí.", daysBudget: "PRESUPUESTO DE DÍAS", full: "COMPLETO", room: "DÍAS DISPONIBLES", overBy: "EXCESO DE", available: "días disponibles", committed: "comprometidos", open: "libres", overHint: "Hay más lugares seleccionados de los que permiten las fechas. Quita un lugar, elimina una parada o añade días.", selectedPlaces: "LUGARES SELECCIONADOS", nothingSelected: "Aún no hay nada seleccionado. El paso 03 concreta el viaje.", removePlace: "Quitar lugar", placesSelected: "lugares seleccionados", daysTotal: "días en total"
   } : {
     previousMonth: "Previous month", nextMonth: "Next month", draft: "Draft · editable", editBrief: "Edit brief", dayByDay: "Day by day", source: "Source ↗", previousDay: "← Previous day", nextDay: "Next day →", savingChanges: "Saving changes…", savedDevice: "Saved on this device", exploreMap: "Explore the map first, then save it to an account when you are ready.", openMap: "Open map view →", addOrigin: "Add the city or airport you're leaving from.", addStop: "Add at least one stop to continue", typePlace: "Type a city, region or landmark first.", checking: "Checking this place…", unavailable: "We couldn't check that place just now. Please try again.", verifyOrigin: "We couldn't verify that starting point.", originUnavailable: "We couldn't check that starting point just now.", startDate: "Start date", endDate: "End date", pickDate: "Pick a date", typeIt: "Or type it", day: "day", days: "days", split: "Choose exactly how your time is split between destinations in the next step.", addStops: "Add stops and this splits across them.", selected: "selected", finding: "Finding real places, landmarks and activities around", noSuggestions: "No reliable suggestions loaded yet. Check the location or try again shortly.", tripBriefLabel: "YOUR TRIP BRIEF", tripBriefTitle: "What are you trying to make happen?", tripBriefHelp: "Share the occasion, fixed dates, places, budget or any context that helps shape this trip.", tripBriefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", tripBriefHint: "Optional, but useful when the trip has a lot to hold together.", tripBriefApply: "Use this brief", yourTime: "YOUR TIME", shapeDays: "Shape the days", allocation: "We've suggested a starting split from your selected places. Move a slider and Morrovia rebalances the rest.", total: "days total", suggested: "suggested", budget: "Budget band", budgetHelp: "Used to pick where to sleep and eat during research.", value: "Good value", valueNote: "Comfortable, not precious.", mid: "Mid-range", midNote: "Some splurges.", high: "No ceiling", highNote: "Best available.", route: "ROUTE SO FAR", departure: "Departure", routeEmpty: "Add a stop and the route builds here as you go.", daysBudget: "DAYS BUDGET", full: "FULL", room: "ROOM LEFT", overBy: "OVER BY", available: "days available", committed: "committed", open: "open", overHint: "More is selected than the dates allow. Remove a place, drop a stop, or add days.", selectedPlaces: "SELECTED PLACES", nothingSelected: "Nothing selected yet. Step 03 is where the trip gets specific.", removePlace: "Remove place", placesSelected: "places selected", daysTotal: "days total"
@@ -356,8 +373,10 @@ export default function TripBuilder() {
 
   const [budget, setBudget] = useState<"value" | "mid" | "high">("value");
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(defaultTravelProfile);
+  const [hasSavedTravelProfile, setHasSavedTravelProfile] = useState(false);
   const [showBudgetOverride, setShowBudgetOverride] = useState(false);
   const [hasPromptContext, setHasPromptContext] = useState(false);
+  const [arrivedFromHomepage, setArrivedFromHomepage] = useState(false);
   const [buildRequested, setBuildRequested] = useState(false);
 
   const pickerRef = useDismiss(Boolean(picker), () => setPicker(null));
@@ -383,6 +402,7 @@ export default function TripBuilder() {
       setTripIntent(tripIntentForTrip(saved));
       setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
       setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
+      setHasPromptContext(true);
     };
     const hydrate = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -410,7 +430,7 @@ export default function TripBuilder() {
       } else {
         try {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
-          if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); }
+          if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
         } catch { setBudget(defaultTravelProfile.budget); }
         let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
@@ -418,6 +438,7 @@ export default function TripBuilder() {
         }
         if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length) {
           setHasPromptContext(true);
+          setArrivedFromHomepage(true);
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
           // `destination` is retained for drafts created before prompt-first
@@ -469,7 +490,7 @@ export default function TripBuilder() {
           // wins when present so the plan reflects the traveller, not the card.
           try {
             const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
-            if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); } else setBudget(seed.budget);
+            if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); } else setBudget(seed.budget);
             } catch { setBudget(seed.budget); }
           }
         }
@@ -1100,7 +1121,7 @@ export default function TripBuilder() {
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
-              <section className={styles.intakeReview} hidden aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
+              {hasPromptContext && <section className={styles.intakeReview} aria-live="polite" aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
                 <div><span>{language === "es" ? "RESUMEN EXTRAÍDO" : "EXTRACTED SUMMARY"}</span><h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2><p>{language === "es" ? "Edita un detalle para rellenar un hueco o corregir una suposición." : "Edit a detail to fill a gap or correct an assumption."}</p></div>
                 <dl>
                   <div><dt><Plane />{language === "es" ? "Salida" : "Leaving from"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Necesita confirmación" : "Needs confirmation")}</dd><button type="button" onClick={() => openSummaryEditor("origin")} aria-label={language === "es" ? "Editar salida" : "Edit departure"}><Pencil /></button></div>
@@ -1108,15 +1129,23 @@ export default function TripBuilder() {
                   <div><dt><Sparkles />{language === "es" ? "Imprescindibles" : "Fixed item"}</dt><dd>{effectiveIntent.hardConstraints.fixedCommitments.length ? effectiveIntent.hardConstraints.fixedCommitments.map((item) => item.date ? `${item.label}, ${fmtLong(item.date)}` : item.label).join(" · ") : (language === "es" ? "Nada fijo todavía" : "Nothing fixed yet")}</dd><button type="button" onClick={() => { setShowTripDetails(true); openSummaryEditor("constraints"); }} aria-label={language === "es" ? "Editar condiciones" : "Edit constraints"}><Pencil /></button></div>
                   {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt><Sparkles />{language === "es" ? "Revisar" : "Check"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
                 </dl>
-              </section>
-              {!hasPromptContext && <div className={`${styles.card} ${styles.tripBriefCard}`}>
-                <span className={styles.cardLabel}><Sparkles /> {language === "es" ? "TU IDEA DE VIAJE" : "YOUR TRIP BRIEF"}</span>
-                <h2>{tripBrief.trim() ? (language === "es" ? "Esto es lo que estás planeando." : "This is what you’re planning.") : ui.tripBriefTitle}</h2>
-                <p>{language === "es" ? "Escribe como se lo contarías a un compañero de viaje. Extraeremos lo que importa." : "Write it as you would tell a travel companion. We’ll pull out what matters."}</p>
-                <textarea className={styles.tripBriefTextarea} aria-label={ui.tripBriefLabel} value={tripBrief} maxLength={600} onChange={(event) => setTripBrief(event.target.value)} placeholder={ui.tripBriefPlaceholder} />
-                <button type="button" className={styles.ghost} onClick={() => void applyTripBrief()} disabled={!tripBrief.trim()}>{ui.tripBriefApply}</button>
+              </section>}
+              {!hasPromptContext && hydrated && <div className={`${styles.card} ${styles.tripBriefCard}`}>
+                <span className={styles.cardLabel}><Sparkles /> {ui.tripBriefLabel}</span>
+                <h2>{language === "es" ? "Cuéntanos sobre tu viaje." : "Tell us about your trip."}</h2>
+                <p>{language === "es" ? "Escríbelo como se lo contarías a un compañero de viaje. Extraeremos lo que importa." : "Write it as you would tell a travel companion. We’ll pull out what matters."}</p>
+                <div className={styles.tripBriefInput}>
+                  <textarea className={styles.tripBriefTextarea} aria-label={ui.tripBriefLabel} value={tripBrief} maxLength={600} onChange={(event) => setTripBrief(event.target.value)} placeholder={language === "es" ? "Estoy pensando en Japón y Corea del Sur durante unas dos semanas. Tokio y los Alpes japoneses, después Seúl y Busan. Nos gusta comer bien y pasar tiempo al aire libre." : "Thinking Japan and South Korea for about two weeks. Tokyo and the Japanese Alps, then Seoul and Busan. We like good food and some time outdoors."} />
+                  <VoiceTripBrief className={styles.voiceInput} language={language} onTranscript={(transcript) => setTripBrief((current) => appendVoiceTranscript(current, transcript))} />
+                </div>
+                <button type="button" className={styles.ghost} onClick={() => void applyTripBrief()} disabled={!tripBrief.trim()}>{language === "es" ? "Continuar" : "Continue"}</button>
                 <small className={styles.hint}>{language === "es" ? "Puedes ajustar todo lo que extraigamos." : "You can adjust anything we extract."}</small>
               </div>}
+              {hasSavedTravelProfile && !arrivedFromHomepage && <section className={styles.travelStyle} aria-label={language === "es" ? "Tu estilo de viaje" : "Your travel style"}>
+                <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
+                <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
+              </section>}
+              {hasPromptContext && <>
               <div id="builder-origin" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
                 <span className={styles.cardLabel}><Plane /> {copy.startFrom}</span>
                 <input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}
@@ -1193,6 +1222,7 @@ export default function TripBuilder() {
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </>}
               </section>
+              </>}
 
               {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
                 <div>
@@ -1364,7 +1394,7 @@ export default function TripBuilder() {
         </aside>}
       </div>
 
-      <div className={styles.wizardFoot}>
+      {(step !== 0 || hasPromptContext) && <div className={styles.wizardFoot}>
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
           <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : ui.savedDevice}</small>
@@ -1379,6 +1409,7 @@ export default function TripBuilder() {
           </button>
         </div>
       </div>
+      }
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
+import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
@@ -89,7 +90,10 @@ export default function HomeTripStarter() {
     <div className={`${styles.startBuilderBrief} ${fidelity.promptCard}`}>
       <span>{text.briefLabel}</span>
       <div className={`${styles.startBuilderPromptField} ${fidelity.promptField}`}>
-        <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
+        <div className={fidelity.promptTextareaField}>
+          <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
+          <VoiceTripBrief className={fidelity.voiceInput} language={language} onTranscript={(transcript) => setBrief((current) => appendVoiceTranscript(current, transcript))} />
+        </div>
         <div className={fidelity.promptFooter}>
           {travelProfile && <section className={fidelity.travelStyle} aria-label={text.travelStyle}>
             <div className={fidelity.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>

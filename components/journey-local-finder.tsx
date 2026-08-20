@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight, BedDouble, MapPin, RotateCcw, Utensils } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { JourneyRestaurant, RestaurantMeal } from "@/lib/journey";
 import { finderMoments, recommendNearbyPlace, type FinderMoment } from "@/lib/easyt/recommendations";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
@@ -14,7 +14,7 @@ type MealMood = "local" | "comfort" | "surprise";
 type StayStyle = "simple" | "character" | "comfort";
 type StaySearch = { checkIn?: string; checkOut?: string; adults?: number; rooms?: number; currency?: string; bookerCountry?: string };
 
-export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, staySearch, onRestaurantSelect, onSavePlace }: { kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
+export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, staySearch, onRestaurantSelect, onSavePlace, onRemovePlace }: { kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void; onRemovePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
   const [meal, setMeal] = useState<RestaurantMeal | undefined>();
   const [pace, setPace] = useState<MealPace | undefined>();
   const [mood, setMood] = useState<MealMood | undefined>();
@@ -27,6 +27,7 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
   const [loading, setLoading] = useState(true);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
   const [liveInventory, setLiveInventory] = useState(false);
+  const reportedSaveRef = useRef("");
   const storageKey = `journey:local-${kind}:v3`;
   const label = kind === "restaurant" ? "Taste finder" : "Stay finder";
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
@@ -80,8 +81,15 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
   }, [city, kind, meal, onRestaurantSelect, pace, saved]);
 
   useEffect(() => {
-    if (saved) onSavePlace?.({ name: saved.name, coordinates: saved.coordinates }, kind);
-  }, [kind, onSavePlace, saved]);
+    if (!saved) {
+      reportedSaveRef.current = "";
+      return;
+    }
+    const savedKey = `${kind}:${dayId}:${saved.id}`;
+    if (reportedSaveRef.current === savedKey) return;
+    reportedSaveRef.current = savedKey;
+    onSavePlace?.({ name: saved.name, coordinates: saved.coordinates }, kind);
+  }, [dayId, kind, onSavePlace, saved]);
 
   const candidates = useMemo(() => {
     if (!isReady) return [];
@@ -98,7 +106,21 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
     setSaved(chosen);
     try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
   };
-  const reset = () => { setSaved(null); setChosen(null); setMeal(undefined); setPace(undefined); setMood(undefined); setStayStyle(undefined); setMoment(undefined); };
+  const reset = () => {
+    if (saved) onRemovePlace?.({ name: saved.name, coordinates: saved.coordinates }, kind);
+    setSaved(null);
+    setChosen(null);
+    setMeal(undefined);
+    setPace(undefined);
+    setMood(undefined);
+    setStayStyle(undefined);
+    setMoment(undefined);
+    try {
+      const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, LocalPlace>;
+      delete store[dayId];
+      window.localStorage.setItem(storageKey, JSON.stringify(store));
+    } catch { /* The in-memory finder state is still cleared. */ }
+  };
 
   return <section className={styles.restaurantFinder} aria-label={`${label} for ${city}`}>
     <header><span><Icon /></span><div><small>{label}</small><strong>{city}</strong></div></header>

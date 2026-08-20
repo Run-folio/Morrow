@@ -530,3 +530,14 @@
 @media(min-width:981px){
   .productNavigation + .journey{height:calc(100svh - 66px)}
 }
+
+.shapeDayHeader strong{font-size:15px}
+.shapeDayContext{margin:10px 0;color:var(--muted);font:700 8px var(--font-geist-mono,monospace);letter-spacing:.08em;text-transform:uppercase}
+.shapeDayPlan{padding:5px 0 3px}
+.shapeDayPlan ol{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.shapeDayPlan li{display:grid;grid-template-columns:24px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid rgba(31,29,61,.08);color:var(--accent);font-size:10px}
+.shapeDayPlan li b{font:700 8px var(--font-geist-mono,monospace)}
+.shapeDayPlan li span{color:var(--ink);line-height:1.35}
+.shapeDayPlan>small{display:block;margin-top:10px;color:var(--muted);font-size:9px;line-height:1.4}
+.shapeDaySee{margin-top:10px}
+.finderTabActive{color:#fff!important;background:var(--accent)!important;border-color:var(--accent)!important}

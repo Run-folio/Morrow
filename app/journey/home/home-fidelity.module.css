@@ -23,6 +23,10 @@
   resize: vertical !important;
 }
 
+.promptTextareaField { position: relative; }
+.voiceInput { position: absolute; bottom: 10px; left: 10px; z-index: 1; }
+.promptTextareaField textarea { padding-bottom: 52px !important; }
+
 .promptFooter {
   display: flex;
   align-items: flex-end;
@@ -120,6 +124,7 @@
   .promptAction { width: 100%; }
   .promptAction button { width: 100%; }
   .travelStyleChips span { font-size: 10px; }
+  .voiceInput { bottom: 8px; left: 8px; }
   .routeImage { height: 218px !important; }
   .proofArtwork { height: 184px !important; }
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
