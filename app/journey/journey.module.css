@@ -393,8 +393,10 @@
 
 /* Morrovia workspace alignment: keep the dense planning layout, but give its
    existing surfaces, states and controls the same visual grammar as Journey. */
-.planLoading{background:radial-gradient(circle at 50% 45%,#fff 0,var(--morrovia-danger-soft,#fff1f7) 42%,var(--mist) 100%)}
+.planLoading{background:radial-gradient(circle at 50% 45%,#fff 0,var(--morrovia-lilac,#f2f0ff) 42%,var(--morrovia-paper,#fbfaff) 100%)}
 .planLoading p{color:var(--morrovia-muted,#7673a4)}
+.planLoadingSpinner{width:34px;height:34px;border:3px solid var(--morrovia-lilac-strong,#e8e5ff);border-top-color:var(--morrovia-signal,#f42b7a);border-radius:50%;animation:plan-loading-spin .8s linear infinite}
+@keyframes plan-loading-spin{to{transform:rotate(360deg)}}
 
 .createTripLink,.myTripsLink,.savePlanLink,.exportPlanLink{
   min-height:38px;

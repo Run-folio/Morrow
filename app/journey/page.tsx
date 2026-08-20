@@ -345,6 +345,10 @@ export default function JourneyPage() {
     return customBrief ? { ...base, stops: base.stops.map((stop) => ({ ...stop, coordinates: resolvedCoordinates[stop.id] ?? stop.coordinates, description: placeMedia[stop.id]?.description ?? stop.description })) } : base;
   }, [customBrief, customTrip, resolvedCoordinates, placeMedia]);
   const isCustomJourney = Boolean(customBrief);
+  // The persisted EasyT trip is the canonical planner document. The legacy
+  // compatibility brief enriches its display data, but must not decide whether
+  // a saved trip receives the current Shape-the-day workspace.
+  const hasCanonicalPlanner = isPlanningPreview && Boolean(customTrip);
   const planCopy = language === "es"
     ? { backToItinerary: "Volver al itinerario", myTrips: "Mis viajes", export: "Exportar", exportPdf: "Exportar PDF", preparing: "Preparando…", menu: "Menú del viaje", review: "REVISIÓN DEL PLAN", signal: "señal de planificación", noWarnings: "Sin avisos inmediatos", checks: "Comprobaciones definidas", affects: "Afecta", overallPlan: "todo el plan", confidence: "de confianza", apply: "Aplicar", undo: "Deshacer", coverage: "La ruta tiene cobertura para todos los días y no hay señales de trayectos largos por carretera. Aun así, comprueba horarios y cierres antes de reservar.", travelConnection: "Conexión de viaje", localTransfer: "Traslado local", editingHint: "Arrastra días en la cronología o actividades abajo. Las sugerencias se mantienen hasta que las elimines.", scheduleHealth: "RITMO DEL DÍA", needsCheck: "Necesita una revisión", comfortable: "Ritmo cómodo", dayClear: "No hay trayectos largos ni demasiadas actividades para este día.", moveDay: "MOVER ESTE DÍA", earlier: "Antes", later: "Después", editActivity: "Editar tu actividad personalizada", yours: "TUYA", addActivity: "Añadir una actividad personalizada", add: "Añadir", notes: "NOTAS PARA MÍ", dayOnly: "Solo para este día", editNote: "Editar nota", save: "Guardar", cancel: "Cancelar", addNote: "Añade una nota para ti", addNoteButton: "Añadir nota", mapPins: "PINES EN EL MAPA", addPin: "Añadir pin", chooseLocation: "1. Elige una ubicación", chooseAnother: "Cambiar ubicación", clickMap: "Haz clic en el mapa…", locationSelected: "Ubicación seleccionada", detailedMap: "abre el mapa detallado", chooseCategory: "2. Elige una categoría y ponle nombre", namePlace: "Nombra este lugar", savePin: "Guardar pin", pinHelp: "Primero haz clic en el punto exacto. Después elegirás su categoría y nombre.", selectedPin: "PIN SELECCIONADO", renamePin: "Cambiar nombre del pin", saveName: "Guardar nombre", removeSelectedPin: "Eliminar pin seleccionado", pinsAria: "Pines del mapa", findPlaces: "Buscar lugares para este día", onTheGo: "SOBRE LA MARCHA", findNearby: "Encuentra lugares cerca", tripOverview: "VISTA DEL VIAJE", localDetail: "DETALLE LOCAL", zoomInto: "Acercar a", viewOverview: "Ver vista del viaje", pause: "Pausar recorrido", play: "Reproducir recorrido", meal: "Comida", savedRestaurant: "restaurante guardado", next: "Siguiente" }
     : { backToItinerary: "Back to itinerary", myTrips: "Trips", export: "Export", exportPdf: "Export PDF", preparing: "Preparing…", menu: "Trip menu", review: "PLAN REVIEW", signal: "planning signal", noWarnings: "No immediate warnings", checks: "Deterministic checks", affects: "Affects", overallPlan: "the overall plan", confidence: "confidence", apply: "Apply", undo: "Undo", coverage: "The route currently has coverage for every day and no long road transfer signal. Live schedules and closures still need checking before booking.", travelConnection: "Travel connection", localTransfer: "Local transfer", editingHint: "Drag days in the timeline, or activities below. Suggestions stay intact unless you remove them.", scheduleHealth: "SCHEDULE HEALTH", needsCheck: "Needs a quick check", comfortable: "Comfortable pace", dayClear: "No long transfer or crowded activity signal for this day.", moveDay: "MOVE THIS DAY", earlier: "Earlier", later: "Later", editActivity: "Edit your custom activity", yours: "YOURS", addActivity: "Add a custom activity", add: "Add", notes: "NOTES TO SELF", dayOnly: "For this day only", editNote: "Edit note", save: "Save", cancel: "Cancel", addNote: "Add a note to yourself", addNoteButton: "Add note", mapPins: "MAP PINS", addPin: "Add pin", chooseLocation: "1. Choose a location", chooseAnother: "Change location", clickMap: "Click the map…", locationSelected: "Location selected", detailedMap: "opens the detailed map", chooseCategory: "2. Choose a category and name it", namePlace: "Name this place", savePin: "Save pin", pinHelp: "Click the exact spot first. You’ll choose its category and name next.", selectedPin: "SELECTED PIN", renamePin: "Rename selected pin", saveName: "Save name", removeSelectedPin: "Remove selected pin", pinsAria: "Map pins", findPlaces: "Find places for this day", onTheGo: "ON THE GO", findNearby: "Find nearby places", tripOverview: "TRIP OVERVIEW", localDetail: "LOCAL DETAIL", zoomInto: "Zoom into", viewOverview: "View trip overview", pause: "Pause journey sequence", play: "Play journey sequence", meal: "Meal", savedRestaurant: "saved restaurant", next: "Next" };
@@ -971,8 +975,8 @@ export default function JourneyPage() {
         <EasyTNavigation current="prototype" />
         </div>
         <main className={`${styles.journey} ${styles.planLoading}`} aria-busy="true">
-        <div className={styles.planLoadingMark}><span>Easy</span><b>T</b></div>
-        <p>Opening your journey…</p>
+        <span className={styles.planLoadingSpinner} aria-hidden="true" />
+        <p>Loading your journey…</p>
         </main>
       </>
     );
@@ -984,7 +988,7 @@ export default function JourneyPage() {
         <EasyTNavigation current="prototype" />
       </div>
       <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan}`}>
-      {isPlanningPreview && isCustomJourney ? (
+      {hasCanonicalPlanner ? (
         <>
           <div className={`${styles.mapOverviewLayer} ${mapMode === "overview" ? styles.mapLayerActive : styles.mapLayerHidden}`}>
             <JourneyGlobe
@@ -1056,7 +1060,7 @@ export default function JourneyPage() {
           <div className={styles.grain} />
         </>
       )}
-      {isPlanningPreview && isCustomJourney && mapCoachVisible ? <aside className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></aside> : null}
+      {hasCanonicalPlanner && mapCoachVisible ? <aside className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></aside> : null}
 
       <header className={styles.topbar}>
           <div className={styles.headerRow}>
@@ -1073,7 +1077,7 @@ export default function JourneyPage() {
             </div>
           </details>
           <nav className={`${styles.headerActions} ${mobileNav.actions}`} aria-label="Morrovia account navigation">
-            {isPlanningPreview && isCustomJourney ? <button type="button" className={`${styles.journeyPlayback} ${isPlaying ? styles.playing : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? planCopy.pause : planCopy.play}><span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{isPlaying ? planCopy.pause : (language === "es" ? "Viaje" : "Journey")}</button> : null}
+            {hasCanonicalPlanner ? <button type="button" className={`${styles.journeyPlayback} ${isPlaying ? styles.playing : ""}`} onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? planCopy.pause : planCopy.play}><span aria-hidden="true">{isPlaying ? "Ⅱ" : "▶"}</span>{isPlaying ? planCopy.pause : (language === "es" ? "Viaje" : "Journey")}</button> : null}
             {isPlanningPreview && customTrip ? <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>New map view</Link> : null}
             {isPlanningPreview && customTrip ? <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`} className={styles.myTripsLink}>Trip prep</Link> : null}
             <Link href="/journey/dashboard" className={styles.myTripsLink}>{planCopy.myTrips}</Link>
@@ -1113,7 +1117,7 @@ export default function JourneyPage() {
         </nav>
       </header>
 
-      <section className={`${styles.destination} ${isPlanningPreview && isCustomJourney ? styles.destinationWithPinDock : ""}`} aria-live="polite">
+      <section className={`${styles.destination} ${hasCanonicalPlanner ? styles.destinationWithPinDock : ""}`} aria-live="polite">
         <motion.div
           key={selected.id}
           initial={hasMounted.current ? { opacity: 0, x: -7, filter: "blur(2px)" } : false}
@@ -1153,7 +1157,7 @@ export default function JourneyPage() {
         </motion.div>
       </section>
 
-      <aside className={`${styles.itineraryPanel} ${isPlanningPreview && isCustomJourney ? styles.itineraryWithFinder : ""}`} aria-live="polite">
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? styles.itineraryWithFinder : ""}`} aria-live="polite">
         <motion.div
           key={selectedDay.id}
           initial={hasMounted.current ? { opacity: 0, x: 8 } : false}
@@ -1200,7 +1204,7 @@ export default function JourneyPage() {
         {selectedPlannerPin ? <div className={styles.selectedPinDetail}><small>{planCopy.selectedPin}</small><form onSubmit={(event) => { event.preventDefault(); savePinEdit(); }}><input value={pinEditDraft} onChange={(event) => setPinEditDraft(event.target.value)} aria-label={planCopy.renamePin} /><button type="submit" disabled={!pinEditDraft.trim()}>{planCopy.saveName}</button></form><span>{pinCategoryLabel(selectedPlannerPin.category)} · {language === "es" ? "Día" : "Day"} {selectedPlannerPin.dayNumber}</span><button type="button" onClick={() => { updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, mapPins: (trip.brief.mapPins ?? []).filter((item) => item.id !== selectedPlannerPin.id) } }), "Map pin removed"); setSelectedPlannerPin(null); }}>{planCopy.removeSelectedPin}</button></div> : null}
       </aside> : null}
 
-      {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
+      {hasCanonicalPlanner && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip ? <details className={styles.mobileTripStatus}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
@@ -1236,8 +1240,8 @@ export default function JourneyPage() {
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
-      {isPlanningPreview && isCustomJourney ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} /></aside> : null}
-      {isPlanningPreview && isCustomJourney ? <div className={styles.mapFocusControl}>
+      {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} /></aside> : null}
+      {hasCanonicalPlanner ? <div className={styles.mapFocusControl}>
         <button type="button" onClick={() => setMapMode((mode) => mode === "overview" ? "detail" : "overview")} aria-label={mapMode === "overview" ? `${language === "es" ? "Enfocar destino" : "Fit destination"}: ${selected.city}` : planCopy.viewOverview} title={mapMode === "overview" ? `${language === "es" ? "Enfocar destino" : "Fit destination"}: ${selected.city}` : planCopy.viewOverview}>
           <LocateFixed aria-hidden="true" />
         </button>

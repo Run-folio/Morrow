@@ -14,6 +14,28 @@ export type ParsedTripBrief = {
 
 type Place = { name: string; terms: string[] };
 
+// A country remains a useful stop when it is the only location the traveller
+// supplied. When they also name a city within that country, the city is the
+// actionable planning stop and the country is context rather than a duplicate.
+const cityCountries: Record<string, string> = {
+  Barcelona: "Spain", Madrid: "Spain",
+  Tokyo: "Japan", Kyoto: "Japan", Osaka: "Japan", Kanazawa: "Japan", Takayama: "Japan", Hiroshima: "Japan",
+  Seoul: "South Korea", Busan: "South Korea",
+  "Hong Kong": "China", Chengdu: "China", Zhangjiajie: "China", Beijing: "China", Shanghai: "China", "Xi'an": "China",
+  Hanoi: "Vietnam", "Hoi An": "Vietnam", "Ho Chi Minh City": "Vietnam",
+  Bangkok: "Thailand", "Chiang Mai": "Thailand", Krabi: "Thailand",
+  "Angkor Wat": "Cambodia", "Siem Reap": "Cambodia",
+  Lima: "Peru", Cusco: "Peru", "Machu Picchu": "Peru",
+  "La Paz": "Bolivia",
+  Lisbon: "Portugal", Porto: "Portugal",
+  Paris: "France",
+  Rome: "Italy", Venice: "Italy", Milan: "Italy",
+};
+
+const countryNames = new Set([
+  "Spain", "Japan", "South Korea", "China", "Portugal", "France", "Italy", "Vietnam", "Thailand", "Cambodia", "Peru", "Bolivia",
+]);
+
 const places: Place[] = [
   // Countries are valid trip intent, not failed city searches. Keeping them
   // as structured stops means "Spain, Japan and China" survives the handoff
@@ -68,6 +90,10 @@ function findPlaces(value: string) {
     .sort((a, b) => a.position - b.position)
     .map((match) => match.place.name)
     .filter((name, index, all) => all.indexOf(name) === index);
+}
+
+function removeRedundantCountryStops(names: string[]) {
+  return names.filter((name) => !countryNames.has(name) || !names.some((other) => cityCountries[other] === name));
 }
 
 function findDurationDays(value: string) {
@@ -142,6 +168,7 @@ function resolveMention(mention?: string) {
 export function parseTripBrief(value: string): ParsedTripBrief {
   const text = normalise(value);
   const matchedPlaces = findPlaces(value);
+  const stops = removeRedundantCountryStops(matchedPlaces);
   const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
   const toMatch = value.match(/(?:\bto|finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde|\ba|hasta)\s+([^,.\n;]+)/i);
   // A departure is only an origin when the traveller has actually stated a
@@ -154,7 +181,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
   return {
     origin,
     destination: destination === origin && matchedPlaces.length > 1 ? matchedPlaces.at(-1) : destination,
-    stops: matchedPlaces.filter((name) => name !== origin),
+    stops: stops.filter((name) => name !== origin),
     regions: findRegions(value),
     routeHints: findRouteHints(value),
     anchor,

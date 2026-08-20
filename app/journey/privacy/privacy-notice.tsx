@@ -10,7 +10,7 @@ import currentStyles from "./privacy-current.module.css";
 
 const copy = {
   en: {
-    eyebrow: "EASYT PRIVACY",
+    eyebrow: "MORROVIA PRIVACY",
     title: "Your travel data, explained plainly.",
     intro: "This notice explains what Morrovia stores, why we use it and the choices you have. It reflects the product as it is today, not a promise of features that do not exist.",
     updated: "Last updated 10 August 2026",
@@ -43,10 +43,10 @@ const copy = {
     contactText: "To request access to, correction of or deletion of your Morrovia account data, email us from the address on your account. We may need to verify ownership before acting on the request.",
     email: "Email Morrovia support",
     back: "Back to Morrovia",
-    note: "This is a product privacy notice, not legal advice. We will update it as EasyT’s data practices change.",
+    note: "This is a product privacy notice, not legal advice. We will update it as Morrovia’s data practices change.",
   },
   es: {
-    eyebrow: "PRIVACIDAD DE EASYT",
+    eyebrow: "PRIVACIDAD DE MORROVIA",
     title: "Tus datos de viaje, explicados con claridad.",
     intro: "Este aviso explica qué guarda Morrovia, por qué lo usamos y qué opciones tienes. Describe el producto tal como existe hoy, no funciones que aún no existen.",
     updated: "Última actualización: 10 de agosto de 2026",

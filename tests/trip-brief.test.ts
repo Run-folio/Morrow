@@ -17,6 +17,7 @@ const cases: Expected[] = [
   { brief: "Leaving from LHR for Tokyo marathon, Kanazawa then Kyoto", origin: "London", stops: ["Tokyo", "Kanazawa", "Kyoto"] },
   { brief: "Fly from Hong Kong to Hanoi, then finish in Ho Chi Minh City", origin: "Hong Kong", stops: ["Hanoi", "Ho Chi Minh City"] },
   { brief: "A week in Tokyo", stops: ["Tokyo"], durationDays: 7 },
+  { brief: "A week in Japan", stops: ["Japan"], durationDays: 7 },
   { brief: "One week in Kyoto and Osaka", stops: ["Kyoto", "Osaka"], durationDays: 7 },
   { brief: "Two weeks from London to Tokyo and Kyoto", origin: "London", stops: ["Tokyo", "Kyoto"], durationDays: 14 },
   { brief: "3 days from Tokyo to Kanazawa", origin: "Tokyo", stops: ["Kanazawa"], durationDays: 3 },
