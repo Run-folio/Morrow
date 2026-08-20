@@ -449,3 +449,103 @@
 .allocationComplete,.timingSummary strong{color:var(--morrovia-success,#078b67)}
 .allocationIncomplete,.usableTimeWarning,.specificTimingWarning>svg,.mobileTimingWarning>svg{color:var(--morrovia-warning,#a56f10)}
 @media(max-width:700px){.mobileTimingWarning{background:var(--morrovia-warning-soft,#fff9e9)}}
+
+/* Builder density pass: retain the existing two-step flow and route callbacks,
+   while keeping the planning surface compact at every viewport. */
+.shellWide{
+  max-width:1360px;
+  margin:20px auto 44px;
+  border-radius:var(--morrovia-radius);
+  overflow:hidden;
+}
+.steps{padding:21px 13% 22px}
+.steps:before{top:42px}
+.stepTab{grid-template-rows:38px auto;min-height:62px}
+.confirmHero{padding:36px 5% 20px}
+.confirmHero h1{max-width:840px;font-size:clamp(46px,4.7vw,68px)}
+.pane{padding:30px 5% 36px}
+.stack{gap:12px}
+.stepHero{gap:8px;margin-bottom:20px}
+.stepHero h2{max-width:900px;font-size:clamp(38px,4vw,56px);line-height:.98}
+.stepHero span{font-size:15px;line-height:1.4}
+.timeControls{gap:10px}
+.timeControls .dateConfirmSection .card,.timeControl{padding:12px 14px}
+.timeControl>svg{left:14px;bottom:15px}
+.routeTimePlanner>header{padding:14px 18px}
+.routeTimeColumns,.routeTimeRow{gap:12px;padding-right:18px;padding-left:62px}
+.routeTimeColumns{min-height:36px}
+.routeTimeRow{min-height:68px}
+.routeGrip{left:14px;width:30px;height:34px;border:1px solid var(--line);border-radius:7px;background:var(--morrovia-lilac);color:var(--morrovia-action)}
+.routeGrip svg{width:16px;height:16px}
+.timeSummaryRail{align-self:start;min-height:0;padding:36px 34px}
+.timingSummary{gap:10px;padding-bottom:16px}
+.timingSummary h2{font-size:24px}
+.specificTimingWarning{padding:13px 0}
+.wizardFoot{min-height:72px;padding:12px 5%}
+
+@media(max-width:840px){
+  .shellWide{margin:12px 12px 28px;border:1px solid var(--line);border-radius:var(--morrovia-radius);box-shadow:none}
+  .steps{padding:18px 7%}
+  .steps:before{top:39px}
+  .stepTab{min-height:58px}
+  .confirmHero{padding:30px 24px 18px}
+  .pane{padding:26px 24px 30px}
+  .timeSummaryRail{align-self:auto;padding:24px}
+}
+
+@media(max-width:700px){
+  .shellWide{margin:8px 8px 20px}
+  .steps{padding:14px 9% 15px}
+  .steps:before{top:32px;left:calc(25% + 7px);right:calc(25% + 7px)}
+  .stepTab{grid-template-rows:30px auto;min-height:52px}
+  .stepTab>b{width:26px;height:26px;font-size:10px}
+  .stepTab>span{gap:1px}
+  .stepTab>span>span{font-size:13px}
+  .stepTab small{display:block;font-size:8px;line-height:1.1}
+  .confirmHero{padding:26px 18px 14px}
+  .confirmHero h1{font-size:clamp(38px,10.5vw,48px);line-height:.96}
+  .pane{padding:22px 16px 24px}
+  .stepHero{gap:7px;margin-bottom:16px}
+  .stepHero h2{font-size:clamp(36px,10vw,46px);line-height:.98}
+  .stepHero span{font-size:14px;line-height:1.38}
+  .timeControls{gap:8px}
+  .timeControls .dateConfirmSection .card,.timeControl{min-height:0;padding:11px 12px}
+  .timeControls .dateConfirmSection .card{height:auto}
+  .timeControl>svg{left:12px;bottom:13px}
+  .timeAllocationState{margin-top:0;font-size:12px}
+  .routeTimePlanner>header{gap:4px;padding:12px}
+  .routeTimePlanner h3{font-size:17px}
+  .routeTimePlanner header p{font-size:12px;line-height:1.35}
+  .routeTimeRow{grid-template-columns:30px minmax(0,1fr) 72px;grid-template-areas:"grip stop nights" "grip transfer moves" "grip usable usable";gap:5px 8px;padding:12px 10px;min-height:0}
+  .routeGrip{position:static;grid-area:grip;align-self:start;width:26px;height:30px;border-radius:6px}
+  .routeStopName{gap:8px}
+  .routeStopName>b{width:27px;height:27px;font-size:13px}
+  .routeStopName strong{font-size:16px}
+  .routeStopName small{font-size:10px}
+  .routeTransferSummary{grid-area:transfer;gap:6px;padding-top:1px}
+  .routeTransferSummary strong{font-size:11px}
+  .routeTransferSummary small{font-size:10px}
+  .routeTransferSummary>svg{width:14px;height:14px}
+  .nightsControl{grid-template-columns:24px 20px 24px;gap:2px;justify-self:end}
+  .nightsControl button{width:24px;height:24px;font-size:15px}
+  .nightsControl strong{font-size:14px}
+  .nightsControl small{font-size:9px}
+  .usableTime{justify-self:start;font-size:11px}
+  .routeMoveButtons{grid-area:moves;justify-self:end;align-self:center}
+  .routeMoveButtons button{width:23px;height:23px}
+  .routeTimeRow:not(:last-child) .routeStopName>b:after{height:51px;top:27px}
+  .mobileTimingWarning{padding:11px 12px}
+  .wizardFoot{min-height:64px;padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+  .wizardFoot .primary{min-height:44px}
+}
+
+@media(max-width:360px){
+  .shellWide{margin-inline:4px}
+  .steps{padding-inline:6%}
+  .stepTab>span>span{font-size:12px}
+  .stepTab small{font-size:7px}
+  .routeTimeRow{grid-template-columns:28px minmax(0,1fr) 68px;padding-inline:8px}
+  .routeGrip{width:24px}
+  .routeStopName strong{font-size:15px}
+  .routeMoveButtons{gap:2px}
+}

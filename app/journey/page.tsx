@@ -963,9 +963,8 @@ export default function JourneyPage() {
 
   const renderReviewItem = (item: (typeof reviewRecommendations)[number]) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}>
     <div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div>
-    <small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan}</small>
-    <div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div>
-    <details className={styles.reviewDetails}><summary>{language === "es" ? "Ver detalles" : "View details"}</summary><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><p>{item.evidence}</p><small>{item.confidence} {planCopy.confidence}</small></details>
+    {item.status !== "open" ? <div className={styles.reviewActions}><button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button></div> : null}
+    <details className={styles.reviewDetails}><summary>{language === "es" ? "Ver detalles" : "View details"}</summary><small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan}</small><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><p>{item.evidence}</p><small>{item.confidence} {planCopy.confidence}</small>{item.status === "open" && item.proposedChange ? <div className={styles.reviewActions}><button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button></div> : null}</details>
   </article>;
 
   if (isPlanningPreview && !planHydrated) {
@@ -1180,13 +1179,13 @@ export default function JourneyPage() {
             setLocalFinderKind("stay");
             setShapeDayTab("stay");
           }} /> : null}
-          {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <section className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
-            <div><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong><span>{language === "es" ? "Estimaciones de puerta a puerta; verifica horarios y precios antes de reservar." : "Door-to-door planning estimates; verify live schedules and prices before booking."}</span></div>
+          {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <details className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
+            <summary><span><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong></span><b>{language === "es" ? "Revisar opciones" : "Review options"}</b></summary>
             <div className={styles.transportChoiceList}>{transportAlternatives.map((option) => {
               const selectedOption = customTrip.brief.decisionSelections?.transportByLeg[selectedLeg.id] === option.id;
               return <button type="button" key={option.id} className={selectedOption ? styles.transportChoiceSelected : ""} onClick={() => chooseTransportAlternative(option)}><span><b>{option.label}</b>{option.recommended ? <em>{language === "es" ? "RECOMENDADO" : "RECOMMENDED"}</em> : null}</span><small>{option.estimatedMinutes ? `${Math.floor(option.estimatedMinutes / 60)}h ${option.estimatedMinutes % 60}m` : (language === "es" ? "Tiempo por verificar" : "Time to verify")}{option.timeImpactMinutes && option.timeImpactMinutes > 0 ? ` · +${Math.floor(option.timeImpactMinutes / 60)}h ${option.timeImpactMinutes % 60}m` : ""} · {option.costImpact}</small><p>{option.tradeoff}</p>{option.recommendationReason ? <i>{option.recommendationReason}</i> : null}</button>;
             })}</div>
-          </section> : null}
+          </details> : null}
         </motion.div>
       </aside>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, ArrowUpRight, GripVertical, Plane, Plus, StickyNote, Trash2, Utensils } from "lucide-react";
-import type { DragEvent } from "react";
+import { useState, type DragEvent } from "react";
 import type { JourneyCalendarDay, JourneyRestaurant, JourneyStop, RestaurantMeal } from "@/lib/journey";
 import type { PlanItem } from "@/lib/easyt/trip";
 import styles from "@/app/journey/journey.module.css";
@@ -95,18 +95,24 @@ export interface PlanWorkspaceProps {
 
 export function PlanWorkspace({ context, schedule, activity, notes, navigation, copy }: PlanWorkspaceProps) {
   const { selectedDay, selectedStop, selectedDayIndex, totalDays, planItem, transfer, savedRestaurant } = context;
+  const [openTool, setOpenTool] = useState<"activity" | "notes" | null>(null);
+
+  const closeTool = () => setOpenTool(null);
 
   return (
     <section className={styles.shapeDayPlan} aria-label="Selected day plan">
       <p className={styles.shapeDayContext}>{selectedDay.date} · {selectedStop.city}</p>
-      {transfer ? <div className={styles.dayTravel}><Plane /><div><small>{transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration} · {transfer.detail}</span></div></div> : null}
+      {transfer ? <div className={styles.dayTravel}><Plane /><div><small>{transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration}</span>{transfer.from && transfer.detail ? <details><summary>Transfer details</summary><p>{transfer.detail}</p></details> : null}</div></div> : null}
       {planItem ? <>
-        <p className={styles.editingHint}><GripVertical /> {copy.editingHint}</p>
         {schedule.warning ? <p className={styles.plannerWarning}>{schedule.warning}</p> : null}
-        <section className={styles.scheduleHealth} aria-label={copy.scheduleHealth}>
-          <div><span>{copy.scheduleHealth}</span><strong>{schedule.signals.length ? copy.needsCheck : copy.comfortable}</strong></div>
-          <p>{schedule.signals.length ? schedule.signals.join(" ") : copy.dayClear}</p>
-        </section>
+        {schedule.signals.length ? <section className={styles.scheduleHealth} aria-label={copy.scheduleHealth}>
+          <div><span>{copy.scheduleHealth}</span><strong>{copy.needsCheck}</strong></div>
+          <p>{schedule.signals.join(" ")}</p>
+        </section> : null}
+        <div className={styles.dayUtilities} aria-label="Day utilities">
+          <button type="button" aria-pressed={openTool === "activity"} aria-label={copy.addActivity} title={copy.addActivity} onClick={() => setOpenTool((tool) => tool === "activity" ? null : "activity")}><Plus /> <span>{copy.addActivity}</span></button>
+          <button type="button" aria-pressed={openTool === "notes"} aria-label="Day notes" title="Day notes" onClick={() => setOpenTool((tool) => tool === "notes" ? null : "notes")}><StickyNote />{notes.items.length ? <b>{notes.items.length}</b> : null}</button>
+        </div>
         <div className={styles.mobileDayMove} aria-label={copy.moveDay}>
           <span>{copy.moveDay}</span>
           <button type="button" disabled={selectedDayIndex === 0} onClick={() => navigation.onMoveDay("earlier")}><ArrowUp /> {copy.earlier}</button>
@@ -125,11 +131,12 @@ export function PlanWorkspace({ context, schedule, activity, notes, navigation, 
             </li>;
           })}
         </ol>
-        <form className={styles.addActivity} onSubmit={(event) => { event.preventDefault(); activity.onAdd(); }}>
-          <input value={activity.draft} onChange={(event) => activity.onDraftChange(event.target.value)} placeholder={copy.addActivity} aria-label={copy.addActivity} />
+        {openTool === "activity" ? <form className={styles.addActivity} onSubmit={(event) => { event.preventDefault(); if (!activity.draft.trim()) return; activity.onAdd(); closeTool(); }}>
+          <input autoFocus value={activity.draft} onChange={(event) => activity.onDraftChange(event.target.value)} placeholder={copy.addActivity} aria-label={copy.addActivity} />
           <button type="submit" disabled={!activity.draft.trim()}><Plus /> {copy.add}</button>
-        </form>
-        <section className={styles.notesToSelf} aria-label={copy.notes}>
+          <button type="button" className={styles.cancelDayTool} onClick={() => { activity.onDraftChange(""); closeTool(); }}>{copy.cancel}</button>
+        </form> : null}
+        {openTool === "notes" ? <section className={styles.notesToSelf} aria-label={copy.notes}>
           <div><StickyNote /><span><small>{copy.notes}</small><strong>{copy.dayOnly}</strong></span></div>
           {notes.items.map((note, index) => {
             const location = { dayNumber: planItem.dayNumber, index };
@@ -137,8 +144,8 @@ export function PlanWorkspace({ context, schedule, activity, notes, navigation, 
               ? <form key={`${note}-${index}`} className={styles.editingNoteForm} onSubmit={(event) => { event.preventDefault(); notes.onSaveEdit(); }}><input value={notes.editingDraft} onChange={(event) => notes.onEditingDraftChange(event.target.value)} aria-label={copy.editNote} autoFocus /><button type="submit" disabled={!notes.editingDraft.trim()}>{copy.save}</button><button type="button" onClick={notes.onCancelEdit}>{copy.cancel}</button></form>
               : <p key={`${note}-${index}`}><button type="button" className={styles.editNoteButton} onClick={() => notes.onBeginEdit(location, note)}>{note}</button><button type="button" onClick={() => notes.onRemove(location, note)} aria-label={`Remove note ${note}`}><Trash2 /></button></p>;
           })}
-          <form onSubmit={(event) => { event.preventDefault(); notes.onAdd(); }}><input value={notes.draft} onChange={(event) => notes.onDraftChange(event.target.value)} placeholder={copy.addNote} /><button type="submit" disabled={!notes.draft.trim()}>{copy.addNoteButton}</button></form>
-        </section>
+          <form onSubmit={(event) => { event.preventDefault(); if (!notes.draft.trim()) return; notes.onAdd(); closeTool(); }}><input autoFocus value={notes.draft} onChange={(event) => notes.onDraftChange(event.target.value)} placeholder={copy.addNote} /><button type="submit" disabled={!notes.draft.trim()}>{copy.addNoteButton}</button><button type="button" className={styles.cancelDayTool} onClick={() => { notes.onDraftChange(""); closeTool(); }}>{copy.cancel}</button></form>
+        </section> : null}
       </> : <ol>
         {selectedDay.items.map((item, index) => <li key={item}><b>{String(index + 1).padStart(2, "0")}</b><span>{item}</span></li>)}
         {savedRestaurant ? <li className={styles.savedRestaurant}>

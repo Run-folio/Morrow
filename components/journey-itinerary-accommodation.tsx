@@ -38,7 +38,6 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
 
   if (compact) return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="itinerary-accommodation-title">
     <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
-    <p className={styles.compactCopy}>{sortedCount === overnightStops.length ? "Your stays are saved in the trip." : "Review the remaining stays before you book."}</p>
     <div className={styles.stayActions}><button type="button" className={sortedCount === overnightStops.length ? "" : styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: reviewStop.id }); onExploreMap(reviewStop); }}>Review stays <Map /></button></div>
   </section>;
   return <section className={styles.panel} aria-labelledby="itinerary-accommodation-title">

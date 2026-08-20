@@ -38,7 +38,7 @@ export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onEx
 
   if (!stop || (stop.nights ?? 0) < 1) return null;
   return <section className={`${styles.panel} ${compact ? styles.compact : ""}`} aria-labelledby={`refinement-${stop.id}`}>
-    <header><div><p>SEE NEARBY · {stop.name}</p><h3 id={`refinement-${stop.id}`}>Make {stop.name} yours</h3><span>{loading ? "Finding mapped attractions…" : `${places.length} mapped attractions`} · choose only what is worth making time for.</span></div><Sparkles aria-hidden="true" /></header>
+    <header><div><p>SEE NEARBY · {stop.name}</p><h3 id={`refinement-${stop.id}`}>Best fits for today</h3><span>{loading ? "Finding mapped attractions…" : `${places.length} mapped attractions`}</span></div><Sparkles aria-hidden="true" /></header>
     {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { onSelectionChange(stop.id, title, false); trackEvent("attraction_removed", { trip_id: trip.id, stop_id: stop.id }); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
     <div className={styles.filters} aria-label="Attraction categories">{filters.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => { setFilter(item); if (item !== "All") trackEvent("attraction_filter_used", { trip_id: trip.id, stop_id: stop.id, filter: item.toLowerCase() }); }}>{item}</button>)}</div>
     {loading ? <p className={styles.state}>Finding a few worthwhile places…</p> : visible.length ? <div className={styles.places}>{visible.map((place) => {
