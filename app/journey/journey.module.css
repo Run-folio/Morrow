@@ -561,6 +561,15 @@
   .itineraryWithFinder{max-height:calc(100svh - 244px)}
   .itineraryPanel .reviewPanel{margin-top:0}
   .finderDock{right:auto;left:50%;bottom:24px;width:min(680px,calc(100vw - 680px));height:min(430px,calc(100svh - 178px));padding:0 16px 14px;transform:translateX(-50%)}
+  .finderDockStay{display:flex;flex-direction:column;overflow:hidden}
+  .finderDockStay .restaurantFinder{flex:1;min-height:0;margin:12px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+  .finderDockEat{display:flex;flex-direction:column;overflow:hidden}
+  .finderDockEat .restaurantFinder{flex:1;min-height:0;margin:12px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+  .finderDockEat .restaurantQuestion{padding-top:9px}
+  .finderDockEat .restaurantQuestion h3{margin:4px 0 7px;font-size:13px}
+  .finderDockEat .restaurantQuestion button{min-height:29px;padding:5px}
+  .finderDockSee{display:flex;flex-direction:column;overflow:hidden}
+  .finderDockSee .shapeDaySee{flex:1;min-height:0;margin:10px 0 0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
   .finderDock>header{padding-top:14px}
   .finderDock>header>span{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
   .finderDock>header em{color:var(--signal);font:700 7px var(--font-geist-mono,monospace);font-style:normal;letter-spacing:.06em;text-transform:uppercase}

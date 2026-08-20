@@ -9,7 +9,7 @@ import styles from "./journey-itinerary-refinement.module.css";
 type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string };
 const filters = ["All", "Food", "Nature", "Cities", "Beach"];
 
-export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onExploreMap }: { trip: EasyTTrip; stop?: TripStop; onSelectionChange: (stopId: string, title: string, selected: boolean) => void; onExploreMap: () => void }) {
+export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onExploreMap, compact = false }: { trip: EasyTTrip; stop?: TripStop; onSelectionChange: (stopId: string, title: string, selected: boolean) => void; onExploreMap: () => void; compact?: boolean }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("All");
@@ -37,7 +37,7 @@ export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onEx
   }, [selected.length, stop, trip.id]);
 
   if (!stop || (stop.nights ?? 0) < 1) return null;
-  return <section className={styles.panel} aria-labelledby={`refinement-${stop.id}`}>
+  return <section className={`${styles.panel} ${compact ? styles.compact : ""}`} aria-labelledby={`refinement-${stop.id}`}>
     <header><div><p>DESTINATION REFINEMENT</p><h3 id={`refinement-${stop.id}`}>Make {stop.name} yours</h3><span>{stop.nights} {stop.nights === 1 ? "night" : "nights"} · choose only what is worth making time for.</span></div><Sparkles aria-hidden="true" /></header>
     {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { onSelectionChange(stop.id, title, false); trackEvent("attraction_removed", { trip_id: trip.id, stop_id: stop.id }); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
     <div className={styles.filters} aria-label="Attraction categories">{filters.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => { setFilter(item); if (item !== "All") trackEvent("attraction_filter_used", { trip_id: trip.id, stop_id: stop.id, filter: item.toLowerCase() }); }}>{item}</button>)}</div>

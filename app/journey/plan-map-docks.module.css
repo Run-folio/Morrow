@@ -1,37 +1,3 @@
-@media (min-width: 681px) {
-  .plan {
-    --map-side-panel-bottom: 24px;
-    --map-side-panel-gap: 16px;
-    --map-finder-panel-height: clamp(260px, 34svh, 380px);
-  }
-
-  /* The finder now lives on the left, so the itinerary can use the full
-     height of the right rail instead of reserving the finder's old space. */
-  .plan :global([class*="itineraryWithFinder"]) {
-    bottom:var(--map-side-panel-bottom);
-    height:auto;
-    max-height:none;
-  }
-
-  /* Let the left-hand location and finder cards share all available height.
-     Each remains independently scrollable when its content is longer. */
-  .plan :global([class*="destinationWithPinDock"]) {
-    bottom:calc(var(--map-side-panel-bottom) + var(--map-finder-panel-height) + var(--map-side-panel-gap));
-    height:auto;
-    max-height:none;
-  }
-
-  .plan :global([class*="finderDock"]) {
-    right:auto;
-    bottom:var(--map-side-panel-bottom);
-    left:clamp(20px,3.5vw,52px);
-    height:var(--map-finder-panel-height);
-    max-height:calc(100svh - 234px);
-  }
-
-  .plan :global([class*="pinDock"]) { bottom:92px; left:50%; transform:translateX(-50%); }
-}
-
 /* Desktop shell composition for the live planner. The map remains untouched;
    these overrides only release the legacy left finder/elongated side rails so
    the existing Shape-the-day surface can sit over the lower map centre. */
@@ -64,4 +30,78 @@
     width:min(300px, calc(100vw - 680px));
     transform:translateX(-50%);
   }
+}
+
+/* Mobile and tablet use the exact same dock and children as desktop. Only its
+   presentation changes: the map is the underlay and Shape the day is the
+   single, scrollable bottom sheet. */
+@media (max-width:980px) {
+  .plan {
+    height:100svh;
+    min-height:100svh;
+    padding:0;
+    overflow:hidden;
+  }
+
+  .plan :global([class*="journey-map"]),
+  .plan :global([class*="planner-map"]) {
+    inset:149px 0 0;
+    height:auto;
+    border:0;
+  }
+
+  .plan :global([class*="destinationWithPinDock"]),
+  .plan :global([class*="itineraryWithFinder"]) { display:none; }
+
+  .plan :global([class*="finderDock"]) {
+    position:fixed;
+    z-index:16;
+    right:0;
+    bottom:0;
+    left:0;
+    display:flex;
+    width:100%;
+    height:min(58svh,480px);
+    max-height:calc(100svh - 175px);
+    margin:0;
+    padding:0 14px calc(14px + env(safe-area-inset-bottom));
+    overflow:hidden;
+    border-radius:18px 18px 0 0;
+    transform:none;
+  }
+
+  .plan :global([class*="finderDock"]) > header { flex:0 0 auto; padding-top:17px; }
+  .plan :global([class*="finderDock"]) > header::before {
+    display:block;
+    width:34px;
+    height:4px;
+    margin:0 auto 8px;
+    border-radius:999px;
+    background:var(--hairline);
+    content:"";
+  }
+  .plan :global([class*="shapeDayPlan"]),
+  .plan :global([class*="restaurantFinder"]),
+  .plan :global([class*="shapeDaySee"]) {
+    flex:1;
+    min-height:0;
+    margin:10px 0 0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding-right:2px;
+  }
+
+  .plan :global([class*="pinDock"]) {
+    position:fixed;
+    z-index:15;
+    bottom:calc(min(58svh,480px) + 10px);
+    left:12px;
+    width:min(300px,calc(100vw - 24px));
+    max-height:136px;
+    margin:0;
+    overflow:auto;
+    transform:none;
+  }
+
+  .plan :global([class*="bottomControls"]) { display:none; }
 }

@@ -12,7 +12,6 @@ import { JourneyLocalFinder } from "@/components/journey-local-finder";
 import { JourneyItineraryAccommodation } from "@/components/journey-itinerary-accommodation";
 import { JourneyItineraryRefinement } from "@/components/journey-itinerary-refinement";
 import { PlanWorkspace } from "@/components/journey-plan-workspace";
-import { MobileTripCompanion } from "@/components/mobile-trip-companion";
 import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
@@ -467,6 +466,21 @@ export default function JourneyPage() {
     setCloudSaveState("idle");
     setHasUnsavedChanges(true);
   }, [customTrip]);
+
+  const handleAttractionSelection = useCallback((stopId: string, title: string, selected: boolean) => {
+    updatePlannerTrip((trip) => ({
+      ...trip,
+      brief: {
+        ...trip.brief,
+        selectedPlaces: {
+          ...trip.brief.selectedPlaces,
+          [stopId]: selected
+            ? [...(trip.brief.selectedPlaces[stopId] ?? []), title]
+            : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title),
+        },
+      },
+    }), selected ? "Place added to trip" : "Place removed from trip");
+  }, [updatePlannerTrip]);
 
   const undoPlannerEdit = () => {
     if (!lastPlannerTrip) return;
@@ -1129,7 +1143,6 @@ export default function JourneyPage() {
             setLocalFinderKind("stay");
             setShapeDayTab("stay");
           }} /> : null}
-          {isPlanningPreview && customTrip ? <JourneyItineraryRefinement trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={(stopId, title, selected) => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, selectedPlaces: { ...trip.brief.selectedPlaces, [stopId]: selected ? [...(trip.brief.selectedPlaces[stopId] ?? []), title] : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title) } } }), selected ? "Place added to trip" : "Place removed from trip")} onExploreMap={() => setMapMode("detail")} /> : null}
           {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <section className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
             <div><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong><span>{language === "es" ? "Estimaciones de puerta a puerta; verifica horarios y precios antes de reservar." : "Door-to-door planning estimates; verify live schedules and prices before booking."}</span></div>
             <div className={styles.transportChoiceList}>{transportAlternatives.map((option) => {
@@ -1161,8 +1174,8 @@ export default function JourneyPage() {
         </details>
       </aside> : null}
 
-      {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={styles.finderDock} aria-label={planCopy.findPlaces}>
-        <header className={styles.shapeDayHeader}><small>{language === "es" ? "PLANIFICACIÓN DEL DÍA" : "DAY PLANNING"}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
+      {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
+        <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div></header>
         {shapeDayTab === "plan" ? <PlanWorkspace
@@ -1193,11 +1206,9 @@ export default function JourneyPage() {
           }}
           copy={planCopy}
         /> : null}
-        {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={(stopId, title, selected) => updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, selectedPlaces: { ...trip.brief.selectedPlaces, [stopId]: selected ? [...(trip.brief.selectedPlaces[stopId] ?? []), title] : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title) } } }), selected ? "Place added to trip" : "Place removed from trip")} onExploreMap={() => setMapMode("detail")} /></div> : null}
+        {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} /></div> : null}
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
-
-      {isPlanningPreview && isCustomJourney && selected.coordinates ? <MobileTripCompanion day={selectedDay} city={selected.city} country={selected.country} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
 
       <div className={styles.bottomControls}>
         {isPlanningPreview && isCustomJourney ? <EasyTTripCopilot surface="map" dayCount={journey.calendar.length} destination={selected.city} /> : null}
