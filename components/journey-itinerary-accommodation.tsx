@@ -17,7 +17,7 @@ function stayBookingForStop(trip: EasyTTrip, stop: TripStop): TripBooking | unde
   ));
 }
 
-export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap }: { trip: EasyTTrip; currentStopId: string; onExploreMap: (stop: TripStop) => void }) {
+export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap, compact = false }: { trip: EasyTTrip; currentStopId: string; onExploreMap: (stop: TripStop) => void; compact?: boolean }) {
   const [actions, setActions] = useState<BookingReadinessAction[]>([]);
   const overnightStops = useMemo(() => trip.stops.filter((stop) => (stop.nights ?? 0) > 0 && stop.arrivalDate && stop.departureDate), [trip.stops]);
   const sortedCount = overnightStops.filter((stop) => Boolean(stayBookingForStop(trip, stop))).length;
@@ -39,6 +39,15 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
   }, [currentStopId, overnightStops.length, sortedCount, trip.id]);
 
   if (!overnightStops.length) return null;
+  const reviewStop = overnightStops.find((stop) => stop.id === currentStopId)
+    ?? overnightStops.find((stop) => !stayBookingForStop(trip, stop))
+    ?? overnightStops[0]!;
+
+  if (compact) return <section className={`${styles.panel} ${styles.compactPanel}`} aria-labelledby="itinerary-accommodation-title">
+    <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
+    <p className={styles.compactCopy}>{sortedCount === overnightStops.length ? "Your stays are saved in the trip." : "Review the remaining stays before you book."}</p>
+    <div className={styles.stayActions}><button type="button" className={sortedCount === overnightStops.length ? "" : styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: reviewStop.id }); onExploreMap(reviewStop); }}>Review stays <Map /></button></div>
+  </section>;
   return <section className={styles.panel} aria-labelledby="itinerary-accommodation-title">
     <header><div><p>ACCOMMODATION</p><h3 id="itinerary-accommodation-title">{sortedCount} of {overnightStops.length} stays sorted</h3></div><BedDouble aria-hidden="true" /></header>
     <div className={styles.stayList}>

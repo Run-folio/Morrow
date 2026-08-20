@@ -30,6 +30,25 @@
     width:min(300px, calc(100vw - 680px));
     transform:translateX(-50%);
   }
+
+  .plan :global([class*="bottomControls"]) {
+    right:auto;
+    bottom:24px;
+    left:clamp(18px,2.25vw,36px);
+    z-index:9;
+    width:min(220px,calc(100vw - 704px));
+    align-items:stretch;
+    flex-direction:column;
+    transform:none;
+  }
+
+  .plan :global([class*="bottomControls"]) > aside { width:100%; }
+  .plan :global([class*="mapModeControl"]) { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px; }
+  .plan :global([class*="mapModeControl"]) small { display:none; }
+  .plan :global([class*="mapModeControl"]) button { width:100%;min-height:27px;border-radius:7px; }
+  .plan :global([class*="playButton"]) { grid-template-columns:22px 1fr auto;min-width:0;padding:7px 8px 7px 7px;border-radius:8px; }
+  .plan :global([class*="playButton"]) small { display:none; }
+  .plan :global([class*="undoToast"]) { top:172px;bottom:auto;z-index:12; }
 }
 
 /* Mobile and tablet use the exact same dock and children as desktop. Only its
@@ -90,6 +109,13 @@
     overscroll-behavior:contain;
     padding-right:2px;
   }
+
+  .plan :global([class*="mobileTripStatus"]) { display:block; }
+  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:30px;padding:0 2px;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
+  .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
+  .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--font-geist-mono,monospace); }
+  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:calc(min(58svh,480px) + 48px);left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
+  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="pinDock"]) { display:none; }
 
   .plan :global([class*="pinDock"]) {
     position:fixed;

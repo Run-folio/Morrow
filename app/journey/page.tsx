@@ -400,6 +400,10 @@ export default function JourneyPage() {
   }, [selectedActivities.length, selectedDay.travel?.duration]);
   const health = useMemo(() => customTrip ? tripHealth(customTrip) : null, [customTrip]);
   const reviewRecommendations = health?.issues ?? [];
+  const displayRecommendations = [...reviewRecommendations].sort((left, right) => ({ critical: 0, warning: 1, info: 2 }[left.severity] - { critical: 0, warning: 1, info: 2 }[right.severity]));
+  const priorityRecommendations = displayRecommendations.slice(0, 3);
+  const remainingRecommendations = displayRecommendations.slice(3);
+  const tripIssueCount = reviewRecommendations.filter((item) => item.status === "open").length;
   useEffect(() => {
     if (!isPlanningPreview || !customTrip || !health) return;
     if (!hasAnalyticsConsent()) return;
@@ -935,6 +939,14 @@ export default function JourneyPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [selectedDayIndex, journey.calendar]);
 
+  const renderReviewItem = (item: (typeof reviewRecommendations)[number]) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}>
+    <div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div>
+    <small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan}</small>
+    <p className={styles.reviewImpact}>{recommendationImpact(item)}</p>
+    <div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div>
+    <details className={styles.reviewDetails}><summary>{language === "es" ? "Ver detalles" : "View details"}</summary><p>{item.evidence}</p><small>{item.confidence} {planCopy.confidence}</small></details>
+  </article>;
+
   if (isPlanningPreview && !planHydrated) {
     return (
       <>
@@ -1133,9 +1145,12 @@ export default function JourneyPage() {
           {!isPlanningPreview || !customTrip ? <><p className={styles.itineraryEyebrow}>{selectedDay.date} <span /> {selectedDay.label}</p><h2>{selectedDay.title}</h2><p className={styles.itineraryLocation}>{selectedDay.city}</p></> : null}
           {isPlanningPreview && customTrip ? <section className={styles.reviewPanel} aria-label={healthCopy.title}>
             <div className={styles.reviewHeader}><div><small>{healthCopy.title}</small><strong>{health?.isReady ? healthCopy.ready : health?.blockingCount ? `${health.blockingCount} ${healthCopy.blocking}` : `${health?.cautionCount ?? 0} ${healthCopy.cautions}`}</strong></div><span>{planCopy.checks}</span></div>
-            {reviewRecommendations.length ? <div className={styles.reviewList}>{reviewRecommendations.map((item) => <article key={item.id} className={`${styles.reviewItem} ${styles[`review${item.severity[0].toUpperCase()}${item.severity.slice(1)}`]} ${item.status !== "open" ? styles.reviewResolved : ""}`}><div><b>{item.status === "open" ? item.severity === "critical" ? healthCopy.blockingLabel : item.severity === "warning" ? healthCopy.cautionLabel : healthCopy.info : item.status}</b><strong>{item.message}</strong></div><p>{item.evidence}</p><small>{planCopy.affects} {item.affectedDays.length ? item.affectedDays.map((day) => `${language === "es" ? "día" : "day"} ${day}`).join(", ") : planCopy.overallPlan} · {item.confidence} {planCopy.confidence}</small><p className={styles.reviewImpact}>{recommendationImpact(item)}</p><div className={styles.reviewActions}>{item.status === "open" && item.proposedChange ? <button type="button" onClick={() => changeRecommendation(item.id, "apply")}>{planCopy.apply}</button> : item.status !== "open" ? <button type="button" onClick={() => changeRecommendation(item.id, "undo")}>{planCopy.undo}</button> : null}</div></article>)}</div> : <p className={styles.reviewEmpty}>{planCopy.coverage}</p>}
+            {reviewRecommendations.length ? <div className={styles.reviewList}>
+              {priorityRecommendations.map(renderReviewItem)}
+              {remainingRecommendations.length ? <details className={styles.moreReviewItems}><summary>{language === "es" ? `${remainingRecommendations.length} más comprobaciones` : `${remainingRecommendations.length} more trip checks`}</summary><div>{remainingRecommendations.map(renderReviewItem)}</div></details> : null}
+            </div> : <p className={styles.reviewEmpty}>{planCopy.coverage}</p>}
           </section> : null}
-          {isPlanningPreview && customTrip ? <JourneyItineraryAccommodation trip={customTrip} currentStopId={selected.id} onExploreMap={(stop) => {
+          {isPlanningPreview && customTrip ? <JourneyItineraryAccommodation compact trip={customTrip} currentStopId={selected.id} onExploreMap={(stop) => {
             const firstStopDay = customTrip.planItems.find((item) => item.stopId === stop.id);
             if (firstStopDay) setSelectedDayId(`${customTrip.id}-calendar-${firstStopDay.dayNumber}`);
             setSelectedId(stop.id);
@@ -1177,7 +1192,7 @@ export default function JourneyPage() {
       {isPlanningPreview && isCustomJourney && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
-        </div></header>
+        </div>{customTrip ? <details className={styles.mobileTripStatus}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedDay.travel, savedRestaurant: selectedRestaurant }}
           schedule={{ signals: selectedScheduleSignals, warning: plannerWarning }}
