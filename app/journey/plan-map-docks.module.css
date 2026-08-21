@@ -1,6 +1,5 @@
 /* Desktop shell composition for the live planner. The map remains untouched;
-   these overrides only release the legacy left finder/elongated side rails so
-   the existing Shape-the-day surface can sit over the lower map centre. */
+   these overrides place the existing planner surfaces on the open canvas. */
 @media (min-width: 981px) {
   .plan :global([class*="itineraryWithFinder"]) {
     bottom:auto;
@@ -15,26 +14,46 @@
   }
 
   .plan :global([class*="finderDock"]) {
+    top:84px;
     right:auto;
-    bottom:24px;
-    left:50%;
-    width:min(680px, calc(100vw - 680px));
-    height:min(430px, calc(100svh - 178px));
-    max-height:calc(100svh - 178px);
-    transform:translateX(-50%);
+    bottom:auto;
+    left:100px;
+    width:clamp(520px,40vw,640px);
+    height:min(620px,calc(100svh - 100px));
+    max-height:calc(100svh - 100px);
+    transform:none;
+  }
+
+  .plan :global([class*="canonicalPlannerDestination"]) {
+    top:84px;
+    left:12px;
+    width:76px;
+    max-height:142px;
+  }
+
+  .plan :global([class*="canonicalPlannerDestination"]:not([class*="destinationCompact"])) {
+    width:min(330px,calc(100vw - 28px));
+    max-height:calc(100svh - 112px);
+  }
+
+  .plan :global([class*="canonicalPlannerStatus"]) {
+    top:84px;
+    right:16px;
+    width:210px;
+    max-width:210px;
   }
 
   .plan :global([class*="pinDock"]) {
-    top:172px;
-    right:calc(var(--planner-shell-gutter, 16px) + min(254px, calc(100vw - 704px)) + 20px);
+    top:246px;
+    right:300px;
     bottom:auto;
     left:auto;
-    width:min(210px, calc(100vw - 704px));
+    width:102px;
     max-height:calc(100svh - 196px);
     transform:none;
   }
 
-  .plan :global([class*="pinDockExpanded"]) { width:min(320px, calc(100vw - 704px)); }
+  .plan :global([class*="pinDockExpanded"]) { width:min(280px, calc(100vw - 704px)); }
 
   .plan :global([class*="pinDock"]) summary { min-height:40px;padding:7px 9px;gap:6px; }
   .plan :global([class*="pinDock"]) summary > svg { width:15px;height:15px; }
@@ -56,8 +75,8 @@
     overflow:hidden;
   }
 
-  .plan :global([class*="journey-map"]),
-  .plan :global([class*="planner-map"]) {
+  .plan :global(.journey-map),
+  .plan :global(.planner-map) {
     inset:149px 0 0;
     height:auto;
     border:0;

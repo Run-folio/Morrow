@@ -5,12 +5,16 @@ import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
+import type { JourneyLocalPlace } from "@/components/journey-local-finder";
 
 type JourneyPlannerMapProps = {
   stops: JourneyStop[];
   legs: JourneyLeg[];
   selectedId: string;
   plannerPins: PlannerMapPin[];
+  localPlaces?: JourneyLocalPlace[];
+  selectedLocalPlaceId?: string | null;
+  focusOffset?: [number, number];
   focusCoordinates: [number, number] | null;
   draftPinCoordinates: [number, number] | null;
   pinPlacementMode: boolean;
@@ -18,6 +22,7 @@ type JourneyPlannerMapProps = {
   overviewMode?: boolean;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
+  onLocalPlaceSelect?: (place: JourneyLocalPlace) => void;
   onSelect: (id: string) => void;
 };
 
@@ -50,18 +55,23 @@ export function JourneyPlannerMap({
   legs,
   selectedId,
   plannerPins,
+  localPlaces = [],
+  selectedLocalPlaceId,
+  focusOffset,
   focusCoordinates,
   draftPinCoordinates,
   pinPlacementMode,
   overviewMode = false,
   onMapPinDrop,
   onPlannerPinSelect,
+  onLocalPlaceSelect,
   onSelect,
 }: JourneyPlannerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
   const hasInitialisedViewRef = useRef(false);
 
@@ -82,6 +92,7 @@ export function JourneyPlannerMap({
     return () => {
       stopMarkersRef.current.forEach((marker) => marker.remove());
       pinMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       draftPinRef.current?.remove();
       map.remove();
       mapRef.current = null;
@@ -177,6 +188,28 @@ export function JourneyPlannerMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const drawLocalPlaces = () => {
+      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkersRef.current = localPlaces.map((place) => {
+        const element = document.createElement("button");
+        element.type = "button";
+        element.className = `planner-map__local-place ${place.id === selectedLocalPlaceId ? "is-active" : ""}`;
+        element.setAttribute("aria-label", `Show ${place.name}`);
+        element.textContent = place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay";
+        element.addEventListener("click", () => onLocalPlaceSelect?.(place));
+        return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
+      });
+    };
+    // Markers are DOM overlays and do not depend on the style lifecycle. The
+    // finder commonly reports results after the initial map load, so drawing
+    // them immediately keeps result ↔ map selection in sync.
+    drawLocalPlaces();
+    return () => { localPlaceMarkersRef.current.forEach((marker) => marker.remove()); localPlaceMarkersRef.current = []; };
+  }, [localPlaces, onLocalPlaceSelect, selectedLocalPlaceId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
     const drawDraftPin = () => {
       draftPinRef.current?.remove();
       draftPinRef.current = null;
@@ -208,18 +241,29 @@ export function JourneyPlannerMap({
     const map = mapRef.current;
     const stop = stops.find((candidate) => candidate.id === selectedId);
     if (!map || !stop?.coordinates || !hasInitialisedViewRef.current || overviewMode) return;
-    map.easeTo({ center: stop.coordinates, zoom: Math.max(map.getZoom(), 11), duration: 550 });
-  }, [overviewMode, selectedId, stops]);
+    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
+    map.easeTo({ center: stop.coordinates, zoom: Math.max(map.getZoom(), 11), offset, duration: 550 });
+  }, [focusOffset, overviewMode, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focusCoordinates || !hasInitialisedViewRef.current) return;
+    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
     map.easeTo({
       center: focusCoordinates,
       zoom: Math.max(map.getZoom(), 14),
+      offset,
       duration: 550,
     });
-  }, [focusCoordinates]);
+  }, [focusCoordinates, focusOffset]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const place = localPlaces.find((candidate) => candidate.id === selectedLocalPlaceId);
+    if (!map || !place || !hasInitialisedViewRef.current) return;
+    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
+    map.easeTo({ center: place.coordinates, zoom: Math.max(map.getZoom(), 14), offset, duration: 420 });
+  }, [focusOffset, localPlaces, selectedLocalPlaceId]);
 
   return <div ref={containerRef} className="planner-map" aria-label="Interactive trip map" />;
 }

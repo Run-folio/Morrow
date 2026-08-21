@@ -385,6 +385,51 @@
   .highlights{gap:7px 12px}
 }
 
+/* Approved Map Planner composition: one journey strip, one local map canvas,
+   and three clear destination/planning/health layers. The underlying planner
+   state and services remain page-owned. */
+.plannerHealthSummary{display:grid;gap:12px}.plannerHealthSummary>header{display:grid;gap:5px;padding-bottom:10px;border-bottom:1px solid var(--hairline)}.plannerHealthSummary>header small{color:var(--signal);font:750 8px var(--morrovia-meta);letter-spacing:.12em}.plannerHealthSummary>header strong{display:flex;align-items:center;gap:6px;font:700 15px var(--morrovia-ui)}.plannerHealthSummary>header strong svg{width:15px;height:15px}.plannerHealthSummary>header span{color:var(--morrovia-muted);font:500 9px/1.4 var(--morrovia-ui)}.healthReady,.rowReady{color:var(--morrovia-success)}.healthAttention,.rowAttention{color:var(--morrovia-warning)}
+.healthRows{display:grid;gap:7px}.healthRows article{display:grid;grid-template-columns:24px minmax(0,1fr) 15px;align-items:center;gap:7px;min-height:57px;padding:8px;border:1px solid var(--hairline);border-radius:9px;background:color-mix(in srgb,#fff 96%,var(--mist))}.healthRows article>svg:first-child{width:15px;height:15px;color:var(--signal)}.healthRows article>svg:last-child{width:14px;height:14px}.healthRows article span{display:grid;min-width:0;gap:3px}.healthRows article strong{font:650 9px var(--morrovia-ui)}.healthRows article small{overflow:hidden;color:var(--morrovia-muted);font:500 8px/1.25 var(--morrovia-ui);text-overflow:ellipsis;white-space:nowrap}.healthDetailsButton{min-height:36px;color:var(--accent);background:#fff;border:1px solid var(--hairline);border-radius:8px;font:650 9px var(--morrovia-ui);cursor:pointer}
+
+.journey :global(.planner-map__local-place){min-width:54px;min-height:31px;padding:0 9px;color:var(--accent);background:#fff;border:1px solid var(--hairline);border-radius:999px;box-shadow:0 7px 18px rgba(23,16,111,.16);font:750 9px var(--morrovia-ui);cursor:pointer;transition:transform .18s,border-color .18s,color .18s}.journey :global(.planner-map__local-place:hover){border-color:var(--signal);color:var(--signal);transform:translateY(-2px)}.journey :global(.planner-map__local-place.is-active){color:#fff;background:var(--signal);border-color:#fff;box-shadow:0 0 0 9px color-mix(in srgb,var(--signal) 18%,transparent),0 10px 24px rgba(244,43,122,.28);transform:translateY(-3px)}
+.localCandidateSelected{background:var(--mist)!important}.featuredStay{border-color:color-mix(in srgb,var(--signal) 28%,var(--hairline));box-shadow:0 9px 22px rgba(23,16,111,.08)}
+
+@media(min-width:981px){
+  .canonicalPlanner{height:100svh;min-height:640px;padding:0;overflow:hidden;background:var(--paper)}
+  .canonicalPlanner :global(.journey-map),.canonicalPlanner :global(.planner-map){position:fixed;inset:72px 0 0!important;width:100%;height:auto!important;border:0;z-index:0}
+  .canonicalPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px;right:246px}
+  .canonicalPlanner :global(.planner-map .maplibregl-ctrl-group){border-radius:11px}
+  .canonicalPlanner :global(.planner-map .maplibregl-ctrl-group button){width:38px;height:38px}
+
+  .canonicalPlannerDestination{position:fixed;z-index:12;top:84px;left:12px;width:76px;max-height:142px;padding:8px;overflow:hidden;border:1px solid var(--hairline);border-radius:13px;background:rgba(255,255,255,.97);box-shadow:0 10px 25px rgba(23,16,111,.11);backdrop-filter:blur(14px)}
+  .canonicalPlannerDestination.destinationCompact .destinationIntro{display:grid;padding:0;background:transparent;border:0;box-shadow:none}
+  .canonicalPlannerDestination.destinationCompact .mediaCarousel{display:block;order:-1;margin:0 0 8px}
+  .canonicalPlannerDestination.destinationCompact .carouselViewport{aspect-ratio:1;border-radius:9px}
+  .canonicalPlannerDestination.destinationCompact .destinationTitle{display:block;margin:0;padding:0 2px}.canonicalPlannerDestination.destinationCompact .destinationTitle h1{font:700 11px/1.2 var(--morrovia-ui);letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.canonicalPlannerDestination.destinationCompact .destinationFacts{display:block;margin:4px 0 13px;padding:0 2px}.canonicalPlannerDestination.destinationCompact .destinationFacts dd{color:var(--morrovia-muted);font:600 8px var(--morrovia-ui)}.canonicalPlannerDestination.destinationCompact .destinationToggle{right:6px;bottom:5px}.canonicalPlannerDestination.destinationCompact .destinationToggle::after{font-size:18px}
+  .canonicalPlannerDestination:not(.destinationCompact){top:84px;right:auto;bottom:14px;left:96px;width:min(360px,calc(100vw - 356px));max-width:360px;max-height:none;padding:18px;overflow-y:auto;border-radius:16px;box-shadow:var(--workspace-shadow)}
+  .canonicalPlannerDestination:not(.destinationCompact) .destinationToggle{position:absolute;top:10px;right:10px;z-index:2}
+
+  .finderDock{position:fixed;z-index:10;top:84px;right:auto;bottom:14px;left:100px;display:flex;width:clamp(520px,40vw,640px);height:auto;max-height:none;padding:0 18px 16px;overflow:hidden;border:1px solid var(--hairline);border-radius:18px;background:rgba(255,255,255,.985);box-shadow:0 18px 46px rgba(23,16,111,.17);transform:none;backdrop-filter:blur(18px)}
+  .finderDock>header{flex:0 0 auto;padding:17px 0 12px}.finderDock>header strong,.shapeDayHeader strong{font-size:30px}.finderDock>header em{padding:6px 9px}.finderTabs{margin-top:10px}.finderTabs button{min-height:38px}
+  .shapeDayPlan,.finderDockStay .restaurantFinder,.finderDockEat .restaurantFinder,.finderDockSee .shapeDaySee{flex:1;min-height:0;margin-top:8px;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+  .finderDockStay .restaurantFinder,.finderDockEat .restaurantFinder{display:block}.restaurantFinder>header{padding:3px 0 10px}.restaurantFinder>header>span{width:30px;height:30px}.restaurantFinder>header strong{font-size:13px}.finderFilters{position:absolute;top:113px;right:18px;margin:0;z-index:2}.finderFilters summary{min-height:32px;padding:0 10px;font-size:9px}.finderFilters[open]>div{position:absolute;top:38px;right:0;width:220px;padding:8px;background:#fff;border:1px solid var(--hairline);border-radius:9px;box-shadow:var(--workspace-shadow)}
+  .restaurantResult.featuredStay{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px;margin-top:9px;padding:15px}.restaurantResult.featuredStay>p,.restaurantResult.featuredStay>.restaurantActions{grid-column:1/-1}.restaurantResult.featuredStay h3{font-family:var(--morrovia-display);font-size:24px;font-weight:500}.restaurantResult.featuredStay>span{align-self:center}.restaurantResult.featuredStay .restaurantFit{font-size:10px}.restaurantResult.featuredStay .restaurantActions{display:grid;grid-template-columns:1fr 1fr auto auto;gap:7px}.restaurantResult.featuredStay .restaurantActions>a,.restaurantResult.featuredStay .restaurantActions>button,.restaurantResult.featuredStay .affiliateAction>a{justify-content:center;min-height:38px;font-size:9px}.localCandidates{padding-top:12px}.localCandidates>p{padding-bottom:7px}.localCandidates button{min-height:55px;padding:9px 4px}.localCandidates strong{font-size:12px}.localCandidates small{font-size:8px}
+
+  .canonicalPlannerStatus{position:fixed;z-index:11;top:84px;right:16px;left:auto;width:210px;max-width:210px;max-height:calc(100svh - 100px);margin:0;padding:15px;overflow:auto;border:1px solid var(--hairline);border-radius:15px;background:rgba(255,255,255,.97);box-shadow:0 12px 30px rgba(23,16,111,.12);backdrop-filter:blur(14px)}
+  .canonicalPlannerStatus .tripStatusToggle{display:none}.canonicalPlannerStatus .itineraryContent{display:none}.canonicalPlannerStatus.tripStatusExpanded .itineraryContent{display:block;margin-top:13px;padding-top:12px;border-top:1px solid var(--hairline)}.canonicalPlannerStatus.tripStatusExpanded .reviewPanel{display:block}.canonicalPlannerStatus.tripStatusExpanded .journeyBookingReadiness,.canonicalPlannerStatus.tripStatusExpanded .tripReadiness{display:none}
+
+  .pinDock{position:fixed;z-index:12;top:246px;right:246px;bottom:auto;left:auto;width:102px;max-height:260px;overflow:visible;transform:none}.pinDock .addPinUtility{min-height:38px;padding:6px 8px;font-size:8px}.pinDockExpanded{width:280px;padding:0;background:#fff}
+  .mapFocusControl{position:fixed;z-index:12;top:207px;right:246px;left:auto}.mapFocusControl button{width:38px;height:38px;border-radius:11px}
+  .mapAssistant{position:fixed;z-index:9;bottom:16px;left:12px}
+}
+
+@media(max-width:980px){
+  .canonicalPlanner :global(.journey-map),.canonicalPlanner :global(.planner-map){inset:72px 0 0!important}
+  .canonicalPlannerDestination{top:82px}.canonicalPlannerStatus{top:82px}.canonicalPlannerStatus .plannerHealthSummary{display:none}
+  .finderDock{bottom:var(--morrovia-mobile-dock-offset,82px);height:clamp(350px,57svh,540px)}
+  .mapFocusControl{top:136px}.pinDock{bottom:calc(57svh + var(--morrovia-mobile-dock-offset,82px) + 10px)}
+}
+
 /* Shared portfolio control language: simple sans actions, mono only for map metadata. */
 .back,.createTripLink{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-size:14px;font-weight:500;letter-spacing:-.01em}
 .carouselControls button,.localCandidates button,.nextDay{font-family:var(--font-geist-sans,Geist,Inter,sans-serif);font-weight:500;letter-spacing:-.01em}
@@ -684,6 +729,7 @@
 
   .destination{top:146px;left:var(--planner-shell-gutter);width:104px;max-height:calc(100svh - 170px);padding:11px}
   .destinationCompact{overflow:hidden}
+  .canonicalPlannerDestination.destinationCompact>div{display:flex;flex-direction:column}
   .destinationCompact .destinationLine,.destinationCompact .introTop,.destinationCompact .description,.destinationCompact .destinationTransfer,.destinationCompact .highlights,.destinationCompact .exploreMore,.destinationCompact .detailSections{display:none}
   .destinationCompact .destinationTitle{display:flex;align-items:center;gap:6px}
   .destinationCompact .destinationTitle h1{font:650 13px/1.18 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
@@ -698,8 +744,10 @@
   .destinationToggle{margin-top:6px;padding:0;border:0;color:var(--accent);background:transparent;font:650 9px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));cursor:pointer}
   .destinationCompact .destinationToggle{position:absolute;right:10px;bottom:9px;font-size:0}
   .destinationCompact .destinationToggle::after{content:"›";font:500 20px/1 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+  .canonicalPlannerDestination:not(.destinationCompact){width:min(330px,calc(100vw - 28px));max-height:calc(100svh - 112px);padding:18px;overflow-y:auto;border-radius:16px;box-shadow:var(--workspace-shadow)}
+  .canonicalPlannerDestination:not(.destinationCompact) .destinationToggle{position:absolute;top:10px;right:10px;margin:0}
 
-  .finderDock{left:clamp(132px,14vw,224px);right:auto;bottom:18px;width:min(640px,calc(100vw - 504px));height:min(500px,calc(100svh - 166px));padding:0 20px 18px;transform:none}
+  .finderDock{left:clamp(132px,14vw,224px);right:auto;bottom:18px;display:flex;flex-direction:column;width:min(640px,calc(100vw - 504px));height:min(500px,calc(100svh - 166px));padding:0 20px 18px;transform:none}
   .finderDock>header{padding:16px 0 11px}
   .finderDock>header strong,.shapeDayHeader strong{font-size:29px}
   .finderDockStay .restaurantFinder,.finderDockEat .restaurantFinder,.finderDockSee .shapeDaySee{margin-top:10px}

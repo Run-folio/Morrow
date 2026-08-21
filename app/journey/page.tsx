@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Building2, Castle, Flower2, House, Landmark, LocateFixed, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, Waves, X, type LucideIcon } from "lucide-react";
+import { BedDouble, Binoculars, Building2, Castle, CheckCircle2, Clock3, Flower2, House, Landmark, LocateFixed, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyCarousel } from "@/components/journey-carousel";
-import { JourneyLocalFinder } from "@/components/journey-local-finder";
+import { JourneyLocalFinder, type JourneyLocalPlace } from "@/components/journey-local-finder";
 import { JourneyItineraryAccommodation } from "@/components/journey-itinerary-accommodation";
 import { JourneyItineraryRefinement } from "@/components/journey-itinerary-refinement";
 import { PlanWorkspace } from "@/components/journey-plan-workspace";
+import { JourneyPlannerStrip } from "@/components/journey-planner-strip";
 import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
@@ -23,6 +24,7 @@ import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/t
 import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
+import { accommodationProgress } from "@/lib/easyt/accommodation";
 import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import EasyTNavigation from "./easyt-navigation";
 import styles from "./journey.module.css";
@@ -329,7 +331,9 @@ export default function JourneyPage() {
   const [pinCoordinates, setPinCoordinates] = useState<[number, number] | null>(null);
   const [selectedPlannerPin, setSelectedPlannerPin] = useState<PlannerMapPin | null>(null);
   const [pinEditDraft, setPinEditDraft] = useState("");
-  const [mapMode, setMapMode] = useState<"overview" | "detail">("overview");
+  const [mapMode, setMapMode] = useState<"overview" | "detail">("detail");
+  const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>([]);
+  const [selectedLocalPlaceId, setSelectedLocalPlaceId] = useState<string | null>(null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
   const [undoMessage, setUndoMessage] = useState("");
@@ -405,11 +409,27 @@ export default function JourneyPage() {
     return signals;
   }, [selectedActivities.length, selectedDay.travel?.duration]);
   const health = useMemo(() => customTrip ? tripHealth(customTrip) : null, [customTrip]);
+  const accommodation = useMemo(() => customTrip ? accommodationProgress(customTrip) : null, [customTrip]);
   const reviewRecommendations = health?.issues ?? [];
   const displayRecommendations = [...reviewRecommendations].sort((left, right) => ({ critical: 0, warning: 1, info: 2 }[left.severity] - { critical: 0, warning: 1, info: 2 }[right.severity]));
   const priorityRecommendations = displayRecommendations.slice(0, 3);
   const remainingRecommendations = displayRecommendations.slice(3);
   const tripIssueCount = reviewRecommendations.filter((item) => item.status === "open").length;
+  const canonicalStripStops = useMemo(() => customTrip?.stops.map((stop) => {
+    const items = customTrip.planItems.filter((item) => item.stopId === stop.id).sort((a, b) => a.dayNumber - b.dayNumber);
+    const first = items[0];
+    const last = items[items.length - 1];
+    const imageKey = first ? `${customTrip.id}-day-${first.dayNumber}` : "";
+    return {
+      id: stop.id,
+      name: stop.name,
+      dayLabel: first ? first.dayNumber === last?.dayNumber ? `Day ${first.dayNumber}` : `Day ${first.dayNumber}–${last?.dayNumber}` : `${stop.nights ?? 0} nights`,
+      image: (imageKey ? placeMedia[imageKey]?.image : undefined) ?? first?.image ?? undefined,
+      active: stop.id === selectedPlanItem?.stopId,
+    };
+  }) ?? [], [customTrip, placeMedia, selectedPlanItem?.stopId]);
+  const activityCount = customTrip?.planItems.filter((item) => item.type === "activity").length ?? 0;
+  const unresolvedTransport = reviewRecommendations.some((item) => item.status === "open" && (item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence"));
   useEffect(() => {
     if (!isPlanningPreview || !customTrip || !health) return;
     if (!hasAnalyticsConsent()) return;
@@ -985,9 +1005,9 @@ export default function JourneyPage() {
 
   return (
     <>
-      <div className={styles.productNavigation}>
+      {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" />
-      </div>
+      </div> : null}
       <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""}`}>
       {hasCanonicalPlanner ? (
         <>
@@ -1022,11 +1042,15 @@ export default function JourneyPage() {
               legs={journey.legs}
               selectedId={selectedId}
               plannerPins={customTrip?.brief.mapPins ?? []}
+              localPlaces={shapeDayTab === "stay" || shapeDayTab === "eat" ? localMapPlaces : []}
+              selectedLocalPlaceId={selectedLocalPlaceId}
+              focusOffset={[210, 0]}
               focusCoordinates={selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : null}
               draftPinCoordinates={pinCoordinates}
               pinPlacementMode={pinPlacementMode}
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
+              onLocalPlaceSelect={(place) => setSelectedLocalPlaceId(place.id)}
               onSelect={(id) => {
                 setIsPlaying(false);
                 setSelectedId(id);
@@ -1063,7 +1087,28 @@ export default function JourneyPage() {
       )}
       {hasCanonicalPlanner && mapCoachVisible ? <aside className={styles.mapCoach} role="status"><small>{mapCoach.eyebrow}</small><strong>{mapCoach.title}</strong><p>{mapCoach.detail}</p><button type="button" onClick={() => { window.localStorage.setItem("easyt-map-coach-dismissed", "1"); setMapCoachVisible(false); }}>{mapCoach.dismiss}</button></aside> : null}
 
-      <header className={styles.topbar}>
+      {hasCanonicalPlanner && customTrip ? <JourneyPlannerStrip
+        summary={`${journey.calendar.length} days · ${customTrip.stops.length} stops · ${customTrip.travellers} ${customTrip.travellers === 1 ? "traveller" : "travellers"}`}
+        stops={canonicalStripStops}
+        addStopHref={`/journey/new?trip=${encodeURIComponent(customTrip.id)}`}
+        fullTripHref={editTripHref}
+        onSelectStop={(stopId) => {
+          const firstItem = customTrip.planItems.filter((item) => item.stopId === stopId).sort((a, b) => a.dayNumber - b.dayNumber)[0];
+          if (!firstItem) return;
+          setIsPlaying(false);
+          setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
+          setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);
+          setSelectedLocalPlaceId(null);
+          setMapMode("detail");
+        }}
+        overflow={<>
+          <button type="button" onClick={() => setIsPlaying((playing) => !playing)}>{isPlaying ? planCopy.pause : planCopy.play}</button>
+          <Link href={`/journey/plan-next?trip=${encodeURIComponent(customTrip.id)}`}>New map view</Link>
+          <Link href={`/journey/prep?trip=${encodeURIComponent(customTrip.id)}`}>Trip prep</Link>
+          <Link href="/journey/dashboard">{planCopy.myTrips}</Link>
+          {session?.user ? <button type="button" onClick={() => void exportPlan()} disabled={exportState === "saving"}>{exportState === "saving" ? planCopy.preparing : planCopy.exportPdf}</button> : null}
+        </>}
+      /> : <header className={styles.topbar}>
           <div className={styles.headerRow}>
           {isPlanningPreview ? <Link href={editTripHref} className={styles.back}>← {language === "es" ? "Volver" : "Back"}</Link> : <Link href="/" className={styles.back}>← Shaun Whiting</Link>}
           <div className={styles.titleLockup}><span>{journey.title}</span><small>{journey.dateRange}</small></div>
@@ -1116,7 +1161,7 @@ export default function JourneyPage() {
             })}
           </div>
         </nav>
-      </header>
+      </header>}
 
       <section className={`${styles.destination} ${hasCanonicalPlanner ? `${styles.destinationWithPinDock} ${styles.canonicalPlannerDestination}` : ""} ${hasCanonicalPlanner && !destinationExpanded ? styles.destinationCompact : ""}`} aria-live="polite">
         <motion.div
@@ -1160,7 +1205,16 @@ export default function JourneyPage() {
       </section>
 
       <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""}`} aria-live="polite">
-        {hasCanonicalPlanner ? <button type="button" className={styles.tripStatusToggle} aria-expanded={tripStatusExpanded} onClick={() => setTripStatusExpanded((expanded) => !expanded)}><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><strong>{health?.isReady ? (language === "es" ? "En orden" : "On track") : `${(health?.blockingCount ?? 0) + (health?.cautionCount ?? 0)} ${language === "es" ? "revisiones" : "checks"}`}</strong></button> : null}
+        {hasCanonicalPlanner ? <section className={styles.plannerHealthSummary} aria-label={healthCopy.title}>
+          <header><small>{healthCopy.title}</small><strong className={health?.isReady ? styles.healthReady : styles.healthAttention}>{health?.isReady ? <CheckCircle2 aria-hidden="true" /> : null}{health?.isReady ? (language === "es" ? "En orden" : "On track") : `${(health?.blockingCount ?? 0) + (health?.cautionCount ?? 0)} ${language === "es" ? "revisiones" : "to review"}`}</strong><span>{health?.isReady ? (language === "es" ? "Tu viaje se ve bien" : "Your trip looks good") : (language === "es" ? "Empieza por lo más importante" : "Start with the highest-priority checks")}</span></header>
+          <div className={styles.healthRows}>
+            <article><BedDouble aria-hidden="true" /><span><strong>Accommodation</strong><small>{accommodation ? `${accommodation.sortedCount} of ${accommodation.stops.length} stays sorted` : "No overnight stays"}</small></span><CheckCircle2 className={accommodation?.complete ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
+            <article><Clock3 aria-hidden="true" /><span><strong>Travel time</strong><small>{unresolvedTransport ? "Needs a decision" : "Well paced"}</small></span><CheckCircle2 className={unresolvedTransport ? styles.rowAttention : styles.rowReady} aria-hidden="true" /></article>
+            <article><Binoculars aria-hidden="true" /><span><strong>Things to do</strong><small>{activityCount} planned</small></span><CheckCircle2 className={activityCount ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
+            <article><WalletCards aria-hidden="true" /><span><strong>Budget</strong><small>{customTrip?.brief.budgetBand ? "Preference saved" : "Not set"}</small></span><CheckCircle2 className={customTrip?.brief.budgetBand ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
+          </div>
+          <button type="button" className={styles.healthDetailsButton} aria-expanded={tripStatusExpanded} onClick={() => setTripStatusExpanded((expanded) => !expanded)}>{tripStatusExpanded ? "Hide details" : "View details"}</button>
+        </section> : null}
         <motion.div
           className={styles.itineraryContent}
           key={selectedDay.id}
@@ -1194,7 +1248,7 @@ export default function JourneyPage() {
         </motion.div>
       </aside>
 
-      {isPlanningPreview && customTrip && selectedPlanItem ? <aside className={`${styles.pinDock} ${pinCoordinates || selectedPlannerPin ? styles.pinDockExpanded : ""}`} aria-label={planCopy.pinsAria}>
+      {isPlanningPreview && customTrip && selectedPlanItem && shapeDayTab === "plan" ? <aside className={`${styles.pinDock} ${pinCoordinates || selectedPlannerPin ? styles.pinDockExpanded : ""}`} aria-label={planCopy.pinsAria}>
         <button type="button" className={styles.addPinUtility} aria-pressed={pinPlacementMode} onClick={() => { setMapMode("detail"); setSelectedPlannerPin(null); setPinDraft(""); setPinCoordinates(null); setPinPlacementMode(true); }}>
           <MapPin aria-hidden="true" /><span>{pinPlacementMode ? planCopy.clickMap : planCopy.addPin}</span><b>{(customTrip.brief.mapPins ?? []).filter((pin) => pin.dayNumber === selectedPlanItem.dayNumber).length}</b>
         </button>
@@ -1210,7 +1264,7 @@ export default function JourneyPage() {
 
       {hasCanonicalPlanner && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
-          {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
+          {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); setSelectedLocalPlaceId(null); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip ? <details className={styles.mobileTripStatus}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedDay.travel, savedRestaurant: selectedRestaurant }}
@@ -1241,7 +1295,7 @@ export default function JourneyPage() {
           copy={planCopy}
         /> : null}
         {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedPlanItem ? { checkIn: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.arrivalDate ?? selectedPlanItem.date, checkOut: customTrip?.stops.find((stop) => stop.id === selectedPlanItem.stopId)?.departureDate ?? nextIsoDate(selectedPlanItem.date), adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setSelectedLocalPlaceId(place.id); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
       {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} /></aside> : null}
