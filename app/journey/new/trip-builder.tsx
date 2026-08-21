@@ -330,6 +330,8 @@ export default function TripBuilder() {
   // to Time instead of stranding a traveller in removed setup UI.
   const [step, setStep] = useState(0);
   const [showTripDetails, setShowTripDetails] = useState(false);
+  const [showOriginEditor, setShowOriginEditor] = useState(false);
+  const [showStopEditor, setShowStopEditor] = useState(false);
   const [summaryFocus, setSummaryFocus] = useState<"origin" | "stops" | "dates" | "constraints" | null>(null);
   const [generated, setGenerated] = useState(false);
   const [editingRouteStopId, setEditingRouteStopId] = useState<string | null>(null);
@@ -584,9 +586,20 @@ export default function TripBuilder() {
       ["Set the time.", "Set your dates, then adjust nights before we build your trip."],
     ];
   const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : "") : "";
+  const pickedUpPreferences = useMemo(() => {
+    const labels: string[] = [];
+    if (effectiveIntent.preferences.transportModes.includes("train")) labels.push(language === "es" ? "Tren preferido" : "Train preferred");
+    if (effectiveIntent.preferences.transportModes.includes("flight")) labels.push(language === "es" ? "Volar cuando convenga" : "Fly when it helps");
+    if (effectiveIntent.preferences.pace !== "balanced") labels.push(language === "es" ? ({ relaxed: "Ritmo tranquilo", packed: "Ritmo intenso" }[effectiveIntent.preferences.pace]) : ({ relaxed: "Relaxed pace", packed: "Full days" }[effectiveIntent.preferences.pace]));
+    if (effectiveIntent.hardConstraints.avoidDriving) labels.push(language === "es" ? "Evitar coche" : "Avoid driving");
+    return labels;
+  }, [effectiveIntent, language]);
   const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
     const targetStep = target === "dates" ? 1 : 0;
     if (step !== targetStep) setStep(targetStep);
+    if (target === "origin") setShowOriginEditor(true);
+    if (target === "stops") setShowStopEditor(true);
+    if (target === "constraints") setShowTripDetails(true);
     setSummaryFocus(target);
     window.setTimeout(() => document.getElementById(`builder-${target}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
   };
@@ -1119,21 +1132,12 @@ export default function TripBuilder() {
       {step === 0 && <header className={styles.confirmHero}>
         <p>{language === "es" ? "PASO 1 DE 2" : "STEP 1 OF 2"}</p>
         <h1>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</h1>
-        <span>{language === "es" ? "Una comprobación rápida para crear el viaje adecuado para ti." : "A quick check so we can build the right trip for you."}</span>
+        <span>{language === "es" ? "Comprueba lo que entendimos y completa cualquier detalle." : "Check what we understood and fill any gaps."}</span>
       </header>}
       <div className={styles.wizardBody}>
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
-              {hasPromptContext && <section className={styles.intakeReview} aria-live="polite" aria-label={language === "es" ? "Resumen de viaje" : "Trip intake review"}>
-                <div><span>{language === "es" ? "RESUMEN EXTRAÍDO" : "EXTRACTED SUMMARY"}</span><h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2><p>{language === "es" ? "Edita un detalle para rellenar un hueco o corregir una suposición." : "Edit a detail to fill a gap or correct an assumption."}</p></div>
-                <dl>
-                  <div><dt><Plane />{language === "es" ? "Salida" : "Leaving from"}</dt><dd>{origin || (resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : language === "es" ? "Necesita confirmación" : "Needs confirmation")}</dd><button type="button" onClick={() => openSummaryEditor("origin")} aria-label={language === "es" ? "Editar salida" : "Edit departure"}><Pencil /></button></div>
-                  <div><dt><MapPin />{language === "es" ? "Paradas" : "Stops"}</dt><dd>{stops.length ? stops.map((stop) => `${stop.name}${stop.country ? `, ${stop.country}` : ""}`).join(" · ") : (language === "es" ? "Añade las paradas imprescindibles" : "Add the places you must see")}</dd><button type="button" onClick={() => openSummaryEditor("stops")} aria-label={language === "es" ? "Editar paradas" : "Edit stops"}><Pencil /></button></div>
-                  <div><dt><Sparkles />{language === "es" ? "Imprescindibles" : "Fixed item"}</dt><dd>{effectiveIntent.hardConstraints.fixedCommitments.length ? effectiveIntent.hardConstraints.fixedCommitments.map((item) => item.date ? `${item.label}, ${fmtLong(item.date)}` : item.label).join(" · ") : (language === "es" ? "Nada fijo todavía" : "Nothing fixed yet")}</dd><button type="button" onClick={() => { setShowTripDetails(true); openSummaryEditor("constraints"); }} aria-label={language === "es" ? "Editar condiciones" : "Edit constraints"}><Pencil /></button></div>
-                  {unresolvedMentions.length ? <div className={styles.intakeNeeds}><dt><Sparkles />{language === "es" ? "Revisar" : "Check"}</dt><dd>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText} <span>{language === "es" ? "Editar" : "Edit"}</span></button>)}</dd></div> : null}
-                </dl>
-              </section>}
               {!hasPromptContext && hydrated && <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><Sparkles /> {ui.tripBriefLabel}</span>
                 <h2>{language === "es" ? "Cuéntanos sobre tu viaje." : "Tell us about your trip."}</h2>
@@ -1149,41 +1153,41 @@ export default function TripBuilder() {
                 <div className={styles.travelStyleHead}><span>{language === "es" ? "TU ESTILO DE VIAJE" : "YOUR TRAVEL STYLE"}</span><a href="/journey/profile">{language === "es" ? "Editar" : "Edit"}</a></div>
                 <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
               </section>}
-              {hasPromptContext && <>
-              <div id="builder-origin" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
-                <span className={styles.cardLabel}><Plane /> {copy.startFrom}</span>
-                <input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}
-                  onChange={(e) => { setOrigin(e.target.value); setOriginTouched(true); setOriginCoordinates(undefined); setOriginError(""); }}
-                  onBlur={() => { if (origin.trim() && !originCoordinates) void validateOrigin(); }} />
-                <small className={originMissing ? styles.hintError : styles.hint}>
-                  {originError || (originMissing ? ui.addOrigin : "")}
-                </small>
-              </div>
+              {hasPromptContext && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
+                <header className={styles.tripUnderstoodHead}>
+                  <span><Sparkles /> {language === "es" ? "VIAJE ENTENDIDO" : "TRIP UNDERSTOOD"}</span>
+                  <h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2>
+                </header>
+                <section id="builder-origin" className={`${styles.placesSection} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
+                  <div className={styles.placesSectionHead}><strong>{language === "es" ? "Salida" : "Starting from"}</strong><button type="button" onClick={() => openSummaryEditor("origin")}><Pencil /> {language === "es" ? "Editar" : "Edit"}</button></div>
+                  {origin ? <span className={styles.originChip}><MapPin />{origin}</span> : <p className={styles.missingPlace}>{resolvingLocations ? (language === "es" ? "Comprobando…" : "Checking…") : (language === "es" ? "Añade tu salida" : "Add your departure")}</p>}
+                  {(showOriginEditor || originMissing) && <label className={styles.inlineEditor}><span className="sr-only">{copy.startFrom}</span><input value={origin} placeholder={copy.cityAirport} aria-label={copy.startFrom}
+                    onChange={(e) => { setOrigin(e.target.value); setOriginTouched(true); setOriginCoordinates(undefined); setOriginError(""); }}
+                    onBlur={() => { if (origin.trim() && !originCoordinates) void validateOrigin(); }} />
+                    <button type="button" onClick={() => setShowOriginEditor(false)}>{language === "es" ? "Listo" : "Done"}</button></label>}
+                  {(originError || originMissing) && <small className={styles.hintError}>{originError || ui.addOrigin}</small>}
+                </section>
 
-              <div id="builder-stops" className={`${styles.card} ${styles.summaryEditorCard} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
-                <span className={styles.cardLabel}><MapPin /> {copy.addDestination}</span>
-                <input value={stopInput} placeholder={copy.destinationPlaceholder} aria-label={copy.addDestination}
-                  onChange={(e) => { setStopInput(e.target.value); setStopError(""); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStop(); } }} />
-                <small className={stopError ? styles.hintError : styles.hint}>
-                  {stopError}
-                </small>
-                {!stopInput.trim() && contextualSuggestions.length > 0 && (
-                  <div className={styles.suggestions}>
-                    {contextualSuggestions.map((name) => (
-                      <button type="button" key={name} onClick={() => addStop(name)}><Plus /> {name}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
+                  <div className={styles.placesSectionHead}><strong>{language === "es" ? "Paradas" : "Stops"}</strong><button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button></div>
+                  {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
+                    <div>{stops.map((stop, index) => <button type="button" key={stop.id} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-label={language === "es" ? "Parada bloqueada" : "Stop locked"} /> : <X aria-hidden="true" />}</button>)}</div>
+                  </div>}
+                  {(showStopEditor || !stops.length) && <div className={styles.stopEditor}><label className={styles.inlineEditor}><span className="sr-only">{copy.addDestination}</span><input value={stopInput} placeholder={copy.destinationPlaceholder} aria-label={copy.addDestination}
+                    onChange={(e) => { setStopInput(e.target.value); setStopError(""); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStop(); } }} />
+                    <button type="button" onClick={() => { setShowStopEditor(false); setStopInput(""); setStopError(""); }}>{language === "es" ? "Cancelar" : "Cancel"}</button></label>
+                    {stopError && <small className={styles.hintError}>{stopError}</small>}
+                    {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((name) => <button type="button" key={name} onClick={() => addStop(name)}><Plus /> {name}</button>)}</div>}
+                  </div>}
+                </section>
 
-              {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
-                <span>{language === "es" ? "PARADAS CONFIRMADAS" : "CONFIRMED STOPS"}</span>
-                <div>{stops.map((stop, index) => <button type="button" key={stop.id} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-label={language === "es" ? "Parada bloqueada" : "Stop locked"} /> : <X aria-hidden="true" />}</button>)}</div>
-              </div>}
+                {unresolvedMentions.length > 0 && <section className={styles.unresolvedPlaces} aria-label={language === "es" ? "Detalles por confirmar" : "Details to confirm"}><strong>{language === "es" ? "REVISAR" : "TO CONFIRM"}</strong>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText}<Pencil /></button>)}</section>}
+
+                {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias recogidas" : "Preferences picked up"}><strong>{language === "es" ? "PREFERENCIAS RECOGIDAS" : "PREFERENCES WE PICKED UP"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
               <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
-                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar fecha o reserva" : "Hide fixed date or booking") : (language === "es" ? "Añadir fecha o reserva fija" : "Add a fixed date or booking")}</button>
+                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar planes fijos" : "Hide fixed plans") : (language === "es" ? "Añadir planes fijos" : "Add fixed plans")}</button>
                 {showTripDetails && <>
                 <header><p>{language === "es" ? "YA RESERVADO" : "ALREADY BOOKED"}</p><h3>{language === "es" ? "Mantén visible lo que no puede cambiar." : "Keep what cannot move visible."}</h3><span>{language === "es" ? "Añade una fecha o reserva fija y la protegeremos mientras se construye la ruta." : "Add a fixed date or booking and we’ll protect it while we build the route."}</span></header>
                 <div className={styles.intentGrid}>
@@ -1226,7 +1230,7 @@ export default function TripBuilder() {
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </>}
               </section>
-              </>}
+              </section>}
 
               {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
                 <div>
@@ -1376,15 +1380,13 @@ export default function TripBuilder() {
           )}
         </div>
 
-        {step === 0 ? <aside className={styles.confirmAside} hidden aria-label="What happens next">
-          <img className={styles.confirmIllustration} src={stops.some((stop) => stop.country === "Japan") ? "/journey/illustrations/japan-route-confirm.png" : "/journey/illustrations/global-route-confirm.png"} alt={stops.some((stop) => stop.country === "Japan") ? "Illustrated route through Japan" : "Illustrated international route"} />
-          <h2>{language === "es" ? "Esto es lo que ocurre después" : "Here’s what happens next"}</h2>
-          <div className={styles.nextSteps}>
-            <p><MapPin /><span><b>{language === "es" ? "Ordenaremos tu ruta" : "We’ll order your route"}</b>{language === "es" ? "Encontramos el mejor flujo entre tus paradas." : "Morrovia finds the best flow between your stops."}</span></p>
-            <p><span className={styles.bed}>▰</span><span><b>{language === "es" ? "Recomendaremos noches" : "We’ll recommend nights"}</b>{language === "es" ? "Según el tiempo de viaje y lo que hay cerca." : "Based on travel time and what’s nearby."}</span></p>
-            <p><Sparkles /><span><b>{language === "es" ? "Señalaremos compromisos" : "We’ll flag trade-offs"}</b>{language === "es" ? "Para que puedas decidir con confianza." : "So you can decide with confidence."}</span></p>
-          </div>
-          <div className={styles.confirmAsideFoot}><CalendarDays /><span>{language === "es" ? "Puedes editar cada decisión después." : "Every decision stays editable afterwards."}</span></div>
+        {step === 0 ? <aside className={styles.placesSummaryRail} aria-label={language === "es" ? "Resumen del viaje" : "Trip summary"}>
+          <span>{language === "es" ? "TU VIAJE" : "YOUR TRIP"}</span>
+          <div className={styles.placesSummaryStat}><MapPin /><div><b>{stops.length} {language === "es" ? "paradas" : "stops"}</b><small>{stops.length ? stops.map((stop) => stop.name).join(" → ") : (language === "es" ? "Añade tus primeras paradas" : "Add your first stops")}</small></div></div>
+          <div className={styles.placesSummaryStat}><Users /><div><b>{effectiveIntent.travellers} {language === "es" ? (effectiveIntent.travellers === 1 ? "viajero" : "viajeros") : (effectiveIntent.travellers === 1 ? "traveller" : "travellers")}</b></div></div>
+          <div className={styles.placesSummaryStat}><CalendarDays /><div><b>{language === "es" ? "Fechas en el siguiente paso" : "Dates set in the next step"}</b></div></div>
+          {stops.length > 0 && <ol className={styles.placesSummaryStops}>{stops.map((stop, index) => <li key={stop.id}><b>{index + 1}</b><div><strong>{stop.name}{stop.country ? `, ${stop.country}` : ""}</strong><small>{index === 0 ? (language === "es" ? "Punto de partida" : "Starting point") : (language === "es" ? "Parada" : "Stop")}</small></div></li>)}</ol>}
+          <div className={styles.placesSummaryNext}><span>{language === "es" ? "SIGUIENTE" : "NEXT"}</span><div><Clock /><p><b>{language === "es" ? "Equilibraremos las noches" : "We’ll balance nights"}</b>{language === "es" ? "según el tiempo de viaje y lo que haya cerca." : "around travel time and what’s nearby."}</p></div></div>
         </aside> : <aside className={`${styles.rail} ${styles.timeSummaryRail}`} aria-label={language === "es" ? "Consecuencias de tiempo" : "Timing consequences"}>
           <section className={styles.timingSummary}>
             <h2>{language === "es" ? "Tu viaje de un vistazo" : "Your trip at a glance"}</h2>
@@ -1409,7 +1411,7 @@ export default function TripBuilder() {
               if (step === 0 && !(await validateOrigin())) return;
               if (step === 1) buildTrip(); else setStep(1);
             }}>
-            {step === 0 ? copy.continue : (language === "es" ? "Crear viaje" : "Build trip")} →
+            {step === 0 ? (language === "es" ? "Establecer fechas y noches" : "Set dates & nights") : (language === "es" ? "Crear viaje" : "Build trip")} →
           </button>
         </div>
       </div>

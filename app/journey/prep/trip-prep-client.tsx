@@ -12,21 +12,28 @@ import { JourneyTripPrepAccommodation } from "@/components/journey-trip-prep-acc
 import { loadActiveTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import JourneyLoading from "../loading";
 import styles from "./trip-prep.module.css";
 import editorial from "../surface-editorial.module.css";
 
 export default function TripPrepClient() {
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
+  const [tripResolved, setTripResolved] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   useEffect(() => {
+    let active = true;
     setLanguage(languageFromStorage());
     const id = new URLSearchParams(window.location.search).get("trip");
     void (async () => {
       const cloud = id ? await loadTripFromEasyT(id).catch(() => null) : null;
       const local = loadActiveTrip();
+      if (!active) return;
       setTrip(cloud ?? (local && (!id || local.id === id) ? local : null));
+      setTripResolved(true);
     })();
+    return () => { active = false; };
   }, []);
+  if (!tripResolved) return <JourneyLoading />;
   if (!trip) return <main className={`${styles.page} ${editorial.surface} ${editorial.prep} morrovia-editorial-page`}><EasyTNavigation current="home" /><section className={styles.empty}><p>TRIP PREP</p><h1>Choose a trip first.</h1><span>Once you have a route, its practical preparation will live here.</span><Link href="/journey/dashboard">See your trips <ArrowRight /></Link></section></main>;
   const mapHref = `/journey/plan?trip=${encodeURIComponent(trip.id)}`;
   const builderHref = `/journey/new?trip=${encodeURIComponent(trip.id)}&view=itinerary`;
