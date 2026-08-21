@@ -1129,15 +1129,15 @@ export default function TripBuilder() {
         <strong>{stepGuidance[step][0]}</strong>
         <span>{stepGuidance[step][1]}</span>
       </p>
-      {step === 0 && <header className={styles.confirmHero}>
-        <p>{language === "es" ? "PASO 1 DE 2" : "STEP 1 OF 2"}</p>
-        <h1>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</h1>
-        <span>{language === "es" ? "Comprueba lo que entendimos y completa cualquier detalle." : "Check what we understood and fill any gaps."}</span>
-      </header>}
       <div className={styles.wizardBody}>
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
+              <header className={styles.stepHero}>
+                <p>{language === "es" ? "PASO 1 DE 2" : "STEP 1 OF 2"}</p>
+                <h1>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</h1>
+                <span>{language === "es" ? "Comprueba lo que entendimos y completa cualquier detalle." : "Check what we understood and fill any gaps."}</span>
+              </header>
               {!hasPromptContext && hydrated && <div className={`${styles.card} ${styles.tripBriefCard}`}>
                 <span className={styles.cardLabel}><Sparkles /> {ui.tripBriefLabel}</span>
                 <h2>{language === "es" ? "Cuéntanos sobre tu viaje." : "Tell us about your trip."}</h2>
@@ -1187,7 +1187,7 @@ export default function TripBuilder() {
                 {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias recogidas" : "Preferences picked up"}><strong>{language === "es" ? "PREFERENCIAS RECOGIDAS" : "PREFERENCES WE PICKED UP"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
               <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
-                <button type="button" className={styles.detailsToggle} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar planes fijos" : "Hide fixed plans") : (language === "es" ? "Añadir planes fijos" : "Add fixed plans")}</button>
+                <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} onClick={() => setShowTripDetails((current) => !current)}>{showTripDetails ? (language === "es" ? "Ocultar planes fijos" : "Hide fixed plans") : (effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Planes fijos" : "Fixed plans") : (language === "es" ? "Planes fijos · Añade algo que no pueda moverse" : "Fixed plans · Add something that can’t move"))}</button>
                 {showTripDetails && <>
                 <header><p>{language === "es" ? "YA RESERVADO" : "ALREADY BOOKED"}</p><h3>{language === "es" ? "Mantén visible lo que no puede cambiar." : "Keep what cannot move visible."}</h3><span>{language === "es" ? "Añade una fecha o reserva fija y la protegeremos mientras se construye la ruta." : "Add a fixed date or booking and we’ll protect it while we build the route."}</span></header>
                 <div className={styles.intentGrid}>
@@ -1211,7 +1211,6 @@ export default function TripBuilder() {
                       <input type="date" value={fixedCommitmentDate} onChange={(event) => setFixedCommitmentDate(event.target.value)} aria-label={language === "es" ? "Fecha fija" : "Fixed date"} />
                       <button type="button" onClick={addFixedCommitment} disabled={!fixedCommitmentLabel.trim()}><Plus />{language === "es" ? "Añadir" : "Add"}</button>
                     </div>
-                    {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter((commitment) => commitment.id !== item.id) } }))}><X /></button></span>)}</div>}
                   </section>
                   <section className={styles.intentPreferences}>
                     <p>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</p>
@@ -1229,6 +1228,7 @@ export default function TripBuilder() {
                 </div>
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </>}
+                {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter((commitment) => commitment.id !== item.id) } }))}><X /></button></span>)}</div>}
               </section>
               </section>}
 
@@ -1389,6 +1389,7 @@ export default function TripBuilder() {
           <div className={styles.placesSummaryNext}><span>{language === "es" ? "SIGUIENTE" : "NEXT"}</span><div><Clock /><p><b>{language === "es" ? "Equilibraremos las noches" : "We’ll balance nights"}</b>{language === "es" ? "según el tiempo de viaje y lo que haya cerca." : "around travel time and what’s nearby."}</p></div></div>
         </aside> : <aside className={`${styles.rail} ${styles.timeSummaryRail}`} aria-label={language === "es" ? "Consecuencias de tiempo" : "Timing consequences"}>
           <section className={styles.timingSummary}>
+            <small>{language === "es" ? "TU VIAJE" : "YOUR TRIP"}</small>
             <h2>{language === "es" ? "Tu viaje de un vistazo" : "Your trip at a glance"}</h2>
             <p>{totalDays} {totalDays === 1 ? ui.day : ui.days} · {stops.length} {language === "es" ? "paradas" : "stops"} · {effectiveIntent.travellers} {language === "es" ? (effectiveIntent.travellers === 1 ? "viajero" : "viajeros") : (effectiveIntent.travellers === 1 ? "traveller" : "travellers")}</p>
             <strong><CheckCircle2 /> {allocatedDays} {language === "es" ? `de ${totalDays} días planificados` : `of ${totalDays} days planned`}</strong>

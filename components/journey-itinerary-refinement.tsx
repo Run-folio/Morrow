@@ -6,7 +6,7 @@ import { trackEvent } from "@/lib/analytics";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import styles from "./journey-itinerary-refinement.module.css";
 
-type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string };
+type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string };
 const filters = ["All", "Food", "Nature", "Cities", "Beach"];
 
 export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onExploreMap, compact = false }: { trip: EasyTTrip; stop?: TripStop; onSelectionChange: (stopId: string, title: string, selected: boolean) => void; onExploreMap: () => void; compact?: boolean }) {
@@ -38,12 +38,12 @@ export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onEx
 
   if (!stop || (stop.nights ?? 0) < 1) return null;
   return <section className={`${styles.panel} ${compact ? styles.compact : ""}`} aria-labelledby={`refinement-${stop.id}`}>
-    <header><div><p>SEE NEARBY · {stop.name}</p><h3 id={`refinement-${stop.id}`}>Best fits for today</h3><span>{loading ? "Finding mapped attractions…" : `${places.length} mapped attractions`}</span></div><Sparkles aria-hidden="true" /></header>
+    <header><div><p>SEE IN {stop.name}</p><h3 id={`refinement-${stop.id}`}>Best fits</h3><span>{loading ? "Finding mapped attractions…" : `${places.length} places nearby`}</span></div><Sparkles aria-hidden="true" /></header>
     {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { onSelectionChange(stop.id, title, false); trackEvent("attraction_removed", { trip_id: trip.id, stop_id: stop.id }); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
     <div className={styles.filters} aria-label="Attraction categories">{filters.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => { setFilter(item); if (item !== "All") trackEvent("attraction_filter_used", { trip_id: trip.id, stop_id: stop.id, filter: item.toLowerCase() }); }}>{item}</button>)}</div>
     {loading ? <p className={styles.state}>Finding a few worthwhile places…</p> : visible.length ? <div className={styles.places}>{visible.map((place) => {
       const isSelected = selected.includes(place.title);
-      return <article key={place.id}><div><small>{place.area} · {place.type}</small><strong>{place.title}</strong><p>{place.description}</p></div><button type="button" aria-pressed={isSelected} onClick={() => { onSelectionChange(stop.id, place.title, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id }); }}>{isSelected ? <>Added <X /></> : <><Plus /> Add to trip</>}</button></article>;
+      return <article key={place.id}>{place.image ? <img src={place.image} alt="" /> : null}<div><small>{place.area} · {place.type}</small><strong>{place.title}</strong><p>{place.description}</p></div><button type="button" aria-pressed={isSelected} onClick={() => { onSelectionChange(stop.id, place.title, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id }); }}>{isSelected ? <>Added <X /></> : <><Plus /> Add to trip</>}</button></article>;
     })}</div> : <p className={styles.state}>No short list is available yet. Explore the map when you want a deeper look.</p>}
     <button type="button" className={styles.explore} onClick={() => { trackEvent("attraction_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(); }}>Explore more on map <Map /></button>
   </section>;

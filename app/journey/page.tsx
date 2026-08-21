@@ -334,6 +334,8 @@ export default function JourneyPage() {
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
   const [undoMessage, setUndoMessage] = useState("");
   const [mapCoachVisible, setMapCoachVisible] = useState(false);
+  const [destinationExpanded, setDestinationExpanded] = useState(false);
+  const [tripStatusExpanded, setTripStatusExpanded] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
   const journey = useMemo(() => {
@@ -986,7 +988,7 @@ export default function JourneyPage() {
       <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" />
       </div>
-      <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan}`}>
+      <main className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""}`}>
       {hasCanonicalPlanner ? (
         <>
           <div className={`${styles.mapOverviewLayer} ${mapMode === "overview" ? styles.mapLayerActive : styles.mapLayerHidden}`}>
@@ -1116,7 +1118,7 @@ export default function JourneyPage() {
         </nav>
       </header>
 
-      <section className={`${styles.destination} ${hasCanonicalPlanner ? styles.destinationWithPinDock : ""}`} aria-live="polite">
+      <section className={`${styles.destination} ${hasCanonicalPlanner ? `${styles.destinationWithPinDock} ${styles.canonicalPlannerDestination}` : ""} ${hasCanonicalPlanner && !destinationExpanded ? styles.destinationCompact : ""}`} aria-live="polite">
         <motion.div
           key={selected.id}
           initial={hasMounted.current ? { opacity: 0, x: -7, filter: "blur(2px)" } : false}
@@ -1130,6 +1132,7 @@ export default function JourneyPage() {
                 {selected.coordinates ? <JourneyWeather city={selected.city} coordinates={selected.coordinates} date={selectedDay.date} /> : <span className={styles.weatherUnavailable}>Weather appears once this stop is mapped.</span>}
               </div>
               <div className={styles.destinationTitle}><h1>{selected.city}</h1><span aria-hidden="true"><DestinationIcon /></span></div>
+              {hasCanonicalPlanner ? <button type="button" className={styles.destinationToggle} aria-expanded={destinationExpanded} onClick={() => setDestinationExpanded((expanded) => !expanded)}>{destinationExpanded ? (language === "es" ? "Cerrar" : "Close") : (language === "es" ? "Detalles" : "Details")}</button> : null}
               <p className={styles.description}>{selected.description}</p>
               {isPlanningPreview && selectedTripStop ? <dl className={styles.destinationFacts} aria-label={`${selected.city} stay details`}>
                 <div><dt>Arrival</dt><dd>{selectedTripStop.arrivalDate ? customDate(selectedTripStop.arrivalDate, 0) : selectedDay.date}</dd></div>
@@ -1156,8 +1159,10 @@ export default function JourneyPage() {
         </motion.div>
       </section>
 
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? styles.itineraryWithFinder : ""}`} aria-live="polite">
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""}`} aria-live="polite">
+        {hasCanonicalPlanner ? <button type="button" className={styles.tripStatusToggle} aria-expanded={tripStatusExpanded} onClick={() => setTripStatusExpanded((expanded) => !expanded)}><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><strong>{health?.isReady ? (language === "es" ? "En orden" : "On track") : `${(health?.blockingCount ?? 0) + (health?.cautionCount ?? 0)} ${language === "es" ? "revisiones" : "checks"}`}</strong></button> : null}
         <motion.div
+          className={styles.itineraryContent}
           key={selectedDay.id}
           initial={hasMounted.current ? { opacity: 0, x: 8 } : false}
           animate={{ opacity: 1, x: 0 }}

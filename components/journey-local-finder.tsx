@@ -15,11 +15,14 @@ type StayStyle = "simple" | "character" | "comfort";
 type StaySearch = { checkIn?: string; checkOut?: string; adults?: number; rooms?: number; currency?: string; bookerCountry?: string };
 
 export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, staySearch, onRestaurantSelect, onSavePlace, onRemovePlace }: { kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void; onRemovePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
-  const [meal, setMeal] = useState<RestaurantMeal | undefined>();
-  const [pace, setPace] = useState<MealPace | undefined>();
-  const [mood, setMood] = useState<MealMood | undefined>();
-  const [stayStyle, setStayStyle] = useState<StayStyle | undefined>();
-  const [moment, setMoment] = useState<FinderMoment | undefined>();
+  // These defaults are the existing “Show best matches” choice. Keeping them
+  // selected makes the finder useful immediately; the same controls remain
+  // available as optional refinements below.
+  const [meal, setMeal] = useState<RestaurantMeal | undefined>("dinner");
+  const [pace, setPace] = useState<MealPace | undefined>("relaxed");
+  const [mood, setMood] = useState<MealMood | undefined>("local");
+  const [stayStyle, setStayStyle] = useState<StayStyle | undefined>("simple");
+  const [moment, setMoment] = useState<FinderMoment | undefined>("now");
   const [profile, setProfile] = useState<TravelProfile>(defaultTravelProfile);
   const [places, setPlaces] = useState<LocalPlace[]>([]);
   const [chosen, setChosen] = useState<LocalPlace | null>(null);
@@ -50,11 +53,11 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
     setLiveInventory(false);
     setChosen(null);
     setSaved(null);
-    setMeal(undefined);
-    setPace(undefined);
-    setMood(undefined);
-    setStayStyle(undefined);
-    setMoment(undefined);
+    setMeal("dinner");
+    setPace("relaxed");
+    setMood("local");
+    setStayStyle("simple");
+    setMoment("now");
     const localSearch = fetch(`/api/journey-local-search?kind=${kind}&city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&lat=${latitude}&lon=${longitude}`, { signal: controller.signal })
       .then((response) => response.ok ? response.json() : { places: [], unavailable: true })
       // A partner-confirmed stay must remain usable even when the independent
@@ -128,11 +131,11 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
     if (saved) onRemovePlace?.({ name: saved.name, coordinates: saved.coordinates }, kind);
     setSaved(null);
     setChosen(null);
-    setMeal(undefined);
-    setPace(undefined);
-    setMood(undefined);
-    setStayStyle(undefined);
-    setMoment(undefined);
+    setMeal("dinner");
+    setPace("relaxed");
+    setMood("local");
+    setStayStyle("simple");
+    setMoment("now");
     try {
       const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, LocalPlace>;
       delete store[dayId];
@@ -141,17 +144,11 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
   };
 
   return <section className={`${styles.restaurantFinder} ${kind === "stay" ? styles.finderStay : styles.finderEat}`} aria-label={`${label} for ${city}`}>
-    <header><span><Icon /></span><div><small>{label} · {city}</small><strong>{loading ? "Finding nearby places…" : `${places.length} mapped ${kind === "stay" ? "stays" : "restaurants"}`}</strong></div></header>
-    <p className={styles.restaurantContext}><b>{kind === "restaurant" ? "A short list, shaped for today" : liveInventory ? "Available stays for your dates" : "Choose a base for this part of the trip"}</b><span>{kind === "stay" ? liveInventory ? `These properties have a matching room product for ${staySearch?.checkIn} to ${staySearch?.checkOut}. Prices and rooms can change until you complete your booking.` : "Mapped stays are useful starting points. Check room availability and price for your dates before booking." : "Named mapped venues are ranked by distance, your travel profile and the moment you choose. Confirm opening hours before you go."}</span></p>
+    <header><span><Icon /></span><div><small>{kind === "stay" ? `STAY IN ${city}` : `EAT IN ${city}`}</small><strong>{loading ? "Finding nearby places…" : `${places.length} ${kind === "stay" ? "stays" : "places"} nearby`}</strong></div></header>
     {loading ? <p className={styles.restaurantLocalNote}>Checking actual local venues…</p> : null}
     {!loading && !places.length ? <p className={styles.restaurantLocalNote}>{searchUnavailable ? "Live venue search is temporarily unavailable. Open Maps to search around today’s location instead." : "No mapped venues came back for this area. Open Maps to search around the day’s location instead."}</p> : null}
-    {!loading && places.length && !isReady ? <div className={styles.finderQuickStart}><b>{places.length} mapped {kind === "stay" ? "stays" : "places"} nearby</b><button type="button" onClick={() => kind === "stay" ? setStayStyle("simple") : (setMoment("now"), setMeal("dinner"), setPace("relaxed"), setMood("local"))}>Show best matches</button></div> : null}
-    {!loading && kind === "restaurant" && !moment ? <div className={styles.restaurantQuestion}><p>Start with the moment <b>1 / 4</b></p><h3>What does today need?</h3><div>{finderMoments.map((option) => <button key={option.value} type="button" onClick={() => setMoment(option.value)}>{option.label}</button>)}</div></div> : null}
-    {!loading && kind === "restaurant" && moment && !meal ? <div className={styles.restaurantQuestion}><p>Then, choose the meal <b>2 / 4</b></p><h3>When do you want to eat?</h3><div>{(["lunch", "dinner"] as const).map((option) => <button key={option} type="button" onClick={() => setMeal(option)}>{option}</button>)}</div></div> : null}
-    {!loading && kind === "restaurant" && meal && !pace ? <div className={styles.restaurantQuestion}><p>Then, the pace <b>2 / 4</b></p><h3>How should the meal feel?</h3><div>{([{ value: "quick", label: "Quick & easy" }, { value: "relaxed", label: "Take our time" }, { value: "occasion", label: "A trip highlight" }] as const).map((option) => <button key={option.value} type="button" onClick={() => setPace(option.value)}>{option.label}</button>)}</div></div> : null}
-    {!loading && kind === "restaurant" && meal && pace && !mood ? <div className={styles.restaurantQuestion}><p>Finally, the direction <b>3 / 4</b></p><h3>What sounds right?</h3><div>{([{ value: "local", label: "Local favourite" }, { value: "comfort", label: "Easy comfort" }, { value: "surprise", label: "Surprise me" }] as const).map((option) => <button key={option.value} type="button" onClick={() => setMood(option.value)}>{option.label}</button>)}</div></div> : null}
-    {!loading && kind === "stay" && !stayStyle ? <div className={styles.restaurantQuestion}><p>Choose a base <b>1 / 2</b></p><h3>What kind of stay suits today?</h3><div>{([{ value: "simple", label: "Simple & central" }, { value: "character", label: "Local character" }, { value: "comfort", label: "Comfort first" }] as const).map((option) => <button key={option.value} type="button" onClick={() => setStayStyle(option.value)}>{option.label}</button>)}</div></div> : null}
-    {isReady && !chosen && candidates.length ? <div className={styles.localCandidates}><p><span>{kind === "restaurant" ? "4 / 4 · REAL MAP RESULTS" : liveInventory ? "LIVE RESULTS · YOUR DATES" : "MAPPED STAYS · CHECK BEFORE BOOKING"}</span><b>Best fits for today</b></p>{candidates.map(({ place, recommendation }, index) => <button key={place.id} type="button" onClick={() => setChosen(place)}><span><strong>{index === 0 ? "Best fit · " : ""}{place.name}</strong><small>{place.address}</small><small className={styles.finderWhy}>{kind === "stay" ? `${place.availability === "available" ? "Available for your dates" : place.provider === "google-places" ? "Operational property · check rooms" : "Mapped property · check before booking"}${place.rating ? ` · ${place.rating.toFixed(1)} rating` : ""}${place.price ? ` · ${place.price.currency} ${place.price.total.toFixed(0)}` : ""}` : `${recommendation.reasons[0]} · ${recommendation.confidence} confidence`}</small></span><em>{place.category.replace(/_/g, " ")}</em></button>)}</div> : null}
+    {!loading && places.length ? <details className={styles.finderFilters}><summary>Filters</summary><div>{kind === "stay" ? ([{ value: "simple", label: "Central" }, { value: "character", label: "Character" }, { value: "comfort", label: "Comfort" }] as const).map((option) => <button key={option.value} type="button" aria-pressed={stayStyle === option.value} onClick={() => setStayStyle(option.value)}>{option.label}</button>) : <>{finderMoments.map((option) => <button key={option.value} type="button" aria-pressed={moment === option.value} onClick={() => setMoment(option.value)}>{option.label}</button>)}{(["lunch", "dinner"] as const).map((option) => <button key={option} type="button" aria-pressed={meal === option} onClick={() => setMeal(option)}>{option}</button>)}{(["quick", "relaxed", "occasion"] as const).map((option) => <button key={option} type="button" aria-pressed={pace === option} onClick={() => setPace(option)}>{option}</button>)}{(["local", "comfort", "surprise"] as const).map((option) => <button key={option} type="button" aria-pressed={mood === option} onClick={() => setMood(option)}>{option}</button>)}</>}</div></details> : null}
+    {isReady && !chosen && candidates.length ? <div className={styles.localCandidates}><p><span>{kind === "restaurant" ? "RECOMMENDED NEARBY" : liveInventory ? "AVAILABLE FOR YOUR DATES" : "RECOMMENDED NEARBY"}</span><b>Best match</b></p>{candidates.map(({ place, recommendation }, index) => <button key={place.id} type="button" onClick={() => setChosen(place)}><span><strong>{index === 0 ? "Best match · " : ""}{place.name}</strong><small>{place.address}</small><small className={styles.finderWhy}>{kind === "stay" ? `${place.availability === "available" ? "Available for your dates" : place.provider === "google-places" ? "Operational property · check rooms" : "Mapped property · check before booking"}${place.rating ? ` · ${place.rating.toFixed(1)} rating` : ""}${place.price ? ` · ${place.price.currency} ${place.price.total.toFixed(0)}` : ""}` : `${recommendation.reasons[0]} · ${recommendation.confidence} confidence`}</small></span><em>{place.category.replace(/_/g, " ")}</em></button>)}</div> : null}
     {chosen ? <article className={styles.restaurantResult}><p><span>{saved ? `Saved ${kind === "stay" ? "stay" : meal}` : `Chosen ${kind === "stay" ? "stay" : meal}`}</span><b>{saved ? "In today’s plan ↑" : kind === "stay" ? chosen.availability === "available" ? "Available for your dates" : "Check availability before saving" : "Check before saving"}</b></p><h3>{chosen.name}</h3><span><MapPin /> {chosen.address}</span><p className={styles.restaurantFit}>{kind === "stay" ? chosen.availability === "available" ? `A matching room product is available for your selected dates${chosen.price ? ` from ${chosen.price.currency} ${chosen.price.total.toFixed(0)}` : ""}. Confirm the final room, cancellation terms and total directly with Booking.com.` : `${chosen.provider === "google-places" ? "Operational property confirmed" : "Mapped property; operating status unverified"}. Check rooms and price for your dates before booking.` : `${recommendNearbyPlace(chosen, { kind, moment, mood, pace, profile }).reasons.join(" · ")}. This is a mapped recommendation, not a live availability or opening-hours claim.`}</p><div className={styles.restaurantActions}><a href={chosen.mapsUrl} target="_blank" rel="noreferrer">Open in Maps <ArrowUpRight /></a>{kind === "stay" && stayBookingUrl ? <span className={styles.affiliateAction}><a href={stayBookingUrl} target="_blank" rel="noreferrer sponsored" onClick={() => { if (chosen.provider === "booking-demand") trackEvent("easyt_accommodation_affiliate_clicked", { has_live_availability: chosen.availability === "available", has_price: Boolean(chosen.price) }); }}>{chosen.availability === "available" ? "View available room" : "Check availability"} <ArrowUpRight /></a>{chosen.provider === "booking-demand" ? <small>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}</span> : null}<button type="button" className={styles.restaurantSave} onClick={save} disabled={Boolean(saved)}>{saved ? "Saved to itinerary" : `Add ${kind === "stay" ? "stay" : "to today"}`}</button><button type="button" aria-label="Change selection" onClick={reset}><RotateCcw /></button></div></article> : null}
   </section>;
 }

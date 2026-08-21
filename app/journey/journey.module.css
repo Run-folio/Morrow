@@ -670,3 +670,128 @@
   .shapeDayPlan .nextDay span{font-size:9px}
   .shapeDayPlan .nextDay strong{font-size:10px}
 }
+
+/* Desktop open-canvas composition. These are intentionally layout-only
+   overrides: the existing map, selected-stop state and planner callbacks
+   remain exactly where they are. */
+@media(min-width:981px){
+  .headerRow{min-height:56px;padding-inline:var(--planner-shell-gutter)}
+  .timeline{padding:0 var(--planner-shell-gutter) 6px}
+  .track{padding:7px 0 6px}
+  .stop{min-width:142px;height:58px;padding:16px 11px 6px;border-radius:10px}
+  .stop.active{color:#fff;background:var(--accent);border-color:var(--accent);box-shadow:0 8px 18px rgba(23,16,111,.18)}
+  .stop.active .stopNode{border-color:#fff;background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--signal) 42%,transparent)}
+
+  .destination{top:146px;left:var(--planner-shell-gutter);width:104px;max-height:calc(100svh - 170px);padding:11px}
+  .destinationCompact{overflow:hidden}
+  .destinationCompact .destinationLine,.destinationCompact .introTop,.destinationCompact .description,.destinationCompact .destinationTransfer,.destinationCompact .highlights,.destinationCompact .exploreMore,.destinationCompact .detailSections{display:none}
+  .destinationCompact .destinationTitle{display:flex;align-items:center;gap:6px}
+  .destinationCompact .destinationTitle h1{font:650 13px/1.18 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
+  .destinationCompact .destinationTitle>span{display:none}
+  .destinationCompact .mediaCarousel{display:block;margin:0 0 7px}
+  .destinationCompact .carouselViewport{aspect-ratio:1;border-radius:9px}
+  .destinationCompact .carouselControls,.destinationCompact .imageCount,.destinationCompact figcaption{display:none}
+  .destinationCompact .destinationFacts{display:block;margin:5px 0 0;padding:0;border:0}
+  .destinationCompact .destinationFacts div:not(:nth-child(2)){display:none}
+  .destinationCompact .destinationFacts dt{display:none}
+  .destinationCompact .destinationFacts dd{font:700 9px var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.04em}
+  .destinationToggle{margin-top:6px;padding:0;border:0;color:var(--accent);background:transparent;font:650 9px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));cursor:pointer}
+  .destinationCompact .destinationToggle{position:absolute;right:10px;bottom:9px;font-size:0}
+  .destinationCompact .destinationToggle::after{content:"›";font:500 20px/1 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+
+  .finderDock{left:clamp(132px,14vw,224px);right:auto;bottom:18px;width:min(640px,calc(100vw - 504px));height:min(500px,calc(100svh - 166px));padding:0 20px 18px;transform:none}
+  .finderDock>header{padding:16px 0 11px}
+  .finderDock>header strong,.shapeDayHeader strong{font-size:29px}
+  .finderDockStay .restaurantFinder,.finderDockEat .restaurantFinder,.finderDockSee .shapeDaySee{margin-top:10px}
+
+  .itineraryPanel{top:146px;right:var(--planner-shell-gutter);width:min(230px,calc(100vw - 770px));max-height:min(460px,calc(100svh - 166px));padding:13px 14px}
+  .itineraryWithFinder{max-height:min(460px,calc(100svh - 166px))}
+  .itineraryPanel .reviewPanel{padding:0;background:transparent;border:0}
+  .itineraryPanel .journeyBookingReadiness,.itineraryPanel .tripReadiness{margin-top:9px}
+
+  .finderFilters{margin:7px 0 0}
+  .finderFilters summary{display:inline-flex;align-items:center;min-height:28px;padding:0 9px;border:1px solid var(--hairline);border-radius:7px;color:var(--accent);background:#fff;font:650 8px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));cursor:pointer;list-style:none}
+  .finderFilters summary::-webkit-details-marker{display:none}
+  .finderFilters summary::before{content:"⌘";margin-right:5px;color:var(--signal)}
+  .finderFilters[open] summary{margin-bottom:6px}
+  .finderFilters>div{display:flex;flex-wrap:wrap;gap:5px}
+  .finderFilters button{min-height:27px;padding:0 8px;border:1px solid var(--hairline);border-radius:7px;color:var(--morrovia-muted,#7673a4);background:#fff;font:650 8px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));cursor:pointer}
+  .finderFilters button[aria-pressed="true"]{border-color:color-mix(in srgb,var(--signal) 36%,var(--hairline));color:var(--accent);background:var(--mist)}
+  .finderStay .restaurantActions .affiliateAction,.finderEat .restaurantActions .restaurantSave{order:-1}
+}
+
+/* Canonical compact planner on small screens: the same three existing
+   surfaces become map overlays rather than a vertical stack of desktop cards. */
+.tripStatusToggle{display:none}
+@media(max-width:980px){
+  .canonicalPlanner{height:100svh;min-height:0;padding:0;overflow:hidden;background:var(--paper)}
+  .canonicalPlanner :global(.journey-map),.canonicalPlanner :global(.planner-map){position:fixed;inset:149px 0 0!important;width:100%;height:auto!important;border:0;z-index:0}
+  .canonicalPlanner :global(.journey-map__controls){top:160px}
+
+  .canonicalPlannerDestination{position:fixed;z-index:15;top:158px;left:12px;width:auto;max-width:calc(100vw - 132px);max-height:none;margin:0;padding:0;overflow:visible;border:0;background:transparent;box-shadow:none;backdrop-filter:none}
+  .destinationCompact .destinationIntro{display:flex;align-items:center;min-height:44px;padding:0 9px 0 8px;border:1px solid var(--hairline);border-radius:11px;background:rgba(255,255,255,.96);box-shadow:0 7px 18px rgba(23,16,111,.13);backdrop-filter:blur(12px)}
+  .destinationCompact .destinationLine,.destinationCompact .introTop,.destinationCompact .description,.destinationCompact .destinationTransfer,.destinationCompact .highlights,.destinationCompact .mediaCarousel,.destinationCompact .exploreMore,.destinationCompact .detailSections{display:none}
+  .destinationCompact .destinationTitle{margin:0;gap:5px}
+  .destinationCompact .destinationTitle h1{font:650 13px/1.15 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
+  .destinationCompact .destinationTitle>span{display:none}
+  .destinationCompact .destinationFacts{display:flex;gap:0;margin:0 0 0 5px;padding:0;border:0}
+  .destinationCompact .destinationFacts div:not(:nth-child(2)){display:none}
+  .destinationCompact .destinationFacts dt{display:none}
+  .destinationCompact .destinationFacts dd{margin:0;color:var(--morrovia-muted,#7673a4);font:600 10px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+  .destinationCompact .destinationFacts dd::before{content:" · "}
+  .destinationToggle{display:grid;width:28px;height:32px;margin-left:4px;place-items:center;padding:0;border:0;color:var(--accent);background:transparent;font-size:0;cursor:pointer}
+  .destinationToggle::after{content:"›";font:500 21px/1 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+  .canonicalPlannerDestination:not(.destinationCompact){right:12px;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px);z-index:24;width:auto;max-width:none;max-height:calc(100svh - 176px);padding:17px 18px 18px;overflow-y:auto;border:1px solid var(--hairline);border-radius:16px;background:rgba(255,255,255,.98);box-shadow:var(--workspace-shadow);backdrop-filter:blur(16px)}
+  .canonicalPlannerDestination:not(.destinationCompact) .destinationToggle{position:absolute;top:8px;right:8px}
+  .canonicalPlannerDestination:not(.destinationCompact) .destinationTitle{padding-right:28px}
+
+  .canonicalPlannerStatus{position:fixed;z-index:16;top:158px;right:12px;left:auto;width:auto;max-width:calc(100vw - 132px);max-height:none;margin:0;padding:0;overflow:visible;border:0;background:transparent;box-shadow:none;backdrop-filter:none}
+  .canonicalPlannerStatus .tripStatusToggle{display:grid;gap:1px;min-height:44px;padding:6px 11px;border:1px solid var(--hairline);border-radius:11px;color:var(--accent);background:rgba(255,255,255,.96);box-shadow:0 7px 18px rgba(23,16,111,.13);font-family:var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));text-align:left;cursor:pointer;backdrop-filter:blur(12px)}
+  .tripStatusToggle span{color:var(--signal);font:750 7px var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.1em;text-transform:uppercase}
+  .tripStatusToggle strong{font-size:11px;line-height:1.2}
+  .canonicalPlannerStatus .itineraryContent{display:none}
+  .canonicalPlannerStatus.tripStatusExpanded{top:214px;right:12px;bottom:calc(50svh + var(--morrovia-mobile-dock-offset,82px) + 10px);left:12px;width:auto;max-width:none;max-height:none;padding:12px;overflow-y:auto;border:1px solid var(--hairline);border-radius:15px;background:rgba(255,255,255,.98);box-shadow:var(--workspace-shadow);backdrop-filter:blur(16px)}
+  .canonicalPlannerStatus.tripStatusExpanded .tripStatusToggle{width:100%;margin-bottom:8px;box-shadow:none}
+  .canonicalPlannerStatus.tripStatusExpanded .itineraryContent{display:block}
+  .canonicalPlannerStatus.tripStatusExpanded .journeyBookingReadiness,.canonicalPlannerStatus.tripStatusExpanded .tripReadiness{margin-top:8px}
+
+  .finderDock{position:fixed;z-index:14;right:0;bottom:var(--morrovia-mobile-dock-offset,82px);left:0;width:auto;max-width:none;height:clamp(320px,50svh,470px);min-height:40svh;margin:0;padding:0 16px calc(14px + env(safe-area-inset-bottom));overflow:hidden;border:1px solid var(--hairline);border-bottom:0;border-radius:20px 20px 0 0;background:rgba(255,255,255,.98);box-shadow:0 -12px 34px rgba(23,16,111,.16);transform:none;backdrop-filter:blur(16px)}
+  .finderDock::before{content:"";display:block;width:34px;height:4px;margin:8px auto 0;border-radius:999px;background:color-mix(in srgb,var(--accent) 35%,transparent)}
+  .finderDock>header{padding:10px 2px 8px}
+  .finderDock>header>small{font-size:9px}
+  .finderDock>header strong,.shapeDayHeader strong{font-size:25px}
+  .finderDock>header em{min-width:54px;padding:7px 9px;font-size:9px}
+  .finderTabs{margin-top:7px;padding:3px;border-radius:10px}
+  .finderTabs button{min-height:44px;font-size:11px}
+  .finderDock:not(.finderDockStay):not(.finderDockEat):not(.finderDockSee),.finderDockStay,.finderDockEat,.finderDockSee{display:flex;flex-direction:column}
+  .shapeDayPlan,.finderDockStay .restaurantFinder,.finderDockEat .restaurantFinder,.finderDockSee .shapeDaySee{flex:1;min-height:0;margin-top:8px;overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+  .shapeDayPlan{padding:10px 0 2px}
+  .shapeDayContext{margin:0 0 9px;padding:0 0 9px;font-size:9px}
+  .dayTravel{margin:0 0 8px;padding:0 0 8px}.dayTravel strong{font-size:14px}.dayTravel span{font-size:10px}
+  .editingHint{display:none}.scheduleHealth{margin:8px 0 3px;padding:8px}.scheduleHealth p{font-size:10px}
+  .shapeDayPlan .editableActivities li{min-height:52px;padding:10px 0;font-size:14px}.shapeDayPlan .editableActivities li b{font-size:9px}
+  .addActivity,.notesToSelf{margin-top:9px}.addActivity input,.notesToSelf input{height:40px;font-size:11px}.addActivity button,.notesToSelf form button{min-height:40px;font-size:10px}
+  .shapeDayPlan .nextDay{margin-top:9px;padding:9px 0}
+  .restaurantFinder>header{padding:2px 0 9px}.restaurantFinder>header strong{font-size:13px}
+  .restaurantLocalNote{margin:9px 0;padding:9px;font-size:10px}.localCandidates{padding-top:7px}.localCandidates button{padding:9px 0}.localCandidates strong{font-size:14px}.localCandidates small{font-size:9px}.restaurantResult{margin-top:9px;padding:11px}.restaurantResult h3{font-size:18px}.restaurantActions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.restaurantActions a,.restaurantActions button{justify-content:center;min-height:42px;font-size:10px}.restaurantActions .affiliateAction{display:contents}.restaurantActions .restaurantSave{margin:0}.restaurantActions button:last-child{position:absolute;top:8px;right:8px;width:30px;height:30px;min-height:30px}
+  .finderFilters summary{min-height:36px;font-size:10px}.finderFilters button{min-height:36px;font-size:9px}
+
+  .pinDock{position:fixed;z-index:13;bottom:calc(50svh + var(--morrovia-mobile-dock-offset,82px) + 10px);left:50%;width:min(260px,calc(100vw - 32px));max-height:150px;margin:0;overflow:auto;transform:translateX(-50%)}
+  .mapAssistant{position:fixed;z-index:13;right:12px;bottom:calc(50svh + var(--morrovia-mobile-dock-offset,82px) + 10px);left:auto}
+  .mapFocusControl{top:211px;left:calc(50% - 22px);z-index:12}
+  .undoToast{z-index:25;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px);max-width:calc(100vw - 24px)}
+}
+
+@media(min-width:681px) and (max-width:980px){
+  .finderDock{right:50%;left:auto;width:min(620px,calc(100vw - 48px));height:min(50svh,470px);transform:translateX(50%)}
+  .canonicalPlannerDestination{left:20px}.canonicalPlannerStatus{right:20px}
+}
+
+@media(max-width:420px){
+  .canonicalPlanner :global(.journey-map),.canonicalPlanner :global(.planner-map){top:142px!important}
+  .finderDock{height:50svh;min-height:40svh;padding-inline:14px}
+  .finderDock>header strong,.shapeDayHeader strong{font-size:23px}
+  .finderTabs button{font-size:10px}
+  .restaurantActions{grid-template-columns:1fr}
+  .restaurantActions .restaurantSave{grid-row:1}
+}
