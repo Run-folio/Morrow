@@ -43,13 +43,30 @@ test("can flag backtracking before a departure airport is known", () => {
   assert.notDeepEqual(assessment.recommendedStopIds, ["c", "a", "b"]);
 });
 
-test("does not pretend to optimise an excessive number of stops", () => {
+test("compares a bounded set instead of hitting a seven-stop quality cliff", () => {
   const assessment = assessRouteOrder({
     origin,
     stops: Array.from({ length: 7 }, (_, index) => ({ id: `stop-${index}`, name: `Stop ${index}`, country: "Testland", coordinates: [index + 1, 0] as [number, number] })),
   });
 
-  assert.equal(assessment.state, "insufficient-data");
+  assert.notEqual(assessment.state, "insufficient-data");
+  assert.ok((assessment.candidates?.length ?? 0) >= 5);
+  assert.ok((assessment.candidates?.length ?? 0) <= 20);
+});
+
+test("route intelligence only recommends orders that preserve fixed gateways", () => {
+  const assessment = assessRouteOrder({
+    origin,
+    stops: [
+      { id: "start", name: "Start", country: "Testland", coordinates: [0, 0] },
+      { id: "end", name: "End", country: "Testland", coordinates: [20, 0] },
+      { id: "middle", name: "Middle", country: "Testland", coordinates: [10, 0] },
+    ],
+    constraints: { fixedStartStopId: "start", fixedEndStopId: "end", requiredStopIds: ["middle"] },
+  });
+
+  assert.deepEqual(assessment.recommendedStopIds, ["start", "middle", "end"]);
+  assert.equal(assessment.candidates?.every((candidate) => candidate.stops[0]?.id === "start" && candidate.stops.at(-1)?.id === "end"), true);
 });
 
 test("protects fixed commitments instead of silently reordering around them", () => {

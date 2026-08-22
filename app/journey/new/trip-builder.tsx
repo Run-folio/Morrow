@@ -16,7 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
-import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { journeyMedia, type JourneyImage } from "@/lib/journey";
@@ -26,6 +26,7 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
+import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 
 /* ---------------------------------------------------------------- data */
@@ -356,6 +357,11 @@ export default function TripBuilder() {
   const [resolvingLocations, setResolvingLocations] = useState(false);
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
   const [tripIntent, setTripIntent] = useState<TripIntent>(() => defaultTripIntent());
+  const [capturedStructuredBrief, setCapturedStructuredBrief] = useState<StructuredTripBrief>(() => extractStructuredTripBrief(""));
+  const [travellersManuallyEdited, setTravellersManuallyEdited] = useState(false);
+  const [paceManuallyEdited, setPaceManuallyEdited] = useState(false);
+  const [transportManuallyEdited, setTransportManuallyEdited] = useState(false);
+  const [interestsManuallyEdited, setInterestsManuallyEdited] = useState(false);
   const [fixedCommitmentLabel, setFixedCommitmentLabel] = useState("");
   const [fixedCommitmentDate, setFixedCommitmentDate] = useState("");
   const [scheduleLocks, setScheduleLocks] = useState<TripScheduleLocks>({ stopIds: [], arrivalDates: {} });
@@ -402,6 +408,7 @@ export default function TripBuilder() {
       setDayAllocations(saved.brief.dayAllocations ?? {});
       setBudget(saved.brief.budgetBand);
       setTripIntent(tripIntentForTrip(saved));
+      setCapturedStructuredBrief(saved.brief.structuredBrief ?? extractStructuredTripBrief(saved.brief.mustDo));
       setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
       setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
       setHasPromptContext(true);
@@ -434,7 +441,7 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; travellers?: number; interests?: string[]; brief?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; datesExplicit?: boolean; travellers?: number; travellersExplicit?: boolean; interests?: string[]; brief?: string; structuredBrief?: StructuredTripBrief } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
@@ -450,6 +457,9 @@ export default function TripBuilder() {
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
+          if (homeDraft.datesExplicit) setDatesManuallyEdited(true);
+          if (homeDraft.travellersExplicit) setTravellersManuallyEdited(true);
+          if (homeDraft.interests?.length) setInterestsManuallyEdited(true);
           if (homeDraft.travellers || homeDraft.interests?.length) setTripIntent((current) => ({
             ...current,
             travellers: homeDraft?.travellers ? Math.max(1, Math.min(12, Math.round(homeDraft.travellers))) : current.travellers,
@@ -457,6 +467,7 @@ export default function TripBuilder() {
           }));
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
+          setCapturedStructuredBrief(homeDraft.structuredBrief ?? extractStructuredTripBrief(homeDraft.brief ?? ""));
           if (homeDraft.locationMentions?.length) {
             const locationMentions = homeDraft.locationMentions;
             setIntakeMentions(locationMentions);
@@ -539,6 +550,26 @@ export default function TripBuilder() {
     },
     preferences: { ...tripIntent.preferences, budgetSensitivity: budget },
   }), [tripIntent, totalDays, origin, stops, budget]);
+  const effectiveStructuredBrief = useMemo(() => mergeStructuredTripBrief(capturedStructuredBrief, {
+    ...(datesManuallyEdited ? { duration: { value: totalDays, unit: "days" as const, precision: "exact" as const } } : {}),
+    destinations: [
+      ...(origin.trim() ? [{ name: origin.trim(), role: "arrival-gateway" as const, priority: "required" as const }] : []),
+      ...stops.map((stop) => {
+        const prior = capturedStructuredBrief.destinations.find((destination) => destination.name.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
+        return { id: stop.id, name: stop.name, role: prior?.role ?? "preferred" as const, priority: prior?.priority ?? "normal" as const };
+      }),
+    ],
+    mustVisit: capturedStructuredBrief.mustVisit.map((destination) => destination.name).filter((name) => stops.some((stop) => stop.name.toLocaleLowerCase() === name.toLocaleLowerCase())),
+    ...(travellersManuallyEdited ? { travellers: effectiveIntent.travellers } : {}),
+    ...(datesManuallyEdited ? { dates: { start: startDate, end: endDate, fixed: effectiveIntent.timing.flexibility === "fixed" } } : {}),
+    ...(paceManuallyEdited ? { pace: effectiveIntent.preferences.pace } : {}),
+    ...(interestsManuallyEdited ? { interests: effectiveIntent.preferences.interests } : {}),
+    ...(transportManuallyEdited ? { transportPreferences: effectiveIntent.preferences.transportModes } : {}),
+    ...(hasSavedTravelProfile || showBudgetOverride ? { budget } : {}),
+    fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({ label: commitment.label, date: commitment.date })),
+    avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
+  }), [capturedStructuredBrief, totalDays, origin, stops, effectiveIntent, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride]);
+  const structuredRouteConstraints = useMemo(() => routeConstraintsFromStructuredTripBrief(effectiveStructuredBrief), [effectiveStructuredBrief]);
   const intentReady = Boolean(originCoordinates && stops.length && effectiveIntent.travellers >= 1);
 
   useEffect(() => {
@@ -615,12 +646,12 @@ export default function TripBuilder() {
     picks,
     availableDays: totalDays,
     constraints: {
+      ...structuredRouteConstraints,
       fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments,
-      avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
-      transportModes: effectiveIntent.preferences.transportModes,
+      transportModes: structuredRouteConstraints.transportModes.length ? structuredRouteConstraints.transportModes : effectiveIntent.preferences.transportModes,
       optionalStopIds: effectiveIntent.hardConstraints.optionalStopIds,
     },
-  }), [origin, originCoordinates, stops, picks, totalDays, effectiveIntent]);
+  }), [origin, originCoordinates, stops, picks, totalDays, effectiveIntent, structuredRouteConstraints]);
   const routeKey = stops.map((stop) => stop.id).join("|");
   const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
   const routeAnalyticsKey = `${tripId}:${routeKey}:${startDate}:${endDate}:${effectiveIntent.hardConstraints.fixedCommitments.length}:${effectiveIntent.hardConstraints.avoidDriving}`;
@@ -814,6 +845,7 @@ export default function TripBuilder() {
   const applyTripBrief = async () => {
     const parsed = parseTripBrief(tripBrief);
     if (!tripBrief.trim()) return;
+    setCapturedStructuredBrief(extractStructuredTripBrief(tripBrief));
 
     setHasPromptContext(true);
 
@@ -888,10 +920,13 @@ export default function TripBuilder() {
   };
 
   const updateIntentPreferences = (update: Partial<TripIntent["preferences"]>) => {
+    if (update.pace !== undefined) setPaceManuallyEdited(true);
+    if (update.interests !== undefined) setInterestsManuallyEdited(true);
     setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, ...update } }));
   };
 
   const toggleTransportMode = (mode: TripTransportMode) => {
+    setTransportManuallyEdited(true);
     setTripIntent((current) => {
       const modes = current.preferences.transportModes.includes(mode)
         ? current.preferences.transportModes.filter((item) => item !== mode)
@@ -901,6 +936,7 @@ export default function TripBuilder() {
   };
 
   const toggleInterest = (interest: string) => {
+    setInterestsManuallyEdited(true);
     setTripIntent((current) => ({ ...current, preferences: { ...current.preferences, interests: current.preferences.interests.includes(interest) ? current.preferences.interests.filter((item) => item !== interest) : [...current.preferences.interests, interest] } }));
   };
 
@@ -960,11 +996,12 @@ export default function TripBuilder() {
     originCoordinates,
     createdAt,
     capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
-    routeAssessment: routeIntelligence,
+    routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
     intent: effectiveIntent,
+    structuredBrief: effectiveStructuredBrief,
     scheduleLocks,
     decisionSelections,
-  })).trip, [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, scheduleLocks, decisionSelections]);
+  })).trip, [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, allocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
@@ -1220,7 +1257,7 @@ export default function TripBuilder() {
                   <section className={styles.intentPreferences}>
                     <p>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</p>
                     <div className={styles.intentFieldRow}>
-                      <label><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) }))} /></label>
+                      <label><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => { setTravellersManuallyEdited(true); setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) })); }} /></label>
                       <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentFieldRow}>
@@ -1352,7 +1389,7 @@ export default function TripBuilder() {
                 <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} ref={pickerRef} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
                   <div className={styles.dateRow}>{([{ key: "start" as const, label: ui.startDate, value: startDate, set: (value: string) => updateTravelDate("start", value) }, { key: "end" as const, label: ui.endDate, value: endDate, set: (value: string) => updateTravelDate("end", value) }]).map((field) => <div key={field.key} className={`${styles.card} ${picker === field.key ? styles.cardOpen : ""}`}><button type="button" className={styles.cardTrigger} aria-expanded={picker === field.key} onClick={() => setPicker(picker === field.key ? null : field.key)}><span className={styles.cardLabel}><CalendarDays /> {field.label}</span><span className={styles.cardValue}><strong>{fmtLong(field.value) || ui.pickDate}</strong><ChevronDown /></span></button>{picker === field.key && <div className={styles.popover}><Calendar language={language} value={field.value} onPick={(value) => { field.set(value); setPicker(null); }} /><label className={styles.typeIt}>{ui.typeIt}<input defaultValue={fmtLong(field.value)} onChange={(event) => { const value = parseTyped(event.target.value); if (value) field.set(value); }} /></label></div>}</div>)}</div>
                 </section>
-                <label className={styles.timeControl}><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><Users /><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) }))} /></label>
+                <label className={styles.timeControl}><span>{language === "es" ? "VIAJEROS" : "TRAVELLERS"}</span><Users /><input type="number" min="1" max="12" value={effectiveIntent.travellers} onChange={(event) => { setTravellersManuallyEdited(true); setTripIntent((current) => ({ ...current, travellers: Math.max(1, Math.min(12, Number(event.target.value) || 1)) })); }} /></label>
                 <section className={`${styles.timeControl} ${styles.budgetControl}`} aria-label={language === "es" ? "Presupuesto" : "Budget"}><span>{language === "es" ? "PRESUPUESTO (OPCIONAL)" : "BUDGET (OPTIONAL)"}</span><p>{language === "es" ? "Usando tu preferencia habitual." : "Using your usual preference."}</p><button type="button" onClick={() => setShowBudgetOverride((current) => !current)}>{showBudgetOverride ? (language === "es" ? "Listo" : "Done") : (language === "es" ? "Cambiar para este viaje" : "Change for this trip")}</button>{showBudgetOverride && <div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div>}</section>
                 <p className={styles.timeAllocationState}><CalendarDays /> <strong>{totalDays} {language === "es" ? "días en total" : "days total"}</strong><span>•</span><b className={allDaysAllocated ? styles.allocationComplete : styles.allocationIncomplete}>{allDaysAllocated ? (language === "es" ? "Todos los días asignados" : "All days allocated") : (language === "es" ? `${allocatedDays} de ${totalDays} días asignados` : `${allocatedDays} of ${totalDays} days allocated`)}</b></p>
               </div>

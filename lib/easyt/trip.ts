@@ -1,4 +1,5 @@
 import { estimateLeg, type RouteIntelligenceAssessment } from "@/lib/easyt/planner";
+import { routePreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -61,14 +62,36 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     pace: trip.brief.pace === "full" ? "packed" : "relaxed",
   });
   const saved = trip.brief.intent;
-  if (!saved || saved.version !== 1) return fallback;
-  return {
+  const compatible = !saved || saved.version !== 1 ? fallback : {
     ...fallback,
     ...saved,
     travellers: Math.max(1, Math.min(12, Math.round(saved.travellers || fallback.travellers))),
     timing: { ...fallback.timing, ...saved.timing, durationDays },
     hardConstraints: { ...fallback.hardConstraints, ...saved.hardConstraints, mustSeeStopIds: saved.hardConstraints?.mustSeeStopIds ?? fallback.hardConstraints.mustSeeStopIds, optionalStopIds: saved.hardConstraints?.optionalStopIds ?? [], fixedCommitments: saved.hardConstraints?.fixedCommitments ?? [] },
     preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: saved.preferences?.interests ?? [], dislikes: saved.preferences?.dislikes ?? [] },
+  };
+  const structured = trip.brief.structuredBrief;
+  if (!structured) return compatible;
+  const routePreferences = routePreferencesFromStructuredBrief(structured);
+  const fixedCommitments = structured.hardConstraints.flatMap((constraint) => constraint.type === "fixed-commitment"
+    ? [{ id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`, label: constraint.value, date: constraint.date }]
+    : []);
+  return {
+    ...compatible,
+    travellers: structured.travellers?.value ?? compatible.travellers,
+    hardConstraints: {
+      ...compatible.hardConstraints,
+      avoidDriving: routePreferences.avoidDriving,
+      mustSeeStopIds: structured.mustVisit.map((destination) => destination.id).filter((id): id is string => Boolean(id)),
+      fixedCommitments: fixedCommitments.length ? fixedCommitments : compatible.hardConstraints.fixedCommitments,
+    },
+    preferences: {
+      ...compatible.preferences,
+      transportModes: routePreferences.transportModes.length ? routePreferences.transportModes : compatible.preferences.transportModes,
+      pace: structured.pace?.value ?? compatible.preferences.pace,
+      interests: structured.interests.map((interest) => interest.value),
+      budgetSensitivity: structured.budget?.value ?? compatible.preferences.budgetSensitivity,
+    },
   };
 }
 
@@ -162,6 +185,8 @@ export type TripBrief = {
   routeAssessment?: RouteIntelligenceAssessment;
   /** Structured constraints and preferences, retained independently of free text. */
   intent?: TripIntent;
+  /** Canonical normalized traveller intent used at the route-planning boundary. */
+  structuredBrief?: StructuredTripBrief;
   /** Stops or arrival dates a traveller has explicitly protected while editing. */
   scheduleLocks?: TripScheduleLocks;
   /** A non-destructive record of consequences from the latest schedule cascade. */
@@ -279,6 +304,7 @@ export type BuilderTripInput = {
   capturedIntent?: TripCapturedIntent;
   routeAssessment?: RouteIntelligenceAssessment;
   intent?: TripIntent;
+  structuredBrief?: StructuredTripBrief;
   scheduleLocks?: TripScheduleLocks;
   decisionSelections?: TripDecisionSelections;
 };
@@ -366,6 +392,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
         budgetSensitivity: input.budget,
         pace: input.pace === "full" ? "packed" : "relaxed",
       }),
+      structuredBrief: input.structuredBrief,
     },
     stops,
     legs: input.stops.slice(1).map((stop, index) => {

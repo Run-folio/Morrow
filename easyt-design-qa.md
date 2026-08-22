@@ -46,3 +46,32 @@ No actionable P0, P1 or P2 mismatches remain for this scope.
 - [P3] Consider a subtle divider before EasyT in the Work dropdown only if it becomes important to distinguish prototypes from case studies; the current version deliberately matches the normal project-item pattern.
 
 **final result: passed**
+
+---
+
+## Morrovia signed-in Trips dashboard — 2026-08-22
+
+**Source visual truth**
+
+- Approved dashboard mockup supplied with the task: `/Users/shaun/Downloads/ChatGPT Image Aug 22, 2026, 11_15_51 AM.png`.
+- Current Morrovia tokens, shared navigation, shared controls and live dashboard behaviour remained authoritative for implementation details.
+
+**Implementation evidence**
+
+- Production route: `/journey/dashboard`.
+- Desktop implementation was compared against the approved composition with representative local trip data; the temporary visual fixture was removed after verification.
+- The production route remains authentication-gated, so final signed-in persistence and real-account imagery require manual verification in an authenticated session.
+
+**Verified composition**
+
+- Editorial `Trips.` heading, dominant continue-trip card, integrated four-stage progress, secondary Stamped summary, three-state filters, compact search/sort controls and responsive trip-card grid all match the approved hierarchy.
+- Existing archive, restore, duplicate, gift, delete, Trip mode, edit and open-trip actions remain connected to their original handlers and routes.
+- Missing trip imagery now uses a quiet data-derived fallback rather than an unrelated destination image.
+- Mobile rules collapse to one column, retain usable 44px actions and keep the progress control within the page width.
+
+**Remaining manual checks**
+
+- Confirm real signed-in data at 320px, 390px, 430px and 768px, including menu placement and long translated titles.
+- Confirm Stamped counts and the featured trip image against the account's persisted records.
+
+**final result: passed with authenticated-state manual verification required**

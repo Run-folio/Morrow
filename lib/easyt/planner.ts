@@ -4,6 +4,8 @@
  * are planning estimates, not live timetable claims.
  */
 
+import { generateRouteCandidates, type RouteCandidate, type RouteConstraintIssue } from "./route-candidates.ts";
+
 export type PlannerPlace = {
   title: string;
   area: string;
@@ -65,6 +67,9 @@ export type RouteOrderAssessment = {
   reasons: string[];
   tradeoffs: string[];
   summary: string;
+  /** Transient generation output; omitted from durable trip JSON. */
+  candidates?: RouteCandidate[];
+  constraintIssues?: RouteConstraintIssue[];
 };
 
 export type StopDurationRecommendation = {
@@ -87,7 +92,13 @@ export type RouteIntelligenceAssessment = {
 
 export type RoutePlanningConstraints = {
   fixedCommitments?: Array<{ label: string; date?: string }>;
+  fixedStartStopId?: string;
+  fixedEndStopId?: string;
+  requiredStopIds?: string[];
+  excludedStopIds?: string[];
+  maximumStops?: number;
   avoidDriving?: boolean;
+  excludedTransportModes?: EstimatedLeg["mode"][];
   transportModes?: Array<"flight" | "train" | "drive">;
   optionalStopIds?: string[];
 };
@@ -243,12 +254,6 @@ export function legDecisionAlternatives(
   }));
 }
 
-function permutations<T>(items: T[]): T[][] {
-  if (items.length <= 1) return [items];
-  return items.flatMap((item, index) => permutations([...items.slice(0, index), ...items.slice(index + 1)])
-    .map((rest) => [item, ...rest]));
-}
-
 function routeEstimate(origin: { name: string; coordinates?: [number, number] }, stops: PlannerStop[]) {
   // An origin is useful for choosing the direction of the trip, but it should
   // not prevent us from spotting an obvious loop within the requested stops.
@@ -282,11 +287,22 @@ export function assessRouteOrder(input: {
   constraints?: RoutePlanningConstraints;
 }): RouteOrderAssessment {
   const currentStopIds = input.stops.map((stop) => stop.id);
-  if (input.stops.length < 2 || input.stops.length > 6 || input.stops.some((stop) => !stop.coordinates)) {
+  const generation = generateRouteCandidates({ ...input, estimateLeg });
+  const candidateFields = { candidates: generation.candidates, constraintIssues: generation.constraintIssues };
+  if (!generation.candidates.length) {
+    return {
+      state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
+      currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
+      reasons: [], tradeoffs: [], summary: generation.constraintIssues[0]?.message ?? "Morrovia could not create a route that preserves every hard constraint.",
+      ...candidateFields,
+    };
+  }
+  if (input.stops.length < 2 || input.stops.some((stop) => !stop.coordinates)) {
     return {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
       reasons: [], tradeoffs: [], summary: "Confirm every place before Morrovia can compare the route order.",
+      ...candidateFields,
     };
   }
 
@@ -296,11 +312,12 @@ export function assessRouteOrder(input: {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
       reasons: [], tradeoffs: [], summary: "At least one connection needs an estimate before Morrovia can compare the route order.",
+      ...candidateFields,
     };
   }
 
-  const options = permutations(input.stops).map((stops) => ({ stops, ...routeEstimate(input.origin, stops) }))
-    .filter((option): option is { stops: PlannerStop[]; legs: EstimatedLeg[]; minutes: number } => option.minutes !== null)
+  const options = generation.candidates.map((candidate) => ({ candidate, stops: candidate.stops, ...routeEstimate(input.origin, candidate.stops) }))
+    .filter((option): option is { candidate: RouteCandidate; stops: PlannerStop[]; legs: EstimatedLeg[]; minutes: number } => option.minutes !== null)
     .sort((a, b) => a.minutes - b.minutes);
   const best = options[0];
   if (!best) {
@@ -308,6 +325,7 @@ export function assessRouteOrder(input: {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
       reasons: [], tradeoffs: [], summary: "Morrovia could not compare this route yet.",
+      ...candidateFields,
     };
   }
 
@@ -321,24 +339,27 @@ export function assessRouteOrder(input: {
       reasons: ["The entered order is held while a fixed date or booking is in the trip."],
       tradeoffs: ["Confirm where each fixed commitment sits before changing the route order.", ...transportTradeoffs(current.legs, input.constraints)],
       summary: "Your fixed commitments are protected.",
+      ...candidateFields,
     };
   }
 
   const improvementMinutes = Math.max(0, current.minutes - best.minutes);
   const meaningful = improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
-  if (!meaningful || best.stops.every((stop, index) => stop.id === input.stops[index]?.id)) {
+  const originalViable = generation.candidates.some((candidate) => candidate.metadata.matchesOriginalOrder);
+  if ((originalViable && !meaningful) || best.stops.every((stop, index) => stop.id === input.stops[index]?.id)) {
     return {
       state: "current-order", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: current.minutes, recommendedTransferMinutes: current.minutes, improvementMinutes: 0,
       reasons: ["The order already keeps the estimated transfers reasonably direct."], tradeoffs: transportTradeoffs(current.legs, input.constraints),
       summary: "Your route already flows well.",
+      ...candidateFields,
     };
   }
 
   const currentLongLegs = current.legs.filter((leg) => (leg.durationMinutes ?? 0) >= 300).length;
   const bestLongLegs = best.legs.filter((leg) => (leg.durationMinutes ?? 0) >= 300).length;
   const reasons = [
-    `It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`,
+    ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."] : [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]),
     ...(bestLongLegs < currentLongLegs ? ["It also reduces the number of travel-heavy days."] : ["It keeps the route moving in one direction instead of doubling back."]),
   ];
   return {
@@ -347,6 +368,7 @@ export function assessRouteOrder(input: {
     reasons: reasons.slice(0, 2),
     tradeoffs: transportTradeoffs(best.legs, input.constraints),
     summary: `${best.stops.map((stop) => stop.name).join(" → ")} is the cleaner order.`,
+    ...candidateFields,
   };
 }
 
@@ -426,6 +448,12 @@ export function assessRouteIntelligence(input: {
         : "Every remaining stop is marked must-see, so add days rather than compressing the route.",
     } : undefined,
   };
+}
+
+/** Candidate sets are reproducible and can be large, so durable trips retain only the selected assessment. */
+export function routeIntelligenceForPersistence(assessment: RouteIntelligenceAssessment): RouteIntelligenceAssessment {
+  const { candidates: _candidates, constraintIssues: _constraintIssues, ...route } = assessment.route;
+  return { ...assessment, route };
 }
 
 function dateAt(startDate: string, offset: number) {

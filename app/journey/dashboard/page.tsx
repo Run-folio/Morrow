@@ -10,6 +10,7 @@ import {
 import EasyTNavigation from "../easyt-navigation";
 import DashboardClient from "./dashboard-client";
 import styles from "../account.module.css";
+import dashboardStyles from "./dashboard.module.css";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 
 export const dynamic = "force-dynamic";
@@ -42,7 +43,7 @@ export default async function EasyTDashboardPage() {
         <div className={styles.dashTop}>
           <div>
             <p className={styles.eyebrow}>Your travel workspace</p>
-            <h1>Trips.</h1>
+            <h1>Trips<span className={dashboardStyles.titleDot}>.</span></h1>
             <p className={styles.userLine}>
               Plan, revisit and travel with every journey from one place.
             </p>

@@ -124,7 +124,10 @@ function findTripPreferences(value: string): Pick<ParsedTripBrief, "travellerCou
   const pace = /\b(relaxed|slow|slowly|without rushing|unhurried|tranquil[oa]?|sin prisa)\b/.test(text)
     ? "relaxed"
     : /\b(packed|fast-paced|intense|intenso)\b/.test(text) ? "packed" : undefined;
+  const travellerWords: Record<string, string> = { one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", un: "1", una: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5", seis: "6" };
+  const wordTravellerCount = text.match(/\b(one|two|three|four|five|six|un|una|dos|tres|cuatro|cinco|seis)\s+(?:travellers?|travelers?|people|personas?)\b/)?.[1];
   const travellerCount = text.match(/\b(\d{1,2})\s+(?:travellers?|travelers?|people|personas?)\b/)?.[1]
+    ?? (wordTravellerCount ? travellerWords[wordTravellerCount] : undefined)
     ?? (/\b(?:a couple|couple|two of us|dos personas)\b/.test(text) ? "2" : undefined);
   return { transportModes, avoidDriving, pace, travellerCount: travellerCount ? Number(travellerCount) : undefined };
 }
@@ -169,7 +172,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
   const text = normalise(value);
   const matchedPlaces = findPlaces(value);
   const stops = removeRedundantCountryStops(matchedPlaces);
-  const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
+  const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|start(?:ing)? (?:in|at)|begin(?:ning)? (?:in|at)|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
   const toMatch = value.match(/(?:\bto|finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde|\ba|hasta)\s+([^,.\n;]+)/i);
   // A departure is only an origin when the traveller has actually stated a
   // departure phrase. Country-level destinations must never be promoted to

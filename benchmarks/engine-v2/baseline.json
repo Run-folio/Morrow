@@ -1,0 +1,123 @@
+{
+  "results": [
+    {
+      "id": "sea-anchor",
+      "routeState": "current-order",
+      "stopIds": ["bangkok", "siem-reap", "phnom-penh", "ho-chi-minh-city"],
+      "comfortableDays": 8,
+      "shortfallDays": 0,
+      "transferMinutes": 628,
+      "passes": 10,
+      "warnings": ["preferred-transport"],
+      "failures": []
+    },
+    {
+      "id": "japan-classic-alps",
+      "routeState": "current-order",
+      "stopIds": ["tokyo", "kyoto", "takayama", "kanazawa"],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 575,
+      "passes": 9,
+      "warnings": ["base-density", "preferred-transport"],
+      "failures": []
+    },
+    {
+      "id": "balkans",
+      "routeState": "current-order",
+      "stopIds": ["sarajevo", "kotor", "belgrade", "skopje"],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 636,
+      "passes": 10,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "italy-train",
+      "routeState": "current-order",
+      "stopIds": ["rome", "florence", "bologna", "venice"],
+      "comfortableDays": 5,
+      "shortfallDays": 0,
+      "transferMinutes": 455,
+      "passes": 10,
+      "warnings": ["preferred-transport"],
+      "failures": []
+    },
+    {
+      "id": "iberia-long-finish",
+      "routeState": "recommendation",
+      "stopIds": ["lisbon", "granada", "seville", "barcelona"],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 677,
+      "passes": 11,
+      "warnings": ["preferred-transport"],
+      "failures": []
+    },
+    {
+      "id": "china-regions",
+      "routeState": "current-order",
+      "stopIds": ["beijing", "xian", "chengdu", "zhangjiajie", "shanghai"],
+      "comfortableDays": 11,
+      "shortfallDays": 0,
+      "transferMinutes": 1380,
+      "passes": 11,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "slow-three-bases",
+      "routeState": "current-order",
+      "stopIds": ["edinburgh", "inverness", "skye"],
+      "comfortableDays": 5,
+      "shortfallDays": 0,
+      "transferMinutes": 358,
+      "passes": 10,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "fast-central-europe",
+      "routeState": "current-order",
+      "stopIds": ["prague", "vienna", "budapest", "ljubljana", "zagreb"],
+      "comfortableDays": 9,
+      "shortfallDays": 0,
+      "transferMinutes": 831,
+      "passes": 10,
+      "warnings": ["preferred-transport"],
+      "failures": []
+    },
+    {
+      "id": "fixed-gateways",
+      "routeState": "recommendation",
+      "stopIds": ["hanoi", "ho-chi-minh-city", "hoi-an", "hue"],
+      "comfortableDays": 6,
+      "shortfallDays": 0,
+      "transferMinutes": 846,
+      "passes": 10,
+      "warnings": [],
+      "failures": ["fixed-end"]
+    },
+    {
+      "id": "overpacked-europe",
+      "routeState": "insufficient-data",
+      "stopIds": ["paris", "amsterdam", "berlin", "prague", "vienna", "budapest", "rome"],
+      "comfortableDays": 13,
+      "shortfallDays": 5,
+      "transferMinutes": 1317,
+      "passes": 6,
+      "warnings": ["route-comparison", "comfortable-duration", "base-density"],
+      "failures": []
+    }
+  ],
+  "totals": { "pass": 97, "warning": 9, "fail": 1 },
+  "dimensions": {
+    "constraint-compliance": { "pass": 41, "warning": 0, "fail": 1 },
+    "route-efficiency": { "pass": 9, "warning": 1, "fail": 0 },
+    "pacing": { "pass": 17, "warning": 3, "fail": 0 },
+    "transfer-quality": { "pass": 20, "warning": 0, "fail": 0 },
+    "preference-fit": { "pass": 0, "warning": 5, "fail": 0 },
+    "unsupported-claims": { "pass": 10, "warning": 0, "fail": 0 }
+  }
+}

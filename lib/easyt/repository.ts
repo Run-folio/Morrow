@@ -304,6 +304,17 @@ export async function saveTripForOwner(
           places,
         ]),
       ),
+      structuredBrief: trip.brief.structuredBrief ? {
+        ...trip.brief.structuredBrief,
+        destinations: trip.brief.structuredBrief.destinations.map((destination) => ({
+          ...destination,
+          id: destination.id ? (stopIds.get(destination.id) ?? destination.id) : undefined,
+        })),
+        mustVisit: trip.brief.structuredBrief.mustVisit.map((destination) => ({
+          ...destination,
+          id: destination.id ? (stopIds.get(destination.id) ?? destination.id) : undefined,
+        })),
+      } : undefined,
     },
     stops: trip.stops.map((stop) => ({
       ...stop,

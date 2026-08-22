@@ -1,4 +1,4 @@
-import { assessRouteIntelligence, estimateLeg } from "./planner.ts";
+import { assessRouteIntelligence, estimateLeg, routeIntelligenceForPersistence } from "./planner.ts";
 import { cascadeTripSchedule } from "./cascade.ts";
 import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "./trip.ts";
 
@@ -57,7 +57,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
     picks: trip.brief.selectedPlaces,
     availableDays: totalDaysFor(trip),
   });
-  const replanned = cascadeTripSchedule({ ...trip, stops, legs: routeLegsFor(trip, stops), brief: { ...trip.brief, routeAssessment } }).trip;
+  const replanned = cascadeTripSchedule({ ...trip, stops, legs: routeLegsFor(trip, stops), brief: { ...trip.brief, routeAssessment: routeIntelligenceForPersistence(routeAssessment) } }).trip;
   return {
     state: "recalculated",
     stopIds: fullOrder,

@@ -7,11 +7,12 @@ import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
+import type { StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
 type CapturedMention = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent: "place" | "landmark"; locality?: string };
-type Capture = { rawBrief: string; parserVersion: string; durationDays?: number; regions: string[]; routeHints: string[]; mentions: CapturedMention[] };
+type Capture = { rawBrief: string; parserVersion: string; durationDays?: number; regions: string[]; routeHints: string[]; mentions: CapturedMention[]; structuredBrief: StructuredTripBrief };
 
 const copy = {
   en: {
@@ -49,6 +50,8 @@ export default function HomeTripStarter() {
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
   const [travellers, setTravellers] = useState(2);
   const [interests, setInterests] = useState<string[]>([]);
+  const [datesExplicit, setDatesExplicit] = useState(false);
+  const [travellersExplicit, setTravellersExplicit] = useState(false);
   const [attributePanel, setAttributePanel] = useState<"dates" | "travellers" | "interests" | null>(null);
   const [loading, setLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
@@ -79,7 +82,7 @@ export default function HomeTripStarter() {
       trackEvent("easyt_trip_capture_reviewed", { source: "homepage_builder", parser_version: payload.parserVersion, place_count: payload.mentions.length, unresolved_count: unresolvedCount, region_count: payload.regions.length, has_duration: Boolean(payload.durationDays) });
       if (unresolvedCount) trackEvent("easyt_trip_capture_place_unresolved", { source: "homepage_builder", unresolved_count: unresolvedCount });
       const proposedEndDate = payload.durationDays ? addDays(startDate, payload.durationDays) : endDate;
-      window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify({ locationMentions: payload.mentions, routeHints: payload.routeHints, regions: payload.regions, parserVersion: payload.parserVersion, startDate, endDate: proposedEndDate, travellers, interests, brief: payload.rawBrief }));
+      window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify({ locationMentions: payload.mentions, routeHints: payload.routeHints, regions: payload.regions, parserVersion: payload.parserVersion, structuredBrief: payload.structuredBrief, startDate, endDate: proposedEndDate, datesExplicit, travellers, travellersExplicit, interests, brief: payload.rawBrief }));
       router.push("/journey/new?homeDraft=1");
     } catch {
       setCaptureError(language === "es" ? "No pudimos entender tu viaje. Inténtalo de nuevo." : "We couldn't understand your trip. Please try again.");
@@ -105,10 +108,10 @@ export default function HomeTripStarter() {
             <button type="button" aria-expanded={attributePanel === "interests"} onClick={() => setAttributePanel((current) => current === "interests" ? null : "interests")}><Heart aria-hidden="true" /> {interests.length ? `${interests.length} ${text.interests.toLowerCase()}` : text.interests}</button>
           </div>
           {attributePanel === "dates" ? <div className={fidelity.attributePanel}>
-            <label><span>{text.startDate}</span><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></label>
-            <label><span>{text.endDate}</span><input type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
+            <label><span>{text.startDate}</span><input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setDatesExplicit(true); }} /></label>
+            <label><span>{text.endDate}</span><input type="date" min={startDate} value={endDate} onChange={(event) => { setEndDate(event.target.value); setDatesExplicit(true); }} /></label>
           </div> : null}
-          {attributePanel === "travellers" ? <label className={fidelity.travellerField}><span>{text.travellers}</span><input type="number" min="1" max="12" value={travellers} onChange={(event) => setTravellers(Math.max(1, Math.min(12, Number(event.target.value) || 1)))} /></label> : null}
+          {attributePanel === "travellers" ? <label className={fidelity.travellerField}><span>{text.travellers}</span><input type="number" min="1" max="12" value={travellers} onChange={(event) => { setTravellers(Math.max(1, Math.min(12, Number(event.target.value) || 1))); setTravellersExplicit(true); }} /></label> : null}
           {attributePanel === "interests" ? <div className={fidelity.interestPanel} aria-label={text.interestLabel}>
             <span>{text.interestLabel}</span><div>{(["food", "culture", "nature", "cities", "beach", "hiking"] as const).map((interest) => <button type="button" key={interest} aria-pressed={interests.includes(interest)} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{text[interest]}</button>)}</div>
           </div> : null}

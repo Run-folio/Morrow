@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
+import { extractStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -150,6 +151,10 @@ export async function POST(request: NextRequest) {
   // intent now; the builder verifies places in the background where its review
   // controls can handle ambiguity without blocking the traveller.
   const extracted = reconcile(brief, null);
+  const structuredBrief = extractStructuredTripBrief(brief, extracted.parserVersion);
+  const durationDays = structuredBrief.duration
+    ? structuredBrief.duration.value + (structuredBrief.duration.unit === "nights" ? 1 : 0)
+    : extracted.durationDays;
   const mentions: CapturedMention[] = extracted.mentions.map((mention, order) => ({
     sourceText: mention.sourceText,
     canonicalName: mention.canonicalName,
@@ -162,9 +167,10 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     rawBrief: brief,
     parserVersion: extracted.parserVersion,
-    durationDays: extracted.durationDays,
+    durationDays,
     regions: extracted.regions,
     routeHints: extracted.routeHints,
     mentions,
+    structuredBrief,
   });
 }
