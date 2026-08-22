@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BedDouble, Binoculars, Building2, Castle, CheckCircle2, Clock3, Flower2, House, Landmark, LocateFixed, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, BedDouble, Binoculars, Building2, Castle, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, LocateFixed, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -24,7 +24,7 @@ import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/t
 import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
-import { accommodationProgress } from "@/lib/easyt/accommodation";
+import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import EasyTNavigation from "./easyt-navigation";
 import styles from "./journey.module.css";
@@ -50,6 +50,7 @@ type CustomPick = { id: string; title: string; area: string; type: string; durat
 type CustomDestination = { id: string; name: string; country?: string; coordinates?: [number, number]; kind?: string };
 type CustomBrief = { origin: string; destinations: CustomDestination[]; startDate: string; duration: string; travellers: string; interests: string[]; picks: Record<string, string[]>; pickDetails?: Record<string, CustomPick[]> };
 type ShapeDayTab = "plan" | "stay" | "eat" | "see";
+type TripHealthDetail = "accommodation" | "travel" | "activities" | "budget";
 
 function customBriefFromEasyT(trip: EasyTTrip): CustomBrief {
   const duration = Math.max(1, Math.round((+new Date(`${trip.endDate}T00:00:00`) - +new Date(`${trip.startDate}T00:00:00`)) / 86400000) + 1);
@@ -340,6 +341,8 @@ export default function JourneyPage() {
   const [mapCoachVisible, setMapCoachVisible] = useState(false);
   const [destinationExpanded, setDestinationExpanded] = useState(false);
   const [tripStatusExpanded, setTripStatusExpanded] = useState(false);
+  const [tripHealthDetail, setTripHealthDetail] = useState<TripHealthDetail | null>(null);
+  const healthDetailCloseRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
   const journey = useMemo(() => {
@@ -430,6 +433,8 @@ export default function JourneyPage() {
   }) ?? [], [customTrip, placeMedia, selectedPlanItem?.stopId]);
   const activityCount = customTrip?.planItems.filter((item) => item.type === "activity").length ?? 0;
   const unresolvedTransport = reviewRecommendations.some((item) => item.status === "open" && (item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence"));
+  const unsortedAccommodationStops = customTrip && accommodation ? accommodation.stops.filter((stop) => !stayBookingForStop(customTrip, stop)).map((stop) => stop.name) : [];
+  const transportIssues = reviewRecommendations.filter((item) => item.status === "open" && (item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence"));
   useEffect(() => {
     if (!isPlanningPreview || !customTrip || !health) return;
     if (!hasAnalyticsConsent()) return;
@@ -956,6 +961,19 @@ export default function JourneyPage() {
   }, [isPlaying, selectedDayIndex, journey.calendar]);
 
   useEffect(() => {
+    if (!tripHealthDetail) return;
+    const frame = window.requestAnimationFrame(() => healthDetailCloseRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTripHealthDetail(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [tripHealthDetail]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select")) return;
@@ -1204,16 +1222,23 @@ export default function JourneyPage() {
         </motion.div>
       </section>
 
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""}`} aria-live="polite">
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""}`} aria-live="polite">
+        {hasCanonicalPlanner ? <button type="button" className={styles.tripStatusToggle} aria-expanded={tripStatusExpanded} onClick={() => { setTripHealthDetail(null); setTripStatusExpanded((expanded) => !expanded); }}><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><strong>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</strong></button> : null}
         {hasCanonicalPlanner ? <section className={styles.plannerHealthSummary} aria-label={healthCopy.title}>
-          <header><small>{healthCopy.title}</small><strong className={health?.isReady ? styles.healthReady : styles.healthAttention}>{health?.isReady ? <CheckCircle2 aria-hidden="true" /> : null}{health?.isReady ? (language === "es" ? "En orden" : "On track") : `${(health?.blockingCount ?? 0) + (health?.cautionCount ?? 0)} ${language === "es" ? "revisiones" : "to review"}`}</strong><span>{health?.isReady ? (language === "es" ? "Tu viaje se ve bien" : "Your trip looks good") : (language === "es" ? "Empieza por lo más importante" : "Start with the highest-priority checks")}</span></header>
+          {tripHealthDetail ? <div className={styles.healthDetail} role="dialog" aria-modal="false" aria-labelledby="trip-health-detail-title">
+            <header><button ref={healthDetailCloseRef} type="button" onClick={() => setTripHealthDetail(null)} aria-label="Back to trip health summary"><ChevronLeft aria-hidden="true" /> Summary</button><button type="button" onClick={() => setTripHealthDetail(null)} aria-label="Close trip health details"><X aria-hidden="true" /></button></header>
+            {tripHealthDetail === "accommodation" ? <><BedDouble aria-hidden="true" /><small>ACCOMMODATION</small><h2 id="trip-health-detail-title">{accommodation?.complete ? "Every stay is sorted" : `${unsortedAccommodationStops.length} ${unsortedAccommodationStops.length === 1 ? "stay needs" : "stays need"} attention`}</h2><p>{accommodation?.complete ? "Accommodation is recorded for each overnight stop." : "Choose a stay or confirm availability before the rest of the trip is booked."}</p>{unsortedAccommodationStops.length ? <ul>{unsortedAccommodationStops.map((name) => <li key={name}>{name}</li>)}</ul> : null}<button type="button" className={styles.healthDetailAction} onClick={() => { setTripHealthDetail(null); setShapeDayTab("stay"); setLocalFinderKind("stay"); }}>Review stays <ArrowRight aria-hidden="true" /></button></> : null}
+            {tripHealthDetail === "travel" ? <><Clock3 aria-hidden="true" /><small>TRAVEL TIME</small><h2 id="trip-health-detail-title">{unresolvedTransport ? `${transportIssues.length || 1} transfer ${transportIssues.length === 1 ? "decision" : "decisions"} to review` : "Travel time is well paced"}</h2><p>{unresolvedTransport ? "Confirm the unresolved legs before booking so the route still protects useful time at each stop." : "No unresolved transport decision is currently affecting this trip."}</p>{transportIssues.length ? <ul>{transportIssues.slice(0, 3).map((issue) => <li key={issue.id}>{issue.message}</li>)}</ul> : null}<button type="button" className={styles.healthDetailAction} onClick={() => { setTripHealthDetail(null); setTripStatusExpanded(true); }}>Review route <ArrowRight aria-hidden="true" /></button></> : null}
+            {tripHealthDetail === "activities" ? <><Binoculars aria-hidden="true" /><small>THINGS TO DO</small><h2 id="trip-health-detail-title">{activityCount ? `${activityCount} ${activityCount === 1 ? "activity" : "activities"} planned` : "This trip still needs day detail"}</h2><p>{activityCount ? "Your selected places are attached to the day plan. Keep enough room around transfers and arrival days." : "Start with the selected destination and add one useful anchor to the current day."}</p><button type="button" className={styles.healthDetailAction} onClick={() => { setTripHealthDetail(null); setShapeDayTab(activityCount ? "plan" : "see"); }}>Plan this day <ArrowRight aria-hidden="true" /></button></> : null}
+            {tripHealthDetail === "budget" ? <><WalletCards aria-hidden="true" /><small>BUDGET</small><h2 id="trip-health-detail-title">{customTrip?.brief.budgetBand ? "Budget preference saved" : "Set a budget preference"}</h2><p>{customTrip?.brief.budgetBand ? `Morrovia is using your ${customTrip.brief.budgetBand === "value" ? "good value" : customTrip.brief.budgetBand === "mid" ? "mid-range" : "no ceiling"} preference when shaping recommendations.` : "A budget preference helps Morrovia prioritise suitable stays and places without inventing live prices."}</p><button type="button" className={styles.healthDetailAction} onClick={() => router.push(editTripHref)}>Review budget <ArrowRight aria-hidden="true" /></button></> : null}
+          </div> : <><header><small>{healthCopy.title}</small><strong className={health?.isReady ? styles.healthReady : styles.healthAttention}>{health?.isReady ? <CheckCircle2 aria-hidden="true" /> : null}{health?.isReady ? (language === "es" ? "En orden" : "On track") : `${(health?.blockingCount ?? 0) + (health?.cautionCount ?? 0)} ${language === "es" ? "revisiones" : "to review"}`}</strong><span>{health?.isReady ? (language === "es" ? "Tu viaje se ve bien" : "Your trip looks good") : (language === "es" ? "Empieza por lo más importante" : "Start with the highest-priority checks")}</span></header>
           <div className={styles.healthRows}>
-            <article><BedDouble aria-hidden="true" /><span><strong>Accommodation</strong><small>{accommodation ? `${accommodation.sortedCount} of ${accommodation.stops.length} stays sorted` : "No overnight stays"}</small></span><CheckCircle2 className={accommodation?.complete ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
-            <article><Clock3 aria-hidden="true" /><span><strong>Travel time</strong><small>{unresolvedTransport ? "Needs a decision" : "Well paced"}</small></span><CheckCircle2 className={unresolvedTransport ? styles.rowAttention : styles.rowReady} aria-hidden="true" /></article>
-            <article><Binoculars aria-hidden="true" /><span><strong>Things to do</strong><small>{activityCount} planned</small></span><CheckCircle2 className={activityCount ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
-            <article><WalletCards aria-hidden="true" /><span><strong>Budget</strong><small>{customTrip?.brief.budgetBand ? "Preference saved" : "Not set"}</small></span><CheckCircle2 className={customTrip?.brief.budgetBand ? styles.rowReady : styles.rowAttention} aria-hidden="true" /></article>
+            <button type="button" onClick={() => setTripHealthDetail("accommodation")}><BedDouble aria-hidden="true" /><span><strong>Accommodation</strong><small>{accommodation ? `${accommodation.sortedCount} of ${accommodation.stops.length} stays sorted` : "No overnight stays"}</small></span><CheckCircle2 className={accommodation?.complete ? styles.rowReady : styles.rowAttention} aria-hidden="true" /><ChevronRight className={styles.healthRowDisclosure} aria-hidden="true" /></button>
+            <button type="button" onClick={() => setTripHealthDetail("travel")}><Clock3 aria-hidden="true" /><span><strong>Travel time</strong><small>{unresolvedTransport ? "Needs a decision" : "Well paced"}</small></span><CheckCircle2 className={unresolvedTransport ? styles.rowAttention : styles.rowReady} aria-hidden="true" /><ChevronRight className={styles.healthRowDisclosure} aria-hidden="true" /></button>
+            <button type="button" onClick={() => setTripHealthDetail("activities")}><Binoculars aria-hidden="true" /><span><strong>Things to do</strong><small>{activityCount} planned</small></span><CheckCircle2 className={activityCount ? styles.rowReady : styles.rowAttention} aria-hidden="true" /><ChevronRight className={styles.healthRowDisclosure} aria-hidden="true" /></button>
+            <button type="button" onClick={() => setTripHealthDetail("budget")}><WalletCards aria-hidden="true" /><span><strong>Budget</strong><small>{customTrip?.brief.budgetBand ? "Preference saved" : "Not set"}</small></span><CheckCircle2 className={customTrip?.brief.budgetBand ? styles.rowReady : styles.rowAttention} aria-hidden="true" /><ChevronRight className={styles.healthRowDisclosure} aria-hidden="true" /></button>
           </div>
-          <button type="button" className={styles.healthDetailsButton} aria-expanded={tripStatusExpanded} onClick={() => setTripStatusExpanded((expanded) => !expanded)}>{tripStatusExpanded ? "Hide details" : "View details"}</button>
+          <button type="button" className={styles.healthDetailsButton} aria-expanded={tripStatusExpanded} onClick={() => setTripStatusExpanded((expanded) => !expanded)}>{tripStatusExpanded ? "Hide details" : "View details"}</button></>}
         </section> : null}
         <motion.div
           className={styles.itineraryContent}
@@ -1265,7 +1290,7 @@ export default function JourneyPage() {
       {hasCanonicalPlanner && selected.coordinates ? <aside className={`${styles.finderDock} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {(["plan", "stay", "eat", "see"] as ShapeDayTab[]).map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => { setShapeDayTab(tab); setSelectedLocalPlaceId(null); if (tab === "stay" || tab === "eat") setLocalFinderKind(tab === "stay" ? "stay" : "restaurant"); }}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
-        </div>{customTrip ? <details className={styles.mobileTripStatus}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
+        </div>{customTrip ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedDay.travel, savedRestaurant: selectedRestaurant }}
           schedule={{ signals: selectedScheduleSignals, warning: plannerWarning }}

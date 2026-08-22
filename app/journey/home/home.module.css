@@ -1,4 +1,4 @@
-.page{min-height:100vh;background:#fbfaf8;color:#17151d;font-family:var(--font-geist-sans,Inter,Arial,sans-serif)}.momentLabel{margin-top:4px;color:#d93f72;font:700 9px var(--font-geist-mono,monospace);letter-spacing:.1em}.momentChoices{display:flex;flex-wrap:wrap;gap:6px}.momentChoices button{padding:7px 9px;color:#201d3d;background:#fff;border:1px solid rgba(32,29,61,.18);border-radius:999px;font:600 10px var(--font-geist-mono,monospace);cursor:pointer}.momentChoices .momentActive{color:#fff;background:#201d3d;border-color:#201d3d}.momentCopy{display:block;max-width:330px;color:#81787b!important;font-size:10px!important;line-height:1.4}
+.page{min-height:100vh;overflow-x:clip;background:#fbfaf8;color:#17151d;font-family:var(--font-geist-sans,Inter,Arial,sans-serif)}.momentLabel{margin-top:4px;color:#d93f72;font:700 9px var(--font-geist-mono,monospace);letter-spacing:.1em}.momentChoices{display:flex;flex-wrap:wrap;gap:6px}.momentChoices button{padding:7px 9px;color:#201d3d;background:#fff;border:1px solid rgba(32,29,61,.18);border-radius:999px;font:600 10px var(--font-geist-mono,monospace);cursor:pointer}.momentChoices .momentActive{color:#fff;background:#201d3d;border-color:#201d3d}.momentCopy{display:block;max-width:330px;color:#81787b!important;font-size:10px!important;line-height:1.4}
 .page :global(header){background:#fbfaf8}
 .hero,.why,.moods,.ideas,.discoveries,.tools,.how{width:min(1180px,calc(100% - 48px));margin:0 auto}
 .hero{display:grid;grid-template-columns:1.02fr .98fr;gap:70px;align-items:center;padding:78px 0 94px}
@@ -216,4 +216,64 @@
   .heroRouteMap{height:540px}
   .hero .shapePlanChoices{display:flex;flex-wrap:nowrap;gap:10px}
   .hero .shapePlanChoices button{white-space:nowrap}
+}
+
+/* Homepage travel hero: one atmospheric canvas, a clear conversational start,
+   and an illustrative output preview. It intentionally supersedes the older
+   route-illustration composition above without changing the public nav. */
+.travelHero{position:relative;display:grid;grid-template-columns:minmax(500px,1fr) minmax(380px,.68fr);gap:clamp(42px,5vw,88px);width:min(1536px,calc(100% - 48px));min-height:clamp(820px,calc(100svh - 72px),930px);margin:0 auto;padding:clamp(62px,6.5vw,94px) clamp(28px,4.6vw,72px) 72px;isolation:isolate;overflow:hidden;border-radius:0 0 22px 22px}
+.travelHeroBackdrop{position:absolute;z-index:-2;inset:0;background-image:linear-gradient(90deg,rgba(255,254,251,.98) 0%,rgba(255,254,251,.9) 16%,rgba(255,254,251,.58) 34%,rgba(255,254,251,.13) 49%,rgba(255,254,251,0) 63%),url('/journey/hero/morrovia-asia-dawn.png');background-position:56% 60%;background-size:cover}
+.travelHero:after{content:"";position:absolute;z-index:-1;inset:auto 0 0;height:17%;background:linear-gradient(180deg,transparent,rgba(255,254,251,.28))}
+.travelHero .heroCopy{display:flex;flex-direction:column;align-items:flex-start;max-width:585px;padding:0}
+.travelHero .eyebrow{margin-bottom:19px;color:var(--morrovia-signal);font:700 11px var(--morrovia-meta);letter-spacing:.16em}
+.travelHero h1{max-width:560px;margin:0;color:var(--morrovia-ink);font:600 clamp(62px,5.1vw,82px)/.92 var(--morrovia-display);letter-spacing:-.065em}
+.heroTitleEmphasis{position:relative;display:block;width:max-content;max-width:100%;white-space:nowrap}
+.heroTitleEmphasis:after{content:"";position:absolute;right:1%;bottom:-.08em;left:-.02em;height:.16em;border-bottom:5px solid var(--morrovia-signal);border-radius:50%;transform:rotate(-1.5deg)}
+.travelHero .lede{max-width:560px;margin:22px 0 0;color:var(--morrovia-ink-soft);font-size:16px;line-height:1.52}
+.heroBenefits{display:flex;align-items:stretch;gap:0;margin:24px 0 0;padding:0;list-style:none}
+.heroBenefits li{display:flex;align-items:center;gap:9px;max-width:160px;padding:0 17px;color:var(--morrovia-ink);font-size:12px;font-weight:650;line-height:1.3}
+.heroBenefits li:first-child{padding-left:0}.heroBenefits li+li{border-left:1px solid rgba(23,16,111,.14)}.heroBenefits svg{width:24px;height:24px;flex:0 0 auto;color:var(--morrovia-signal)}
+.travelHero .startBuilder{width:min(100%,540px);max-width:none;margin-top:23px}.travelHero .startBuilderBrief{padding:18px;border:1px solid rgba(217,216,238,.92);border-radius:var(--morrovia-radius);background:rgba(255,255,255,.94);box-shadow:0 20px 46px rgba(23,16,111,.12)}
+.travelHero .startBuilderBrief>span{color:var(--morrovia-signal)}.travelHero .startBuilderPromptField{min-height:0!important}.travelHero .startBuilderBrief textarea{min-height:72px!important;padding:0 0 48px!important;color:var(--morrovia-ink);font-size:15px}.travelHero .startBuilderBrief textarea::placeholder{color:var(--morrovia-muted)}
+.travelHero .startBuilderSecondary{display:none}.heroSocialProof{display:flex;align-items:center;gap:8px;max-width:520px;margin:17px 0 0;color:var(--morrovia-ink-soft);font-size:12px;line-height:1.4}.heroSocialProof svg{width:18px;height:18px;color:var(--morrovia-signal)}
+.heroExampleTrip{align-self:center;display:grid;gap:16px;width:min(100%,444px);justify-self:end;margin-right:clamp(4px,1.6vw,24px);padding:21px;border:1px solid rgba(255,255,255,.9);border-radius:22px;background:rgba(255,255,255,.92);box-shadow:var(--morrovia-shadow-overlay);backdrop-filter:blur(13px)}
+.heroExampleTrip header{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--morrovia-ink)}.heroExampleTrip header span{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:750}.heroExampleTrip header span svg{width:20px;color:var(--morrovia-signal)}.heroExampleTrip header small{color:var(--morrovia-ink-soft);font-size:12px;white-space:nowrap}
+.heroExampleTrip ol{display:grid;gap:11px;margin:0;padding:0;list-style:none}.heroExampleTrip li{display:grid;grid-template-columns:33px 82px minmax(0,1fr) 16px;align-items:center;gap:11px;min-height:102px;padding:10px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:rgba(255,255,255,.9)}
+.heroExampleTrip li>b{display:grid;width:31px;height:31px;place-items:center;border-radius:50%;background:var(--morrovia-action);color:#fff;font:700 13px var(--morrovia-ui)}.tripThumb{display:block;width:82px;height:78px;border-radius:10px;background-image:url('/journey/hero/morrovia-asia-dawn.png');background-size:360px auto;box-shadow:inset 0 0 0 1px rgba(23,16,111,.08)}.tripThumbBali{background-position:79% 72%}.tripThumbKrabi{background-position:95% 55%}.tripThumbKyoto{background-position:71% 33%}
+.heroExampleTrip li>span:nth-child(3){display:grid;gap:3px;min-width:0}.heroExampleTrip strong{color:var(--morrovia-ink);font-size:15px;line-height:1.15}.heroExampleTrip small,.heroExampleTrip em{color:var(--morrovia-ink-soft);font-size:12px;font-style:normal;line-height:1.25}.heroExampleTrip li>svg{width:16px;color:var(--morrovia-muted)}.heroExampleTrip footer{display:flex;align-items:center;gap:8px;padding:1px 3px 0;color:var(--morrovia-ink);font-size:12px;font-weight:650}.heroExampleTrip footer svg{width:17px;color:var(--morrovia-action)}
+
+@media(max-width:1100px) and (min-width:961px){.travelHero{grid-template-columns:minmax(460px,1fr) minmax(330px,.62fr);gap:30px;padding-right:34px;padding-left:34px}.travelHero h1{font-size:66px}.heroExampleTrip{width:min(100%,390px);margin-right:0}.heroExampleTrip li{grid-template-columns:29px 68px minmax(0,1fr) 15px}.tripThumb{width:68px;height:66px}}
+@media(max-width:960px){.travelHero{grid-template-columns:minmax(0,1fr);width:min(100% - 32px,760px);min-height:0;padding:58px 26px 42px;border-radius:0 0 18px 18px}.travelHeroBackdrop{background-image:linear-gradient(180deg,rgba(255,254,251,.94) 0%,rgba(255,254,251,.8) 43%,rgba(255,254,251,.3) 72%,rgba(255,254,251,.08) 100%),url('/journey/hero/morrovia-asia-dawn.png');background-position:58% 58%}.heroExampleTrip{justify-self:start;width:min(100%,480px);max-width:none;margin:34px 0 0}.travelHero .heroCopy{max-width:620px}.travelHero .startBuilder{width:min(100%,560px)}}
+@media(max-width:560px){.travelHero{width:100%;padding:42px 16px 32px;border-radius:0;overflow:hidden}.travelHeroBackdrop{inset:0;background-image:linear-gradient(180deg,rgba(255,254,251,.96) 0%,rgba(255,254,251,.86) 48%,rgba(255,254,251,.38) 74%,rgba(255,254,251,.12) 100%),url('/journey/hero/morrovia-asia-dawn.png');background-position:64% 58%}.travelHero h1{max-width:360px;font-size:clamp(48px,13.5vw,60px)}.travelHero .lede{margin-top:18px;font-size:15px}.heroBenefits{width:100%;gap:9px;margin-top:22px}.heroBenefits li{flex:1 1 0;display:grid;gap:5px;padding:0 8px;font-size:10px}.heroBenefits li:first-child{padding-left:0}.heroBenefits svg{width:21px;height:21px}.travelHero .startBuilder{width:100%;margin-top:21px}.travelHero .startBuilderBrief{padding:14px}.heroExampleTrip{width:100%;margin-top:28px;padding:15px;border-radius:18px}.heroExampleTrip li{grid-template-columns:27px 58px minmax(0,1fr) 15px;gap:8px;min-height:76px;padding:8px}.heroExampleTrip li>b{width:25px;height:25px;font-size:11px}.tripThumb{width:58px;height:56px}.heroExampleTrip strong{font-size:14px}.heroExampleTrip small,.heroExampleTrip em{font-size:11px}.heroSocialProof{font-size:11px}}
+
+/* Homepage v2: the illustrated route is the product explanation, with the
+   route summary grounding the dream imagery in a practical multi-stop plan. */
+.hero{width:min(1560px,calc(100% - 96px));display:grid;grid-template-columns:minmax(500px,37fr) minmax(0,63fr);gap:48px;align-items:start;padding:58px 0 34px}
+.hero .heroCopy{position:relative;z-index:2;max-width:none;padding:0}
+.hero .eyebrow{margin:0 0 17px;color:var(--morrovia-signal);font:700 10px var(--morrovia-meta);letter-spacing:.16em}
+.hero h1{max-width:600px;margin:0;color:var(--morrovia-ink);font:600 clamp(62px,4.7vw,78px)/1.02 var(--morrovia-display);letter-spacing:-.06em}
+.heroTitleLead,.heroTitleLine{display:block;width:max-content;max-width:100%;white-space:nowrap}
+.heroTitleEmphasis{position:relative;display:inline-block}
+.heroTitleEmphasis::after{position:absolute;right:-.02em;bottom:-.09em;left:-.02em;height:.14em;border-bottom:4px solid var(--morrovia-signal);border-radius:50%;content:"";transform:rotate(-1.5deg)}
+.hero .lede{max-width:520px;margin:22px 0 0;color:var(--morrovia-ink-soft);font-size:16px;line-height:1.55}
+.hero .startBuilder{display:grid;width:100%;max-width:508px;margin-top:22px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.hero .startBuilderBrief{display:grid;gap:9px;padding:21px;border:1px solid var(--morrovia-line);border-radius:16px;background:var(--morrovia-paper);box-shadow:0 16px 36px rgba(23,16,111,.07)}
+.hero .startBuilderBrief>span{color:var(--morrovia-signal)}
+.hero .startBuilderSecondary{display:none}
+.heroRoute{position:relative;z-index:1;display:grid;align-items:end;min-height:650px;overflow:visible;padding-bottom:112px}
+.heroRouteMap{display:block;width:112%;max-width:none;height:594px;margin:-28px 0 0 -6%;object-fit:contain;object-position:center top;mix-blend-mode:multiply}
+.heroRouteStrip{position:absolute;right:0;bottom:0;left:0;z-index:2;display:grid;grid-template-columns:minmax(0,.95fr) minmax(62px,.7fr) minmax(0,1.02fr) minmax(56px,.6fr) minmax(0,1.08fr) minmax(62px,.7fr) minmax(0,1.3fr);gap:10px;align-items:center;margin:0;padding:19px 22px 14px;border:1px solid var(--morrovia-line);border-radius:12px;background:rgba(255,255,255,.95);box-shadow:0 16px 38px rgba(37,29,192,.08)}
+.heroRouteStrip>div{display:flex;align-items:center;gap:9px;min-width:0}.heroRouteStrip b{display:grid;width:30px;height:30px;flex:0 0 auto;place-items:center;border:1px solid #b9b5ec;border-radius:50%;color:var(--morrovia-action);font:700 13px var(--morrovia-display)}.heroRouteStrip span{display:grid;gap:3px;min-width:0}.heroRouteStrip strong{overflow:visible;color:var(--morrovia-ink);font-size:13px;line-height:1.1;white-space:nowrap}.heroRouteStrip small{color:var(--morrovia-ink-soft);font-size:11px}.heroRouteStrip em{display:flex;align-items:center;gap:4px;min-width:0;color:var(--morrovia-muted);font:500 11px/1.3 var(--morrovia-ui);font-style:normal}.heroRouteStrip em svg{width:13px;height:13px;flex:0 0 auto;color:var(--morrovia-signal)}.heroRouteStrip p{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:12px;margin:3px 0 0;padding-top:12px;border-top:1px solid var(--morrovia-line);color:var(--morrovia-ink-soft);font-size:12px}.heroRouteStrip p svg{width:15px;height:15px;color:var(--morrovia-signal)}.heroRouteStrip p i{font-style:normal;color:var(--morrovia-signal)}
+.homeBenefits{margin-bottom:70px}
+@media(min-width:961px){.hero .startBuilderBrief textarea{min-height:102px!important;padding:0 0 44px!important;font-size:14px}.heroRoute{min-height:650px}.heroRouteMap{height:594px}}
+@media(max-width:1100px){.hero{width:min(100% - 36px,720px);grid-template-columns:1fr;gap:22px;padding-top:48px}.heroRoute{min-height:0;padding-bottom:0}.heroRouteMap{width:100%;height:auto;margin:12px 0 0}.heroRouteStrip{position:relative;right:auto;bottom:auto;left:auto;margin:-15px 0 0}.homeBenefits{margin-bottom:54px}}
+@media(max-width:560px){.hero{width:min(100% - 32px,540px);padding-top:40px;padding-bottom:38px}.hero h1{max-width:340px;font-size:clamp(48px,15vw,63px)}.hero .lede{max-width:350px;font-size:14px}.hero .startBuilder{max-width:none}.heroRouteStrip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.heroRouteStrip em{display:none}.heroRouteStrip>div{gap:6px}.heroRouteStrip b{width:25px;height:25px;font-size:11px}.heroRouteStrip strong{font-size:11px}.heroRouteStrip small{font-size:10px}.heroRouteStrip p{justify-content:flex-start;flex-wrap:wrap;gap:5px;font-size:10px}.homeBenefits{margin-bottom:42px}}
+
+/* Keep the prompt focused: the placeholder and voice action should share one
+   compact field instead of leaving a large empty writing area. */
+.hero .startBuilderPromptField{min-height:112px!important}
+.hero .startBuilderBrief textarea{min-height:96px!important;padding:0 0 40px!important}
+@media(max-width:560px){
+  .hero .startBuilderPromptField{min-height:112px!important}
+  .hero .startBuilderBrief textarea{min-height:96px!important;padding:0 0 40px!important}
 }

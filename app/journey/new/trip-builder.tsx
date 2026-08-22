@@ -434,7 +434,7 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; brief?: string } | null = null;
+        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; travellers?: number; interests?: string[]; brief?: string } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
         }
@@ -450,6 +450,11 @@ export default function TripBuilder() {
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
+          if (homeDraft.travellers || homeDraft.interests?.length) setTripIntent((current) => ({
+            ...current,
+            travellers: homeDraft?.travellers ? Math.max(1, Math.min(12, Math.round(homeDraft.travellers))) : current.travellers,
+            preferences: { ...current.preferences, interests: homeDraft?.interests ?? current.preferences.interests },
+          }));
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
           if (homeDraft.locationMentions?.length) {

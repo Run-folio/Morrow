@@ -1,12 +1,12 @@
 .promptCard {
-  padding: 24px !important;
+  padding: 18px !important;
   overflow: hidden !important;
 }
 
 .promptField {
   display: grid !important;
   min-height: 0 !important;
-  gap: 14px !important;
+  gap: 10px !important;
   padding: 14px !important;
   border: 1px solid #d9d6ef !important;
   border-radius: 12px !important;
@@ -14,7 +14,7 @@
 }
 
 .promptField textarea {
-  min-height: 88px !important;
+  min-height: 102px !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -24,16 +24,15 @@
 }
 
 .promptTextareaField { position: relative; }
-.voiceInput { position: absolute; bottom: 10px; left: 10px; z-index: 1; }
-.promptTextareaField textarea { padding-bottom: 52px !important; }
+.voiceInput { position: absolute; right: 10px; bottom: 8px; left: auto; z-index: 1; }
+.promptTextareaField textarea { padding-bottom: 44px !important; }
 
 .promptFooter {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 12px;
-  border-top: 1px solid #e7e5f3;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 2px;
 }
 
 .travelStyle {
@@ -89,6 +88,47 @@
   white-space: nowrap;
 }
 
+.promptAttributes { display: grid; gap: 8px; margin-top: 0; }
+
+.attributeActions { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.attributeActions button,
+.interestPanel button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--morrovia-line, #d9d6ef);
+  border-radius: 999px;
+  background: var(--morrovia-paper, #fbfaff);
+  color: var(--morrovia-ink, #17106f);
+  font: 650 11px/1 var(--morrovia-ui, Arial, sans-serif);
+  cursor: pointer;
+}
+
+.attributeActions button:hover,
+.attributeActions button[aria-expanded="true"],
+.interestPanel button[aria-pressed="true"] {
+  border-color: var(--morrovia-action, #3025ce);
+  background: var(--morrovia-lilac, #f2f0ff);
+}
+
+.attributeActions svg { width: 15px; height: 15px; color: var(--morrovia-signal, #f42b7a); }
+
+.attributePanel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.attributePanel label,
+.travellerField { display: grid; gap: 5px; color: var(--morrovia-ink-soft, #4f4a92); font: 700 9px/1.2 var(--morrovia-meta, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; }
+.attributePanel input,
+.travellerField input { box-sizing: border-box; width: 100%; min-height: 38px; padding: 0 9px; border: 1px solid var(--morrovia-line, #d9d6ef); border-radius: var(--morrovia-control-radius, 10px); color: var(--morrovia-ink, #17106f); background: #fff; font: 600 12px var(--morrovia-ui, Arial, sans-serif); }
+.attributePanel input:focus,
+.travellerField input:focus { outline: 3px solid var(--morrovia-focus-ring, rgba(244,43,122,.24)); outline-offset: 1px; border-color: var(--morrovia-signal, #f42b7a); }
+.travellerField { max-width: 132px; }
+.interestPanel { display: grid; gap: 7px; }
+.interestPanel>span { color: var(--morrovia-ink-soft, #4f4a92); font: 700 9px/1.2 var(--morrovia-meta, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; }
+.interestPanel>div { display: flex; flex-wrap: wrap; gap: 6px; }
+.interestPanel button { min-height: 30px; padding: 0 9px; font-size: 10px; }
+
 .routeCard { display: flex !important; flex-direction: column !important; }
 
 .routeImage {
@@ -124,7 +164,8 @@
   .promptAction { width: 100%; }
   .promptAction button { width: 100%; }
   .travelStyleChips span { font-size: 10px; }
-  .voiceInput { bottom: 8px; left: 8px; }
+  .voiceInput { right: 8px; bottom: 8px; left: auto; }
+  .attributePanel { grid-template-columns: 1fr; }
   .routeImage { height: 218px !important; }
   .proofArtwork { height: 184px !important; }
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }

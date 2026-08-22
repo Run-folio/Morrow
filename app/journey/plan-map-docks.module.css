@@ -129,7 +129,7 @@
   .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
   .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--font-geist-mono,monospace); }
-  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:calc(min(52svh,440px) + 48px);left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
+  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:12px;left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
   .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="pinDock"]) { display:none; }
 
   .plan :global([class*="pinDock"]) {
@@ -195,5 +195,5 @@
 @media (max-width:520px) {
   .plan :global([class*="finderDock"]) { bottom:var(--morrovia-mobile-dock-offset,82px);height:min(52svh,440px);max-height:calc(100svh - 175px - var(--morrovia-mobile-dock-offset,82px)); }
   .plan :global([class*="pinDock"]) { bottom:calc(min(52svh,440px) + var(--morrovia-mobile-dock-offset,82px) + 10px); }
-  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { bottom:calc(min(52svh,440px) + var(--morrovia-mobile-dock-offset,82px) + 48px); }
+  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 10px); }
 }

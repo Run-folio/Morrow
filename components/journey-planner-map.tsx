@@ -2,7 +2,9 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
+import { BedDouble } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
@@ -47,7 +49,17 @@ const mapStyle: StyleSpecification = {
       attribution: "© CARTO, © OpenStreetMap contributors",
     },
   },
-  layers: [{ id: "carto-light", type: "raster", source: "carto" }],
+  layers: [{
+    id: "carto-light",
+    type: "raster",
+    source: "carto",
+    paint: {
+      "raster-saturation": -0.22,
+      "raster-contrast": -0.06,
+      "raster-brightness-max": 0.98,
+      "raster-opacity": 0.94,
+    },
+  }],
 };
 
 export function JourneyPlannerMap({
@@ -72,6 +84,7 @@ export function JourneyPlannerMap({
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
   const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const localPlaceMarkerRootsRef = useRef<Root[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
   const hasInitialisedViewRef = useRef(false);
 
@@ -93,6 +106,7 @@ export function JourneyPlannerMap({
       stopMarkersRef.current.forEach((marker) => marker.remove());
       pinMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
       draftPinRef.current?.remove();
       map.remove();
       mapRef.current = null;
@@ -190,12 +204,16 @@ export function JourneyPlannerMap({
     if (!map) return;
     const drawLocalPlaces = () => {
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
+      localPlaceMarkerRootsRef.current = [];
       localPlaceMarkersRef.current = localPlaces.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
         element.className = `planner-map__local-place ${place.id === selectedLocalPlaceId ? "is-active" : ""}`;
         element.setAttribute("aria-label", `Show ${place.name}`);
-        element.textContent = place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay";
+        const root = createRoot(element);
+        localPlaceMarkerRootsRef.current.push(root);
+        root.render(<><BedDouble aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay"}</span></>);
         element.addEventListener("click", () => onLocalPlaceSelect?.(place));
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
@@ -204,7 +222,12 @@ export function JourneyPlannerMap({
     // finder commonly reports results after the initial map load, so drawing
     // them immediately keeps result ↔ map selection in sync.
     drawLocalPlaces();
-    return () => { localPlaceMarkersRef.current.forEach((marker) => marker.remove()); localPlaceMarkersRef.current = []; };
+    return () => {
+      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkersRef.current = [];
+      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
+      localPlaceMarkerRootsRef.current = [];
+    };
   }, [localPlaces, onLocalPlaceSelect, selectedLocalPlaceId]);
 
   useEffect(() => {
