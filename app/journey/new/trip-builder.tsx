@@ -14,7 +14,7 @@ import {
   Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { loadActiveTrip, loadRequestedTrip, saveActiveTrip } from "@/lib/easyt/storage";
+import { EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadRequestedTrip, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
@@ -29,6 +29,7 @@ import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
+import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
@@ -249,9 +250,13 @@ export default function TripBuilder() {
     previousMonth: "Previous month", nextMonth: "Next month", draft: "Draft · editable", editBrief: "Edit brief", dayByDay: "Day by day", source: "Source ↗", previousDay: "← Previous day", nextDay: "Next day →", savingChanges: "Saving changes…", savedDevice: "Saved on this device", exploreMap: "Explore the map first, then save it to an account when you are ready.", openMap: "Open map view →", addOrigin: "Add the city or airport you're leaving from.", addStop: "Add at least one stop to continue", typePlace: "Type a city, region or landmark first.", checking: "Checking this place…", unavailable: "We couldn't check that place just now. Please try again.", verifyOrigin: "We couldn't verify that starting point.", originUnavailable: "We couldn't check that starting point just now.", startDate: "Start date", endDate: "End date", pickDate: "Pick a date", typeIt: "Or type it", day: "day", days: "days", split: "Choose exactly how your time is split between destinations in the next step.", addStops: "Add stops and this splits across them.", selected: "selected", finding: "Finding real places, landmarks and activities around", noSuggestions: "No reliable suggestions loaded yet. Check the location or try again shortly.", tripBriefLabel: "YOUR TRIP BRIEF", tripBriefTitle: "What are you trying to make happen?", tripBriefHelp: "Share the occasion, fixed dates, places, budget or any context that helps shape this trip.", tripBriefPlaceholder: "For example: We have three weeks in Japan, a marathon in Tokyo, and want to finish in Hong Kong without rushing.", tripBriefHint: "Optional, but useful when the trip has a lot to hold together.", tripBriefApply: "Use this brief", yourTime: "YOUR TIME", shapeDays: "Shape the days", allocation: "We've suggested a starting split from your selected places. Move a slider and Morrovia rebalances the rest.", total: "days total", suggested: "suggested", budget: "Budget band", budgetHelp: "Used to pick where to sleep and eat during research.", value: "Good value", valueNote: "Comfortable, not precious.", mid: "Mid-range", midNote: "Some splurges.", high: "No ceiling", highNote: "Best available.", route: "ROUTE SO FAR", departure: "Departure", routeEmpty: "Add a stop and the route builds here as you go.", daysBudget: "DAYS BUDGET", full: "FULL", room: "ROOM LEFT", overBy: "OVER BY", available: "days available", committed: "committed", open: "open", overHint: "More is selected than the dates allow. Remove a place, drop a stop, or add days.", selectedPlaces: "SELECTED PLACES", nothingSelected: "Nothing selected yet. Step 03 is where the trip gets specific.", removePlace: "Remove place", placesSelected: "places selected", daysTotal: "days total"
   };
   const [tripId, setTripId] = useState(() => `trip-${crypto.randomUUID()}`);
+  const [tripOwnerId, setTripOwnerId] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
+  const [tripUpdatedAt, setTripUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [saveState, setSaveState] = useState<"saving" | "local">("saving");
+  const [saveState, setSaveState] = useState<"saving" | "local" | "cloud" | "error">("saving");
+  const [cloudSaveError, setCloudSaveError] = useState("");
+  const [cloudConflictTrip, setCloudConflictTrip] = useState<ReturnType<typeof loadActiveTrip>>(null);
   // Existing draft links may still name an old third stage; they now resolve
   // to Time instead of stranding a traveller in removed setup UI.
   const [step, setStep] = useState(0);
@@ -320,7 +325,9 @@ export default function TripBuilder() {
     const applySaved = (saved: ReturnType<typeof loadActiveTrip>) => {
       if (!saved || !active) return;
       setTripId(saved.id);
+      setTripOwnerId(saved.ownerId);
       setCreatedAt(saved.createdAt);
+      setTripUpdatedAt(saved.updatedAt);
       setOrigin(saved.brief.origin);
       setTripBrief(saved.brief.mustDo);
       setOriginCoordinates(saved.brief.originCoordinates);
@@ -347,7 +354,12 @@ export default function TripBuilder() {
       const tripIdFromUrl = params.get("trip");
       const showItinerary = params.get("view") === "itinerary";
       if (tripIdFromUrl) {
-        const requestedTrip = await loadRequestedTrip(tripIdFromUrl);
+        let activeOwnerId = session?.user?.id;
+        if (!activeOwnerId) {
+          const currentSession = await authClient.getSession().catch(() => null);
+          activeOwnerId = currentSession?.data?.user?.id;
+        }
+        const requestedTrip = await loadRequestedTrip(tripIdFromUrl, activeOwnerId);
         if (requestedTrip) {
           applySaved(requestedTrip);
           saveActiveTrip(requestedTrip);
@@ -964,31 +976,35 @@ export default function TripBuilder() {
     constraints: structuredRouteConstraints,
   }), [origin, originCoordinates, stops, startDate, calendarDayAllocations, picks, discoveredPlaces, structuredRouteConstraints]);
 
-  const activeTripDocument = useMemo(() => cascadeTripSchedule(tripFromBuilder({
-    id: tripId,
-    origin,
-    stops,
-    startDate,
-    endDate,
-    picks,
-    mustDo: tripBrief,
-    pace: effectiveIntent.preferences.pace === "packed" ? "full" : "slow",
-    hotels: "few",
-    budget,
-    dayAllocations: calendarDayAllocations,
-    nightAllocations: allocation,
-    nightAllocation,
-    draft,
-    placeDetails: discoveredPlaces,
-    originCoordinates,
-    createdAt,
-    capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
-    routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
-    intent: effectiveIntent,
-    structuredBrief: effectiveStructuredBrief,
-    scheduleLocks,
-    decisionSelections,
-  })).trip, [tripId, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
+  const activeTripDocument = useMemo(() => {
+    const built = tripFromBuilder({
+      id: tripId,
+      origin,
+      stops,
+      startDate,
+      endDate,
+      picks,
+      mustDo: tripBrief,
+      pace: effectiveIntent.preferences.pace === "packed" ? "full" : "slow",
+      hotels: "few",
+      budget,
+      dayAllocations: calendarDayAllocations,
+      nightAllocations: allocation,
+      nightAllocation,
+      draft,
+      placeDetails: discoveredPlaces,
+      originCoordinates,
+      createdAt,
+      capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
+      routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
+      intent: effectiveIntent,
+      structuredBrief: effectiveStructuredBrief,
+      scheduleLocks,
+      decisionSelections,
+    });
+    const cascaded = cascadeTripSchedule({ ...built, ownerId: tripOwnerId }).trip;
+    return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
+  }, [tripId, tripOwnerId, tripUpdatedAt, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
@@ -1024,7 +1040,7 @@ export default function TripBuilder() {
     return true;
   };
 
-  const persistGeneratedTrip = () => {
+  const persistGeneratedTrip = async () => {
     const usableTrip = recordGeneratedTrip();
     try {
       saveActiveTrip(activeTripDocument);
@@ -1038,22 +1054,49 @@ export default function TripBuilder() {
           is_authenticated: Boolean(session?.user),
         });
       }
+      if (!session?.user) return activeTripDocument;
+
+      setSaveState("saving");
+      setCloudSaveError("");
+      setCloudConflictTrip(null);
+      const saved = await saveTripToEasyT(activeTripDocument);
+      saveActiveTrip(saved);
+      setTripOwnerId(saved.ownerId);
+      setTripUpdatedAt(saved.updatedAt);
+      setSaveState("cloud");
+      trackEvent("trip_saved", {
+        trip_source: arrivedFromHomepage ? "homepage" : "builder",
+        trip_id: saved.id,
+        save_state: "cloud",
+        stop_count: saved.stops.length,
+        is_authenticated: true,
+      });
+      return saved;
     } catch (error) {
+      const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
+        ? error.canonicalTrip
+        : null;
+      setCloudConflictTrip(conflictTrip);
+      setCloudSaveError(conflictTrip
+        ? "This trip changed on another device. Your edits remain on this device until you open the cloud copy."
+        : "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
+      setSaveState("error");
       trackEvent("trip_save_failed", {
         trip_source: arrivedFromHomepage ? "homepage" : "builder",
         trip_id: activeTripDocument.id,
-        save_state: "local",
+        save_state: session?.user ? "cloud" : "local",
         error_type: "repository",
         is_authenticated: Boolean(session?.user),
       });
-      throw error;
+      return null;
     }
   };
 
-  const openBuiltTrip = () => {
+  const openBuiltTrip = async () => {
     acceptCurrentRoute("continue");
-    persistGeneratedTrip();
-    window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+    const saved = await persistGeneratedTrip();
+    if (!saved) return;
+    window.location.assign(tripWorkspaceHref(saved.id));
   };
 
   const buildTrip = () => {
@@ -1073,14 +1116,16 @@ export default function TripBuilder() {
       setBuildRequested(true);
       return;
     }
-    openBuiltTrip();
+    void openBuiltTrip();
   };
 
   useEffect(() => {
     if (!buildRequested) return;
     setBuildRequested(false);
-    persistGeneratedTrip();
-    window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+    void (async () => {
+      const saved = await persistGeneratedTrip();
+      if (saved) window.location.assign(tripWorkspaceHref(saved.id));
+    })();
   }, [buildRequested, activeTripDocument]);
 
   /* ------------------------------------------------------------ draft view */
@@ -1094,8 +1139,10 @@ export default function TripBuilder() {
         selectedPlaceCount={selected.length}
         onEditBrief={() => { setGenerated(false); setStep(1); }}
         onOpenMap={() => {
-          saveActiveTrip(activeTripDocument);
-          window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+          void (async () => {
+            const saved = await persistGeneratedTrip();
+            if (saved) window.location.assign(`/journey/plan?trip=${encodeURIComponent(saved.id)}`);
+          })();
         }}
       />
     );
@@ -1395,10 +1442,14 @@ export default function TripBuilder() {
         </aside>}
       </div>
 
+      {cloudSaveError ? <aside className={styles.cloudSaveError} role="alert"><span>{cloudSaveError}</span><button type="button" onClick={cloudConflictTrip ? () => {
+        saveActiveTrip(cloudConflictTrip);
+        window.location.assign(tripWorkspaceHref(cloudConflictTrip.id));
+      } : () => void openBuiltTrip()}>{cloudConflictTrip ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
       {(step !== 0 || hasPromptContext) && <div className={styles.wizardFoot}>
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
-          <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : ui.savedDevice}</small>
+          <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : saveState === "cloud" ? (language === "es" ? "Guardado en tu cuenta" : "Saved to your account") : saveState === "error" ? (language === "es" ? "No sincronizado" : "Not synced") : ui.savedDevice}</small>
           {gate && <small className={styles.gate}>{gate}</small>}
           <button type="button" className={styles.primary} disabled={Boolean(gate)}
             onClick={async () => {

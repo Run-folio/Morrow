@@ -17,7 +17,8 @@ import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
-import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/trip";
@@ -341,6 +342,8 @@ export function JourneyMapPlannerWorkspace({
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
   const [placeMedia, setPlaceMedia] = useState<Record<string, { image?: string; alt?: string; description?: string; sourceUrl?: string; sourceLabel?: string; coordinates?: [number, number] }>>({});
   const [cloudSaveState, setCloudSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [cloudSaveError, setCloudSaveError] = useState("");
+  const [cloudConflictTrip, setCloudConflictTrip] = useState<EasyTTrip | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [exportState, setExportState] = useState<"idle" | "saving" | "error">("idle");
   const [exportError, setExportError] = useState("");
@@ -524,13 +527,16 @@ export function JourneyMapPlannerWorkspace({
       },
       planItems: customTrip.planItems.map((item) => ({ ...item, notes: [...item.notes] })),
     };
-    const next = { ...update(base), updatedAt: new Date().toISOString() };
+    // Keep the last cloud updatedAt as the compare-and-swap token until the
+    // repository returns a new canonical revision after a successful save.
+    const next = update(base);
     setLastPlannerTrip(customTrip);
     setUndoMessage(message);
     setCustomTrip(next);
     setCustomBrief(customBriefFromEasyT(next));
     saveActiveTrip(next);
     setCloudSaveState("idle");
+    setCloudConflictTrip(null);
     setHasUnsavedChanges(true);
   }, [customTrip]);
 
@@ -820,7 +826,8 @@ export function JourneyMapPlannerWorkspace({
     if (!customTrip) return;
     const recommendation = reviewRecommendations.find((item) => item.id === recommendationId);
     const source = { ...customTrip, recommendations: reviewRecommendations };
-    const next = action === "apply" ? applyRecommendation(source, recommendationId) : undoRecommendation(source, recommendationId);
+    const changed = action === "apply" ? applyRecommendation(source, recommendationId) : undoRecommendation(source, recommendationId);
+    const next = { ...changed, updatedAt: customTrip.updatedAt };
     setCustomTrip(next);
     saveActiveTrip(next);
     if (action === "apply") {
@@ -833,6 +840,13 @@ export function JourneyMapPlannerWorkspace({
       void saveTripToEasyT(next)
         .then((saved) => { saveActiveTrip(saved); setCustomTrip(saved); setCloudSaveState("saved"); })
         .catch((error) => {
+          const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
+            ? error.canonicalTrip
+            : null;
+          setCloudConflictTrip(conflictTrip);
+          setCloudSaveError(conflictTrip
+            ? "This trip changed on another device. Your edits are still on this device; reload the cloud copy before editing again."
+            : "Couldn’t save this trip just now. Your plan is still safe on this device.");
           setCloudSaveState("error");
           trackEvent("trip_save_failed", { trip_source: "route", trip_id: next.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true });
         });
@@ -857,6 +871,8 @@ export function JourneyMapPlannerWorkspace({
       return;
     }
     setCloudSaveState("saving");
+    setCloudSaveError("");
+    setCloudConflictTrip(null);
     try {
       const reviewedTrip = { ...customTrip, recommendations: reviewTrip(customTrip) };
       const saved = await saveTripToEasyT(reviewedTrip);
@@ -868,7 +884,14 @@ export function JourneyMapPlannerWorkspace({
       trackEvent("trip_saved", { trip_source: "route", trip_id: saved.id, save_state: "cloud", stop_count: saved.stops.length, is_authenticated: true });
       router.replace(`/journey/plan?trip=${encodeURIComponent(saved.id)}`);
     } catch (error) {
+      const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
+        ? error.canonicalTrip
+        : null;
+      setCloudConflictTrip(conflictTrip);
       setCloudSaveState("error");
+      setCloudSaveError(conflictTrip
+        ? "This trip changed on another device. Your edits are still on this device; reload the cloud copy before editing again."
+        : "Couldn’t save this trip just now. Your plan is still safe on this device.");
       trackEvent("trip_save_failed", { trip_source: "route", trip_id: customTrip.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true });
     }
   }, [customTrip, router, session?.user]);
@@ -900,10 +923,30 @@ export function JourneyMapPlannerWorkspace({
       URL.revokeObjectURL(url);
       setExportState("idle");
     } catch (error) {
+      const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
+        ? error.canonicalTrip
+        : null;
+      if (conflictTrip) {
+        setCloudConflictTrip(conflictTrip);
+        setCloudSaveState("error");
+        setCloudSaveError("This trip changed on another device. Your edits are still on this device; reload the cloud copy before exporting.");
+      }
       setExportState("error");
       setExportError(error instanceof Error ? error.message : "The PDF could not be prepared.");
     }
   }, [customTrip, session?.user]);
+
+  const reloadCloudCopy = useCallback(() => {
+    if (!cloudConflictTrip) return;
+    saveActiveTrip(cloudConflictTrip);
+    setCustomTrip(cloudConflictTrip);
+    setCustomBrief(customBriefFromEasyT(cloudConflictTrip));
+    setCloudConflictTrip(null);
+    setCloudSaveError("");
+    setCloudSaveState("saved");
+    setHasUnsavedChanges(false);
+    router.replace(`/journey/plan?trip=${encodeURIComponent(cloudConflictTrip.id)}`);
+  }, [cloudConflictTrip, router]);
 
   useEffect(() => {
     hasMounted.current = true;
@@ -924,8 +967,13 @@ export function JourneyMapPlannerWorkspace({
           try { activeTrip = await loadTripFromEasyT(tripId); } catch { /* fall back to the local canonical copy */ }
         }
         const localTrip = loadActiveTrip();
-        if (!activeTrip && (!tripId || localTrip?.id === tripId)) activeTrip = localTrip;
+        if (!activeTrip && (!tripId || localTrip?.id === tripId)) {
+          activeTrip = tripId
+            ? requestedTripMatch(tripId, localTrip, session?.user?.id)
+            : requestedTripMatch(localTrip?.id ?? "", localTrip, session?.user?.id);
+        }
         if (activeTrip) {
+          saveActiveTrip(activeTrip);
           setCustomTrip(activeTrip);
           setCustomBrief(customBriefFromEasyT(activeTrip));
           const stayStopId = params.get("stay");
@@ -952,7 +1000,7 @@ export function JourneyMapPlannerWorkspace({
       }
     };
     void hydratePlan();
-  }, [isPlanningPreview, providedTrip]);
+  }, [isPlanningPreview, providedTrip, session?.user?.id]);
 
   useEffect(() => {
     if (!isPlanningPreview || !autoSaveRequested || !customTrip || !session?.user || cloudSaveState !== "idle") return;
@@ -1429,7 +1477,7 @@ export function JourneyMapPlannerWorkspace({
       </div> : null}
       {isPlanningPreview && lastPlannerTrip ? <div className={styles.undoToast} role="status"><span>{undoMessage}</span><button type="button" onClick={undoPlannerEdit}>{planCopy.undo}</button></div> : null}
       {exportState === "error" ? <p className={styles.savePlanError}>{exportError || (language === "es" ? "No se pudo preparar el PDF." : "The PDF could not be prepared.")}</p> : null}
-      {cloudSaveState === "error" ? <p className={styles.savePlanError}>{language === "es" ? "No se pudo guardar este viaje ahora. Tu plan sigue seguro en este dispositivo." : "Couldn’t save this trip just now. Your plan is still safe on this device."}</p> : null}
+      {cloudSaveState === "error" ? <p className={styles.savePlanError}>{cloudSaveError || (language === "es" ? "No se pudo guardar este viaje ahora. Tu plan sigue seguro en este dispositivo." : "Couldn’t save this trip just now. Your plan is still safe on this device.")} <button type="button" onClick={cloudConflictTrip ? reloadCloudCopy : () => void savePlan()}>{cloudConflictTrip ? (language === "es" ? "Recargar copia en la nube" : "Reload cloud copy") : (language === "es" ? "Reintentar" : "Try again")}</button></p> : null}
 
       </main>
     </>

@@ -79,6 +79,7 @@ export function cleanAnalyticsProperties(properties: AnalyticsEventProperties = 
 
 export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" | "conflict" | "repository" | "unknown" {
   if (error instanceof TypeError) return "network";
+  if (error instanceof Error && error.name === "EasyTTripPromotionConflictError") return "conflict";
   const message = error instanceof Error ? error.message.toLocaleLowerCase() : "";
   if (/auth|unauthor|sign.?in/.test(message)) return "auth";
   if (/conflict|ownership/.test(message)) return "conflict";

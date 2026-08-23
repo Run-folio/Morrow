@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Gift } from "lucide-react";
+import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import styles from "../../account.module.css";
 
 export default function ClaimGift({ token }: { token: string }) {
@@ -23,7 +24,7 @@ export default function ClaimGift({ token }: { token: string }) {
       return;
     }
     setState("done");
-    router.push(`/journey/plan?trip=${encodeURIComponent(payload.trip.id)}`);
+    router.push(tripWorkspaceHref(payload.trip.id));
   };
 
   return (

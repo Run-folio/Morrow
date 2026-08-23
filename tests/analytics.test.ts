@@ -39,6 +39,9 @@ test("save failures are reduced to machine-safe categories", () => {
   assert.equal(classifyAnalyticsSaveError(new TypeError("fetch failed")), "network");
   assert.equal(classifyAnalyticsSaveError(new Error("Authentication required")), "auth");
   assert.equal(classifyAnalyticsSaveError(new Error("Trip ownership mismatch")), "conflict");
+  const promotionConflict = new Error("A newer cloud copy already exists.");
+  promotionConflict.name = "EasyTTripPromotionConflictError";
+  assert.equal(classifyAnalyticsSaveError(promotionConflict), "conflict");
   assert.equal(classifyAnalyticsSaveError(new Error("Cloud save failed")), "repository");
   assert.equal(classifyAnalyticsSaveError(new Error("Unexpected")), "unknown");
 });

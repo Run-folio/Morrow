@@ -45,7 +45,7 @@ function statusLabel(status: TripStatus) {
   return "Planning";
 }
 
-export default function TripShell({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {
+export default function TripShell({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
   const routeLabel = trip.stops.map((stop) => stop.name).join(" → ") || "Route to confirm";
   const image = trip.planItems.find((item) => Boolean(item.image))?.image ?? null;
   const duration = tripShellDuration(trip.startDate, trip.endDate);
@@ -101,7 +101,7 @@ export default function TripShell({ trip, children }: { trip: EasyTTrip; childre
         <TripShellNavigation tripId={trip.id} />
       </section>
 
-      <TripShellTripProvider trip={trip}>
+      <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>
         <div className={styles.content}>{children}</div>
       </TripShellTripProvider>
     </div>

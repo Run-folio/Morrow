@@ -273,6 +273,8 @@
 
 /* ---------------------------------------------------------- wizard foot */
 .wizardFoot { min-height: 78px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 40px; border-top: 1px solid var(--line); }
+.cloudSaveError { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0; padding: 12px 40px; border-top: 1px solid #f1bfd2; background: #fff6fa; color: #71304b; font-size: 13px; line-height: 1.45; }
+.cloudSaveError button { flex: 0 0 auto; min-height: 34px; padding: 0 12px; border: 1px solid currentColor; border-radius: 999px; background: #fff; color: inherit; font: 650 12px var(--font-geist-sans, Geist, system-ui, sans-serif); cursor: pointer; }
 .footRight { display: flex; align-items: center; gap: 16px; }
 .saveState { color: #8f8b96; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
 .gate { color: var(--signal); font: 650 11px var(--font-geist-mono, monospace); }
@@ -362,6 +364,7 @@
 }
 @media (max-width: 620px){.placeCard{grid-template-columns:82px 24px minmax(0,1fr);align-items:start}.placeThumb,.placeThumbFallback{width:82px;min-height:82px}.placeThumb img{min-height:82px}.placeCost{grid-column:3;margin:0}.dayImage{height:220px}.allocationRow{grid-template-columns:1fr 44px;gap:8px}.allocationRow input{grid-column:1 / -1;grid-row:2}.allocationRow > b{grid-column:2;grid-row:1}.intentFacts{grid-template-columns:1fr}.fixedCommitment{grid-template-columns:1fr 110px}.fixedCommitment>button{grid-column:1 / -1}.intentFieldRow{grid-template-columns:1fr}}
 @media (max-width: 420px){.wizardFoot{align-items:stretch;padding:14px 20px}.footRight{width:100%;min-width:0;justify-content:space-between;gap:10px}.saveState{min-width:0;font-size:10px}.gate{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.primary{flex:0 0 auto;justify-content:center;padding-inline:16px;font-size:14px}}
+@media (max-width: 620px){.cloudSaveError{align-items:flex-start;flex-direction:column;padding:12px 20px}}
 
 /* --------------------------------------------------------------------------
    Builder 3.0: one clear decision per stage. These rules deliberately sit at

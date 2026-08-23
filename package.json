@@ -17,6 +17,7 @@
     "test:route-candidates": "node --experimental-strip-types --test tests/route-candidates.test.ts",
     "test:route-scoring": "node --experimental-strip-types --test tests/route-scoring.test.ts",
     "test:analytics": "node --experimental-strip-types --test tests/analytics.test.ts",
+    "test:persistence": "node --experimental-strip-types --test tests/trip-id-resolution.test.ts tests/trip-promotion.test.ts tests/trip-continuity.test.ts",
     "test:destination-knowledge": "node --experimental-strip-types --test tests/destination-knowledge.test.ts",
     "test:transfer-impact": "node --experimental-strip-types --test tests/transfer-impact.test.ts",
     "test:transport-feasibility": "node --experimental-strip-types --test tests/transport-feasibility.test.ts",

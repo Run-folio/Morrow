@@ -3,6 +3,16 @@ import "server-only";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 
 import { getEasyTDatabase } from "./database";
+import {
+  canPromoteTripForOwner,
+  canonicalTripForOwner,
+  decideExistingTripPromotion,
+  type TripPromotionConflictReason,
+} from "./trip-promotion";
+import {
+  EasyTTripSaveConflictError,
+  nextTripUpdatedAt,
+} from "./trip-continuity";
 import { EasyTTrip, isEasyTTrip } from "./trip";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
@@ -275,63 +285,190 @@ export async function saveTripForOwner(
   ownerId: string,
   trip: EasyTTrip,
 ): Promise<EasyTTrip> {
+  if (trip.ownerId !== ownerId) throw new Error("Trip ownership mismatch.");
   const sql = getEasyTDatabase();
-  const ownership =
-    (await sql`select owner_id from easyt_trips where id = ${trip.id} limit 1`) as Array<{
-      owner_id: string;
-    }>;
-  if (ownership[0] && ownership[0].owner_id !== ownerId)
-    throw new Error("Trip ownership mismatch.");
-
   // Stop IDs originate in the builder (for example `tokyo`) and are only
   // unique inside one trip. The database stores stops in a shared table, so
   // namespace them before persistence and update every relation atomically.
-  const stopPrefix = `${trip.id}-stop-`;
-  const stopIds = new Map(
-    trip.stops.map((stop) => [
-      stop.id,
-      stop.id.startsWith(stopPrefix) ? stop.id : `${stopPrefix}${stop.id}`,
-    ]),
+  // The incoming updatedAt remains the compare-and-swap token; only the
+  // repository issues the next token after the update has won.
+  const document = canonicalTripForOwner(ownerId, trip, nextTripUpdatedAt(trip.updatedAt));
+  const documentJson = JSON.stringify(document);
+  const transactionResults = await sql.transaction((tx) => [
+    tx`select pg_advisory_xact_lock(hashtextextended(${document.id}, 0))`,
+    tx`select set_config('morrovia.save_document', ${documentJson}, true)`,
+    tx`
+      update easyt_trips
+      set title = ${document.title},
+        start_date = ${document.startDate},
+        end_date = ${document.endDate},
+        travellers = ${document.travellers},
+        status = ${document.status},
+        pace = ${document.brief.pace},
+        currency = ${document.currency},
+        brief = ${JSON.stringify(document.brief)},
+        document = current_setting('morrovia.save_document')::jsonb,
+        schema_version = ${document.schemaVersion},
+        updated_at = ${document.updatedAt}
+      where id = ${document.id}
+        and owner_id = ${ownerId}
+        and deleted_at is null
+        and document ->> 'updatedAt' = ${trip.updatedAt}
+      returning document
+    `,
+    tx`
+      delete from easyt_recommendations
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_plan_items
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_legs
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_stops
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+    `,
+    ...document.stops.map(
+      (stop) => tx`
+        insert into easyt_stops (
+          id, trip_id, stop_order, name, country, latitude, longitude,
+          arrival_date, departure_date, nights
+        )
+        select
+          ${stop.id}, ${document.id}, ${stop.order}, ${stop.name}, ${stop.country},
+          ${stop.latitude}, ${stop.longitude}, ${stop.arrivalDate}, ${stop.departureDate}, ${stop.nights}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+      `,
+    ),
+    ...document.legs.map(
+      (leg) => tx`
+        insert into easyt_legs (
+          id, trip_id, from_stop_id, to_stop_id, mode, distance_km,
+          duration_minutes, provider, route_metadata
+        )
+        select
+          ${leg.id}, ${document.id}, ${leg.fromStopId}, ${leg.toStopId}, ${leg.mode},
+          ${leg.distanceKm}, ${leg.durationMinutes}, ${leg.provider}, ${JSON.stringify(leg.routeMetadata)}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+      `,
+    ),
+    ...document.planItems.map(
+      (item) => tx`
+        insert into easyt_plan_items (
+          id, trip_id, stop_id, day_number, plan_date, item_type, title,
+          reason, notes, starts_at, ends_at, booking_url, latitude, longitude
+        )
+        select
+          ${item.id}, ${document.id}, ${item.stopId}, ${item.dayNumber}, ${item.date},
+          ${item.type}, ${item.title}, ${item.reason}, ${JSON.stringify(item.notes)},
+          ${item.startsAt}, ${item.endsAt}, ${item.bookingUrl}, ${item.latitude}, ${item.longitude}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+      `,
+    ),
+    ...document.recommendations.map(
+      (recommendation) => tx`
+        insert into easyt_recommendations (
+          id, trip_id, rule, severity, message, proposed_change, status
+        )
+        select
+          ${recommendation.id}, ${document.id}, ${recommendation.rule}, ${recommendation.severity},
+          ${recommendation.message}, ${JSON.stringify(recommendation.proposedChange)}, ${recommendation.status}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
+        )
+      `,
+    ),
+  ]);
+
+  const updated = (transactionResults[2] as TripDocumentRow[])[0]?.document;
+  if (isEasyTTrip(updated)) return updated;
+
+  const rows = (await sql`
+    select owner_id as "ownerId", deleted_at as "deletedAt", document
+    from easyt_trips
+    where id = ${trip.id}
+    limit 1
+  `) as Array<{ ownerId: string; deletedAt: string | null; document: unknown }>;
+  const existing = rows[0];
+  if (!existing) throw new Error("Trip not found.");
+  if (existing.ownerId !== ownerId) throw new Error("Trip ownership mismatch.");
+  if (!isEasyTTrip(existing.document)) throw new Error("Stored trip document is invalid.");
+  throw new EasyTTripSaveConflictError(
+    existing.deletedAt
+      ? "This trip was removed from the cloud. This device did not recreate it."
+      : "This trip changed on another device. This device did not replace it.",
+    existing.document,
+    existing.deletedAt ? "cloud-deleted" : "cloud-changed",
   );
-  const document: EasyTTrip = {
-    ...trip,
-    ownerId,
-    brief: {
-      ...trip.brief,
-      selectedPlaces: Object.fromEntries(
-        Object.entries(trip.brief.selectedPlaces).map(([stopId, places]) => [
-          stopIds.get(stopId) ?? stopId,
-          places,
-        ]),
-      ),
-      structuredBrief: trip.brief.structuredBrief ? {
-        ...trip.brief.structuredBrief,
-        destinations: trip.brief.structuredBrief.destinations.map((destination) => ({
-          ...destination,
-          id: destination.id ? (stopIds.get(destination.id) ?? destination.id) : undefined,
-        })),
-        mustVisit: trip.brief.structuredBrief.mustVisit.map((destination) => ({
-          ...destination,
-          id: destination.id ? (stopIds.get(destination.id) ?? destination.id) : undefined,
-        })),
-      } : undefined,
-    },
-    stops: trip.stops.map((stop) => ({
-      ...stop,
-      id: stopIds.get(stop.id) ?? stop.id,
-    })),
-    legs: trip.legs.map((leg) => ({
-      ...leg,
-      fromStopId: stopIds.get(leg.fromStopId) ?? leg.fromStopId,
-      toStopId: stopIds.get(leg.toStopId) ?? leg.toStopId,
-    })),
-    planItems: trip.planItems.map((item) => ({
-      ...item,
-      stopId: stopIds.get(item.stopId) ?? item.stopId,
-    })),
-    updatedAt: new Date().toISOString(),
-  };
-  await sql.transaction((tx) => [
+}
+
+export type TripPromotionResult = {
+  trip: EasyTTrip;
+  outcome: "promoted" | "already-canonical" | "conflict";
+  conflictReason?: TripPromotionConflictReason;
+};
+
+/**
+ * Claim one browser-local document for an authenticated owner. The insert-only
+ * boundary is deliberately separate from ordinary edits: after an ID exists in
+ * cloud storage, that cloud row wins and promotion can never update it.
+ */
+export async function promoteTripForOwner(
+  ownerId: string,
+  trip: EasyTTrip,
+): Promise<TripPromotionResult> {
+  if (!canPromoteTripForOwner(trip, ownerId)) {
+    throw new Error("Trip ownership mismatch.");
+  }
+
+  const sql = getEasyTDatabase();
+  const document = canonicalTripForOwner(ownerId, trip);
+  const documentJson = JSON.stringify(document);
+  const transactionResults = await sql.transaction((tx) => [
+    // Serialize promotion attempts for one canonical ID. This makes concurrent
+    // retries choose one insert without a check-then-write race.
+    tx`select pg_advisory_xact_lock(hashtextextended(${document.id}, 0))`,
+    // Keep the candidate once in transaction-local state instead of repeating
+    // a potentially large trip JSON parameter for every normalized child row.
+    tx`select set_config('morrovia.promotion_document', ${documentJson}, true)`,
     tx`
       insert into easyt_trips (
         id, owner_id, title, start_date, end_date, travellers, status,
@@ -339,74 +476,142 @@ export async function saveTripForOwner(
       ) values (
         ${document.id}, ${ownerId}, ${document.title}, ${document.startDate}, ${document.endDate},
         ${document.travellers}, ${document.status}, ${document.brief.pace}, ${document.currency},
-        ${JSON.stringify(document.brief)}, ${JSON.stringify(document)}, ${document.schemaVersion},
+        ${JSON.stringify(document.brief)}, current_setting('morrovia.promotion_document')::jsonb, ${document.schemaVersion},
         ${document.createdAt}, ${document.updatedAt}, null
       )
-      on conflict (id) do update set
-        title = excluded.title,
-        start_date = excluded.start_date,
-        end_date = excluded.end_date,
-        travellers = excluded.travellers,
-        status = excluded.status,
-        pace = excluded.pace,
-        currency = excluded.currency,
-        brief = excluded.brief,
-        document = excluded.document,
-        schema_version = excluded.schema_version,
-        updated_at = excluded.updated_at,
-        deleted_at = null
-      where easyt_trips.owner_id = ${ownerId}
+      on conflict (id) do nothing
+      returning id
     `,
-    tx`delete from easyt_recommendations where trip_id = ${document.id}`,
-    tx`delete from easyt_plan_items where trip_id = ${document.id}`,
-    tx`delete from easyt_legs where trip_id = ${document.id}`,
-    tx`delete from easyt_stops where trip_id = ${document.id}`,
+    tx`
+      delete from easyt_recommendations
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_plan_items
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_legs
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+    `,
+    tx`
+      delete from easyt_stops
+      where trip_id = ${document.id}
+        and exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+    `,
     ...document.stops.map(
       (stop) => tx`
-      insert into easyt_stops (
-        id, trip_id, stop_order, name, country, latitude, longitude,
-        arrival_date, departure_date, nights
-      ) values (
-        ${stop.id}, ${document.id}, ${stop.order}, ${stop.name}, ${stop.country},
-        ${stop.latitude}, ${stop.longitude}, ${stop.arrivalDate}, ${stop.departureDate}, ${stop.nights}
-      )
-    `,
+        insert into easyt_stops (
+          id, trip_id, stop_order, name, country, latitude, longitude,
+          arrival_date, departure_date, nights
+        )
+        select
+          ${stop.id}, ${document.id}, ${stop.order}, ${stop.name}, ${stop.country},
+          ${stop.latitude}, ${stop.longitude}, ${stop.arrivalDate}, ${stop.departureDate}, ${stop.nights}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+      `,
     ),
     ...document.legs.map(
       (leg) => tx`
-      insert into easyt_legs (
-        id, trip_id, from_stop_id, to_stop_id, mode, distance_km,
-        duration_minutes, provider, route_metadata
-      ) values (
-        ${leg.id}, ${document.id}, ${leg.fromStopId}, ${leg.toStopId}, ${leg.mode},
-        ${leg.distanceKm}, ${leg.durationMinutes}, ${leg.provider}, ${JSON.stringify(leg.routeMetadata)}
-      )
-    `,
+        insert into easyt_legs (
+          id, trip_id, from_stop_id, to_stop_id, mode, distance_km,
+          duration_minutes, provider, route_metadata
+        )
+        select
+          ${leg.id}, ${document.id}, ${leg.fromStopId}, ${leg.toStopId}, ${leg.mode},
+          ${leg.distanceKm}, ${leg.durationMinutes}, ${leg.provider}, ${JSON.stringify(leg.routeMetadata)}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+      `,
     ),
     ...document.planItems.map(
       (item) => tx`
-      insert into easyt_plan_items (
-        id, trip_id, stop_id, day_number, plan_date, item_type, title,
-        reason, notes, starts_at, ends_at, booking_url, latitude, longitude
-      ) values (
-        ${item.id}, ${document.id}, ${item.stopId}, ${item.dayNumber}, ${item.date},
-        ${item.type}, ${item.title}, ${item.reason}, ${JSON.stringify(item.notes)},
-        ${item.startsAt}, ${item.endsAt}, ${item.bookingUrl}, ${item.latitude}, ${item.longitude}
-      )
-    `,
+        insert into easyt_plan_items (
+          id, trip_id, stop_id, day_number, plan_date, item_type, title,
+          reason, notes, starts_at, ends_at, booking_url, latitude, longitude
+        )
+        select
+          ${item.id}, ${document.id}, ${item.stopId}, ${item.dayNumber}, ${item.date},
+          ${item.type}, ${item.title}, ${item.reason}, ${JSON.stringify(item.notes)},
+          ${item.startsAt}, ${item.endsAt}, ${item.bookingUrl}, ${item.latitude}, ${item.longitude}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+      `,
     ),
     ...document.recommendations.map(
       (recommendation) => tx`
-      insert into easyt_recommendations (
-        id, trip_id, rule, severity, message, proposed_change, status
-      ) values (
-        ${recommendation.id}, ${document.id}, ${recommendation.rule}, ${recommendation.severity},
-        ${recommendation.message}, ${JSON.stringify(recommendation.proposedChange)}, ${recommendation.status}
-      )
-    `,
+        insert into easyt_recommendations (
+          id, trip_id, rule, severity, message, proposed_change, status
+        )
+        select
+          ${recommendation.id}, ${document.id}, ${recommendation.rule}, ${recommendation.severity},
+          ${recommendation.message}, ${JSON.stringify(recommendation.proposedChange)}, ${recommendation.status}
+        where exists (
+          select 1 from easyt_trips
+          where id = ${document.id} and owner_id = ${ownerId}
+            and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
+        )
+      `,
     ),
   ]);
-  return document;
+
+  const inserted = (transactionResults[2] as Array<{ id: string }>)[0];
+  const rows = (await sql`
+    select owner_id, document, deleted_at,
+      document = ${documentJson}::jsonb as matches
+    from easyt_trips
+    where id = ${document.id}
+    limit 1
+  `) as Array<{
+    owner_id: string;
+    document: unknown;
+    deleted_at: string | null;
+    matches: boolean;
+  }>;
+  const stored = rows[0];
+  if (!stored || stored.owner_id !== ownerId) {
+    throw new Error("Trip ownership mismatch.");
+  }
+  if (!isEasyTTrip(stored.document)) {
+    throw new Error("The canonical trip document could not be read.");
+  }
+  if (inserted) return { trip: stored.document, outcome: "promoted" };
+  return {
+    trip: stored.document,
+    ...decideExistingTripPromotion(trip, stored.document, {
+      exactMatch: stored.matches,
+      cloudDeleted: Boolean(stored.deleted_at),
+    }),
+  };
 }
 
 export async function archiveTripForOwner(ownerId: string, tripId: string) {
@@ -486,7 +691,11 @@ async function copyTripForOwner(
     updatedAt: now,
   };
 
-  return saveTripForOwner(ownerId, duplicate);
+  const result = await promoteTripForOwner(ownerId, duplicate);
+  if (result.outcome === "conflict") {
+    throw new Error("Unable to create a unique trip copy.");
+  }
+  return result.trip;
 }
 
 export async function createTripGift(

@@ -12,3 +12,19 @@ test("does not resolve an inaccessible or nonexistent ID from another active tri
   assert.equal(requestedTripMatch("trip-missing", null), null);
   assert.equal(requestedTripMatch("trip-owned", { id: "trip-owned", ownerId: "owner-b" }, "owner-a"), null);
 });
+
+test("logout and account switching cannot expose another owner's browser fallback", () => {
+  const ownedTrip = { id: "trip-owned", ownerId: "owner-a" };
+  assert.equal(requestedTripMatch(ownedTrip.id, ownedTrip), null);
+  assert.equal(requestedTripMatch(ownedTrip.id, ownedTrip, "owner-b"), null);
+  assert.equal(requestedTripMatch(ownedTrip.id, ownedTrip, "owner-a"), ownedTrip);
+});
+
+test("an unclaimed browser trip survives refresh before and after its owner is attached", () => {
+  const localTrip = { id: "trip-local", ownerId: null };
+  assert.equal(requestedTripMatch(localTrip.id, localTrip), localTrip);
+  assert.equal(requestedTripMatch(localTrip.id, localTrip, "owner-a"), localTrip);
+
+  const promotedTrip = { ...localTrip, ownerId: "owner-a" };
+  assert.equal(requestedTripMatch(promotedTrip.id, promotedTrip, "owner-a"), promotedTrip);
+});

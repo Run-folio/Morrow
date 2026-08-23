@@ -6,7 +6,9 @@ import { CalendarDays, ChevronRight, CircleAlert, MapPin, Route, Sparkles } from
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import EasyTNavigation from "../easyt-navigation";
-import { loadActiveTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
+import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
+import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
+import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import { tripHealth } from "@/lib/easyt/review";
@@ -55,6 +57,7 @@ function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, n
 
 export default function MapPlanNext() {
   const searchParams = useSearchParams();
+  const { data: session } = authClient.useSession();
   const tripId = searchParams.get("trip");
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,17 +69,19 @@ export default function MapPlanNext() {
   useEffect(() => {
     let active = true;
     void (async () => {
-      let next = loadActiveTrip();
+      const local = loadActiveTrip();
+      let next = requestedTripMatch(tripId ?? local?.id ?? "", local, session?.user?.id);
       if (tripId) {
         try { next = await loadTripFromEasyT(tripId) ?? next; } catch { /* retain the local canonical copy */ }
       }
       if (!active) return;
+      if (next) saveActiveTrip(next);
       setTrip(next);
       setSelectedStopId(next?.stops.slice().sort((a, b) => a.order - b.order)[0]?.id ?? "");
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [tripId]);
+  }, [session?.user?.id, tripId]);
 
   useEffect(() => {
     if (!trip) return;

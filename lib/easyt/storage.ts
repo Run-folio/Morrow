@@ -1,5 +1,13 @@
 import { EasyTTrip, isEasyTTrip } from "./trip";
+import {
+  EasyTTripSaveConflictError,
+  requestTripUpdate,
+  type TripSaveConflictReason,
+} from "./trip-continuity";
 import { requestedTripMatch } from "./trip-id-resolution";
+import { requestTripPromotion, type TripPromotionConflictReason } from "./trip-promotion";
+
+export { EasyTTripSaveConflictError } from "./trip-continuity";
 
 export const EASYT_ACTIVE_TRIP_KEY = "easyt:active-trip:v1";
 export const EASYT_ACTIVE_TRIP_CHANGE_EVENT = "easyt-active-trip-change";
@@ -27,17 +35,70 @@ export function saveActiveTrip(trip: EasyTTrip) {
 }
 
 export async function saveTripToEasyT(trip: EasyTTrip): Promise<EasyTTrip> {
-  const response = await fetch("/api/easyt/trips", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(trip),
-  });
+  if (!trip.ownerId) return (await promoteTripToEasyT(trip)).trip;
+  const response = await requestTripUpdate(trip);
+  const payload = await response.json().catch(() => null) as {
+    trip?: unknown;
+    conflictReason?: TripSaveConflictReason;
+    error?: string;
+  } | null;
+  if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
+    throw new EasyTTripSaveConflictError(
+      payload.error || "This trip changed in the cloud.",
+      payload.trip,
+      payload.conflictReason,
+    );
+  }
+  // An owned device copy may outlive a failed initial sync. A genuinely
+  // missing row can safely retry through the existing insert-only boundary;
+  // deleted and changed rows return 409 above and are never recreated here.
+  if (response.status === 404) return (await promoteTripToEasyT(trip)).trip;
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { error?: string } | null;
     throw new Error(payload?.error || "Morrovia cloud save failed.");
   }
-  const payload = await response.json() as { trip: EasyTTrip };
+  if (!payload || !isEasyTTrip(payload.trip)) throw new Error("Morrovia cloud returned an invalid trip.");
   return payload.trip;
+}
+
+export type EasyTTripPromotion = {
+  trip: EasyTTrip;
+  outcome: "promoted" | "already-canonical";
+};
+
+export class EasyTTripPromotionConflictError extends Error {
+  readonly canonicalTrip: EasyTTrip;
+  readonly reason: TripPromotionConflictReason;
+
+  constructor(message: string, canonicalTrip: EasyTTrip, reason: TripPromotionConflictReason) {
+    super(message);
+    this.name = "EasyTTripPromotionConflictError";
+    this.canonicalTrip = canonicalTrip;
+    this.reason = reason;
+  }
+}
+
+/** Insert-only local-to-cloud boundary. Existing cloud state is never updated. */
+export async function promoteTripToEasyT(trip: EasyTTrip): Promise<EasyTTripPromotion> {
+  const response = await requestTripPromotion(trip);
+  const payload = await response.json().catch(() => null) as {
+    trip?: unknown;
+    outcome?: "promoted" | "already-canonical" | "conflict";
+    conflictReason?: TripPromotionConflictReason;
+    error?: string;
+  } | null;
+
+  if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
+    throw new EasyTTripPromotionConflictError(
+      payload.error || "A cloud copy already exists.",
+      payload.trip,
+      payload.conflictReason,
+    );
+  }
+  if (!response.ok || !payload || !isEasyTTrip(payload.trip)
+    || (payload.outcome !== "promoted" && payload.outcome !== "already-canonical")) {
+    throw new Error(payload?.error || "Morrovia cloud sync failed. Your trip is still saved on this device.");
+  }
+  return { trip: payload.trip, outcome: payload.outcome };
 }
 
 export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {

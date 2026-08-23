@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, BedDouble, CalendarCheck2, Check, ClipboardList, ExternalLink, MapPin, Plus, ReceiptText, Utensils } from "lucide-react";
-import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import type { EasyTTrip, TripBooking, TripChecklistItem } from "@/lib/easyt/trip";
+import { authClient } from "@/lib/auth-client";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 import styles from "./trip-mode.module.css";
 
 const defaultChecklist = (): TripChecklistItem[] => [
@@ -28,7 +31,10 @@ function daysUntil(date: string) {
 
 export default function TripModeClient() {
   const params = useSearchParams();
+  const { data: session } = authClient.useSession();
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
+  const [syncError, setSyncError] = useState(false);
+  const [syncConflict, setSyncConflict] = useState<EasyTTrip | null>(null);
   const [tab, setTab] = useState<"today" | "bookings" | "ready">("today");
   const [bookingTitle, setBookingTitle] = useState("");
   const [bookingType, setBookingType] = useState<TripBooking["type"]>("stay");
@@ -38,14 +44,36 @@ export default function TripModeClient() {
   useEffect(() => {
     const id = params.get("trip");
     const local = loadActiveTrip();
-    if (!id || local?.id === id) { setTrip(local); return; }
-    void loadTripFromEasyT(id).then((loaded) => setTrip(loaded ?? local)).catch(() => setTrip(local));
-  }, [params]);
+    const fallback = requestedTripMatch(id ?? local?.id ?? "", local, session?.user?.id);
+    if (!id) { setTrip(fallback); return; }
+    void loadTripFromEasyT(id).then((loaded) => {
+      const resolved = loaded ?? fallback;
+      setTrip(resolved);
+      if (loaded) saveActiveTrip(loaded);
+    }).catch(() => setTrip(fallback));
+  }, [params, session?.user?.id]);
 
   const persist = (next: EasyTTrip) => {
     setTrip(next);
+    setSyncError(false);
+    setSyncConflict(null);
     saveActiveTrip(next);
-    void saveTripToEasyT(next).catch(() => undefined);
+    void saveTripToEasyT(next)
+      .then((saved) => { saveActiveTrip(saved); setTrip(saved); })
+      .catch((error) => {
+        if (error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError) {
+          setSyncConflict(error.canonicalTrip);
+        }
+        setSyncError(true);
+      });
+  };
+
+  const reloadCloudCopy = () => {
+    if (!syncConflict) return;
+    saveActiveTrip(syncConflict);
+    setTrip(syncConflict);
+    setSyncConflict(null);
+    setSyncError(false);
   };
 
   const tripDay = useMemo(() => {
@@ -63,18 +91,19 @@ export default function TripModeClient() {
   const addBooking = () => {
     if (!trip || !bookingTitle.trim()) return;
     const booking: TripBooking = { id: `${trip.id}-booking-${Date.now()}`, type: bookingType, title: bookingTitle.trim(), date: bookingDate || null, confirmation: null, url: bookingUrl.trim() || null };
-    persist({ ...trip, brief: { ...trip.brief, bookings: [...bookings, booking] }, updatedAt: new Date().toISOString() });
+    persist({ ...trip, brief: { ...trip.brief, bookings: [...bookings, booking] } });
     setBookingTitle(""); setBookingDate(""); setBookingUrl("");
   };
 
   const toggleChecklist = (id: string) => {
     if (!trip) return;
-    persist({ ...trip, brief: { ...trip.brief, checklist: checklist.map((item) => item.id === id ? { ...item, complete: !item.complete } : item) }, updatedAt: new Date().toISOString() });
+    persist({ ...trip, brief: { ...trip.brief, checklist: checklist.map((item) => item.id === id ? { ...item, complete: !item.complete } : item) } });
   };
 
   if (!trip) return <section className={styles.empty}><p>TRIP MODE</p><h1>Your trip will live here.</h1><span>Build a route first, then EasyT will keep the useful details close while you travel.</span><Link href="/journey/new">Start a trip <ArrowRight /></Link></section>;
 
   return <section className={styles.page}>
+    {syncError ? <aside className={styles.syncNotice} role="alert"><span>{syncConflict ? "This trip changed on another device. Your edit remains on this device until you reload the cloud copy." : "This change is still safe on this device, but it has not synced to your account."}</span><EasyTButton size="small" variant="secondary" onClick={syncConflict ? reloadCloudCopy : () => persist(trip)}>{syncConflict ? "Reload cloud copy" : "Try again"}</EasyTButton></aside> : null}
     <header className={styles.hero}><div><p>TRIP MODE</p><h1>{trip.title}</h1><span>{countdown > 0 ? `${countdown} days until departure` : countdown === 0 ? "Your trip starts today" : "Your trip is underway"}</span></div><Link href={tripHref}>Open map <ArrowRight /></Link></header>
     <nav className={styles.tabs} aria-label="Trip mode sections"><button type="button" className={tab === "today" ? styles.active : ""} onClick={() => setTab("today")}>Today</button><button type="button" className={tab === "bookings" ? styles.active : ""} onClick={() => setTab("bookings")}>Bookings <span>{bookings.length}</span></button><button type="button" className={tab === "ready" ? styles.active : ""} onClick={() => setTab("ready")}>Ready</button></nav>
     {tab === "today" && tripDay ? <div className={styles.today}><article className={styles.dayCard}><p><CalendarCheck2 /> {dayLabel(tripDay.date)} · Day {tripDay.dayNumber}</p><h2>{tripDay.title}</h2><span>{tripDay.reason}</span><ol>{tripDay.notes.map((note, index) => <li key={`${note}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b>{note}</li>)}</ol></article><div className={styles.quickActions}><Link href={`${tripHref}#finder`}><Utensils /> Find food nearby</Link><Link href={`${tripHref}#finder`}><BedDouble /> Find a stay</Link></div>{(dayNotes.length || pins.length) ? <article className={styles.context}><p>FOR TODAY</p>{dayNotes.length ? <div><ClipboardList /><span>{dayNotes.join(" · ")}</span></div> : null}{pins.map((pin) => <div key={pin.id}><MapPin /><span>{pin.title}</span><small>{pin.category}</small></div>)}</article> : null}</div> : null}

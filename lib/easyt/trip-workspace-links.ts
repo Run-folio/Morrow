@@ -15,6 +15,10 @@ function orderedDays(trip: Pick<WorkspaceTrip, "planItems">) {
   return [...trip.planItems].sort((left, right) => left.dayNumber - right.dayNumber);
 }
 
+export function tripWorkspaceHref(tripId: string) {
+  return `/journey/${encodeURIComponent(tripId)}`;
+}
+
 export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan") {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);

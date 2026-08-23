@@ -5,19 +5,24 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, House, Luggage, Map } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { trackEvent } from "@/lib/analytics";
-import { EASYT_ACTIVE_TRIP_CHANGE_EVENT } from "@/lib/easyt/storage";
+import { EASYT_ACTIVE_TRIP_CHANGE_EVENT, saveActiveTrip } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
 
-export function TripShellTripProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {
+export function TripShellTripProvider({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
   const pathname = usePathname();
   const [activeTrip, setActiveTrip] = useState(trip);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
 
-  useEffect(() => setActiveTrip(trip), [trip]);
+  useEffect(() => {
+    setActiveTrip(trip);
+    // A server-resolved deep link is canonical for this owner. Refresh the
+    // offline fallback with the same document instead of retaining stale data.
+    if (cacheTrip) saveActiveTrip(trip);
+  }, [cacheTrip, trip]);
   useEffect(() => {
     const onActiveTripChange = (event: Event) => {
       const next = (event as CustomEvent<unknown>).detail;

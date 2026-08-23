@@ -10,6 +10,7 @@ import {
   saveTripForOwner,
 } from "@/lib/easyt/repository";
 import { isEasyTTrip } from "@/lib/easyt/trip";
+import { EasyTTripSaveConflictError } from "@/lib/easyt/trip-continuity";
 
 export const dynamic = "force-dynamic";
 
@@ -38,18 +39,24 @@ export async function PUT(request: Request, context: RouteContext) {
     const owner = await requireEasyTOwner();
     const { tripId } = await context.params;
     const body: unknown = await request.json();
-    if (!isEasyTTrip(body) || body.id !== tripId)
+    if (!isEasyTTrip(body) || body.id !== tripId || !body.ownerId)
       return NextResponse.json(
         { error: "Invalid EasyT trip document." },
         { status: 400 },
       );
     return NextResponse.json({ trip: await saveTripForOwner(owner.id, body) });
   } catch (error) {
+    if (error instanceof EasyTTripSaveConflictError) {
+      return NextResponse.json(
+        { error: error.message, trip: error.canonicalTrip, conflictReason: error.reason },
+        { status: 409 },
+      );
+    }
     const message =
       error instanceof Error ? error.message : "Unable to save trip.";
     return NextResponse.json(
       { error: message },
-      { status: message === "Unauthorized" ? 401 : 500 },
+      { status: message === "Unauthorized" ? 401 : message === "Trip ownership mismatch." ? 403 : message === "Trip not found." ? 404 : 500 },
     );
   }
 }

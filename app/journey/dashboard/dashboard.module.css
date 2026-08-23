@@ -7,6 +7,25 @@
 
 .titleDot { color: var(--morrovia-signal, #ff347f); }
 
+.syncNotice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-signal) 38%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-signal) 7%, #fff);
+  color: var(--morrovia-ink);
+}
+
+.syncNotice > svg { width: 20px; color: var(--morrovia-signal); }
+.syncNotice strong,
+.syncNotice p { display: block; margin: 0; }
+.syncNotice p { margin-top: 3px; color: var(--morrovia-ink-soft); font-size: 13px; line-height: 1.45; }
+.syncNotice > span { display: flex; gap: 8px; }
+
 .continueCard,
 .stampsCard,
 .tripCard,
@@ -576,6 +595,8 @@
 }
 
 @media (max-width: 680px) {
+  .syncNotice { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .syncNotice > span { grid-column: 2; flex-wrap: wrap; }
   .dashboardHero { margin-top: 16px; }
   .continueCard { display: flex; flex-direction: column; }
   .continueCopy { padding: 25px 22px 16px; }

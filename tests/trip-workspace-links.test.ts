@@ -8,6 +8,7 @@ import {
   mapWorkspaceHref,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
+  tripWorkspaceHref,
   workspaceViewFromPathname,
   workspaceVisitKey,
 } from "../lib/easyt/trip-workspace-links.ts";
@@ -25,6 +26,17 @@ const trip = {
     { id: "day-3", stopId: "sacred-valley", dayNumber: 3 },
   ],
 } as Pick<EasyTTrip, "id" | "stops" | "planItems">;
+
+test("normal trip entry targets the canonical Trip Workspace Overview", () => {
+  assert.equal(
+    tripWorkspaceHref("trip-9c3ea847-d1e7-4ceb-a2ff-e9817460a5c6"),
+    "/journey/trip-9c3ea847-d1e7-4ceb-a2ff-e9817460a5c6",
+  );
+  assert.equal(
+    tripWorkspaceHref("trip-00000000-0000-4000-8000-000000000001"),
+    "/journey/trip-00000000-0000-4000-8000-000000000001",
+  );
+});
 
 test("Overview and Prep stay actions target the stable Map stop in Stay mode", () => {
   assert.equal(mapWorkspaceHref(trip.id, "sacred-valley", "stay"), "/journey/trip-real/map?stop=sacred-valley&mode=stay");
