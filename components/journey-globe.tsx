@@ -1,7 +1,7 @@
 "use client";
 
 import { geoGraticule10, geoInterpolate, geoMercator, geoNaturalEarth1, geoPath } from "d3-geo";
-import { BusFront, ExternalLink, MapPin, Minus, Plane, Plus, Scan, TrainFront, Utensils, X } from "lucide-react";
+import { BusFront, CircleHelp, ExternalLink, MapPin, Minus, Plane, Plus, Scan, Ship, TrainFront, Utensils, X } from "lucide-react";
 import { feature } from "topojson-client";
 import worldTopology from "world-atlas/countries-50m.json";
 import { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
@@ -143,7 +143,9 @@ function TransportGlyph({ mode, angle = 0 }: { mode: JourneyLeg["mode"]; angle?:
   // it along the actual direction of travel.
  if (mode === "flight") return <Plane {...props} transform={`rotate(${angle + 45}) scale(-1 1)`} />;
   if (mode === "rail") return <TrainFront {...props} />;
-  return <BusFront {...props} />;
+  if (mode === "road") return <BusFront {...props} />;
+  if (mode === "ferry") return <Ship {...props} />;
+  return <CircleHelp {...props} />;
 }
 
 export function JourneyGlobe({ stops, legs, selectedId, selectedDayId, activeItems, previewImage, detailImageSrc, dayPlace, restaurant, plannerPins = [], pinPlacementMode = false, onMapPinDrop, onPlannerPinSelect, onZoomIntoDetail, onSelect, variant = "story" }: { stops: JourneyStop[]; legs: JourneyLeg[]; selectedId: string; selectedDayId: string; activeItems: string[]; previewImage?: JourneyImage; detailImageSrc?: string; dayPlace?: JourneyMapPlace; restaurant?: { restaurant: JourneyRestaurant; meal?: RestaurantMeal }; plannerPins?: PlannerMapPin[]; pinPlacementMode?: boolean; onMapPinDrop?: (coordinates: [number, number]) => void; onPlannerPinSelect?: (pin: PlannerMapPin) => void; onZoomIntoDetail?: () => void; onSelect: (id: string) => void; variant?: "story" | "planner" }) {

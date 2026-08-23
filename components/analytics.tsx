@@ -1,14 +1,15 @@
 "use client";
 
 import Script from "next/script";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { pageView, trackEvent } from "@/lib/analytics";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { initializeAnalytics, pageView, trackEvent } from "@/lib/analytics";
 
 // Keep analytics opt-in per deployment. This prevents local/staging traffic from
 // polluting production reporting and makes the launch configuration explicit.
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
+const POSTHOG_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST);
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const SCROLL_DEPTHS = [50, 75, 90] as const;
 const ANALYTICS_CONSENT_KEY = "easyt-analytics-consent";
@@ -28,13 +29,14 @@ export function Analytics() {
     return () => window.removeEventListener("easyt-analytics-consent-change", updateConsent);
   }, []);
 
-  if (!IS_PRODUCTION || !hasConsent) {
+  const configuredForThisEnvironment = POSTHOG_CONFIGURED || (IS_PRODUCTION && Boolean(GA_MEASUREMENT_ID || CLARITY_PROJECT_ID));
+  if (!configuredForThisEnvironment || !hasConsent) {
     return null;
   }
 
   return (
     <>
-      {GA_MEASUREMENT_ID ? (
+      {IS_PRODUCTION && GA_MEASUREMENT_ID ? (
         <>
           <Script id="ga4-init" strategy="afterInteractive">
             {`
@@ -52,7 +54,7 @@ export function Analytics() {
         </>
       ) : null}
 
-      {CLARITY_PROJECT_ID ? (
+      {IS_PRODUCTION && CLARITY_PROJECT_ID ? (
         <Script id="microsoft-clarity" strategy="afterInteractive">
           {`
             (function(c,l,a,r,i,t,y){
@@ -64,27 +66,27 @@ export function Analytics() {
         </Script>
       ) : null}
 
-      <Suspense fallback={null}>
-        <RouteAnalytics />
-      </Suspense>
+      <RouteAnalytics />
     </>
   );
 }
 
 function RouteAnalytics() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const trackedDepthsRef = useRef(new Set<number>());
+  const lastPageViewRef = useRef<string | null>(null);
+
+  useEffect(() => initializeAnalytics(), []);
 
   useEffect(() => {
-    const search = searchParams.toString();
-    const path = search ? `${pathname}?${search}` : pathname;
+    if (lastPageViewRef.current === pathname) return;
+    lastPageViewRef.current = pathname;
     let attempts = 0;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     function sendPageView() {
-      if (window.gtag || attempts >= 10) {
-        pageView(path);
+      if (window.gtag || !GA_MEASUREMENT_ID || !IS_PRODUCTION || attempts >= 10) {
+        pageView(pathname);
         return;
       }
 
@@ -100,7 +102,7 @@ function RouteAnalytics() {
         clearTimeout(timeoutId);
       }
     };
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   useEffect(() => {
     function handleScroll() {
@@ -124,7 +126,7 @@ function RouteAnalytics() {
     window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   return null;
 }

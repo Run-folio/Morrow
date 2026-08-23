@@ -5,6 +5,32 @@
  */
 
 import { generateRouteCandidates, type RouteCandidate, type RouteConstraintIssue } from "./route-candidates.ts";
+import {
+  destinationKnowledge,
+  knownKnowledgeFact,
+  type DestinationKnowledgeStore,
+  type KnowledgeFact,
+} from "./destination-knowledge.ts";
+import {
+  aggregatePlanningConfidence,
+  planningConfidenceForLegacyLeg,
+  planningConfidenceFromKnowledgeFact,
+  unknownPlanningConfidence,
+  type LegPlanningConfidence,
+  type PlanningConfidence,
+} from "./planning-confidence.ts";
+import {
+  TRANSFER_IMPACT_RULE_SOURCE,
+  estimateTransferImpact,
+  transferDoorToDoorMinutes,
+  type TransferImpact,
+} from "./transfer-impact.ts";
+import {
+  DEFAULT_ROUTE_SCORING_CONFIG,
+  scoreRouteCandidates,
+  type RouteCandidateSelection,
+  type RouteScoringPreferences,
+} from "./route-scoring.ts";
 
 export type PlannerPlace = {
   title: string;
@@ -26,16 +52,22 @@ export type PlannerStop = {
   region?: string;
   providerId?: string;
   coordinates?: [number, number];
+  intent?: "place" | "landmark";
 };
 
 export type EstimatedLeg = {
-  mode: "flight" | "train" | "road" | "ferry";
+  mode: "flight" | "train" | "road" | "ferry" | "unknown";
   distanceKm: number | null;
+  /** Backward-compatible planning allowance retained for existing consumers. */
   durationMinutes: number | null;
   label: string;
   note: string;
   /** Identity certainty is separate from the transport-duration estimate. */
   confidence: "high" | "medium" | "unconfirmed";
+  /** Typed headline and realistic travel-day impact, when inputs support it. */
+  transferImpact?: TransferImpact;
+  /** Rich claim confidence; optional so older persisted trip legs remain valid. */
+  planningConfidence?: LegPlanningConfidence;
 };
 
 export type DestinationIntegrityIssue = {
@@ -70,6 +102,9 @@ export type RouteOrderAssessment = {
   /** Transient generation output; omitted from durable trip JSON. */
   candidates?: RouteCandidate[];
   constraintIssues?: RouteConstraintIssue[];
+  scoring?: RouteCandidateSelection;
+  /** Persisted concise confidence even when transient scoring detail is removed. */
+  confidence?: PlanningConfidence;
 };
 
 export type StopDurationRecommendation = {
@@ -101,44 +136,6 @@ export type RoutePlanningConstraints = {
   excludedTransportModes?: EstimatedLeg["mode"][];
   transportModes?: Array<"flight" | "train" | "drive">;
   optionalStopIds?: string[];
-};
-
-type KnownConnection = Pick<EstimatedLeg, "mode" | "durationMinutes" | "note">;
-
-// These are deliberately door-to-door planning allowances, rather than a claim
-// about one particular departure. They keep the most common European corridors
-// from being incorrectly presented as flights while a live timetable provider
-// is not connected.
-const knownConnections: Record<string, KnownConnection> = {
-  // Common long-haul legs in the canonical Tokyo Marathon+ journey. These are
-  // planning allowances (airport time included), not live departure times.
-  "guatemala city|los angeles": { mode: "flight", durationMinutes: 480, note: "Approximate door-to-door flight allowance; verify the live service before booking." },
-  "los angeles|tokyo": { mode: "flight", durationMinutes: 840, note: "Approximate door-to-door trans-Pacific allowance; verify the live service before booking." },
-  "tokyo|hong kong": { mode: "flight", durationMinutes: 360, note: "Approximate door-to-door flight allowance; verify the live service before booking." },
-  "hong kong|los angeles": { mode: "flight", durationMinutes: 1020, note: "Approximate door-to-door trans-Pacific allowance; verify the live service before booking." },
-  "los angeles|guatemala city": { mode: "flight", durationMinutes: 480, note: "Approximate door-to-door flight allowance; verify the live service before booking." },
-  "london|paris": { mode: "train", durationMinutes: 270, note: "Typical Eurostar door-to-door allowance; verify the live timetable before booking." },
-  "paris|london": { mode: "train", durationMinutes: 270, note: "Typical Eurostar door-to-door allowance; verify the live timetable before booking." },
-  "madrid|barcelona": { mode: "train", durationMinutes: 210, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "barcelona|madrid": { mode: "train", durationMinutes: 210, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "paris|rome": { mode: "flight", durationMinutes: 330, note: "Typical door-to-door flight allowance, including airport time; verify flight schedules before booking." },
-  "rome|paris": { mode: "flight", durationMinutes: 330, note: "Typical door-to-door flight allowance, including airport time; verify flight schedules before booking." },
-  // Light-touch rail corridors: useful planning allowances for common city
-  // pairs, without pretending to provide live departures or seat availability.
-  "london|amsterdam": { mode: "train", durationMinutes: 300, note: "Typical Eurostar door-to-door allowance; verify the live timetable before booking." },
-  "amsterdam|london": { mode: "train", durationMinutes: 300, note: "Typical Eurostar door-to-door allowance; verify the live timetable before booking." },
-  "paris|brussels": { mode: "train", durationMinutes: 120, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "brussels|paris": { mode: "train", durationMinutes: 120, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "rome|florence": { mode: "train", durationMinutes: 120, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "florence|rome": { mode: "train", durationMinutes: 120, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "tokyo|kanazawa": { mode: "train", durationMinutes: 190, note: "Typical Hokuriku Shinkansen door-to-door allowance; verify the live timetable before booking." },
-  "kanazawa|tokayama": { mode: "train", durationMinutes: 150, note: "Typical regional rail and bus door-to-door allowance; verify the live timetable before booking." },
-  "kanazawa|takayama": { mode: "train", durationMinutes: 180, note: "Typical regional rail and bus door-to-door allowance; verify the live timetable before booking." },
-  "takayama|matsumoto": { mode: "train", durationMinutes: 150, note: "Typical regional rail and bus door-to-door allowance; verify the live timetable before booking." },
-  "chengdu|tongren": { mode: "train", durationMinutes: 360, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "tongren|zhangjiajie": { mode: "train", durationMinutes: 210, note: "Typical rail connection door-to-door allowance; verify the live timetable before booking." },
-  "zhangjiajie|hong kong": { mode: "train", durationMinutes: 420, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
-  "hong kong|zhangjiajie": { mode: "train", durationMinutes: 420, note: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking." },
 };
 
 export type PlannedDay = {
@@ -185,39 +182,179 @@ export function findDestinationIntegrityIssues(stops: Array<Pick<PlannerStop, "i
   return issues;
 }
 
+function withLegPlanningConfidence(
+  leg: Omit<EstimatedLeg, "planningConfidence">,
+  evidence: { mode?: KnowledgeFact<unknown>; duration?: KnowledgeFact<unknown> } = {},
+): EstimatedLeg {
+  const legacy = planningConfidenceForLegacyLeg({
+    confidence: leg.confidence,
+    durationMinutes: leg.durationMinutes,
+    doorToDoor: leg.transferImpact?.claimConfidence?.doorToDoor,
+  });
+  const availability = evidence.mode
+    ? planningConfidenceFromKnowledgeFact(evidence.mode, {
+        scope: "general-route",
+        reason: "Curated connection knowledge supports the general transport mode.",
+        confirmationReason: "Confirm that this service operates on the traveller's dates.",
+      })
+    : legacy.availability;
+  const duration = evidence.duration
+    ? planningConfidenceFromKnowledgeFact(evidence.duration, {
+        scope: "planning-rule",
+        reason: "Confidence in the connection duration used by route planning.",
+        confirmationReason: "Confirm the current operator duration before booking.",
+      })
+    : legacy.duration;
+  const doorToDoor = leg.transferImpact?.claimConfidence?.doorToDoor ?? legacy.doorToDoor;
+  const schedule = unknownPlanningConfidence("The general route may be plausible, but no exact schedule has been verified for these dates.");
+  const overall = aggregatePlanningConfidence([availability, duration, doorToDoor], {
+    scope: "general-route",
+    reason: "Confidence in using this connection for route comparison.",
+    confirmationReason: schedule.reason,
+  });
+  return { ...leg, planningConfidence: { availability, schedule, duration, doorToDoor, overall } };
+}
+
 /** Conservative door-to-door estimate; tells people to verify real services. */
-export function estimateLeg(from: PlannerStop | { name: string; coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg {
+export function estimateLeg(
+  from: PlannerStop | { name: string; coordinates?: [number, number] },
+  to: PlannerStop,
+  knowledge: Pick<DestinationKnowledgeStore, "findTransfer"> = destinationKnowledge,
+): EstimatedLeg {
   const distanceKm = haversineKm(from.coordinates, to.coordinates);
   const sameCountry = "country" in from && from.country.toLowerCase() === to.country.toLowerCase();
-  const connectionKey = `${from.name.toLowerCase().trim()}|${to.name.toLowerCase().trim()}`;
-  const known = knownConnections[connectionKey];
+  const international = "country" in from ? !sameCountry : null;
+  const known = knowledge.findTransfer(from, to);
   const suspiciousIdentity = sameCountry && distanceKm !== null && distanceKm >= 3000;
   if (suspiciousIdentity) {
-    return {
+    return withLegPlanningConfidence({
       mode: "flight", distanceKm, durationMinutes: null, label: `${from.name} → ${to.name}`,
       note: `Check ${to.name} before trusting this route: both stops are set in ${to.country}, but their coordinates are ${distanceKm.toLocaleString()} km apart.`,
       confidence: "unconfirmed",
-    };
+      transferImpact: estimateTransferImpact({ mode: "flight", international }),
+    });
   }
-  if (known) {
-    return {
-      ...known,
+  if (known?.mode.status === "known" && known.planningMinutes.status === "known" && known.durationBasis.status === "known" && known.note.status === "known") {
+    const transferImpact = estimateTransferImpact({
+      mode: known.mode.value,
+      ...(known.durationBasis.value === "headline"
+        ? { headlineMinutes: known.planningMinutes }
+        : { knownDoorToDoorMinutes: known.planningMinutes, knownDoorToDoorRange: known.realisticRangeMinutes }),
+      borderFriction: known.borderFriction,
+      international,
+    });
+    return withLegPlanningConfidence({
+      mode: known.mode.value,
+      durationMinutes: known.planningMinutes.value,
+      note: known.note.value,
       distanceKm,
       label: `${from.name} → ${to.name}`,
       confidence: "high",
-    };
+      transferImpact,
+    }, { mode: known.mode, duration: known.planningMinutes });
   }
   if (distanceKm === null) {
-    return { mode: sameCountry ? "road" : "flight", distanceKm: null, durationMinutes: null, label: `${from.name} → ${to.name}`, note: "Confirm the best connection before booking.", confidence: "unconfirmed" };
+    const mode = sameCountry ? "road" : "flight";
+    return withLegPlanningConfidence({ mode, distanceKm: null, durationMinutes: null, label: `${from.name} → ${to.name}`, note: "Confirm the best connection before booking.", confidence: "unconfirmed", transferImpact: estimateTransferImpact({ mode, international }) });
   }
   if (distanceKm <= 45) {
-    return { mode: "road", distanceKm, durationMinutes: Math.max(35, Math.round(25 + distanceKm * 1.15)), label: `${from.name} → ${to.name}`, note: "Local transfer estimate; verify the route from your accommodation.", confidence: "medium" };
+    const durationMinutes = Math.max(35, Math.round(25 + distanceKm * 1.15));
+    const duration = knownKnowledgeFact(durationMinutes, "estimated", TRANSFER_IMPACT_RULE_SOURCE);
+    return withLegPlanningConfidence({ mode: "road", distanceKm, durationMinutes, label: `${from.name} → ${to.name}`, note: "Local transfer estimate; verify the route from your accommodation.", confidence: "medium", transferImpact: estimateTransferImpact({ mode: "road", knownDoorToDoorMinutes: duration, international, connectionCount: 0 }) }, { duration });
   }
   if (sameCountry && distanceKm <= 700) {
     const mode = distanceKm <= 180 ? "road" : "train";
-    return { mode, distanceKm, durationMinutes: Math.round((mode === "train" ? 55 : 48) + (distanceKm / (mode === "train" ? 105 : 62)) * 60), label: `${from.name} → ${to.name}`, note: "A planning estimate; compare rail and road schedules before booking.", confidence: "medium" };
+    const headlineMinutes = (distanceKm / (mode === "train" ? 105 : 62)) * 60;
+    const durationMinutes = Math.round((mode === "train" ? 55 : 48) + headlineMinutes);
+    const headline = knownKnowledgeFact(headlineMinutes, "estimated", TRANSFER_IMPACT_RULE_SOURCE);
+    return withLegPlanningConfidence({
+      mode, distanceKm, durationMinutes, label: `${from.name} → ${to.name}`,
+      note: "A planning estimate; compare rail and road schedules before booking.", confidence: "medium",
+      transferImpact: estimateTransferImpact({
+        mode,
+        headlineMinutes: headline,
+        international: false,
+        connectionCount: mode === "road" ? 0 : null,
+      }),
+    }, { duration: headline });
   }
-  return { mode: "flight", distanceKm, durationMinutes: Math.round(180 + (distanceKm / 760) * 60), label: `${from.name} → ${to.name}`, note: "Door-to-door flight estimate, including airport time. Verify flight schedules before booking.", confidence: "medium" };
+  const headlineMinutes = (distanceKm / 760) * 60;
+  const headline = knownKnowledgeFact(headlineMinutes, "estimated", TRANSFER_IMPACT_RULE_SOURCE);
+  return withLegPlanningConfidence({
+    mode: "flight", distanceKm, durationMinutes: Math.round(180 + headlineMinutes), label: `${from.name} → ${to.name}`,
+    note: "Door-to-door flight estimate, including airport time. Verify flight schedules before booking.", confidence: "medium",
+    transferImpact: estimateTransferImpact({
+      mode: "flight",
+      headlineMinutes: headline,
+      international,
+      connectionCount: null,
+    }),
+  }, { duration: headline });
+}
+
+type TransportFeasibilityKnowledge = Pick<DestinationKnowledgeStore, "findTransfer" | "forRouteScoring">;
+
+function ferryAccessWithoutLandConnectivity(
+  stop: PlannerStop | { name: string; coordinates?: [number, number] },
+  knowledge: TransportFeasibilityKnowledge,
+) {
+  const connectivity = knowledge.forRouteScoring(stop).connectivity;
+  if (connectivity.status !== "known") return false;
+  const modes = new Set(connectivity.value.map((item) => item.mode));
+  return modes.has("ferry") && !modes.has("rail") && !modes.has("bus");
+}
+
+function unknownTransportLeg(
+  from: PlannerStop | { name: string; coordinates?: [number, number] },
+  to: PlannerStop,
+  distanceKm: number | null,
+  reason: string,
+): EstimatedLeg {
+  return withLegPlanningConfidence({
+    mode: "unknown",
+    distanceKm,
+    durationMinutes: null,
+    label: `${from.name} → ${to.name}`,
+    note: `${reason} Confirm a compliant transport mode and current service before booking.`,
+    confidence: "unconfirmed",
+  });
+}
+
+/**
+ * Applies hard transport feasibility before candidate scoring. Soft preferences
+ * deliberately stay out of this boundary: they continue to influence scoring.
+ */
+export function estimateLegForConstraints(
+  from: PlannerStop | { name: string; coordinates?: [number, number] },
+  to: PlannerStop,
+  constraints?: RoutePlanningConstraints,
+  knowledge: TransportFeasibilityKnowledge = destinationKnowledge,
+): EstimatedLeg {
+  const estimated = estimateLeg(from, to, knowledge);
+  const forbiddenModes = new Set<EstimatedLeg["mode"]>(constraints?.excludedTransportModes ?? []);
+  if (constraints?.avoidDriving) forbiddenModes.add("road");
+  if (forbiddenModes.has(estimated.mode)) {
+    return unknownTransportLeg(
+      from,
+      to,
+      estimated.distanceKm,
+      `${estimated.mode === "road" && constraints?.avoidDriving ? "Driving is explicitly excluded" : `${estimated.mode} is excluded by a hard transport constraint`}, and no supported compliant alternative is known.`,
+    );
+  }
+
+  // Destination-level ferry access can establish that generic road inference
+  // is unsafe without establishing a direct ferry between this exact pair.
+  if (estimated.mode === "road"
+    && ferryAccessWithoutLandConnectivity(from, knowledge)
+    && ferryAccessWithoutLandConnectivity(to, knowledge)) {
+    return unknownTransportLeg(
+      from,
+      to,
+      estimated.distanceKm,
+      "Curated endpoint facts make a generic road-only connection unsupported, but they do not establish a direct ferry service.",
+    );
+  }
+  return estimated;
 }
 
 /**
@@ -227,23 +364,29 @@ export function estimateLeg(from: PlannerStop | { name: string; coordinates?: [n
 export function legDecisionAlternatives(
   from: PlannerStop | { name: string; country?: string; coordinates?: [number, number] },
   to: PlannerStop,
+  constraints?: RoutePlanningConstraints,
 ): DecisionAlternative[] {
-  const baseline = estimateLeg(from, to);
+  const baseline = estimateLegForConstraints(from, to, constraints);
   const distance = baseline.distanceKm;
-  if (distance === null || distance < 120) return [];
+  if (baseline.mode === "unknown" || distance === null || distance < 120) return [];
   const sameCountry = "country" in from && Boolean(from.country) && from.country?.toLowerCase() === to.country.toLowerCase();
   const flightMinutes = Math.round(180 + (distance / 760) * 60);
   const trainMinutes = Math.round(60 + (distance / 105) * 60);
   const roadMinutes = Math.round(35 + (distance / 62) * 60);
   const candidates: Array<Omit<DecisionAlternative, "timeImpactMinutes" | "recommended" | "recommendationReason">> = [
-    { id: "fastest", label: baseline.mode === "flight" ? "Fly" : baseline.mode === "train" ? "Take the train" : "Travel by road", mode: baseline.mode, estimatedMinutes: baseline.durationMinutes, costImpact: "Compare live fares", tradeoff: "Usually saves usable trip time, but may add airport or station friction." },
+    { id: "fastest", label: baseline.mode === "flight" ? "Fly" : baseline.mode === "train" ? "Take the train" : "Travel by road", mode: baseline.mode, estimatedMinutes: transferDoorToDoorMinutes(baseline.transferImpact, baseline.durationMinutes), costImpact: "Compare live fares", tradeoff: "Usually saves usable trip time, but may add airport or station friction." },
   ];
   if (distance <= 350 && baseline.mode !== "road") candidates.push({ id: "simplest", label: "Direct road transfer", mode: "road", estimatedMinutes: roadMinutes, costImpact: "Price not yet verified", tradeoff: "Fewer changes and decisions, even when it is not the absolute fastest." });
   if (sameCountry && distance <= 900) candidates.push(baseline.mode === "train"
     ? { id: "lower-cost", label: "Compare coach or shared road travel", mode: "road", estimatedMinutes: roadMinutes, costImpact: "May be lower-cost; verify fares", tradeoff: "Usually slower than rail, but advance fares may be easier on the budget." }
     : { id: "lower-cost", label: "Compare rail", mode: "train", estimatedMinutes: trainMinutes, costImpact: "May be lower-cost; verify fares", tradeoff: "May take longer, but avoids airport transfers and baggage friction." });
   if ((sameCountry || baseline.mode === "train") && distance <= 900) candidates.push({ id: "experience-led", label: "Make the journey part of the trip", mode: baseline.mode === "train" ? "road" : "train", estimatedMinutes: baseline.mode === "train" ? roadMinutes : trainMinutes, costImpact: "Price not yet verified", tradeoff: "More time in transit in exchange for landscape and a stronger sense of place." });
-  const unique = candidates.filter((option, index, all) => all.findIndex((item) => item.id === option.id) === index);
+  const forbiddenModes = new Set<EstimatedLeg["mode"]>(constraints?.excludedTransportModes ?? []);
+  if (constraints?.avoidDriving) forbiddenModes.add("road");
+  const unique = candidates
+    .filter((option) => !forbiddenModes.has(option.mode))
+    .filter((option, index, all) => all.findIndex((item) => item.id === option.id) === index);
+  if (!unique.length) return [];
   const fastestMinutes = Math.min(...unique.map((option) => option.estimatedMinutes ?? Number.POSITIVE_INFINITY));
   const recommendedId = distance <= 350 && unique.some((option) => option.id === "simplest") ? "simplest" : "fastest";
   return unique.map((option) => ({
@@ -254,15 +397,20 @@ export function legDecisionAlternatives(
   }));
 }
 
-function routeEstimate(origin: { name: string; coordinates?: [number, number] }, stops: PlannerStop[]) {
+function routeEstimate(
+  origin: { name: string; coordinates?: [number, number] },
+  stops: PlannerStop[],
+  legEstimator: (from: PlannerStop | { name: string; coordinates?: [number, number] }, to: PlannerStop) => EstimatedLeg = estimateLeg,
+) {
   // An origin is useful for choosing the direction of the trip, but it should
   // not prevent us from spotting an obvious loop within the requested stops.
   // Prompt-first trips often do not include a departure airport yet.
   const legs = origin.coordinates
-    ? stops.map((stop, index) => estimateLeg(index ? stops[index - 1] : origin, stop))
-    : stops.slice(1).map((stop, index) => estimateLeg(stops[index], stop));
-  if (legs.some((leg) => leg.durationMinutes === null)) return { legs, minutes: null };
-  return { legs, minutes: legs.reduce((total, leg) => total + (leg.durationMinutes ?? 0), 0) };
+    ? stops.map((stop, index) => legEstimator(index ? stops[index - 1] : origin, stop))
+    : stops.slice(1).map((stop, index) => legEstimator(stops[index], stop));
+  const impactMinutes = legs.map((leg) => transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes));
+  if (impactMinutes.some((minutes) => minutes === null)) return { legs, minutes: null };
+  return { legs, minutes: impactMinutes.reduce<number>((total, minutes) => total + (minutes ?? 0), 0) };
 }
 
 function transportTradeoffs(legs: EstimatedLeg[], constraints?: RoutePlanningConstraints) {
@@ -285,10 +433,34 @@ export function assessRouteOrder(input: {
   origin: { name: string; coordinates?: [number, number] };
   stops: PlannerStop[];
   constraints?: RoutePlanningConstraints;
+  scoringPreferences?: RouteScoringPreferences;
+  availableDays?: number;
+  allocations?: Record<string, number>;
+  picks?: Record<string, string[]>;
 }): RouteOrderAssessment {
   const currentStopIds = input.stops.map((stop) => stop.id);
-  const generation = generateRouteCandidates({ ...input, estimateLeg });
-  const candidateFields = { candidates: generation.candidates, constraintIssues: generation.constraintIssues };
+  const constrainedEstimateLeg = (
+    from: PlannerStop | { name: string; coordinates?: [number, number] },
+    to: PlannerStop,
+  ) => estimateLegForConstraints(from, to, input.constraints);
+  const generation = generateRouteCandidates({ ...input, estimateLeg: constrainedEstimateLeg });
+  const legacyPreferredModes = input.constraints?.transportModes?.map((mode) => mode === "drive" ? "road" as const : mode);
+  const scoring = scoreRouteCandidates({
+    origin: input.origin,
+    candidates: generation.candidates,
+    estimateLeg: constrainedEstimateLeg,
+    preferences: {
+      ...input.scoringPreferences,
+      preferredModes: input.scoringPreferences?.preferredModes?.length ? input.scoringPreferences.preferredModes : legacyPreferredModes,
+    },
+    availableDays: input.availableDays,
+    allocations: input.allocations,
+    picks: input.picks,
+    requiredStopIds: input.constraints?.requiredStopIds,
+    fixedStartStopId: input.constraints?.fixedStartStopId,
+    fixedEndStopId: input.constraints?.fixedEndStopId,
+  });
+  const candidateFields = { candidates: generation.candidates, constraintIssues: generation.constraintIssues, scoring, confidence: scoring.confidence };
   if (!generation.candidates.length) {
     return {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
@@ -306,25 +478,15 @@ export function assessRouteOrder(input: {
     };
   }
 
-  const current = routeEstimate(input.origin, input.stops);
-  if (current.minutes === null) {
+  const current = routeEstimate(input.origin, input.stops, constrainedEstimateLeg);
+  const winner = scoring.winner;
+  const bestCandidate = winner ? generation.candidates.find((candidate) => candidate.metadata.candidateIndex === winner.candidateIndex) : undefined;
+  const best = bestCandidate ? { candidate: bestCandidate, stops: bestCandidate.stops, ...routeEstimate(input.origin, bestCandidate.stops, constrainedEstimateLeg) } : undefined;
+  if (!best || best.minutes === null) {
     return {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
-      currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
-      reasons: [], tradeoffs: [], summary: "At least one connection needs an estimate before Morrovia can compare the route order.",
-      ...candidateFields,
-    };
-  }
-
-  const options = generation.candidates.map((candidate) => ({ candidate, stops: candidate.stops, ...routeEstimate(input.origin, candidate.stops) }))
-    .filter((option): option is { candidate: RouteCandidate; stops: PlannerStop[]; legs: EstimatedLeg[]; minutes: number } => option.minutes !== null)
-    .sort((a, b) => a.minutes - b.minutes);
-  const best = options[0];
-  if (!best) {
-    return {
-      state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
-      currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null,
-      reasons: [], tradeoffs: [], summary: "Morrovia could not compare this route yet.",
+      currentTransferMinutes: current.minutes, recommendedTransferMinutes: null, improvementMinutes: null,
+      reasons: [], tradeoffs: [], summary: scoring.explanation || "Morrovia could not compare this route yet.",
       ...candidateFields,
     };
   }
@@ -343,23 +505,35 @@ export function assessRouteOrder(input: {
     };
   }
 
-  const improvementMinutes = Math.max(0, current.minutes - best.minutes);
-  const meaningful = improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
+  const improvementMinutes = current.minutes === null ? null : Math.max(0, current.minutes - best.minutes);
   const originalViable = generation.candidates.some((candidate) => candidate.metadata.matchesOriginalOrder);
-  if ((originalViable && !meaningful) || best.stops.every((stop, index) => stop.id === input.stops[index]?.id)) {
+  const originalScore = scoring.rankedCandidates.find((candidate) => candidate.state === "scored" && candidate.matchesOriginalOrder);
+  const scoreAdvantage = originalScore?.state === "scored" ? winner!.totalScore - originalScore.totalScore : Number.POSITIVE_INFINITY;
+  const legacyMeaningful = improvementMinutes !== null && current.minutes !== null
+    && improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
+  const scoreMeaningful = scoreAdvantage >= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.minimumRecommendationScoreAdvantage
+    && (current.minutes === null || best.minutes <= current.minutes);
+  const winnerMatchesCurrent = best.stops.every((stop, index) => stop.id === input.stops[index]?.id);
+  if ((originalViable && !legacyMeaningful && !scoreMeaningful) || winnerMatchesCurrent) {
     return {
       state: "current-order", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: current.minutes, recommendedTransferMinutes: current.minutes, improvementMinutes: 0,
-      reasons: ["The order already keeps the estimated transfers reasonably direct."], tradeoffs: transportTradeoffs(current.legs, input.constraints),
+      reasons: [winnerMatchesCurrent
+        ? "The entered order ranks first under the current route criteria."
+        : "The best alternative does not clear the meaningful-change threshold."],
+      tradeoffs: transportTradeoffs(current.legs, input.constraints),
       summary: "Your route already flows well.",
       ...candidateFields,
     };
   }
 
-  const currentLongLegs = current.legs.filter((leg) => (leg.durationMinutes ?? 0) >= 300).length;
-  const bestLongLegs = best.legs.filter((leg) => (leg.durationMinutes ?? 0) >= 300).length;
+  const currentLongLegs = current.legs.filter((leg) => (transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes) ?? 0) >= 300).length;
+  const bestLongLegs = best.legs.filter((leg) => (transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes) ?? 0) >= 300).length;
   const reasons = [
-    ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."] : [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]),
+    ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."]
+      : improvementMinutes !== null && improvementMinutes > 0
+        ? [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]
+        : [scoring.explanation]),
     ...(bestLongLegs < currentLongLegs ? ["It also reduces the number of travel-heavy days."] : ["It keeps the route moving in one direction instead of doubling back."]),
   ];
   return {
@@ -367,7 +541,7 @@ export function assessRouteOrder(input: {
     currentTransferMinutes: current.minutes, recommendedTransferMinutes: best.minutes, improvementMinutes,
     reasons: reasons.slice(0, 2),
     tradeoffs: transportTradeoffs(best.legs, input.constraints),
-    summary: `${best.stops.map((stop) => stop.name).join(" → ")} is the cleaner order.`,
+    summary: `${best.stops.map((stop) => stop.name).join(" → ")} is the strongest order under the current route criteria.`,
     ...candidateFields,
   };
 }
@@ -379,11 +553,20 @@ function arrivalLoad(minutes: number | null): StopDurationRecommendation["arriva
   return "travel-heavy";
 }
 
+function arrivalLoadForLeg(leg: EstimatedLeg): StopDurationRecommendation["arrivalLoad"] {
+  const classification = leg.transferImpact?.usableDayLoss.classification;
+  if (classification === "light") return "light";
+  if (classification === "substantial") return "substantial";
+  if (classification === "most-of-day" || classification === "full-day-or-more") return "travel-heavy";
+  return arrivalLoad(transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes));
+}
+
 /** The part of a calendar allocation that remains useful after arriving. */
 export function usableStopDays(
   calendarDays: number,
   load: StopDurationRecommendation["arrivalLoad"],
 ) {
+  if (calendarDays <= 0) return 0;
   const arrivalUsable = load === "light" ? 0.75 : load === "substantial" ? 0.5 : load === "travel-heavy" ? 0.15 : 0;
   return Math.max(0, Math.round((Math.max(1, calendarDays) - 1 + arrivalUsable) * 4) / 4);
 }
@@ -393,11 +576,13 @@ export function recommendStopDurations(input: {
   origin: { name: string; coordinates?: [number, number] };
   stops: Array<PlannerStop & { intent?: "place" | "landmark" }>;
   picks: Record<string, string[]>;
+  constraints?: RoutePlanningConstraints;
 }): Record<string, StopDurationRecommendation> {
   return Object.fromEntries(input.stops.map((stop, index) => {
     const previous = index ? input.stops[index - 1] : input.origin;
-    const leg = estimateLeg(previous, stop);
-    const load = arrivalLoad(leg.durationMinutes);
+    const leg = estimateLegForConstraints(previous, stop, input.constraints);
+    const arrivalMinutes = transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes);
+    const load = arrivalLoadForLeg(leg);
     const selectedCount = input.picks[stop.id]?.length ?? 0;
     const activityDays = Math.max(1, Math.ceil(selectedCount / 2));
     // A substantial transfer leaves only a partial arrival day. Protect a
@@ -416,16 +601,18 @@ export function recommendStopDurations(input: {
           : selectedCount >= 3
             ? `${selectedCount} selected places need more than a single rushed day.`
             : "This leaves time to arrive and still experience the place.";
-    return [stop.id, { stopId: stop.id, minimumDays, recommendedDays, usableDays, arrivalMinutes: leg.durationMinutes, arrivalLoad: load, reason }];
+    return [stop.id, { stopId: stop.id, minimumDays, recommendedDays, usableDays, arrivalMinutes, arrivalLoad: load, reason }];
   }));
 }
 
 export function assessRouteIntelligence(input: {
   origin: { name: string; coordinates?: [number, number] };
-  stops: Array<PlannerStop & { intent?: "place" | "landmark" }>;
+  stops: PlannerStop[];
   picks: Record<string, string[]>;
   availableDays: number;
   constraints?: RoutePlanningConstraints;
+  scoringPreferences?: RouteScoringPreferences;
+  allocations?: Record<string, number>;
 }): RouteIntelligenceAssessment {
   const route = assessRouteOrder(input);
   // Keep duration guidance honest about the route the traveller is currently
@@ -452,7 +639,7 @@ export function assessRouteIntelligence(input: {
 
 /** Candidate sets are reproducible and can be large, so durable trips retain only the selected assessment. */
 export function routeIntelligenceForPersistence(assessment: RouteIntelligenceAssessment): RouteIntelligenceAssessment {
-  const { candidates: _candidates, constraintIssues: _constraintIssues, ...route } = assessment.route;
+  const { candidates: _candidates, constraintIssues: _constraintIssues, scoring: _scoring, ...route } = assessment.route;
   return { ...assessment, route };
 }
 
@@ -484,18 +671,20 @@ export function buildCredibleItinerary(input: {
   allocations: Record<string, number>;
   picks: Record<string, string[]>;
   places: Record<string, PlannerPlace[]>;
+  constraints?: RoutePlanningConstraints;
 }): PlannedDay[] {
   const days: PlannedDay[] = [];
   let dayIndex = 0;
   input.stops.forEach((stop, stopIndex) => {
-    const count = Math.max(1, input.allocations[stop.id] ?? 1);
+    const count = Math.max(0, input.allocations[stop.id] ?? 1);
     const selectedNames = new Set(input.picks[stop.id] ?? []);
     const selectedPlaces = (input.places[stop.id] ?? []).filter((place) => selectedNames.has(place.title));
     const nearbyRealPlaces = (input.places[stop.id] ?? []).filter((place) => !selectedNames.has(place.title));
     const previous: PlannerStop | { name: string; coordinates?: [number, number] } = stopIndex
       ? input.stops[stopIndex - 1]
       : { name: input.origin, coordinates: input.originCoordinates };
-    const arrivalLeg = estimateLeg(previous, stop);
+    const arrivalLeg = estimateLegForConstraints(previous, stop, input.constraints);
+    const arrivalImpactMinutes = transferDoorToDoorMinutes(arrivalLeg.transferImpact, arrivalLeg.durationMinutes);
     const experienceDays = pairs(selectedPlaces);
 
     for (let localDay = 0; localDay < count; localDay += 1) {
@@ -507,7 +696,7 @@ export function buildCredibleItinerary(input: {
           type: "arrival",
           title: stopIndex === 0 ? `Arrive in ${stop.name}` : `Travel to ${stop.name}`,
           reason: "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
-          items: [arrivalLeg.label, arrivalLeg.durationMinutes ? `Estimated door-to-door: about ${Math.floor(arrivalLeg.durationMinutes / 60)}h ${arrivalLeg.durationMinutes % 60}m` : arrivalLeg.note, "Check in, walk one nearby area and keep dinner easy"],
+          items: [arrivalLeg.label, arrivalImpactMinutes ? `Estimated door-to-door: about ${Math.floor(arrivalImpactMinutes / 60)}h ${arrivalImpactMinutes % 60}m` : arrivalLeg.note, "Check in, walk one nearby area and keep dinner easy"],
           coordinates: stop.coordinates,
           travel: arrivalLeg,
         });

@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -149,7 +148,7 @@ function TaskCard({ task, tripId, onOpenDetails, compact = false }: {
 }) {
   const Icon = iconByKind[task.kind];
   const StatusIcon = task.status === "complete" ? Check : task.status === "urgent" ? CircleAlert : Circle;
-  return <article className={`${styles.taskCard} ${compact ? styles.taskCardCompact : ""} ${styles[`status-${task.status}`]}`}>
+  return <article className={`${styles.taskCard} ${compact ? styles.taskCardCompact : ""} ${styles[`status-${task.status}`]} ${styles[`kind-${task.kind}`] ?? ""}`}>
     <div className={styles.taskTop}>
       <span className={styles.taskIcon}><Icon aria-hidden="true" /></span>
       <StatusIcon className={styles.statusIcon} aria-hidden="true" />
@@ -305,17 +304,6 @@ export default function TripPrepWorkspace({
 
       <TaskSection id="good" title="Good to do" icon={HeartPulse} tasks={grouped.good} tripId={trip.id} onOpenDetails={openDetails} compact />
       <TaskSection id="nice" title="Nice to have" icon={Sparkles} tasks={grouped.nice} tripId={trip.id} onOpenDetails={openDetails} compact />
-
-      <aside className={styles.summaryCard}>
-        <p>PREP CONTEXT</p>
-        <h3>Ready for the practical details</h3>
-        <dl>
-          <div><dt><Users aria-hidden="true" />Travellers</dt><dd>{trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</dd></div>
-          <div><dt><ShieldCheck aria-hidden="true" />Traveller details</dt><dd>{profile.nationalities.length && profile.residenceCountry ? "Added on this device" : "Still to review"}</dd></div>
-          <div><dt><ClipboardCheck aria-hidden="true" />Prep remaining</dt><dd>{progress.total - progress.complete} {progress.total - progress.complete === 1 ? "task" : "tasks"} to finish</dd></div>
-        </dl>
-        <button type="button" onClick={openDetails}>Review detailed guidance<ChevronRight aria-hidden="true" /></button>
-      </aside>
 
       <details id="prep-details" className={styles.details} open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}>
         <summary>

@@ -84,6 +84,8 @@ export const TravelDay: Story = {
   },
 };
 
+export const DeepLinkedTravelDay: Story = { args: { selectedDayNumber: 4 } };
+
 export const MissingImageAndLongTitle: Story = {
   args: {
     trip: {

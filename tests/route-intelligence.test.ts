@@ -165,3 +165,12 @@ test("offers lightweight transport trade-offs only for a meaningful intercity le
     { id: "b", name: "B", country: "Test", coordinates: [0.1, 0] },
   ), []);
 });
+
+test("does not offer a forbidden road alternative or invent a replacement mode", () => {
+  const options = legDecisionAlternatives(
+    { id: "a", name: "A", country: "Testland", coordinates: [0, 0] },
+    { id: "b", name: "B", country: "Testland", coordinates: [1, 0] },
+    { avoidDriving: true, excludedTransportModes: ["road"] },
+  );
+  assert.deepEqual(options, []);
+});

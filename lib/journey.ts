@@ -17,7 +17,7 @@ export interface JourneyStop {
 export interface JourneyLeg {
   from: string;
   to: string;
-  mode: "flight" | "rail" | "road";
+  mode: "flight" | "rail" | "road" | "ferry" | "unknown";
   label: string;
   detail: string;
   duration?: string;

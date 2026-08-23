@@ -185,6 +185,11 @@
   color: var(--morrovia-warning);
 }
 
+.healthCard li a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .healthCard .issueCritical svg { color: var(--morrovia-danger); }
 
 .clearHealth {
@@ -326,6 +331,23 @@
   border: 1px solid var(--morrovia-line);
   border-radius: 11px;
   background: #fff;
+}
+
+.routeStopLink {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.routeStopLink:hover article {
+  border-color: color-mix(in srgb, var(--morrovia-action) 42%, var(--morrovia-line));
+  background: color-mix(in srgb, #fff 95%, var(--morrovia-lilac));
+}
+
+.routeStopLink:focus-visible {
+  border-radius: 11px;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
 }
 
 .stopNumber {

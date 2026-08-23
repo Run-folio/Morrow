@@ -209,7 +209,7 @@
 .dayImage {
   position: relative;
   width: 100%;
-  height: clamp(190px, 15.5vw, 205px);
+  height: clamp(158px, 12.5vw, 172px);
   margin: 22px 0 0;
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
@@ -311,6 +311,15 @@
   text-transform: uppercase;
 }
 
+.estimateLabel {
+  display: block;
+  margin-top: 3px;
+  color: var(--morrovia-muted);
+  font: 750 8px/1.25 var(--morrovia-meta);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 .duration {
   display: grid;
   gap: 2px;
@@ -319,12 +328,6 @@
   text-align: right;
 }
 
-.duration small {
-  color: var(--morrovia-muted);
-  font-size: 8px;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-}
 
 .noDetails {
   margin: 0;

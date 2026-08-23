@@ -34,6 +34,7 @@ export default async function EasyTDashboardPage() {
       <EasyTNavigation
         current="trips"
         account={{
+          id: session.user.id,
           name: session.user.name,
           email: session.user.email,
           language: preferences.language,

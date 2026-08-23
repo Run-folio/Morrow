@@ -45,7 +45,7 @@ function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, n
   const legs = [...trip.legs].map((leg): JourneyLeg => ({
     from: leg.fromStopId,
     to: leg.toStopId,
-    mode: leg.mode === "train" ? "rail" : leg.mode === "flight" ? "flight" : "road",
+    mode: leg.mode === "train" ? "rail" : leg.mode === "flight" ? "flight" : leg.mode === "road" ? "road" : leg.mode === "ferry" ? "ferry" : "unknown",
     label: `${stopById.get(leg.fromStopId)?.city ?? "Previous stop"} → ${stopById.get(leg.toStopId)?.city ?? "Next stop"}`,
     detail: leg.provider ?? "Planning estimate",
     duration: formatDuration(leg.durationMinutes),
@@ -108,7 +108,7 @@ export default function MapPlanNext() {
   if (loading) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
   if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></section></main>;
 
-  const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : "Road"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
+  const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : selectedLeg.mode === "road" ? "Road" : selectedLeg.mode === "ferry" ? "Ferry" : "Mode to confirm"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
   const decisions = (health?.issues ?? []).filter((issue) => issue.status === "open").slice(0, 3);
 
   return <main className={`${styles.page} ${editorial.surface} ${editorial.map} morrovia-editorial-page`}>

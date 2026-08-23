@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
+import { allocateTripNights } from "../lib/easyt/night-allocation.ts";
 import { reviewTrip, tripHealth } from "../lib/easyt/review.ts";
+import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { estimateTransferImpact } from "../lib/easyt/transfer-impact.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const baseTrip = (): EasyTTrip => ({
@@ -22,10 +26,65 @@ test("flags a one-night stop reached by a heavy transfer as blocking", () => {
   assert.equal(issues.some((item) => item.rule === "short-stop-heavy-transfer" && item.severity === "critical"), true);
 });
 
+test("Trip Health uses realistic transfer impact when it is richer than the legacy allowance", () => {
+  const trip = baseTrip();
+  trip.legs[0] = {
+    ...trip.legs[0],
+    mode: "flight",
+    durationMinutes: 120,
+    routeMetadata: {
+      planningEstimate: true,
+      transferImpact: estimateTransferImpact({
+        mode: "flight",
+        headlineMinutes: knownKnowledgeFact(360, "verified", {
+          id: "provider:trip-health-test",
+          label: "Verified Trip Health fixture",
+          kind: "provider",
+          supports: "Headline duration for the persisted transfer-impact test.",
+          reviewedAt: "2026-08-23",
+        }),
+        international: false,
+        connectionCount: 0,
+      }),
+    },
+  };
+
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "travel-day-impact" && item.severity === "warning"), true);
+});
+
+test("Trip Health exposes a structured minimum-night compromise", () => {
+  const trip = baseTrip();
+  trip.brief.nightAllocation = allocateTripNights({
+    totalNights: 2,
+    stops: [
+      { id: "a", name: "A", anchor: true, required: true },
+      { id: "b", name: "B", anchor: true, required: true },
+    ],
+  });
+
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "night-allocation-compromise" && item.severity === "warning"), true);
+});
+
+test("Trip Health exposes unresolved independent final-plan validation", () => {
+  const trip = baseTrip();
+  const issues = reviewTrip(trip);
+  assert.equal(issues.some((item) => item.rule === "post-generation-total-nights-mismatch" && item.severity === "critical"), true);
+});
+
 test("treats a fixed commitment outside the trip dates as blocking", () => {
   const trip = baseTrip();
   trip.brief.intent!.hardConstraints.fixedCommitments = [{ id: "fixed", label: "Wedding", date: "2026-09-08" }];
   assert.equal(tripHealth(trip).blockingCount > 0, true);
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "fixed-date-conflict"), true);
+});
+
+test("Trip Health preserves a structured fixed commitment without the legacy intent object", () => {
+  const trip = baseTrip();
+  trip.brief.intent = undefined;
+  trip.brief.structuredBrief = mergeStructuredTripBrief(extractStructuredTripBrief("A short trip."), {
+    fixedCommitments: [{ label: "Wedding", date: "2026-09-08" }],
+  });
+
   assert.equal(reviewTrip(trip).some((item) => item.rule === "fixed-date-conflict"), true);
 });
 

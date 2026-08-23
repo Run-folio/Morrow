@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, House, Luggage, Map } from "lucide-react";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { EASYT_ACTIVE_TRIP_CHANGE_EVENT } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
+import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
 
 export function TripShellTripProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {
+  const pathname = usePathname();
   const [activeTrip, setActiveTrip] = useState(trip);
+  const trackedWorkspaceVisitRef = useRef<string | null>(null);
 
   useEffect(() => setActiveTrip(trip), [trip]);
   useEffect(() => {
@@ -22,6 +26,23 @@ export function TripShellTripProvider({ trip, children }: { trip: EasyTTrip; chi
     window.addEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
     return () => window.removeEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
   }, [trip.id]);
+
+  useEffect(() => {
+    const visitKey = workspaceVisitKey(pathname);
+    if (trackedWorkspaceVisitRef.current === visitKey) return;
+    trackedWorkspaceVisitRef.current = visitKey;
+    const view = workspaceViewFromPathname(pathname, trip.id);
+    const common = { trip_id: trip.id, route_mode: "shell" as const, stop_count: trip.stops.length };
+    if (view === "itinerary") {
+      trackEvent("trip_itinerary_viewed", { ...common, workspace_view: "itinerary" });
+    } else if (view === "map") {
+      trackEvent("trip_map_viewed", { ...common, workspace_view: "map" });
+    } else if (view === "prep") {
+      trackEvent("trip_prep_viewed", { ...common, workspace_view: "prep" });
+    } else {
+      trackEvent("trip_overview_viewed", { ...common, workspace_view: "overview" });
+    }
+  }, [pathname, trip.id, trip.stops.length]);
 
   return <TripShellTripContext.Provider value={activeTrip}>{children}</TripShellTripContext.Provider>;
 }

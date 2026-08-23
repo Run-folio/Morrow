@@ -16,6 +16,12 @@ import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommoda
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth } from "@/lib/easyt/review";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
+import {
+  firstItineraryDayForStop,
+  itineraryDayForRecommendation,
+  itineraryWorkspaceHref,
+  mapWorkspaceHref,
+} from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
 
 type OverviewAction = {
@@ -24,12 +30,14 @@ type OverviewAction = {
   label: string;
   href: string;
   kind: "route" | "itinerary" | "stay" | "prep" | "ready";
+  stopId?: string;
 };
 
 type OverviewIssue = {
   id: string;
   message: string;
   severity: "critical" | "warning";
+  href: string;
 };
 
 const DAY_MS = 86_400_000;
@@ -52,6 +60,11 @@ function durationLabel(minutes: number | null) {
 
 function routeIssueHref(tripId: string) {
   return `/journey/plan?trip=${encodeURIComponent(tripId)}`;
+}
+
+function recommendationHref(trip: EasyTTrip, recommendation: TripRecommendation) {
+  const dayNumber = itineraryDayForRecommendation(trip, recommendation);
+  return dayNumber ? itineraryWorkspaceHref(trip.id, dayNumber) : routeIssueHref(trip.id);
 }
 
 function openHealthIssues(trip: EasyTTrip) {
@@ -78,7 +91,7 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     title: critical.message,
     detail: "Resolve this before relying on the current route or making connected bookings.",
     label: "Review route",
-    href: routeIssueHref(trip.id),
+    href: recommendationHref(trip, critical),
     kind: "route",
   };
   if (!itineraryComplete) return {
@@ -92,14 +105,15 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     title: `Find a stay in ${missingStay.name}`,
     detail: `${accommodation.stops.length - accommodation.sortedCount} of ${accommodation.stops.length} overnight ${accommodation.stops.length === 1 ? "stop needs" : "stops need"} accommodation.`,
     label: "Find a stay",
-    href: `/journey/plan?trip=${encodeURIComponent(trip.id)}&stay=${encodeURIComponent(missingStay.id)}`,
+    href: mapWorkspaceHref(trip.id, missingStay.id, "stay"),
     kind: "stay",
+    stopId: missingStay.id,
   };
   if (issues[0]) return {
     title: issues[0].message,
     detail: "Review the underlying route signal before treating this part of the plan as settled.",
     label: "Review route",
-    href: routeIssueHref(trip.id),
+    href: recommendationHref(trip, issues[0]),
     kind: "route",
   };
   if (!prepComplete) return {
@@ -125,6 +139,7 @@ function issueSummary(trip: EasyTTrip): OverviewIssue[] {
     id: issue.id,
     message: issue.message,
     severity: issue.severity === "critical" ? "critical" : "warning",
+    href: recommendationHref(trip, issue),
   }));
   const accommodation = accommodationProgress(trip);
   if (!accommodation.complete && accommodation.stops.length) {
@@ -133,6 +148,7 @@ function issueSummary(trip: EasyTTrip): OverviewIssue[] {
       id: `${trip.id}-overview-stays`,
       message: `${missing.length === 1 ? `${missing[0].name} stay` : `${missing.length} stays`} still ${missing.length === 1 ? "needs" : "need"} sorting.`,
       severity: "warning",
+      href: mapWorkspaceHref(trip.id, missing[0].id, "stay"),
     });
   }
   return issues.slice(0, 2);
@@ -160,7 +176,7 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
   const prepCompleteCount = checklist.filter((item) => item.complete).length;
   const prepPercent = checklist.length ? Math.round((prepCompleteCount / checklist.length) * 100) : 0;
   const orderedStops = [...trip.stops].sort((left, right) => left.order - right.order);
-  const actionImageStop = action.kind === "stay" ? orderedStops.find((stop) => action.title.includes(stop.name)) : orderedStops[0];
+  const actionImageStop = action.kind === "stay" ? orderedStops.find((stop) => stop.id === action.stopId) : orderedStops[0];
   const actionImage = actionImageStop ? stopImage(trip, actionImageStop, orderedStops.indexOf(actionImageStop)) : null;
   const ActionIcon = action.kind === "stay" ? BedDouble
     : action.kind === "itinerary" ? CalendarCheck2
@@ -191,8 +207,8 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
               <span>{health.blockingCount ? "Resolve the blocking issue first" : issues.length ? "The route works, with a few details to settle" : "No critical route issues found"}</span>
             </div>
           </div>
-          {issues.length ? <ul>{issues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : undefined}><CircleAlert aria-hidden="true" />{issue.message}</li>)}</ul> : <div className={styles.clearHealth}><ShieldCheck aria-hidden="true" />Keep live timings and entry guidance checked before booking.</div>}
-          <Link href={routeIssueHref(trip.id)}>Review trip<ChevronRight aria-hidden="true" /></Link>
+          {issues.length ? <ul>{issues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : undefined}><CircleAlert aria-hidden="true" /><Link href={issue.href}>{issue.message}</Link></li>)}</ul> : <div className={styles.clearHealth}><ShieldCheck aria-hidden="true" />Keep live timings and entry guidance checked before booking.</div>}
+          <Link href={issues[0]?.href ?? routeIssueHref(trip.id)}>Review trip<ChevronRight aria-hidden="true" /></Link>
         </article>
 
         <section className={styles.progressCard} aria-labelledby="overview-progress-title">
@@ -218,14 +234,15 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
           {orderedStops.length ? <ol className={styles.routeList}>
             {orderedStops.map((stop, index) => {
               const image = stopImage(trip, stop, index);
+              const itineraryDay = firstItineraryDayForStop(trip, stop.id);
               const next = orderedStops[index + 1];
               const leg = next ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id) : null;
               return <li key={stop.id}>
-                <article>
+                <Link className={styles.routeStopLink} href={itineraryWorkspaceHref(trip.id, itineraryDay)}><article>
                   <div className={styles.stopNumber}>{index + 1}</div>
                   {image ? <img src={image.src} alt={image.alt} /> : <div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>}
                   <div><h3>{stop.name}</h3><span>{stop.nights ?? 0} {(stop.nights ?? 0) === 1 ? "night" : "nights"}</span></div>
-                </article>
+                </article></Link>
                 {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? durationLabel(leg.durationMinutes) : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
               </li>;
             })}

@@ -75,6 +75,11 @@ test("hard transport conflicts prune while soft preferences do not", () => {
 
   const soft = generateRouteCandidates({ origin, stops, constraints: { transportModes: ["train"] }, estimateLeg: roadLeg });
   assert.ok(soft.candidates.length > 0);
+
+  const heuristicRoadLeg = (from: { coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg => ({ ...roadLeg(from, to), confidence: "medium" });
+  const heuristicHard = generateRouteCandidates({ origin, stops, constraints: { avoidDriving: true }, estimateLeg: heuristicRoadLeg });
+  assert.equal(heuristicHard.candidates.length, 0);
+  assert.equal(heuristicHard.constraintIssues.some((issue) => issue.code === "forbidden-transport-mode"), true);
 });
 
 test("a required-stop maximum contradiction returns a structured issue without dropping an anchor", () => {

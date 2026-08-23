@@ -2,9 +2,10 @@
 
 import { ArrowRight, CalendarDays, Heart, Sparkles, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
+import { authClient } from "@/lib/auth-client";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import type { StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
@@ -43,6 +44,8 @@ function travelStyleLabels(profile: TravelProfile, language: EasyTLanguage) {
 }
 export default function HomeTripStarter() {
   const router = useRouter();
+  const { data: session } = authClient.useSession();
+  const promptStartedRef = useRef(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [brief, setBrief] = useState("");
   const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
@@ -67,15 +70,24 @@ export default function HomeTripStarter() {
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
   }, []);
 
+  const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
+    if (promptStartedRef.current || value.trim().length < 3) return;
+    promptStartedRef.current = true;
+    trackEvent("homepage_prompt_started", { source: "homepage", input_method: inputMethod, is_authenticated: Boolean(session?.user) });
+  };
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const tripBrief = brief.trim();
     if (!tripBrief) return;
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: true });
+    trackEvent("trip_generation_started", { trip_source: "homepage", has_dates: datesExplicit, traveller_count: travellers, is_authenticated: Boolean(session?.user) });
     setLoading(true);
     setCaptureError("");
+    let responseReceived = false;
     try {
       const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: tripBrief }) });
+      responseReceived = true;
       const payload = await response.json() as Capture & { message?: string };
       if (!response.ok) throw new Error(payload.message || "Capture failed");
       const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
@@ -87,6 +99,7 @@ export default function HomeTripStarter() {
     } catch {
       setCaptureError(language === "es" ? "No pudimos entender tu viaje. Inténtalo de nuevo." : "We couldn't understand your trip. Please try again.");
       trackEvent("easyt_trip_capture_failed", { source: "homepage_builder" });
+      trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: responseReceived ? "capture" : "network", is_authenticated: Boolean(session?.user) });
     } finally {
       setLoading(false);
     }
@@ -97,8 +110,8 @@ export default function HomeTripStarter() {
       <span>{text.briefLabel}</span>
         <div className={`${styles.startBuilderPromptField} ${fidelity.promptField}`}>
         <div className={fidelity.promptTextareaField}>
-          <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => setBrief(event.target.value)} maxLength={600} placeholder={text.briefPlaceholder} />
-          <VoiceTripBrief className={fidelity.voiceInput} language={language} onTranscript={(transcript) => setBrief((current) => appendVoiceTranscript(current, transcript))} />
+          <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => { const next = event.target.value; setBrief(next); markPromptStarted("text", next); }} maxLength={600} placeholder={text.briefPlaceholder} />
+          <VoiceTripBrief className={fidelity.voiceInput} language={language} onTranscript={(transcript) => setBrief((current) => { const next = appendVoiceTranscript(current, transcript); markPromptStarted("voice", next); return next; })} />
         </div>
         </div>
         <div className={fidelity.promptAttributes}>

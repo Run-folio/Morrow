@@ -2,6 +2,7 @@ import { accommodationProgress, stayBookingForStop } from "./accommodation.ts";
 import type { BookingReadinessAction } from "./booking-readiness.ts";
 import type { EasyTTrip, TripChecklistItem } from "./trip.ts";
 import type { ReadinessCard, TravelReadinessProfile } from "./travel-readiness.ts";
+import { mapWorkspaceHref } from "./trip-workspace-links.ts";
 
 export type TripPrepTaskStatus = "complete" | "in-progress" | "to-do" | "urgent";
 export type TripPrepTaskCategory = "must" | "good" | "nice";
@@ -150,7 +151,7 @@ export function deriveTripPrepTasks({
       kind: "accommodation",
       action: firstMissing ? {
         label: "Find stays",
-        href: `/journey/plan?trip=${encodeURIComponent(trip.id)}&stay=${encodeURIComponent(firstMissing.id)}`,
+        href: mapWorkspaceHref(trip.id, firstMissing.id, "stay"),
         stopId: firstMissing.id,
       } : undefined,
     });

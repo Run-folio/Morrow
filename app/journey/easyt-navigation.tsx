@@ -17,6 +17,7 @@ import {
   Menu,
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics";
 import { clearActiveTrip } from "@/lib/easyt/storage";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
@@ -25,7 +26,7 @@ import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
   current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport";
-  account?: { name?: string | null; email: string; language?: Language };
+  account?: { id?: string; name?: string | null; email: string; language?: Language };
   landing?: boolean;
 };
 
@@ -42,7 +43,7 @@ export default function EasyTNavigation({
   const activeAccount =
     account ||
     (session?.user
-      ? { name: session.user.name, email: session.user.email }
+      ? { id: session.user.id, name: session.user.name, email: session.user.email }
       : undefined);
 
   useEffect(() => {
@@ -60,6 +61,10 @@ export default function EasyTNavigation({
     document.body.classList.add("easyt-mobile-shell");
     return () => document.body.classList.remove("easyt-mobile-shell");
   }, []);
+
+  useEffect(() => {
+    if (activeAccount?.id) identifyAnalyticsUser(activeAccount.id);
+  }, [activeAccount?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +99,7 @@ export default function EasyTNavigation({
 
   const signOut = async () => {
     await authClient.signOut();
+    resetAnalyticsIdentity();
     router.push("/journey/login");
     router.refresh();
   };

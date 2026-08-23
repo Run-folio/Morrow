@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, BedDouble, Binoculars, Building2, Castle, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, LocateFixed, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -21,11 +21,13 @@ import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip, saveTripToEasyT } fr
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin, PlannerPinCategory } from "@/lib/easyt/trip";
-import { estimateLeg, legDecisionAlternatives } from "@/lib/easyt/planner";
+import { estimateLeg, estimateLegForConstraints, legDecisionAlternatives, type RoutePlanningConstraints } from "@/lib/easyt/planner";
+import { routeConstraintsFromStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undoRecommendation } from "@/lib/easyt/review";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
-import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
+import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
+import { parseMapWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import styles from "@/app/journey/journey.module.css";
 import mobileNav from "@/app/journey/plan-mobile-nav.module.css";
@@ -96,10 +98,12 @@ const customCoordinates: Record<string, [number, number]> = {
 };
 
 function customCoordinate(name: string, fallback: string): [number, number] | null { return customCoordinates[name.toLowerCase()] ?? customCoordinates[fallback.toLowerCase()] ?? null; }
-function journeyTransportMode(mode: EasyTTrip["legs"][number]["mode"]): "flight" | "road" | "rail" {
+function journeyTransportMode(mode: EasyTTrip["legs"][number]["mode"]): JourneyLeg["mode"] {
   if (mode === "flight") return "flight";
   if (mode === "train") return "rail";
-  return "road";
+  if (mode === "road") return "road";
+  if (mode === "ferry") return "ferry";
+  return "unknown";
 }
 function isGenericPlanningPrompt(value?: string) { return !value || /^(historic core|a standout museum|a local neighbourhood|best viewpoint|market, food hall|a nearby landscape|a seasonal|the strongest day trip|a slower local day|the place.s signature|choose .*strongest)/i.test(value); }
 function isPickCompatibleWithDestination(pick: CustomPick | undefined, destination: CustomDestination) {
@@ -145,7 +149,7 @@ function planningBase(destination: string) { return getCountryIntelligence(desti
 function formatEstimate(minutes: number | null) { return minutes === null ? "Confirm connection" : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m approx.`; }
 function connection(from: JourneyStop, to: JourneyStop, first: boolean): JourneyCalendarDay["travel"] {
   const estimate = estimateLeg({ name: from.city, country: from.country, coordinates: from.coordinates ?? undefined }, { id: to.id, name: to.city, country: to.country, coordinates: to.coordinates ?? undefined });
-  return { mode: estimate.mode === "train" ? "rail" : estimate.mode === "flight" ? "flight" : "road", from: first ? undefined : from.city, detail: `${estimate.distanceKm ? `${estimate.distanceKm.toLocaleString()} km · ` : ""}${estimate.note}`, duration: formatEstimate(estimate.durationMinutes) };
+  return { mode: journeyTransportMode(estimate.mode), from: first ? undefined : from.city, detail: `${estimate.distanceKm ? `${estimate.distanceKm.toLocaleString()} km · ` : ""}${estimate.note}`, duration: formatEstimate(estimate.durationMinutes) };
 }
 function makeCustomJourney(brief: CustomBrief) {
   const totalDays = Math.max(1, Number.parseInt(brief.duration, 10) || 10);
@@ -186,7 +190,7 @@ function makeCustomJourney(brief: CustomBrief) {
     const from = stops[index];
     const local = from.country === stop.country;
     const estimate = estimateLeg({ name: from.city, country: from.country, coordinates: from.coordinates ?? undefined }, { id: stop.id, name: stop.city, country: stop.country, coordinates: stop.coordinates ?? undefined });
-    return { from: from.id, to: stop.id, mode: estimate.mode === "train" ? "rail" : estimate.mode === "flight" ? "flight" : "road", label: estimate.label, detail: `${estimate.distanceKm ? `${estimate.distanceKm.toLocaleString()} km · ` : ""}${estimate.note}`, duration: formatEstimate(estimate.durationMinutes) };
+    return { from: from.id, to: stop.id, mode: journeyTransportMode(estimate.mode), label: estimate.label, detail: `${estimate.distanceKm ? `${estimate.distanceKm.toLocaleString()} km · ` : ""}${estimate.note}`, duration: formatEstimate(estimate.durationMinutes) };
   });
   return { title: "Your Journey", dateRange: `${customDate(brief.startDate, 0)} to ${customDate(brief.startDate, Math.max(0, totalDays - 1))}`, stops, legs, calendar };
 }
@@ -197,6 +201,11 @@ function makeCustomJourney(brief: CustomBrief) {
  * editorial dataset; only `/journey/plan` enters this path.
  */
 function makeEasyTJourney(trip: EasyTTrip) {
+  const routeConstraints: RoutePlanningConstraints = trip.brief.structuredBrief
+    ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief)
+    : trip.brief.intent?.hardConstraints.avoidDriving
+      ? { avoidDriving: true, excludedTransportModes: ["road"] }
+      : {};
   const origin: JourneyStop = {
     id: `${trip.id}-origin`,
     city: trip.brief.origin,
@@ -232,7 +241,7 @@ function makeEasyTJourney(trip: EasyTTrip) {
     const relatedLeg = movedBase && base
       ? trip.legs.find((leg) => leg.toStopId === base.id)
       : undefined;
-    const estimatedLeg = movedBase && base ? estimateLeg(
+    const estimatedLeg = movedBase && base ? estimateLegForConstraints(
       {
         name: index === 0 ? trip.brief.origin : previousBase?.name ?? "Previous stop",
         country: index === 0 ? trip.brief.origin : previousBase?.country ?? "",
@@ -244,6 +253,7 @@ function makeEasyTJourney(trip: EasyTTrip) {
         country: base.country,
         coordinates: base.longitude !== null && base.latitude !== null ? [base.longitude, base.latitude] : undefined,
       },
+      routeConstraints,
     ) : undefined;
     const minutes = relatedLeg?.durationMinutes ?? estimatedLeg?.durationMinutes;
     const distanceKm = relatedLeg?.distanceKm ?? estimatedLeg?.distanceKm;
@@ -310,17 +320,21 @@ export function JourneyMapPlannerWorkspace({
 }: JourneyMapPlannerWorkspaceProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = authClient.useSession();
   const isShellPresentation = presentation === "shell";
   const isPlanningPreview = isShellPresentation || pathname === "/journey/plan";
-  const firstProvidedItem = providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)[0];
+  const initialMapTarget = providedTrip ? parseMapWorkspaceTarget(providedTrip, searchParams) : null;
+  const firstProvidedItem = providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)
+    .find((item) => item.stopId === initialMapTarget?.stopId)
+    ?? providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)[0];
   const [selectedDayId, setSelectedDayId] = useState(firstProvidedItem ? `${providedTrip?.id}-calendar-${firstProvidedItem.dayNumber}` : "day-03");
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [selectedId, setSelectedId] = useState(firstProvidedItem ? `${providedTrip?.id}-day-${firstProvidedItem.dayNumber}` : "tokyo");
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{ restaurant: JourneyRestaurant; meal?: RestaurantMeal }>();
-  const [localFinderKind, setLocalFinderKind] = useState<"restaurant" | "stay">("restaurant");
-  const [shapeDayTab, setShapeDayTab] = useState<ShapeDayTab>("plan");
+  const [localFinderKind, setLocalFinderKind] = useState<"restaurant" | "stay">(initialMapTarget?.mode === "stay" ? "stay" : "restaurant");
+  const [shapeDayTab, setShapeDayTab] = useState<ShapeDayTab>(initialMapTarget?.mode ?? "plan");
   const [customBrief, setCustomBrief] = useState<CustomBrief | null>(() => providedTrip ? customBriefFromEasyT(providedTrip) : null);
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(providedTrip);
   const [planHydrated, setPlanHydrated] = useState(Boolean(providedTrip) || !isPlanningPreview);
@@ -356,6 +370,7 @@ export function JourneyMapPlannerWorkspace({
   const healthDetailCloseRef = useRef<HTMLButtonElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
+  const appliedDeepLinkRef = useRef<string | null>(null);
   const journey = useMemo(() => {
     const base = customTrip
       ? makeEasyTJourney(customTrip)
@@ -398,9 +413,15 @@ export function JourneyMapPlannerWorkspace({
     const destination = customTrip.stops.find((stop) => stop.id === selectedLeg.toStopId);
     const originStop = customTrip.stops.find((stop) => stop.id === selectedLeg.fromStopId);
     if (!destination) return [];
+    const constraints: RoutePlanningConstraints = customTrip.brief.structuredBrief
+      ? routeConstraintsFromStructuredTripBrief(customTrip.brief.structuredBrief)
+      : customTrip.brief.intent?.hardConstraints.avoidDriving
+        ? { avoidDriving: true, excludedTransportModes: ["road"] }
+        : {};
     return legDecisionAlternatives(
       originStop ? { id: originStop.id, name: originStop.name, country: originStop.country, coordinates: originStop.longitude !== null && originStop.latitude !== null ? [originStop.longitude, originStop.latitude] : undefined } : { name: customTrip.brief.origin, country: customTrip.brief.origin, coordinates: customTrip.brief.originCoordinates },
       { id: destination.id, name: destination.name, country: destination.country, coordinates: destination.longitude !== null && destination.latitude !== null ? [destination.longitude, destination.latitude] : undefined },
+      constraints,
     );
   }, [customTrip, selectedLeg]);
   const selectedActivities = selectedPlanItem?.notes ?? selectedDay.items;
@@ -797,14 +818,24 @@ export function JourneyMapPlannerWorkspace({
 
   const changeRecommendation = useCallback((recommendationId: string, action: "apply" | "undo") => {
     if (!customTrip) return;
+    const recommendation = reviewRecommendations.find((item) => item.id === recommendationId);
     const source = { ...customTrip, recommendations: reviewRecommendations };
     const next = action === "apply" ? applyRecommendation(source, recommendationId) : undoRecommendation(source, recommendationId);
     setCustomTrip(next);
     saveActiveTrip(next);
-    if (action === "apply") trackEvent("health_issue_resolved", { rule: reviewRecommendations.find((item) => item.id === recommendationId)?.rule ?? "unknown" });
+    if (action === "apply") {
+      const repairCategory = recommendation?.rule ?? "unknown";
+      trackEvent("health_issue_resolved", { rule: repairCategory });
+      trackEvent("route_repair_applied", { trip_id: customTrip.id, repair_count: 1, repair_category: repairCategory, source: "map" });
+    }
     if (session?.user) {
       setCloudSaveState("saving");
-      void saveTripToEasyT(next).then((saved) => { saveActiveTrip(saved); setCustomTrip(saved); setCloudSaveState("saved"); }).catch(() => setCloudSaveState("error"));
+      void saveTripToEasyT(next)
+        .then((saved) => { saveActiveTrip(saved); setCustomTrip(saved); setCloudSaveState("saved"); })
+        .catch((error) => {
+          setCloudSaveState("error");
+          trackEvent("trip_save_failed", { trip_source: "route", trip_id: next.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true });
+        });
     }
   }, [customTrip, reviewRecommendations, session?.user]);
 
@@ -834,9 +865,11 @@ export function JourneyMapPlannerWorkspace({
       setCustomBrief(customBriefFromEasyT(saved));
       setCloudSaveState("saved");
       setHasUnsavedChanges(false);
+      trackEvent("trip_saved", { trip_source: "route", trip_id: saved.id, save_state: "cloud", stop_count: saved.stops.length, is_authenticated: true });
       router.replace(`/journey/plan?trip=${encodeURIComponent(saved.id)}`);
-    } catch {
+    } catch (error) {
       setCloudSaveState("error");
+      trackEvent("trip_save_failed", { trip_source: "route", trip_id: customTrip.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true });
     }
   }, [customTrip, router, session?.user]);
 
@@ -927,14 +960,34 @@ export function JourneyMapPlannerWorkspace({
   }, [autoSaveRequested, cloudSaveState, customTrip, isPlanningPreview, savePlan, session?.user]);
 
   useEffect(() => {
-    if (!customBrief) return;
+    if (!customBrief || isShellPresentation) return;
     const generated = customTrip ? makeEasyTJourney(customTrip) : makeCustomJourney(customBrief);
     const firstDay = generated.calendar[0];
     if (firstDay) {
       setSelectedDayId(firstDay.id);
       setSelectedId(firstDay.stopId);
     }
-  }, [customBrief, customTrip]);
+  }, [customBrief, customTrip, isShellPresentation]);
+
+  useEffect(() => {
+    if (!isShellPresentation || !customTrip) return;
+    const queryKey = `${customTrip.id}?${searchParams.toString()}`;
+    if (appliedDeepLinkRef.current === queryKey) return;
+    appliedDeepLinkRef.current = queryKey;
+    const target = parseMapWorkspaceTarget(customTrip, searchParams);
+    const item = customTrip.planItems
+      .filter((candidate) => candidate.stopId === target.stopId)
+      .sort((left, right) => left.dayNumber - right.dayNumber)[0]
+      ?? customTrip.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)[0];
+    if (item) {
+      setSelectedDayId(`${customTrip.id}-calendar-${item.dayNumber}`);
+      setSelectedId(`${customTrip.id}-day-${item.dayNumber}`);
+    }
+    setShapeDayTab(target.mode);
+    setLocalFinderKind(target.mode === "stay" ? "stay" : "restaurant");
+    setSelectedLocalPlaceId(null);
+    setMapMode("detail");
+  }, [customTrip, isShellPresentation, searchParams]);
 
   useEffect(() => {
     if (!customBrief) return;

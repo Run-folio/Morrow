@@ -6,6 +6,7 @@ import {
   mergeStructuredTripBrief,
   routeConstraintsFromStructuredTripBrief,
   routePreferencesFromStructuredBrief,
+  routeScoringPreferencesFromStructuredBrief,
 } from "../lib/easyt/structured-trip-brief.ts";
 
 test("explicit prompt preserves gateways, exact nights and a must-visit anchor", () => {
@@ -17,6 +18,27 @@ test("explicit prompt preserves gateways, exact nights and a must-visit anchor",
   assert.equal(brief.travellers?.value, 2);
   assert.equal(brief.transportPreferences.some((preference) => preference.value === "ground"), true);
   assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "duration"), true);
+});
+
+test("the same natural-language intent produces an identical comprehensive brief", () => {
+  const prompt = "About 12 nights in Japan. Start in Tokyo, Kyoto is essential, finish in Osaka. Two travellers want a relaxed pace, food, trains, an affordable trip, no driving and no more than 4 stops.";
+  const first = extractStructuredTripBrief(prompt);
+  const second = extractStructuredTripBrief(prompt);
+
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.countries.map((country) => country.value), ["Japan"]);
+  assert.equal(first.duration?.value, 12);
+  assert.equal(first.duration?.unit, "nights");
+  assert.equal(first.duration?.precision, "approximate");
+  assert.equal(first.travellers?.value, 2);
+  assert.equal(first.pace?.value, "relaxed");
+  assert.equal(first.interests.some((interest) => interest.value === "food"), true);
+  assert.equal(first.transportPreferences.some((preference) => preference.value === "train"), true);
+  assert.equal(first.budget?.value, "value");
+  assert.equal(first.budget?.provenance.kind, "inferred");
+  assert.equal(first.mustVisit.some((place) => place.name === "Kyoto"), true);
+  assert.equal(first.hardConstraints.some((constraint) => constraint.type === "no-driving"), true);
+  assert.equal(first.hardConstraints.some((constraint) => constraint.type === "maximum-stops" && constraint.value === 4), true);
 });
 
 test("loose language remains approximate and separates inferred pace and region", () => {
@@ -35,6 +57,8 @@ test("no driving is hard while a train preference remains soft", () => {
   assert.equal(brief.softPreferences.some((preference) => preference.type === "transport" && preference.value === "train"), true);
   assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "must-visit"), false);
   assert.deepEqual(routePreferencesFromStructuredBrief(brief).transportModes, ["train"]);
+  assert.equal(routeScoringPreferencesFromStructuredBrief(brief).avoidFlights, true);
+  assert.deepEqual(routeScoringPreferencesFromStructuredBrief(brief).preferredModes, ["train"]);
 });
 
 test("structured hard constraints resolve to stable route stop IDs", () => {
@@ -65,7 +89,14 @@ test("missing information remains unknown", () => {
   assert.equal(brief.dates.end, undefined);
   assert.equal(brief.budget, undefined);
   assert.equal(brief.pace, undefined);
+  assert.deepEqual(brief.countries.map((country) => country.value), ["Cambodia", "Vietnam"]);
   assert.deepEqual(brief.destinations.map((place) => place.name), ["Cambodia", "Vietnam"]);
+});
+
+test("budget remains unknown when the traveller has not supplied a usable preference", () => {
+  const brief = extractStructuredTripBrief("Tokyo and Kyoto. Tell me what budget I might need.");
+  assert.equal(brief.budget, undefined);
+  assert.equal(brief.softPreferences.some((preference) => preference.type === "budget"), false);
 });
 
 test("explicit builder duration overrides approximate prompt duration", () => {
@@ -78,6 +109,17 @@ test("incompatible fixed duration and dates return a structured issue", () => {
   const prompt = extractStructuredTripBrief("Exactly 7 nights in Japan.");
   const merged = mergeStructuredTripBrief(prompt, { dates: { start: "2026-10-01", end: "2026-10-13", fixed: true } });
   assert.equal(merged.issues.some((issue) => issue.code === "DURATION_DATE_MISMATCH" && issue.severity === "error"), true);
+});
+
+test("fixed commitments survive unrelated merges and reach route planning", () => {
+  const withBooking = mergeStructuredTripBrief(extractStructuredTripBrief("Start in Tokyo and finish in Kyoto."), {
+    fixedCommitments: [{ label: "Tokyo Marathon", date: "2027-03-07" }],
+  });
+  const updated = mergeStructuredTripBrief(withBooking, { travellers: 2 });
+  const constraints = routeConstraintsFromStructuredTripBrief(updated);
+
+  assert.deepEqual(constraints.fixedCommitments, [{ label: "Tokyo Marathon", date: "2027-03-07" }]);
+  assert.equal(updated.hardConstraints.some((constraint) => constraint.type === "fixed-commitment"), true);
 });
 
 test("debug format exposes provenance without becoming production UI", () => {

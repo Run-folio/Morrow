@@ -401,6 +401,49 @@ final result: passed
 
 ---
 
+# Trip Workspace integration and visual refinement design QA
+
+- Source visual truth: `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.11 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.25 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.35 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.43 AM.png`, and `/Users/shaun/Downloads/Screenshot 2026-08-23 at 8.22.35 AM.png`
+- Before captures: `/private/tmp/morrovia-trip-refinement/pre/overview-1440.png`, `/private/tmp/morrovia-trip-refinement/pre/itinerary-1440.png`, `/private/tmp/morrovia-trip-refinement/pre/map-1440.png`, and `/private/tmp/morrovia-trip-refinement/pre/prep-1440.png`
+- After captures: `/private/tmp/morrovia-trip-refinement/post/overview-1440.png`, `/private/tmp/morrovia-trip-refinement/post/itinerary-1440.png`, `/private/tmp/morrovia-trip-refinement/post/map-1440.png`, `/private/tmp/morrovia-trip-refinement/post/map-1920-viewport.png`, and `/private/tmp/morrovia-trip-refinement/post/prep-1440.png`
+- Side-by-side comparison inputs: `/private/tmp/morrovia-trip-refinement/compare/overview.png`, `/private/tmp/morrovia-trip-refinement/compare/itinerary.png`, `/private/tmp/morrovia-trip-refinement/compare/map.png`, and `/private/tmp/morrovia-trip-refinement/compare/prep.png`
+- Responsive evidence: `/private/tmp/morrovia-trip-refinement/post/map-320.png`, `/private/tmp/morrovia-trip-refinement/post/prep-390.png`, `/private/tmp/morrovia-trip-refinement/post/overview-430.png`, `/private/tmp/morrovia-trip-refinement/post/itinerary-768.png`, `/private/tmp/morrovia-trip-refinement/post/map-1024.png`, and `/private/tmp/morrovia-trip-refinement/post/prep-1440.png`
+
+## Findings
+
+No actionable P0, P1, or P2 visual differences remain.
+
+- Cohesion: all four views now share the same denser shell rhythm, deterministic presentation title, navigation spacing, border language, typography, and semantic token usage without changing their underlying jobs.
+- Map: the integrated planner escapes the normal shell content cap on desktop while retaining the shell header above it. The map canvas owns the remaining width between a 360–390 px Shape the day panel and a 260–280 px Trip Health panel, and a `ResizeObserver` keeps MapLibre synchronized with container changes.
+- Prep: the progress module is roughly one quarter shorter, the repeated context card is removed, urgent and accommodation tasks carry stronger hierarchy, and the practical groups retain a compact readable flow at desktop and mobile widths.
+- Itinerary: the hero is about one sixth shorter on desktop and duplicate transfer route/door-to-door copy is suppressed only when the canonical incoming leg already communicates the same facts.
+- Accessibility and responsiveness: shell tabs remain at least 56 px tall on the verified desktop/tablet layouts and 60 px on narrow layouts. Browser geometry checks found no document-level horizontal overflow at 320, 390, 430, 768, 1024, 1440, or the wide desktop state.
+- Data integrity: user-authored trip titles are preserved. Only the exact legacy generated title shape is converted to the concise origin/ordered-stop presentation title, with case-insensitive duplicate place names removed.
+
+## Interaction and state evidence
+
+- The Map Stay deep link selected Sacred Valley and the Stay tab, and browser Back restored that same contextual state.
+- Overview Trip Health links resolved to the canonical affected itinerary day; route cards resolved to days 1, 4, and 6 for their respective stops.
+- Prep's primary accommodation action resolved to `/journey/[tripId]/map?stop=sacred-valley&mode=stay` without exposing the stop identifier in visible copy.
+- Invalid or stale map/day query values use deterministic first-stop/first-day fallbacks, covered by focused unit tests.
+- A fresh Storybook tab rendered the Map canvas with no runtime errors after excluding MapLibre from Vite dependency pre-optimization. The remaining console warning is the project's existing Next.js runtime-config deprecation notice.
+
+## Comparison history
+
+1. The initial comparison confirmed the overall Morrovia direction was already correct but showed an unnecessarily boxed Map, an oversized Itinerary hero, repeated transfer facts, and excess empty space in Prep.
+2. The first implementation pass widened the Map, reduced the hero and progress module, removed the redundant Prep context card, and introduced contextual links and deterministic titles.
+3. Responsive review found the wide Map transform needed explicit phone compensation; the final CSS keeps the planner flush to the viewport at 320–430 px while returning to normal shell flow below the desktop breakout.
+4. The final comparison and interaction pass found no remaining P0/P1/P2 layout, typography, spacing, token, imagery, content, or state issue.
+
+## Follow-up polish
+
+- P3: Map tile labels, route geometry, and crop vary with the live MapLibre tile response and selected trip state.
+- P3: the in-app browser's wide screenshot stitching can repeat transformed breakout content outside the first viewport; direct DOM geometry, viewport captures, and responsive screenshots confirm one canvas and no horizontal overflow.
+
+final result: passed
+
+---
+
 # Full Trip Workspace integration QA
 
 - Audit date: 2026-08-22

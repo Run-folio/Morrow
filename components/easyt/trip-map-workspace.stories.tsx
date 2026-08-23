@@ -88,6 +88,18 @@ type Story = StoryObj<typeof meta>;
 
 export const ActivePlanning: Story = {};
 
+export const StayDeepLink: Story = {
+  parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: {
+        pathname: "/journey/cusco-sacred-valley-arequipa/map",
+        query: { stop: "sacred-valley", mode: "stay" },
+      },
+    },
+  },
+};
+
 export const FocusedLegacyRoute: Story = {
   args: { presentation: "focused" },
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/plan" } } },

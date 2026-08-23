@@ -1,0 +1,492 @@
+{
+  "results": [
+    {
+      "id": "sea-anchor",
+      "routeState": "current-order",
+      "stopIds": [
+        "bangkok",
+        "siem-reap",
+        "phnom-penh",
+        "ho-chi-minh-city"
+      ],
+      "comfortableDays": 8,
+      "shortfallDays": 0,
+      "transferMinutes": 628,
+      "passes": 14,
+      "warnings": [
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "japan-classic-alps",
+      "routeState": "recommendation",
+      "stopIds": [
+        "tokyo",
+        "takayama",
+        "kanazawa",
+        "kyoto"
+      ],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 500,
+      "passes": 13,
+      "warnings": [
+        "base-density",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "balkans",
+      "routeState": "current-order",
+      "stopIds": [
+        "sarajevo",
+        "kotor",
+        "belgrade",
+        "skopje"
+      ],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 636,
+      "passes": 14,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "italy-train",
+      "routeState": "current-order",
+      "stopIds": [
+        "rome",
+        "florence",
+        "bologna",
+        "venice"
+      ],
+      "comfortableDays": 5,
+      "shortfallDays": 0,
+      "transferMinutes": 455,
+      "passes": 13,
+      "warnings": [
+        "night-minimums-explained",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "iberia-long-finish",
+      "routeState": "current-order",
+      "stopIds": [
+        "lisbon",
+        "seville",
+        "granada",
+        "barcelona"
+      ],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 861,
+      "passes": 14,
+      "warnings": [
+        "night-minimums-explained",
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "china-regions",
+      "routeState": "current-order",
+      "stopIds": [
+        "beijing",
+        "xian",
+        "chengdu",
+        "zhangjiajie",
+        "shanghai"
+      ],
+      "comfortableDays": 11,
+      "shortfallDays": 0,
+      "transferMinutes": 1380,
+      "passes": 15,
+      "warnings": [
+        "most-day-transfer-burden"
+      ],
+      "failures": []
+    },
+    {
+      "id": "slow-three-bases",
+      "routeState": "current-order",
+      "stopIds": [
+        "edinburgh",
+        "inverness",
+        "skye"
+      ],
+      "comfortableDays": 5,
+      "shortfallDays": 0,
+      "transferMinutes": 358,
+      "passes": 14,
+      "warnings": [],
+      "failures": []
+    },
+    {
+      "id": "fast-central-europe",
+      "routeState": "current-order",
+      "stopIds": [
+        "prague",
+        "vienna",
+        "budapest",
+        "ljubljana",
+        "zagreb"
+      ],
+      "comfortableDays": 9,
+      "shortfallDays": 0,
+      "transferMinutes": 831,
+      "passes": 14,
+      "warnings": [
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "fixed-gateways",
+      "routeState": "current-order",
+      "stopIds": [
+        "hanoi",
+        "hue",
+        "hoi-an",
+        "ho-chi-minh-city"
+      ],
+      "comfortableDays": 6,
+      "shortfallDays": 0,
+      "transferMinutes": 940,
+      "passes": 15,
+      "warnings": [
+        "most-day-transfer-burden"
+      ],
+      "failures": []
+    },
+    {
+      "id": "overpacked-europe",
+      "routeState": "current-order",
+      "stopIds": [
+        "paris",
+        "amsterdam",
+        "berlin",
+        "prague",
+        "vienna",
+        "budapest",
+        "rome"
+      ],
+      "comfortableDays": 13,
+      "shortfallDays": 5,
+      "transferMinutes": 1317,
+      "passes": 10,
+      "warnings": [
+        "comfortable-duration",
+        "base-density",
+        "night-minimums-explained"
+      ],
+      "failures": []
+    },
+    {
+      "id": "patagonia-honeymoon",
+      "routeState": "current-order",
+      "stopIds": [
+        "buenos-aires",
+        "el-calafate",
+        "el-chalten",
+        "puerto-natales",
+        "punta-arenas"
+      ],
+      "comfortableDays": 11,
+      "shortfallDays": 0,
+      "transferMinutes": 1144,
+      "passes": 14,
+      "warnings": [
+        "base-density",
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "greek-island-ferries",
+      "routeState": "current-order",
+      "stopIds": [
+        "athens",
+        "naxos",
+        "paros",
+        "santorini"
+      ],
+      "comfortableDays": 6,
+      "shortfallDays": 0,
+      "transferMinutes": 761,
+      "passes": 15,
+      "warnings": [
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "scandinavia-no-driving",
+      "routeState": "current-order",
+      "stopIds": [
+        "copenhagen",
+        "stockholm",
+        "oslo",
+        "bergen"
+      ],
+      "comfortableDays": 8,
+      "shortfallDays": 0,
+      "transferMinutes": 918,
+      "passes": 16,
+      "warnings": [
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "central-asia-silk-road",
+      "routeState": "current-order",
+      "stopIds": [
+        "tashkent",
+        "samarkand",
+        "bukhara",
+        "khiva",
+        "almaty"
+      ],
+      "comfortableDays": 12,
+      "shortfallDays": 0,
+      "transferMinutes": 1394,
+      "passes": 16,
+      "warnings": [
+        "most-day-transfer-burden"
+      ],
+      "failures": []
+    },
+    {
+      "id": "southern-africa-safari",
+      "routeState": "current-order",
+      "stopIds": [
+        "cape-town",
+        "johannesburg",
+        "kruger",
+        "victoria-falls"
+      ],
+      "comfortableDays": 10,
+      "shortfallDays": 0,
+      "transferMinutes": 1754,
+      "passes": 15,
+      "warnings": [
+        "excessive-transfer-burden",
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "morocco-family-access",
+      "routeState": "current-order",
+      "stopIds": [
+        "casablanca",
+        "rabat",
+        "fes",
+        "marrakech"
+      ],
+      "comfortableDays": 7,
+      "shortfallDays": 0,
+      "transferMinutes": 864,
+      "passes": 15,
+      "warnings": [
+        "base-density",
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": [
+        "no-driving"
+      ]
+    },
+    {
+      "id": "peru-budget-backpacker",
+      "routeState": "current-order",
+      "stopIds": [
+        "lima",
+        "arequipa",
+        "ollantaytambo",
+        "cusco"
+      ],
+      "comfortableDays": 9,
+      "shortfallDays": 0,
+      "transferMinutes": 1018,
+      "passes": 15,
+      "warnings": [
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "norway-road-trip",
+      "routeState": "current-order",
+      "stopIds": [
+        "oslo",
+        "lillehammer",
+        "geiranger",
+        "alesund",
+        "bergen"
+      ],
+      "comfortableDays": 9,
+      "shortfallDays": 0,
+      "transferMinutes": 872,
+      "passes": 14,
+      "warnings": [
+        "base-density",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "india-honeymoon-booking",
+      "routeState": "current-order",
+      "stopIds": [
+        "delhi",
+        "agra",
+        "jaipur",
+        "udaipur",
+        "mumbai"
+      ],
+      "comfortableDays": 12,
+      "shortfallDays": 0,
+      "transferMinutes": 1710,
+      "passes": 15,
+      "warnings": [
+        "base-density",
+        "excessive-transfer-burden",
+        "most-day-transfer-burden"
+      ],
+      "failures": []
+    },
+    {
+      "id": "indonesia-seven-islands",
+      "routeState": "current-order",
+      "stopIds": [
+        "bali",
+        "nusa-lembongan",
+        "gili-air",
+        "lombok",
+        "labuan-bajo",
+        "ende",
+        "maumere"
+      ],
+      "comfortableDays": 11,
+      "shortfallDays": 0,
+      "transferMinutes": 1139,
+      "passes": 15,
+      "warnings": [
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "australia-family-mixed",
+      "routeState": "current-order",
+      "stopIds": [
+        "sydney",
+        "melbourne",
+        "hobart",
+        "adelaide"
+      ],
+      "comfortableDays": 8,
+      "shortfallDays": 0,
+      "transferMinutes": 1583,
+      "passes": 15,
+      "warnings": [
+        "excessive-transfer-burden",
+        "most-day-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": []
+    },
+    {
+      "id": "canada-accessible-no-drive",
+      "routeState": "current-order",
+      "stopIds": [
+        "toronto",
+        "ottawa",
+        "montreal",
+        "quebec-city"
+      ],
+      "comfortableDays": 8,
+      "shortfallDays": 0,
+      "transferMinutes": 1284,
+      "passes": 14,
+      "warnings": [
+        "base-density",
+        "excessive-transfer-burden",
+        "preferred-transport"
+      ],
+      "failures": [
+        "no-driving"
+      ]
+    },
+    {
+      "id": "impossible-required-maximum",
+      "routeState": "insufficient-data",
+      "stopIds": [
+        "mexico-city",
+        "oaxaca",
+        "san-cristobal",
+        "merida",
+        "cancun"
+      ],
+      "comfortableDays": 10,
+      "shortfallDays": 1,
+      "transferMinutes": 1431,
+      "passes": 14,
+      "warnings": [
+        "comfortable-duration",
+        "base-density",
+        "night-minimums-explained",
+        "most-day-transfer-burden"
+      ],
+      "failures": []
+    }
+  ],
+  "totals": {
+    "pass": 329,
+    "warning": 46,
+    "fail": 2
+  },
+  "dimensions": {
+    "constraint-compliance": {
+      "pass": 156,
+      "warning": 0,
+      "fail": 0
+    },
+    "route-efficiency": {
+      "pass": 23,
+      "warning": 0,
+      "fail": 0
+    },
+    "pacing": {
+      "pass": 78,
+      "warning": 14,
+      "fail": 0
+    },
+    "transfer-quality": {
+      "pass": 46,
+      "warning": 17,
+      "fail": 0
+    },
+    "preference-fit": {
+      "pass": 3,
+      "warning": 15,
+      "fail": 2
+    },
+    "unsupported-claims": {
+      "pass": 23,
+      "warning": 0,
+      "fail": 0
+    }
+  }
+}

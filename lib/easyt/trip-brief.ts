@@ -2,6 +2,8 @@ export type ParsedTripBrief = {
   origin?: string;
   destination?: string;
   stops: string[];
+  /** Countries explicitly named by the traveller, even when cities supersede them as route stops. */
+  countries: string[];
   regions: string[];
   routeHints: string[];
   anchor?: string;
@@ -172,6 +174,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
   const text = normalise(value);
   const matchedPlaces = findPlaces(value);
   const stops = removeRedundantCountryStops(matchedPlaces);
+  const countries = matchedPlaces.filter((name) => countryNames.has(name));
   const fromMatch = value.match(/(?:from|leaving from|depart(?:ing)? from|fly(?:ing)? from|start(?:ing)? (?:in|at)|begin(?:ning)? (?:in|at)|desde|saliendo de)\s+([^,.\n;]+?)(?=\s+(?:to|through|via|a|hasta|por)\s+|[,.;\n]|$)/i);
   const toMatch = value.match(/(?:\bto|finish(?:ing)? (?:in|at)|end(?:ing)? (?:in|at)|fly home from|return(?:ing)? from|home from|terminar (?:en|por)|volver desde|\ba|hasta)\s+([^,.\n;]+)/i);
   // A departure is only an origin when the traveller has actually stated a
@@ -185,6 +188,7 @@ export function parseTripBrief(value: string): ParsedTripBrief {
     origin,
     destination: destination === origin && matchedPlaces.length > 1 ? matchedPlaces.at(-1) : destination,
     stops: stops.filter((name) => name !== origin),
+    countries,
     regions: findRegions(value),
     routeHints: findRouteHints(value),
     anchor,

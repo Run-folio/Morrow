@@ -871,14 +871,14 @@
 .shellPlanner .mapCoach,
 .shellPlanner .undoToast,
 .shellPlanner .savePlanError{position:absolute!important}
-.shellPlanner .finderDock{top:86px!important;right:auto!important;bottom:16px!important;left:16px!important;width:min(390px,calc(100% - 520px))!important;height:auto!important;max-height:none!important;transform:none!important}
-.shellPlanner .canonicalPlannerStatus{top:86px!important;right:16px!important;bottom:auto!important;left:auto!important;width:230px!important;max-width:230px!important;max-height:calc(100% - 102px)!important}
-.shellPlanner .pinDock{top:244px!important;right:266px!important;bottom:auto!important;left:auto!important;transform:none!important}
+.shellPlanner .finderDock{top:86px!important;right:auto!important;bottom:16px!important;left:16px!important;width:clamp(360px,24vw,390px)!important;height:auto!important;max-height:none!important;transform:none!important}
+.shellPlanner .canonicalPlannerStatus{top:86px!important;right:16px!important;bottom:auto!important;left:auto!important;width:clamp(260px,16vw,280px)!important;max-width:280px!important;max-height:calc(100% - 102px)!important}
+.shellPlanner .pinDock{top:244px!important;right:316px!important;bottom:auto!important;left:auto!important;transform:none!important}
 .shellPlanner .mapAssistant{right:16px!important;bottom:16px!important;left:auto!important}
 .shellPlanner .mapFocusControl{position:absolute!important;top:154px!important;left:calc(50% + 72px)!important}
 .shellPlanner .mapCoach{top:90px!important;left:28px!important;max-height:calc(100% - 112px)!important}
 .shellPlanner .undoToast{top:84px!important;bottom:auto!important}
-.shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:262px!important}
+.shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:312px!important}
 
 @media(max-width:980px){
   .canonicalPlanner.shellPlanner{height:720px;min-height:720px;border-radius:var(--morrovia-radius,14px)}

@@ -17,6 +17,8 @@ export type CascadedTrip = {
  */
 export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
   const locks: TripScheduleLocks = trip.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} };
+  const nightNative = Boolean(trip.brief.nightAllocations)
+    || (trip.brief.nightAllocation?.state !== "conflict" && Boolean(trip.brief.nightAllocation?.allocations));
   const conflicts: string[] = [];
   let cursor = trip.startDate;
 
@@ -30,12 +32,12 @@ export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
         conflicts.push(`${stop.name} is locked for ${lockedArrival}, so the route cannot stay fully continuous.`);
       }
       const nights = Math.max(0, stop.nights ?? 0);
-      const departureDate = addDays(arrivalDate, nights + 1);
+      const departureDate = addDays(arrivalDate, nights + (nightNative ? 0 : 1));
       cursor = departureDate;
       return { ...stop, order, arrivalDate, departureDate };
     });
 
-  const endExclusive = addDays(trip.endDate, 1);
+  const endExclusive = nightNative ? trip.endDate : addDays(trip.endDate, 1);
   if (cursor > endExclusive) {
     conflicts.push(`The route now runs through ${addDays(cursor, -1)}, beyond the trip end of ${trip.endDate}.`);
   }

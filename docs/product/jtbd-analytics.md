@@ -1,6 +1,6 @@
 # Morrovia JTBD analytics contract
 
-Last reviewed: 14 August 2026
+Last reviewed: 23 August 2026
 
 This measures whether Morrovia helps an independent traveller move from a rough multi-stop idea to a route they can trust and act on. It is not an ad-impression schema.
 
@@ -13,6 +13,26 @@ Analytics remain optional: events are sent only after the visitor has allowed op
 - Counts and categorical values are preferred: `stop_count`, `duration_days`, `change_type`, `provider`, `category`, `severity`.
 - Browser-side "first reached" events use a namespaced `localStorage` or `sessionStorage` key. Interaction events represent a deliberate interaction and are not deduplicated across separate clicks.
 - A provider conversion must be deduplicated on the server by the provider's immutable conversion/transaction ID. A click is never a booking.
+
+## Launch activation and workspace events
+
+These typed events answer the minimum launch questions without replacing the existing route-quality events below.
+
+| Event | Exact trigger | Safe properties |
+| --- | --- | --- |
+| `homepage_prompt_started` | A homepage prompt first reaches three non-whitespace characters, whether typed or dictated. | `source`, `input_method`, `is_authenticated` |
+| `trip_generation_started` | The homepage planning request is submitted, or a direct builder trip is submitted. | `trip_source`, `has_dates`, `traveller_count`, `is_authenticated` |
+| `trip_generated` | The builder has produced a usable trip with at least one stop and plan item. | opaque `trip_id`, `trip_source`, `stop_count`, `duration_days`, `traveller_count`, `has_dates`, `save_state`, `result` |
+| `trip_generation_failed` | Capture fails or the builder cannot produce a usable result. | `trip_source`, coarse `error_type`, `is_authenticated` |
+| `trip_saved` | A meaningful local generation save or cloud persistence boundary succeeds. Passive local autosaves do not emit it. | opaque `trip_id`, `trip_source`, `save_state`, `stop_count`, `is_authenticated` |
+| `trip_save_failed` | The same meaningful persistence boundary fails. | opaque `trip_id`, `trip_source`, `save_state`, coarse `error_type`, `is_authenticated` |
+| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` / `trip_prep_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
+| `trip_reopened` | A saved trip is deliberately opened from the dashboard. | opaque `trip_id`, `source`, `save_state`, `stop_count` |
+| `trip_edit_started` | Edit is deliberately opened from the dashboard. | opaque `trip_id`, `source` |
+| `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |
+| `accommodation_search_started` | The existing stay finder starts its map/inventory search. | `source`, `destination_count`, `has_dates`, `provider` |
+
+`affiliate_click` remains the single monetisation handoff event and retains its existing `category` and `provider` contract. Do not introduce PostHog-specific aliases for the same click.
 
 ## Funnel events
 

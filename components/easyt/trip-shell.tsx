@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { CalendarDays, Clock3, Edit3, MapPin, Route } from "lucide-react";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { EasyTLinkButton } from "./easyt-controls";
 import { TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
 import styles from "./trip-shell.module.css";
@@ -64,7 +65,7 @@ export default function TripShell({ trip, children }: { trip: EasyTTrip; childre
 
           <div className={styles.tripIdentity}>
             <p className={styles.eyebrow}>{statusLabel(trip.status)}</p>
-            <h1 id="trip-shell-title">{trip.title || "Untitled trip"}</h1>
+            <h1 id="trip-shell-title">{tripDisplayTitle(trip)}</h1>
             <p className={styles.routeSummary}>{routeLabel}</p>
             <dl className={styles.metadata}>
               <div>

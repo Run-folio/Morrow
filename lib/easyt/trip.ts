@@ -1,5 +1,6 @@
-import { estimateLeg, type RouteIntelligenceAssessment } from "@/lib/easyt/planner";
-import { routePreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { estimateLegForConstraints, type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "@/lib/easyt/planner";
+import type { NightAllocationResult } from "@/lib/easyt/night-allocation";
+import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -169,6 +170,10 @@ export type TripBrief = {
   budgetBand: BudgetBand;
   selectedPlaces: Record<string, string[]>;
   dayAllocations?: Record<string, number>;
+  /** Traveller-facing stay nights, stored separately from legacy calendar-day allocations. */
+  nightAllocations?: Record<string, number>;
+  /** Night-native allocation metadata. Older trips keep using dayAllocations. */
+  nightAllocation?: NightAllocationResult;
   /** Traveller-authored notes kept with a single calendar day. */
   dayNotes?: Record<number, string[]>;
   /** Only traveller-authored itinerary rows are editable; generated suggestions remain read-only. */
@@ -297,6 +302,8 @@ export type BuilderTripInput = {
   hotels: HotelChanges;
   budget: BudgetBand;
   dayAllocations?: Record<string, number>;
+  nightAllocations?: Record<string, number>;
+  nightAllocation?: NightAllocationResult;
   draft: BuilderDay[];
   placeDetails?: Record<string, Array<{ title: string; coordinates?: [number, number]; image?: string; sourceUrl?: string }>>;
   originCoordinates?: [number, number];
@@ -313,14 +320,29 @@ const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").
 
 export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
   const now = new Date().toISOString();
+  const structuredRouteConstraints: RoutePlanningConstraints = input.structuredBrief
+    ? routeConstraintsFromStructuredTripBrief(input.structuredBrief)
+    : {};
+  const avoidDriving = Boolean(structuredRouteConstraints.avoidDriving || input.intent?.hardConstraints.avoidDriving);
+  const legConstraints: RoutePlanningConstraints = {
+    ...structuredRouteConstraints,
+    avoidDriving,
+    excludedTransportModes: avoidDriving ? ["road"] : structuredRouteConstraints.excludedTransportModes,
+  };
+  const nativeAllocations = input.nightAllocations
+    ?? (input.nightAllocation?.state !== "conflict" ? input.nightAllocation?.allocations : undefined);
+  const nightNative = Boolean(nativeAllocations);
   let dayOffset = 0;
   const stops = input.stops.map((stop, order) => {
     const allocation = Math.max(1, input.dayAllocations?.[stop.id] ?? 1);
+    const nights = nightNative
+      ? Math.max(0, nativeAllocations?.[stop.id] ?? 0)
+      : Math.max(0, allocation - 1);
     const arrival = new Date(`${input.startDate}T00:00:00`);
     arrival.setDate(arrival.getDate() + dayOffset);
     const departure = new Date(arrival);
-    departure.setDate(departure.getDate() + allocation);
-    dayOffset += allocation;
+    departure.setDate(departure.getDate() + (nightNative ? nights : allocation));
+    dayOffset += nightNative ? nights : allocation;
     return {
       id: stop.id,
       name: stop.name,
@@ -333,7 +355,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       longitude: stop.coordinates?.[0] ?? null,
       arrivalDate: arrival.toISOString().slice(0, 10),
       departureDate: departure.toISOString().slice(0, 10),
-      nights: Math.max(0, allocation - 1),
+      nights,
     };
   });
 
@@ -381,6 +403,8 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       budgetBand: input.budget,
       selectedPlaces: input.picks,
       dayAllocations: input.dayAllocations,
+      nightAllocations: input.nightAllocations,
+      nightAllocation: input.nightAllocation,
       capturedIntent: input.capturedIntent,
       routeAssessment: input.routeAssessment,
       scheduleLocks: input.scheduleLocks ?? { stopIds: [], arrivalDates: {} },
@@ -397,7 +421,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     stops,
     legs: input.stops.slice(1).map((stop, index) => {
       const from = input.stops[index];
-      const estimate = estimateLeg(from, stop);
+      const estimate = estimateLegForConstraints(from, stop, legConstraints);
       return {
         id: `${input.id}-leg-${index + 1}`,
         fromStopId: from.id,
@@ -406,7 +430,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
         distanceKm: estimate.distanceKm,
         durationMinutes: estimate.durationMinutes,
         provider: estimate.note,
-        routeMetadata: { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence },
+        routeMetadata: { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
       };
     }),
     planItems,

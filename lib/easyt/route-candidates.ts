@@ -161,7 +161,7 @@ function candidateIssues(
   if (constraints?.avoidDriving) forbiddenModes.add("road");
   if (forbiddenModes.size) {
     const { legs } = routeEstimate(origin, stops, estimateLeg);
-    const conflicts = legs.filter((leg) => leg.confidence === "high" && forbiddenModes.has(leg.mode));
+    const conflicts = legs.filter((leg) => forbiddenModes.has(leg.mode));
     if (conflicts.length) {
       issues.push({
         code: "forbidden-transport-mode",

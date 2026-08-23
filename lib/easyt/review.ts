@@ -1,5 +1,9 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
-import { findDestinationIntegrityIssues } from "./planner.ts";
+import { estimateLegForConstraints, findDestinationIntegrityIssues, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
+import { legPlanningConfidenceFromMetadata } from "./planning-confidence.ts";
+import { routeConstraintsFromStructuredTripBrief } from "./structured-trip-brief.ts";
+import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfer-impact.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -18,6 +22,112 @@ const recommendation = (
  */
 export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const results: TripRecommendation[] = [];
+  const orderedStops = [...trip.stops].sort((left, right) => left.order - right.order);
+  const plannerStops = orderedStops.map((stop): PlannerStop => ({
+    id: stop.id,
+    name: stop.name,
+    country: stop.country,
+    countryCode: stop.countryCode,
+    region: stop.region,
+    providerId: stop.providerId,
+    coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined,
+  }));
+  const plannerStopById = new Map(plannerStops.map((stop) => [stop.id, stop]));
+  let validationConstraints: RoutePlanningConstraints = {};
+  const persistedLegEstimator: PlanLegEstimator = (from, to) => {
+    const fromStopId = "id" in from ? from.id : undefined;
+    const persisted = fromStopId ? trip.legs.find((leg) => leg.fromStopId === fromStopId && leg.toStopId === to.id) : undefined;
+    if (!persisted || persisted.mode === "walk") return estimateLegForConstraints(from, to, validationConstraints);
+    const supportedMode: EstimatedLeg["mode"] = persisted.mode;
+    const savedConfidence = persisted.routeMetadata.routingConfidence;
+    const confidence: EstimatedLeg["confidence"] = savedConfidence === "high" || savedConfidence === "medium" || savedConfidence === "unconfirmed"
+      ? savedConfidence
+      : persisted.mode === "unknown" || persisted.durationMinutes === null
+        ? "unconfirmed"
+        : "medium";
+    return {
+      mode: supportedMode,
+      distanceKm: persisted.distanceKm,
+      durationMinutes: persisted.durationMinutes,
+      label: `${from.name} → ${to.name}`,
+      note: persisted.provider ?? "Saved planning estimate.",
+      confidence,
+      transferImpact: transferImpactFromMetadata(persisted.routeMetadata.transferImpact),
+      planningConfidence: legPlanningConfidenceFromMetadata(persisted.routeMetadata.planningConfidence),
+    };
+  };
+  const intent = trip.brief.intent;
+  const structuredConstraints: RoutePlanningConstraints = trip.brief.structuredBrief
+    ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief)
+    : {};
+  const requiredStopIds = structuredConstraints.requiredStopIds?.length
+    ? structuredConstraints.requiredStopIds
+    : intent?.hardConstraints.mustSeeStopIds ?? [];
+  const optionalStopIds = intent?.hardConstraints.optionalStopIds ?? [];
+  const planningFixedCommitments = structuredConstraints.fixedCommitments?.length
+    ? structuredConstraints.fixedCommitments
+    : intent?.hardConstraints.fixedCommitments ?? [];
+  const avoidDriving = structuredConstraints.avoidDriving ?? intent?.hardConstraints.avoidDriving ?? false;
+  validationConstraints = {
+    ...structuredConstraints,
+    requiredStopIds,
+    optionalStopIds,
+    avoidDriving,
+    excludedTransportModes: avoidDriving ? ["road"] : structuredConstraints.excludedTransportModes,
+    fixedCommitments: planningFixedCommitments,
+  };
+  const dateNights = Math.max(0, Math.round((+new Date(`${trip.endDate}T00:00:00Z`) - +new Date(`${trip.startDate}T00:00:00Z`)) / 86_400_000));
+  const finalValidation = validateFinalPlan({
+    plan: {
+      version: 1,
+      origin: { name: trip.brief.origin, coordinates: trip.brief.originCoordinates },
+      stops: orderedStops.map((stop) => ({
+        ...(plannerStopById.get(stop.id) as PlannerStop),
+        nights: Math.max(0, stop.nights ?? 0),
+        arrivalDate: stop.arrivalDate,
+        departureDate: stop.departureDate,
+        required: requiredStopIds.includes(stop.id),
+        optional: optionalStopIds.includes(stop.id),
+      })),
+      totalNights: dateNights,
+      pace: intent?.preferences.pace ?? (trip.brief.pace === "slow" ? "relaxed" : "packed"),
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      constraints: validationConstraints,
+      scheduleLocks: trip.brief.scheduleLocks,
+    },
+    estimateLeg: persistedLegEstimator,
+  });
+  const surfacedCriticCodes = new Set<PlanValidationIssueCode>([
+    "hard-constraint-violation",
+    "required-stop-missing",
+    "fixed-start-broken",
+    "fixed-end-broken",
+    "total-nights-mismatch",
+    "duplicate-stop",
+    "transport-restriction-conflict",
+  ]);
+  const surfacedCriticIssues = finalValidation.issues.filter((item) => surfacedCriticCodes.has(item.code));
+  const nightAllocation = trip.brief.nightAllocation;
+  if (nightAllocation && nightAllocation.state !== "allocated") {
+    const firstConflict = nightAllocation.conflicts[0];
+    const affectedStopIds = new Set(nightAllocation.conflicts.flatMap((conflict) => conflict.stopIds));
+    results.push(recommendation(trip, {
+      rule: "night-allocation-compromise",
+      severity: nightAllocation.state === "conflict" ? "critical" : "warning",
+      message: nightAllocation.state === "conflict"
+        ? "The fixed stays cannot be reconciled with the trip's available nights."
+        : "The trip fits exactly, but at least one destination minimum is compromised.",
+      evidence: firstConflict?.message ?? "Review the structured night-allocation conflicts before booking accommodation.",
+      affectedDays: trip.planItems.filter((item) => affectedStopIds.has(item.stopId)).map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+  const realisticMinutes = (leg: EasyTTrip["legs"][number]) => transferDoorToDoorMinutes(
+    transferImpactFromMetadata(leg.routeMetadata.transferImpact),
+    leg.durationMinutes,
+  );
   const destinationIntegrityIssues = findDestinationIntegrityIssues(trip.stops.map((stop) => ({
     id: stop.id,
     country: stop.country,
@@ -53,7 +163,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
   const longLeg = trip.legs
-    .map((leg) => ({ leg, minutes: leg.durationMinutes ?? 0 }))
+    .map((leg) => ({ leg, minutes: realisticMinutes(leg) ?? 0 }))
     .filter(({ leg, minutes }) => leg.mode === "road" && minutes >= 300)
     .sort((a, b) => b.minutes - a.minutes)[0];
 
@@ -70,6 +180,23 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       affectedDays,
       confidence: "high",
       proposedChange: { action: "add-stopover-or-compare-rail", legId: longLeg.leg.id },
+    }, results.length));
+  }
+
+  const dayDominatingLeg = trip.legs
+    .map((leg) => ({ leg, minutes: realisticMinutes(leg) }))
+    .filter((item): item is { leg: EasyTTrip["legs"][number]; minutes: number } => item.minutes !== null && item.minutes >= 300)
+    .sort((left, right) => right.minutes - left.minutes)[0];
+  if (dayDominatingLeg) {
+    const destination = trip.stops.find((stop) => stop.id === dayDominatingLeg.leg.toStopId)?.name ?? "the next stop";
+    results.push(recommendation(trip, {
+      rule: "travel-day-impact",
+      severity: dayDominatingLeg.minutes >= 600 ? "critical" : "warning",
+      message: `The transfer into ${destination} consumes ${dayDominatingLeg.minutes >= 600 ? "a full travel day or more" : "most of the travel day"}.`,
+      evidence: `${Math.floor(dayDominatingLeg.minutes / 60)}h ${dayDominatingLeg.minutes % 60}m realistic door-to-door planning impact; verify the actual service and access time before booking.`,
+      affectedDays: trip.planItems.filter((item) => item.stopId === dayDominatingLeg.leg.toStopId).map((item) => item.dayNumber),
+      confidence: "medium",
+      proposedChange: null,
     }, results.length));
   }
 
@@ -168,7 +295,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
 
   trip.stops.forEach((stop) => {
     const inbound = trip.legs.find((leg) => leg.toStopId === stop.id);
-    const minutes = inbound?.durationMinutes ?? 0;
+    const minutes = inbound ? realisticMinutes(inbound) ?? 0 : 0;
     if ((stop.nights ?? 0) <= 1 && minutes >= 240) {
       results.push(recommendation(trip, {
         rule: "short-stop-heavy-transfer",
@@ -193,8 +320,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }
   });
 
-  const fixedCommitments = trip.brief.intent?.hardConstraints.fixedCommitments ?? [];
-  const outOfRangeCommitments = fixedCommitments.filter((item) => item.date && (item.date < trip.startDate || item.date > trip.endDate));
+  const outOfRangeCommitments = planningFixedCommitments.filter((item) => item.date && (item.date < trip.startDate || item.date > trip.endDate));
   if (outOfRangeCommitments.length) {
     results.push(recommendation(trip, {
       rule: "fixed-date-conflict",
@@ -220,7 +346,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const route = trip.brief.routeAssessment?.route;
-  if (route?.state === "recommendation") {
+  if (route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
     results.push(recommendation(trip, {
       rule: "route-backtracking",
       severity: "warning",
@@ -259,6 +385,17 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
+  surfacedCriticIssues.forEach((item) => {
+    results.push(recommendation(trip, {
+      rule: `post-generation-${item.code}`,
+      severity: item.severity === "error" ? "critical" : "warning",
+      message: item.message,
+      evidence: `Independent final-plan validation (${finalValidation.configVersion}); ${item.repairability === "automatic" ? "a bounded targeted repair is supported" : "manual resolution is required"}.`,
+      affectedDays: trip.planItems.filter((planItem) => item.stopIds.includes(planItem.stopId)).map((planItem) => planItem.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  });
   return results;
 }
 

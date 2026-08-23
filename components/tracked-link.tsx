@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, MouseEvent, ReactNode } from "react";
-import type { AnalyticsEventName, AnalyticsEventProperties } from "@/lib/analytics";
-import { trackEvent } from "@/lib/analytics";
+import type { AnalyticsEventProperties, LegacyAnalyticsEventName } from "@/lib/analytics";
+import { sanitizeAnalyticsDestination, trackEvent } from "@/lib/analytics";
 
 type TrackedProps = {
-  eventName: AnalyticsEventName;
+  eventName: LegacyAnalyticsEventName;
   eventData?: AnalyticsEventProperties;
   children: ReactNode;
 };
@@ -17,7 +17,7 @@ function isModifiedEvent(event: MouseEvent) {
 
 function trackClick(
   event: MouseEvent,
-  eventName: AnalyticsEventName,
+  eventName: LegacyAnalyticsEventName,
   eventData: AnalyticsEventProperties | undefined,
   href: string,
 ) {
@@ -26,7 +26,7 @@ function trackClick(
   }
 
   trackEvent(eventName, {
-    destination_url: href,
+    destination_url: sanitizeAnalyticsDestination(href),
     ...eventData,
   });
 }
@@ -52,4 +52,3 @@ export function TrackedAnchor({ href, eventName, eventData, children, ...props }
     </a>
   );
 }
-

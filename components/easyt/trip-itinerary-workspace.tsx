@@ -14,6 +14,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "@/lib/easyt/trip";
 import type { JourneyImage } from "@/lib/journey";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
+import { itineraryNotesForDisplay } from "@/lib/easyt/itinerary-presentation";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
 import styles from "./trip-itinerary-workspace.module.css";
@@ -25,6 +26,7 @@ type ItineraryWorkspaceProps = {
   selectedPlaceCount?: number;
   onEditBrief?: () => void;
   onOpenMap?: () => void;
+  selectedDayNumber?: number | null;
 };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -41,7 +43,7 @@ function durationLabel(minutes: number | null) {
   if (minutes === null) return null;
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
-  return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim();
+  return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder} min` : ""}`.trim();
 }
 
 function stopForDay(trip: EasyTTrip, day: PlanItem) {
@@ -112,12 +114,13 @@ export default function TripItineraryWorkspace({
   selectedPlaceCount,
   onEditBrief,
   onOpenMap,
+  selectedDayNumber,
 }: ItineraryWorkspaceProps) {
   const days = useMemo(
     () => [...trip.planItems].sort((left, right) => left.dayNumber - right.dayNumber),
     [trip.planItems],
   );
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
   const tabIdPrefix = useId().replaceAll(":", "");
   const copy = itineraryCopy(language);
@@ -125,6 +128,12 @@ export default function TripItineraryWorkspace({
   useEffect(() => {
     setSelectedIndex((current) => Math.min(current, Math.max(0, days.length - 1)));
   }, [days.length]);
+
+  useEffect(() => {
+    if (!selectedDayNumber) return;
+    const requestedIndex = days.findIndex((day) => day.dayNumber === selectedDayNumber);
+    if (requestedIndex >= 0) setSelectedIndex(requestedIndex);
+  }, [days, selectedDayNumber]);
 
   useEffect(() => {
     if (!days.length) return;
@@ -174,6 +183,7 @@ export default function TripItineraryWorkspace({
   const stop = stopForDay(trip, active);
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
   const incomingLeg = incomingLegForDay({ ...trip, planItems: days }, active, index);
+  const displayNotes = itineraryNotesForDisplay(active, incomingLeg, trip);
 
   if (presentation === "legacy") {
     return (
@@ -266,14 +276,14 @@ export default function TripItineraryWorkspace({
 
         <div className={styles.details}>
           {incomingLeg ? <TransferRow leg={incomingLeg} copy={copy} trip={trip} /> : null}
-          {active.notes.map((note, noteIndex) => (
+          {displayNotes.map((note, noteIndex) => (
             <div className={styles.detailRow} key={`${active.id}-note-${noteIndex}`}>
               <span className={styles.detailIcon}>{noteIndex === 0 ? <Route aria-hidden="true" /> : noteIndex === 1 ? <Clock3 aria-hidden="true" /> : active.type === "stay" ? <BedDouble aria-hidden="true" /> : <Sparkles aria-hidden="true" />}</span>
               <b>{pad(noteIndex + 1 + (incomingLeg ? 1 : 0))}</b>
               <p>{note}</p>
             </div>
           ))}
-          {!active.notes.length && !incomingLeg ? <p className={styles.noDetails}>No additional details have been added for this day.</p> : null}
+          {!displayNotes.length && !incomingLeg ? <p className={styles.noDetails}>No additional details have been added for this day.</p> : null}
         </div>
 
         <DayNavigation index={index} count={days.length} setSelectedIndex={setSelectedIndex} copy={copy} />
@@ -338,12 +348,13 @@ function DayImage({ image, day, stop, sourceLabel, className, fallbackClassName 
 function TransferRow({ leg, copy, trip }: { leg: TripLeg; copy: ReturnType<typeof itineraryCopy>; trip: EasyTTrip }) {
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
   const to = trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
+  const duration = durationLabel(leg.durationMinutes);
   return (
     <div className={styles.detailRow}>
       <span className={styles.detailIcon}><Route aria-hidden="true" /></span>
       <b>01</b>
-      <p><strong>{copy.transfer}</strong>{from && to ? `${from} → ${to}` : leg.mode}</p>
-      {durationLabel(leg.durationMinutes) ? <span className={styles.duration}><small>{copy.estimate}</small>{durationLabel(leg.durationMinutes)}</span> : null}
+      <p><strong>{copy.transfer}</strong>{from && to ? `${from} → ${to}` : leg.mode}{duration ? <small className={styles.estimateLabel}>{copy.estimate}</small> : null}</p>
+      {duration ? <span className={styles.duration}>~{duration}</span> : null}
     </div>
   );
 }

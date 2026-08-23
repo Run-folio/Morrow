@@ -2,16 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { updateAnalyticsConsent } from "@/lib/analytics";
 import styles from "./privacy-consent.module.css";
 
 const CONSENT_KEY = "easyt-analytics-consent";
 
 function hasOptionalAnalytics() {
-  return Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID);
+  const productionProviders = process.env.NODE_ENV === "production"
+    && Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID);
+  const postHog = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST);
+  return productionProviders || postHog;
 }
 
 export function setAnalyticsConsent(value: "granted" | "declined") {
   window.localStorage.setItem(CONSENT_KEY, value);
+  updateAnalyticsConsent(value);
   window.dispatchEvent(new Event("easyt-analytics-consent-change"));
 }
 
@@ -20,7 +25,7 @@ export default function PrivacyConsent() {
   const [needsChoice, setNeedsChoice] = useState(false);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production" || !hasOptionalAnalytics()) return;
+    if (!hasOptionalAnalytics()) return;
     setNeedsChoice(!window.localStorage.getItem(CONSENT_KEY));
     setReady(true);
   }, []);

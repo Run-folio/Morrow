@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { loadActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { classifyAnalyticsSaveError, trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import accountStyles from "../account.module.css";
 import styles from "./dashboard.module.css";
@@ -78,6 +79,10 @@ function statusLabel(status: TripStatus, language: EasyTLanguage) {
   return status === "draft" ? "Active" : status === "planned" ? "Planned" : "Archived";
 }
 
+function trackTripReopened(trip: EasyTTrip) {
+  trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length });
+}
+
 export default function DashboardClient({ trips, stamps }: { trips: EasyTTrip[]; stamps: StampSummary[] }) {
   const router = useRouter();
   const [view, setView] = useState<TripStatus>(() => trips.some((trip) => trip.status === "draft") ? "draft" : trips.some((trip) => trip.status === "planned") ? "planned" : "archived");
@@ -107,8 +112,12 @@ export default function DashboardClient({ trips, stamps }: { trips: EasyTTrip[];
     const migrationKey = `easyt-trip-migrated-${localTrip.id}`;
     if (window.localStorage.getItem(migrationKey)) return;
     void saveTripToEasyT(localTrip)
-      .then(() => { window.localStorage.setItem(migrationKey, "1"); router.refresh(); })
-      .catch(() => undefined);
+      .then((saved) => {
+        window.localStorage.setItem(migrationKey, "1");
+        trackEvent("trip_saved", { trip_source: "dashboard", trip_id: saved.id, save_state: "cloud", stop_count: saved.stops.length, is_authenticated: true });
+        router.refresh();
+      })
+      .catch((error) => trackEvent("trip_save_failed", { trip_source: "dashboard", trip_id: localTrip.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true }));
   }, [router]);
 
   const counts = useMemo(() => ({
@@ -193,10 +202,10 @@ export default function DashboardClient({ trips, stamps }: { trips: EasyTTrip[];
               <p className={styles.route}>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
               <p className={styles.continueHint}>{isSpanish ? "Vuelve al plan y continúa desde donde lo dejaste." : "Pick up the plan where you left it and keep shaping the details."}</p>
               <div className={styles.continueActions}>
-                <Link className={styles.primaryAction} href={`/journey/plan?trip=${encodeURIComponent(featuredTrip.id)}`}>
+                <Link className={styles.primaryAction} href={`/journey/plan?trip=${encodeURIComponent(featuredTrip.id)}`} onClick={() => trackTripReopened(featuredTrip)}>
                   {isSpanish ? "Continuar planeando" : "Continue planning"}<ArrowRight aria-hidden="true" />
                 </Link>
-                <Link className={styles.secondaryAction} href={`/journey/trip?trip=${encodeURIComponent(featuredTrip.id)}`}>
+                <Link className={styles.secondaryAction} href={`/journey/trip?trip=${encodeURIComponent(featuredTrip.id)}`} onClick={() => trackTripReopened(featuredTrip)}>
                   {isSpanish ? "Ver detalles" : "View trip details"}
                 </Link>
               </div>
@@ -350,12 +359,12 @@ function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }:
     <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
     {trip.status === "draft" ? <div className={styles.cardProgress}><span style={{ width: `${stage * 25}%` }} /><p>{language === "es" ? `Paso ${stage} de 4` : `Step ${stage} of 4`} · {stage === 1 ? (language === "es" ? "Empieza el viaje" : "Start the trip") : stage === 2 ? (language === "es" ? "Da forma a los días" : "Shape the days") : (language === "es" ? "Abre el mapa" : "Open the map")}</p></div> : tripImage(trip) ? <img src={tripImage(trip) ?? ""} alt="" className={styles.tripImage} /> : <div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>}
     <div className={styles.tripCardActions}>
-      <Link className={styles.openAction} href={`/journey/plan?trip=${encodeURIComponent(trip.id)}`}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></Link>
-      <Link className={styles.editAction} href={`/journey/new?trip=${encodeURIComponent(trip.id)}`}><Edit3 aria-hidden="true" />{copy.edit}</Link>
+      <Link className={styles.openAction} href={`/journey/plan?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></Link>
+      <Link className={styles.editAction} href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}><Edit3 aria-hidden="true" />{copy.edit}</Link>
       <details className={styles.tripMenu}>
         <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${trip.title}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
-          <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
+          <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
           {trip.status === "archived" ? <button type="button" onClick={() => onAction(trip.id, "restore")}><RotateCcw aria-hidden="true" />{copy.restore}</button> : <button type="button" onClick={() => onAction(trip.id, "archive")}><Archive aria-hidden="true" />{copy.archive}</button>}
           <button type="button" onClick={() => onAction(trip.id, "duplicate")}><Copy aria-hidden="true" />{copy.duplicate}</button>
           <button type="button" onClick={() => onGift(trip)}><Gift aria-hidden="true" />{copy.gift}</button>
