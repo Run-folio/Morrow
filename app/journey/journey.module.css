@@ -855,14 +855,14 @@
 .canonicalPlanner.shellPlanner{
   isolation:isolate;
   width:100%;
-  height:clamp(640px,72svh,820px);
-  min-height:640px;
+  height:clamp(720px,76svh,860px);
+  min-height:720px;
   border:1px solid var(--hairline);
   border-radius:var(--morrovia-radius,14px);
   box-shadow:0 14px 34px rgba(23,16,111,.08);
 }
 .shellPlanner :global(.journey-map),
-.shellPlanner :global(.planner-map){position:absolute!important;inset:72px 0 0!important;width:100%!important;height:auto!important}
+.shellPlanner :global(.planner-map){position:absolute!important;inset:64px 0 0!important;width:100%!important;height:auto!important}
 .shellPlanner .canonicalPlannerDestination{display:none!important}
 .shellPlanner .finderDock,
 .shellPlanner .canonicalPlannerStatus,
@@ -871,14 +871,14 @@
 .shellPlanner .mapCoach,
 .shellPlanner .undoToast,
 .shellPlanner .savePlanError{position:absolute!important}
-.shellPlanner .finderDock{top:86px!important;right:auto!important;bottom:16px!important;left:16px!important;width:clamp(360px,24vw,390px)!important;height:auto!important;max-height:none!important;transform:none!important}
-.shellPlanner .canonicalPlannerStatus{top:86px!important;right:16px!important;bottom:auto!important;left:auto!important;width:clamp(260px,16vw,280px)!important;max-width:280px!important;max-height:calc(100% - 102px)!important}
-.shellPlanner .pinDock{top:244px!important;right:316px!important;bottom:auto!important;left:auto!important;transform:none!important}
-.shellPlanner .mapAssistant{right:16px!important;bottom:16px!important;left:auto!important}
-.shellPlanner .mapFocusControl{position:absolute!important;top:154px!important;left:calc(50% + 72px)!important}
-.shellPlanner .mapCoach{top:90px!important;left:28px!important;max-height:calc(100% - 112px)!important}
-.shellPlanner .undoToast{top:84px!important;bottom:auto!important}
-.shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:312px!important}
+.shellPlanner .finderDock{top:78px!important;right:auto!important;bottom:14px!important;left:14px!important;width:clamp(360px,23vw,390px)!important;height:auto!important;max-height:none!important;transform:none!important}
+.shellPlanner .canonicalPlannerStatus{top:78px!important;right:14px!important;bottom:auto!important;left:auto!important;width:clamp(260px,16vw,280px)!important;max-width:280px!important;max-height:calc(100% - 92px)!important}
+.shellPlanner .pinDock{top:236px!important;right:310px!important;bottom:auto!important;left:auto!important;transform:none!important}
+.shellPlanner .mapAssistant{right:14px!important;bottom:14px!important;left:auto!important}
+.shellPlanner .mapFocusControl{position:absolute!important;top:146px!important;left:calc(50% + 56px)!important}
+.shellPlanner .mapCoach{top:82px!important;left:26px!important;max-height:calc(100% - 104px)!important}
+.shellPlanner .undoToast{top:76px!important;bottom:auto!important}
+.shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:310px!important}
 
 @media(max-width:980px){
   .canonicalPlanner.shellPlanner{height:720px;min-height:720px;border-radius:var(--morrovia-radius,14px)}

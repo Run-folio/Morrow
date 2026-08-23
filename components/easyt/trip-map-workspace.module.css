@@ -1,5 +1,5 @@
 .wideMap {
-  width: min(2200px, calc(100vw - 48px));
+  width: min(1760px, calc(100vw - 48px));
   margin-left: 50%;
   transform: translateX(-50%);
 }

@@ -40,6 +40,22 @@ const baseTrip: EasyTTrip = {
     hotelChanges: "few",
     budgetBand: "mid",
     selectedPlaces: {},
+    routeAssessment: {
+      comfortableDays: 7,
+      shortfallDays: 0,
+      durations: {},
+      route: {
+        state: "current-order",
+        currentStopIds: ["cusco", "sacred-valley", "arequipa"],
+        recommendedStopIds: ["cusco", "sacred-valley", "arequipa"],
+        currentTransferMinutes: 465,
+        recommendedTransferMinutes: 465,
+        improvementMinutes: 0,
+        reasons: ["The entered order ranks first under the current route criteria.", "It keeps the route moving in one direction instead of doubling back."],
+        tradeoffs: ["The Arequipa connection still needs a live flight check before booking."],
+        summary: "This route already flows well.",
+      },
+    },
     bookings: [{ id: "stay-cusco", type: "stay", title: "Cusco stay", date: "2026-08-21", confirmation: null, url: null }],
     checklist: [
       { id: "passport", label: "Check passport validity", complete: true },
@@ -86,6 +102,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ActivePlanning: Story = {};
+
+export const FirstTripArrival: Story = {
+  args: { firstArrival: true },
+};
 
 export const HealthIssue: Story = {
   args: {

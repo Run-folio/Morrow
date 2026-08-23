@@ -11,9 +11,10 @@ type RouteHeroImageProps = {
   fallbackQueries: string[];
   eyebrow: string;
   duration: string;
+  alt: string;
 };
 
-export default function RouteHeroImage({ image, routeKey, query, fallbackQueries, eyebrow, duration }: RouteHeroImageProps) {
+export default function RouteHeroImage({ image, routeKey, query, fallbackQueries, eyebrow, duration, alt }: RouteHeroImageProps) {
   const [liveImage, setLiveImage] = useState<CachedRoutePhoto | null>(null);
   const [status, setStatus] = useState<"loading" | "unavailable">(image ? "unavailable" : "loading");
 
@@ -37,7 +38,7 @@ export default function RouteHeroImage({ image, routeKey, query, fallbackQueries
   }, [fallbackQueries, image, query, routeKey]);
 
   const source = liveImage?.src ?? image;
-  return <div className={`${styles.heroImage} ${!source ? styles.heroImagePending : ""}`} style={source ? { backgroundImage: `url(${source})` } : undefined}>
+  return <div className={`${styles.heroImage} ${!source ? styles.heroImagePending : ""}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? liveImage?.alt ?? alt : undefined}>
     <div>
       <p>{eyebrow}</p>
       <span>{duration}</span>

@@ -19,6 +19,30 @@ export function tripWorkspaceHref(tripId: string) {
   return `/journey/${encodeURIComponent(tripId)}`;
 }
 
+/** Mark only the just-generated arrival; normal workspace links stay quiet. */
+export function firstTripWorkspaceHref(tripId: string) {
+  return `${tripWorkspaceHref(tripId)}?created=1`;
+}
+
+/** A guest explicitly opts into account promotion after seeing the local trip. */
+export function tripSaveSignInHref(tripId: string) {
+  const returnHref = `${firstTripWorkspaceHref(tripId)}&saved=1`;
+  return `/journey/login?next=${encodeURIComponent(returnHref)}`;
+}
+
+export function isFirstTripWorkspaceArrival(search: string) {
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  return new URLSearchParams(query).get("created") === "1";
+}
+
+export function shouldShowFirstTripOrientation(firstArrival: boolean, alreadySeen: boolean) {
+  return firstArrival && !alreadySeen;
+}
+
+export function isCanonicalTripWorkspaceHref(href: string) {
+  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|prep))?(?:[?#].*)?$/.test(href);
+}
+
 export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan") {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);

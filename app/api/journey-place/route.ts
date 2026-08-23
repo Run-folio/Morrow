@@ -11,10 +11,27 @@ type UnsplashPhoto = {
   user?: { name?: string; links?: { html?: string } };
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
 async function summaryFor(title: string) {
   const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
   if (!response.ok) return null;
-  return response.json() as Promise<Summary>;
+  const value: unknown = await response.json();
+  if (!isRecord(value)) return null;
+  const thumbnail = isRecord(value.thumbnail) && typeof value.thumbnail.source === "string"
+    ? { source: value.thumbnail.source }
+    : undefined;
+  const desktop = isRecord(value.content_urls) && isRecord(value.content_urls.desktop) && typeof value.content_urls.desktop.page === "string"
+    ? { page: value.content_urls.desktop.page }
+    : undefined;
+  const summary: Summary = {
+    ...(typeof value.extract === "string" ? { extract: value.extract } : {}),
+    ...(thumbnail ? { thumbnail } : {}),
+    ...(desktop ? { content_urls: { desktop } } : {}),
+  };
+  return summary.extract || summary.thumbnail?.source || summary.content_urls?.desktop?.page ? summary : null;
 }
 
 async function imageFor(title: string, area?: string, country?: string) {
@@ -75,7 +92,7 @@ async function unsplashImageFor(title: string, area?: string, country?: string) 
 }
 
 function isInCountry(summary: Summary | null, country?: string) {
-  return Boolean(summary && (!country || summary.extract?.toLocaleLowerCase().includes(country.toLocaleLowerCase())));
+  return Boolean(summary && (!country || (typeof summary.extract === "string" && summary.extract.toLocaleLowerCase().includes(country.toLocaleLowerCase()))));
 }
 
 export async function GET(request: NextRequest) {
@@ -84,18 +101,29 @@ export async function GET(request: NextRequest) {
   const country = request.nextUrl.searchParams.get("country")?.trim();
   if (!title || title.length > 140) return NextResponse.json({ place: null }, { status: 400 });
   try {
-    const unsplash = await unsplashImageFor(title, area, country);
-    let summary = await summaryFor(title);
+    // Photography and place context are independent enhancements. One provider
+    // timing out must not discard usable data returned by the other.
+    const [unsplash, initialSummary] = await Promise.all([
+      unsplashImageFor(title, area, country).catch(() => null),
+      summaryFor(title).catch(() => null),
+    ]);
+    let summary = initialSummary;
     // Title-only Wikipedia resolution is global. If it does not clearly relate to
     // the requested country, do a contextual search rather than using a wrong city.
     if (!isInCountry(summary, country) && country) {
-      const params = new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${title} ${country}`, srnamespace: "0", srlimit: "5", origin: "*" });
-      const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
-      const data = response.ok ? await response.json() as { query?: { search?: SearchResult[] } } : {};
-      const candidate = data.query?.search?.find((item) => item.title && `${item.title} ${item.snippet ?? ""}`.toLocaleLowerCase().includes(country.toLocaleLowerCase()));
-      summary = candidate?.title ? await summaryFor(candidate.title) : null;
+      try {
+        const params = new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${title} ${country}`, srnamespace: "0", srlimit: "5", origin: "*" });
+        const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
+        const data = response.ok ? await response.json() as { query?: { search?: SearchResult[] } } : {};
+        const candidate = data.query?.search?.find((item) => item.title && `${item.title} ${item.snippet ?? ""}`.toLocaleLowerCase().includes(country.toLocaleLowerCase()));
+        summary = candidate?.title ? await summaryFor(candidate.title).catch(() => null) : null;
+      } catch {
+        summary = null;
+      }
     }
-    const image = unsplash?.image ?? summary?.thumbnail?.source ?? await imageFor(title, area, country);
+    const image = unsplash?.image
+      ?? summary?.thumbnail?.source
+      ?? await imageFor(title, area, country).catch(() => undefined);
     if (!summary && !image) return NextResponse.json({ place: null });
     return NextResponse.json({ place: {
       image,

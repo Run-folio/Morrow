@@ -14,12 +14,13 @@ import {
   Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadRequestedTrip, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadRequestedTrip, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
+import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { allocateTripNights, calendarDayAllocationsFromNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
-import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
+import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
 import type { JourneyImage } from "@/lib/journey";
 import { mediaImagesFor, PLACE_IMAGE_HINTS } from "@/lib/easyt/itinerary-media";
@@ -27,10 +28,14 @@ import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { inspirationByKey } from "@/lib/easyt/inspiration";
+import { publicRouteDetailFor } from "@/lib/easyt/public-route";
+import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
-import { parseTripBrief } from "@/lib/easyt/trip-brief";
-import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
-import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { firstTripWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
+import { createDestinationKnowledgeStore } from "@/lib/easyt/destination-knowledge";
+import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, selectPlaceCandidate, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
 
@@ -38,9 +43,11 @@ import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace"
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
-type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; startDate: string; endDate: string; locks: TripScheduleLocks; summary: string };
-type CapturedLocation = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent?: "place" | "landmark"; locality?: string };
+type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; removedPlaceMentionIds: string[]; summary: string };
+type CapturedLocation = ResolvedPlaceMention;
 type LocationChoice = { name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates: [number, number]; kind?: string; locality?: string };
+type PlaceSelectionDraft = Omit<PlaceSelection, "mentionId" | "routeStopId">;
+const routeHandoffNightKnowledge = createDestinationKnowledgeStore({ destinations: [], transfers: [] });
 
 // TODO: replace with the live discovery API response.
 const CATALOG: Record<string, Place[]> = {
@@ -147,6 +154,23 @@ const suggestionsFor = (stop?: Stop) => {
     ?? NEARBY_SUGGESTIONS[stop.country.trim().toLowerCase()]
     ?? [];
   return nearby.filter((name) => name.toLowerCase() !== stop.name.toLowerCase());
+};
+
+const isOriginMention = (mention: CapturedLocation) => mention.role === "origin" || mention.role === "fixed_start";
+const placeTypeLabel = (type: CapturedLocation["placeType"]) => ({
+  country: "Country", "macro_region": "Macro-region", region: "Region", "sub_region": "Sub-region", island: "Island",
+  archipelago: "Archipelago", city: "City", town: "Town", "natural_area": "Natural area", coast: "Coast",
+  "mountain_range": "Mountain range", valley: "Valley", "travel_corridor": "Travel corridor", landmark: "Landmark",
+  "transport_gateway": "Transport gateway", unknown: "Place to confirm",
+}[type]);
+const placeStateLabel = (mention: CapturedLocation, hasSelection: boolean) => {
+  if (mention.role === "excluded") return "Excluded";
+  if (hasSelection) return "Base selected";
+  if (mention.status === "ambiguous") return "Needs confirmation";
+  if (mention.status === "unresolved") return "Unresolved";
+  if (mention.routability === "needs_base_selection" || mention.routability === "planning_area") return "Needs a base";
+  if (mention.routability === "anchor_or_poi") return "Kept as an anchor";
+  return "Route destination";
 };
 
 const placeImageFor = (place: Place, stop: Stop): JourneyImage | null => {
@@ -257,6 +281,7 @@ export default function TripBuilder() {
   const [saveState, setSaveState] = useState<"saving" | "local" | "cloud" | "error">("saving");
   const [cloudSaveError, setCloudSaveError] = useState("");
   const [cloudConflictTrip, setCloudConflictTrip] = useState<ReturnType<typeof loadActiveTrip>>(null);
+  const [cloudAuthInterrupted, setCloudAuthInterrupted] = useState(false);
   // Existing draft links may still name an old third stage; they now resolve
   // to Time instead of stranding a traveller in removed setup UI.
   const [step, setStep] = useState(0);
@@ -277,6 +302,7 @@ export default function TripBuilder() {
   const [originError, setOriginError] = useState("");
   const [stops, setStops] = useState<Stop[]>([]);
   const [routeHints, setRouteHints] = useState<string[]>([]);
+  const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
   const [stopInput, setStopInput] = useState("");
   const [stopError, setStopError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
@@ -284,6 +310,9 @@ export default function TripBuilder() {
   const [locationChoices, setLocationChoices] = useState<Array<{ mention: CapturedLocation; choices: LocationChoice[] }>>([]);
   const [resolvingLocations, setResolvingLocations] = useState(false);
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
+  const [placeSelections, setPlaceSelections] = useState<PlaceSelection[]>([]);
+  const [removedPlaceMentionIds, setRemovedPlaceMentionIds] = useState<string[]>([]);
+  const [resolvingPlaceMentionId, setResolvingPlaceMentionId] = useState<string | null>(null);
   const [tripIntent, setTripIntent] = useState<TripIntent>(() => defaultTripIntent());
   const [capturedStructuredBrief, setCapturedStructuredBrief] = useState<StructuredTripBrief>(() => extractStructuredTripBrief(""));
   const [travellersManuallyEdited, setTravellersManuallyEdited] = useState(false);
@@ -314,8 +343,41 @@ export default function TripBuilder() {
   const [hasPromptContext, setHasPromptContext] = useState(false);
   const [arrivedFromHomepage, setArrivedFromHomepage] = useState(false);
   const [buildRequested, setBuildRequested] = useState(false);
+  const [openingTrip, setOpeningTrip] = useState(false);
 
   const pickerRef = useDismiss(Boolean(picker), () => setPicker(null));
+  const locationDialogRef = useRef<HTMLElement>(null);
+  const locationDialogOpen = locationChoices.length > 0;
+
+  useEffect(() => {
+    if (!locationDialogOpen) return;
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = locationDialogRef.current;
+    const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
+    (focusable()[0] ?? dialog)?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setLocationChoices([]);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) { event.preventDefault(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      returnFocus?.focus();
+    };
+  }, [locationDialogOpen]);
 
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -331,6 +393,7 @@ export default function TripBuilder() {
       setOrigin(saved.brief.origin);
       setTripBrief(saved.brief.mustDo);
       setOriginCoordinates(saved.brief.originCoordinates);
+      setSourceRouteKey(saved.brief.sourceRouteKey);
       setStops(saved.stops.map(({ id, name, country, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
       setStartDate(saved.startDate);
       setEndDate(saved.endDate);
@@ -340,7 +403,22 @@ export default function TripBuilder() {
         : saved.brief.dayAllocations ?? {}));
       setBudget(saved.brief.budgetBand);
       setTripIntent(tripIntentForTrip(saved));
-      setCapturedStructuredBrief(saved.brief.structuredBrief ?? extractStructuredTripBrief(saved.brief.mustDo));
+      const savedStructuredBrief = saved.brief.structuredBrief ?? structuredTripBriefFromSavedSelections({
+        destinations: [
+          ...(saved.brief.origin ? [{ name: saved.brief.origin, role: "arrival-gateway" as const, priority: "required" as const }] : []),
+          ...saved.stops.map((stop) => ({ id: stop.id, name: stop.name, role: "preferred" as const, priority: "normal" as const })),
+        ],
+        travellers: saved.travellers,
+        dates: { start: saved.startDate, end: saved.endDate, fixed: saved.brief.intent?.timing.flexibility === "fixed" },
+        pace: saved.brief.intent?.preferences.pace,
+        transportPreferences: saved.brief.intent?.preferences.transportModes,
+        budget: saved.brief.budgetBand,
+        avoidDriving: saved.brief.intent?.hardConstraints.avoidDriving,
+      });
+      setCapturedStructuredBrief(savedStructuredBrief);
+      setIntakeMentions(savedStructuredBrief.placeMentions ?? []);
+      setPlaceSelections(savedStructuredBrief.placeSelections ?? []);
+      setRemovedPlaceMentionIds(savedStructuredBrief.removedPlaceMentionIds ?? []);
       setScheduleLocks(saved.brief.scheduleLocks ?? { stopIds: [], arrivalDates: {} });
       setDecisionSelections(saved.brief.decisionSelections ?? { transportByLeg: {} });
       setHasPromptContext(true);
@@ -370,13 +448,19 @@ export default function TripBuilder() {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
         } catch { setBudget(defaultTravelProfile.budget); }
-        let homeDraft: { origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; datesExplicit?: boolean; travellers?: number; travellersExplicit?: boolean; interests?: string[]; brief?: string; structuredBrief?: StructuredTripBrief } | null = null;
+        let homeDraft: { sourceRouteKey?: string; origin?: string; originCoordinates?: [number, number]; destination?: Stop; destinations?: Stop[]; locationMentions?: CapturedLocation[]; routeHints?: string[]; regions?: string[]; startDate?: string; endDate?: string; datesExplicit?: boolean; travellers?: number; travellersExplicit?: boolean; interests?: string[]; brief?: string; structuredBrief?: StructuredTripBrief; nightAllocations?: Record<string, number>; decisionSelections?: TripDecisionSelections } | null = null;
         if (params.get("homeDraft") === "1") {
           try { homeDraft = JSON.parse(window.localStorage.getItem("easyt-home-trip-draft") ?? "null"); } catch { homeDraft = null; }
+        }
+        if (!homeDraft) {
+          const routeDetail = publicRouteDetailFor(params.get("inspire") ?? "");
+          if (routeDetail) homeDraft = routePlannerPayload(routeDetail.planDraft);
         }
         if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length) {
           setHasPromptContext(true);
           setArrivedFromHomepage(true);
+          setSourceRouteKey(homeDraft.sourceRouteKey);
+          if (homeDraft.decisionSelections) setDecisionSelections(homeDraft.decisionSelections);
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
           // `destination` is retained for drafts created before prompt-first
@@ -384,30 +468,50 @@ export default function TripBuilder() {
           const draftStops = homeDraft.destinations?.length ? homeDraft.destinations : homeDraft.destination ? [homeDraft.destination] : [];
           if (draftStops.length) setStops(draftStops);
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
+          if (homeDraft.nightAllocations) setDayAllocations(homeDraft.nightAllocations);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
           if (homeDraft.endDate) setEndDate(homeDraft.endDate);
           if (homeDraft.datesExplicit) setDatesManuallyEdited(true);
           if (homeDraft.travellersExplicit) setTravellersManuallyEdited(true);
           if (homeDraft.interests?.length) setInterestsManuallyEdited(true);
-          if (homeDraft.travellers || homeDraft.interests?.length) setTripIntent((current) => ({
-            ...current,
-            travellers: homeDraft?.travellers ? Math.max(1, Math.min(12, Math.round(homeDraft.travellers))) : current.travellers,
-            preferences: { ...current.preferences, interests: homeDraft?.interests ?? current.preferences.interests },
-          }));
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
-          setCapturedStructuredBrief(homeDraft.structuredBrief ?? extractStructuredTripBrief(homeDraft.brief ?? ""));
-          if (homeDraft.locationMentions?.length) {
-            const locationMentions = homeDraft.locationMentions;
+          const homeStructuredBrief = homeDraft.structuredBrief ?? extractStructuredTripBrief(homeDraft.brief ?? "");
+          const structuredTransportModes = homeStructuredBrief.transportPreferences
+            .map((preference) => preference.value)
+            .filter((mode): mode is TripTransportMode => mode === "flight" || mode === "train" || mode === "drive");
+          const structuredInterests = homeStructuredBrief.interests.map((interest) => interest.value);
+          const structuredAvoidDriving = homeStructuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving");
+          setTripIntent((current) => ({
+            ...current,
+            travellers: Math.max(1, Math.min(12, Math.round(
+              (homeDraft?.travellersExplicit ? homeDraft.travellers : homeStructuredBrief.travellers?.value ?? homeDraft?.travellers)
+                ?? current.travellers,
+            ))),
+            preferences: {
+              ...current.preferences,
+              transportModes: structuredTransportModes.length ? structuredTransportModes : current.preferences.transportModes,
+              pace: homeStructuredBrief.pace?.value ?? current.preferences.pace,
+              interests: homeDraft?.interests?.length ? homeDraft.interests : structuredInterests.length ? structuredInterests : current.preferences.interests,
+            },
+            hardConstraints: { ...current.hardConstraints, avoidDriving: structuredAvoidDriving || current.hardConstraints.avoidDriving },
+          }));
+          setCapturedStructuredBrief(homeStructuredBrief);
+          setPlaceSelections(homeStructuredBrief.placeSelections ?? []);
+          setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
+          const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
+          if (locationMentions.length) {
             setIntakeMentions(locationMentions);
-            setResolvingLocations(true);
+            const routableMentions = locationMentions.filter((mention) => mention.role !== "excluded"
+              && mention.status === "resolved"
+              && mention.routability === "direct_destination");
+            setResolvingLocations(Boolean(routableMentions.length));
             // Let the builder render immediately. These requests enrich the
             // route after arrival instead of holding the homepage transition.
             void (async () => {
-              const preferredCountry = draftStops[0]?.country ?? locationMentions.find((mention) => mention.country)?.country;
-              const selections = await Promise.all(locationMentions.map(async (mention) => {
+              const selections = await Promise.all(routableMentions.map(async (mention) => {
                 try {
-                  const country = mention.country ?? preferredCountry;
+                  const country = mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined;
                   const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(mention.canonicalName)}&candidates=1${country ? `&country=${encodeURIComponent(country)}` : ""}`);
                   const payload = await response.json() as { candidates?: LocationChoice[] };
                   return { mention, choices: payload.candidates ?? [] };
@@ -415,19 +519,18 @@ export default function TripBuilder() {
               }));
               if (!active) return;
               const uncertain = selections.filter(({ choices }) => new Set(choices.map((choice) => choice.country.toLocaleLowerCase())).size > 1);
-              const uncertainKeys = new Set(uncertain.map(({ mention }) => `${mention.role}-${mention.order}`));
-              const automatic = selections.filter(({ mention }) => !uncertainKeys.has(`${mention.role}-${mention.order}`));
+              const uncertainKeys = new Set(uncertain.map(({ mention }) => mention.mentionId));
+              const automatic = selections.filter(({ mention }) => !uncertainKeys.has(mention.mentionId));
               for (const { mention, choices } of automatic) {
-                const chosen = choices[0] ?? (mention.coordinates && mention.country ? { name: mention.canonicalName, country: mention.country, coordinates: mention.coordinates, kind: mention.kind, locality: mention.locality } : undefined);
+                const chosen = choices[0] ?? (mention.coordinates && mention.parentCountries.length === 1 ? { name: mention.canonicalName, country: mention.parentCountries[0], coordinates: mention.coordinates } : undefined);
                 if (!chosen) continue;
-                if (mention.role === "origin") { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
-                else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, countryCode: chosen.countryCode, region: chosen.region, providerId: chosen.providerId, coordinates: chosen.coordinates, intent: mention.intent, locality: chosen.locality }]);
+                if (isOriginMention(mention)) { setOrigin(chosen.name); setOriginCoordinates(chosen.coordinates); }
+                else setStops((current) => current.some((stop) => stop.name.toLocaleLowerCase() === chosen.name.toLocaleLowerCase() && stop.country === chosen.country) ? current : [...current, { id: `${chosen.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: chosen.name, country: chosen.country, countryCode: chosen.countryCode, region: chosen.region, providerId: chosen.providerId, coordinates: chosen.coordinates, intent: mention.routability === "anchor_or_poi" ? "landmark" : "place", locality: chosen.locality }]);
               }
               setLocationChoices(uncertain);
               setResolvingLocations(false);
             })();
           }
-          window.localStorage.removeItem("easyt-home-trip-draft");
         } else {
           const seed = inspirationByKey[params.get("inspire") ?? ""];
           if (seed) {
@@ -463,11 +566,20 @@ export default function TripBuilder() {
     });
   }, [stops, discoveredPlaces, discovering]);
 
+  useEffect(() => {
+    if (session?.user?.id && tripOwnerId && session.user.id !== tripOwnerId) {
+      // Keep the first account's browser copy quarantined, but never leave it
+      // visible after this tab observes a different authenticated account.
+      window.location.assign("/journey/dashboard");
+    }
+  }, [session?.user?.id, tripOwnerId]);
+
   const totalDays = useMemo(() => {
     const d = Math.round((+new Date(`${endDate}T00:00:00`) - +new Date(`${startDate}T00:00:00`)) / 86400000) + 1;
     return Number.isFinite(d) && d > 0 ? d : 1;
   }, [startDate, endDate]);
   const totalNights = useMemo(() => tripNightsBetween(startDate, endDate), [startDate, endDate]);
+  const analyticsTripSource = sourceRouteKey ? "route" as const : arrivedFromHomepage ? "homepage" as const : "builder" as const;
 
   const effectiveIntent = useMemo<TripIntent>(() => ({
     ...tripIntent,
@@ -485,11 +597,31 @@ export default function TripBuilder() {
     destinations: [
       ...(origin.trim() ? [{ name: origin.trim(), role: "arrival-gateway" as const, priority: "required" as const }] : []),
       ...stops.map((stop) => {
-        const prior = capturedStructuredBrief.destinations.find((destination) => destination.name.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
-        return { id: stop.id, name: stop.name, role: prior?.role ?? "preferred" as const, priority: prior?.priority ?? "normal" as const };
+        const selection = placeSelections.find((item) => item.routeStopId === stop.id);
+        const selectedMention = selection
+          ? capturedStructuredBrief.placeMentions?.find((mention) => mention.mentionId === selection.mentionId)
+          : undefined;
+        const prior = capturedStructuredBrief.destinations.find((destination) => destination.id === stop.id
+          || destination.name.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
+        return {
+          id: stop.id,
+          name: stop.name,
+          canonicalPlaceId: selection?.selectedCanonicalPlaceId ?? prior?.canonicalPlaceId,
+          placeMentionId: selection?.mentionId ?? prior?.placeMentionId,
+          placeType: selection?.selectedPlaceType ?? prior?.placeType ?? (selectedMention ? "town" as const : undefined),
+          resolutionStatus: selection ? "resolved" as const : prior?.resolutionStatus ?? "resolved" as const,
+          routability: selection ? "direct_destination" as const : prior?.routability ?? "direct_destination" as const,
+          sourceLabel: prior?.sourceLabel ?? selectedMention?.sourceText,
+          parentCountries: selection?.selectedParentCountries ?? prior?.parentCountries ?? (stop.country ? [stop.country] : selectedMention?.parentCountries),
+          role: prior?.role ?? "preferred" as const,
+          priority: prior?.priority ?? "normal" as const,
+        };
       }),
     ],
-    mustVisit: capturedStructuredBrief.mustVisit.map((destination) => destination.name).filter((name) => stops.some((stop) => stop.name.toLocaleLowerCase() === name.toLocaleLowerCase())),
+    mustVisit: [...new Set([
+      ...capturedStructuredBrief.mustVisit.map((destination) => destination.name),
+      ...stops.filter((stop) => !effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id)).map((stop) => stop.name),
+    ])],
     ...(travellersManuallyEdited ? { travellers: effectiveIntent.travellers } : {}),
     ...(datesManuallyEdited ? { dates: { start: startDate, end: endDate, fixed: effectiveIntent.timing.flexibility === "fixed" } } : {}),
     ...(paceManuallyEdited ? { pace: effectiveIntent.preferences.pace } : {}),
@@ -498,7 +630,9 @@ export default function TripBuilder() {
     ...(hasSavedTravelProfile || showBudgetOverride ? { budget } : {}),
     fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({ label: commitment.label, date: commitment.date })),
     avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
-  }), [capturedStructuredBrief, totalDays, origin, stops, effectiveIntent, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride]);
+    placeSelections,
+    removedPlaceMentionIds,
+  }), [capturedStructuredBrief, totalDays, origin, stops, effectiveIntent, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride, placeSelections, removedPlaceMentionIds]);
   const structuredRouteConstraints = useMemo(() => routeConstraintsFromStructuredTripBrief(effectiveStructuredBrief), [effectiveStructuredBrief]);
   const structuredScoringPreferences = useMemo(() => routeScoringPreferencesFromStructuredBrief(effectiveStructuredBrief), [effectiveStructuredBrief]);
   const intentReady = Boolean(originCoordinates && stops.length && effectiveIntent.travellers >= 1);
@@ -536,7 +670,10 @@ export default function TripBuilder() {
     [routeHints, stops],
   );
   const originMissing = originTouched && (!origin.trim() || Boolean(originError));
-  const unresolvedMentions = intakeMentions.filter((mention) => mention.status === "unresolved");
+  const activePlaceMentions = useMemo(() => (effectiveStructuredBrief.placeMentions ?? intakeMentions)
+    .filter((mention) => !(effectiveStructuredBrief.removedPlaceMentionIds ?? []).includes(mention.mentionId)), [effectiveStructuredBrief, intakeMentions]);
+  const placeIssues = effectiveStructuredBrief.placeIssues ?? [];
+  const blockingPlaceIssue = placeIssues.find((issue) => issue.blocksRoute);
   const stepLabels = language === "es"
     ? ["Lugares", "Tiempo"]
     : ["Places", "Time"];
@@ -552,15 +689,24 @@ export default function TripBuilder() {
       ["Choose the places.", "We’ve picked up what we can from your idea. Correct only what needs it."],
       ["Set the time.", "Set your dates, then adjust nights before we build your trip."],
     ];
-  const gate = step === 0 ? (!origin.trim() ? ui.addOrigin : !stops.length ? ui.addStop : "") : "";
+  const gate = step === 0
+    ? (!origin.trim() ? ui.addOrigin : blockingPlaceIssue?.message ?? (!stops.length ? ui.addStop : ""))
+    : "";
   const pickedUpPreferences = useMemo(() => {
     const labels: string[] = [];
-    if (effectiveIntent.preferences.transportModes.includes("train")) labels.push(language === "es" ? "Tren preferido" : "Train preferred");
-    if (effectiveIntent.preferences.transportModes.includes("flight")) labels.push(language === "es" ? "Volar cuando convenga" : "Fly when it helps");
-    if (effectiveIntent.preferences.pace !== "balanced") labels.push(language === "es" ? ({ relaxed: "Ritmo tranquilo", packed: "Ritmo intenso" }[effectiveIntent.preferences.pace]) : ({ relaxed: "Relaxed pace", packed: "Full days" }[effectiveIntent.preferences.pace]));
-    if (effectiveIntent.hardConstraints.avoidDriving) labels.push(language === "es" ? "Evitar coche" : "Avoid driving");
+    if (effectiveStructuredBrief.duration) labels.push(`${effectiveStructuredBrief.duration.value} ${effectiveStructuredBrief.duration.unit}`);
+    const capturedModes = effectiveStructuredBrief.transportPreferences.map((preference) => preference.value);
+    if (capturedModes.includes("train")) labels.push(language === "es" ? "Tren preferido" : "Train preferred");
+    if (capturedModes.includes("flight")) labels.push(language === "es" ? "Volar cuando convenga" : "Fly when it helps");
+    const capturedPace = effectiveStructuredBrief.pace?.value;
+    if (capturedPace && capturedPace !== "balanced") labels.push(language === "es" ? ({ relaxed: "Ritmo tranquilo", packed: "Ritmo intenso" }[capturedPace]) : ({ relaxed: "Relaxed pace", packed: "Full days" }[capturedPace]));
+    if (effectiveStructuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving")) labels.push(language === "es" ? "Evitar coche" : "Avoid driving");
+    const interestLabels = language === "es"
+      ? { food: "Comida", culture: "Cultura", nature: "Naturaleza", cities: "Ciudades", beach: "Playa", hiking: "Senderismo" }
+      : { food: "Food", culture: "Culture", nature: "Nature", cities: "Cities", beach: "Beach", hiking: "Hiking" };
+    effectiveStructuredBrief.interests.forEach((interest) => labels.push(interestLabels[interest.value as keyof typeof interestLabels] ?? interest.value));
     return labels;
-  }, [effectiveIntent, language]);
+  }, [effectiveStructuredBrief, language]);
   const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
     const targetStep = target === "dates" ? 1 : 0;
     if (step !== targetStep) setStep(targetStep);
@@ -648,6 +794,7 @@ export default function TripBuilder() {
       const arrivalImpact = estimateLegForConstraints(previous, stop, structuredRouteConstraints).transferImpact;
       const isLocked = scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id]);
       const preferredNights = dayAllocations[stop.id];
+      const routeStartingNights = sourceRouteKey && preferredNights !== undefined ? preferredNights : undefined;
       return {
         ...stop,
         required: required.has(stop.id),
@@ -655,13 +802,13 @@ export default function TripBuilder() {
         anchor: briefDestination?.role === "trip-anchor" || briefDestination?.role === "must-visit",
         preferredNights,
         fixedNights: isLocked && preferredNights !== undefined ? preferredNights : undefined,
-        fallbackMinimumNights: minimumNights[stop.id],
-        fallbackIdealNights: recommendedNights[stop.id],
+        fallbackMinimumNights: routeStartingNights ?? minimumNights[stop.id],
+        fallbackIdealNights: routeStartingNights ?? recommendedNights[stop.id],
         preferenceWeight: picks[stop.id]?.length ?? 0,
         arrivalImpact,
       };
     });
-  }, [stops, structuredRouteConstraints.requiredStopIds, effectiveIntent, effectiveStructuredBrief.destinations, origin, originCoordinates, scheduleLocks, dayAllocations, minimumNights, recommendedNights, picks]);
+  }, [stops, structuredRouteConstraints.requiredStopIds, effectiveIntent, effectiveStructuredBrief.destinations, origin, originCoordinates, scheduleLocks, dayAllocations, minimumNights, recommendedNights, picks, sourceRouteKey]);
   const fixedAllocationCommitments = useMemo(() => effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({
     label: commitment.label,
     date: commitment.date,
@@ -671,7 +818,8 @@ export default function TripBuilder() {
     stops: nightAllocationStops,
     pace: effectiveIntent.preferences.pace,
     fixedCommitments: fixedAllocationCommitments,
-  }), [totalNights, nightAllocationStops, effectiveIntent.preferences.pace, fixedAllocationCommitments]);
+    knowledge: sourceRouteKey ? routeHandoffNightKnowledge : undefined,
+  }), [totalNights, nightAllocationStops, effectiveIntent.preferences.pace, fixedAllocationCommitments, sourceRouteKey]);
   const allocation = nightAllocation.allocations ?? Object.fromEntries(stops.map((stop) => [
     stop.id,
     Math.max(0, Math.round(dayAllocations[stop.id] ?? recommendedNights[stop.id] ?? 0)),
@@ -709,7 +857,7 @@ export default function TripBuilder() {
   const routeNightDifference = routeNights - totalNights;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
-    setLastStructuralChange({ stops, allocations: dayAllocations, startDate, endDate, locks: scheduleLocks, summary });
+    setLastStructuralChange({ stops, allocations: dayAllocations, startDate, endDate, locks: scheduleLocks, placeSelections, removedPlaceMentionIds, summary });
     trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
   };
 
@@ -720,6 +868,8 @@ export default function TripBuilder() {
     setStartDate(lastStructuralChange.startDate);
     setEndDate(lastStructuralChange.endDate);
     setScheduleLocks(lastStructuralChange.locks);
+    setPlaceSelections(lastStructuralChange.placeSelections);
+    setRemovedPlaceMentionIds(lastStructuralChange.removedPlaceMentionIds);
     setLastStructuralChange(null);
   };
 
@@ -728,6 +878,12 @@ export default function TripBuilder() {
     if (!stop) return;
     if (scheduleLocks.stopIds.includes(stopId)) return;
     rememberStructuralChange("remove_stop", Math.max(0, stops.length - stops.findIndex((item) => item.id === stopId) - 1));
+    const linkedSelection = placeSelections.find((selection) => selection.routeStopId === stopId);
+    const linkedMention = linkedSelection
+      ? undefined
+      : capturedStructuredBrief.placeMentions?.find((mention) => mention.canonicalName.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
+    if (linkedSelection) setPlaceSelections((current) => current.filter((selection) => selection.routeStopId !== stopId));
+    else if (linkedMention) setRemovedPlaceMentionIds((current) => [...new Set([...current, linkedMention.mentionId])]);
     setStops((current) => current.filter((item) => item.id !== stopId));
     setDayAllocations((current) => { const next = { ...current }; delete next[stopId]; return next; });
     setScheduleLocks((current) => { const arrivalDates = { ...current.arrivalDates }; delete arrivalDates[stopId]; return { stopIds: current.stopIds.filter((id) => id !== stopId), arrivalDates }; });
@@ -816,64 +972,178 @@ export default function TripBuilder() {
     setEditingRouteStopId(null);
   };
 
-  const addStop = async (name?: string) => {
+  const addStop = async (name?: string, countryOverride?: string, resolvesMentionId?: string, selectionDraft?: PlaceSelectionDraft) => {
     const value = (name ?? stopInput).trim();
     if (!value) return setStopError(ui.typePlace);
     if (stops.some((s) => s.name.toLowerCase() === value.toLowerCase())) return setStopError(`${value} is already in your route.`);
     setStopError(ui.checking);
     try {
-      const routeCountry = stops.length && stops.every((stop) => stop.country === stops[0].country) ? stops[0].country : undefined;
+      const targetMentionId = resolvesMentionId ?? resolvingPlaceMentionId;
+      // A regional brief can legitimately cross a border (for example,
+      // Patagonia into Tierra del Fuego). Do not inherit the previous stops'
+      // country while the traveller is resolving one of those regional bases.
+      const routeCountry = countryOverride ?? (!targetMentionId && stops.length && stops.every((stop) => stop.country === stops[0].country) ? stops[0].country : undefined);
       const nearby = stops.at(-1)?.coordinates;
       const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
-      const payload = await response.json() as { result?: { name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number] } | null };
-      if (!payload.result?.coordinates || !payload.result.country) return setStopError(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
-      const resolvedName = payload.result.name?.split(",")[0]?.trim() || value;
+      const payload = await response.json() as { result?: { name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
+      const resolved = payload.result;
+      if (!resolved?.coordinates || !resolved.country) return setStopError(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
+      const resolvedCountry = resolved.country;
+      const resolvedName = resolved.name?.split(",")[0]?.trim() || value;
       const id = `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+      const addedStop: Stop = { id, name: resolvedName, country: resolvedCountry, countryCode: resolved.countryCode, region: resolved.region, providerId: resolved.providerId, coordinates: resolved.coordinates, locality: resolved.locality };
       rememberStructuralChange("add_stop", 1);
-      setStops((current) => [...current, { id, name: resolvedName, country: payload.result!.country!, countryCode: payload.result!.countryCode, region: payload.result!.region, providerId: payload.result!.providerId, coordinates: payload.result!.coordinates }]);
+      setStops((current) => [...current, addedStop]);
+      if (targetMentionId) {
+        const targetMention = (capturedStructuredBrief.placeMentions ?? intakeMentions).find((mention) => mention.mentionId === targetMentionId);
+        setPlaceSelections((current) => [{
+          mentionId: targetMentionId,
+          kind: selectionDraft?.kind ?? (targetMention?.status === "ambiguous" ? "ambiguity" : "base"),
+          selectedCanonicalPlaceId: selectionDraft?.selectedCanonicalPlaceId ?? (resolved.providerId ? `provider:${resolved.providerId}` : `builder-base:${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
+          selectedName: selectionDraft?.selectedName ?? resolvedName,
+          selectedPlaceType: selectionDraft?.selectedPlaceType ?? (/city/.test(resolved.kind ?? "") ? "city" : "town"),
+          selectedParentCountries: selectionDraft?.selectedParentCountries ?? [resolvedCountry],
+          routeStopId: id,
+          provenance: selectionDraft?.provenance ?? { id: `builder:${targetMentionId}:${id}`, label: "Traveller builder selection", kind: "builder", supports: "The traveller explicitly added this route base." },
+        }, ...current.filter((selection) => selection.mentionId !== targetMentionId)]);
+        setResolvingPlaceMentionId(null);
+      } else {
+        const restoredMention = capturedStructuredBrief.placeMentions?.find((mention) => [mention.canonicalName, mention.sourceText, ...mention.aliases]
+          .some((label) => label.toLocaleLowerCase() === resolvedName.toLocaleLowerCase() || label.toLocaleLowerCase() === value.toLocaleLowerCase()));
+        if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
+      }
       setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
       setStopInput(""); setStopError("");
+      return addedStop;
     } catch {
       setStopError(ui.unavailable);
     }
   };
 
+  const addSupportedBase = (issue: PlaceIssue, option: PlaceIssueOption) => {
+    if (!option.country || !option.coordinates) {
+      setResolvingPlaceMentionId(issue.mentionId);
+      setShowStopEditor(true);
+      setSummaryFocus("stops");
+      return;
+    }
+    const optionCountry = option.country;
+    const existingNamed = stops.find((stop) => stop.name.toLocaleLowerCase() === option.label.toLocaleLowerCase() && stop.country === optionCountry);
+    const routeDestination = sourceRouteKey
+      ? capturedStructuredBrief.destinations.find((destination) => destination.placeMentionId === issue.mentionId)
+      : undefined;
+    const routeStop = routeDestination?.id ? stops.find((stop) => stop.id === routeDestination.id) : undefined;
+    const id = existingNamed?.id ?? routeStop?.id ?? `${option.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+    rememberStructuralChange("select_regional_base", existingNamed ? 0 : 1);
+    if (!existingNamed && routeStop) {
+      setStops((current) => current.map((stop) => stop.id === routeStop.id ? {
+        ...stop,
+        name: option.label,
+        country: optionCountry,
+        coordinates: option.coordinates,
+        intent: option.placeType === "landmark" || option.placeType === "natural_area" ? "landmark" : "place",
+      } : stop));
+    } else if (!existingNamed) setStops((current) => [...current, {
+      id,
+      name: option.label,
+      country: optionCountry,
+      coordinates: option.coordinates,
+      intent: option.placeType === "landmark" || option.placeType === "natural_area" ? "landmark" : "place",
+    }]);
+    setPlaceSelections((current) => [{
+      mentionId: issue.mentionId,
+      kind: "base",
+      selectedCanonicalPlaceId: option.canonicalPlaceId,
+      selectedName: option.label,
+      selectedPlaceType: option.placeType,
+      selectedParentCountries: [optionCountry],
+      routeStopId: id,
+      provenance: option.provenance[0] ?? { id: `builder:${issue.mentionId}:${id}`, label: "Traveller builder selection", kind: "builder", supports: "The traveller selected this supported base." },
+    }, ...current.filter((selection) => selection.mentionId !== issue.mentionId)]);
+    setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== issue.mentionId));
+    setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
+  };
+
+  const choosePlaceIdentity = async (mention: CapturedLocation, canonicalPlaceId: string) => {
+    const result: PlaceIntelligenceResult = {
+      version: PLACE_INTELLIGENCE_VERSION,
+      parserVersion: PLACE_INTELLIGENCE_PARSER_VERSION,
+      sequenceKind: "unordered",
+      mentions: capturedStructuredBrief.placeMentions ?? intakeMentions,
+      issues: capturedStructuredBrief.placeIssues ?? [],
+    };
+    const selectedResult = selectPlaceCandidate(result, mention.mentionId, canonicalPlaceId);
+    const selectedMention = selectedResult.mentions.find((item) => item.mentionId === mention.mentionId);
+    if (!selectedMention) return;
+    const nextBrief = extractStructuredTripBrief(tripBrief || capturedStructuredBrief.source.rawPrompt || "", selectedResult.parserVersion, selectedResult);
+    setCapturedStructuredBrief(nextBrief);
+    setIntakeMentions(selectedResult.mentions);
+    if (selectedMention.routability === "direct_destination" && selectedMention.canonicalPlaceId) {
+      await addStop(
+        selectedMention.canonicalName,
+        selectedMention.parentCountries.length === 1 ? selectedMention.parentCountries[0] : undefined,
+        mention.mentionId,
+        {
+          kind: "ambiguity",
+          selectedCanonicalPlaceId: selectedMention.canonicalPlaceId,
+          selectedName: selectedMention.canonicalName,
+          selectedPlaceType: selectedMention.placeType,
+          selectedParentCountries: selectedMention.parentCountries,
+          provenance: selectedMention.provenance[0] ?? { id: `builder:${mention.mentionId}:${selectedMention.canonicalPlaceId}`, label: "Traveller ambiguity selection", kind: "builder", supports: "The traveller selected this geographic identity." },
+        },
+      );
+    }
+  };
+
   const applyTripBrief = async () => {
-    const parsed = parseTripBrief(tripBrief);
     if (!tripBrief.trim()) return;
-    setCapturedStructuredBrief(extractStructuredTripBrief(tripBrief));
+    const capture = captureJourneyBrief(tripBrief);
+    setCapturedStructuredBrief(capture.structuredBrief);
+    setIntakeMentions(capture.mentions);
+    setPlaceSelections([]);
+    setRemovedPlaceMentionIds([]);
 
     setHasPromptContext(true);
 
-    setRouteHints(parsed.routeHints);
+    setRouteHints(capture.routeHints);
+    const capturedTransportModes = capture.structuredBrief.transportPreferences
+      .map((preference) => preference.value)
+      .filter((mode): mode is TripTransportMode => mode === "flight" || mode === "train" || mode === "drive");
 
     setTripIntent((current) => ({
       ...current,
-      travellers: parsed.travellerCount ? Math.max(1, Math.min(12, parsed.travellerCount)) : current.travellers,
+      travellers: capture.structuredBrief.travellers ? Math.max(1, Math.min(12, capture.structuredBrief.travellers.value)) : current.travellers,
       preferences: {
         ...current.preferences,
-        transportModes: parsed.transportModes?.length ? parsed.transportModes : current.preferences.transportModes,
-        pace: parsed.pace ?? current.preferences.pace,
+        transportModes: capturedTransportModes.length ? capturedTransportModes : current.preferences.transportModes,
+        pace: capture.structuredBrief.pace?.value ?? current.preferences.pace,
+        interests: capture.structuredBrief.interests.length ? capture.structuredBrief.interests.map((interest) => interest.value) : current.preferences.interests,
       },
-      hardConstraints: { ...current.hardConstraints, avoidDriving: parsed.avoidDriving || current.hardConstraints.avoidDriving },
+      hardConstraints: { ...current.hardConstraints, avoidDriving: capture.structuredBrief.hardConstraints.some((constraint) => constraint.type === "no-driving") || current.hardConstraints.avoidDriving },
     }));
 
-    if (!origin.trim() && parsed.origin) {
-      setOrigin(parsed.origin);
+    const capturedOrigin = capture.mentions.find(isOriginMention);
+    if (!origin.trim() && capturedOrigin) {
+      setOrigin(capturedOrigin.canonicalName);
       setOriginTouched(true);
       setOriginCoordinates(undefined);
     }
 
     if (!stops.length) {
-      for (const stop of parsed.stops) await addStop(stop);
+      for (const mention of capture.mentions.filter((item) => !isOriginMention(item)
+        && item.role !== "excluded"
+        && item.status === "resolved"
+        && item.routability === "direct_destination")) {
+        await addStop(mention.canonicalName, mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined);
+      }
     }
 
     // Respect dates the traveller has actually edited. A saved, unconfirmed
     // draft is still a draft: applying a new brief should make its stated
     // duration visible rather than quietly retaining an old seven-day range.
-    if (parsed.durationDays && !datesManuallyEdited) {
+    if (capture.durationDays && !datesManuallyEdited) {
       const date = new Date(`${startDate}T00:00:00`);
-      date.setDate(date.getDate() + Math.max(1, parsed.durationDays - 1));
+      date.setDate(date.getDate() + Math.max(1, capture.durationDays - 1));
       setEndDate(iso(date));
     }
   };
@@ -979,6 +1249,7 @@ export default function TripBuilder() {
   const activeTripDocument = useMemo(() => {
     const built = tripFromBuilder({
       id: tripId,
+      sourceRouteKey,
       origin,
       stops,
       startDate,
@@ -995,7 +1266,21 @@ export default function TripBuilder() {
       placeDetails: discoveredPlaces,
       originCoordinates,
       createdAt,
-      capturedIntent: intakeMentions.length ? { originalBrief: tripBrief, regions: [], routeHints, mentions: intakeMentions } : undefined,
+      capturedIntent: intakeMentions.length ? {
+        originalBrief: tripBrief,
+        parserVersion: effectiveStructuredBrief.source.parserVersion,
+        regions: effectiveStructuredBrief.preferredRegions.map((region) => region.value),
+        routeHints,
+        mentions: activePlaceMentions.map((mention) => ({
+          sourceText: mention.sourceText,
+          canonicalName: mention.canonicalName,
+          role: isOriginMention(mention) ? "origin" as const : "stop" as const,
+          order: mention.order,
+          status: mention.status === "resolved" && mention.routability === "direct_destination" ? "resolved" as const : "unresolved" as const,
+          intent: mention.routability === "anchor_or_poi" ? "landmark" as const : "place" as const,
+          country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined,
+        })),
+      } : undefined,
       routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
       intent: effectiveIntent,
       structuredBrief: effectiveStructuredBrief,
@@ -1004,31 +1289,32 @@ export default function TripBuilder() {
     });
     const cascaded = cascadeTripSchedule({ ...built, ownerId: tripOwnerId }).trip;
     return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
-  }, [tripId, tripOwnerId, tripUpdatedAt, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
+  }, [tripId, tripOwnerId, tripUpdatedAt, sourceRouteKey, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
       saveActiveTrip(activeTripDocument);
+      if (arrivedFromHomepage) window.localStorage.removeItem("easyt-home-trip-draft");
       setSaveState("local");
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [hydrated, activeTripDocument]);
+  }, [hydrated, activeTripDocument, arrivedFromHomepage]);
 
   const recordGeneratedTrip = () => {
     if (generationCompletedRef.current) return activeTripDocument.stops.length > 0 && activeTripDocument.planItems.length > 0;
     generationCompletedRef.current = true;
     if (!activeTripDocument.stops.length || !activeTripDocument.planItems.length) {
       trackEvent("trip_generation_failed", {
-        trip_source: arrivedFromHomepage ? "homepage" : "builder",
+        trip_source: analyticsTripSource,
         error_type: "invalid_result",
         is_authenticated: Boolean(session?.user),
       });
       return false;
     }
     trackEvent("trip_generated", {
-      trip_source: arrivedFromHomepage ? "homepage" : "builder",
+      trip_source: analyticsTripSource,
       trip_id: activeTripDocument.id,
       stop_count: activeTripDocument.stops.length,
       duration_days: totalDays,
@@ -1044,10 +1330,11 @@ export default function TripBuilder() {
     const usableTrip = recordGeneratedTrip();
     try {
       saveActiveTrip(activeTripDocument);
+      if (arrivedFromHomepage) window.localStorage.removeItem("easyt-home-trip-draft");
       if (usableTrip && !localSaveTrackedRef.current) {
         localSaveTrackedRef.current = true;
         trackEvent("trip_saved", {
-          trip_source: arrivedFromHomepage ? "homepage" : "builder",
+          trip_source: analyticsTripSource,
           trip_id: activeTripDocument.id,
           save_state: "local",
           stop_count: activeTripDocument.stops.length,
@@ -1059,13 +1346,15 @@ export default function TripBuilder() {
       setSaveState("saving");
       setCloudSaveError("");
       setCloudConflictTrip(null);
+      setCloudAuthInterrupted(false);
       const saved = await saveTripToEasyT(activeTripDocument);
       saveActiveTrip(saved);
       setTripOwnerId(saved.ownerId);
       setTripUpdatedAt(saved.updatedAt);
+      setCloudAuthInterrupted(false);
       setSaveState("cloud");
       trackEvent("trip_saved", {
-        trip_source: arrivedFromHomepage ? "homepage" : "builder",
+        trip_source: analyticsTripSource,
         trip_id: saved.id,
         save_state: "cloud",
         stop_count: saved.stops.length,
@@ -1076,16 +1365,20 @@ export default function TripBuilder() {
       const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
         ? error.canonicalTrip
         : null;
+      const authInterrupted = error instanceof EasyTTripAuthError;
       setCloudConflictTrip(conflictTrip);
-      setCloudSaveError(conflictTrip
+      setCloudAuthInterrupted(authInterrupted);
+      setCloudSaveError(authInterrupted
+        ? "Your session expired. This trip is still saved on this device; sign in again to sync it."
+        : conflictTrip
         ? "This trip changed on another device. Your edits remain on this device until you open the cloud copy."
         : "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
       setSaveState("error");
       trackEvent("trip_save_failed", {
-        trip_source: arrivedFromHomepage ? "homepage" : "builder",
+        trip_source: analyticsTripSource,
         trip_id: activeTripDocument.id,
         save_state: session?.user ? "cloud" : "local",
-        error_type: "repository",
+        error_type: classifyAnalyticsSaveError(error),
         is_authenticated: Boolean(session?.user),
       });
       return null;
@@ -1093,17 +1386,22 @@ export default function TripBuilder() {
   };
 
   const openBuiltTrip = async () => {
+    setOpeningTrip(true);
     acceptCurrentRoute("continue");
     const saved = await persistGeneratedTrip();
-    if (!saved) return;
-    window.location.assign(tripWorkspaceHref(saved.id));
+    if (!saved) { setOpeningTrip(false); return; }
+    const destination = saved.ownerId && !session?.user
+      ? tripSyncSignInPath(saved.id)
+      : firstTripWorkspaceHref(saved.id);
+    window.location.assign(destination);
   };
 
   const buildTrip = () => {
-    if (!arrivedFromHomepage && !generationStartedRef.current) {
+    setOpeningTrip(true);
+    if ((!arrivedFromHomepage || sourceRouteKey) && !generationStartedRef.current) {
       generationStartedRef.current = true;
       trackEvent("trip_generation_started", {
-        trip_source: "builder",
+        trip_source: analyticsTripSource,
         has_dates: Boolean(startDate && endDate),
         traveller_count: effectiveIntent.travellers,
         is_authenticated: Boolean(session?.user),
@@ -1124,7 +1422,8 @@ export default function TripBuilder() {
     setBuildRequested(false);
     void (async () => {
       const saved = await persistGeneratedTrip();
-      if (saved) window.location.assign(tripWorkspaceHref(saved.id));
+      if (saved) window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
+      else setOpeningTrip(false);
     })();
   }, [buildRequested, activeTripDocument]);
 
@@ -1141,7 +1440,7 @@ export default function TripBuilder() {
         onOpenMap={() => {
           void (async () => {
             const saved = await persistGeneratedTrip();
-            if (saved) window.location.assign(`/journey/plan?trip=${encodeURIComponent(saved.id)}`);
+            if (saved) window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : `/journey/plan?trip=${encodeURIComponent(saved.id)}`);
           })();
         }}
       />
@@ -1153,7 +1452,7 @@ export default function TripBuilder() {
   return (
     <div className={`${styles.shellWide} ${mobilePolish.builder}`}>
       {resolvingLocations ? <div className={styles.locationResolution} role="status">Checking your places…</div> : null}
-      {locationChoices.length ? <div className={styles.locationOverlay} role="dialog" aria-modal="true" aria-label="Confirm locations"><section className={styles.locationDialog}><p>ONE QUICK CHECK</p><h2>Which place did you mean?</h2><span>We only ask when a place name could point to more than one location.</span>{locationChoices.map(({ mention, choices }) => <div className={styles.locationQuestion} key={`${mention.role}-${mention.order}`}><strong>{mention.sourceText}</strong><div>{choices.map((choice) => <button type="button" key={`${choice.name}-${choice.country}`} onClick={() => { if (mention.role === "origin") { setOrigin(choice.name); setOriginCoordinates(choice.coordinates); } else setStops((current) => [...current, { id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: choice.name, country: choice.country, countryCode: choice.countryCode, region: choice.region, providerId: choice.providerId, coordinates: choice.coordinates, intent: mention.intent, locality: choice.locality }]); setLocationChoices((current) => current.filter((item) => item.mention !== mention)); }}>{choice.name}, {choice.country}</button>)}</div></div>)}<button type="button" className={styles.locationSkip} onClick={() => setLocationChoices([])}>I’ll add these myself</button></section></div> : null}
+      {locationChoices.length ? <div className={styles.locationOverlay} role="presentation"><section ref={locationDialogRef} tabIndex={-1} className={styles.locationDialog} role="dialog" aria-modal="true" aria-labelledby="location-dialog-title" aria-describedby="location-dialog-description"><p>ONE QUICK CHECK</p><h2 id="location-dialog-title">Which place did you mean?</h2><span id="location-dialog-description">We only ask when a place name could point to more than one location.</span>{locationChoices.map(({ mention, choices }) => <div className={styles.locationQuestion} key={mention.mentionId}><strong>{mention.sourceText}</strong><div>{choices.map((choice) => <button type="button" key={`${choice.name}-${choice.country}`} onClick={() => { if (isOriginMention(mention)) { setOrigin(choice.name); setOriginCoordinates(choice.coordinates); } else setStops((current) => [...current, { id: `${choice.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`, name: choice.name, country: choice.country, countryCode: choice.countryCode, region: choice.region, providerId: choice.providerId, coordinates: choice.coordinates, intent: "place", locality: choice.locality }]); setLocationChoices((current) => current.filter((item) => item.mention !== mention)); }}>{choice.name}, {choice.country}</button>)}</div></div>)}<button type="button" className={styles.locationSkip} onClick={() => setLocationChoices([])}>I’ll add these myself</button></section></div> : null}
       <nav className={styles.steps} aria-label="Trip brief progress">
         {stepLabels.map((label, i) => {
           return (
@@ -1212,18 +1511,31 @@ export default function TripBuilder() {
                 <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                   <div className={styles.placesSectionHead}><strong>{language === "es" ? "Paradas" : "Stops"}</strong><button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button></div>
                   {stops.length > 0 && <div className={styles.confirmedStops} aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
-                    <div>{stops.map((stop, index) => <button type="button" key={stop.id} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-label={language === "es" ? "Parada bloqueada" : "Stop locked"} /> : <X aria-hidden="true" />}</button>)}</div>
+                    <div>{stops.map((stop, index) => <button type="button" key={stop.id} aria-label={scheduleLocks.stopIds.includes(stop.id) ? `${stop.name}, ${language === "es" ? "parada bloqueada" : "locked stop"}` : `${language === "es" ? "Quitar" : "Remove"} ${stop.name}`} disabled={scheduleLocks.stopIds.includes(stop.id)} onClick={() => removeStop(stop.id)}>{index + 1}. {stop.name} {scheduleLocks.stopIds.includes(stop.id) ? <Lock aria-hidden="true" /> : <X aria-hidden="true" />}</button>)}</div>
                   </div>}
-                  {(showStopEditor || !stops.length) && <div className={styles.stopEditor}><label className={styles.inlineEditor}><span className="sr-only">{copy.addDestination}</span><input value={stopInput} placeholder={copy.destinationPlaceholder} aria-label={copy.addDestination}
+                  {(showStopEditor || !stops.length) && <div className={styles.stopEditor}>{resolvingPlaceMentionId ? <small className={styles.baseSelectionContext}>{language === "es" ? "Añade una base para" : "Add a base for"} {activePlaceMentions.find((mention) => mention.mentionId === resolvingPlaceMentionId)?.sourceText}</small> : null}<label className={styles.inlineEditor}><span className="sr-only">{copy.addDestination}</span><input value={stopInput} placeholder={copy.destinationPlaceholder} aria-label={copy.addDestination}
                     onChange={(e) => { setStopInput(e.target.value); setStopError(""); }}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStop(); } }} />
-                    <button type="button" onClick={() => { setShowStopEditor(false); setStopInput(""); setStopError(""); }}>{language === "es" ? "Cancelar" : "Cancel"}</button></label>
+                    <button type="button" onClick={() => { setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); }}>{language === "es" ? "Cancelar" : "Cancel"}</button></label>
                     {stopError && <small className={styles.hintError}>{stopError}</small>}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((name) => <button type="button" key={name} onClick={() => addStop(name)}><Plus /> {name}</button>)}</div>}
                   </div>}
                 </section>
 
-                {unresolvedMentions.length > 0 && <section className={styles.unresolvedPlaces} aria-label={language === "es" ? "Detalles por confirmar" : "Details to confirm"}><strong>{language === "es" ? "REVISAR" : "TO CONFIRM"}</strong>{unresolvedMentions.map((mention) => <button type="button" key={`${mention.role}-${mention.order}`} onClick={() => { if (mention.role === "origin") { setOrigin(mention.canonicalName); openSummaryEditor("origin"); } else { setStopInput(mention.canonicalName); openSummaryEditor("stops"); } }}>{mention.sourceText}<Pencil /></button>)}</section>}
+                {activePlaceMentions.length > 0 && <section className={styles.recognizedPlaces} aria-label={language === "es" ? "Geografía entendida" : "Geography understood"}>
+                  <header><strong>{language === "es" ? "GEOGRAFÍA ENTENDIDA" : "GEOGRAPHY WE UNDERSTOOD"}</strong><span>{language === "es" ? "Las regiones se conservan hasta que elijas una base." : "Regions stay in your brief until you choose a base."}</span></header>
+                  <div>{activePlaceMentions.map((mention) => {
+                    const issue = placeIssues.find((item) => item.mentionId === mention.mentionId && item.code !== "missing_routable_destination" && item.code !== "duplicate_alias");
+                    const selection = placeSelections.find((item) => item.mentionId === mention.mentionId);
+                    return <article key={mention.mentionId} className={issue?.blocksRoute ? styles.recognizedPlaceNeedsAction : ""}>
+                      <div className={styles.recognizedPlaceIdentity}><span><b>{mention.sourceText}</b><small>{placeTypeLabel(mention.placeType)} · {placeStateLabel(mention, Boolean(selection))}</small></span>{selection ? <em>{selection.selectedName}</em> : null}</div>
+                      {mention.sourceTexts.length > 1 ? <p>{language === "es" ? "También mencionado como" : "Also mentioned as"}: {mention.sourceTexts.slice(1).join(", ")}</p> : null}
+                      {issue ? <p>{issue.message}</p> : null}
+                      {issue?.options.length ? <div className={styles.placeResolutionOptions}>{issue.options.map((option) => <button type="button" key={`${issue.mentionId}-${option.canonicalPlaceId}`} onClick={() => option.kind === "candidate" ? void choosePlaceIdentity(mention, option.canonicalPlaceId) : addSupportedBase(issue, option)}><Plus />{option.label}{option.country ? ` · ${option.country}` : ""}</button>)}</div> : null}
+                      {issue && issue.code !== "conflicting_place_roles" ? <button type="button" className={styles.placeResolutionManual} onClick={() => { setResolvingPlaceMentionId(mention.mentionId); setStopInput(""); openSummaryEditor("stops"); }}>{issue.code === "ambiguous_place" ? (language === "es" ? "Añadirlo manualmente" : "I’ll add it myself") : issue.code === "unresolved_place" ? (language === "es" ? "Sustituir por un lugar" : "Replace with a place") : selection ? (language === "es" ? "Añadir otra base" : "Add another base") : (language === "es" ? "Elegir una base" : "Choose a base")}</button> : null}
+                    </article>;
+                  })}</div>
+                </section>}
 
                 {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias recogidas" : "Preferences picked up"}><strong>{language === "es" ? "PREFERENCIAS RECOGIDAS" : "PREFERENCES WE PICKED UP"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
@@ -1414,6 +1726,15 @@ export default function TripBuilder() {
                   })}
                 </div>
               </section>
+              {routeIntelligence.route.state !== "insufficient-data" && (routeIntelligence.route.reasons.length > 0 || routeIntelligence.route.summary) ? <section className={styles.routeExplanation} aria-labelledby="route-explanation-title">
+                <Sparkles aria-hidden="true" />
+                <div>
+                  <h3 id="route-explanation-title">{language === "es" ? "Por qué este orden" : "Why this order"}</h3>
+                  <p>{routeIntelligence.route.summary}</p>
+                  {routeIntelligence.route.reasons.length ? <ul>{routeIntelligence.route.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
+                  {routeIntelligence.route.tradeoffs[0] ? <aside><strong>{language === "es" ? "Compromiso importante" : "Main trade-off"}</strong><span>{routeIntelligence.route.tradeoffs[0]}</span></aside> : null}
+                </div>
+              </section> : null}
               {tripTimingNotice && <aside className={styles.tripTimingNotice}><AlertTriangle /><p><strong>{language === "es" ? "Atención:" : "Heads up:"}</strong> {tripTimingNotice}</p></aside>}
               {specificTimingIssue && <aside className={styles.mobileTimingWarning} aria-live="polite"><AlertTriangle /><div><h3>{language === "es" ? `Viaje largo a ${specificTimingIssue.stop.name}` : `Long journey to ${specificTimingIssue.stop.name}`}</h3><p>{durationLabel(specificTimingIssue.duration.arrivalMinutes)} {language === "es" ? "de traslado reduce el tiempo aprovechable allí." : "transfer reduces your usable time there."}</p></div></aside>}
               {restoreRecommendedOrderVisible && <p className={styles.routeRestoreNotice}>{routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0)} <button type="button" onClick={applyRecommendedOrder}>{language === "es" ? "Restaurar el orden de Morrovia" : "Restore Morrovia's order"}</button></p>}
@@ -1442,22 +1763,24 @@ export default function TripBuilder() {
         </aside>}
       </div>
 
-      {cloudSaveError ? <aside className={styles.cloudSaveError} role="alert"><span>{cloudSaveError}</span><button type="button" onClick={cloudConflictTrip ? () => {
+      {cloudSaveError ? <aside className={styles.cloudSaveError} role="alert"><span>{cloudSaveError}</span><button type="button" onClick={cloudAuthInterrupted ? () => {
+        window.location.assign(tripSyncSignInPath(activeTripDocument.id));
+      } : cloudConflictTrip ? () => {
         saveActiveTrip(cloudConflictTrip);
         window.location.assign(tripWorkspaceHref(cloudConflictTrip.id));
-      } : () => void openBuiltTrip()}>{cloudConflictTrip ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
+      } : () => void openBuiltTrip()}>{cloudAuthInterrupted ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again") : cloudConflictTrip ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
       {(step !== 0 || hasPromptContext) && <div className={styles.wizardFoot}>
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
           <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : saveState === "cloud" ? (language === "es" ? "Guardado en tu cuenta" : "Saved to your account") : saveState === "error" ? (language === "es" ? "No sincronizado" : "Not synced") : ui.savedDevice}</small>
           {gate && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate)}
+          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;
               if (step === 1) buildTrip(); else setStep(1);
             }}>
-            {step === 0 ? (language === "es" ? "Establecer fechas y noches" : "Set dates & nights") : (language === "es" ? "Crear viaje" : "Build trip")} →
+            {openingTrip ? (language === "es" ? "Abriendo tu ruta…" : "Opening your route…") : step === 0 ? (language === "es" ? "Establecer fechas y noches" : "Set dates & nights") : (language === "es" ? "Crear viaje" : "Build trip")} {!openingTrip ? "→" : ""}
           </button>
         </div>
       </div>

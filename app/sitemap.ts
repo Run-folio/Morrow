@@ -1,11 +1,18 @@
 import type { MetadataRoute } from "next";
 import { caseStudies } from "@/lib/case-studies";
+import { applyEasyTRouteControls, listEasyTRouteControls } from "@/lib/easyt/admin-content";
+import { publicRouteSitemapKeys } from "@/lib/easyt/public-route";
+import { routeFamilyByKey } from "@/lib/easyt/route-catalog";
 
-const siteUrl = "https://shaunwhiting.com";
-const easyTRouteSlugs = ["japan-slow", "portugal-coast", "andean-highlands", "taiwan-rail"];
+const siteUrl = "https://morrovia.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  const controls = await listEasyTRouteControls().catch(() => []);
+  const publicRoutes = applyEasyTRouteControls(
+    publicRouteSitemapKeys().map((key) => routeFamilyByKey[key]).filter(Boolean),
+    controls,
+  );
 
   return [
     {
@@ -39,6 +46,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${siteUrl}/journey/discover`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: `${siteUrl}/journey/privacy`,
       lastModified: now,
       changeFrequency: "yearly",
@@ -56,9 +69,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    ...easyTRouteSlugs.map((slug) => ({
-      url: `${siteUrl}/journey/routes/${slug}`,
-      lastModified: now,
+    ...publicRoutes.map((route) => ({
+      url: `${siteUrl}/journey/routes/${route.key}`,
+      lastModified: new Date(route.reviewedAt),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

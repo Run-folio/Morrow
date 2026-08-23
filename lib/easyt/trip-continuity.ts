@@ -19,6 +19,27 @@ export class EasyTTripSaveConflictError extends Error {
   }
 }
 
+export class EasyTTripAuthError extends Error {
+  constructor(message = "Your Morrovia session expired. Sign in again to sync this trip.") {
+    super(message);
+    this.name = "EasyTTripAuthError";
+  }
+}
+
+export function tripSyncAuthError(status: number, message?: string): EasyTTripAuthError | null {
+  if (status !== 401) return null;
+  return new EasyTTripAuthError(message === "Unauthorized" ? undefined : message);
+}
+
+/** Return through the planner so its exact local document can retry safely. */
+export function tripSyncRecoveryPath(tripId: string) {
+  return `/journey/plan?trip=${encodeURIComponent(tripId)}&save=1&recover=1`;
+}
+
+export function tripSyncSignInPath(tripId: string) {
+  return `/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(tripId))}`;
+}
+
 /**
  * `updatedAt` is the existing trip document's cloud revision token. Treat it
  * as opaque: an edit may be saved only when it is based on the exact revision

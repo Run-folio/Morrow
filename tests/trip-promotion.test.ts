@@ -8,6 +8,7 @@ import {
   requestTripPromotion,
   tripPromotionConflictReason,
 } from "../lib/easyt/trip-promotion.ts";
+import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 function localTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
@@ -39,6 +40,38 @@ function localTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
   };
 }
 
+function placeAwareBrief(routeStopId: string) {
+  const base = extractStructuredTripBrief("Patagonia, Tierra del Fuego and Rapa Nui.");
+  const patagonia = base.placeMentions?.find((mention) => mention.canonicalPlaceId === "patagonia");
+  const rapaNui = base.placeMentions?.find((mention) => mention.canonicalPlaceId === "rapa-nui");
+  assert.ok(patagonia);
+  assert.ok(rapaNui);
+  const option = base.placeIssues?.find((issue) => issue.mentionId === patagonia.mentionId)?.options
+    .find((candidate) => candidate.label === "El Calafate");
+  assert.ok(option);
+  assert.ok(option.provenance[0]);
+  return mergeStructuredTripBrief(base, {
+    destinations: [{
+      id: routeStopId,
+      name: option.label,
+      canonicalPlaceId: option.canonicalPlaceId,
+      placeMentionId: patagonia.mentionId,
+      placeType: option.placeType,
+      resolutionStatus: "resolved",
+      routability: "direct_destination",
+    }],
+    placeSelections: [{
+      mentionId: patagonia.mentionId,
+      kind: "base",
+      selectedCanonicalPlaceId: option.canonicalPlaceId,
+      selectedName: option.label,
+      routeStopId,
+      provenance: option.provenance[0],
+    }],
+    removedPlaceMentionIds: [rapaNui.mentionId],
+  });
+}
+
 test("local-only promotion claims the exact canonical trip ID and preserves edits", () => {
   const local = localTrip();
   const canonical = canonicalTripForOwner("owner-a", local);
@@ -60,6 +93,47 @@ test("repeated promotion canonicalization is idempotent and creates no new ID", 
   assert.deepEqual(
     decideExistingTripPromotion(first, retry, { exactMatch: true }),
     { outcome: "already-canonical" },
+  );
+});
+
+test("promotion and JSON persistence preserve place intelligence while remapping only route IDs", () => {
+  const source = localTrip();
+  const structuredBrief = placeAwareBrief("patagonia-base");
+  const local: EasyTTrip = {
+    ...source,
+    brief: { ...source.brief, selectedPlaces: { "patagonia-base": [] }, structuredBrief },
+    stops: [{
+      id: "patagonia-base", order: 0, name: "El Calafate", country: "Argentina",
+      latitude: -50.3379, longitude: -72.2648, arrivalDate: "2026-10-01", departureDate: "2026-10-05", nights: 4,
+    }],
+    legs: [],
+    planItems: [{ ...source.planItems[0], stopId: "patagonia-base" }],
+  };
+  const canonical = canonicalTripForOwner("owner-a", local);
+  const routeStopId = `${local.id}-stop-patagonia-base`;
+  const canonicalBrief = canonical.brief.structuredBrief;
+  assert.ok(canonicalBrief);
+
+  assert.equal(canonicalBrief.destinations.find((destination) => destination.name === "El Calafate")?.id, routeStopId);
+  assert.equal(
+    canonicalBrief.destinations.find((destination) => destination.name === "El Calafate")?.canonicalPlaceId,
+    structuredBrief.destinations.find((destination) => destination.name === "El Calafate")?.canonicalPlaceId,
+  );
+  assert.deepEqual(canonicalBrief.placeMentions, structuredBrief.placeMentions);
+  assert.deepEqual(canonicalBrief.placeIssues, structuredBrief.placeIssues);
+  assert.deepEqual(canonicalBrief.removedPlaceMentionIds, structuredBrief.removedPlaceMentionIds);
+  assert.equal(canonicalBrief.placeSelections?.[0]?.routeStopId, routeStopId);
+  assert.equal(canonicalBrief.placeSelections?.[0]?.selectedCanonicalPlaceId, structuredBrief.placeSelections?.[0]?.selectedCanonicalPlaceId);
+
+  const persisted = JSON.parse(JSON.stringify(canonical)) as EasyTTrip;
+  assert.deepEqual(persisted.brief.structuredBrief, JSON.parse(JSON.stringify(canonicalBrief)));
+  assert.deepEqual(persisted.brief.structuredBrief?.placeMentions, JSON.parse(JSON.stringify(canonicalBrief.placeMentions)));
+  assert.deepEqual(persisted.brief.structuredBrief?.placeIssues, JSON.parse(JSON.stringify(canonicalBrief.placeIssues)));
+  assert.deepEqual(persisted.brief.structuredBrief?.placeSelections, JSON.parse(JSON.stringify(canonicalBrief.placeSelections)));
+  assert.deepEqual(persisted.brief.structuredBrief?.removedPlaceMentionIds, canonicalBrief.removedPlaceMentionIds);
+  assert.notEqual(
+    persisted.brief.structuredBrief?.destinations.find((destination) => destination.name === "El Calafate")?.id,
+    persisted.brief.structuredBrief?.destinations.find((destination) => destination.name === "El Calafate")?.canonicalPlaceId,
   );
 });
 

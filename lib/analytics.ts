@@ -7,12 +7,15 @@ type TripSource = "homepage" | "dashboard" | "builder" | "route";
 type SaveState = "local" | "cloud";
 type WorkspaceView = "overview" | "itinerary" | "map" | "prep";
 type RouteMode = "shell" | "focused";
+type StampStatus = "unmarked" | "visited" | "want";
+type StampStatusSource = "map" | "explorer" | "country_card";
 
 export type LaunchAnalyticsEventMap = {
+  route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };
-  trip_generation_started: { trip_source: "homepage" | "builder"; has_dates: boolean; traveller_count: number; is_authenticated: boolean };
-  trip_generated: { trip_source: "homepage" | "builder"; trip_id?: string; stop_count: number; duration_days?: number; traveller_count: number; has_dates: boolean; save_state: "local"; result: "usable" };
-  trip_generation_failed: { trip_source: "homepage" | "builder"; error_type: "capture" | "network" | "invalid_result" | "unknown"; is_authenticated: boolean };
+  trip_generation_started: { trip_source: TripSource; has_dates: boolean; traveller_count: number; is_authenticated: boolean };
+  trip_generated: { trip_source: TripSource; trip_id?: string; stop_count: number; duration_days?: number; traveller_count: number; has_dates: boolean; save_state: "local"; result: "usable" };
+  trip_generation_failed: { trip_source: TripSource; error_type: "capture" | "network" | "invalid_result" | "unknown"; is_authenticated: boolean };
   trip_saved: { trip_source: TripSource; trip_id?: string; save_state: SaveState; stop_count?: number; is_authenticated: boolean };
   trip_save_failed: { trip_source: TripSource; trip_id?: string; save_state: SaveState; error_type: "auth" | "network" | "conflict" | "repository" | "unknown"; is_authenticated: boolean };
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
@@ -24,6 +27,11 @@ export type LaunchAnalyticsEventMap = {
   trip_reopened: { trip_id?: string; source: "dashboard"; save_state: "cloud"; stop_count?: number };
   route_repair_applied: { trip_id?: string; repair_count: number; repair_category: string; had_hard_issue?: boolean; source: "map" };
   accommodation_search_started: { source: "map" | "itinerary" | "prep"; destination_count: number; has_dates: boolean; provider?: string };
+  stamp_status_changed: { previous_status: StampStatus; next_status: StampStatus; source: StampStatusSource; is_authenticated: boolean };
+  stamp_note_added: { source: "country_card"; is_authenticated: boolean };
+  easyt_trip_capture_reviewed: { source: "homepage_builder"; parser_version: string; place_count: number; unresolved_count: number; region_count: number; has_duration: boolean };
+  easyt_trip_capture_place_unresolved: { source: "homepage_builder"; unresolved_count: number };
+  easyt_trip_capture_failed: { source: "homepage_builder" };
 };
 
 export type LegacyAnalyticsEventName =
@@ -33,8 +41,7 @@ export type LegacyAnalyticsEventName =
   | "trip_refined" | "health_check_shown" | "health_issue_resolved" | "trip_ready" | "booking_attributed"
   | "trip_shared" | "collaborator_joined" | "decision_resolved" | "budget_viewed" | "accommodation_action_viewed"
   | "accommodation_map_opened" | "attraction_refinement_viewed" | "attraction_selected" | "attraction_removed"
-  | "attraction_filter_used" | "attraction_map_opened" | "easyt_trip_capture_reviewed"
-  | "easyt_trip_capture_place_resolved" | "easyt_trip_capture_place_unresolved" | "easyt_trip_capture_failed"
+  | "attraction_filter_used" | "attraction_map_opened" | "easyt_trip_capture_place_resolved"
   | "easyt_featured_route_opened" | "easyt_finder_started" | "easyt_accommodation_inventory_viewed"
   | "easyt_accommodation_affiliate_clicked" | "easyt_readiness_affiliate_clicked" | "easyt_trip_quality_reviewed"
   | "easyt_stamps_opened" | "easyt_trip_saved" | "easyt_trip_exported" | "easyt_share_created" | "easyt_error_shown";
@@ -79,7 +86,8 @@ export function cleanAnalyticsProperties(properties: AnalyticsEventProperties = 
 
 export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" | "conflict" | "repository" | "unknown" {
   if (error instanceof TypeError) return "network";
-  if (error instanceof Error && error.name === "EasyTTripPromotionConflictError") return "conflict";
+  if (error instanceof Error && error.name === "EasyTTripAuthError") return "auth";
+  if (error instanceof Error && (error.name === "EasyTTripPromotionConflictError" || error.name === "EasyTTripSaveConflictError")) return "conflict";
   const message = error instanceof Error ? error.message.toLocaleLowerCase() : "";
   if (/auth|unauthor|sign.?in/.test(message)) return "auth";
   if (/conflict|ownership/.test(message)) return "conflict";

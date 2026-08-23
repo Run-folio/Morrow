@@ -164,6 +164,8 @@ export type TripChange = {
 export type TripBrief = {
   origin: string;
   originCoordinates?: [number, number];
+  /** Public editorial route used as the starting point, when one exists. */
+  sourceRouteKey?: string;
   mustDo: string;
   pace: TripPace;
   hotelChanges: HotelChanges;
@@ -292,6 +294,7 @@ export type BuilderDay = {
 
 export type BuilderTripInput = {
   id: string;
+  sourceRouteKey?: string;
   origin: string;
   stops: Array<{ id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
@@ -397,6 +400,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     brief: {
       origin: input.origin,
       originCoordinates: input.originCoordinates,
+      sourceRouteKey: input.sourceRouteKey,
       mustDo: input.mustDo,
       pace: input.pace,
       hotelChanges: input.hotels,

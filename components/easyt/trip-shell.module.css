@@ -16,6 +16,7 @@
 }
 
 .resolverStack { display: grid; gap: 12px; }
+.resolverStack > .syncNotice { width: min(1460px, calc(100% - 48px)); margin: 18px auto 0; }
 
 .syncNotice {
   display: flex;
@@ -30,6 +31,8 @@
 }
 
 .syncNotice span { flex: 1; color: var(--morrovia-ink-soft); }
+.guestSaveNotice { border-color: color-mix(in srgb, var(--morrovia-action) 34%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-lilac) 58%, #fff); }
+.syncComplete { border-color: color-mix(in srgb, var(--morrovia-success) 38%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-success) 7%, #fff); }
 
 .shell {
   overflow: hidden;
@@ -340,6 +343,9 @@
 }
 
 @media (max-width: 760px) {
+  .resolverStack > .syncNotice { width: min(100% - 24px, 1460px); margin-top: 12px; }
+  .syncNotice { align-items: flex-start; flex-wrap: wrap; }
+  .syncNotice span { flex-basis: calc(100% - 120px); }
   .workspace {
     width: min(100% - 24px, 1460px);
     padding-top: 12px;

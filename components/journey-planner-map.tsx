@@ -17,6 +17,7 @@ type JourneyPlannerMapProps = {
   localPlaces?: JourneyLocalPlace[];
   selectedLocalPlaceId?: string | null;
   focusOffset?: [number, number];
+  focusZoom?: number;
   focusCoordinates: [number, number] | null;
   draftPinCoordinates: [number, number] | null;
   pinPlacementMode: boolean;
@@ -70,6 +71,7 @@ export function JourneyPlannerMap({
   localPlaces = [],
   selectedLocalPlaceId,
   focusOffset,
+  focusZoom,
   focusCoordinates,
   draftPinCoordinates,
   pinPlacementMode,
@@ -164,7 +166,14 @@ export function JourneyPlannerMap({
           );
           map.fitBounds(bounds, { padding: { top: 90, right: 110, bottom: 150, left: 110 }, maxZoom: 7, duration: 0 });
         } else {
-          map.jumpTo({ center: focusCoordinates ?? activeStop.coordinates, zoom: focusCoordinates ? 14 : 11 });
+          const compactViewport = window.innerWidth <= 980;
+          const offset: [number, number] = !compactViewport && focusZoom !== undefined ? focusOffset ?? [0, 0] : [0, 0];
+          map.easeTo({
+            center: focusCoordinates ?? activeStop.coordinates,
+            zoom: focusCoordinates ? 14 : compactViewport ? 11 : focusZoom ?? 11,
+            offset,
+            duration: 0,
+          });
         }
       }
     };
@@ -172,7 +181,7 @@ export function JourneyPlannerMap({
     if (map.isStyleLoaded()) drawRoute();
     else map.once("load", drawRoute);
     return () => { map.off("load", drawRoute); };
-  }, [focusCoordinates, legs, overviewMode, selectedId, stops]);
+  }, [focusCoordinates, focusOffset, focusZoom, legs, overviewMode, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -279,9 +288,11 @@ export function JourneyPlannerMap({
     const map = mapRef.current;
     const stop = stops.find((candidate) => candidate.id === selectedId);
     if (!map || !stop?.coordinates || !hasInitialisedViewRef.current || overviewMode) return;
-    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
-    map.easeTo({ center: stop.coordinates, zoom: Math.max(map.getZoom(), 11), offset, duration: 550 });
-  }, [focusOffset, overviewMode, selectedId, stops]);
+    const compactViewport = window.innerWidth <= 980;
+    const offset: [number, number] = compactViewport ? [0, -90] : focusOffset ?? [0, 0];
+    const zoom = compactViewport ? 11 : focusZoom ?? Math.max(map.getZoom(), 11);
+    map.easeTo({ center: stop.coordinates, zoom, offset, duration: 550 });
+  }, [focusOffset, focusZoom, overviewMode, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

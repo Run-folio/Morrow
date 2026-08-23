@@ -111,8 +111,8 @@ export function TripShellImage({
   routeLabel: string;
   stopCount: number;
 }) {
-  const [failed, setFailed] = useState(false);
-  const showImage = Boolean(src) && !failed;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = Boolean(src) && failedSrc !== src;
 
   return (
     <div className={styles.tripImage}>
@@ -121,7 +121,7 @@ export function TripShellImage({
         <small>{routeLabel}</small>
       </div>
       {showImage ? (
-        <img src={src ?? ""} alt={alt} onError={() => setFailed(true)} />
+        <img src={src ?? ""} alt={alt} onError={() => setFailedSrc(src)} />
       ) : null}
     </div>
   );

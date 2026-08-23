@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
 import { allocateTripNights } from "../lib/easyt/night-allocation.ts";
+import type { PlaceIssue } from "../lib/easyt/place-intelligence.ts";
+import { unknownPlanningConfidence } from "../lib/easyt/planning-confidence.ts";
 import { reviewTrip, tripHealth } from "../lib/easyt/review.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { estimateTransferImpact } from "../lib/easyt/transfer-impact.ts";
@@ -20,6 +22,47 @@ const baseTrip = (): EasyTTrip => ({
     { id: "b", stopId: "b", dayNumber: 3, date: "2026-09-03", type: "arrival", title: "B", reason: "", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null },
   ], recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
 });
+
+const readyTrip = (): EasyTTrip => {
+  const trip = baseTrip();
+  trip.brief.pace = "full";
+  trip.brief.intent = {
+    ...trip.brief.intent!,
+    hardConstraints: { ...trip.brief.intent!.hardConstraints, mustSeeStopIds: ["a"] },
+  };
+  trip.stops = [{ ...trip.stops[0], departureDate: "2026-09-06", nights: 4 }];
+  trip.legs = [];
+  trip.planItems = Array.from({ length: 5 }, (_, index) => ({
+    id: `ready-${index + 1}`,
+    stopId: "a",
+    dayNumber: index + 1,
+    date: `2026-09-0${index + 1}`,
+    type: "activity" as const,
+    title: `Day ${index + 1}`,
+    reason: "",
+    notes: [],
+    startsAt: null,
+    endsAt: null,
+    bookingUrl: null,
+    latitude: null,
+    longitude: null,
+  }));
+  return trip;
+};
+
+const placeIssue = (input: Pick<PlaceIssue, "code" | "severity" | "blocksRoute" | "mentionId" | "sourceText" | "reason">): PlaceIssue => ({
+  ...input,
+  canonicalPlaceId: undefined,
+  message: input.reason,
+  options: [],
+  confidence: unknownPlanningConfidence(input.reason),
+  provenance: [{ id: `test:${input.mentionId}`, label: "Trip Health test", kind: "unresolved", supports: input.reason }],
+});
+
+const retainPlaceIssues = (trip: EasyTTrip, issues: PlaceIssue[]) => {
+  trip.brief.structuredBrief = Object.assign(extractStructuredTripBrief("A short trip."), { placeIssues: issues });
+  return trip;
+};
 
 test("flags a one-night stop reached by a heavy transfer as blocking", () => {
   const issues = reviewTrip(baseTrip());
@@ -104,4 +147,75 @@ test("blocks route readiness when a declared domestic stop is geographically imp
   trip.stops[1] = { ...trip.stops[1], name: "Nikko", country: "Japan", latitude: -16.2902, longitude: -66.1568 };
   assert.equal(reviewTrip(trip).some((item) => item.rule === "destination-identity" && item.severity === "critical"), true);
   assert.equal(tripHealth(trip).isReady, false);
+});
+
+test("Trip Health surfaces structured place issues with deterministic recommendation severity and identity", () => {
+  const trip = retainPlaceIssues(readyTrip(), [
+    placeIssue({
+      code: "unresolved_place",
+      severity: "error",
+      blocksRoute: true,
+      mentionId: "patagonia",
+      sourceText: "Patagonia",
+      reason: "Confirm Patagonia before relying on this route.",
+    }),
+    placeIssue({
+      code: "unsupported_containment",
+      severity: "warning",
+      blocksRoute: false,
+      mentionId: "alps",
+      sourceText: "the Alps",
+      reason: "The country scope for the Alps still needs review.",
+    }),
+    placeIssue({
+      code: "duplicate_alias",
+      severity: "info",
+      blocksRoute: false,
+      mentionId: "rapa-nui",
+      sourceText: "Rapa Nui",
+      reason: "Rapa Nui and Easter Island resolve to the same place.",
+    }),
+  ]);
+
+  const first = tripHealth(trip);
+  const critical = first.issues.find((item) => item.rule === "place-intelligence-unresolved-place-patagonia");
+  const warning = first.issues.find((item) => item.rule === "place-intelligence-unsupported-containment-alps");
+  const info = first.issues.find((item) => item.rule === "place-intelligence-duplicate-alias-rapa-nui");
+
+  assert.equal(critical?.severity, "critical");
+  assert.equal(critical?.message, "Confirm Patagonia before relying on this route.");
+  assert.equal(warning?.severity, "warning");
+  assert.equal(info?.severity, "info");
+  assert.equal(first.isReady, false);
+
+  const secondIds = tripHealth(trip).issues.filter((item) => item.rule.startsWith("place-intelligence-")).map((item) => item.id);
+  const firstIds = first.issues.filter((item) => item.rule.startsWith("place-intelligence-")).map((item) => item.id);
+  assert.deepEqual(secondIds, firstIds);
+});
+
+test("Trip Health readiness follows place issue route blocking without blocking optional unresolved intent", () => {
+  assert.equal(tripHealth(readyTrip()).isReady, true);
+
+  for (const code of ["unresolved_place", "ambiguous_place", "region_requires_base"] as const) {
+    const blocking = retainPlaceIssues(readyTrip(), [placeIssue({
+      code,
+      severity: "warning",
+      blocksRoute: true,
+      mentionId: code,
+      sourceText: code.replaceAll("_", " "),
+      reason: `Resolve ${code.replaceAll("_", " ")} before routing.`,
+    })]);
+    assert.equal(tripHealth(blocking).isReady, false, `${code} should block when blocksRoute is true`);
+  }
+
+  const optional = retainPlaceIssues(readyTrip(), [placeIssue({
+    code: "unresolved_place",
+    severity: "warning",
+    blocksRoute: false,
+    mentionId: "optional-region",
+    sourceText: "an optional region",
+    reason: "This optional region can be resolved later.",
+  })]);
+  assert.equal(tripHealth(optional).isReady, true);
+  assert.equal(tripHealth(optional).issues.some((item) => item.rule === "place-intelligence-unresolved-place-optional-region"), true);
 });

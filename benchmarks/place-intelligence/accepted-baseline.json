@@ -1,0 +1,6305 @@
+{
+  "generatedBy": "current-deterministic-place-intelligence",
+  "fixtureCount": 53,
+  "totals": {
+    "pass": 629,
+    "warning": 0,
+    "fail": 0
+  },
+  "dimensions": {
+    "place-mention-recall": {
+      "pass": 60,
+      "warning": 0,
+      "fail": 0
+    },
+    "phrase-boundary-accuracy": {
+      "pass": 53,
+      "warning": 0,
+      "fail": 0
+    },
+    "place-type-accuracy": {
+      "pass": 103,
+      "warning": 0,
+      "fail": 0
+    },
+    "alias-canonicalization": {
+      "pass": 6,
+      "warning": 0,
+      "fail": 0
+    },
+    "role-negation-accuracy": {
+      "pass": 10,
+      "warning": 0,
+      "fail": 0
+    },
+    "ambiguity-honesty": {
+      "pass": 123,
+      "warning": 0,
+      "fail": 0
+    },
+    "region-preservation": {
+      "pass": 39,
+      "warning": 0,
+      "fail": 0
+    },
+    "no-false-city-collapse": {
+      "pass": 39,
+      "warning": 0,
+      "fail": 0
+    },
+    "structured-brief-projection": {
+      "pass": 76,
+      "warning": 0,
+      "fail": 0
+    },
+    "exact-place-regression": {
+      "pass": 8,
+      "warning": 0,
+      "fail": 0
+    },
+    "unsupported-claim-avoidance": {
+      "pass": 112,
+      "warning": 0,
+      "fail": 0
+    }
+  },
+  "results": [
+    {
+      "id": "exact-bangkok-siem-reap-hcmc",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Bangkok",
+            "sourceTexts": [
+              "Bangkok"
+            ],
+            "canonicalPlaceId": "bangkok",
+            "canonicalName": "Bangkok",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Thailand"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Siem Reap",
+            "sourceTexts": [
+              "Siem Reap"
+            ],
+            "canonicalPlaceId": "siem-reap",
+            "canonicalName": "Siem Reap",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Cambodia"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "Ho Chi Minh City",
+            "sourceTexts": [
+              "Ho Chi Minh City"
+            ],
+            "canonicalPlaceId": "ho-chi-minh-city",
+            "canonicalName": "Ho Chi Minh City",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "bangkok",
+          "ho-chi-minh-city",
+          "siem-reap"
+        ],
+        "projectedDestinationNames": [
+          "Bangkok",
+          "Siem Reap",
+          "Ho Chi Minh City"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "bangkok",
+          "ho-chi-minh-city",
+          "siem-reap"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-japan-city-regression",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Tokyo",
+            "sourceTexts": [
+              "Tokyo"
+            ],
+            "canonicalPlaceId": "tokyo",
+            "canonicalName": "Tokyo",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Kyoto",
+            "sourceTexts": [
+              "Kyoto"
+            ],
+            "canonicalPlaceId": "kyoto",
+            "canonicalName": "Kyoto",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "Osaka",
+            "sourceTexts": [
+              "Osaka"
+            ],
+            "canonicalPlaceId": "osaka",
+            "canonicalName": "Osaka",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "kyoto",
+          "osaka",
+          "tokyo"
+        ],
+        "projectedDestinationNames": [
+          "Tokyo",
+          "Kyoto",
+          "Osaka"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "kyoto",
+          "osaka",
+          "tokyo"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-fixed-london-paris",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "London",
+            "sourceTexts": [
+              "London"
+            ],
+            "canonicalPlaceId": "london",
+            "canonicalName": "London",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "fixed_start",
+            "parentCountries": [
+              "United Kingdom"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Paris",
+            "sourceTexts": [
+              "Paris"
+            ],
+            "canonicalPlaceId": "paris",
+            "canonicalName": "Paris",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "fixed_end",
+            "parentCountries": [
+              "France"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "london",
+          "paris"
+        ],
+        "projectedDestinationNames": [
+          "London",
+          "Paris",
+          "London and finish in Paris"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "london",
+          "paris"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-country-japan",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Japan",
+            "sourceTexts": [
+              "Japan"
+            ],
+            "canonicalPlaceId": "japan",
+            "canonicalName": "Japan",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "japan"
+        ],
+        "projectedDestinationNames": [
+          "Japan"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "japan"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-iberia-cities",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Madrid",
+            "sourceTexts": [
+              "Madrid"
+            ],
+            "canonicalPlaceId": "madrid",
+            "canonicalName": "Madrid",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Spain"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Barcelona",
+            "sourceTexts": [
+              "Barcelona"
+            ],
+            "canonicalPlaceId": "barcelona",
+            "canonicalName": "Barcelona",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Spain"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "Lisbon",
+            "sourceTexts": [
+              "Lisbon"
+            ],
+            "canonicalPlaceId": "lisbon",
+            "canonicalName": "Lisbon",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Portugal"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "barcelona",
+          "lisbon",
+          "madrid"
+        ],
+        "projectedDestinationNames": [
+          "Madrid",
+          "Barcelona",
+          "Lisbon"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "barcelona",
+          "lisbon",
+          "madrid"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-cusco-machu-picchu",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Cusco",
+            "sourceTexts": [
+              "Cusco"
+            ],
+            "canonicalPlaceId": "cusco",
+            "canonicalName": "Cusco",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Machu Picchu",
+            "sourceTexts": [
+              "Machu Picchu"
+            ],
+            "canonicalPlaceId": "machu-picchu",
+            "canonicalName": "Machu Picchu",
+            "placeType": "landmark",
+            "status": "resolved",
+            "routability": "anchor_or_poi",
+            "role": "anchor",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "cusco",
+          "machu-picchu"
+        ],
+        "projectedDestinationNames": [
+          "Cusco",
+          "Machu Picchu"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "cusco",
+          "machu-picchu"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-gateways-and-anchor",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Bangkok",
+            "sourceTexts": [
+              "Bangkok"
+            ],
+            "canonicalPlaceId": "bangkok",
+            "canonicalName": "Bangkok",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "fixed_start",
+            "parentCountries": [
+              "Thailand"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Angkor Wat",
+            "sourceTexts": [
+              "Angkor Wat"
+            ],
+            "canonicalPlaceId": "angkor-wat",
+            "canonicalName": "Angkor Wat",
+            "placeType": "landmark",
+            "status": "resolved",
+            "routability": "anchor_or_poi",
+            "role": "required",
+            "parentCountries": [
+              "Cambodia"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "Vietnam",
+            "sourceTexts": [
+              "Vietnam"
+            ],
+            "canonicalPlaceId": "vietnam",
+            "canonicalName": "Vietnam",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "fixed_end",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "angkor-wat",
+          "bangkok",
+          "vietnam"
+        ],
+        "projectedDestinationNames": [
+          "Bangkok",
+          "Angkor Wat",
+          "Vietnam"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "angkor-wat",
+          "bangkok",
+          "vietnam"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "exact-vietnam-cities",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Hanoi",
+            "sourceTexts": [
+              "Hanoi"
+            ],
+            "canonicalPlaceId": "hanoi",
+            "canonicalName": "Hanoi",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Hoi An",
+            "sourceTexts": [
+              "Hoi An"
+            ],
+            "canonicalPlaceId": "hoi-an",
+            "canonicalName": "Hoi An",
+            "placeType": "town",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "hanoi",
+          "hoi-an"
+        ],
+        "projectedDestinationNames": [
+          "Hanoi",
+          "Hoi An"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "hanoi",
+          "hoi-an"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "existing-exact-place-regression",
+          "dimension": "exact-place-regression",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-patagonia",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia"
+        ],
+        "projectedRegionNames": [
+          "Patagonia"
+        ],
+        "projectedPlaceIds": [
+          "patagonia"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-tierra-del-fuego",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Tierra del Fuego",
+            "sourceTexts": [
+              "Tierra del Fuego"
+            ],
+            "canonicalPlaceId": "tierra-del-fuego",
+            "canonicalName": "Tierra del Fuego",
+            "placeType": "sub_region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "tierra-del-fuego"
+        ],
+        "projectedDestinationNames": [
+          "Tierra del Fuego"
+        ],
+        "projectedRegionNames": [
+          "Tierra del Fuego"
+        ],
+        "projectedPlaceIds": [
+          "tierra-del-fuego"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-dolomites",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Dolomites",
+            "sourceTexts": [
+              "the Dolomites"
+            ],
+            "canonicalPlaceId": "dolomites",
+            "canonicalName": "Dolomites",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "dolomites"
+        ],
+        "projectedDestinationNames": [
+          "Dolomites"
+        ],
+        "projectedRegionNames": [
+          "Dolomites"
+        ],
+        "projectedPlaceIds": [
+          "dolomites"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-french-alps",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "The French Alps",
+            "sourceTexts": [
+              "The French Alps"
+            ],
+            "canonicalPlaceId": "french-alps",
+            "canonicalName": "French Alps",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "France"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "french-alps"
+        ],
+        "projectedDestinationNames": [
+          "French Alps"
+        ],
+        "projectedRegionNames": [
+          "French Alps"
+        ],
+        "projectedPlaceIds": [
+          "french-alps"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-balkans",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Balkans",
+            "sourceTexts": [
+              "Balkans"
+            ],
+            "canonicalPlaceId": "balkans",
+            "canonicalName": "Balkans",
+            "placeType": "macro_region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Albania",
+              "Bosnia and Herzegovina",
+              "Bulgaria",
+              "Croatia",
+              "Greece",
+              "Kosovo",
+              "Montenegro",
+              "North Macedonia",
+              "Serbia",
+              "Slovenia"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "balkans"
+        ],
+        "projectedDestinationNames": [
+          "Balkans"
+        ],
+        "projectedRegionNames": [
+          "Balkans"
+        ],
+        "projectedPlaceIds": [
+          "balkans"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-scottish-highlands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Scottish Highlands",
+            "sourceTexts": [
+              "the Scottish Highlands"
+            ],
+            "canonicalPlaceId": "scottish-highlands",
+            "canonicalName": "Scottish Highlands",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "United Kingdom"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "scottish-highlands"
+        ],
+        "projectedDestinationNames": [
+          "Scottish Highlands"
+        ],
+        "projectedRegionNames": [
+          "Scottish Highlands"
+        ],
+        "projectedPlaceIds": [
+          "scottish-highlands"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-amalfi-coast",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Naples",
+            "sourceTexts": [
+              "Naples"
+            ],
+            "canonicalPlaceId": "naples",
+            "canonicalName": "Naples",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Amalfi Coast",
+            "sourceTexts": [
+              "the Amalfi Coast"
+            ],
+            "canonicalPlaceId": "amalfi-coast",
+            "canonicalName": "Amalfi Coast",
+            "placeType": "coast",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "amalfi-coast",
+          "naples"
+        ],
+        "projectedDestinationNames": [
+          "Naples",
+          "Amalfi Coast"
+        ],
+        "projectedRegionNames": [
+          "Amalfi Coast"
+        ],
+        "projectedPlaceIds": [
+          "amalfi-coast",
+          "naples"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-sacred-valley",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Sacred Valley",
+            "sourceTexts": [
+              "the Sacred Valley"
+            ],
+            "canonicalPlaceId": "sacred-valley",
+            "canonicalName": "Sacred Valley",
+            "placeType": "valley",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "sacred-valley"
+        ],
+        "projectedDestinationNames": [
+          "Sacred Valley"
+        ],
+        "projectedRegionNames": [
+          "Sacred Valley"
+        ],
+        "projectedPlaceIds": [
+          "sacred-valley"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-greek-islands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "the Greek Islands",
+            "sourceTexts": [
+              "the Greek Islands"
+            ],
+            "canonicalPlaceId": "greek-islands",
+            "canonicalName": "Greek Islands",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Greece"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "greek-islands"
+        ],
+        "projectedDestinationNames": [
+          "Greek Islands"
+        ],
+        "projectedRegionNames": [
+          "Greek Islands"
+        ],
+        "projectedPlaceIds": [
+          "greek-islands"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "region-lake-district",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "London",
+            "sourceTexts": [
+              "London"
+            ],
+            "canonicalPlaceId": "london",
+            "canonicalName": "London",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "United Kingdom"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Lake District",
+            "sourceTexts": [
+              "the Lake District"
+            ],
+            "canonicalPlaceId": "lake-district",
+            "canonicalName": "Lake District",
+            "placeType": "natural_area",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "anchor",
+            "parentCountries": [
+              "United Kingdom"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "lake-district",
+          "london"
+        ],
+        "projectedDestinationNames": [
+          "London",
+          "Lake District"
+        ],
+        "projectedRegionNames": [
+          "Lake District"
+        ],
+        "projectedPlaceIds": [
+          "lake-district",
+          "london"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "island-easter-island",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Easter Island",
+            "sourceTexts": [
+              "Easter Island"
+            ],
+            "canonicalPlaceId": "rapa-nui",
+            "canonicalName": "Rapa Nui",
+            "placeType": "island",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "rapa-nui"
+        ],
+        "projectedDestinationNames": [
+          "Rapa Nui"
+        ],
+        "projectedRegionNames": [
+          "Rapa Nui"
+        ],
+        "projectedPlaceIds": [
+          "rapa-nui"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "island-rapa-nui",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Rapa Nui",
+            "sourceTexts": [
+              "Rapa Nui"
+            ],
+            "canonicalPlaceId": "rapa-nui",
+            "canonicalName": "Rapa Nui",
+            "placeType": "island",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "rapa-nui"
+        ],
+        "projectedDestinationNames": [
+          "Rapa Nui"
+        ],
+        "projectedRegionNames": [
+          "Rapa Nui"
+        ],
+        "projectedPlaceIds": [
+          "rapa-nui"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "archipelago-galapagos",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Quito",
+            "sourceTexts": [
+              "Quito"
+            ],
+            "canonicalPlaceId": "quito",
+            "canonicalName": "Quito",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Ecuador"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Galápagos Islands",
+            "sourceTexts": [
+              "the Galápagos Islands"
+            ],
+            "canonicalPlaceId": "galapagos-islands",
+            "canonicalName": "Galápagos Islands",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Ecuador"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "galapagos-islands",
+          "quito"
+        ],
+        "projectedDestinationNames": [
+          "Quito",
+          "Galápagos Islands"
+        ],
+        "projectedRegionNames": [
+          "Galápagos Islands"
+        ],
+        "projectedPlaceIds": [
+          "galapagos-islands",
+          "quito"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "archipelago-canary-islands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Canary Islands",
+            "sourceTexts": [
+              "the Canary Islands"
+            ],
+            "canonicalPlaceId": "canary-islands",
+            "canonicalName": "Canary Islands",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Spain"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "canary-islands"
+        ],
+        "projectedDestinationNames": [
+          "Canary Islands"
+        ],
+        "projectedRegionNames": [
+          "Canary Islands"
+        ],
+        "projectedPlaceIds": [
+          "canary-islands"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "archipelago-azores",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Azores",
+            "sourceTexts": [
+              "the Azores"
+            ],
+            "canonicalPlaceId": "azores",
+            "canonicalName": "Azores",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Portugal"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "azores"
+        ],
+        "projectedDestinationNames": [
+          "Azores"
+        ],
+        "projectedRegionNames": [
+          "Azores",
+          "Mountains"
+        ],
+        "projectedPlaceIds": [
+          "azores"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "archipelago-faroe-islands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Faroe Islands",
+            "sourceTexts": [
+              "the Faroe Islands"
+            ],
+            "canonicalPlaceId": "faroe-islands",
+            "canonicalName": "Faroe Islands",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Denmark"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "faroe-islands"
+        ],
+        "projectedDestinationNames": [
+          "Faroe Islands"
+        ],
+        "projectedRegionNames": [
+          "Faroe Islands"
+        ],
+        "projectedPlaceIds": [
+          "faroe-islands"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-easter-island-rapa-nui-dedupe",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Easter Island",
+            "sourceTexts": [
+              "Easter Island",
+              "Rapa Nui"
+            ],
+            "canonicalPlaceId": "rapa-nui",
+            "canonicalName": "Rapa Nui",
+            "placeType": "island",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "required",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "duplicate_alias",
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "rapa-nui"
+        ],
+        "projectedDestinationNames": [
+          "Rapa Nui"
+        ],
+        "projectedRegionNames": [
+          "Rapa Nui"
+        ],
+        "projectedPlaceIds": [
+          "rapa-nui"
+        ],
+        "projectedIssueCodes": [
+          "duplicate_alias",
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-valle-sagrado",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Cusco",
+            "sourceTexts": [
+              "Cusco"
+            ],
+            "canonicalPlaceId": "cusco",
+            "canonicalName": "Cusco",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "el Valle Sagrado",
+            "sourceTexts": [
+              "el Valle Sagrado"
+            ],
+            "canonicalPlaceId": "sacred-valley",
+            "canonicalName": "Sacred Valley",
+            "placeType": "valley",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "cusco",
+          "sacred-valley"
+        ],
+        "projectedDestinationNames": [
+          "Cusco",
+          "Sacred Valley"
+        ],
+        "projectedRegionNames": [
+          "Sacred Valley"
+        ],
+        "projectedPlaceIds": [
+          "cusco",
+          "sacred-valley"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-saigon",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Hanoi",
+            "sourceTexts": [
+              "Hanoi"
+            ],
+            "canonicalPlaceId": "hanoi",
+            "canonicalName": "Hanoi",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Saigon",
+            "sourceTexts": [
+              "Saigon"
+            ],
+            "canonicalPlaceId": "ho-chi-minh-city",
+            "canonicalName": "Ho Chi Minh City",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Vietnam"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "hanoi",
+          "ho-chi-minh-city"
+        ],
+        "projectedDestinationNames": [
+          "Hanoi",
+          "Ho Chi Minh City"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "hanoi",
+          "ho-chi-minh-city"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-nyc",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "NYC",
+            "sourceTexts": [
+              "NYC"
+            ],
+            "canonicalPlaceId": "new-york-city",
+            "canonicalName": "New York City",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "United States"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Boston",
+            "sourceTexts": [
+              "Boston"
+            ],
+            "canonicalPlaceId": "boston",
+            "canonicalName": "Boston",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "United States"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "boston",
+          "new-york-city"
+        ],
+        "projectedDestinationNames": [
+          "New York City",
+          "Boston"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "boston",
+          "new-york-city"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-japan-alps",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Tokyo",
+            "sourceTexts": [
+              "Tokyo"
+            ],
+            "canonicalPlaceId": "tokyo",
+            "canonicalName": "Tokyo",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Japan Alps",
+            "sourceTexts": [
+              "the Japan Alps"
+            ],
+            "canonicalPlaceId": "japanese-alps",
+            "canonicalName": "Japanese Alps",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "japanese-alps",
+          "tokyo"
+        ],
+        "projectedDestinationNames": [
+          "Tokyo",
+          "Japanese Alps"
+        ],
+        "projectedRegionNames": [
+          "Japanese Alps"
+        ],
+        "projectedPlaceIds": [
+          "japanese-alps",
+          "tokyo"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "alias-uk",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the UK",
+            "sourceTexts": [
+              "the UK"
+            ],
+            "canonicalPlaceId": "united-kingdom",
+            "canonicalName": "United Kingdom",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "United Kingdom"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "united-kingdom"
+        ],
+        "projectedDestinationNames": [
+          "United Kingdom"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "united-kingdom"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "alias-canonical-identity",
+          "dimension": "alias-canonicalization",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "required-central-southern-regions-and-rapa-nui",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Tierra del Fuego",
+            "sourceTexts": [
+              "Tierra del Fuego"
+            ],
+            "canonicalPlaceId": "tierra-del-fuego",
+            "canonicalName": "Tierra del Fuego",
+            "placeType": "sub_region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "Easter Island",
+            "sourceTexts": [
+              "Easter Island"
+            ],
+            "canonicalPlaceId": "rapa-nui",
+            "canonicalName": "Rapa Nui",
+            "placeType": "island",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia",
+          "rapa-nui",
+          "tierra-del-fuego"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia",
+          "Tierra del Fuego",
+          "Rapa Nui"
+        ],
+        "projectedRegionNames": [
+          "Patagonia",
+          "Tierra del Fuego",
+          "Rapa Nui"
+        ],
+        "projectedPlaceIds": [
+          "patagonia",
+          "rapa-nui",
+          "tierra-del-fuego"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "nested-patagonia-tierra-del-fuego",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Tierra del Fuego",
+            "sourceTexts": [
+              "Tierra del Fuego"
+            ],
+            "canonicalPlaceId": "tierra-del-fuego",
+            "canonicalName": "Tierra del Fuego",
+            "placeType": "sub_region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia",
+          "tierra-del-fuego"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia",
+          "Tierra del Fuego"
+        ],
+        "projectedRegionNames": [
+          "Patagonia",
+          "Tierra del Fuego"
+        ],
+        "projectedPlaceIds": [
+          "patagonia",
+          "tierra-del-fuego"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "nested-peru-cusco-sacred-valley",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Peru",
+            "sourceTexts": [
+              "Peru"
+            ],
+            "canonicalPlaceId": "peru",
+            "canonicalName": "Peru",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Cusco",
+            "sourceTexts": [
+              "Cusco"
+            ],
+            "canonicalPlaceId": "cusco",
+            "canonicalName": "Cusco",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 1
+          },
+          {
+            "sourceText": "the Sacred Valley",
+            "sourceTexts": [
+              "the Sacred Valley"
+            ],
+            "canonicalPlaceId": "sacred-valley",
+            "canonicalName": "Sacred Valley",
+            "placeType": "valley",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 2
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "cusco",
+          "peru",
+          "sacred-valley"
+        ],
+        "projectedDestinationNames": [
+          "Peru",
+          "Cusco",
+          "Sacred Valley"
+        ],
+        "projectedRegionNames": [
+          "Sacred Valley"
+        ],
+        "projectedPlaceIds": [
+          "cusco",
+          "peru",
+          "sacred-valley"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "nested-italy-tuscany",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Italy",
+            "sourceTexts": [
+              "Italy"
+            ],
+            "canonicalPlaceId": "italy",
+            "canonicalName": "Italy",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Tuscany",
+            "sourceTexts": [
+              "Tuscany"
+            ],
+            "canonicalPlaceId": "tuscany",
+            "canonicalName": "Tuscany",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "italy",
+          "tuscany"
+        ],
+        "projectedDestinationNames": [
+          "Italy",
+          "Tuscany"
+        ],
+        "projectedRegionNames": [
+          "Tuscany"
+        ],
+        "projectedPlaceIds": [
+          "italy",
+          "tuscany"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "nested-japan-japanese-alps",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Japan",
+            "sourceTexts": [
+              "Japan"
+            ],
+            "canonicalPlaceId": "japan",
+            "canonicalName": "Japan",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Japanese Alps",
+            "sourceTexts": [
+              "the Japanese Alps"
+            ],
+            "canonicalPlaceId": "japanese-alps",
+            "canonicalName": "Japanese Alps",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "japan",
+          "japanese-alps"
+        ],
+        "projectedDestinationNames": [
+          "Japan",
+          "Japanese Alps"
+        ],
+        "projectedRegionNames": [
+          "Japanese Alps"
+        ],
+        "projectedPlaceIds": [
+          "japan",
+          "japanese-alps"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "nested-greece-greek-islands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Greece",
+            "sourceTexts": [
+              "Greece"
+            ],
+            "canonicalPlaceId": "greece",
+            "canonicalName": "Greece",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Greece"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Greek Islands",
+            "sourceTexts": [
+              "the Greek Islands"
+            ],
+            "canonicalPlaceId": "greek-islands",
+            "canonicalName": "Greek Islands",
+            "placeType": "archipelago",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Greece"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "greece",
+          "greek-islands"
+        ],
+        "projectedDestinationNames": [
+          "Greece",
+          "Greek Islands"
+        ],
+        "projectedRegionNames": [
+          "Greek Islands"
+        ],
+        "projectedPlaceIds": [
+          "greece",
+          "greek-islands"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "context-georgia-armenia",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Georgia",
+            "sourceTexts": [
+              "Georgia"
+            ],
+            "canonicalPlaceId": "georgia-country",
+            "canonicalName": "Georgia",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Georgia"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Armenia",
+            "sourceTexts": [
+              "Armenia"
+            ],
+            "canonicalPlaceId": "armenia",
+            "canonicalName": "Armenia",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Armenia"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "armenia",
+          "georgia-country"
+        ],
+        "projectedDestinationNames": [
+          "Georgia",
+          "Armenia"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "armenia",
+          "georgia-country"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "context-georgia-florida",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Georgia",
+            "sourceTexts": [
+              "Georgia"
+            ],
+            "canonicalPlaceId": "georgia-us-state",
+            "canonicalName": "Georgia, United States",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "United States"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Florida",
+            "sourceTexts": [
+              "Florida"
+            ],
+            "canonicalPlaceId": "florida",
+            "canonicalName": "Florida",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "United States"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "florida",
+          "georgia-us-state"
+        ],
+        "projectedDestinationNames": [
+          "Georgia, United States",
+          "Florida"
+        ],
+        "projectedRegionNames": [
+          "Georgia, United States",
+          "Florida"
+        ],
+        "projectedPlaceIds": [
+          "florida",
+          "georgia-us-state"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "ambiguity-georgia-alone",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Georgia",
+            "sourceTexts": [
+              "Georgia"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "Georgia",
+            "placeType": "unknown",
+            "status": "ambiguous",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "ambiguous_place",
+          "missing_routable_destination"
+        ],
+        "projectedDestinationIds": [],
+        "projectedDestinationNames": [],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [],
+        "projectedIssueCodes": [
+          "ambiguous_place",
+          "missing_routable_destination"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "context-granada-spain",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Granada",
+            "sourceTexts": [
+              "Granada"
+            ],
+            "canonicalPlaceId": "granada-spain",
+            "canonicalName": "Granada",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Spain"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Spain",
+            "sourceTexts": [
+              "Spain"
+            ],
+            "canonicalPlaceId": "spain",
+            "canonicalName": "Spain",
+            "placeType": "country",
+            "status": "resolved",
+            "routability": "planning_area",
+            "role": "preferred",
+            "parentCountries": [
+              "Spain"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "granada-spain",
+          "spain"
+        ],
+        "projectedDestinationNames": [
+          "Granada",
+          "Spain"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "granada-spain",
+          "spain"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "ambiguity-highlands",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "the Highlands",
+            "sourceTexts": [
+              "the Highlands"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "the Highlands",
+            "placeType": "unknown",
+            "status": "ambiguous",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "ambiguous_place",
+          "missing_routable_destination"
+        ],
+        "projectedDestinationIds": [],
+        "projectedDestinationNames": [],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [],
+        "projectedIssueCodes": [
+          "ambiguous_place",
+          "missing_routable_destination"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "context-swiss-alps",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "The Swiss Alps",
+            "sourceTexts": [
+              "The Swiss Alps"
+            ],
+            "canonicalPlaceId": "swiss-alps",
+            "canonicalName": "Swiss Alps",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Switzerland"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Zurich",
+            "sourceTexts": [
+              "Zurich"
+            ],
+            "canonicalPlaceId": "zurich",
+            "canonicalName": "Zürich",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Switzerland"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "swiss-alps",
+          "zurich"
+        ],
+        "projectedDestinationNames": [
+          "Swiss Alps",
+          "Zürich"
+        ],
+        "projectedRegionNames": [
+          "Swiss Alps"
+        ],
+        "projectedPlaceIds": [
+          "swiss-alps",
+          "zurich"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-required-patagonia",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "required",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia"
+        ],
+        "projectedRegionNames": [
+          "Patagonia"
+        ],
+        "projectedPlaceIds": [
+          "patagonia"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-optional-patagonia",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "optional",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia"
+        ],
+        "projectedRegionNames": [
+          "Patagonia"
+        ],
+        "projectedPlaceIds": [
+          "patagonia"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-excluded-venice",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Venice",
+            "sourceTexts": [
+              "Venice"
+            ],
+            "canonicalPlaceId": "venice",
+            "canonicalName": "Venice",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "excluded",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Rome",
+            "sourceTexts": [
+              "Rome"
+            ],
+            "canonicalPlaceId": "rome",
+            "canonicalName": "Rome",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "rome"
+        ],
+        "projectedDestinationNames": [
+          "Rome"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "rome",
+          "venice"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-fixed-south-america-gateways",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Buenos Aires",
+            "sourceTexts": [
+              "Buenos Aires"
+            ],
+            "canonicalPlaceId": "buenos-aires",
+            "canonicalName": "Buenos Aires",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "fixed_start",
+            "parentCountries": [
+              "Argentina"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Santiago",
+            "sourceTexts": [
+              "Santiago"
+            ],
+            "canonicalPlaceId": "santiago",
+            "canonicalName": "Santiago",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "fixed_end",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "buenos-aires",
+          "santiago"
+        ],
+        "projectedDestinationNames": [
+          "Buenos Aires",
+          "Santiago",
+          "Buenos Aires and finish in Santiago"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "buenos-aires",
+          "santiago"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-gateway-versus-stay",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "ordered",
+        "mentions": [
+          {
+            "sourceText": "Lima",
+            "sourceTexts": [
+              "Lima"
+            ],
+            "canonicalPlaceId": "lima",
+            "canonicalName": "Lima",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "gateway",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Sacred Valley",
+            "sourceTexts": [
+              "the Sacred Valley"
+            ],
+            "canonicalPlaceId": "sacred-valley",
+            "canonicalName": "Sacred Valley",
+            "placeType": "valley",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "required",
+            "parentCountries": [
+              "Peru"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "lima",
+          "sacred-valley"
+        ],
+        "projectedDestinationNames": [
+          "Lima",
+          "Sacred Valley"
+        ],
+        "projectedRegionNames": [
+          "Sacred Valley"
+        ],
+        "projectedPlaceIds": [
+          "lima",
+          "sacred-valley"
+        ],
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "sequence-kind",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "role-negative-region-positive-city",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonia",
+            "sourceTexts": [
+              "Patagonia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "excluded",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Buenos Aires",
+            "sourceTexts": [
+              "Buenos Aires"
+            ],
+            "canonicalPlaceId": "buenos-aires",
+            "canonicalName": "Buenos Aires",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina"
+            ],
+            "order": 1
+          }
+        ],
+        "issueCodes": [],
+        "projectedDestinationIds": [
+          "buenos-aires"
+        ],
+        "projectedDestinationNames": [
+          "Buenos Aires"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "buenos-aires",
+          "patagonia"
+        ],
+        "projectedIssueCodes": []
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "partial-tokyo-atlantis",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Tokyo",
+            "sourceTexts": [
+              "Tokyo"
+            ],
+            "canonicalPlaceId": "tokyo",
+            "canonicalName": "Tokyo",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Japan"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Atlantis",
+            "sourceTexts": [
+              "Atlantis"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "Atlantis",
+            "placeType": "unknown",
+            "status": "unresolved",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "unresolved_place"
+        ],
+        "projectedDestinationIds": [
+          "tokyo"
+        ],
+        "projectedDestinationNames": [
+          "Tokyo"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "tokyo"
+        ],
+        "projectedIssueCodes": [
+          "unresolved_place"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "partial-venice-moonlit-fjords",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Venice",
+            "sourceTexts": [
+              "Venice"
+            ],
+            "canonicalPlaceId": "venice",
+            "canonicalName": "Venice",
+            "placeType": "city",
+            "status": "resolved",
+            "routability": "direct_destination",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "the Moonlit Fjords",
+            "sourceTexts": [
+              "the Moonlit Fjords"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "the Moonlit Fjords",
+            "placeType": "unknown",
+            "status": "unresolved",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "unresolved_place"
+        ],
+        "projectedDestinationIds": [
+          "venice"
+        ],
+        "projectedDestinationNames": [
+          "Venice"
+        ],
+        "projectedRegionNames": [],
+        "projectedPlaceIds": [
+          "venice"
+        ],
+        "projectedIssueCodes": [
+          "unresolved_place"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        },
+        {
+          "id": "direct-destinations-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "partial-patagonia-misspelling",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Patagonnia",
+            "sourceTexts": [
+              "Patagonnia"
+            ],
+            "canonicalPlaceId": "patagonia",
+            "canonicalName": "Patagonia",
+            "placeType": "region",
+            "status": "partially_resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Argentina",
+              "Chile"
+            ],
+            "order": 0
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ],
+        "projectedDestinationIds": [
+          "patagonia"
+        ],
+        "projectedDestinationNames": [
+          "Patagonia"
+        ],
+        "projectedRegionNames": [
+          "Patagonia"
+        ],
+        "projectedPlaceIds": [
+          "patagonia"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "partial-rapa-nui-unknown",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "Rapa Nui",
+            "sourceTexts": [
+              "Rapa Nui"
+            ],
+            "canonicalPlaceId": "rapa-nui",
+            "canonicalName": "Rapa Nui",
+            "placeType": "island",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Chile"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Qqqqzz",
+            "sourceTexts": [
+              "Qqqqzz"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "Qqqqzz",
+            "placeType": "unknown",
+            "status": "unresolved",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "unresolved_place"
+        ],
+        "projectedDestinationIds": [
+          "rapa-nui"
+        ],
+        "projectedDestinationNames": [
+          "Rapa Nui"
+        ],
+        "projectedRegionNames": [
+          "Rapa Nui"
+        ],
+        "projectedPlaceIds": [
+          "rapa-nui"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "unresolved_place"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    },
+    {
+      "id": "partial-dolomites-mystery-coast",
+      "parserVersion": "place-intelligence-v1-deterministic",
+      "output": {
+        "sequenceKind": "unordered",
+        "mentions": [
+          {
+            "sourceText": "The Dolomites",
+            "sourceTexts": [
+              "The Dolomites"
+            ],
+            "canonicalPlaceId": "dolomites",
+            "canonicalName": "Dolomites",
+            "placeType": "mountain_range",
+            "status": "resolved",
+            "routability": "needs_base_selection",
+            "role": "preferred",
+            "parentCountries": [
+              "Italy"
+            ],
+            "order": 0
+          },
+          {
+            "sourceText": "Mystery Coast",
+            "sourceTexts": [
+              "Mystery Coast"
+            ],
+            "canonicalPlaceId": null,
+            "canonicalName": "Mystery Coast",
+            "placeType": "unknown",
+            "status": "unresolved",
+            "routability": "non_routable_reference",
+            "role": "preferred",
+            "parentCountries": [],
+            "order": 1
+          }
+        ],
+        "issueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "unresolved_place"
+        ],
+        "projectedDestinationIds": [
+          "dolomites"
+        ],
+        "projectedDestinationNames": [
+          "Dolomites"
+        ],
+        "projectedRegionNames": [
+          "Dolomites"
+        ],
+        "projectedPlaceIds": [
+          "dolomites"
+        ],
+        "projectedIssueCodes": [
+          "missing_routable_destination",
+          "region_requires_base",
+          "unresolved_place"
+        ]
+      },
+      "findings": [
+        {
+          "id": "expected-place-mention-recall",
+          "dimension": "place-mention-recall",
+          "status": "pass"
+        },
+        {
+          "id": "no-spurious-place-mentions",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "exact-phrase-boundaries",
+          "dimension": "phrase-boundary-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-types",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "resolution-status-honesty",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-routability",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "uncertain-mentions-have-no-false-identity",
+          "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "planning-areas-preserved",
+          "dimension": "region-preservation",
+          "status": "pass"
+        },
+        {
+          "id": "no-false-city-collapse",
+          "dimension": "no-false-city-collapse",
+          "status": "pass"
+        },
+        {
+          "id": "stable-country-containment",
+          "dimension": "place-type-accuracy",
+          "status": "pass"
+        },
+        {
+          "id": "structured-issue-contract",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "expected-resolution-issues",
+          "dimension": "ambiguity-honesty",
+          "status": "pass"
+        },
+        {
+          "id": "all-place-intent-projected",
+          "dimension": "structured-brief-projection",
+          "status": "pass"
+        }
+      ]
+    }
+  ]
+}

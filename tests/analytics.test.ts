@@ -38,6 +38,8 @@ test("analytics payload cleaning removes empty values without changing safe coar
 test("save failures are reduced to machine-safe categories", () => {
   assert.equal(classifyAnalyticsSaveError(new TypeError("fetch failed")), "network");
   assert.equal(classifyAnalyticsSaveError(new Error("Authentication required")), "auth");
+  assert.equal(classifyAnalyticsSaveError(Object.assign(new Error("Session ended"), { name: "EasyTTripAuthError" })), "auth");
+  assert.equal(classifyAnalyticsSaveError(Object.assign(new Error("Cloud changed"), { name: "EasyTTripSaveConflictError" })), "conflict");
   assert.equal(classifyAnalyticsSaveError(new Error("Trip ownership mismatch")), "conflict");
   const promotionConflict = new Error("A newer cloud copy already exists.");
   promotionConflict.name = "EasyTTripPromotionConflictError";
@@ -58,6 +60,48 @@ test("analytics is a safe no-op outside the browser and without configuration", 
   }));
 });
 
+function installAnalyticsWindow(consent: "granted" | "declined", calls: unknown[][]) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { pathname: "/journey/routes/andean-highlands", origin: "https://morrovia.com" },
+      localStorage: { getItem: (key: string) => key === "easyt-analytics-consent" ? consent : null },
+      gtag: (...args: unknown[]) => calls.push(args),
+    },
+  });
+  return () => previous
+    ? Object.defineProperty(globalThis, "window", previous)
+    : Reflect.deleteProperty(globalThis, "window");
+}
+
+test("route_started emits only coarse public route metadata after consent", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("granted", calls);
+  try {
+    trackEvent("route_started", { route_id: "andean-highlands", stop_count: 3, duration_days: 9, placement: "hero" });
+    assert.equal(calls.length, 1);
+    const [kind, name, payload] = calls[0] as [string, string, Record<string, unknown>];
+    assert.equal(kind, "event");
+    assert.equal(name, "route_started");
+    assert.deepEqual(Object.keys(payload).sort(), ["duration_days", "environment", "page_path", "placement", "route_id", "stop_count"]);
+    assert.equal(payload.page_path, "/journey/routes/andean-highlands");
+  } finally {
+    restore();
+  }
+});
+
+test("route_started is a no-op without analytics consent", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("declined", calls);
+  try {
+    trackEvent("route_started", { route_id: "andean-highlands", stop_count: 3, duration_days: 9, placement: "final" });
+  } finally {
+    restore();
+  }
+  assert.deepEqual(calls, []);
+});
+
 const privacySafeGeneration: LaunchAnalyticsEventMap["trip_generated"] = {
   trip_source: "homepage",
   stop_count: 4,
@@ -68,7 +112,51 @@ const privacySafeGeneration: LaunchAnalyticsEventMap["trip_generated"] = {
 };
 assert.equal(privacySafeGeneration.stop_count, 4);
 
+const privacySafeCapture: LaunchAnalyticsEventMap["easyt_trip_capture_reviewed"] = {
+  source: "homepage_builder",
+  parser_version: "place-intelligence-v1-deterministic",
+  place_count: 3,
+  unresolved_count: 0,
+  region_count: 3,
+  has_duration: true,
+};
+assert.deepEqual(Object.keys(privacySafeCapture).sort(), [
+  "has_duration", "parser_version", "place_count", "region_count", "source", "unresolved_count",
+]);
+
+const privacySafeStampStatus: LaunchAnalyticsEventMap["stamp_status_changed"] = {
+  previous_status: "want",
+  next_status: "visited",
+  source: "country_card",
+  is_authenticated: true,
+};
+assert.deepEqual(Object.keys(privacySafeStampStatus).sort(), [
+  "is_authenticated", "next_status", "previous_status", "source",
+]);
+
+const privacySafeStampNote: LaunchAnalyticsEventMap["stamp_note_added"] = {
+  source: "country_card",
+  is_authenticated: false,
+};
+assert.deepEqual(Object.keys(privacySafeStampNote).sort(), ["is_authenticated", "source"]);
+
+const privacySafeRouteStart: LaunchAnalyticsEventMap["route_started"] = {
+  route_id: "andean-highlands",
+  stop_count: 3,
+  duration_days: 9,
+  placement: "hero",
+};
+assert.deepEqual(Object.keys(privacySafeRouteStart).sort(), ["duration_days", "placement", "route_id", "stop_count"]);
+
 if (false) {
   // @ts-expect-error launch payloads deliberately reject raw prompt text
   trackEvent("trip_generated", { ...privacySafeGeneration, raw_prompt: "private trip text" });
+  // @ts-expect-error capture payloads reject prompts, phrases and resolution details
+  trackEvent("easyt_trip_capture_reviewed", { ...privacySafeCapture, raw_prompt: "private trip text" });
+  // @ts-expect-error stamp events deliberately reject country names and identifiers
+  trackEvent("stamp_status_changed", { ...privacySafeStampStatus, country_name: "France" });
+  // @ts-expect-error stamp-note events deliberately reject raw note or memory text
+  trackEvent("stamp_note_added", { ...privacySafeStampNote, raw_note: "private memory text" });
+  // @ts-expect-error public route starts reject prompts and personalised trip text
+  trackEvent("route_started", { ...privacySafeRouteStart, raw_prompt: "private trip text" });
 }

@@ -14,6 +14,58 @@ type MealMood = "local" | "comfort" | "surprise";
 type StayStyle = "simple" | "character" | "comfort";
 type StaySearch = { checkIn?: string; checkOut?: string; adults?: number; rooms?: number; currency?: string; bookerCountry?: string };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isJourneyLocalPlace(value: unknown): value is JourneyLocalPlace {
+  if (!isRecord(value)) return false;
+  const coordinates = value.coordinates;
+  const price = value.price;
+  const validPrice = price === undefined || (isRecord(price)
+    && typeof price.total === "number" && Number.isFinite(price.total)
+    && typeof price.currency === "string" && Boolean(price.currency.trim()));
+  const validProvider = value.provider === undefined || value.provider === "booking-demand" || value.provider === "google-places" || value.provider === "openstreetmap";
+  const validAvailability = value.availability === undefined || value.availability === "available" || value.availability === "check";
+  return typeof value.id === "string" && Boolean(value.id.trim())
+    && typeof value.name === "string" && Boolean(value.name.trim())
+    && typeof value.address === "string"
+    && typeof value.category === "string"
+    && typeof value.mapsUrl === "string" && Boolean(value.mapsUrl.trim())
+    && Array.isArray(coordinates)
+    && coordinates.length === 2
+    && coordinates.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate))
+    && (value.bookingUrl === undefined || typeof value.bookingUrl === "string")
+    && (value.distanceKm === undefined || (typeof value.distanceKm === "number" && Number.isFinite(value.distanceKm)))
+    && (value.operational === undefined || typeof value.operational === "boolean")
+    && (value.rating === undefined || (typeof value.rating === "number" && Number.isFinite(value.rating)))
+    && (value.priceLevel === undefined || typeof value.priceLevel === "string")
+    && (value.cancellation === undefined || typeof value.cancellation === "string")
+    && validAvailability
+    && validProvider
+    && validPrice;
+}
+
+function localSearchPayload(value: unknown) {
+  if (!isRecord(value) || !Array.isArray(value.places)) {
+    return { places: [] as JourneyLocalPlace[], unavailable: true };
+  }
+  return {
+    places: value.places.filter(isJourneyLocalPlace),
+    unavailable: value.unavailable === true,
+  };
+}
+
+function inventorySearchPayload(value: unknown) {
+  if (!isRecord(value) || !Array.isArray(value.properties)) {
+    return { properties: [] as JourneyLocalPlace[], unavailable: true };
+  }
+  return {
+    properties: value.properties.filter(isJourneyLocalPlace),
+    unavailable: value.unavailable === true,
+  };
+}
+
 export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, staySearch, selectedPlaceId, onPlaceSelect, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void; onRemovePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
   // These defaults are the existing “Show best matches” choice. Keeping them
   // selected makes the finder useful immediately; the same controls remain
@@ -75,16 +127,23 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
     setMoment("now");
     autoSelectedRef.current = false;
     const localSearch = fetch(`/api/journey-local-search?kind=${kind}&city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&lat=${latitude}&lon=${longitude}`, { signal: controller.signal })
-      .then((response) => response.ok ? response.json() : { places: [], unavailable: true })
+      .then(async (response) => response.ok
+        ? localSearchPayload(await response.json())
+        : { places: [] as JourneyLocalPlace[], unavailable: true })
       // A partner-confirmed stay must remain usable even when the independent
       // map lookup happens to be unavailable.
-      .catch(() => ({ places: [], unavailable: true }));
+      .catch(() => ({ places: [] as JourneyLocalPlace[], unavailable: true }));
     const inventorySearch = kind === "stay" && staySearch?.checkIn && staySearch?.checkOut
       ? fetch(`/api/journey-accommodation-search?${new URLSearchParams({ lat: String(latitude), lon: String(longitude), checkIn: staySearch.checkIn, checkOut: staySearch.checkOut, adults: String(staySearch.adults ?? 1), rooms: String(staySearch.rooms ?? 1), currency: staySearch.currency ?? "USD", ...(staySearch.bookerCountry ? { bookerCountry: staySearch.bookerCountry } : {}) })}`, { signal: controller.signal })
-        .then((response) => response.ok ? response.json() : Promise.resolve({ properties: [] }))
-      : Promise.resolve({ properties: [] });
+        .then(async (response) => response.ok
+          ? inventorySearchPayload(await response.json())
+          : { properties: [] as JourneyLocalPlace[], unavailable: true })
+        // Inventory is an optional enhancement. Keep independent map results
+        // when the partner request fails or returns malformed data.
+        .catch(() => ({ properties: [] as JourneyLocalPlace[], unavailable: true }))
+      : Promise.resolve({ properties: [] as JourneyLocalPlace[], unavailable: false });
     Promise.all([localSearch, inventorySearch])
-      .then(([localData, inventoryData]: [{ places?: JourneyLocalPlace[]; unavailable?: boolean }, { properties?: JourneyLocalPlace[]; configured?: boolean }]) => { if (active) { const properties = inventoryData.properties ?? []; const combined = [...properties, ...(localData.places ?? [])]; const uniquePlaces = combined.filter((place, index) => combined.findIndex((candidate) => candidate.id === place.id) === index); setPlaces(uniquePlaces); setLiveInventory(properties.length > 0); setSearchUnavailable(Boolean(localData.unavailable)); if (properties.length) trackEvent("easyt_accommodation_inventory_viewed", { property_count: properties.length, has_dates: true }); } })
+      .then(([localData, inventoryData]) => { if (active) { const properties = inventoryData.properties; const combined = [...properties, ...localData.places]; const uniquePlaces = combined.filter((place, index) => combined.findIndex((candidate) => candidate.id === place.id) === index); setPlaces(uniquePlaces); setLiveInventory(properties.length > 0); setSearchUnavailable(localData.unavailable); if (properties.length) trackEvent("easyt_accommodation_inventory_viewed", { property_count: properties.length, has_dates: true }); } })
       .catch((error: unknown) => { if (active && (error as { name?: string })?.name !== "AbortError") { setPlaces([]); setSearchUnavailable(true); } })
       .finally(() => { if (active) setLoading(false); });
     try {

@@ -288,6 +288,7 @@
   border-radius: 12px;
   font-size: 13px;
 }
+.tripReturnLink{align-self:center;margin-top:22px;color:#17152f;font-size:13px;font-weight:750;text-decoration:underline;text-underline-offset:3px}.tripReturnLink:hover{color:#ff3d8b}.tripReturnLink:focus-visible{outline:2px solid #17152f;outline-offset:3px}
 .legalLink{margin:24px 0 0;color:#777482;font-size:12px;line-height:1.5;text-align:center}.legalLink a{color:#17152f;font-weight:700;text-decoration:underline;text-underline-offset:3px}.legalLink a:hover{color:#ff3d8b}
 .setupNotice {
   background: #fff7e8;
@@ -545,6 +546,8 @@
   display: grid;
   place-items: center;
   padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(23, 21, 47, 0.35);
   backdrop-filter: blur(8px);
 }
@@ -558,12 +561,19 @@
   background: #fff;
   box-shadow: 0 28px 80px rgba(23, 21, 47, 0.2);
 }
+.giftDialog {
+  max-height: calc(100svh - 48px);
+  overflow-y: auto;
+}
 .giftDialog h2,
 .giftClaimCard h1 {
   margin: 12px 0 10px;
   font-size: clamp(34px, 5vw, 54px);
   line-height: .95;
   letter-spacing: -.065em;
+}
+.giftDialog h2 {
+  overflow-wrap: anywhere;
 }
 .giftDialog .field {
   margin-top: 18px;
@@ -688,65 +698,412 @@
   background: #17152f;
 }
 .profileWrap {
-  width: min(1040px, calc(100% - 40px));
-  margin: 46px auto 90px;
+  width: var(--morrovia-page);
+  margin: clamp(34px, 5vw, 56px) auto 96px;
   position: relative;
   z-index: 1;
 }
+.profileWrap > .eyebrow {
+  margin: 0;
+}
 .profileWrap > h1 {
-  font-size: clamp(54px, 7vw, 92px);
-  letter-spacing: -0.075em;
-  line-height: 0.92;
-  margin: 12px 0 42px;
+  font-size: clamp(50px, 5.5vw, 68px);
+  letter-spacing: -0.065em;
+  line-height: 0.94;
+  margin: 10px 0 12px;
+}
+.profileIntro {
+  max-width: 680px;
+  margin: 0 0 32px;
+  color: var(--morrovia-muted);
+  font-size: 16px;
+  line-height: 1.5;
 }
 .profileGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 20px;
 }
 .profileCard {
   background: #fff;
-  border: 1px solid rgba(23, 21, 47, 0.14);
-  border-radius: 24px;
-  padding: clamp(26px, 4vw, 42px);
-  display: grid;
-  align-content: start;
-  gap: 20px;
-  box-shadow: 0 16px 42px rgba(23, 21, 47, 0.06);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  box-shadow: 0 14px 32px rgba(23, 16, 111, 0.07);
 }
 .profileCard h2 {
-  font-size: 28px;
-  letter-spacing: -0.04em;
-  margin: 0 0 8px;
-}
-.profileCard select {
-  width: 100%;
-  border: 1px solid #d8d5dc;
-  border-radius: 14px;
-  padding: 15px 16px;
-  background: #fff;
-  font: inherit;
-  color: #17152f;
-  outline: none;
-}
-.profileCard select:focus {
-  border-color: #ff3d8b;
-  box-shadow: 0 0 0 3px rgba(255, 61, 139, 0.12);
-}
-.travelProfileCard { grid-column: 1 / -1; }
-.travelProfileCard .eyebrow { margin-bottom: 8px; }
-.travelProfileCard > .muted { max-width: 540px; margin-top: -4px; }
-.profileGuide{display:flex;align-items:end;justify-content:space-between;gap:18px;margin:0 0 24px;padding:17px 18px;border:1px solid #e4dfe5;border-radius:17px;background:#fcfafb}.profileGuide .eyebrow{margin:0 0 6px}.profileGuide strong{display:block;max-width:450px;font-size:15px;line-height:1.2}.profileGuide span{display:block;max-width:520px;margin-top:6px;color:#777482;font-size:12px;line-height:1.45}.profileGuide a{flex:0 0 auto;padding:10px 13px;border-radius:999px;color:#fff;background:#201d3d;font-size:11px;font-weight:750;text-decoration:none}
-.profileVisuals{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.preferenceDial,.preferenceChoices,.preferenceMoves{padding:19px;border:1px solid #e2dde4;border-radius:20px;background:linear-gradient(145deg,#fff 0%,#faf8f9 100%)}.preferenceHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:17px}.preferenceHead span{color:#615b69;font:800 10px var(--font-geist-mono,monospace);letter-spacing:.11em;text-transform:uppercase}.preferenceHead b{color:#ff3d8b;font-size:12px}.dialOptions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.dialOptions button{display:grid;justify-items:center;gap:6px;min-height:108px;padding:12px 7px;border:1px solid transparent;border-radius:16px;color:#6c6572;background:transparent;cursor:pointer;transition:transform .18s,background .18s,color .18s}.dialOptions button:hover{transform:translateY(-2px);background:#fff0f5}.dialOptions svg{width:23px;height:23px}.dialOptions strong{font-size:12px}.dialOptions small{max-width:90px;font-size:10px;line-height:1.3}.dialOptions .dialActive{color:#17152f;border-color:#ff3d8b;background:#fff0f5;box-shadow:inset 0 -3px 0 #ff3d8b}.dialActive svg{color:#ff3d8b}.preferenceRange{width:100%;height:7px;margin:14px 0 0;appearance:none;border-radius:99px;background:linear-gradient(90deg,#ff3d8b 0 50%,#ded9e0 50% 100%);accent-color:#ff3d8b;cursor:pointer}.preferenceRange::-webkit-slider-thumb{width:20px;height:20px;appearance:none;border:3px solid #fff;border-radius:50%;background:#17152f;box-shadow:0 2px 8px rgba(23,21,47,.25)}.preferenceChoices>div:last-child{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.preferenceChoices button{display:flex;align-items:center;gap:8px;min-height:49px;padding:0 11px;border:1px solid #e1dce3;border-radius:13px;color:#5e5764;background:#fff;font-size:12px;font-weight:650;cursor:pointer;transition:background .18s,border .18s,color .18s}.preferenceChoices button svg{width:17px;height:17px;color:#8e8793}.preferenceChoices .choiceActive{border-color:#201d3d;color:#fff;background:#201d3d}.preferenceChoices .choiceActive svg{color:#ff8fbd}.preferenceMoves{grid-column:1 / -1}.preferenceMoves>div:last-child{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.preferenceMoves button{display:grid;grid-template-columns:30px 1fr;align-items:center;column-gap:8px;min-height:72px;padding:11px;border:1px solid #e1dce3;border-radius:14px;color:#5e5764;background:#fff;text-align:left;cursor:pointer;transition:transform .18s,border .18s,background .18s}.preferenceMoves button:hover{transform:translateY(-2px);border-color:#b5adb9}.preferenceMoves svg{grid-row:1 / span 2;width:20px;height:20px;color:#8e8793}.preferenceMoves strong{font-size:12px}.preferenceMoves small{font-size:10px;line-height:1.25}.preferenceMoves .moveActive{border-color:#ff3d8b;background:#fff0f5;color:#17152f;box-shadow:inset 3px 0 0 #ff3d8b}.preferenceMoves .moveActive svg{color:#ff3d8b}
-.readinessProfile{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr);gap:20px;padding:20px;border:1px solid #f2dce6;border-radius:20px;background:#fff9fb}.readinessProfile .eyebrow{margin:0 0 7px}.readinessProfile h3{margin:0;color:#211d35;font-size:17px;line-height:1.15}.readinessProfile p:not(.eyebrow){margin:8px 0 0;color:#716b77;font-size:12px;line-height:1.45}.readinessFields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.readinessFields label{display:grid;gap:5px}.readinessFields label:last-child{grid-column:1 / -1}.readinessFields span{color:#615b69;font:800 9px var(--font-geist-mono,monospace);letter-spacing:.09em;text-transform:uppercase}.readinessFields input{width:100%;min-height:42px;padding:0 11px;border:1px solid #ded8e0;border-radius:11px;color:#211d35;background:#fff;font:12px inherit;outline:none}.readinessFields input:focus{border-color:#ff3d8b;box-shadow:0 0 0 3px rgba(255,61,139,.1)}
-.profileMessage {
-  grid-column: 1/-1;
   margin: 0;
-  padding: 14px 18px;
-  border-radius: 14px;
-  background: #fff0f5;
-  color: #b21351;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-display);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+.personalProfileCard {
+  padding: 24px 26px;
+  display: grid;
+  grid-template-columns: minmax(170px, .7fr) minmax(210px, 1fr) minmax(270px, 1.3fr) auto;
+  align-items: end;
+  gap: 18px;
+}
+.personalProfileCard h2 {
+  align-self: center;
+  font-size: 27px;
+  line-height: 1;
+}
+.accountSave {
+  min-width: 150px;
+}
+.accountMessage {
+  grid-column: 2 / -1;
+}
+.travelProfileCard {
+  padding: clamp(28px, 4vw, 44px);
+}
+.travelProfileHeader {
+  padding-bottom: 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, .85fr);
+  align-items: end;
+  gap: clamp(28px, 5vw, 64px);
+  border-bottom: 1px solid var(--morrovia-line);
+}
+.travelProfileIntro .eyebrow {
+  margin: 0 0 9px;
+}
+.travelProfileIntro h2 {
+  font-size: clamp(32px, 3.5vw, 42px);
+  line-height: 1;
+}
+.travelProfileIntro .muted {
+  max-width: 620px;
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.profileGuide {
+  padding-left: 18px;
+  border-left: 2px solid var(--morrovia-signal);
+}
+.profileGuide .eyebrow {
+  margin: 0 0 6px;
+}
+.profileGuide strong {
+  display: block;
+  color: var(--morrovia-ink);
+  font-size: 14px;
+  line-height: 1.3;
+}
+.profileGuide span {
+  display: block;
+  margin-top: 6px;
+  color: var(--morrovia-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.profileVisuals {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+}
+.preferenceDial,
+.preferenceChoices,
+.preferenceMoves {
+  min-width: 0;
+  padding: 28px 28px 30px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.preferenceChoices {
+  padding-right: 0;
+  padding-left: 28px;
+  border-left: 1px solid var(--morrovia-line);
+}
+.preferenceMoves,
+.comfortPreference {
+  grid-column: 1 / -1;
+  padding: 28px 0;
+  border-top: 1px solid var(--morrovia-line);
+}
+.comfortPreference {
+  padding-bottom: 32px;
+}
+.preferenceHead {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.preferenceHead h3 {
+  margin: 0;
+  color: var(--morrovia-ink-soft);
+  font: 800 10px/1.2 var(--morrovia-meta);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.preferenceHead b {
+  color: var(--morrovia-signal);
+  font-size: 12px;
+}
+.dialOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.comfortPreference .dialOptions,
+.comfortPreference .preferenceRange {
+  max-width: 560px;
+}
+.dialOptions button {
+  min-width: 0;
+  min-height: 108px;
+  padding: 12px 7px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  color: var(--morrovia-ink-soft);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.dialOptions button:hover:not([aria-pressed="true"]) {
+  transform: translateY(-1px);
+  border-color: var(--morrovia-ink-soft);
+  background: var(--morrovia-lilac);
+}
+.dialOptions svg {
+  width: 22px;
+  height: 22px;
+}
+.dialOptions strong {
+  font-size: 12px;
+}
+.dialOptions small {
+  max-width: 110px;
+  color: var(--morrovia-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+.dialOptions .dialActive {
+  border-color: var(--morrovia-signal);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+  box-shadow: inset 0 -3px 0 var(--morrovia-signal);
+}
+.dialActive svg {
+  color: var(--morrovia-signal);
+}
+.preferenceRange {
+  width: 100%;
+  height: 7px;
+  margin: 14px 0 0;
+  appearance: none;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--morrovia-signal) 0 var(--profile-progress), var(--morrovia-lilac-strong) var(--profile-progress) 100%);
+  accent-color: var(--morrovia-signal);
+  cursor: pointer;
+}
+.preferenceRange:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--morrovia-focus-ring);
+}
+.preferenceRange::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  appearance: none;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--morrovia-ink);
+  box-shadow: 0 2px 8px rgba(23, 16, 111, .2);
+}
+.preferenceRange::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--morrovia-ink);
+  box-shadow: 0 2px 8px rgba(23, 16, 111, .2);
+}
+.preferenceChoices > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.preferenceChoices button {
+  min-width: 0;
+  min-height: 50px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  color: var(--morrovia-ink-soft);
+  font: 650 12px/1.2 var(--morrovia-ui);
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.preferenceChoices button:hover:not([aria-pressed="true"]) {
+  transform: translateY(-1px);
+  border-color: var(--morrovia-ink-soft);
+  background: var(--morrovia-lilac);
+}
+.preferenceChoices button svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--morrovia-muted);
+}
+.preferenceChoices .choiceActive {
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-action);
+  color: #fff;
+}
+.preferenceChoices .choiceActive svg {
+  color: #ff9ac3;
+}
+.preferenceMoves > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.preferenceMoves button {
+  min-width: 0;
+  min-height: 72px;
+  padding: 11px 13px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  color: var(--morrovia-ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+.preferenceMoves button:hover:not([aria-pressed="true"]) {
+  transform: translateY(-1px);
+  border-color: var(--morrovia-ink-soft);
+  background: var(--morrovia-lilac);
+}
+.preferenceMoves svg {
+  grid-row: 1 / span 2;
+  width: 20px;
+  height: 20px;
+  color: var(--morrovia-muted);
+}
+.preferenceMoves strong {
+  min-width: 0;
+  font-size: 12px;
+}
+.preferenceMoves small {
+  min-width: 0;
+  color: var(--morrovia-muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+.preferenceMoves .moveActive {
+  border-color: var(--morrovia-signal);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+  box-shadow: inset 3px 0 0 var(--morrovia-signal);
+}
+.preferenceMoves .moveActive svg {
+  color: var(--morrovia-signal);
+}
+.dialOptions button:focus-visible,
+.preferenceChoices button:focus-visible,
+.preferenceMoves button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+}
+.readinessProfile {
+  padding: 26px;
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.35fr);
+  gap: 28px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-lilac);
+}
+.readinessProfile > div {
+  min-width: 0;
+}
+.readinessProfile .eyebrow {
+  margin: 0 0 7px;
+}
+.readinessProfile h3 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+  line-height: 1.08;
+}
+.readinessProfile p:not(.eyebrow) {
+  margin: 9px 0 0;
+  color: var(--morrovia-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.privacyReassurance {
+  display: block;
+  margin-top: 8px;
+  color: var(--morrovia-ink-soft);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.readinessFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.readinessFields > label {
+  min-width: 0;
+}
+.readinessFields > label:last-child {
+  grid-column: 1 / -1;
+}
+.travelProfileActions {
+  margin-top: 24px;
+  padding-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  border-top: 1px solid var(--morrovia-line);
+}
+.travelSave {
+  min-width: 190px;
+  flex: none;
+}
+.profileMessage {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--morrovia-control-radius);
+  font-size: 12px;
   font-weight: 650;
+  line-height: 1.4;
+}
+.profileMessageSuccess {
+  border-color: color-mix(in srgb, var(--morrovia-success) 28%, transparent);
+  background: color-mix(in srgb, var(--morrovia-success) 8%, white);
+  color: var(--morrovia-success);
+}
+.profileMessageError {
+  border-color: color-mix(in srgb, var(--morrovia-danger) 28%, transparent);
+  background: var(--morrovia-danger-soft);
+  color: var(--morrovia-danger);
 }
 .loading {
   opacity: 0.6;
@@ -773,8 +1130,51 @@
   .header .back {
     display: none;
   }
-  .profileGrid {
+  .personalProfileCard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+  }
+  .personalProfileCard h2,
+  .accountMessage {
+    grid-column: 1 / -1;
+  }
+  .travelProfileHeader {
     grid-template-columns: 1fr;
+    align-items: start;
+    gap: 22px;
+  }
+  .profileGuide {
+    max-width: 560px;
+  }
+  .profileVisuals {
+    grid-template-columns: 1fr;
+  }
+  .preferenceDial,
+  .preferenceChoices,
+  .preferenceMoves {
+    grid-column: auto;
+    padding: 26px 0;
+  }
+  .preferenceChoices,
+  .preferenceMoves,
+  .comfortPreference {
+    border-top: 1px solid var(--morrovia-line);
+    border-left: 0;
+  }
+  .readinessProfile {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+}
+@media (max-width: 700px) {
+  .personalProfileCard {
+    grid-template-columns: 1fr;
+  }
+  .personalProfileCard h2,
+  .accountMessage {
+    grid-column: auto;
+  }
+  .accountSave {
+    width: 100%;
   }
 }
 @media (max-width: 620px) {
@@ -804,12 +1204,78 @@
     min-height: 250px;
   }
   .profileWrap {
-    width: calc(100% - 24px);
-    margin-top: 22px;
+    width: var(--morrovia-page);
+    margin-top: 26px;
+    margin-bottom: 72px;
   }
-  .profileVisuals{grid-template-columns:1fr}.preferenceMoves{grid-column:auto}.dialOptions button{min-height:92px}.preferenceMoves>div:last-child{grid-template-columns:1fr}.preferenceMoves button{min-height:58px}.readinessProfile{grid-template-columns:1fr}.readinessFields{grid-template-columns:1fr}
-  .profileGuide{display:grid;align-items:start}.profileGuide a{justify-self:start}
+  .profileWrap > h1 {
+    margin-top: 8px;
+    font-size: 48px;
+  }
+  .profileIntro {
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .personalProfileCard,
+  .travelProfileCard {
+    padding: 20px;
+  }
+  .personalProfileCard {
+    gap: 16px;
+  }
+  .personalProfileCard h2 {
+    font-size: 25px;
+  }
+  .travelProfileHeader {
+    padding-bottom: 24px;
+  }
+  .travelProfileIntro h2 {
+    font-size: 32px;
+  }
+  .profileGuide {
+    padding-left: 14px;
+  }
+  .preferenceDial,
+  .preferenceChoices,
+  .preferenceMoves {
+    padding: 24px 0;
+  }
+  .dialOptions button {
+    min-height: 100px;
+    padding-inline: 5px;
+  }
+  .dialOptions small {
+    font-size: 9px;
+  }
+  .preferenceMoves > div:last-child {
+    grid-template-columns: 1fr;
+  }
+  .preferenceMoves button {
+    min-height: 60px;
+  }
+  .readinessProfile {
+    padding: 20px;
+  }
+  .readinessFields {
+    grid-template-columns: 1fr;
+  }
+  .readinessFields > label:last-child {
+    grid-column: auto;
+  }
+  .travelProfileActions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .travelSave {
+    width: 100%;
+  }
   .firstTripGuide{margin-bottom:24px;padding:21px 18px;border-radius:22px}.guideHead h2{font-size:25px}.guideSteps{grid-template-columns:1fr 1fr}.guideStep{min-height:74px;padding:12px;border-bottom:1px solid #e4dfe5}.guideStep:nth-child(2){border-right:0}.guideStep:nth-child(n+3){border-bottom:0}.guideAction{display:grid;gap:15px}.guideAction a{justify-content:center;width:100%;box-sizing:border-box}.guideAction p{font-size:12px}
+}
+@media (max-width: 520px) {
+  .profileWrap {
+    padding-bottom: var(--morrovia-mobile-dock-offset);
+  }
 }
 
 /* Current Morrovia account alignment: preserve the account flows, while using the
@@ -931,22 +1397,17 @@
 .tripMenu button:focus-visible,
 .guideHead button:focus-visible,
 .feedback button:focus-visible,
-.profileCard button:focus-visible,
-.profileCard select:focus-visible,
 .giftClose:focus-visible,
 .giftDialog textarea:focus-visible,
 .giftComplete input:focus-visible,
-.readinessFields input:focus-visible,
 .field input:focus-visible {
   outline: 2px solid var(--morrovia-signal);
   outline-offset: 2px;
 }
 
 .field input,
-.profileCard select,
 .giftDialog textarea,
 .giftComplete input,
-.readinessFields input,
 .feedback textarea {
   border-color: var(--morrovia-line);
   border-radius: var(--morrovia-control-radius);
@@ -955,9 +1416,7 @@
 }
 
 .field input:focus,
-.profileCard select:focus,
 .giftDialog textarea:focus,
-.readinessFields input:focus,
 .feedback textarea:focus {
   border-color: var(--morrovia-signal);
   box-shadow: var(--morrovia-focus-ring);
@@ -966,8 +1425,7 @@
 .authSubmit:hover:not(:disabled),
 .primaryLink:hover,
 .showMoreTrips:hover,
-.guideAction a:hover,
-.profileGuide a:hover {
+.guideAction a:hover {
   background: var(--morrovia-signal);
   border-color: var(--morrovia-signal);
   color: #fff;
@@ -978,7 +1436,6 @@
 .primaryLink,
 .showMoreTrips,
 .guideAction a,
-.profileGuide a,
 .feedbackSend {
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-action);
@@ -1000,8 +1457,7 @@
 }
 
 .error,
-.syncError,
-.profileMessage {
+.syncError {
   border: 1px solid color-mix(in srgb, var(--morrovia-danger) 28%, transparent);
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-danger-soft);
@@ -1111,21 +1567,6 @@
   background: var(--morrovia-lilac);
 }
 
-.profileGuide,
-.preferenceDial,
-.preferenceChoices,
-.preferenceMoves {
-  border-color: var(--morrovia-line);
-  border-radius: var(--morrovia-radius);
-  background: #fff;
-}
-
-.preferenceHead span,
-.readinessFields span {
-  color: var(--morrovia-ink-soft);
-  font-family: var(--morrovia-meta);
-}
-
 .preferenceHead b,
 .dialActive svg,
 .moveActive svg {
@@ -1140,13 +1581,20 @@
   color: var(--morrovia-ink-soft);
 }
 
-.dialOptions button:hover,
-.preferenceMoves button:hover {
+.dialOptions button:hover:not([aria-pressed="true"]),
+.preferenceChoices button:hover:not([aria-pressed="true"]),
+.preferenceMoves button:hover:not([aria-pressed="true"]) {
   border-color: var(--morrovia-ink-soft);
   background: var(--morrovia-lilac);
 }
 
-.dialOptions .dialActive,
+.dialOptions .dialActive {
+  border-color: var(--morrovia-signal);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+  box-shadow: inset 0 -3px 0 var(--morrovia-signal);
+}
+
 .preferenceMoves .moveActive {
   border-color: var(--morrovia-signal);
   background: var(--morrovia-lilac);
@@ -1161,7 +1609,7 @@
 }
 
 .preferenceRange {
-  background: linear-gradient(90deg, var(--morrovia-signal) 0 50%, var(--morrovia-lilac-strong) 50% 100%);
+  background: linear-gradient(90deg, var(--morrovia-signal) 0 var(--profile-progress), var(--morrovia-lilac-strong) var(--profile-progress) 100%);
   accent-color: var(--morrovia-signal);
 }
 

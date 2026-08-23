@@ -17,6 +17,7 @@ export default function LoginForm({
   initialMode,
   initialEmail,
   verificationSent,
+  backToTripHref,
 }: {
   callbackURL: string;
   googleEnabled: boolean;
@@ -25,6 +26,7 @@ export default function LoginForm({
   initialMode?: "sign-in" | "sign-up";
   initialEmail?: string;
   verificationSent?: boolean;
+  backToTripHref?: string;
 }) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">(initialMode ?? "sign-in");
   const [busy, setBusy] = useState(false);
@@ -38,38 +40,47 @@ export default function LoginForm({
     const submittedEmail = String(data.get("email") || "");
     const password = String(data.get("password") || "");
     const name = String(data.get("name") || "Traveller");
-    const result = mode === "sign-up"
-      ? await authClient.signUp.email({ name, email, password, callbackURL })
-      : await authClient.signIn.email({ email: submittedEmail, password, callbackURL });
-    if (result.error) {
-      const message = result.error.message || "";
-      setError(message.toLowerCase().includes("email not verified")
-        ? "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again."
-        : mode === "sign-up"
-          ? "We could not create your account just now. Check the details and try again."
-          : "We could not sign you in. Check your email and password, then try again.");
+    const genericError = mode === "sign-up"
+      ? "We could not create your account just now. Check the details and try again."
+      : "We could not sign you in. Check your email and password, then try again.";
+    try {
+      const result = mode === "sign-up"
+        ? await authClient.signUp.email({ name, email, password, callbackURL })
+        : await authClient.signIn.email({ email: submittedEmail, password, callbackURL });
+      if (result.error) {
+        const message = result.error.message || "";
+        setError(message.toLowerCase().includes("email not verified")
+          ? "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again."
+          : genericError);
+      } else if (mode === "sign-up") {
+        window.location.assign(`/journey/login?next=${encodeURIComponent(callbackURL)}&email=${encodeURIComponent(submittedEmail)}&sent=1`);
+      } else {
+        window.location.assign(callbackURL);
+      }
+    } catch {
+      setError(genericError);
+    } finally {
       setBusy(false);
     }
-    else if (mode === "sign-up") {
-      window.location.assign(`/journey/login?next=${encodeURIComponent(callbackURL)}&email=${encodeURIComponent(submittedEmail)}&sent=1`);
-    }
-    else window.location.assign(callbackURL);
   };
 
   const continueWithGoogle = async () => {
     setGoogleBusy(true);
     setError("");
-    const result = await authClient.signIn.social({ provider: "google", callbackURL });
-    if (result?.error) {
-      setError(result.error.message || "Google sign-in could not start. Please try again.");
+    try {
+      const result = await authClient.signIn.social({ provider: "google", callbackURL });
+      if (result?.error) setError(result.error.message || "Google sign-in could not start. Please try again.");
+    } catch {
+      setError("Google sign-in could not start. Please try again.");
+    } finally {
       setGoogleBusy(false);
     }
   };
 
   return <section className={styles.authPanel}>
     <p className={styles.eyebrow}>Morrovia account</p>
-    <h2>{mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
-    <p className={styles.muted}>{verificationSent ? `Your account is ready. We sent a one-time verification link to ${initialEmail || "your email"}. Confirm it, then sign in below.` : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
+    <h2>{backToTripHref ? "Save this trip." : mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
+    <p className={styles.muted}>{verificationSent ? `Your account is ready. We sent a one-time verification link to ${initialEmail || "your email"}. Confirm it, then sign in below.` : backToTripHref ? "Sign in to keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
     {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
     <EasyTSegmentedControl
       ariaLabel="Account action"
@@ -90,6 +101,7 @@ export default function LoginForm({
       <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
     </form>
     {googleEnabled && <><div className={styles.divider}>or</div><EasyTButton type="button" variant="secondary" fullWidth loading={googleBusy} disabled={!configured || busy} onClick={continueWithGoogle}>Continue with Google</EasyTButton></>}
+    {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}
     <p className={styles.legalLink}>Read how Morrovia handles your data in our <a href="/journey/privacy">Privacy notice</a>.</p>
   </section>;
 }

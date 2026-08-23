@@ -1,6 +1,7 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
 import { estimateLegForConstraints, findDestinationIntegrityIssues, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
+import type { PlaceIssue } from "./place-intelligence.ts";
 import { legPlanningConfidenceFromMetadata } from "./planning-confidence.ts";
 import { routeConstraintsFromStructuredTripBrief } from "./structured-trip-brief.ts";
 import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfer-impact.ts";
@@ -15,6 +16,46 @@ const recommendation = (
   status: "open",
   checkedAt: new Date().toISOString(),
 });
+
+function stablePlaceIssueToken(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function placeIssueMessage(issue: PlaceIssue) {
+  const suppliedMessage = "message" in issue && typeof issue.message === "string" ? issue.message.trim() : "";
+  const suppliedReason = "reason" in issue && typeof issue.reason === "string" ? issue.reason.trim() : "";
+  if (suppliedMessage || suppliedReason) return suppliedMessage || suppliedReason;
+  const place = issue.sourceText.trim() ? `“${issue.sourceText.trim()}”` : "this place";
+  if (issue.code === "ambiguous_place") return `Confirm which place ${place} refers to before relying on the route.`;
+  if (issue.code === "unresolved_place") return `Confirm ${place} before relying on the route.`;
+  if (issue.code === "region_requires_base") return `Choose a practical base for ${place} before relying on the route.`;
+  if (issue.code === "missing_routable_destination") return "Add at least one routable destination before relying on the route.";
+  return `Review ${place} before relying on the route.`;
+}
+
+function placeIssueSeverity(issue: PlaceIssue): TripRecommendation["severity"] {
+  if (issue.severity === "info") return "info";
+  if (issue.severity === "error") return issue.blocksRoute ? "critical" : "warning";
+  return "warning";
+}
+
+function placeIssueEvidence(issue: PlaceIssue) {
+  const place = issue.sourceText.trim() ? `“${issue.sourceText.trim()}”` : "This place mention";
+  const issueKind = issue.code.replaceAll("_", " ");
+  const routeImpact = issue.blocksRoute
+    ? "Resolve it before relying on the current route."
+    : "The original place intent remains saved in the trip brief.";
+  const optionCount = issue.options?.length ?? 0;
+  const options = optionCount
+    ? ` ${optionCount} deterministic option${optionCount === 1 ? " is" : "s are"} available for confirmation.`
+    : "";
+  return `${place} is retained as ${issueKind}. ${routeImpact}${options}`;
+}
 
 /**
  * Conservative, explainable checks for the saved-trip review surface.
@@ -396,6 +437,29 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       proposedChange: null,
     }, results.length));
   });
+  [...(trip.brief.structuredBrief?.placeIssues ?? [])]
+    .sort((left, right) => {
+      const leftKey = `${left.code}:${left.mentionId}`;
+      const rightKey = `${right.code}:${right.mentionId}`;
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    })
+    .forEach((issue) => {
+      const canonicalPlaceId = issue.canonicalPlaceId;
+      const affectedStopIds = canonicalPlaceId
+        ? new Set(trip.stops.filter((stop) => stop.id === canonicalPlaceId || stop.providerId === canonicalPlaceId).map((stop) => stop.id))
+        : new Set<string>();
+      const codeToken = stablePlaceIssueToken(issue.code) || "place-issue";
+      const mentionToken = stablePlaceIssueToken(issue.mentionId) || "mention";
+      results.push(recommendation(trip, {
+        rule: `place-intelligence-${codeToken}-${mentionToken}`,
+        severity: placeIssueSeverity(issue),
+        message: placeIssueMessage(issue),
+        evidence: placeIssueEvidence(issue),
+        affectedDays: trip.planItems.filter((item) => affectedStopIds.has(item.stopId)).map((item) => item.dayNumber),
+        confidence: issue.confidence.level === "high" ? "high" : "medium",
+        proposedChange: null,
+      }, results.length));
+    });
   return results;
 }
 
@@ -412,11 +476,13 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const blockingCount = openIssues.filter((item) => item.severity === "critical").length;
   const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
   const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
-  return { issues: current, blockingCount, cautionCount, isReady: blockingCount === 0 && !hasUnresolvedTransport };
+  const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute);
+  return { issues: current, blockingCount, cautionCount, isReady: blockingCount === 0 && !hasUnresolvedTransport && !hasUnresolvedPlaceIntent };
 }
 
 export function recommendationImpact(item: TripRecommendation) {
   const action = item.proposedChange?.action;
+  if (item.rule.startsWith("place-intelligence-")) return "Keeps the original place intent visible until it is resolved; no route stop is added or changed automatically.";
   if (action === "add-open-days") return "Adds open planning days so the day-by-day plan covers the full trip.";
   if (action === "suggest-extra-night") return "Flags the affected stops for an extra night; no bookings are changed automatically.";
   if (action === "add-stopover-or-compare-rail") return "Marks the transfer for a stopover or rail comparison; the route remains unchanged until you choose one.";

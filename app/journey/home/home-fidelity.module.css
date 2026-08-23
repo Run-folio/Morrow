@@ -27,6 +27,19 @@
 .voiceInput { position: absolute; right: 10px; bottom: 8px; left: auto; z-index: 1; }
 .promptTextareaField textarea { padding-bottom: 44px !important; }
 
+.promptHelp { display: grid; gap: 3px; }
+.promptHelp p,
+.promptHelp span { margin: 0; color: var(--morrovia-ink-soft, #4f4a92); line-height: 1.45; }
+.promptHelp p { font-size: 13px; font-weight: 750; }
+.promptHelp span { font-size: 12px; }
+
+.promptExamples { display: grid; gap: 7px; }
+.promptExamples > span { color: var(--morrovia-ink-soft, #4f4a92); font: 700 9px/1.2 var(--morrovia-meta, ui-monospace, monospace); letter-spacing: .09em; text-transform: uppercase; }
+.promptExamples > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.promptExamples button { min-height: 32px; padding: 5px 9px; border: 1px solid var(--morrovia-line, #d9d6ef); border-radius: 8px; background: var(--morrovia-paper, #fbfaff); color: var(--morrovia-ink, #17106f); font: 650 10px/1.25 var(--morrovia-ui, Arial, sans-serif); text-align: left; cursor: pointer; }
+.promptExamples button:hover { border-color: var(--morrovia-action, #3025ce); background: var(--morrovia-lilac, #f2f0ff); }
+.promptExamples button:focus-visible { outline: 2px solid var(--morrovia-ink, #17106f); outline-offset: 2px; }
+
 .promptFooter {
   display: flex;
   align-items: flex-start;
@@ -165,6 +178,7 @@
   .promptAction button { width: 100%; }
   .travelStyleChips span { font-size: 10px; }
   .voiceInput { right: 8px; bottom: 8px; left: auto; }
+  .promptExamples > div { display: grid; grid-template-columns: 1fr; }
   .attributePanel { grid-template-columns: 1fr; }
   .routeImage { height: 218px !important; }
   .proofArtwork { height: 184px !important; }

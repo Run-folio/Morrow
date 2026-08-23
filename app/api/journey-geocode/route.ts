@@ -64,7 +64,7 @@ async function find(query: string, country?: string, nearby?: NearbyContext) {
       const name = normalise(candidate.name ?? candidate.display_name ?? "");
       const kind = candidate.addresstype ?? candidate.type ?? candidate.category ?? "";
       const nameMatch = name === requested ? 50 : name.includes(requested) ? 24 : 0;
-      const placeKind = /city|town|village|suburb|neighbourhood|county|state|island|peak|park|attraction|museum|historic/.test(kind) ? 12 : 0;
+      const placeKind = /city|town|village|suburb|neighbourhood|county|state|province|administrative|island|peak|park|attraction|museum|historic/.test(kind) ? 12 : 0;
       return { candidate, score: nameMatch + placeKind, distance: distanceFrom(nearby, candidate) };
     })
     .sort((a, b) => b.score - a.score || a.distance - b.distance);
@@ -104,7 +104,10 @@ async function candidatesFor(place: string, preferredCountry?: string, nearby?: 
     .filter((result) => {
       const name = normalise(result.name ?? result.display_name ?? "");
       const kind = result.addresstype ?? result.type ?? result.category ?? "";
-      return (name === requested || name.includes(requested)) && /city|town|village|suburb|neighbourhood|county|state|island|peak|park|attraction|museum|historic/.test(kind) && Boolean(result.address?.country);
+      return (name === requested || name.includes(requested))
+        && /city|town|village|suburb|neighbourhood|county|state|province|administrative|island|peak|park|attraction|museum|historic/.test(kind)
+        && Boolean(result.address?.country)
+        && (!preferredCountry || matchesCountry(result.address?.country, preferredCountry));
     })
     .map((result) => ({
       name: result.name ?? result.display_name ?? place,

@@ -1,5 +1,15 @@
 import { parseTripBrief } from "./trip-brief.ts";
 import {
+  resolvePlaceMentions,
+  type PlaceIntelligenceResult,
+  type PlaceIssue,
+  type PlaceRoutability,
+  type PlaceResolutionStatus,
+  type PlaceSelection,
+  type PlaceType,
+  type ResolvedPlaceMention,
+} from "./place-intelligence.ts";
+import {
   aggregatePlanningConfidence,
   planningConfidenceFromIntentProvenance,
   unknownPlanningConfidence,
@@ -23,9 +33,19 @@ export type TripBriefDuration = SourcedTripValue<number> & {
   precision: "exact" | "approximate";
 };
 export type TripBriefDestination = {
+  /** Operational route-stop identity. Never use a geographic identity here. */
   id?: string;
   name: string;
-  role: "arrival-gateway" | "departure-gateway" | "must-visit" | "preferred" | "suggested" | "trip-anchor";
+  /** Stable geographic identity is deliberately separate from the route-stop id. */
+  canonicalPlaceId?: string;
+  placeMentionId?: string;
+  placeType?: PlaceType;
+  resolutionStatus?: PlaceResolutionStatus;
+  routability?: PlaceRoutability;
+  sourceLabel?: string;
+  parentCountries?: string[];
+  parentCanonicalPlaceId?: string;
+  role: "arrival-gateway" | "departure-gateway" | "must-visit" | "preferred" | "suggested" | "trip-anchor" | "excluded";
   priority: "required" | "high" | "normal";
   provenance: TripBriefProvenance;
 };
@@ -76,11 +96,32 @@ export type StructuredTripBrief = {
   source: { rawPrompt?: string; parserVersion?: string; inputs: TripBriefSource[] };
   confidence: TripBriefConfidence;
   issues: TripBriefValidationIssue[];
+  /** Full geographic intent, including broad, ambiguous and unresolved phrases. */
+  placeMentions?: ResolvedPlaceMention[];
+  /** Geographic resolution issues are separate from brief consistency issues. */
+  placeIssues?: PlaceIssue[];
+  /** Explicit traveller choices that resolve an ambiguity or choose a regional base. */
+  placeSelections?: PlaceSelection[];
+  /** Explicit removals preserve auditability without silently losing prompt intent. */
+  removedPlaceMentionIds?: string[];
 };
 
 export type StructuredTripBriefBuilderInput = {
   duration?: { value: number; unit: "days" | "nights"; precision?: "exact" | "approximate" };
-  destinations?: Array<{ id?: string; name: string; role?: TripBriefDestination["role"]; priority?: TripBriefDestination["priority"] }>;
+  destinations?: Array<{
+    id?: string;
+    name: string;
+    canonicalPlaceId?: string;
+    placeMentionId?: string;
+    placeType?: PlaceType;
+    resolutionStatus?: PlaceResolutionStatus;
+    routability?: PlaceRoutability;
+    sourceLabel?: string;
+    parentCountries?: string[];
+    parentCanonicalPlaceId?: string;
+    role?: TripBriefDestination["role"];
+    priority?: TripBriefDestination["priority"];
+  }>;
   mustVisit?: string[];
   countries?: string[];
   preferredRegions?: string[];
@@ -95,6 +136,8 @@ export type StructuredTripBriefBuilderInput = {
   excludedDestinations?: string[];
   fixedCommitments?: Array<{ label: string; date?: string }>;
   avoidDriving?: boolean;
+  placeSelections?: PlaceSelection[];
+  removedPlaceMentionIds?: string[];
 };
 
 /** Concise confidence in the normalized intent without changing its schema. */
@@ -187,31 +230,133 @@ function maximumStopsFromPrompt(prompt: string) {
   return match ? { value: Number(match[1]), sourceText: match[0] } : undefined;
 }
 
-export function extractStructuredTripBrief(prompt: string, parserVersion = "structured-brief-v1-deterministic"): StructuredTripBrief {
+const regionPlaceTypes = new Set<PlaceType>([
+  "macro_region", "region", "sub_region", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
+]);
+
+function placeProvenance(mention: ResolvedPlaceMention): TripBriefProvenance {
+  const inferred = mention.status === "partially_resolved" || mention.confidence.state === "inferred";
+  const confidence: TripBriefConfidence = mention.confidence.level === "high"
+    ? "high"
+    : mention.confidence.level === "medium" ? "medium" : "low";
+  return {
+    source: "prompt",
+    kind: inferred ? "inferred" : "explicit",
+    confidence,
+    sourceText: mention.sourceText,
+  };
+}
+
+function mentionMatches(mention: ResolvedPlaceMention, value?: string) {
+  if (!value) return false;
+  const key = normalize(value);
+  return [mention.canonicalName, mention.sourceText, ...mention.sourceTexts, ...mention.aliases]
+    .some((candidate) => normalize(candidate) === key);
+}
+
+function destinationRoleForMention(
+  mention: ResolvedPlaceMention,
+  prompt: string,
+  startText?: string,
+  endText?: string,
+): Pick<TripBriefDestination, "role" | "priority"> {
+  if (mention.role === "fixed_start" || mention.role === "origin" || mentionMatches(mention, startText)) {
+    return { role: "arrival-gateway", priority: "required" };
+  }
+  if (mention.role === "fixed_end" || mentionMatches(mention, endText)) {
+    return { role: "departure-gateway", priority: "required" };
+  }
+  if (mention.role === "excluded") return { role: "excluded", priority: "normal" };
+  if (mention.role === "required" || placeIsImportant(prompt, mention.sourceText)) {
+    return { role: mention.isAnchor ? "trip-anchor" : "must-visit", priority: "required" };
+  }
+  if (mention.role === "anchor" || mention.isAnchor) return { role: "trip-anchor", priority: "high" };
+  if (mention.role === "optional") return { role: "suggested", priority: "normal" };
+  return { role: "preferred", priority: "normal" };
+}
+
+function destinationFromMention(
+  mention: ResolvedPlaceMention,
+  prompt: string,
+  startText?: string,
+  endText?: string,
+): TripBriefDestination | undefined {
+  if (mention.status === "ambiguous" || mention.status === "unresolved") return undefined;
+  // Exclusions remain first-class place mentions and hard constraints, but
+  // are not positive destinations for routing or builder hydration.
+  if (mention.role === "excluded") return undefined;
+  return {
+    name: mention.canonicalName,
+    canonicalPlaceId: mention.canonicalPlaceId,
+    placeMentionId: mention.mentionId,
+    placeType: mention.placeType,
+    resolutionStatus: mention.status,
+    routability: mention.routability,
+    sourceLabel: mention.sourceText,
+    parentCountries: [...mention.parentCountries],
+    parentCanonicalPlaceId: mention.parentRegionId,
+    ...destinationRoleForMention(mention, prompt, startText, endText),
+    provenance: placeProvenance(mention),
+  };
+}
+
+function destinationIdentity(destination: Pick<TripBriefDestination, "canonicalPlaceId" | "name">) {
+  return destination.canonicalPlaceId ? `place:${destination.canonicalPlaceId}` : `name:${normalize(destination.name)}`;
+}
+
+export function extractStructuredTripBrief(
+  prompt: string,
+  parserVersion?: string,
+  suppliedPlaceIntelligence?: PlaceIntelligenceResult,
+): StructuredTripBrief {
   const rawPrompt = prompt.trim();
-  const parsed = parseTripBrief(rawPrompt);
+  // Capture may supply this result so the provider-neutral boundary runs only
+  // once. Direct callers receive the same deterministic behavior here.
+  const placeIntelligence = suppliedPlaceIntelligence ?? resolvePlaceMentions(rawPrompt);
+  const placeMentions = placeIntelligence.mentions;
+  const parsed = parseTripBrief(rawPrompt, placeIntelligence);
   const startText = explicitGateway(rawPrompt, "start") ?? parsed.origin;
   const endText = explicitGateway(rawPrompt, "end");
   const duration = durationFromPrompt(rawPrompt, parsed.durationDays);
-  const countries = parsed.countries.map((value) => ({ value, provenance: promptExplicit(sourceExcerpt(rawPrompt, value)) }));
-  const destinationNames = unique(
-    [...(startText ? [startText] : []), ...parsed.stops, ...(endText ? [endText] : [])].map((name) => name.trim()).filter(Boolean),
+  const countries = unique([
+    ...placeMentions
+      .filter((mention) => mention.placeType === "country" && mention.status !== "ambiguous" && mention.status !== "unresolved")
+      .map((mention) => ({ value: mention.canonicalName, provenance: placeProvenance(mention) })),
+    ...parsed.countries.map((value) => ({ value, provenance: promptExplicit(sourceExcerpt(rawPrompt, value)) })),
+  ], (country) => normalize(country.value));
+  const resolvedDestinations = placeMentions
+    .map((mention) => destinationFromMention(mention, rawPrompt, startText, endText))
+    .filter((destination): destination is TripBriefDestination => Boolean(destination));
+  const fallbackNames = unique(
+    [...(startText ? [startText] : []), ...parsed.stops, ...(endText ? [endText] : [])]
+      .map((name) => name.trim())
+      .filter((name) => Boolean(name) && !placeMentions.some((mention) => mentionMatches(mention, name))),
     (name) => normalize(name),
   );
-  const destinations = destinationNames.map((name): TripBriefDestination => {
+  const fallbackDestinations = fallbackNames.map((name): TripBriefDestination => {
     const excerpt = sourceExcerpt(rawPrompt, name);
     if (startText && normalize(name) === normalize(startText)) return { name, role: "arrival-gateway", priority: "required", provenance: promptExplicit(excerpt) };
     if (endText && normalize(name) === normalize(endText)) return { name, role: "departure-gateway", priority: "required", provenance: promptExplicit(excerpt) };
     if (placeIsImportant(rawPrompt, name)) return { name, role: "trip-anchor", priority: "required", provenance: promptExplicit(excerpt) };
     return { name, role: "preferred", priority: "normal", provenance: promptExplicit(excerpt) };
   });
-  const mustVisit = destinations.filter((destination) => destination.priority === "required" && destination.role !== "arrival-gateway" && destination.role !== "departure-gateway");
+  const destinations = unique([...resolvedDestinations, ...fallbackDestinations], destinationIdentity);
+  const mustVisit = destinations.filter((destination) => destination.priority === "required"
+    && destination.role !== "arrival-gateway"
+    && destination.role !== "departure-gateway"
+    && destination.role !== "excluded");
   const hardConstraints: TripBriefHardConstraint[] = [];
   if (duration?.precision === "exact") hardConstraints.push({ type: "duration", duration });
-  if (startText) hardConstraints.push({ type: "start-at", value: startText, provenance: promptExplicit(sourceExcerpt(rawPrompt, startText)) });
-  if (endText) hardConstraints.push({ type: "end-at", value: endText, provenance: promptExplicit(sourceExcerpt(rawPrompt, endText)) });
+  const startDestination = destinations.find((destination) => destination.role === "arrival-gateway");
+  const endDestination = destinations.find((destination) => destination.role === "departure-gateway");
+  if (startDestination) hardConstraints.push({ type: "start-at", value: startDestination.name, provenance: startDestination.provenance });
+  if (endDestination) hardConstraints.push({ type: "end-at", value: endDestination.name, provenance: endDestination.provenance });
   mustVisit.forEach((destination) => hardConstraints.push({ type: "must-visit", value: destination.name, provenance: destination.provenance }));
-  const noDriving = parsed.avoidDriving || /\b(?:i\s+)?(?:don't|dont|do not|won't|will not)\s+(?:want to\s+)?driv(?:e|ing)\b/i.test(rawPrompt);
+  placeMentions.filter((mention) => mention.role === "excluded" && mention.status !== "ambiguous" && mention.status !== "unresolved")
+    .forEach((mention) => hardConstraints.push({ type: "excluded-destination", value: mention.canonicalName, provenance: placeProvenance(mention) }));
+  const noDriving = parsed.avoidDriving
+    || /\bno[-\s]+driving\b/i.test(rawPrompt)
+    || /\b(?:i\s+)?(?:don't|dont|do not|won't|will not)\s+(?:want to\s+)?driv(?:e|ing)\b/i.test(rawPrompt);
   if (noDriving) hardConstraints.push({ type: "no-driving", value: true, provenance: promptExplicit("no driving") });
   const maximumStops = maximumStopsFromPrompt(rawPrompt);
   if (maximumStops) hardConstraints.push({ type: "maximum-stops", value: maximumStops.value, provenance: promptExplicit(maximumStops.sourceText) });
@@ -231,11 +376,18 @@ export function extractStructuredTripBrief(prompt: string, parserVersion = "stru
   }
   const pace = parsed.pace ? { value: parsed.pace, provenance: promptInferred(sourceExcerpt(rawPrompt, parsed.pace)) } as StructuredTripBrief["pace"] : undefined;
   const interests = extractedInterests(rawPrompt).map((value) => ({ value, provenance: promptInferred(sourceExcerpt(rawPrompt, value)) }));
-  const preferredRegions = unique(
-    [...parsed.regions, ...(interests.some((interest) => interest.value === "mountains") ? ["Mountains"] : [])]
-      .map((value) => ({ value, provenance: promptInferred(sourceExcerpt(rawPrompt, value)) })),
-    (region) => normalize(region.value),
-  );
+  const resolvedRegions = placeMentions
+    .filter((mention) => regionPlaceTypes.has(mention.placeType) && mention.status !== "ambiguous" && mention.status !== "unresolved" && mention.role !== "excluded")
+    .map((mention) => ({ value: mention.canonicalName, provenance: placeProvenance(mention) }));
+  const hasExactMountainRegion = placeMentions.some((mention) => mention.placeType === "mountain_range"
+    || /\balps?\b/i.test(mention.canonicalName));
+  const preferredRegions = unique([
+    ...resolvedRegions,
+    ...parsed.regions.map((value) => ({ value, provenance: promptInferred(sourceExcerpt(rawPrompt, value)) })),
+    ...(interests.some((interest) => interest.value === "mountains") && !hasExactMountainRegion
+      ? [{ value: "Mountains", provenance: promptInferred(sourceExcerpt(rawPrompt, "mountains")) }]
+      : []),
+  ], (region) => normalize(region.value));
   const travellers = parsed.travellerCount
     ? { value: parsed.travellerCount, provenance: promptExplicit(sourceExcerpt(rawPrompt, String(parsed.travellerCount))) }
     : undefined;
@@ -264,9 +416,13 @@ export function extractStructuredTripBrief(prompt: string, parserVersion = "stru
     budget,
     hardConstraints,
     softPreferences,
-    source: { rawPrompt, parserVersion, inputs: ["prompt"] },
+    source: { rawPrompt, parserVersion: parserVersion ?? placeIntelligence.parserVersion, inputs: ["prompt"] },
     confidence: destinations.length || duration || travellers ? "high" : "low",
     issues: [],
+    placeMentions,
+    placeIssues: placeIntelligence.issues,
+    placeSelections: [],
+    removedPlaceMentionIds: [],
   };
   return { ...brief, issues: validateStructuredTripBrief(brief) };
 }
@@ -276,20 +432,43 @@ function fact<T>(value: T): SourcedTripValue<T> {
 }
 
 export function mergeStructuredTripBrief(base: StructuredTripBrief, input: StructuredTripBriefBuilderInput): StructuredTripBrief {
+  const removedPlaceMentionIds = unique(input.removedPlaceMentionIds ?? base.removedPlaceMentionIds ?? [], (value) => value);
+  const removedMentionIdSet = new Set(removedPlaceMentionIds);
+  const removedMentions = (base.placeMentions ?? []).filter((mention) => removedMentionIdSet.has(mention.mentionId));
+  const removedNames = new Set(removedMentions.flatMap((mention) => [mention.canonicalName, mention.sourceText, ...mention.sourceTexts].map(normalize)));
+  const priorSelections = base.placeSelections ?? [];
+  const placeSelections = (input.placeSelections
+    ? unique([...input.placeSelections, ...priorSelections], (selection) => selection.mentionId)
+    : priorSelections).filter((selection) => !removedMentionIdSet.has(selection.mentionId));
   const selectedDestinations = input.destinations?.map((destination): TripBriefDestination => {
-    const prior = base.destinations.find((item) => normalize(item.name) === normalize(destination.name));
+    const prior = base.destinations.find((item) => (destination.canonicalPlaceId && item.canonicalPlaceId === destination.canonicalPlaceId)
+      || normalize(item.name) === normalize(destination.name))
+      ?? (!destination.canonicalPlaceId
+        ? base.destinations.find((item) => destination.placeMentionId && item.placeMentionId === destination.placeMentionId)
+        : undefined);
+    const selection = placeSelections.find((item) => item.mentionId === destination.placeMentionId);
     return {
+      ...prior,
       ...destination,
+      id: destination.id ?? selection?.routeStopId ?? prior?.id,
       role: destination.role ?? prior?.role ?? "preferred",
       priority: destination.priority ?? prior?.priority ?? "normal",
       provenance: builderExplicit(),
     };
-  });
-  const destinations = selectedDestinations ?? base.destinations;
+  }).filter((destination) => !destination.placeMentionId || !removedMentionIdSet.has(destination.placeMentionId));
+  const selectedIdentities = new Set((selectedDestinations ?? []).map(destinationIdentity));
+  const preservedDestinations = base.destinations.filter((destination) => !destination.placeMentionId || !removedMentionIdSet.has(destination.placeMentionId))
+    .filter((destination) => !selectedIdentities.has(destinationIdentity(destination)));
+  const destinations = unique(
+    selectedDestinations ? [...selectedDestinations, ...preservedDestinations] : preservedDestinations,
+    destinationIdentity,
+  );
   const mustVisitNames = input.mustVisit ?? base.mustVisit.map((destination) => destination.name);
-  const mustVisit = mustVisitNames.map((name) => destinations.find((destination) => normalize(destination.name) === normalize(name)) ?? {
-    name, role: "must-visit" as const, priority: "required" as const, provenance: builderExplicit(),
-  });
+  const mustVisit = mustVisitNames
+    .filter((name) => !removedNames.has(normalize(name)))
+    .map((name) => destinations.find((destination) => normalize(destination.name) === normalize(name)) ?? {
+      name, role: "must-visit" as const, priority: "required" as const, provenance: builderExplicit(),
+    });
   const duration = input.duration ? { ...input.duration, precision: input.duration.precision ?? "exact", provenance: builderExplicit() } : base.duration;
   const dates: TripBriefDates = input.dates ? {
     start: input.dates.start ? fact(input.dates.start) : base.dates.start,
@@ -297,9 +476,19 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     fixed: input.dates.fixed !== undefined ? fact(input.dates.fixed) : base.dates.fixed,
   } : base.dates;
   const hardConstraints = base.hardConstraints.filter((constraint) => ![
-    "duration", "must-visit", "no-driving", "maximum-stops", "excluded-destination", "fixed-commitment",
+    "duration", "start-at", "end-at", "must-visit", "no-driving", "maximum-stops", "excluded-destination", "fixed-commitment",
   ].includes(constraint.type));
   if (duration?.precision === "exact") hardConstraints.push({ type: "duration", duration });
+  const destinationIsActive = (destination: TripBriefDestination) => !destination.placeMentionId
+    || !removedMentionIdSet.has(destination.placeMentionId);
+  const selectedStart = destinations.find((destination) => destination.role === "arrival-gateway" && destinationIsActive(destination));
+  const selectedEnd = destinations.find((destination) => destination.role === "departure-gateway" && destinationIsActive(destination));
+  const priorStart = base.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "start-at"; value: string } => constraint.type === "start-at");
+  const priorEnd = base.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "end-at"; value: string } => constraint.type === "end-at");
+  if (selectedStart) hardConstraints.push({ type: "start-at", value: selectedStart.name, provenance: selectedStart.provenance });
+  else if (priorStart && !removedNames.has(normalize(priorStart.value))) hardConstraints.push(priorStart);
+  if (selectedEnd) hardConstraints.push({ type: "end-at", value: selectedEnd.name, provenance: selectedEnd.provenance });
+  else if (priorEnd && !removedNames.has(normalize(priorEnd.value))) hardConstraints.push(priorEnd);
   mustVisit.forEach((destination) => hardConstraints.push({ type: "must-visit", value: destination.name, provenance: destination.provenance }));
   const existingNoDriving = base.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "no-driving" } => constraint.type === "no-driving");
   if (input.avoidDriving ?? Boolean(existingNoDriving)) hardConstraints.push({ type: "no-driving", value: true, provenance: existingNoDriving?.provenance ?? builderExplicit() });
@@ -307,7 +496,7 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   if (input.maximumStops !== undefined) hardConstraints.push({ type: "maximum-stops", value: input.maximumStops, provenance: builderExplicit() });
   else if (priorMaximum) hardConstraints.push(priorMaximum);
   if (input.excludedDestinations) input.excludedDestinations.forEach((value) => hardConstraints.push({ type: "excluded-destination", value, provenance: builderExplicit() }));
-  else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "excluded-destination"));
+  else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "excluded-destination" && !removedNames.has(normalize(constraint.value))));
   if (input.fixedCommitments) input.fixedCommitments.forEach((item) => hardConstraints.push({ type: "fixed-commitment", value: item.label, date: item.date, provenance: builderExplicit() }));
   else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "fixed-commitment"));
 
@@ -315,8 +504,12 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   const interests = input.interests ? input.interests.map(fact) : base.interests;
   const transportPreferences = input.transportPreferences ? input.transportPreferences.map(fact) : base.transportPreferences;
   const accommodationPreferences = input.accommodationPreferences ? input.accommodationPreferences.map(fact) : base.accommodationPreferences;
-  const countries = input.countries ? input.countries.map(fact) : (base.countries ?? []);
-  const preferredRegions = input.preferredRegions ? input.preferredRegions.map(fact) : base.preferredRegions;
+  const countries = input.countries
+    ? input.countries.map(fact)
+    : (base.countries ?? []).filter((country) => !removedNames.has(normalize(country.value)));
+  const preferredRegions = input.preferredRegions
+    ? input.preferredRegions.map(fact)
+    : base.preferredRegions.filter((region) => !removedNames.has(normalize(region.value)));
   const budget = input.budget ? fact(input.budget) : base.budget;
   const softPreferences: TripBriefSoftPreference[] = [
     ...transportPreferences.map((item) => ({ type: "transport" as const, value: item.value, provenance: item.provenance })),
@@ -342,9 +535,38 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     budget,
     hardConstraints,
     softPreferences,
+    placeMentions: base.placeMentions,
+    placeIssues: (base.placeIssues ?? []).filter((issue) => {
+      if (removedMentionIdSet.has(issue.mentionId)) return false;
+      if (issue.code === "missing_routable_destination" && destinations.some((destination) => Boolean(destination.id))) return false;
+      const selection = placeSelections.find((item) => item.mentionId === issue.mentionId);
+      if (!selection) return true;
+      return issue.code === "duplicate_alias" || issue.code === "conflicting_place_roles" || issue.code === "unsupported_containment";
+    }),
+    placeSelections,
+    removedPlaceMentionIds,
     source: { ...base.source, inputs: unique([...base.source.inputs, "builder"], (value) => value) },
   };
   return { ...merged, issues: validateStructuredTripBrief(merged) };
+}
+
+/**
+ * Backward-compatible normalization for saved trips that predate structured
+ * place metadata. It derives only from persisted selections and never
+ * reinterprets the old free-form prompt on each load.
+ */
+export function structuredTripBriefFromSavedSelections(input: StructuredTripBriefBuilderInput): StructuredTripBrief {
+  const empty = extractStructuredTripBrief("");
+  const merged = mergeStructuredTripBrief(empty, input);
+  return {
+    ...merged,
+    source: { parserVersion: "saved-selection-compat-v1", inputs: ["saved"] },
+    confidence: input.destinations?.length ? "high" : "low",
+    placeMentions: undefined,
+    placeIssues: undefined,
+    placeSelections: undefined,
+    removedPlaceMentionIds: undefined,
+  };
 }
 
 export function validateStructuredTripBrief(brief: Omit<StructuredTripBrief, "issues"> | StructuredTripBrief): TripBriefValidationIssue[] {

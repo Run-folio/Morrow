@@ -333,10 +333,13 @@ function LegacyDayContent({ day, stop, image, index, days, setSelectedIndex, cop
 function DayImage({ image, day, stop, sourceLabel, className, fallbackClassName }: {
   image: JourneyImage | null; day: PlanItem; stop: TripStop | null; sourceLabel: string; className: string; fallbackClassName: string;
 }) {
-  if (!image) return <div className={`${className} ${fallbackClassName}`} role="img" aria-label={`Image for ${day.title}`}><span>{stop?.name ?? day.title}</span></div>;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [image?.src]);
+  const fallback = <div className={`${className} ${fallbackClassName}`} role="img" aria-label={`Image unavailable for ${day.title}`}><span>{stop?.name ?? day.title}</span></div>;
+  if (!image || failed) return fallback;
   return (
     <figure className={className}>
-      <img src={image.src} alt={image.alt || day.title} />
+      <img src={image.src} alt={image.alt || day.title} onError={() => setFailed(true)} />
       <figcaption>
         <span>{image.caption || stop?.name || day.title}</span>
         {image.sourceUrl ? <a href={image.sourceUrl} target="_blank" rel="noreferrer">{image.sourceLabel ?? sourceLabel}</a> : null}

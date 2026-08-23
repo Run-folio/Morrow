@@ -2,12 +2,14 @@ import { EasyTTrip, isEasyTTrip } from "./trip";
 import {
   EasyTTripSaveConflictError,
   requestTripUpdate,
+  tripSyncAuthError,
   type TripSaveConflictReason,
 } from "./trip-continuity";
 import { requestedTripMatch } from "./trip-id-resolution";
 import { requestTripPromotion, type TripPromotionConflictReason } from "./trip-promotion";
 
 export { EasyTTripSaveConflictError } from "./trip-continuity";
+export { EasyTTripAuthError } from "./trip-continuity";
 
 export const EASYT_ACTIVE_TRIP_KEY = "easyt:active-trip:v1";
 export const EASYT_ACTIVE_TRIP_CHANGE_EVENT = "easyt-active-trip-change";
@@ -34,14 +36,16 @@ export function saveActiveTrip(trip: EasyTTrip) {
   window.dispatchEvent(new CustomEvent(EASYT_ACTIVE_TRIP_CHANGE_EVENT, { detail: trip }));
 }
 
-export async function saveTripToEasyT(trip: EasyTTrip): Promise<EasyTTrip> {
-  if (!trip.ownerId) return (await promoteTripToEasyT(trip)).trip;
-  const response = await requestTripUpdate(trip);
+export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = fetch): Promise<EasyTTrip> {
+  if (!trip.ownerId) return (await promoteTripToEasyT(trip, request)).trip;
+  const response = await requestTripUpdate(trip, request);
   const payload = await response.json().catch(() => null) as {
     trip?: unknown;
     conflictReason?: TripSaveConflictReason;
     error?: string;
   } | null;
+  const authError = tripSyncAuthError(response.status, payload?.error);
+  if (authError) throw authError;
   if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
     throw new EasyTTripSaveConflictError(
       payload.error || "This trip changed in the cloud.",
@@ -78,14 +82,17 @@ export class EasyTTripPromotionConflictError extends Error {
 }
 
 /** Insert-only local-to-cloud boundary. Existing cloud state is never updated. */
-export async function promoteTripToEasyT(trip: EasyTTrip): Promise<EasyTTripPromotion> {
-  const response = await requestTripPromotion(trip);
+export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch = fetch): Promise<EasyTTripPromotion> {
+  const response = await requestTripPromotion(trip, request);
   const payload = await response.json().catch(() => null) as {
     trip?: unknown;
     outcome?: "promoted" | "already-canonical" | "conflict";
     conflictReason?: TripPromotionConflictReason;
     error?: string;
   } | null;
+
+  const authError = tripSyncAuthError(response.status, payload?.error);
+  if (authError) throw authError;
 
   if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
     throw new EasyTTripPromotionConflictError(

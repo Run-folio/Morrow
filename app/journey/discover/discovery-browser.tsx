@@ -100,37 +100,39 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
   const storyLead = filtered[0];
   const storySupports = filtered.slice(1, 4);
   const travelStyles = [
-    { label: "Weekend escapes", interest: "culture" as RouteInterest },
+    { label: "Food-led routes", interest: "food" as RouteInterest },
     { label: "Rail journeys", interest: "rail" as RouteInterest },
-    { label: "Soft adventure", interest: "nature" as RouteInterest },
+    { label: "Nature routes", interest: "nature" as RouteInterest },
     { label: "Coastal calm", interest: "coast" as RouteInterest },
-    { label: "Fine culture", interest: "heritage" as RouteInterest },
+    { label: "Heritage routes", interest: "heritage" as RouteInterest },
   ].map((item) => ({ ...item, route: routes.find((route) => route.interests.includes(item.interest)) })).filter((item): item is typeof item & { route: RouteFamily } => Boolean(item.route));
   const collections = [
     { label: "Food-focused", interest: "food" as RouteInterest },
     { label: "Coastal calm", interest: "coast" as RouteInterest },
     { label: "Culture-rich", interest: "culture" as RouteInterest },
     { label: "Mountain escapes", interest: "hiking" as RouteInterest },
-    { label: "Family friendly", interest: "heritage" as RouteInterest },
-    { label: "Slow travel", interest: "rail" as RouteInterest },
+    { label: "Wildlife routes", interest: "wildlife" as RouteInterest },
+    { label: "Rail journeys", interest: "rail" as RouteInterest },
   ].map((item) => ({ ...item, route: routes.find((route) => route.interests.includes(item.interest)) })).filter((item): item is typeof item & { route: RouteFamily } => Boolean(item.route));
 
   const routeCard = (route: RouteFamily, compact = false) => {
     const image = imageFor(route);
-    return <article className={`${styles.routeCard} ${compact ? styles.routeCardCompact : ""}`} key={route.key}>
-      <Link className={`${styles.routeImage} ${!image ? styles.imagePending : ""}`} href={`/journey/routes/${route.key}`} style={image ? { backgroundImage: `url(${image})` } : undefined} aria-label={`See ${route.title}`} />
+    const first = route.stops[0]?.name;
+    const last = route.stops.at(-1)?.name;
+    return <Link className={`${styles.routeCard} ${compact ? styles.routeCardCompact : ""}`} key={route.key} href={`/journey/routes/${route.key}`} aria-label={`See ${route.title}`}>
+      <span className={`${styles.routeImage} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined} />
       <div className={styles.routeCardBody}>
         <small>{route.countries.join(" · ")} · {route.region.replace("-", " ")}</small>
         <h3>{route.title}</h3>
         <p>{route.bestFor}</p>
         <div className={styles.routeMeta}>
-          <span><RouteIcon aria-hidden="true" />{route.bases.join(" → ")}</span>
-          <span><CalendarDays aria-hidden="true" />{route.suggestedDays.min}–{route.suggestedDays.max} days</span>
-          <span><Gauge aria-hidden="true" />{route.confidence} confidence</span>
+          <span><RouteIcon aria-hidden="true" />{route.stops.length} stops{first && last ? ` · ${first} → ${last}` : ""}</span>
+          <span><CalendarDays aria-hidden="true" />{route.suggestedDays.ideal} days</span>
+          <span><Gauge aria-hidden="true" />{route.interests[0]} focus</span>
         </div>
-        <Link className={styles.routeCta} href={`/journey/routes/${route.key}`}>See the route <ArrowRight aria-hidden="true" /></Link>
+        <span className={styles.routeCta}>See the route <ArrowRight aria-hidden="true" /></span>
       </div>
-    </article>;
+    </Link>;
   };
 
   return (

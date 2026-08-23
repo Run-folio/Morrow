@@ -25,7 +25,7 @@ import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
-  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport";
+  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport" | "routes";
   account?: { id?: string; name?: string | null; email: string; language?: Language };
   landing?: boolean;
 };
@@ -127,7 +127,7 @@ export default function EasyTNavigation({
           <span>{labels.newTrip}</span>
         </EasyTLinkButton>
         <Link href="/journey/home#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</Link>
-        <Link href="/journey/discover">{language === "es" ? "Rutas" : "Routes"}</Link>
+        <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{language === "es" ? "Rutas" : "Routes"}</Link>
         <Link href="/journey/stamped">{labels.stamped}</Link>
         <Link href="/journey/passport">{language === "es" ? "Información de pasaporte" : "Passport info"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
@@ -146,7 +146,7 @@ export default function EasyTNavigation({
             </div>
             <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
             <Link href="/journey/prep"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Preparativos" : "Travel prep"}</span></Link>
-            <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
+            <Link className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
             <Link className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy"><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
             {isAdmin && <Link className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin"><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
             <button type="button" onClick={signOut}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
@@ -167,7 +167,7 @@ export default function EasyTNavigation({
           <div className={styles.compactPopover}>
             <Link href="/journey/new" onClick={() => clearActiveTrip()}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
             <Link href="/journey/home#how-it-works"><span>{language === "es" ? "Cómo funciona" : "How it works"}</span></Link>
-            <Link href="/journey/discover"><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
+            <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
             <Link href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
             <Link href="/journey/passport"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Información de pasaporte" : "Passport info"}</span></Link>
             <span className={styles.compactDivider} aria-hidden="true" />
@@ -189,7 +189,7 @@ export default function EasyTNavigation({
         </details>
       </nav>
       </header>
-      <nav className={styles.mobileDock} aria-label="EasyT mobile navigation">
+      <nav className={styles.mobileDock} aria-label="Morrovia mobile navigation">
           <Link
             className={current === "home" ? styles.dockCurrent : undefined}
             href="/journey/home"
@@ -216,7 +216,7 @@ export default function EasyTNavigation({
             <span>{labels.stamped}</span>
           </Link>
           <Link
-            className={current === "passport" ? styles.dockCurrent : undefined}
+            className={current === "passport" || current === "profile" ? styles.dockCurrent : undefined}
             href={activeAccount ? "/journey/profile" : "/journey/passport"}
           >
             {activeAccount ? <UserRound aria-hidden="true" /> : <Compass aria-hidden="true" />}

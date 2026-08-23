@@ -401,6 +401,103 @@ final result: passed
 
 ---
 
+# Routes / Route Detail premium refinement design QA
+
+## Comparison target and evidence
+
+- Source visual truth: `/Users/shaun/Downloads/ChatGPT Image Aug 23, 2026, 02_33_05 PM.png`.
+- Browser-rendered implementation: `http://127.0.0.1:3001/journey/routes/andean-highlands`.
+- Desktop evidence: `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/route-detail-1440.png` and `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/route-detail-1440-full.png`.
+- Responsive evidence: `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/route-detail-1728.png` and `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/route-detail-390.png`.
+- Combined same-input evidence: `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/comparison-top.png` and `/Users/shaun/Documents/Morrovia/artifacts/route-detail-premium/comparison-full.png`.
+- State: English, signed-out public route; analytics declined; live route map and all nine requested route/stop/attraction image surfaces loaded.
+- Source dimensions: 1122 × 1402 supplied pixels.
+- Implementation CSS viewports: 1440 × 1000, 1728 × 600, 768 × 800, and 390 × 844. The 1440 document measured 1440 × 2709 CSS px.
+- Capture normalization: the in-app browser reported device scale 0.9 and fit the emulated page into its host pane. The live 800 × 556 desktop stage was normalized to the declared 1440 × 1000 CSS viewport; the 800 × 1505 document stage was normalized to 1440 × 2709. The mobile 217 × 469 live stage was normalized to 390 × 844. No page geometry was inferred from the normalized bitmap alone: rendered DOM width, height, section bounds, scroll width, and overflow were read from the page.
+
+## Full-view and focused comparison findings
+
+- Typography and hierarchy: the implementation preserves the reference's compact navigation, pink editorial eyebrow, three-line serif title, concise proposition, restrained metadata, and dominant primary CTA.
+- Spacing and layout: the final desktop hero measures 432 px high at 1440, followed by the map/glance split, connected stop sequence, compact itinerary, attractions, planning notes, and closing CTA in the approved order.
+- Colours and tokens: all surfaces resolve through the current Morrovia paper, ink, signal, action, line, tint, focus, radius, and typography tokens. No legacy EasyT visual language was reintroduced.
+- Images and maps: the live route photograph, destination-specific stop imagery, correctly associated attraction imagery, MapLibre basemap, ordered markers, route line, attribution, and source credits render without placeholder art or fabricated logos.
+- Copy and factual integrity: unsupported save behavior, ratings, review counts, partners, prices, certifications, expert claims, and exact transfer promises are absent. The yellow `Worth knowing` panel is intentionally additional to the mock because the reviewed Andean route contains a real uncertainty.
+- Density normalization: the source compresses the complete story into a shorter editorial board. The implementation keeps the same information architecture while retaining production-readable body type, real provenance notes, warnings, and source links, so its full document is longer. The like-for-like top comparison shows the approved hero/map proportions directly; the full comparison verifies sequence and section parity.
+
+## Interaction, accessibility, responsive, and route-state evidence
+
+- The guest `Plan this route` CTA navigated to `/journey/new?homeDraft=1&inspire=andean-highlands` and the real builder retained Cusco → Sacred Valley → Arequipa, 9 days, route pacing, interests, and the Sacred Valley base-selection requirement.
+- Live map zoom-in and zoom-out controls were exercised successfully. The ordered textual route list remains available alongside the map.
+- The final route page produced no browser-console errors. Development-only warnings were limited to Fast Refresh and Next.js's existing smooth-scroll advisory.
+- Document width equalled viewport width at 390, 768, 1440, and 1728 CSS px. No page-level horizontal overflow was found.
+- Portugal and Japan rendered at 768 without overflow. The four-stop Vietnam/Cambodia route rendered at 1440 with its incomplete/uncertain state disclosed and without invented transfer detail.
+- Headings, landmarks, button/link names, focus-visible treatment, image labels, map region/status semantics, source-link labels, and non-colour warning text remain explicit.
+
+## Comparison history
+
+1. The first browser comparison found a 578 px desktop hero caused by a two-row metadata grid and oversized title. The title scale and vertical rhythm were tightened and the supported facts were moved into the reference's four-column desktop structure, reducing the hero to 432 px.
+2. The second same-input comparison found the two longest metadata values clipping. Icon columns, gaps, padding, and fact type were tightened without changing the responsive two-column layout.
+3. The final top and full comparison inputs found no remaining actionable P0, P1, or P2 typography, layout, token, imagery, copy, responsive, or interaction mismatch.
+
+## Priority findings and accepted differences
+
+- P0: none.
+- P1: none.
+- P2: none.
+- P3: the production hero uses the strongest supported Morrovia route photograph rather than the exact generated concept landscape.
+- P3: `Save route` is deliberately omitted because no persisted public-route save capability exists.
+- P3: authenticated visual QA was not performed with a signed-in browser session; the CTA itself has no auth branch, and canonical-ID promotion/continuity is covered by the 21 passing persistence tests.
+- P3: existing repository warnings remain for multiple lockfiles/module-type inference and generic Storybook chunk size. Route Detail keeps MapLibre out of its initial 274 kB first-load bundle through a viewport-gated dynamic import.
+
+final result: passed
+
+---
+
+# Trip Map workspace final refinement QA
+
+- Source visual truth: `/Users/shaun/Downloads/Cusco Trip Planning Map Dashboard.png` and `/Users/shaun/Desktop/Screenshot 2026-08-23 at 12.12.47 PM.png`
+- Before evidence: `artifacts/map-workspace-refinement/before-1024.png`, `artifacts/map-workspace-refinement/before-1440.png`, `artifacts/map-workspace-refinement/before-wide.png`, `artifacts/map-workspace-refinement/before-tablet.png`, and `artifacts/map-workspace-refinement/before-mobile.png`
+- After evidence: `artifacts/map-workspace-refinement/after-1024.png`, `artifacts/map-workspace-refinement/after-1440.png`, `artifacts/map-workspace-refinement/after-wide.png`, `artifacts/map-workspace-refinement/after-tablet.png`, and `artifacts/map-workspace-refinement/after-mobile.png`
+- Route-overview evidence: `artifacts/map-workspace-refinement/after-1440-route-overview.png`
+- Source dimensions: 1672 × 941 px reference and 4332 × 2208 px production-style baseline
+- Browser capture dimensions: 1263 × 1111 px at the requested 1024 viewport, 1778 × 1234 px at 1440, 2370 × 1358 px at wide desktop, 948 × 1263 px at tablet, and 481 × 1041 px at mobile. The in-app browser applies host display scaling, so CSS geometry was measured from the rendered page as well as reviewed from the captures.
+- State: active planning trip, Map tab, Plan mode, Cusco selected; Sacred Valley selection and full-route overview exercised separately
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Layout and spacing: the useful desktop Map workspace now caps at 1760px with the existing 24px page-gutter rule. Shape the day remains 360–390px, Trip Health remains 260–280px, and both share the same 14px internal top inset. The toolbar, map and panels read as one bordered surface rather than separate floating regions.
+- Viewport rhythm: the desktop shell now resolves between 720px and 860px high. The integrated stop toolbar is 64px on desktop, leaving more vertical room for planning while keeping its stop, add-stop, fullscreen and overflow controls intact.
+- Local framing: TripShell detail mode opens at zoom 12 and offsets the selected geography 56px toward the usable center between the unequal side panels. Selecting Sacred Valley updated the active stop and Shape-the-day context while retaining the local detail map.
+- Route framing: `View trip overview` switches to the existing route overview and exposes the existing fit-all-destinations control; Cusco, Sacred Valley and Arequipa all remain represented in that fitted route context.
+- Focused Map preservation: the integrated `Fullscreen map` link still resolves to `/journey/plan?trip=cusco-sacred-valley-arequipa`. Focused presentation keeps its previous initial zoom and camera behavior.
+- Responsive integrity: tablet and mobile retained their exact pre-refinement workspace geometry: 72px toolbar, 720/680px shell rules, and existing bottom sheet. No panel redesign or compact-breakpoint override changed.
+- Tokens and visual language: existing Morrovia surface, line, radius, shadow, display, UI, metadata, signal and focus semantics remain unchanged. No new asset, icon system, provider, or fabricated map treatment was introduced.
+
+## Comparison history
+
+1. The baseline allowed the useful workspace to grow to 2200px even though the two panel widths topped out at 390px and 280px. The shell breakout now tops out at 1760px and centers within the existing page gutters.
+2. The original desktop shell used a 72px strip and a 640–820px viewport. The final pass uses a denser 64px integrated toolbar and a 720–860px planning viewport, without touching the ≤980px rules.
+3. The original local camera used the focused planner's 210px offset and zoom 11. TripShell now uses a panel-balanced 56px offset and zoom 12; the focused/fullscreen Map retains its original camera defaults.
+4. The final reference/implementation comparison found the requested containment, panel balance, toolbar continuity and map-height direction present. Dynamic tile labels and route geometry continue to reflect the selected persisted trip rather than the illustrative reference.
+
+## Interaction, accessibility, and console checks
+
+- Stop-selector buttons remain semantic buttons with active-step state; the Sacred Valley stop was selected successfully.
+- Full-route and local-detail controls remain labelled and keyboard-reachable.
+- Fullscreen Map remains a normal link, preserving browser navigation behavior.
+- Browser console review found no runtime errors. The only warning was the project's existing Next.js runtime-config deprecation notice.
+- Relevant workspace tests, typecheck, optimized Next.js production build, Storybook production build, and diff checks passed.
+
+## Follow-up polish
+
+- P3: exact basemap labels, route lines and visible place density vary with the persisted trip and live CARTO/OpenStreetMap tiles; the workspace framing is deterministic around those dynamic map contents.
+
+final result: passed
+
+---
+
 # Trip Workspace integration and visual refinement design QA
 
 - Source visual truth: `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.11 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.25 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.35 AM.png`, `/Users/shaun/Desktop/Screenshot 2026-08-23 at 8.20.43 AM.png`, and `/Users/shaun/Downloads/Screenshot 2026-08-23 at 8.22.35 AM.png`
@@ -654,5 +751,62 @@ No actionable P0, P1, or P2 differences remain.
 
 - P3: the approved mock uses a bespoke backpack illustration; the implementation uses Morrovia's existing watercolour travel-bag artwork to avoid adding an external or one-off asset dependency.
 - P3: exact progress differs from the mock's illustrative 64% because the implementation deliberately reports the real derived state.
+
+final result: passed
+
+---
+
+# Stamps / Travel Identity refinement design QA
+
+- Source visual truth: `/Users/shaun/Downloads/image-gen-3(6).png`
+- Browser-rendered desktop implementation: `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/after-established-1440.png`
+- Combined comparison input: `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/reference-vs-implementation-1440.png`
+- Responsive evidence: `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/after-established-390.png`, `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/after-established-768.png`, and `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/after-empty-390.png`
+- Before evidence: `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/before-1440.png` and `/Users/shaun/Documents/Morrovia/artifacts/stamps-refinement/before-390.png`
+- Verified Storybook implementation: `http://localhost:6011/iframe.html?id=morrovia-stamps--established-traveller&viewMode=story`
+- State: authenticated established traveller, France selected as Visited, three visited countries, two want-to-visit countries, and two countries with notes or imagery
+- Source dimensions: 1448 × 1086 px at supplied density
+- Implementation dimensions: 1440 × 1086 CSS px; browser device scale factor 1
+- Responsive viewports: 320, 390, 430, 768, 1024, 1440, and 1600 CSS px
+- Normalization: the source and browser-rendered implementation were aspect-fit into equal 1448 × 1086 panels in one vertically stacked comparison image.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the current Morrovia display and UI faces preserve the source's editorial headline, compact navigation, uppercase eyebrow, and dense country-list hierarchy. The desktop headline remains on one line and long country names remain legible.
+- Spacing and layout rhythm: the 1260 px desktop shell, 690 px workspace, map/explorer split, lower-left country card, map controls, scrollable country list, and footer legend reproduce the source's primary composition without letting the full 197-country list stretch the page.
+- Colors and tokens: indigo identifies primary and want-to-visit states, green identifies visited, pink is limited to brand and memory signals, and neutral/unmarked state is explicit. Existing `--morrovia-*` tokens and shared navigation patterns are reused.
+- Image quality: the production world topology remains crisp across the verified sizes. Traveller imagery is optional, local, and never replaced with fabricated photography.
+- Copy and content: the title and supporting statement follow the approved direction. Counts derive from persisted status and memory records. Unsupported visit dates, completed-trip claims, connected-trip totals, and an about-to-visit state are omitted.
+
+## Interaction, accessibility, and state evidence
+
+- Map zoom in, zoom out, and reset changed and restored the map transform.
+- Country selection, explicit Unmarked / Visited / Want to visit changes, search, region filtering, empty-filter reset, note editing, save, cancel, close, and Escape dismissal were exercised in the production-backed Storybook fixture.
+- Escape restored focus to the originating country-row control. Inputs and controls expose visible labels, native focus behavior, and clear status text instead of relying on color alone.
+- Guest and authenticated fixtures, empty and established travellers, selected visited and want-to-visit countries, a note, missing imagery, long country names, 390 px, and 768 px states are represented in Storybook.
+- The document width matched the viewport at 320, 390, 430, 768, 1024, 1440, and 1600 px; no page-level horizontal overflow was found.
+- Browser console review found no application errors. The isolated Storybook runtime emitted only its existing framework/runtime configuration warning.
+
+## Comparison history
+
+1. The initial implementation used fabricated seed status and memory data. It now starts from persisted traveller records and renders truthful zero states.
+2. The first desktop browser pass found that the 197-country explorer stretched the workspace beyond 10,000 px and vertically displaced the map. The workspace now has the source-aligned 690 px desktop height and its explorer list scrolls independently.
+3. The next comparison found a wrapped desktop headline, loose card geometry, and non-alphabetical filtered results. Shell, type, card, and explorer geometry were tightened and country results now sort canonically by display name.
+4. The post-fix combined comparison found no remaining P0, P1, or P2 typography, spacing, token, imagery, state, responsive, or interaction issue.
+
+## Validation and accepted differences
+
+- Clean isolated Stamps validation passed typecheck, targeted analytics tests, targeted Stamps tests, and the Next.js production build. A dedicated production Storybook build also passed.
+- The visible 3 / 2 / 2 totals intentionally differ from the source's illustrative 67 / 23 / 12 / 4 because Morrovia reports fixture or persisted state rather than promotional data.
+- Trips connected, visit dates, trip-completion inference, and about-to-visit are deliberately absent because the current canonical model cannot prove them.
+- Guest status records can be claimed after sign-in; guest notes and local imagery remain local rather than being silently moved into an account.
+
+## Follow-up polish
+
+- P3: optional photo data uses the existing local-memory path and remains subject to browser storage quota.
+- P3: country status migration is automatic after sign-in, while note/photo migration should remain an explicit future consented workflow if the product adds it.
+- P3: the production map topology supports the canonical catalogue, but very small island states remain easier to select from the explorer than directly on the map.
 
 final result: passed

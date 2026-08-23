@@ -5,6 +5,8 @@
   margin-top: 22px;
 }
 
+.dashboardHeroEmpty { grid-template-columns: minmax(0, 1fr); }
+
 .titleDot { color: var(--morrovia-signal, #ff347f); }
 
 .syncNotice {
@@ -334,7 +336,7 @@
   cursor: pointer;
 }
 
-.statusFilters button[aria-selected="true"] {
+.statusFilters button[aria-pressed="true"] {
   background: var(--morrovia-action, #3426d9);
   color: white;
   box-shadow: 0 8px 18px rgb(52 38 217 / 18%);

@@ -8,19 +8,16 @@ import { trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
-import type { StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
-type CapturedMention = { sourceText: string; canonicalName: string; role: "origin" | "stop"; order: number; status: "resolved" | "unresolved"; country?: string; coordinates?: [number, number]; kind?: string; intent: "place" | "landmark"; locality?: string };
-type Capture = { rawBrief: string; parserVersion: string; durationDays?: number; regions: string[]; routeHints: string[]; mentions: CapturedMention[]; structuredBrief: StructuredTripBrief };
-
 const copy = {
   en: {
-    briefLabel: "TELL US ABOUT YOUR TRIP", briefPlaceholder: "Describe where you want to go, how long you have, and what matters to you. Add any must-see places, dates, interests or travel preferences.", continue: "Plan my trip", checking: "Understanding your trip…", travelStyle: "YOUR TRAVEL STYLE", edit: "Edit", routes: "Explore multi-country routes", dates: "Add dates", travellers: "Travellers", interests: "Interests", startDate: "Start date", endDate: "End date", interestLabel: "What matters most?", food: "Food", culture: "Culture", nature: "Nature", cities: "Cities", beach: "Beach", hiking: "Hiking",
+    briefLabel: "TELL US ABOUT YOUR TRIP", briefPlaceholder: "Where would you like to go?", briefHelp: "Describe places or regions, how long you have, and what matters to you.", briefDetail: "Include must-sees, dates, pace, interests, transport preferences or constraints.", exampleLabel: "Try an example", examples: ["Two weeks through Japan, relaxed pace, food and mountains.", "10 days in Patagonia without driving.", "Portugal and Spain, three weeks, no more than four bases."], continue: "Plan my trip", checking: "Understanding your trip…", travelStyle: "YOUR TRAVEL STYLE", edit: "Edit", routes: "Explore multi-country routes", dates: "Add dates", travellers: "Travellers", interests: "Interests", startDate: "Start date", endDate: "End date", interestLabel: "What matters most?", food: "Food", culture: "Culture", nature: "Nature", cities: "Cities", beach: "Beach", hiking: "Hiking",
   },
   es: {
-    briefLabel: "CUÉNTANOS SOBRE TU VIAJE", briefPlaceholder: "Describe tu viaje...", continue: "Planificar mi viaje", checking: "Entendiendo tu viaje…", travelStyle: "TU ESTILO DE VIAJE", edit: "Editar", routes: "Explorar rutas multicountry", dates: "Añadir fechas", travellers: "Viajeros", interests: "Intereses", startDate: "Fecha de salida", endDate: "Fecha de regreso", interestLabel: "¿Qué te importa más?", food: "Comida", culture: "Cultura", nature: "Naturaleza", cities: "Ciudades", beach: "Playa", hiking: "Senderismo",
+    briefLabel: "CUÉNTANOS SOBRE TU VIAJE", briefPlaceholder: "¿Adónde te gustaría ir?", briefHelp: "Describe lugares o regiones, cuánto tiempo tienes y qué te importa.", briefDetail: "Incluye imprescindibles, fechas, ritmo, intereses, transporte o límites.", exampleLabel: "Prueba un ejemplo", examples: ["Dos semanas por Japón, ritmo tranquilo, comida y montaña.", "10 días en Patagonia sin conducir.", "Portugal y España, tres semanas, máximo cuatro bases."], continue: "Planificar mi viaje", checking: "Entendiendo tu viaje…", travelStyle: "TU ESTILO DE VIAJE", edit: "Editar", routes: "Explorar rutas multicountry", dates: "Añadir fechas", travellers: "Viajeros", interests: "Intereses", startDate: "Fecha de salida", endDate: "Fecha de regreso", interestLabel: "¿Qué te importa más?", food: "Comida", culture: "Cultura", nature: "Naturaleza", cities: "Ciudades", beach: "Playa", hiking: "Senderismo",
   },
 } as const;
 
@@ -88,7 +85,7 @@ export default function HomeTripStarter() {
     try {
       const response = await fetch("/api/journey-capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brief: tripBrief }) });
       responseReceived = true;
-      const payload = await response.json() as Capture & { message?: string };
+      const payload = await response.json() as JourneyCaptureResult & { message?: string };
       if (!response.ok) throw new Error(payload.message || "Capture failed");
       const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
       trackEvent("easyt_trip_capture_reviewed", { source: "homepage_builder", parser_version: payload.parserVersion, place_count: payload.mentions.length, unresolved_count: unresolvedCount, region_count: payload.regions.length, has_duration: Boolean(payload.durationDays) });
@@ -109,9 +106,17 @@ export default function HomeTripStarter() {
     <div className={`${styles.startBuilderBrief} ${fidelity.promptCard}`}>
       <span>{text.briefLabel}</span>
         <div className={`${styles.startBuilderPromptField} ${fidelity.promptField}`}>
+        <div className={fidelity.promptHelp}>
+          <p>{text.briefHelp}</p>
+          <span>{text.briefDetail}</span>
+        </div>
         <div className={fidelity.promptTextareaField}>
           <textarea aria-label={text.briefLabel} value={brief} onChange={(event) => { const next = event.target.value; setBrief(next); markPromptStarted("text", next); }} maxLength={600} placeholder={text.briefPlaceholder} />
           <VoiceTripBrief className={fidelity.voiceInput} language={language} onTranscript={(transcript) => setBrief((current) => { const next = appendVoiceTranscript(current, transcript); markPromptStarted("voice", next); return next; })} />
+        </div>
+        <div className={fidelity.promptExamples} aria-label={text.exampleLabel}>
+          <span>{text.exampleLabel}</span>
+          <div>{text.examples.map((example) => <button type="button" key={example} onClick={() => { setBrief(example); markPromptStarted("text", example); }}>{example}</button>)}</div>
         </div>
         </div>
         <div className={fidelity.promptAttributes}>

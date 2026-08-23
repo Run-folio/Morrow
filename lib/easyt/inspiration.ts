@@ -218,4 +218,4 @@ const catalogSeeds: InspirationSeed[] = routeFamilies
 export const inspirationByKey = Object.fromEntries(
   [...inspirationSeeds, ...catalogSeeds].map((seed) => [seed.key, seed]),
 );
-import { routeFamilies } from "./route-catalog";
+import { routeFamilies } from "./route-catalog.ts";

@@ -17,20 +17,26 @@ const routes = [
 export default function InspirationExplorer() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [photos, setPhotos] = useState<Record<string, CachedRoutePhoto>>({});
+  const [pendingPhotoKeys, setPendingPhotoKeys] = useState<Set<string>>(() => new Set(routes.map((route) => route.key)));
   useEffect(() => { setLanguage(languageFromStorage()); const update = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail); window.addEventListener("easyt-language-change", update); return () => window.removeEventListener("easyt-language-change", update); }, []);
   useEffect(() => {
     let active = true;
     const cached = Object.fromEntries(routes.flatMap((route) => { const image = readRoutePhoto(route.key); return image ? [[route.key, image] as const] : []; }));
-    if (Object.keys(cached).length) setPhotos((current) => ({ ...current, ...cached }));
+    const cachedKeys = Object.keys(cached);
+    if (cachedKeys.length) {
+      setPhotos((current) => ({ ...current, ...cached }));
+      setPendingPhotoKeys((current) => { const next = new Set(current); cachedKeys.forEach((key) => next.delete(key)); return next; });
+    }
     const missing = routes.filter((route) => !cached[route.key]);
-    if (!missing.length) return;
-    void Promise.all(missing.map(async (route) => ({ key: route.key, result: await findRoutePhotos(route.query) }))).then((results) => {
+    if (!missing.length) { setPendingPhotoKeys(new Set()); return; }
+    void Promise.allSettled(missing.map(async (route) => ({ key: route.key, result: await findRoutePhotos(route.query) }))).then((results) => {
       if (!active) return;
-      const next = Object.fromEntries(results.flatMap(({ key, result }) => { const photo = result.candidates[0]; if (!photo) return []; saveRoutePhoto(key, photo); trackRoutePhoto(photo); return [[key, photo] as const]; }));
+      const next = Object.fromEntries(results.flatMap((settled) => { if (settled.status === "rejected") return []; const { key, result } = settled.value; const photo = result.candidates[0]; if (!photo) return []; saveRoutePhoto(key, photo); trackRoutePhoto(photo); return [[key, photo] as const]; }));
       if (Object.keys(next).length) setPhotos((current) => ({ ...current, ...next }));
+      setPendingPhotoKeys((current) => { const settledKeys = new Set(current); missing.forEach((route) => settledKeys.delete(route.key)); return settledKeys; });
     });
     return () => { active = false; };
   }, []);
   const index = language === "es" ? 1 : 0;
-  return <section className={styles.explorer} id="routes"><header className={styles.explorerHead}><div><p className={styles.eyebrow}>{language === "es" ? "EXPLORA RUTAS MULTIPAÍS" : "EXPLORE MULTI-COUNTRY ROUTES"}</p><h2>{language === "es" ? "Elige una ruta con una mirada propia." : "Choose a route with a point of view."}</h2></div><Link className={styles.browseLink} href="/journey/discover">{language === "es" ? "Ver todas las rutas" : "View all routes"} <ArrowRight aria-hidden="true" /></Link></header><div className={styles.routeGrid}>{routes.map((route) => { const photo = photos[route.key]; return <Link className={`${styles.routeCard} ${fidelity.routeCard}`} key={route.key} href={route.href}><div className={`${styles.routeImage} ${fidelity.routeImage} ${!photo ? styles.routeImageLoading : ""}`} style={photo ? { ["--route-photo" as string]: `url(${photo.src})` } : undefined}>{photo ? <small>{photo.sourceLabel}</small> : null}</div><div><strong>{route.title[index]}</strong><span className={styles.routeBases}>{route.bases}</span><span className={styles.routeStats}><MapPin aria-hidden="true" /> {route.stats.split(" · ")[0]} <Clock3 aria-hidden="true" /> {route.stats.split(" · ")[1]}</span><p>{route.detail[index]}</p><i>{language === "es" ? "Explorar ruta" : "Explore route"} <ArrowRight aria-hidden="true" /></i></div></Link>; })}</div></section>;
+  return <section className={styles.explorer} id="routes"><header className={styles.explorerHead}><div><p className={styles.eyebrow}>{language === "es" ? "EXPLORA RUTAS MULTIPAÍS" : "EXPLORE MULTI-COUNTRY ROUTES"}</p><h2>{language === "es" ? "Elige una ruta con una mirada propia." : "Choose a route with a point of view."}</h2></div><Link className={styles.browseLink} href="/journey/discover">{language === "es" ? "Ver todas las rutas" : "View all routes"} <ArrowRight aria-hidden="true" /></Link></header><div className={styles.routeGrid}>{routes.map((route) => { const photo = photos[route.key]; const photoPending = !photo && pendingPhotoKeys.has(route.key); return <Link className={`${styles.routeCard} ${fidelity.routeCard}`} key={route.key} href={route.href}><div className={`${styles.routeImage} ${fidelity.routeImage} ${photoPending ? styles.routeImageLoading : ""}`} style={photo ? { ["--route-photo" as string]: `url(${photo.src})` } : undefined}>{photo ? <small>{photo.sourceLabel}</small> : null}</div><div><strong>{route.title[index]}</strong><span className={styles.routeBases}>{route.bases}</span><span className={styles.routeStats}><MapPin aria-hidden="true" /> {route.stats.split(" · ")[0]} <Clock3 aria-hidden="true" /> {route.stats.split(" · ")[1]}</span><p>{route.detail[index]}</p><i>{language === "es" ? "Explorar ruta" : "Explore route"} <ArrowRight aria-hidden="true" /></i></div></Link>; })}</div></section>;
 }

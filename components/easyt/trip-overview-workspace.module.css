@@ -3,6 +3,9 @@
   font-family: var(--morrovia-ui);
 }
 
+.orientation{display:grid;gap:16px;margin-bottom:16px;padding:18px 20px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:color-mix(in srgb,var(--morrovia-lilac) 62%,#fff)}
+.orientation header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.orientation header p{margin:0;color:var(--morrovia-signal);font:800 10px/1.2 var(--morrovia-meta);letter-spacing:.12em;text-transform:uppercase}.orientation h2{margin:5px 0 0;color:var(--morrovia-ink);font:600 25px/1.05 var(--morrovia-display);letter-spacing:-.035em}.orientation header button{display:grid;flex:none;width:44px;height:44px;place-items:center;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:#fff;color:var(--morrovia-ink);cursor:pointer}.orientation header button:hover{border-color:var(--morrovia-action);background:var(--morrovia-lilac)}.orientation header button:focus-visible{outline:2px solid var(--morrovia-ink);outline-offset:2px}.orientation header svg{width:17px;height:17px}.orientation ul{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}.orientation li{display:grid;gap:3px;min-width:0;padding-left:10px;border-left:2px solid var(--morrovia-signal)}.orientation strong{font-size:12px}.orientation li span{color:var(--morrovia-ink-soft);font-size:11px;line-height:1.4}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(310px, .9fr);
@@ -425,6 +428,9 @@
 .emptyRoute svg { color: var(--morrovia-signal); }
 .emptyRoute p { margin: 0; font-size: 13px; }
 
+.routeRationale{display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;margin-top:18px;padding:16px;border:1px solid var(--morrovia-line);border-radius:11px;background:color-mix(in srgb,var(--morrovia-lilac) 48%,#fff)}
+.routeRationale>svg{width:19px;height:19px;color:var(--morrovia-action)}.routeRationale>div{display:grid;gap:6px}.routeRationale p,.routeRationale h3{margin:0}.routeRationale p{color:var(--morrovia-signal);font:800 9px/1.2 var(--morrovia-meta);letter-spacing:.1em;text-transform:uppercase}.routeRationale h3{color:var(--morrovia-ink);font:600 18px/1.2 var(--morrovia-display)}.routeRationale ul{display:grid;gap:4px;margin:0;padding-left:17px}.routeRationale li,.routeRationale span{color:var(--morrovia-ink-soft);font-size:12px;line-height:1.45}.routeRationale span strong{color:var(--morrovia-ink)}
+
 .nextCopy a:hover,
 .routeActions a:hover,
 .sectionHeading a:hover,
@@ -453,6 +459,7 @@
 }
 
 @media (max-width: 720px) {
+  .orientation ul{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "next" "health" "progress" "route";
@@ -465,6 +472,7 @@
 }
 
 @media (max-width: 520px) {
+  .orientation{padding:16px}.orientation h2{font-size:22px}.orientation ul{gap:12px 8px}.orientation li{padding-left:8px}.orientation li span{font-size:10px}
   .nextAction {
     padding: 24px 18px;
     grid-template-columns: minmax(0, 1fr);
@@ -487,4 +495,5 @@
     gap: 8px;
   }
   .transfer svg:last-child { transform: rotate(90deg); }
+  .routeRationale{grid-template-columns:1fr}.routeRationale>svg{margin-bottom:2px}
 }

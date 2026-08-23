@@ -20,6 +20,7 @@ These typed events answer the minimum launch questions without replacing the exi
 
 | Event | Exact trigger | Safe properties |
 | --- | --- | --- |
+| `route_started` | A traveller deliberately selects **Plan this route** on a public Route Detail page. | public `route_id`, `stop_count`, `duration_days`, `placement` (`hero` or `final`) |
 | `homepage_prompt_started` | A homepage prompt first reaches three non-whitespace characters, whether typed or dictated. | `source`, `input_method`, `is_authenticated` |
 | `trip_generation_started` | The homepage planning request is submitted, or a direct builder trip is submitted. | `trip_source`, `has_dates`, `traveller_count`, `is_authenticated` |
 | `trip_generated` | The builder has produced a usable trip with at least one stop and plan item. | opaque `trip_id`, `trip_source`, `stop_count`, `duration_days`, `traveller_count`, `has_dates`, `save_state`, `result` |
@@ -33,6 +34,27 @@ These typed events answer the minimum launch questions without replacing the exi
 | `accommodation_search_started` | The existing stay finder starts its map/inventory search. | `source`, `destination_count`, `has_dates`, `provider` |
 
 `affiliate_click` remains the single monetisation handoff event and retains its existing `category` and `provider` contract. Do not introduce PostHog-specific aliases for the same click.
+
+### First-trip activation definition
+
+- **Basic activation:** the same opaque `trip_id` records `trip_generated(result="usable")` and then `trip_overview_viewed(route_mode="shell")`. This represents a traveller reaching a usable route in the canonical workspace, not completing onboarding UI.
+- **Strong activation:** the same opaque `trip_id` records `trip_saved(save_state="cloud")` and `trip_overview_viewed`. This represents a usable trip that can continue across devices.
+- **Return signal:** a later deliberate `trip_reopened` for that trip.
+
+Count distinct trip IDs rather than raw event totals because workspace views can repeat on reload. Segment `trip_saved` by `save_state`; local and cloud saves are intentionally separate persistence boundaries. No orientation-completion event is required, and prompt text, place phrases and traveller details remain excluded.
+
+## Stamps events
+
+The consent-gated pageview for `/journey/stamped` is the Stamps view measurement. Do not add a duplicate `stamps_viewed` event.
+
+The production Stamps handlers emit the following typed interaction events at the exact triggers below.
+
+| Event | Exact trigger | Safe properties |
+| --- | --- | --- |
+| `stamp_status_changed` | Once after a deliberate country-status transition is successfully saved, either to guest device state or the authenticated account. Reopening the country or rendering the resulting state does not emit it. | `previous_status`, `next_status`, `source` (`map`, `explorer`, or `country_card`), `is_authenticated` |
+| `stamp_note_added` | Once when a previously empty country note is deliberately saved with content. Editing an existing note or blurring an unchanged field does not emit it. | `source` (`country_card`), `is_authenticated` |
+
+These events never include country names, country codes or country IDs; note or memory text; photo content, filenames or metadata; or trip titles, destinations, notes or other private trip text. Status values, interaction source and authentication state are sufficient for the measurement job.
 
 ## Funnel events
 
@@ -67,7 +89,7 @@ These names are reserved for the collaboration MVP. They must not be emitted unt
 
 ## What the current product emits
 
-The builder already emits intent, route generation, route acceptance and structural-refinement events. The map plan emits health and readiness events. Booking Readiness emits the common `affiliate_click` event for contextual partner actions. This pass adds `budget_viewed` and normalises the Saily readiness link to `affiliate_click` as well as its existing partner-specific event.
+The public Route Detail page emits `route_started` only when a traveller deliberately selects its planner CTA; the consent-gated pageview already measures route views. The builder already emits intent, route generation, route acceptance and structural-refinement events. The map plan emits health and readiness events. Booking Readiness emits the common `affiliate_click` event for contextual partner actions. This pass adds `budget_viewed` and normalises the Saily readiness link to `affiliate_click` as well as its existing partner-specific event. Stamps uses the shared consent-gated pageview and emits `stamp_status_changed` and `stamp_note_added` only from their successful production save paths.
 
 `booking_attributed`, and the collaboration events remain intentionally inactive until Morrovia receives a partner conversion signal or ships authenticated shared trips. Do not create a synthetic event from a click, a redirect or an estimated commission.
 

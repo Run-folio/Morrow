@@ -95,6 +95,10 @@ export function canonicalTripForOwner(
           ...destination,
           id: destination.id ? (stopIds.get(destination.id) ?? destination.id) : undefined,
         })),
+        placeSelections: trip.brief.structuredBrief.placeSelections?.map((selection) => ({
+          ...selection,
+          routeStopId: selection.routeStopId ? (stopIds.get(selection.routeStopId) ?? selection.routeStopId) : undefined,
+        })),
       } : undefined,
     },
     stops: trip.stops.map((stop) => ({

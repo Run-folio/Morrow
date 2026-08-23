@@ -5,7 +5,6 @@ import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 import EasyTNavigation from "../easyt-navigation";
 import StampedClient from "./stamped-client";
 import styles from "./stamped.module.css";
-import mobilePolish from "./stamped-mobile-polish.module.css";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Stamped · Morrovia" };
@@ -26,10 +25,10 @@ export default async function StampedPage() {
   }
 
   return (
-    <main className={`${styles.page} ${mobilePolish.page}`}>
+    <main className={styles.page}>
       <EasyTNavigation
         current="stamped"
-        account={session?.user ? { name: session.user.name, email: session.user.email, language: preferences?.language } : undefined}
+        account={session?.user ? { id: session.user.id, name: session.user.name, email: session.user.email, language: preferences?.language } : undefined}
       />
       <StampedClient userKey={session?.user?.id} authenticated={Boolean(session?.user)} />
     </main>

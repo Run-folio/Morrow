@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   BedDouble,
@@ -11,16 +13,20 @@ import {
   Route,
   ShieldCheck,
   Sparkles,
+  X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth } from "@/lib/easyt/review";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
+import ResilientImage from "./resilient-image";
 import {
   firstItineraryDayForStop,
   itineraryDayForRecommendation,
   itineraryWorkspaceHref,
   mapWorkspaceHref,
+  shouldShowFirstTripOrientation,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
 
@@ -41,6 +47,7 @@ type OverviewIssue = {
 };
 
 const DAY_MS = 86_400_000;
+const WORKSPACE_ORIENTATION_KEY = "morrovia-workspace-orientation-seen-v1";
 
 function expectedTripDays(trip: EasyTTrip) {
   const start = new Date(`${trip.startDate}T12:00:00`);
@@ -164,7 +171,15 @@ function stopImage(trip: EasyTTrip, stop: TripStop, index: number) {
   return image ? { src: image.src, alt: image.alt } : null;
 }
 
-export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
+export default function TripOverviewWorkspace({ trip, firstArrival = false }: { trip: EasyTTrip; firstArrival?: boolean }) {
+  const [showOrientation, setShowOrientation] = useState(false);
+  useEffect(() => {
+    let alreadySeen = false;
+    try { alreadySeen = window.localStorage.getItem(WORKSPACE_ORIENTATION_KEY) === "1"; } catch { alreadySeen = false; }
+    if (!shouldShowFirstTripOrientation(firstArrival, alreadySeen)) return;
+    setShowOrientation(true);
+    try { window.localStorage.setItem(WORKSPACE_ORIENTATION_KEY, "1"); } catch { /* Browser storage is optional. */ }
+  }, [firstArrival]);
   const action = overviewActionForTrip(trip);
   const issues = issueSummary(trip);
   const health = tripHealth(trip);
@@ -176,6 +191,8 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
   const prepCompleteCount = checklist.filter((item) => item.complete).length;
   const prepPercent = checklist.length ? Math.round((prepCompleteCount / checklist.length) * 100) : 0;
   const orderedStops = [...trip.stops].sort((left, right) => left.order - right.order);
+  const routeAssessment = trip.brief.routeAssessment?.route;
+  const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
   const actionImageStop = action.kind === "stay" ? orderedStops.find((stop) => stop.id === action.stopId) : orderedStops[0];
   const actionImage = actionImageStop ? stopImage(trip, actionImageStop, orderedStops.indexOf(actionImageStop)) : null;
   const ActionIcon = action.kind === "stay" ? BedDouble
@@ -186,6 +203,15 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
 
   return (
     <section className={styles.overview} aria-label="Trip overview">
+      {showOrientation ? <aside className={styles.orientation} aria-labelledby="workspace-orientation-title">
+        <header><div><p>Your trip is ready</p><h2 id="workspace-orientation-title">Choose what to refine next.</h2></div><button type="button" onClick={() => setShowOrientation(false)} aria-label="Dismiss workspace orientation"><X aria-hidden="true" /></button></header>
+        <ul>
+          <li><strong>Overview</strong><span>See the next action and anything that needs attention.</span></li>
+          <li><strong>Itinerary</strong><span>Shape the trip day by day.</span></li>
+          <li><strong>Map</strong><span>Explore stays, food and places around each stop.</span></li>
+          <li><strong>Prep</strong><span>Keep practical tasks separate from the itinerary.</span></li>
+        </ul>
+      </aside> : null}
       <div className={styles.grid}>
         <article className={styles.nextAction}>
           <div className={styles.nextCopy}>
@@ -195,7 +221,11 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
             <span>{action.detail}</span>
             <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>
           </div>
-          {actionImage ? <img src={actionImage.src} alt={actionImage.alt} /> : <Sparkles className={styles.nextFallback} aria-hidden="true" />}
+          <ResilientImage
+            src={actionImage?.src}
+            alt={actionImage?.alt ?? ""}
+            fallback={<Sparkles className={styles.nextFallback} aria-hidden="true" />}
+          />
         </article>
 
         <article className={styles.healthCard}>
@@ -240,13 +270,18 @@ export default function TripOverviewWorkspace({ trip }: { trip: EasyTTrip }) {
               return <li key={stop.id}>
                 <Link className={styles.routeStopLink} href={itineraryWorkspaceHref(trip.id, itineraryDay)}><article>
                   <div className={styles.stopNumber}>{index + 1}</div>
-                  {image ? <img src={image.src} alt={image.alt} /> : <div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>}
+                  <ResilientImage
+                    src={image?.src}
+                    alt={image?.alt ?? ""}
+                    fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>}
+                  />
                   <div><h3>{stop.name}</h3><span>{stop.nights ?? 0} {(stop.nights ?? 0) === 1 ? "night" : "nights"}</span></div>
                 </article></Link>
                 {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? durationLabel(leg.durationMinutes) : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
               </li>;
             })}
           </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
+          {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p>Why this order</p><h3 id="overview-route-rationale-title">{routeRationale.summary}</h3>{routeRationale.reasons.length ? <ul>{routeRationale.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}{routeRationale.tradeoffs[0] ? <span><strong>Main trade-off:</strong> {routeRationale.tradeoffs[0]}</span> : null}</div></aside> : null}
         </section>
       </div>
     </section>

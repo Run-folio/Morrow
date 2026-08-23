@@ -22,6 +22,9 @@ export default async function EasyTProfilePage() {
   await ensureEasyTUser(session.user.id, session.user.email, session.user.name);
   const preferences = await getEasyTUserPreferences(session.user.id);
   const copy = easytCopy[preferences.language].account;
+  const profileIntro = preferences.language === "es"
+    ? "Gestiona tus datos y las preferencias de viaje que Morrovia usa como punto de partida para nuevos viajes."
+    : "Manage your details and the travel preferences Morrovia uses as a starting point for new trips.";
 
   return (
     <main className={styles.page}>
@@ -36,6 +39,7 @@ export default async function EasyTProfilePage() {
       <section className={styles.profileWrap}>
         <p className={styles.eyebrow}>{copy.settings}</p>
         <h1>{copy.profileTitle}</h1>
+        <p className={styles.profileIntro}>{profileIntro}</p>
         <ProfileForm
           name={session.user.name || ""}
           email={session.user.email}

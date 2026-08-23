@@ -1,5 +1,4 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import EasyTNavigation from "../easyt-navigation";
 import TripShell from "@/components/easyt/trip-shell";
 import TripShellResolver from "@/components/easyt/trip-shell-resolver";
@@ -21,15 +20,16 @@ export default async function TripWorkspaceLayout({
   params: Promise<{ tripId: string }>;
 }>) {
   const { tripId } = await params;
-  const workspaceHref = `/journey/${encodeURIComponent(tripId)}`;
-
-  if (!isEasyTAuthConfigured()) {
-    redirect("/journey/login?setup=required");
-  }
-
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const session = isEasyTAuthConfigured()
+    ? await getAuth().api.getSession({ headers: await headers() })
+    : null;
   if (!session?.user?.id || !session.user.email) {
-    redirect(`/journey/login?next=${encodeURIComponent(workspaceHref)}`);
+    return (
+      <main className="morrovia-editorial-page">
+        <EasyTNavigation current="trips" />
+        <TripShellResolver tripId={tripId}>{children}</TripShellResolver>
+      </main>
+    );
   }
 
   await ensureEasyTUser(session.user.id, session.user.email, session.user.name);

@@ -64,6 +64,13 @@
   .plan :global([class*="undoToast"]) { top:172px;bottom:auto;z-index:12; }
 }
 
+/* Keep the desktop tools in separate lanes while the canvas is still narrow. */
+@media (min-width:981px) and (max-width:1199px) {
+  .plan :global([class*="finderDock"]) { width:clamp(400px,44vw,520px); }
+  .plan :global([class*="pinDock"]) { right:246px; }
+  .plan :global([class*="pinDockExpanded"]) { width:min(200px,calc(100vw - 781px)); }
+}
+
 /* Mobile and tablet use the exact same dock and children as desktop. Only its
    presentation changes: the map is the underlay and Shape the day is the
    single, scrollable bottom sheet. */
