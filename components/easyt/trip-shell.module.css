@@ -7,6 +7,14 @@
   font-family: var(--morrovia-ui);
 }
 
+.resolving {
+  display: grid;
+  min-height: 45svh;
+  place-items: center;
+  color: var(--morrovia-muted);
+  font-weight: 700;
+}
+
 .shell {
   overflow: hidden;
   border: 1px solid var(--morrovia-line);

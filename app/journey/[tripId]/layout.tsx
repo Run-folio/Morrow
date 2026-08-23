@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import EasyTNavigation from "../easyt-navigation";
 import TripShell from "@/components/easyt/trip-shell";
+import TripShellResolver from "@/components/easyt/trip-shell-resolver";
 import { getAuth } from "@/lib/auth";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 import {
@@ -37,8 +38,6 @@ export default async function TripWorkspaceLayout({
     getEasyTUserPreferences(session.user.id),
   ]);
 
-  if (!trip) notFound();
-
   return (
     <main className="morrovia-editorial-page">
       <EasyTNavigation
@@ -49,7 +48,9 @@ export default async function TripWorkspaceLayout({
           language: preferences.language,
         }}
       />
-      <TripShell trip={trip}>{children}</TripShell>
+      {trip
+        ? <TripShell trip={trip}>{children}</TripShell>
+        : <TripShellResolver tripId={tripId} ownerId={session.user.id}>{children}</TripShellResolver>}
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import TripItineraryWorkspace from "./trip-itinerary-workspace";
+import TripShell from "./trip-shell";
 
 const day = (dayNumber: number, stopId: string, date: string, title: string, reason: string, notes: string[], type: PlanItem["type"] = "activity", image: string | null = "/journey/peru-sacred-valley-route.jpg"): PlanItem => ({
   id: `day-${dayNumber}`,
@@ -57,8 +58,8 @@ const trip: EasyTTrip = {
 const meta = {
   title: "Components/Trip itinerary workspace",
   component: TripItineraryWorkspace,
-  parameters: { layout: "fullscreen" },
-  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 24 }}><Story /></main>],
+  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}>{context.args.presentation === "legacy" ? <Story /> : <TripShell trip={context.args.trip}><Story /></TripShell>}</main>],
   args: { trip, presentation: "shell" },
 } satisfies Meta<typeof TripItineraryWorkspace>;
 

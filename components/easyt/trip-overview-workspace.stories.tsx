@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import TripOverviewWorkspace from "./trip-overview-workspace";
+import TripShell from "./trip-shell";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
 
@@ -77,7 +78,7 @@ const meta = {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa" } },
   },
-  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 24 }}><Story /></main>],
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip}><Story /></TripShell></main>],
   args: { trip: baseTrip },
 } satisfies Meta<typeof TripOverviewWorkspace>;
 

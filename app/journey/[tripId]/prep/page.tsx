@@ -1,12 +1,9 @@
-import { TripWorkspacePlaceholder } from "@/components/easyt/trip-shell";
+"use client";
 
-export const metadata = { title: "Trip prep · Morrovia" };
+import TripPrepWorkspace from "@/components/easyt/trip-prep-workspace";
+import { useTripShellTrip } from "@/components/easyt/trip-shell-client";
 
 export default function TripPrepWorkspacePage() {
-  return (
-    <TripWorkspacePlaceholder
-      title="Prep"
-      description="Temporary foundation placeholder only. Existing Trip Prep logic and its production route remain unchanged until a later migration task."
-    />
-  );
+  const trip = useTripShellTrip();
+  return <TripPrepWorkspace trip={trip} presentation="shell" />;
 }

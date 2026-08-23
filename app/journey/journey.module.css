@@ -892,6 +892,7 @@
   .shellPlanner .mapCoach{position:absolute!important;top:auto!important;right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px)!important;left:12px!important;max-height:calc(100% - 110px)!important}
   .shellPlanner:has(.mobileTripStatus[open]) .itineraryWithFinder{position:absolute!important;top:84px!important;right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 10px)!important;left:12px!important;max-height:none!important}
   .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:14px!important}
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-group button){width:44px;height:44px}
 }
 
 @media(max-width:430px){

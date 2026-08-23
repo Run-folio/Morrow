@@ -14,7 +14,7 @@ import {
   Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
+import { loadActiveTrip, loadRequestedTrip, saveActiveTrip } from "@/lib/easyt/storage";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
@@ -378,19 +378,11 @@ export default function TripBuilder() {
       const tripIdFromUrl = params.get("trip");
       const showItinerary = params.get("view") === "itinerary";
       if (tripIdFromUrl) {
-        try {
-          const cloudTrip = await loadTripFromEasyT(tripIdFromUrl);
-          if (cloudTrip) {
-            applySaved(cloudTrip);
-            saveActiveTrip(cloudTrip);
-            if (showItinerary) setGenerated(true);
-          } else {
-            const localTrip = loadActiveTrip();
-            if (localTrip?.id === tripIdFromUrl) { applySaved(localTrip); if (showItinerary) setGenerated(true); }
-          }
-        } catch {
-          const localTrip = loadActiveTrip();
-          if (localTrip?.id === tripIdFromUrl) { applySaved(localTrip); if (showItinerary) setGenerated(true); }
+        const requestedTrip = await loadRequestedTrip(tripIdFromUrl);
+        if (requestedTrip) {
+          applySaved(requestedTrip);
+          saveActiveTrip(requestedTrip);
+          if (showItinerary) setGenerated(true);
         }
       } else {
         try {

@@ -1,0 +1,73 @@
+.workspace{width:100%;padding:4px 0 52px;color:var(--morrovia-ink)}
+.intro{margin-bottom:18px}
+.progressCopy>p,.countdownCard>p,.nextCard>header>p{margin:0;color:var(--morrovia-signal);font:750 10px/1.25 var(--morrovia-meta);letter-spacing:.13em}
+.intro h2{margin:0 0 4px;font:600 clamp(30px,3vw,38px)/1 var(--morrovia-display);letter-spacing:-.04em}
+.intro>span{color:var(--morrovia-ink-soft);font-size:14px}
+.dashboard{display:grid;grid-template-columns:minmax(0,1fr) 292px;grid-template-areas:"progress countdown" "must next" "good summary" "nice summary" "details details";gap:14px 18px;align-items:start}
+.progressCard{grid-area:progress;display:grid;grid-template-columns:minmax(200px,1fr) 180px 190px;align-items:center;min-height:160px;padding:17px 22px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:linear-gradient(135deg,#fff 0%,var(--morrovia-lilac) 100%);box-shadow:0 12px 28px rgba(23,16,111,.05)}
+.progressCopy h3{margin:5px 0 2px;font:600 clamp(44px,4.5vw,58px)/.95 var(--morrovia-display);letter-spacing:-.055em}
+.progressCopy>p{color:var(--morrovia-ink);font:600 17px/1.2 var(--morrovia-display);letter-spacing:-.02em}
+.progressCopy>span{color:var(--morrovia-ink-soft);font-size:13px}
+.progressTrack{height:7px;margin-top:13px;overflow:hidden;border-radius:99px;background:var(--morrovia-lilac-strong)}
+.progressTrack span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--morrovia-ink),var(--morrovia-action))}
+.progressIllustration{height:116px;overflow:hidden}
+.progressIllustration img{width:300px;height:116px;object-fit:cover;object-position:right center;transform:translateX(-58px);mix-blend-mode:multiply}
+.progressStats{display:grid;gap:0;margin:0;padding-left:20px;border-left:1px solid var(--morrovia-line)}
+.progressStats>div{display:flex;align-items:center;justify-content:space-between;min-height:36px;border-bottom:1px solid rgba(217,216,238,.7)}
+.progressStats>div:last-child{border-bottom:0}
+.progressStats dt{display:flex;align-items:center;gap:9px;color:var(--morrovia-ink);font-size:12px;font-weight:720}
+.progressStats dd{margin:0;font:750 12px var(--morrovia-meta)}
+.progressStats svg{width:18px;height:18px;color:var(--morrovia-success)}
+.progressStats>div:nth-child(2) svg{color:var(--morrovia-warning)}
+.progressStats>div:nth-child(3) svg{color:var(--morrovia-action)}
+.countdownCard{grid-area:countdown;position:relative;min-height:138px;padding:21px;overflow:hidden;border-radius:var(--morrovia-radius);color:#fff;background:linear-gradient(135deg,var(--morrovia-ink),var(--morrovia-action));box-shadow:0 18px 38px rgba(23,16,111,.16)}
+.countdownCard>svg{position:absolute;right:16px;bottom:-12px;width:92px;height:92px;color:rgba(255,255,255,.12)}
+.countdownCard>p{color:#ff8abc}
+.countdownCard>strong{position:relative;display:block;max-width:205px;margin-top:12px;font:600 25px/1.06 var(--morrovia-display);letter-spacing:-.025em}
+.countdownCard>span{position:relative;display:block;margin-top:8px;color:rgba(255,255,255,.78);font-size:12px}
+.taskSection{min-width:0}.must{grid-area:must}.good{grid-area:good}.nice{grid-area:nice}
+.taskSection>header{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.taskSection>header svg{width:18px;height:18px;color:var(--morrovia-signal)}
+.taskSection>header h2{margin:0;font:600 20px/1.1 var(--morrovia-display)}
+.taskGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.compactTaskGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.taskCard{display:flex;flex-direction:column;min-height:182px;padding:14px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:#fff;box-shadow:0 9px 24px rgba(23,16,111,.035)}
+.taskCardCompact{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;min-height:74px;padding:12px}
+.taskTop{display:flex;align-items:start;justify-content:space-between;gap:10px}
+.taskIcon{display:grid;width:40px;height:40px;place-items:center;border-radius:11px;color:var(--morrovia-action);background:var(--morrovia-lilac)}
+.taskIcon svg{width:22px;height:22px}
+.statusIcon{width:19px;height:19px;color:var(--morrovia-action)}
+.status-complete .statusIcon{color:var(--morrovia-success)}
+.status-in-progress .statusIcon{color:var(--morrovia-warning)}
+.status-urgent .statusIcon{color:var(--morrovia-signal);fill:var(--morrovia-tint)}
+.taskCopy{min-width:0;margin-top:10px}
+.taskCopy h3{margin:0;font:600 17px/1.12 var(--morrovia-display);letter-spacing:-.018em}
+.taskCopy p{display:-webkit-box;margin:5px 0 0;overflow:hidden;color:var(--morrovia-ink-soft);font-size:11px;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.statusPill{display:inline-flex;margin-top:8px;padding:4px 9px;border-radius:99px;color:var(--morrovia-action);background:var(--morrovia-lilac);font-size:9px;font-weight:760}
+.status-complete .statusPill{color:var(--morrovia-success);background:#eaf8f2}
+.status-in-progress .statusPill{color:var(--morrovia-warning);background:var(--morrovia-warning-soft)}
+.status-urgent .statusPill{color:var(--morrovia-danger);background:var(--morrovia-danger-soft)}
+.taskAction,.compactAction{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%;min-height:40px;margin-top:auto;padding:8px 10px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);background:#fff;font:720 10px var(--morrovia-ui);text-decoration:none;cursor:pointer}
+.taskAction:hover,.compactAction:hover{border-color:var(--morrovia-action);color:var(--morrovia-action)}
+.taskAction svg,.compactAction svg{width:13px;height:13px}
+.status-urgent .taskAction{border-color:var(--morrovia-ink);color:#fff;background:var(--morrovia-ink)}
+.taskCardCompact .taskTop{display:block}.taskCardCompact .statusIcon{display:none}.taskCardCompact .taskIcon{width:34px;height:34px;border-radius:9px}.taskCardCompact .taskIcon svg{width:19px;height:19px}
+.taskCardCompact .taskCopy{margin:0}.taskCardCompact .taskCopy h3{overflow:hidden;font:650 12px/1.2 var(--morrovia-ui);text-overflow:ellipsis;white-space:nowrap}.taskCardCompact .statusPill{margin-top:5px;padding:3px 7px;font-size:8px}
+.taskCardCompact .compactAction{width:40px;min-height:40px;margin:0;padding:0;justify-content:center}.taskCardCompact .compactAction{font-size:0}.taskCardCompact .compactAction svg{width:14px;height:14px}
+.nextCard{grid-area:next;padding:16px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:#fff;box-shadow:0 12px 28px rgba(23,16,111,.045)}
+.nextCard>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.nextCard>header svg{width:18px;height:18px;color:var(--morrovia-action)}
+.nextCard>div{display:flex;gap:11px;margin-top:12px}.nextIcon{display:grid;flex:0 0 40px;height:40px;place-items:center;border-radius:10px;color:var(--morrovia-action);background:var(--morrovia-lilac)}
+.nextIcon svg{width:21px;height:21px}.nextCard h3{margin:0;font:600 18px/1.12 var(--morrovia-display)}.nextCard div p{display:-webkit-box;margin:5px 0 0;overflow:hidden;color:var(--morrovia-ink-soft);font-size:10px;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.nextCard>.compactAction{margin-top:12px;color:#fff;background:var(--morrovia-ink);border-color:var(--morrovia-ink)}
+.nextUrgent{border-color:#f3bed1;background:var(--morrovia-danger-soft)}.nextUrgent>header svg{color:var(--morrovia-signal)}.nextUrgent .nextIcon{color:var(--morrovia-danger);background:#fff}
+.readyMessage svg{flex:0 0 28px;color:var(--morrovia-success)}
+.summaryCard{grid-area:summary;padding:16px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:#fff}
+.summaryCard>p{margin:0 0 5px;color:var(--morrovia-signal);font:750 9px/1.25 var(--morrovia-meta);letter-spacing:.13em}.summaryCard h3{margin:0 0 13px;font:600 19px/1.1 var(--morrovia-display)}
+.summaryCard dl{display:grid;gap:10px;margin:0}.summaryCard dl>div{display:grid;gap:3px}.summaryCard dt{display:flex;align-items:center;gap:7px;color:var(--morrovia-ink);font-size:10px;font-weight:750}.summaryCard dt svg{width:14px;height:14px;color:var(--morrovia-action)}.summaryCard dd{margin:0 0 0 21px;color:var(--morrovia-ink-soft);font-size:10px;line-height:1.35}
+.summaryCard button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:38px;margin-top:14px;padding:8px 10px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);background:#fff;font-size:10px;font-weight:720;cursor:pointer}.summaryCard button svg{width:14px;height:14px}
+.details{grid-area:details;overflow:hidden;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac);box-shadow:0 10px 26px rgba(23,16,111,.035);scroll-margin-top:20px}
+.details>summary{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:66px;padding:12px 16px;cursor:pointer;list-style:none}.details>summary::-webkit-details-marker{display:none}.detailsTitle{display:flex;align-items:center;gap:10px}.detailsTitle>svg{width:20px;height:20px;color:var(--morrovia-signal)}.detailsTitle>span{display:grid;gap:2px}.detailsTitle small{color:var(--morrovia-signal);font:750 8px/1.2 var(--morrovia-meta);letter-spacing:.13em}.detailsTitle strong{font:600 15px/1.2 var(--morrovia-display)}.detailsMeta{display:flex;align-items:center;gap:10px;color:var(--morrovia-muted);font-size:10px}.detailsMeta svg{width:15px;height:15px;color:var(--morrovia-action);transition:transform .18s ease}.details[open] .detailsMeta svg{transform:rotate(90deg)}
+.detailsBody{display:grid;gap:16px;padding:16px;border-top:1px solid var(--morrovia-line);background:#fff}
+@media(max-width:980px){.dashboard{grid-template-columns:minmax(0,1fr) 250px}.progressCard{grid-template-columns:minmax(190px,1fr) 170px}.progressIllustration{display:none}.progressStats{padding-left:18px}.taskGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.workspace{padding-bottom:34px}.intro{margin-bottom:14px}.intro h2{font-size:34px}.dashboard{grid-template-columns:minmax(0,1fr);grid-template-areas:"progress" "next" "must" "good" "nice" "countdown" "summary" "details";gap:14px}.progressCard{grid-template-columns:minmax(0,1fr);min-height:0;padding:16px}.progressIllustration{display:none}.progressStats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px;padding:12px 0 0;border-top:1px solid var(--morrovia-line);border-left:0}.progressStats>div{display:grid;justify-items:center;gap:5px;min-height:0;border:0}.progressStats dt{display:grid;justify-items:center;font-size:9px}.progressStats dd{font-size:11px}.progressCopy h3{font-size:48px}.progressTrack{margin-top:12px}.countdownCard{min-height:118px}.taskGrid{grid-template-columns:minmax(0,1fr)}.taskCard{min-height:0}.taskCard:not(.taskCardCompact){display:grid;grid-template-columns:auto 1fr;gap:12px}.taskCard:not(.taskCardCompact) .taskTop{display:block}.taskCard:not(.taskCardCompact) .statusIcon{display:none}.taskCard:not(.taskCardCompact) .taskCopy{margin:0}.taskCard:not(.taskCardCompact) .taskAction{grid-column:1/-1;min-height:44px}.taskCardCompact .compactAction{width:44px;min-height:44px}.nextCard>.compactAction,.summaryCard button{min-height:44px}.compactTaskGrid{grid-template-columns:minmax(0,1fr)}.details>summary{align-items:flex-start;flex-direction:column;gap:7px}.detailsMeta{width:100%;margin-left:30px;justify-content:space-between;padding-right:28px}}
+@media(max-width:360px){.workspace{padding-inline:0}.progressCard,.nextCard,.summaryCard,.taskCard,.details{border-radius:12px}.progressStats dt{font-size:8px}}

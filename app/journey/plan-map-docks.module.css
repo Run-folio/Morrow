@@ -163,7 +163,7 @@
   .plan :global([class*="finderDock"]) > header strong { font-size:17px;line-height:1; }
   .plan :global([class*="finderDock"]) > header em { font-size:8px;white-space:nowrap; }
   .plan :global([class*="finderTabs"]) { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;margin-top:5px; }
-  .plan :global([class*="finderTabs"]) button { min-width:0;min-height:36px;padding:0 4px;border-radius:8px;font:700 10px var(--font-geist-sans,Geist,Inter,sans-serif);white-space:nowrap; }
+  .plan :global([class*="finderTabs"]) button { min-width:0;min-height:44px;padding:0 4px;border-radius:8px;font:700 10px var(--font-geist-sans,Geist,Inter,sans-serif);white-space:nowrap; }
   .plan :global([class*="mobileTripStatus"]) { margin-top:1px; }
   .plan :global([class*="shapeDayPlan"]) { padding-top:0; }
   .plan :global([class*="shapeDayContext"]) { margin:8px 0;font-size:8px; }
@@ -188,7 +188,7 @@
 @media (max-width:360px) {
   .plan :global([class*="finderDock"]) { padding-right:11px;padding-left:11px; }
   .plan :global([class*="finderTabs"]) { gap:3px;padding:3px; }
-  .plan :global([class*="finderTabs"]) button { min-height:34px;padding:0 2px;font-size:9px; }
+  .plan :global([class*="finderTabs"]) button { min-height:44px;padding:0 2px;font-size:9px; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:24px minmax(0,1fr) auto auto !important;gap:5px;padding:12px 0;font-size:13px; }
 }
 

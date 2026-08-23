@@ -401,6 +401,84 @@ final result: passed
 
 ---
 
+# Full Trip Workspace integration QA
+
+- Audit date: 2026-08-22
+- Surfaces: Overview, Itinerary, Map, Prep, and shared TripShell
+- Browser evidence: `/private/tmp/morrovia-trip-workspace-audit/`
+- Viewports: 320, 390, 430, 768, 1024, and 1440 CSS px
+- Persisted-data evidence: read-only lookup of two owner-accessible trips plus a trip owned by a different account
+
+## Findings and fixes
+
+- The legacy `trip=` value and persisted repository ID are both canonical `trip-<uuid>` identifiers. No alias or remap layer exists; owner-scoped cloud lookup is exact on `easyt_trips.id`, followed by an exact-ID browser-local fallback for legacy local-only trips.
+- Removed a redundant client API retry after the server layout had already completed the owner-scoped cloud lookup. The resolver now performs only the canonical local fallback before returning the Journey not-found state.
+- Kept sibling workspaces synchronized after supported Map edits by publishing and consuming a same-document active-trip change event. The event validates the canonical trip shape and exact trip ID before updating shared context.
+- Added roving keyboard navigation and tab/panel relationships to Itinerary day tabs and Map planning tabs.
+- Added progressbar semantics to Prep and raised undersized mobile day, task, finder-tab, and Map control targets to 44 CSS px.
+- Wrapped Overview and Itinerary stories in the complete TripShell so future Storybook review exercises shared composition, navigation, and links rather than isolated bodies only.
+
+## Evidence
+
+- All four complete shell stories rendered with the correct active tab, exact edit link, and same-trip fullscreen Map link.
+- No document-level horizontal overflow was found on any of the four workspaces at 320, 390, 430, 768, 1024, or 1440 CSS px.
+- Empty, ready, urgent, missing-date, missing-image, long-copy, travel-day, and legacy-presentation states remained usable.
+- The signed-out real-route smoke test reached the existing authentication gate for all four deep links. The available in-app browser had no authenticated session, so an authenticated persisted-trip click-through remains the only browser evidence gap.
+- Typecheck, 126 deterministic Node tests, Storybook production build, Next production build, and `git diff --check` passed.
+
+## Verdict
+
+`READY WITH MINOR ISSUES`: no blocking integration, responsive, data-model, or accessibility defect remains in the audited code. Keep dashboard entry points unchanged until one authenticated production smoke test covers two persisted trips, the known local-only trip, and an inaccessible trip.
+
+final result: passed with an authenticated-browser evidence caveat
+
+---
+
+# Trip Prep visual-polish design QA
+
+- Source visual truth: pre-polish browser capture at `/private/tmp/morrovia-trip-prep-polish/desktop-before.png`
+- Browser-rendered implementation: `/private/tmp/morrovia-trip-prep-polish/desktop-after.png`
+- Responsive evidence: `/private/tmp/morrovia-trip-prep-polish/mobile-320-exact.png`, `/private/tmp/morrovia-trip-prep-polish/mobile-390-exact.png`, `/private/tmp/morrovia-trip-prep-polish/mobile-430-exact.png`, `/private/tmp/morrovia-trip-prep-polish/tablet-768-exact.png`, and `/private/tmp/morrovia-trip-prep-polish/desktop-1280.png`
+- Viewport and state: normal planning state at 999 × 1271 CSS px for the matched before/after comparison; responsive checks at exact 320, 390, 430, and 768 CSS-pixel widths; desktop state also checked at 1278 CSS px
+- Source dimensions: 1109 × 1734 px; implementation dimensions: 1109 × 1636 px
+- Density normalization: both matched desktop captures used the same 999 CSS-pixel viewport and browser density (approximately 1.11 output pixels per CSS pixel). Responsive captures used the same density; no resampling was needed.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the existing Morrovia serif/sans/metadata hierarchy remains intact. The percentage is still prominent but no longer dominates the module; card summaries use two concise lines and retain readable contrast.
+- Spacing and layout rhythm: the progress surface reduced from 184px to 160px, its internal elements now read as one composition, Must-do cards shed unnecessary padding and blank space, and the page is visibly shorter without becoming cramped.
+- Colors and tokens: progress and primary actions remain indigo/purple; lilac supports progress and the detail surface; pink remains limited to accents and urgency; green and amber retain their semantic completion/in-progress roles. No royal blue or pink progress treatment was introduced.
+- Image quality: the existing `/journey/illustrations/prep-triptych.png` travel-bag artwork remains sharp, proportionate, and supportive. No generated, placeholder, CSS-art, or new asset was added.
+- Copy and content: presentation-only summaries were shortened for passport, insurance, flight, connectivity, and activity cards. Canonical task guidance, readiness source data, legal/safety detail surfaces, and action contracts remain unchanged.
+- Icons and controls: the existing Lucide family remains optically consistent. Primary mobile task actions measure 44px high; compact desktop actions measure 40px and retain surrounding spacing.
+
+## Interaction, state, and responsive evidence
+
+- Normal/low-progress rendered 13%; urgent rendered the four-day state; mostly complete rendered 80%; fully ready rendered 100% and `You're ready to go.`; missing dates rendered the existing explicit missing-date message; long-copy and missing-optional states remained overflow-free.
+- The next important task stayed compact and selected the existing deterministic passport/traveller priority in normal and urgent states.
+- Detailed preparation guidance opened and closed from its strengthened secondary surface; the unchanged detailed Prep modules remained behind the disclosure.
+- Exact-width checks at 320, 390, 430, and 768 CSS px plus desktop found no document-level horizontal overflow. The existing mobile order remains progress → next task → Must/Good/Nice → departure → Prep context → details.
+- A fresh final browser tab reported zero console errors.
+
+## Comparison history
+
+1. Baseline comparison found a P2 density issue: the progress module was 184px tall with loose percentage/bar/illustration/stat spacing. It is now 160px with tighter tracks, a smaller supporting illustration, and 36px stat rows; the same real progress values and indigo bar remain.
+2. Baseline comparison found P2 task-card bulk and text density. Cards now use reduced padding/gaps, two-line presentation summaries, and accessible action heights while preserving status and actions.
+3. Baseline comparison found a P2 redundant right-rail summary. Dates, stops, and route metadata were removed; the module now focuses on traveller count, traveller-detail status, remaining Prep tasks, and detailed guidance access.
+4. Baseline comparison found a P2 detached detail row. The disclosure now has a Prep-details eyebrow, stronger title, lilac supporting surface, directional affordance, and a clearly separated expanded body.
+5. Post-fix desktop, state, interaction, and responsive comparisons found no remaining P0/P1/P2 typography, spacing, token, imagery, copy, behavior, accessibility, or overflow issue.
+
+## Follow-up polish
+
+- P3: the exact number of card rows varies with real task count and available workspace width; the auto-fitting grid intentionally prioritizes readable card widths over forcing a fixed row.
+- P3: browser screenshot output density is approximately 1.11 rather than 1; before/after and responsive comparisons were normalized by using the same browser surface and recorded CSS widths.
+
+final result: passed
+
+---
+
 # Trip Map integration design QA
 
 - Source visual truth: `/Users/shaun/Downloads/Cusco Trip Planning Map Dashboard.png`
@@ -488,5 +566,50 @@ No actionable P0, P1, or P2 differences remain.
 
 - P3: image variety depends on the traveller's saved plan imagery; repeated editorial fallbacks in synthetic fixtures are preferable to hard-coded destination photos.
 - P3: the desktop Overview body is verified independently in Storybook because TripShell itself already has separate shell visual coverage.
+
+final result: passed
+
+---
+
+# Trip Prep integration design QA
+
+- Source visual truth: `/Users/shaun/Downloads/Morrovia Trip Prep Dashboard(2).png`
+- Browser-rendered implementation: `/private/tmp/morrovia-trip-prep-qa/desktop-default.png`
+- Responsive evidence: `/private/tmp/morrovia-trip-prep-qa/mobile-390.png` and `/private/tmp/morrovia-trip-prep-qa/tablet-768.png`
+- State: normal incomplete trip, 32 days before departure, one of three stays sorted, empty traveller profile, one saved checklist task complete
+- Source dimensions: 1448 × 1086 px at supplied density
+- Implementation dimensions: 1422 × 800 px, 1422 × 800 CSS viewport; browser reported device scale factor 1.8 while returning a CSS-pixel screenshot
+- Normalization: the full reference and implementation were reviewed together in one comparison input. A same-ratio top-view comparison used the 1448 × 815 source region and 1422 × 800 implementation capture; Storybook intentionally omits the site-wide navigation above TripShell.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: current Morrovia display, UI, and metadata faces retain the reference's serif page/progress headings, compact status text, and clear task hierarchy. Long-task Storybook content remains readable without clipping.
+- Spacing and layout rhythm: desktop preserves the main progress/tasks column with a compact countdown/next-task rail. Must-do cards are prominent; Good-to-do and Nice-to-have items are denser. Mobile stacks progress → next task → priority groups → secondary context.
+- Colors and tokens: progress and primary actions use indigo/purple; pink is limited to active navigation, small accents, and urgent semantics; completion and in-progress use existing green and amber tokens.
+- Image quality: the progress module reuses `/journey/illustrations/prep-triptych.png`, cropped to its real travel-bag artwork. No external image dependency, generated placeholder, CSS drawing, or handcrafted SVG was introduced.
+- Copy and content: percentages, counts, statuses, accommodation coverage, next task, dates, travellers, and countdown are derived from canonical trip/readiness state. Unsupported mock modules such as a document store, money checklist, or fabricated packing feature are not claimed.
+
+## Interaction, state, and responsive evidence
+
+- The compact next task deterministically selected passport/traveller details ahead of accommodation, insurance, flights, practical actions, and optional checklist items.
+- Detailed guidance expanded the unchanged plan-quality, accommodation, booking-readiness, and traveller-readiness surfaces. Traveller profile inputs remained available and saving notifies the shared shell summary state.
+- Missing-date story rendered `Add dates to see your departure countdown.` rather than a fabricated count.
+- Fully-ready story rendered `100%`, `5 of 5 tasks complete`, and `You're ready to go.` without manufacturing new tasks.
+- Urgent, mostly-complete, fully-ready, missing-date, long-copy, missing-optional, legacy-body, 320, 390, 430, and 768 stories are present.
+- Browser checks found no document-level horizontal overflow at 320, 390, 430, 768, or desktop widths and no console errors in the verified shell state.
+
+## Comparison history
+
+1. The first browser pass found the directive question was visually larger than the approved page title and pushed task content down. It was replaced with the reference-aligned `Trip prep` heading and compact subtitle.
+2. The first pass used a pink metadata-style progress eyebrow. The progress label now uses the reference's dark serif treatment while the bar remains indigo/purple.
+3. The initial next-task selector preferred an in-progress accommodation task over required traveller details. The deterministic priority now orders urgent issues, passport/traveller readiness, accommodation, insurance, flights, practical actions, then optional tasks.
+4. Post-fix comparison found no remaining P0/P1/P2 typography, layout, token, imagery, content, responsive, or interaction issue.
+
+## Follow-up polish
+
+- P3: the approved mock uses a bespoke backpack illustration; the implementation uses Morrovia's existing watercolour travel-bag artwork to avoid adding an external or one-off asset dependency.
+- P3: exact progress differs from the mock's illustrative 64% because the implementation deliberately reports the real derived state.
 
 final result: passed

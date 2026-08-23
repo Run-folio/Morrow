@@ -23,11 +23,13 @@ export function JourneyTripReadiness({
   startDate,
   language = "en",
   hideConnectivity = false,
+  onProfileSaved,
 }: {
   countries: string[];
   startDate?: string;
   language?: "en" | "es";
   hideConnectivity?: boolean;
+  onProfileSaved?: (profile: TravelReadinessProfile) => void;
 }) {
   const [profile, setProfile] = useState<TravelReadinessProfile>(defaultTravelReadinessProfile);
   const [cards, setCards] = useState<ReadinessCard[]>([]);
@@ -65,6 +67,7 @@ export function JourneyTripReadiness({
 
   const saveProfile = () => {
     window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
+    onProfileSaved?.(profile);
   };
 
   return (

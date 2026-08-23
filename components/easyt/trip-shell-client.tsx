@@ -3,14 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, House, Luggage, Map } from "lucide-react";
-import { createContext, useContext, useState, type ReactNode } from "react";
-import type { EasyTTrip } from "@/lib/easyt/trip";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { EASYT_ACTIVE_TRIP_CHANGE_EVENT } from "@/lib/easyt/storage";
+import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
 
 export function TripShellTripProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {
-  return <TripShellTripContext.Provider value={trip}>{children}</TripShellTripContext.Provider>;
+  const [activeTrip, setActiveTrip] = useState(trip);
+
+  useEffect(() => setActiveTrip(trip), [trip]);
+  useEffect(() => {
+    const onActiveTripChange = (event: Event) => {
+      const next = (event as CustomEvent<unknown>).detail;
+      if (isEasyTTrip(next) && next.id === trip.id) setActiveTrip(next);
+    };
+    window.addEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
+    return () => window.removeEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
+  }, [trip.id]);
+
+  return <TripShellTripContext.Provider value={activeTrip}>{children}</TripShellTripContext.Provider>;
 }
 
 export function useTripShellTrip() {

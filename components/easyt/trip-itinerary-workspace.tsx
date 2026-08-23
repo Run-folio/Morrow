@@ -10,7 +10,7 @@ import {
   Route,
   Sparkles,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "@/lib/easyt/trip";
 import type { JourneyImage } from "@/lib/journey";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
@@ -119,6 +119,7 @@ export default function TripItineraryWorkspace({
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
+  const tabIdPrefix = useId().replaceAll(":", "");
   const copy = itineraryCopy(language);
 
   useEffect(() => {
@@ -215,9 +216,27 @@ export default function TripItineraryWorkspace({
                 type="button"
                 role="tab"
                 aria-selected={dayIndex === index}
+                aria-controls={`${tabIdPrefix}-panel`}
+                id={`${tabIdPrefix}-tab-${dayIndex}`}
+                tabIndex={dayIndex === index ? 0 : -1}
                 className={dayIndex === index ? styles.dayButtonActive : styles.dayButton}
                 key={day.id}
                 onClick={() => setSelectedIndex(dayIndex)}
+                onKeyDown={(event) => {
+                  const nextIndex = event.key === "ArrowRight" || event.key === "ArrowDown"
+                    ? Math.min(days.length - 1, dayIndex + 1)
+                    : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                      ? Math.max(0, dayIndex - 1)
+                      : event.key === "Home"
+                        ? 0
+                        : event.key === "End"
+                          ? days.length - 1
+                          : null;
+                  if (nextIndex === null) return;
+                  event.preventDefault();
+                  setSelectedIndex(nextIndex);
+                  window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-tab-${nextIndex}`)?.focus());
+                }}
               >
                 <b>{pad(day.dayNumber)}</b>
                 <span><small>{dayStop?.name ?? "Route"}</small><strong>{day.title}</strong></span>
@@ -228,7 +247,12 @@ export default function TripItineraryWorkspace({
         </div>
       </div>
 
-      <article className={styles.dayPanel} role="tabpanel">
+      <article
+        className={styles.dayPanel}
+        role="tabpanel"
+        id={`${tabIdPrefix}-panel`}
+        aria-labelledby={`${tabIdPrefix}-tab-${index}`}
+      >
         <header className={styles.dayHeader}>
           <div>
             <p><span>{displayDate(active.date, language, true)}</span><i aria-hidden="true">·</i> DAY {pad(active.dayNumber)}</p>

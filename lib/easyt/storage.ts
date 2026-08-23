@@ -1,6 +1,8 @@
 import { EasyTTrip, isEasyTTrip } from "./trip";
+import { requestedTripMatch } from "./trip-id-resolution";
 
 export const EASYT_ACTIVE_TRIP_KEY = "easyt:active-trip:v1";
+export const EASYT_ACTIVE_TRIP_CHANGE_EVENT = "easyt-active-trip-change";
 const LEGACY_JOURNEY_PLAN_KEY = "journey:planned-trip";
 
 export function loadActiveTrip(): EasyTTrip | null {
@@ -18,6 +20,10 @@ export function loadActiveTrip(): EasyTTrip | null {
 export function saveActiveTrip(trip: EasyTTrip) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(EASYT_ACTIVE_TRIP_KEY, JSON.stringify(trip));
+  // `storage` does not fire in the tab that made the change. The workspace
+  // shell listens to this same-document signal so sibling views receive the
+  // canonical active document after supported planner edits.
+  window.dispatchEvent(new CustomEvent(EASYT_ACTIVE_TRIP_CHANGE_EVENT, { detail: trip }));
 }
 
 export async function saveTripToEasyT(trip: EasyTTrip): Promise<EasyTTrip> {
@@ -40,6 +46,24 @@ export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | nul
   if (!response.ok) throw new Error("Morrovia cloud load failed.");
   const payload = await response.json() as { trip: EasyTTrip };
   return isEasyTTrip(payload.trip) ? payload.trip : null;
+}
+
+/**
+ * Resolve a trip opened by URL using the same cloud-first, active-trip fallback
+ * used by the legacy planner. Newly-shaped trips exist locally until the
+ * account migration/save completes, while persisted trips remain owner-checked
+ * by the API above.
+ */
+export async function loadRequestedTrip(tripId: string, ownerId?: string): Promise<EasyTTrip | null> {
+  try {
+    const cloudTrip = await loadTripFromEasyT(tripId);
+    if (cloudTrip) return cloudTrip;
+  } catch {
+    // The exact active local document remains usable if cloud loading is
+    // temporarily unavailable, matching the established planner behaviour.
+  }
+
+  return requestedTripMatch(tripId, loadActiveTrip(), ownerId);
 }
 
 /** @deprecated New Map Plans read the canonical EasyT document directly. */
