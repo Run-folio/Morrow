@@ -1,4 +1,4 @@
-# Homepage fidelity follow-up QA
++# Homepage fidelity follow-up QA
 
 ## Comparison target
 
@@ -354,3 +354,139 @@ No P0, P1 or P2 issues found in the tested homepage.
 - [x] Typecheck, focused trip tests, production build and diff checks.
 
 **final result: passed**
+
+---
+
+# Itinerary design QA
+
+- Source visual truth: `/Users/shaun/Downloads/Morrovia Cusco Itinerary Dashboard.png`
+- Implementation screenshot: `/private/tmp/morrovia-itinerary-qa/itinerary-implementation-desktop.png`
+- Focused comparison: `/private/tmp/morrovia-itinerary-qa/itinerary-design-comparison.png`
+- Mobile evidence: `/private/tmp/morrovia-itinerary-qa/itinerary-implementation-mobile-320.png`
+- Legacy evidence: `/private/tmp/morrovia-itinerary-qa/itinerary-legacy-verification.png`
+- State: day 1 selected, shell itinerary presentation; legacy presentation checked separately
+- Source dimensions: 1536 × 1024 px at supplied density
+- Implementation dimensions: 1306 × 900 px, 1306 × 900 CSS viewport, device scale factor 1
+- Normalization: the approved itinerary body (source x 50, y 299, 1436 × 617) was scaled to the implementation body width and stacked with the implementation crop in the focused comparison.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: Morrovia's current Georgia display face and Geist UI/meta faces reproduce the approved serif/UI hierarchy. The selected-day title, eyebrow, rail labels, and metadata weights now align closely with the mock.
+- Spacing and layout rhythm: the desktop composition preserves the approximate 31/69 day-rail/content split, restrained selected surface, wide image, compact detail rows, and bottom day navigation. The body is intentionally self-contained beneath TripShell.
+- Colors and tokens: all new shell styling uses current `--morrovia-*` semantic indigo, pink, lilac, line, radius, and focus tokens.
+- Image quality: the story uses the existing Peru route image fixture; production prioritizes the saved plan-item image, then the existing Morrovia editorial media pack, then the existing place-image endpoint, with a no-image fallback.
+- Copy and content: all itinerary titles, summaries, notes, stop names, dates, and transfer durations come from the canonical trip. The mock's `Day options`, row expanders, and `Add day` are not reproduced because the current production itinerary has no equivalent capability and this task forbids inventing new editing behaviour.
+
+## Interaction and responsive evidence
+
+- Day 4 selection rendered `Travel to Sacred Valley` and the existing 1h 15m incoming transfer.
+- Next moved to `Explore Sacred Valley`; Previous returned to day 4.
+- No document overflow at 320, 390, 430, 768, or 1306 CSS px.
+- Mobile uses the existing compact direction: a horizontally scrollable day selector above the selected-day content.
+- Shell, mobile, and legacy Storybook previews reported no console errors.
+
+## Comparison history
+
+1. Initial pass found a P1 mobile intrinsic-width overflow: the single-column grid retained desktop min-content width and clipped the page. Fixed with a `minmax(0, 1fr)` responsive track plus explicit width/min-width constraints. Post-fix evidence shows viewport and document widths equal at all requested breakpoints.
+2. Initial desktop pass found P2 density drift: the selected-day image and detail rows were taller than the approved body. Reduced the desktop image to a wide 205px maximum, tightened detail rows, and adjusted the display-title scale. The second focused comparison shows the main regions and vertical rhythm aligned.
+
+## Follow-up polish
+
+- P3: production image subject and crop will vary with the traveller's saved itinerary; this is expected and preferable to hard-coding the mock's Cusco photograph.
+- P3: the implementation omits mock-only editing controls until an existing production behavior can be reused safely.
+
+final result: passed
+
+---
+
+# Trip Map integration design QA
+
+- Source visual truth: `/Users/shaun/Downloads/Cusco Trip Planning Map Dashboard.png`
+- Implementation screenshot: `/private/tmp/morrovia-trip-map-qa/desktop-default.png`
+- Focused-route evidence: `/private/tmp/morrovia-trip-map-qa/focused-1440x1000.png`
+- Responsive evidence: `/private/tmp/morrovia-trip-map-qa/mobile-320x900.png` and `/private/tmp/morrovia-trip-map-qa/tablet-768x1000.png`
+- State: Cusco selected, integrated TripShell presentation, Plan mode active; focused presentation checked separately
+- Source dimensions: 1672 × 941 px at supplied density
+- Implementation dimensions: 1422 × 800 px, 1422 × 800 CSS viewport; browser reported device scale factor 1.8 while returning a CSS-pixel screenshot
+- Normalization: source and implementation share a 1.777 aspect ratio and were reviewed together in one comparison input. The reference's site navigation is outside TripShell and therefore outside the component story.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the current Morrovia Georgia/Geist hierarchy reproduces the reference's editorial trip title, serif workspace heading, uppercase eyebrows, and compact UI metadata without clipping or awkward wraps.
+- Spacing and layout rhythm: the route timeline remains a shallow top rail, the map dominates the workspace, Shape the day is contained at upper-left, and Trip Health is a compact right rail. The implementation deliberately uses the production panel density instead of reproducing mock-only commercial result rows.
+- Colors and tokens: the selected stop uses a quiet white/lilac treatment with indigo focus, while pink remains reserved for accents and semantic signals. Integrated overrides reuse existing `--morrovia-*` tokens.
+- Image quality: stop and trip imagery use existing saved/editorial media. The current local-search records do not include hotel photography, so no provider, fabricated image, CSS art, or placeholder photography was introduced.
+- Copy and content: timeline names, nights, dates, route details, plan items, accommodation state, health status, and recommendations all derive from the canonical trip and review model.
+
+## Interaction, state, and responsive evidence
+
+- Selecting Sacred Valley updated the map, route summary, nights, and Shape the day context together.
+- Plan, Stay, Eat, and See all switched through the existing production workspace. Storybook showed the existing safe fallback when its local venue endpoint was unavailable.
+- Trip Health opened its existing accommodation detail state and remained tied to canonical health calculations.
+- The integrated rail exposes `Fullscreen map` back to `/journey/plan?trip=…`; the focused Storybook state retained its original full-canvas composition.
+- Warning, missing-imagery, focused, 320, 390, 430, and 768 Storybook states are present. Browser checks found no document-level horizontal overflow at the requested breakpoints.
+- Browser console review found no runtime errors; the only warning is the project's existing Next.js runtime-config deprecation notice.
+
+## Comparison history
+
+1. The extraction pass initially inherited the fixed full-screen dock geometry. Shell-only CSS now contains the canvas and positions the destination rail, Shape the day panel, Trip Health, map controls, assistant, and mobile sheets inside TripShell without changing focused-route classes.
+2. The selected destination initially inherited the focused route's solid indigo state. The integrated presentation now uses the approved soft white/lilac selected surface with an indigo outline and shadow.
+3. Responsive review confirmed the existing bottom-sheet direction at phone/tablet widths and no horizontal overflow. No follow-up P0/P1/P2 fix was required.
+
+## Follow-up polish
+
+- P3: the supplied mock shows a live, photo-rich Stay result while the deterministic Storybook review uses the Plan state and the existing venue-unavailable fallback. Production can display richer provider data when the existing endpoint supplies it; the integration does not fabricate it.
+- P3: exact map labels, route geometry, and tile crop vary with live MapLibre tiles and the selected trip state.
+
+final result: passed
+
+---
+
+# Trip Overview design QA
+
+- Source visual truth: `/Users/shaun/Downloads/Morrovia Sacred Valley Trip Dashboard.png`
+- Implementation screenshot: `/private/tmp/morrovia-overview-desktop-raw.jpg`
+- Side-by-side comparison: `/private/tmp/morrovia-overview-comparison.jpg`
+- Responsive evidence: `/private/tmp/morrovia-overview-mobile-390.jpg`, `/private/tmp/morrovia-overview-320.jpg`, `/private/tmp/morrovia-overview-430.jpg`, and `/private/tmp/morrovia-overview-768.jpg`
+- State evidence: `/private/tmp/morrovia-overview-missing-state.jpg`
+- State: active planning trip with a complete seven-day itinerary, one of three stays sorted, and one of four saved prep tasks complete
+- Source dimensions: 1449 × 1086 px at supplied density
+- Implementation dimensions: 1450 × 1000 px, 1450 × 1000 CSS viewport, device scale factor 1
+- Normalization: the source and browser-rendered implementation were aspect-fit into equal 725 × 560 panels for the combined comparison; no density resampling was required.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the current Morrovia display, UI, and metadata faces preserve the reference's editorial headline, restrained uppercase eyebrows, and compact product copy hierarchy. Long stop names wrap without clipping at 320, 768, and desktop widths.
+- Spacing and layout rhythm: the reference's primary-action/health pairing, compact progress cards, and connected route strip are retained. Mobile uses the required next action → health → progress → route order without horizontal overflow.
+- Colors and tokens: indigo remains the primary action and progress color; pink is limited to signal/eyebrow accents; semantic success, warning, danger, lilac, line, radius, surface, and focus values use existing `--morrovia-*` tokens.
+- Image quality: production uses saved trip imagery and the existing Morrovia editorial media helper. The missing-image state uses the established icon system and quiet lilac fallback rather than introducing a provider or fabricated photography.
+- Copy and content: the next action, health signals, itinerary count, accommodation count, prep count, stop names, nights, and leg durations all derive from the canonical trip. No departure countdown, document total, booking claim, or readiness percentage is invented.
+
+## Interaction and state evidence
+
+- Active planning selected `Find a stay in Sacred Valley` and linked to the existing Plan stay workflow.
+- Blocking route state selected the existing route review with the canonical eight-hour road-transfer signal.
+- Early/incomplete state selected `Finish shaping the itinerary` with the real 2-of-7 day count.
+- Ready state appeared only after itinerary, overnight stays, health, and the saved prep checklist were all covered.
+- Missing-image and long-copy fixtures remained legible without broken crops or overflow.
+- Sibling links resolved to `/journey/[tripId]/itinerary`, `/journey/[tripId]/map`, and `/journey/[tripId]/prep`; the stay action retained the existing `/journey/plan?trip=…&stay=…` workflow.
+- Storybook rendered all tested states without its runtime error UI; typecheck, Storybook production build, and the Next.js production build completed successfully.
+
+## Comparison history
+
+1. The first implementation review found that an incomplete itinerary action still pointed to the legacy builder query rather than the new sibling workspace. The action now resolves directly to `/journey/[tripId]/itinerary`.
+2. The first route grid assumed exactly three stops. It now uses an auto-fitting minimum track so two-to-six-stop trips can wrap without page-level horizontal scrolling.
+3. The final combined comparison found no remaining P0/P1/P2 typography, spacing, token, image, or copy differences. The implementation intentionally omits the reference's departure/sidebar modules because this brief calls for a concise four-part command centre and existing TripShell already owns the trip context above it.
+
+## Follow-up polish
+
+- P3: image variety depends on the traveller's saved plan imagery; repeated editorial fallbacks in synthetic fixtures are preferable to hard-coded destination photos.
+- P3: the desktop Overview body is verified independently in Storybook because TripShell itself already has separate shell visual coverage.
+
+final result: passed

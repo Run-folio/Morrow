@@ -1,0 +1,454 @@
+.workspace {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: minmax(280px, 31%) minmax(0, 1fr);
+  min-height: 610px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(23, 16, 111, .04);
+}
+
+.rail {
+  min-width: 0;
+  border-right: 1px solid var(--morrovia-line);
+  background: color-mix(in srgb, #fff 97%, var(--morrovia-lilac));
+}
+
+.railHeader {
+  min-height: 62px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.railHeader h2 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: 700 14px/1.2 var(--morrovia-ui);
+  text-transform: uppercase;
+}
+
+.railHeader span {
+  color: var(--morrovia-signal);
+  font: 800 10px/1.2 var(--morrovia-meta);
+  letter-spacing: .08em;
+}
+
+.dayList {
+  padding: 8px;
+}
+
+.dayButton,
+.dayButtonActive {
+  position: relative;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px 12px 10px 18px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--morrovia-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dayButton::before,
+.dayButtonActive::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 3px;
+  background: transparent;
+  content: "";
+}
+
+.dayButton:hover {
+  background: var(--morrovia-lilac);
+}
+
+.dayButtonActive {
+  background: color-mix(in srgb, var(--morrovia-lilac) 72%, var(--morrovia-tint));
+}
+
+.dayButtonActive::before {
+  background: var(--morrovia-signal);
+}
+
+.dayButton > b,
+.dayButtonActive > b {
+  color: var(--morrovia-ink-soft);
+  font: 800 11px/1 var(--morrovia-meta);
+}
+
+.dayButtonActive > b {
+  color: var(--morrovia-signal);
+}
+
+.dayButton > span,
+.dayButtonActive > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dayButton small,
+.dayButtonActive small {
+  overflow: hidden;
+  color: var(--morrovia-ink-soft);
+  font: 750 10px/1.25 var(--morrovia-meta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayButtonActive small {
+  color: var(--morrovia-signal);
+}
+
+.dayButton strong,
+.dayButtonActive strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dayButton time,
+.dayButtonActive time {
+  color: var(--morrovia-muted);
+  font: 700 10px/1.2 var(--morrovia-meta);
+  white-space: nowrap;
+}
+
+.dayButton:focus-visible,
+.dayButtonActive:focus-visible,
+.dayNavigation button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+}
+
+.dayPanel {
+  min-width: 0;
+  padding: 32px clamp(28px, 3vw, 42px) 24px;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.dayHeader > div {
+  min-width: 0;
+}
+
+.dayHeader p {
+  margin: 0;
+  color: var(--morrovia-ink-soft);
+  font: 800 10px/1.3 var(--morrovia-meta);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dayHeader p span {
+  color: var(--morrovia-signal);
+}
+
+.dayHeader p i {
+  padding: 0 9px;
+  color: var(--morrovia-muted);
+  font-style: normal;
+}
+
+.dayHeader h2 {
+  margin: 15px 0 8px;
+  color: var(--morrovia-ink);
+  font: 600 clamp(34px, 3.4vw, 46px)/.98 var(--morrovia-display);
+  letter-spacing: -.045em;
+  text-wrap: pretty;
+}
+
+.dayHeader > div > span {
+  display: block;
+  max-width: 650px;
+  color: var(--morrovia-ink-soft);
+  font-size: 15px;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.location {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--morrovia-ink-soft);
+  font: 750 11px/1.2 var(--morrovia-meta);
+  white-space: nowrap;
+}
+
+.location svg {
+  width: 15px;
+  height: 15px;
+  color: var(--morrovia-signal);
+}
+
+.dayImage {
+  position: relative;
+  width: 100%;
+  height: clamp(190px, 15.5vw, 205px);
+  margin: 22px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-lilac);
+}
+
+.dayImage img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.dayImage figcaption {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  left: 10px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 7px;
+  background: rgba(13, 10, 62, .78);
+  color: #fff;
+  font: 700 9px/1.2 var(--morrovia-meta);
+}
+
+.dayImage figcaption a {
+  color: #fff;
+  white-space: nowrap;
+}
+
+.dayImageFallback {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  color: var(--morrovia-ink-soft);
+  font: 750 12px/1.4 var(--morrovia-meta);
+}
+
+.details {
+  margin-top: 20px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.detailRow {
+  min-height: 46px;
+  padding: 8px 16px;
+  display: grid;
+  grid-template-columns: 28px 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.detailRow:last-child {
+  border-bottom: 0;
+}
+
+.detailIcon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--morrovia-tint);
+  color: var(--morrovia-signal);
+}
+
+.detailIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.detailRow > b {
+  color: var(--morrovia-ink-soft);
+  font: 800 10px/1 var(--morrovia-meta);
+}
+
+.detailRow p {
+  min-width: 0;
+  margin: 0;
+  color: var(--morrovia-ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.detailRow p strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--morrovia-signal);
+  font: 800 9px/1.2 var(--morrovia-meta);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.duration {
+  display: grid;
+  gap: 2px;
+  color: var(--morrovia-ink);
+  font: 800 12px/1.2 var(--morrovia-meta);
+  text-align: right;
+}
+
+.duration small {
+  color: var(--morrovia-muted);
+  font-size: 8px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.noDetails {
+  margin: 0;
+  padding: 18px;
+  color: var(--morrovia-muted);
+  font-size: 13px;
+}
+
+.dayNavigation {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.dayNavigation button {
+  min-height: 40px;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  color: var(--morrovia-ink);
+  font: 750 11px/1.2 var(--morrovia-ui);
+  cursor: pointer;
+}
+
+.dayNavigation button:last-child {
+  justify-self: end;
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-action);
+  color: #fff;
+}
+
+.dayNavigation button:first-child {
+  justify-self: start;
+}
+
+.dayNavigation button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.dayNavigation svg {
+  width: 15px;
+  height: 15px;
+}
+
+.dayNavigation > span {
+  color: var(--morrovia-ink-soft);
+  font: 750 11px/1.2 var(--morrovia-ui);
+  white-space: nowrap;
+}
+
+.empty {
+  min-height: 360px;
+  padding: 40px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border: 1px dashed var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+  text-align: center;
+}
+
+.empty svg {
+  width: 30px;
+  height: 30px;
+  color: var(--morrovia-signal);
+}
+
+.empty h2 {
+  margin: 14px 0 6px;
+  font-size: 28px;
+}
+
+.empty p {
+  margin: 0;
+  color: var(--morrovia-ink-soft);
+}
+
+@media (max-width: 900px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .rail { border-right: 0; border-bottom: 1px solid var(--morrovia-line); }
+  .dayList {
+    padding: 10px 12px 14px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  .dayButton,
+  .dayButtonActive {
+    flex: 0 0 min(230px, 72vw);
+    scroll-snap-align: start;
+  }
+  .dayPanel { padding: 28px; }
+}
+
+@media (max-width: 540px) {
+  .workspace { border-right: 0; border-left: 0; border-radius: 0; }
+  .railHeader { min-height: 54px; padding: 0 16px; }
+  .dayPanel { padding: 24px 16px 28px; }
+  .rail { max-width: 100%; overflow: hidden; }
+  .dayHeader { display: block; }
+  .location { margin-top: 12px; }
+  .dayHeader h2 { font-size: clamp(32px, 10vw, 42px); }
+  .dayImage { height: 220px; }
+  .detailRow {
+    grid-template-columns: 28px 24px minmax(0, 1fr);
+    padding: 11px 12px;
+  }
+  .duration {
+    grid-column: 3;
+    justify-self: start;
+    text-align: left;
+  }
+  .dayNavigation { grid-template-columns: 1fr 1fr; }
+  .dayNavigation > span { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+  .dayNavigation button:first-child { grid-column: 1; grid-row: 2; }
+  .dayNavigation button:last-child { grid-column: 2; grid-row: 2; }
+}

@@ -1,0 +1,468 @@
+.overview {
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(310px, .9fr);
+  grid-template-areas:
+    "next health"
+    "progress progress"
+    "route route";
+  gap: 16px;
+}
+
+.nextAction,
+.healthCard,
+.progressCard,
+.routeCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(23, 16, 111, .035);
+}
+
+.nextAction {
+  grid-area: next;
+  min-height: 250px;
+  padding: clamp(24px, 3vw, 38px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 34%);
+  align-items: center;
+  gap: 26px;
+  background: color-mix(in srgb, #fff 96%, var(--morrovia-lilac));
+}
+
+.nextCopy { min-width: 0; }
+
+.nextCopy > p,
+.healthCard > p,
+.sectionHeading p {
+  margin: 0;
+  color: var(--morrovia-signal);
+  font: 800 10px/1.2 var(--morrovia-meta);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.actionIcon {
+  width: 36px;
+  height: 36px;
+  margin-top: 19px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--morrovia-tint);
+  color: var(--morrovia-signal);
+}
+
+.actionIcon svg { width: 18px; height: 18px; }
+
+.nextCopy h2 {
+  max-width: 590px;
+  margin: 12px 0 7px;
+  color: var(--morrovia-ink);
+  font: 600 clamp(28px, 3.2vw, 43px)/1.02 var(--morrovia-display);
+  letter-spacing: -.04em;
+  text-wrap: pretty;
+}
+
+.nextCopy > span:not(.actionIcon) {
+  display: block;
+  max-width: 560px;
+  color: var(--morrovia-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.nextCopy > a,
+.healthCard > a,
+.sectionHeading a,
+.routeActions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--morrovia-ink);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.nextCopy > a {
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 0 16px;
+  border: 1px solid var(--morrovia-action);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-action);
+  color: #fff;
+}
+
+.nextCopy a svg,
+.healthCard a svg,
+.sectionHeading a svg,
+.routeActions svg { width: 15px; height: 15px; }
+
+.nextAction > img {
+  width: 100%;
+  height: 164px;
+  display: block;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.nextFallback {
+  width: 92px;
+  height: 92px;
+  justify-self: center;
+  color: var(--morrovia-lilac-strong);
+  stroke-width: 1;
+}
+
+.healthCard {
+  grid-area: health;
+  padding: 28px;
+}
+
+.healthHeading {
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.healthHeading > svg {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  color: var(--morrovia-success);
+}
+
+.healthHeading > .healthCritical { color: var(--morrovia-danger); }
+
+.healthHeading h2 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: 600 24px/1.08 var(--morrovia-display);
+}
+
+.healthHeading span {
+  display: block;
+  margin-top: 5px;
+  color: var(--morrovia-ink-soft);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.healthCard ul {
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.healthCard li,
+.clearHealth {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--morrovia-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.healthCard li svg,
+.clearHealth svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  color: var(--morrovia-warning);
+}
+
+.healthCard .issueCritical svg { color: var(--morrovia-danger); }
+
+.clearHealth {
+  margin-top: 22px;
+  color: var(--morrovia-ink-soft);
+  font-weight: 600;
+}
+
+.clearHealth svg { color: var(--morrovia-success); }
+
+.healthCard > a {
+  margin-top: 22px;
+  justify-content: flex-start;
+}
+
+.progressCard { grid-area: progress; padding: 24px 26px 26px; }
+.routeCard { grid-area: route; padding: 24px 26px 28px; }
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.sectionHeading h2 {
+  margin: 7px 0 0;
+  color: var(--morrovia-ink);
+  font: 600 27px/1.05 var(--morrovia-display);
+  letter-spacing: -.035em;
+}
+
+.progressGrid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progressItem {
+  min-width: 0;
+  padding: 17px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 11px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: color-mix(in srgb, #fff 96%, var(--morrovia-lilac));
+}
+
+.progressItem > svg {
+  width: 23px;
+  height: 23px;
+  color: var(--morrovia-action);
+}
+
+.progressItem h3 {
+  margin: 0;
+  font: 800 13px/1.2 var(--morrovia-ui);
+}
+
+.progressItem span {
+  display: block;
+  margin-top: 3px;
+  color: var(--morrovia-ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.progressItem > small {
+  align-self: start;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.progressItem > .progressComplete {
+  background: color-mix(in srgb, var(--morrovia-success) 11%, #fff);
+  color: var(--morrovia-success);
+}
+
+.progressTrack {
+  grid-column: 1 / -1;
+  height: 5px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--morrovia-lilac-strong);
+}
+
+.progressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--morrovia-action);
+}
+
+.routeActions { display: flex; align-items: center; gap: 10px; }
+
+.routeActions a {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+}
+
+.routeList {
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+  list-style: none;
+}
+
+.routeList > li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.routeList > li:last-child { grid-template-columns: minmax(0, 1fr); }
+
+.routeList article {
+  position: relative;
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: #fff;
+}
+
+.stopNumber {
+  position: absolute;
+  top: -9px;
+  left: -7px;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--morrovia-action);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.routeList article > img,
+.stopFallback {
+  width: 92px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.stopFallback {
+  display: grid;
+  place-items: center;
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+}
+
+.stopFallback svg { width: 20px; height: 20px; }
+
+.routeList h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--morrovia-ink);
+  font: 600 18px/1.05 var(--morrovia-display);
+}
+
+.routeList article span {
+  display: block;
+  margin-top: 5px;
+  color: var(--morrovia-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.transfer {
+  width: 74px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--morrovia-ink-soft);
+}
+
+.transfer svg { width: 15px; height: 15px; }
+.transfer svg:last-child { color: var(--morrovia-signal); }
+.transfer span { font: 750 9px/1.2 var(--morrovia-meta); text-align: center; }
+
+.emptyRoute {
+  min-height: 120px;
+  margin-top: 18px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 1px dashed var(--morrovia-line);
+  border-radius: 11px;
+  color: var(--morrovia-ink-soft);
+  text-align: center;
+}
+
+.emptyRoute svg { color: var(--morrovia-signal); }
+.emptyRoute p { margin: 0; font-size: 13px; }
+
+.nextCopy a:hover,
+.routeActions a:hover,
+.sectionHeading a:hover,
+.healthCard > a:hover { transform: translateY(-1px); }
+
+.nextCopy a:focus-visible,
+.healthCard a:focus-visible,
+.sectionHeading a:focus-visible,
+.routeActions a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
+  }
+  .nextAction { grid-template-columns: minmax(0, 1fr) 150px; }
+  .progressGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .progressItem:last-child { grid-column: 1 / -1; }
+  .routeList { grid-template-columns: 1fr; }
+  .routeList > li,
+  .routeList > li:last-child { grid-template-columns: minmax(0, 1fr) 86px; }
+  .routeList > li:last-child { grid-template-columns: minmax(0, 1fr); }
+  .transfer { width: 82px; }
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "next" "health" "progress" "route";
+  }
+  .nextAction { min-height: 0; }
+  .healthCard,
+  .progressCard,
+  .routeCard { padding: 22px 18px; }
+  .sectionHeading { align-items: flex-start; }
+}
+
+@media (max-width: 520px) {
+  .nextAction {
+    padding: 24px 18px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nextAction > img { height: 142px; grid-row: 1; }
+  .nextFallback { display: none; }
+  .nextCopy h2 { font-size: 31px; }
+  .sectionHeading { display: grid; }
+  .progressGrid { grid-template-columns: minmax(0, 1fr); }
+  .progressItem:last-child { grid-column: auto; }
+  .routeActions { flex-wrap: wrap; }
+  .routeActions a { flex: 1 1 auto; }
+  .routeList > li,
+  .routeList > li:last-child { grid-template-columns: minmax(0, 1fr); }
+  .transfer {
+    width: auto;
+    padding: 4px 0 4px 26px;
+    display: flex;
+    justify-items: initial;
+    gap: 8px;
+  }
+  .transfer svg:last-child { transform: rotate(90deg); }
+}

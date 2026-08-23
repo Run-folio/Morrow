@@ -19,7 +19,8 @@ import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCo
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLeg, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
-import { journeyMedia, type JourneyImage } from "@/lib/journey";
+import type { JourneyImage } from "@/lib/journey";
+import { mediaImagesFor, PLACE_IMAGE_HINTS } from "@/lib/easyt/itinerary-media";
 import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -28,6 +29,7 @@ import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib
 import { parseTripBrief } from "@/lib/easyt/trip-brief";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
+import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
 
 /* ---------------------------------------------------------------- data */
 
@@ -183,42 +185,6 @@ const rebalanceDays = (
   return result;
 };
 
-const MEDIA_KEYS: Record<string, string> = {
-  "guatemala city": "guatemala",
-  "los angeles": "los-angeles-out",
-  "hong kong": "hong-kong",
-  "hirayu onsen": "hirayu",
-  "mt takao": "tokyo",
-  "mount takao": "tokyo",
-  "tianmen mountain": "zhangjiajie",
-  "zhangjiajie national forest park": "wulingyuan",
-};
-
-const PLACE_IMAGE_HINTS: Record<string, string> = {
-  "asakusa & senso-ji": "tokyo.jpg",
-  "meiji jingu & harajuku": "imperial-palace.jpg",
-  "mt. takao": "takao-summit.jpg",
-  "tokyo marathon": "tokyo-marathon.jpg",
-  "food neighbourhood night": "ginza-night.jpg",
-  "victoria peak": "hong-kong.jpg",
-  "star ferry & harbour": "star-ferry.jpg",
-  "dragon's back": "dragons-back.jpg",
-  "tai kwun & old central": "hong-kong-central-tram.jpg",
-  "cantonese food night": "hong-kong-central-tram.jpg",
-};
-
-const mediaImagesFor = (destination: string): JourneyImage[] => {
-  const normalized = destination.trim().toLowerCase();
-  const key = MEDIA_KEYS[normalized] ?? normalized.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  const media = journeyMedia[key] ?? journeyMedia[Object.keys(journeyMedia).find((mediaKey) =>
-    mediaKey !== "los-angeles-back" && (key.includes(mediaKey) || mediaKey.includes(key)),
-  ) ?? ""];
-  return media ? [media.hero, ...(media.gallery ?? [])] : [];
-};
-
-const normalizeMediaText = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-
 const placeImageFor = (place: Place, stop: Stop): JourneyImage | null => {
   if (place.image) return { src: place.image, alt: place.title, caption: place.title, sourceUrl: place.sourceUrl ?? place.image };
   const images = mediaImagesFor(stop.name);
@@ -226,14 +192,6 @@ const placeImageFor = (place: Place, stop: Stop): JourneyImage | null => {
   if (filename) return images.find((image) => image.src.endsWith(`/${filename}`)) ?? null;
   const words = place.title.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 3);
   return images.find((image) => words.some((word) => `${image.alt} ${image.caption}`.toLowerCase().includes(word))) ?? images[0] ?? null;
-};
-
-const dayImageFor = (day: { title: string; destination: string; items: string[] }, index: number): JourneyImage | null => {
-  const images = mediaImagesFor(day.destination);
-  if (!images.length) return null;
-  const searchable = normalizeMediaText(`${day.title} ${day.items.join(" ")}`);
-  const hinted = Object.entries(PLACE_IMAGE_HINTS).find(([title]) => searchable.includes(normalizeMediaText(title)))?.[1];
-  return (hinted ? images.find((image) => image.src.endsWith(`/${hinted}`)) : null) ?? images[index % images.length];
 };
 
 function useDismiss(open: boolean, close: () => void) {
@@ -337,8 +295,6 @@ export default function TripBuilder() {
   const [generated, setGenerated] = useState(false);
   const [editingRouteStopId, setEditingRouteStopId] = useState<string | null>(null);
   const [routeNightDraft, setRouteNightDraft] = useState<Record<string, number> | null>(null);
-  const [activeDay, setActiveDay] = useState(0);
-  const [draftImages, setDraftImages] = useState<Record<string, JourneyImage>>({});
 
   const today = useMemo(() => iso(new Date()), []);
   const oneWeekLater = useMemo(() => { const date = new Date(); date.setDate(date.getDate() + 6); return iso(date); }, []);
@@ -1037,115 +993,21 @@ export default function TripBuilder() {
     window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
   }, [buildRequested, activeTripDocument]);
 
-  // Generated itineraries are not limited to the small editorial media pack.
-  // Resolve a real contextual image for every planned day, then retain the
-  // local media pack as a fast first choice when it exists.
-  useEffect(() => {
-    if (!generated || !draft.length) return;
-    let active = true;
-    const controller = new AbortController();
-    void Promise.all(draft.map(async (day) => {
-      if (dayImageFor(day, Number(day.number) - 1)) return null;
-      const stop = stops.find((candidate) => candidate.name === day.destination);
-      const title = day.placeTitle ?? day.destination;
-      const response = await fetch(`/api/journey-place?title=${encodeURIComponent(title)}&area=${encodeURIComponent(day.destination)}&country=${encodeURIComponent(stop?.country ?? "")}`, { signal: controller.signal });
-      const payload = await response.json() as { place?: { image?: string; alt?: string; sourceUrl?: string; sourceLabel?: string } | null };
-      if (!payload.place?.image) return null;
-      return [day.number, {
-        src: payload.place.image,
-        alt: payload.place.alt ?? title,
-        caption: day.destination,
-        sourceUrl: payload.place.sourceUrl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`,
-        sourceLabel: payload.place.sourceLabel,
-      } satisfies JourneyImage] as readonly [string, JourneyImage];
-    })).then((results) => {
-      if (!active) return;
-      setDraftImages((current) => ({ ...current, ...Object.fromEntries(results.filter((result): result is readonly [string, JourneyImage] => Boolean(result))) }));
-    }).catch(() => undefined);
-    return () => { active = false; controller.abort(); };
-  }, [draft, generated, stops]);
-
-  const index = Math.min(activeDay, Math.max(0, draft.length - 1));
-  const active = draft[index];
-  const activeImage = active ? dayImageFor(active, index) ?? draftImages[active.number] ?? null : null;
-
   /* ------------------------------------------------------------ draft view */
 
-  if (generated && active) {
+  if (generated && activeTripDocument.planItems.length) {
     return (
-      <div className={`${styles.shellWide} ${mobilePolish.builder}`}>
-        <div className={styles.draftHead}>
-          <div>
-            <p className={styles.eyebrow}>{ui.draft}</p>
-            <h2>{origin} to {stops.map((s) => s.name).join(" & ")}</h2>
-          </div>
-          <button type="button" className={styles.primary} onClick={() => { setGenerated(false); setStep(1); }}>{ui.editBrief}</button>
-        </div>
-
-        <div className={styles.draftSummary}>
-          <span><CalendarDays /> {totalDays} days</span>
-          <span><Clock /> {stops.length} destinations · custom split</span>
-          <span><MapPin /> {selected.length} {ui.placesSelected}</span>
-        </div>
-
-        <div className={styles.draftBody}>
-          <div className={styles.timeline}>
-            <div className={styles.timelineHead}>
-              <strong>{ui.dayByDay}</strong>
-              <small>{draft.length} DAYS</small>
-            </div>
-            {draft.map((day, i) => (
-              <button type="button" key={day.number}
-                className={`${styles.timelineRow} ${i === index ? styles.timelineRowOn : ""}`}
-                onClick={() => setActiveDay(i)}>
-                <b>{day.number}</b>
-                <span>
-                  <em>{day.destination}</em>
-                  <strong>{day.title}</strong>
-                </span>
-                <small>{day.date}</small>
-              </button>
-            ))}
-          </div>
-
-          <section className={styles.dayDetail}>
-            <div className={styles.dayMeta}>
-              <p><span>{active.date}</span> · DAY {active.number}</p>
-              <span><MapPin /> {active.destination}</span>
-            </div>
-            <h3>{active.title}</h3>
-            <p className={styles.dayReason}>{active.reason}</p>
-
-            {activeImage ? (
-              <figure className={styles.dayImage}>
-                <img src={activeImage.src} alt={activeImage.alt} />
-                <figcaption><span>{activeImage.caption}</span><a href={activeImage.sourceUrl} target="_blank" rel="noreferrer">{activeImage.sourceLabel ?? ui.source}</a></figcaption>
-              </figure>
-            ) : (
-              <div className={`${styles.dayImage} ${styles.dayImageFallback}`} role="img" aria-label={`Image for ${active.title}`}>
-                <span>{active.destination}</span>
-              </div>
-            )}
-
-            <ol className={styles.dayItems}>
-              {active.items.map((text, i) => (
-                <li key={i}><b>{pad(i + 1)}</b>{text}</li>
-              ))}
-            </ol>
-            <div className={styles.dayNav}>
-              <button type="button" disabled={index === 0} onClick={() => setActiveDay(index - 1)}>{ui.previousDay}</button>
-              <button type="button" disabled={index >= draft.length - 1} onClick={() => setActiveDay(index + 1)}>{ui.nextDay}</button>
-            </div>
-          </section>
-        </div>
-
-        <div className={styles.draftFoot}>
-          <button type="button" className={styles.primary} onClick={() => {
-            saveActiveTrip(activeTripDocument);
-            window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
-          }}>{ui.openMap}</button>
-        </div>
-      </div>
+      <TripItineraryWorkspace
+        trip={activeTripDocument}
+        presentation="legacy"
+        language={language}
+        selectedPlaceCount={selected.length}
+        onEditBrief={() => { setGenerated(false); setStep(1); }}
+        onOpenMap={() => {
+          saveActiveTrip(activeTripDocument);
+          window.location.assign(`/journey/plan?trip=${encodeURIComponent(activeTripDocument.id)}`);
+        }}
+      />
     );
   }
 

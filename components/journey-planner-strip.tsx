@@ -18,26 +18,30 @@ export function JourneyPlannerStrip({
   stops,
   addStopHref,
   fullTripHref,
+  fullTripLabel = "View full trip",
   onSelectStop,
   overflow,
+  presentation = "focused",
 }: {
   summary: string;
   stops: JourneyPlannerStripStop[];
   addStopHref: string;
   fullTripHref: string;
+  fullTripLabel?: string;
   onSelectStop: (id: string) => void;
   overflow: ReactNode;
+  presentation?: "focused" | "integrated";
 }) {
   return (
-    <header className={styles.strip}>
-      <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">
+    <header className={`${styles.strip} ${presentation === "integrated" ? styles.integrated : ""}`}>
+      {presentation === "focused" ? <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">
         Morrovia
-      </Link>
+      </Link> : null}
 
-      <div className={styles.tripSummary}>
+      {presentation === "focused" ? <div className={styles.tripSummary}>
         <strong>Your trip</strong>
         <span>{summary}</span>
-      </div>
+      </div> : null}
 
       <nav className={styles.stopTrack} aria-label="Trip stops">
         {stops.map((stop, index) => (
@@ -58,7 +62,7 @@ export function JourneyPlannerStrip({
       </nav>
 
       <div className={styles.actions}>
-        <Link className={styles.fullTrip} href={fullTripHref}>View full trip</Link>
+        <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link>
         <details className={styles.overflow}>
           <summary aria-label="Trip actions"><MoreHorizontal aria-hidden="true" /></summary>
           <div>{overflow}</div>
