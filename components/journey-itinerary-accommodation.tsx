@@ -4,11 +4,17 @@ import { ArrowUpRight, BedDouble, Map } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
-import { overnightAccommodationStops, stayBookingForStop } from "@/lib/easyt/accommodation";
+import { accommodationDatesReady, overnightAccommodationStops, stayBookingForStop } from "@/lib/easyt/accommodation";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
+import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import styles from "./journey-itinerary-accommodation.module.css";
 
-const dateLabel = (value: string) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(`${value}T00:00:00`));
+function accommodationDateLabel(stop: TripStop) {
+  if (!accommodationDatesReady(stop)) return "Dates to confirm";
+  const arrival = formatIsoDate(stop.arrivalDate);
+  const departure = formatIsoDate(stop.departureDate);
+  return arrival && departure ? `${arrival}–${departure}` : "Dates to confirm";
+}
 
 export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMap, compact = false }: { trip: EasyTTrip; currentStopId: string; onExploreMap: (stop: TripStop) => void; compact?: boolean }) {
   const [actions, setActions] = useState<BookingReadinessAction[]>([]);
@@ -47,14 +53,15 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
         const booking = stayBookingForStop(trip, stop);
         const action = actions.find((item) => item.category === "accommodation" && item.stopId === stop.id);
         const sorted = Boolean(booking);
+        const datesReady = accommodationDatesReady(stop);
         return <article key={stop.id} className={styles.stay}>
           <div className={styles.stayHeader}>
-            <div><strong>{stop.name}</strong><small>{dateLabel(stop.arrivalDate!)}–{dateLabel(stop.departureDate!)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"} · {trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</small></div>
+            <div><strong>{stop.name}</strong><small>{accommodationDateLabel(stop)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"} · {trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</small></div>
             <em className={sorted ? styles.sorted : styles.needsStay}>{sorted ? "Stay sorted" : "Needs a stay"}</em>
           </div>
           {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></button></div></> : <div className={styles.stayActions}>
             <button type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></button>
-            {action ? <a href={action.href} target="_blank" rel={action.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id })}>Check availability <ArrowUpRight /></a> : null}
+            {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id })}>Check availability <ArrowUpRight /></a> : null}
           </div>}
         </article>;
       })}

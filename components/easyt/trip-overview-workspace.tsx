@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth } from "@/lib/easyt/review";
+import { parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
@@ -50,9 +51,9 @@ const DAY_MS = 86_400_000;
 const WORKSPACE_ORIENTATION_KEY = "morrovia-workspace-orientation-seen-v1";
 
 function expectedTripDays(trip: EasyTTrip) {
-  const start = new Date(`${trip.startDate}T12:00:00`);
-  const end = new Date(`${trip.endDate}T12:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+  const start = parseIsoDate(trip.startDate);
+  const end = parseIsoDate(trip.endDate);
+  if (!start || !end || end < start) {
     return trip.planItems.length;
   }
   return Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1;
@@ -249,7 +250,7 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
           <div className={styles.progressGrid}>
             <ProgressItem icon={CalendarCheck2} label="Itinerary" detail={itineraryPercent === 100 ? `${expectedDays} days planned` : `${trip.planItems.length} of ${expectedDays} days planned`} percent={itineraryPercent} complete={itineraryPercent === 100} />
             <ProgressItem icon={BedDouble} label="Stays" detail={accommodation.stops.length ? `${accommodation.sortedCount} of ${accommodation.stops.length} sorted` : "No overnight stays"} percent={stayPercent} complete={stayPercent === 100} />
-            <ProgressItem icon={ShieldCheck} label="Prep" detail={checklist.length ? `${prepCompleteCount} of ${checklist.length} complete` : "Review practicals"} percent={prepPercent} complete={checklist.length > 0 && prepPercent === 100} />
+            <ProgressItem icon={ShieldCheck} label="Saved checklist" detail={checklist.length ? `${prepCompleteCount} of ${checklist.length} complete` : "Review practicals"} percent={prepPercent} complete={checklist.length > 0 && prepPercent === 100} />
           </div>
         </section>
 

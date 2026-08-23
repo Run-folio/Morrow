@@ -371,9 +371,28 @@ export function publicRouteDetailFor(inputSlug: string): PublicRouteDetail | nul
 }
 
 export function publicRouteSitemapKeys() {
-  return Object.values(routeFamilyByKey)
-    .filter((route) => isIndexablePublicRoute({ confidence: route.confidence, stops: route.stops, sources: route.sourceLinks }))
-    .map((route) => route.key);
+  return publicRoutePublishedFamilies().map((route) => route.key);
+}
+
+/**
+ * The single hard publication boundary shared by Discover, Route Detail and
+ * the sitemap. Admin controls may further hide these routes, but cannot make
+ * an ineligible or unresolved route public.
+ */
+export function publicRoutePublishedFamilies() {
+  return Object.values(routeFamilyByKey).filter((route) => (
+    isIndexablePublicRoute({ confidence: route.confidence, stops: route.stops, sources: route.sourceLinks })
+    && publicRouteDetailFor(route.key) !== null
+  ));
+}
+
+export function isPublishedPublicRouteKey(key: string) {
+  const route = routeFamilyByKey[key];
+  return Boolean(
+    route
+    && isIndexablePublicRoute({ confidence: route.confidence, stops: route.stops, sources: route.sourceLinks })
+    && publicRouteDetailFor(key),
+  );
 }
 
 export function isIndexablePublicRoute(route: {

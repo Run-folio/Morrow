@@ -3,7 +3,7 @@ import EasyTNavigation from "../easyt-navigation";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
 import { applyEasyTRouteControls, listEasyTRouteControls } from "@/lib/easyt/admin-content";
-import { routeFamilies } from "@/lib/easyt/route-catalog";
+import { publicRoutePublishedFamilies } from "@/lib/easyt/public-route";
 import DiscoveryBrowser from "./discovery-browser";
 import styles from "./discover.module.css";
 
@@ -24,6 +24,8 @@ export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
   const controls = await listEasyTRouteControls().catch(() => []);
+  const routes = applyEasyTRouteControls(publicRoutePublishedFamilies(), controls);
+  const featured = routes[0];
   return (
     <main className={styles.page}>
       <EasyTNavigation current="routes" />
@@ -38,19 +40,19 @@ export default async function DiscoveryPage() {
             <Link className={styles.secondaryAction} href="/journey/home#how-it-works">How it works</Link>
           </div>
         </div>
-        <article className={styles.featuredCard}>
+        {featured && <article className={styles.featuredCard}>
           <div className={styles.featuredLabel}><Sparkles aria-hidden="true" /> FEATURED ROUTE</div>
-          <h2>Japan, one good day at a time</h2>
-          <p>A first-timer friendly route with neighbourhoods, meals and slower mornings.</p>
+          <h2>{featured.title}</h2>
+          <p>{featured.bestFor}</p>
           <dl>
-            <div><dt><MapPin aria-hidden="true" /></dt><dd>Tokyo → Takayama → Kyoto</dd></div>
-            <div><dt><CalendarDays aria-hidden="true" /></dt><dd>10 days · 3 stops</dd></div>
-            <div><dt><Sparkles aria-hidden="true" /></dt><dd>Food · culture · rail</dd></div>
+            <div><dt><MapPin aria-hidden="true" /></dt><dd>{featured.stops.map((stop) => stop.name).join(" → ")}</dd></div>
+            <div><dt><CalendarDays aria-hidden="true" /></dt><dd>{featured.suggestedDays.ideal} days · {featured.stops.length} stops</dd></div>
+            <div><dt><Sparkles aria-hidden="true" /></dt><dd>{featured.interests.map((interest) => interest[0].toUpperCase() + interest.slice(1)).join(" · ")}</dd></div>
           </dl>
-          <Link href="/journey/routes/japan-slow">See the route <ArrowRight aria-hidden="true" /></Link>
-        </article>
+          <Link href={`/journey/routes/${featured.key}`}>See the route <ArrowRight aria-hidden="true" /></Link>
+        </article>}
       </section>
-      <DiscoveryBrowser routes={applyEasyTRouteControls(routeFamilies, controls)} />
+      <DiscoveryBrowser routes={routes} />
     </main>
   );
 }

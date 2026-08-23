@@ -64,6 +64,7 @@ export default function ProfileForm({
   const [travelSaving, setTravelSaving] = useState(false);
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(initialTravelProfile);
   const [travelReadinessProfile, setTravelReadinessProfile] = useState<TravelReadinessProfile>(initialTravelReadinessProfile);
+  const [nationalitiesInput, setNationalitiesInput] = useState(initialTravelReadinessProfile.nationalities.join(", "));
   const copy = easytCopy[language];
   const profileCopy = language === "es"
     ? {
@@ -128,7 +129,7 @@ export default function ProfileForm({
 
   useEffect(() => {
     setTravelMessage(null);
-  }, [travelProfile, travelReadinessProfile]);
+  }, [nationalitiesInput, travelProfile, travelReadinessProfile]);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -228,7 +229,7 @@ export default function ProfileForm({
             <strong className={styles.privacyReassurance}>{profileCopy.privacyDetail}</strong>
           </div>
           <div className={styles.readinessFields}>
-            <EasyTField label={profileCopy.nationalities} maxLength={412} value={travelReadinessProfile.nationalities.join(", ")} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, nationalities: event.target.value.split(",").map((country) => country.trim().slice(0, 100)).filter(Boolean).slice(0, 4) }))} placeholder={profileCopy.countryPlaceholder} />
+            <EasyTField label={profileCopy.nationalities} maxLength={412} value={nationalitiesInput} onChange={(event) => { const nextInput = event.target.value.split(",").slice(0, 4).map((country) => country.slice(0, 100)).join(","); setNationalitiesInput(nextInput); setTravelReadinessProfile((current) => ({ ...current, nationalities: nextInput.split(",").map((country) => country.trim()).filter(Boolean) })); }} placeholder={profileCopy.countryPlaceholder} />
             <EasyTField label={profileCopy.residence} maxLength={100} value={travelReadinessProfile.residenceCountry} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, residenceCountry: event.target.value }))} placeholder={profileCopy.countryPlaceholder} />
             <EasyTField label={profileCopy.passportExpiry} type="month" value={travelReadinessProfile.passportExpiryMonth} onChange={(event) => setTravelReadinessProfile((current) => ({ ...current, passportExpiryMonth: event.target.value }))} />
           </div>

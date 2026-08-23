@@ -1390,9 +1390,11 @@ export default function TripBuilder() {
     acceptCurrentRoute("continue");
     const saved = await persistGeneratedTrip();
     if (!saved) { setOpeningTrip(false); return; }
-    const destination = saved.ownerId && !session?.user
-      ? tripSyncSignInPath(saved.id)
-      : firstTripWorkspaceHref(saved.id);
+    const destination = !saved.ownerId
+      ? `/journey/plan?trip=${encodeURIComponent(saved.id)}`
+      : !session?.user
+        ? tripSyncSignInPath(saved.id)
+        : firstTripWorkspaceHref(saved.id);
     window.location.assign(destination);
   };
 
@@ -1422,7 +1424,7 @@ export default function TripBuilder() {
     setBuildRequested(false);
     void (async () => {
       const saved = await persistGeneratedTrip();
-      if (saved) window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
+      if (saved) window.location.assign(!saved.ownerId ? `/journey/plan?trip=${encodeURIComponent(saved.id)}` : !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
       else setOpeningTrip(false);
     })();
   }, [buildRequested, activeTripDocument]);

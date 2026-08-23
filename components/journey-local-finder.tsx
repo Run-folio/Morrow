@@ -50,9 +50,10 @@ function localSearchPayload(value: unknown) {
   if (!isRecord(value) || !Array.isArray(value.places)) {
     return { places: [] as JourneyLocalPlace[], unavailable: true };
   }
+  const places = value.places.filter(isJourneyLocalPlace);
   return {
-    places: value.places.filter(isJourneyLocalPlace),
-    unavailable: value.unavailable === true,
+    places,
+    unavailable: value.unavailable === true || places.length !== value.places.length,
   };
 }
 
@@ -60,9 +61,10 @@ function inventorySearchPayload(value: unknown) {
   if (!isRecord(value) || !Array.isArray(value.properties)) {
     return { properties: [] as JourneyLocalPlace[], unavailable: true };
   }
+  const properties = value.properties.filter(isJourneyLocalPlace);
   return {
-    properties: value.properties.filter(isJourneyLocalPlace),
-    unavailable: value.unavailable === true,
+    properties,
+    unavailable: value.unavailable === true || properties.length !== value.properties.length,
   };
 }
 

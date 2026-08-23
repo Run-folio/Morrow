@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accommodationProgress, stayBookingForStop } from "../lib/easyt/accommodation.ts";
+import { accommodationDatesReady, accommodationProgress, stayBookingForStop } from "../lib/easyt/accommodation.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -15,7 +15,7 @@ const trip = (): EasyTTrip => ({
 
 test("derives accommodation completion only from canonical saved stay bookings", () => {
   const source = trip();
-  assert.deepEqual(accommodationProgress(source), { stops: source.stops, sortedCount: 0, complete: false });
+  assert.deepEqual(accommodationProgress(source), { stops: source.stops, sortedCount: 0, datesReadyCount: 2, complete: false });
 
   source.brief.bookings = [{ id: "stay-paris", type: "stay", title: "Hotel Paris", date: "2026-10-01", confirmation: null, url: null }];
   assert.equal(accommodationProgress(source).sortedCount, 1);
@@ -23,4 +23,19 @@ test("derives accommodation completion only from canonical saved stay bookings",
 
   source.brief.bookings.push({ id: "stay-rome", type: "stay", title: "Hotel Rome", date: "2026-10-03", confirmation: null, url: null });
   assert.equal(accommodationProgress(source).complete, true);
+});
+
+test("positive-night stops with missing or invalid dates remain in readiness", () => {
+  const source = trip();
+  source.stops[0] = { ...source.stops[0], arrivalDate: null, departureDate: null };
+  source.stops[1] = { ...source.stops[1], arrivalDate: "2026-02-31", departureDate: "2026-02-20" };
+  source.brief.bookings = [{ id: "stay-paris", type: "stay", title: "Paris stay", date: null, confirmation: null, url: null }];
+
+  const progress = accommodationProgress(source);
+  assert.equal(progress.stops.length, 2);
+  assert.equal(progress.sortedCount, 1);
+  assert.equal(progress.datesReadyCount, 0);
+  assert.equal(progress.complete, false);
+  assert.equal(accommodationDatesReady(source.stops[0]), false);
+  assert.equal(accommodationDatesReady(source.stops[1]), false);
 });

@@ -39,6 +39,7 @@ import {
   type TripPrepTaskStatus,
 } from "@/lib/easyt/trip-prep";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import {
   defaultTravelReadinessProfile,
   type ReadinessCard,
@@ -55,10 +56,14 @@ type Props = {
   initialActions?: BookingReadinessAction[];
   initialReadinessCards?: ReadinessCard[];
   initialProfile?: TravelReadinessProfile;
+  initialProviderStatus?: ProviderStatus;
   now?: string;
 };
 
+type ProviderStatus = "loading" | "available" | "unavailable";
+
 const iconByKind: Record<TripPrepTask["kind"], LucideIcon> = {
+  dates: CalendarDays,
   passport: FileCheck2,
   accommodation: BedDouble,
   flight: Plane,
@@ -78,11 +83,7 @@ const statusLabel: Record<TripPrepTaskStatus, string> = {
 
 /** Concise card copy; canonical task guidance remains unchanged in detailed Prep. */
 function taskSummary(task: TripPrepTask) {
-  if (task.kind === "passport") {
-    if (task.status === "complete") return "Traveller context is saved; verify official entry rules before booking.";
-    if (task.status === "in-progress") return "Add passport expiry to complete the validity reminder.";
-    return "Add nationality and residence to personalise entry checks.";
-  }
+  if (task.kind === "dates" || task.kind === "passport") return task.detail;
   if (task.kind === "insurance") return "Compare medical, cancellation and activity exclusions before travel.";
   if (task.kind === "flight") return "Check the route and dates with the flight provider.";
   if (task.kind === "connectivity") return "Compare data coverage before purchasing.";
@@ -180,13 +181,6 @@ function TaskSection({ id, title, icon: Icon, tasks, tripId, onOpenDetails, comp
   </section>;
 }
 
-function formatDepartureDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const parsed = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric" }).format(parsed);
-}
-
 export default function TripPrepWorkspace({
   trip,
   language = "en",
@@ -194,11 +188,14 @@ export default function TripPrepWorkspace({
   initialActions,
   initialReadinessCards,
   initialProfile,
+  initialProviderStatus,
   now,
 }: Props) {
   const [profile, setProfile] = useState<TravelReadinessProfile>(initialProfile ?? defaultTravelReadinessProfile);
   const [actions, setActions] = useState<BookingReadinessAction[]>(initialActions ?? []);
   const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(initialReadinessCards ?? []);
+  const [actionsStatus, setActionsStatus] = useState<ProviderStatus>(initialProviderStatus ?? (initialActions !== undefined ? "available" : "loading"));
+  const [readinessStatus, setReadinessStatus] = useState<ProviderStatus>(initialProviderStatus ?? (initialReadinessCards !== undefined || !trip.stops.length ? "available" : "loading"));
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -214,38 +211,75 @@ export default function TripPrepWorkspace({
   }, [initialProfile]);
 
   useEffect(() => {
-    if (presentation === "legacy" || initialActions !== undefined) return;
+    if (presentation === "legacy" || initialActions !== undefined || initialProviderStatus !== undefined) return;
     let active = true;
+    setActions([]);
+    setActionsStatus("loading");
     void fetch("/api/journey-booking-readiness", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ trip }),
-    }).then(async (response) => response.ok ? response.json() as Promise<{ actions?: BookingReadinessAction[] }> : { actions: [] })
-      .then((payload) => { if (active) setActions(payload.actions ?? []); })
-      .catch(() => { if (active) setActions([]); });
+    }).then(async (response) => {
+      if (!response.ok) throw new Error("Booking readiness unavailable");
+      const payload = await response.json() as { actions?: BookingReadinessAction[] };
+      if (!Array.isArray(payload.actions)) throw new Error("Booking readiness response was incomplete");
+      return payload.actions;
+    }).then((nextActions) => {
+      if (!active) return;
+      setActions(nextActions);
+      setActionsStatus("available");
+    }).catch(() => {
+      if (!active) return;
+      setActions([]);
+      setActionsStatus("unavailable");
+    });
     return () => { active = false; };
-  }, [initialActions, presentation, trip]);
+  }, [initialActions, initialProviderStatus, presentation, trip]);
 
   useEffect(() => {
-    if (presentation === "legacy" || initialReadinessCards !== undefined || !trip.stops.length) return;
+    if (presentation === "legacy" || initialReadinessCards !== undefined || initialProviderStatus !== undefined) return;
+    if (!trip.stops.length) {
+      setReadinessCards([]);
+      setReadinessStatus("available");
+      return;
+    }
     let active = true;
+    setReadinessCards([]);
+    setReadinessStatus("loading");
     void fetch("/api/journey-readiness", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, profile, language }),
-    }).then(async (response) => response.ok ? response.json() as Promise<{ cards?: ReadinessCard[] }> : { cards: [] })
-      .then((payload) => { if (active) setReadinessCards(payload.cards ?? []); })
-      .catch(() => { if (active) setReadinessCards([]); });
+    }).then(async (response) => {
+      if (!response.ok) throw new Error("Travel readiness unavailable");
+      const payload = await response.json() as { cards?: ReadinessCard[] };
+      if (!Array.isArray(payload.cards)) throw new Error("Travel readiness response was incomplete");
+      return payload.cards;
+    }).then((nextCards) => {
+      if (!active) return;
+      setReadinessCards(nextCards);
+      setReadinessStatus("available");
+    }).catch(() => {
+      if (!active) return;
+      setReadinessCards([]);
+      setReadinessStatus("unavailable");
+    });
     return () => { active = false; };
-  }, [initialReadinessCards, language, presentation, profile, trip.startDate, trip.stops]);
+  }, [initialProviderStatus, initialReadinessCards, language, presentation, profile, trip.startDate, trip.stops]);
 
   if (presentation === "legacy") return <DetailedPrep trip={trip} language={language} />;
 
-  const effectiveNow = now ? new Date(`${now}T12:00:00`) : new Date();
+  const effectiveNow = parseIsoDate(now) ?? new Date();
   const tasks = deriveTripPrepTasks({ trip, profile, bookingActions: actions, readinessCards, now: effectiveNow });
   const progress = tripPrepProgress(tasks);
   const nextTask = nextTripPrepTask(tasks);
-  const countdown = tripDepartureCountdown(trip.startDate, effectiveNow);
+  const countdown = tripDepartureCountdown(trip.startDate, trip.endDate, effectiveNow);
+  const providersAvailable = actionsStatus === "available" && readinessStatus === "available";
+  const providerUnavailable = actionsStatus === "unavailable" || readinessStatus === "unavailable";
+  const providerMessage = providerUnavailable
+    ? "Some provider-backed Prep checks are unavailable. Retry before treating this as final."
+    : "Checking provider-backed Prep tasks…";
+  const departureDate = formatIsoDate(trip.startDate, "en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
   const grouped = {
     must: tasks.filter((task) => task.category === "must"),
     good: tasks.filter((task) => task.category === "good"),
@@ -266,30 +300,31 @@ export default function TripPrepWorkspace({
       <section className={styles.progressCard} aria-labelledby="prep-progress-title">
         <div className={styles.progressCopy}>
           <p>OVERALL PROGRESS</p>
-          <h3 id="prep-progress-title">{progress.percent}%</h3>
-          <span>{progress.complete} of {progress.total} tasks complete</span>
+          <h3 id="prep-progress-title">{providersAvailable ? `${progress.percent}%` : "—"}</h3>
+          <span>{providersAvailable ? `${progress.complete} of ${progress.total} tasks complete` : providerMessage}</span>
           <div
             className={styles.progressTrack}
             aria-label="Trip preparation progress"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={progress.percent}
-          ><span style={{ width: `${progress.percent}%` }} /></div>
+            aria-valuenow={providersAvailable ? progress.percent : undefined}
+            aria-valuetext={providersAvailable ? undefined : providerMessage}
+          ><span style={{ width: providersAvailable ? `${progress.percent}%` : "0%" }} /></div>
         </div>
         <div className={styles.progressIllustration} aria-hidden="true"><img src="/journey/illustrations/prep-triptych.png" alt="" /></div>
         <dl className={styles.progressStats}>
-          <div><dt><Check aria-hidden="true" />Complete</dt><dd>{progress.complete}</dd></div>
-          <div><dt><Circle aria-hidden="true" />In progress</dt><dd>{progress.inProgress}</dd></div>
-          <div><dt><Circle aria-hidden="true" />To do</dt><dd>{progress.toDo}</dd></div>
+          <div><dt><Check aria-hidden="true" />Complete</dt><dd>{providersAvailable ? progress.complete : "—"}</dd></div>
+          <div><dt><Circle aria-hidden="true" />In progress</dt><dd>{providersAvailable ? progress.inProgress : "—"}</dd></div>
+          <div><dt><Circle aria-hidden="true" />To do</dt><dd>{providersAvailable ? progress.toDo : "—"}</dd></div>
         </dl>
       </section>
 
       <aside className={styles.countdownCard}>
         <CalendarDays aria-hidden="true" />
-        <p>DEPARTURE</p>
+        <p>TRIP TIMELINE</p>
         <strong>{countdown.label}</strong>
-        {formatDepartureDate(trip.startDate) ? <span>{formatDepartureDate(trip.startDate)}</span> : null}
+        {departureDate ? <span>{departureDate}</span> : null}
       </aside>
 
       <TaskSection id="must" title="Must do" icon={Sparkles} tasks={grouped.must} tripId={trip.id} onOpenDetails={openDetails} />
@@ -299,7 +334,9 @@ export default function TripPrepWorkspace({
         {nextTask ? <>
           <div><span className={styles.nextIcon}>{(() => { const Icon = iconByKind[nextTask.kind]; return <Icon aria-hidden="true" />; })()}</span><div><h3>{nextTask.title}</h3><p>{taskSummary(nextTask)}</p></div></div>
           <TaskAction task={nextTask} tripId={trip.id} onOpenDetails={openDetails} compact />
-        </> : <div className={styles.readyMessage}><Check aria-hidden="true" /><div><h3>You&apos;re ready to go.</h3><p>Every currently tracked Prep task is complete.</p></div></div>}
+        </> : providersAvailable
+          ? <div className={styles.readyMessage}><Check aria-hidden="true" /><div><h3>Prep tasks complete.</h3><p>Every currently tracked Prep task is complete.</p></div></div>
+          : <div className={styles.readyMessage}><CircleAlert aria-hidden="true" /><div><h3>{providerUnavailable ? "Some Prep checks are unavailable." : "Prep checks are still loading."}</h3><p>{providerMessage}</p></div></div>}
       </aside>
 
       <TaskSection id="good" title="Good to do" icon={HeartPulse} tasks={grouped.good} tripId={trip.id} onOpenDetails={openDetails} compact />

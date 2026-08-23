@@ -75,16 +75,17 @@ const actions: BookingReadinessAction[] = [{
 }];
 const readinessCards: ReadinessCard[] = [{ id: "entry", priority: "essential", title: "Entry, visa and transit", detail: "Add your nationality to make this check more personal." }, { id: "passport", priority: "essential", title: "Passport validity", detail: "Add an expiry month to make this reminder more useful." }, { id: "insurance", priority: "useful", title: "Travel insurance", detail: "Compare medical cover, cancellation protection and activity exclusions before you travel." }];
 
-function StoryFrame({ storyTrip, storyProfile, storyActions, storyReadiness, now = "2026-07-20", presentation = "shell" }: {
+function StoryFrame({ storyTrip, storyProfile, storyActions, storyReadiness, now = "2026-07-20", presentation = "shell", providerStatus }: {
   storyTrip: EasyTTrip;
   storyProfile: TravelReadinessProfile;
   storyActions: BookingReadinessAction[];
   storyReadiness: ReadinessCard[];
   now?: string;
   presentation?: "shell" | "legacy";
+  providerStatus?: "loading" | "available" | "unavailable";
 }) {
   if (presentation === "legacy") return <div style={{ width: "min(860px, calc(100% - 48px))", margin: "24px auto" }}><TripPrepWorkspace trip={storyTrip} presentation="legacy" /></div>;
-  return <TripShell trip={storyTrip}><TripPrepWorkspace trip={storyTrip} initialProfile={storyProfile} initialActions={storyActions} initialReadinessCards={storyReadiness} now={now} /></TripShell>;
+  return <TripShell trip={storyTrip}><TripPrepWorkspace trip={storyTrip} initialProfile={storyProfile} initialActions={storyActions} initialReadinessCards={storyReadiness} initialProviderStatus={providerStatus} now={now} /></TripShell>;
 }
 
 const meta = {
@@ -100,10 +101,16 @@ type Story = StoryObj<typeof meta>;
 
 export const NormalPlanning: Story = {};
 export const LegacyBody: Story = { args: { presentation: "legacy" }, parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/prep" } } } };
+export const ZeroPercent: Story = { args: { storyTrip: { ...trip, brief: { ...trip.brief, bookings: [], checklist: trip.brief.checklist?.map((item) => ({ ...item, complete: false })) } } } };
 export const UrgentMustDo: Story = { args: { now: "2026-08-17" } };
 export const MostlyComplete: Story = { args: { storyProfile: readyProfile, storyTrip: { ...trip, brief: { ...trip.brief, bookings: trip.stops.map((stop) => ({ id: `stay-${stop.id}`, type: "stay" as const, title: `${stop.name} stay`, date: stop.arrivalDate, confirmation: null, url: null })), checklist: trip.brief.checklist?.map((item) => ({ ...item, complete: item.id !== "offline" })) } }, storyActions: [] } };
 export const FullyReady: Story = { args: { storyProfile: readyProfile, storyReadiness: [], storyActions: [], storyTrip: { ...trip, brief: { ...trip.brief, bookings: trip.stops.map((stop) => ({ id: `stay-${stop.id}`, type: "stay" as const, title: `${stop.name} stay`, date: stop.arrivalDate, confirmation: null, url: null })), checklist: trip.brief.checklist?.map((item) => ({ ...item, complete: true })) } } } };
 export const MissingDates: Story = { args: { storyTrip: { ...trip, startDate: "", endDate: "", stops: trip.stops.map((stop) => ({ ...stop, arrivalDate: null, departureDate: null })) }, storyActions: [] } };
+export const InvalidDates: Story = { args: { storyTrip: { ...trip, startDate: "2026-02-31", endDate: "2026-02-20", stops: trip.stops.map((stop) => ({ ...stop, arrivalDate: "2026-02-31", departureDate: "2026-02-20" })) }, storyActions: [] } };
+export const StartedWithoutEndDate: Story = { args: { storyTrip: { ...trip, endDate: "" }, now: "2026-08-23" } };
+export const InProgress: Story = { args: { now: "2026-08-23" } };
+export const Ended: Story = { args: { now: "2026-09-01" } };
+export const ProviderUnavailable: Story = { args: { storyProfile: readyProfile, storyReadiness: [], storyActions: [], providerStatus: "unavailable" } };
 export const LongTaskCopy: Story = { args: { storyTrip: { ...trip, brief: { ...trip.brief, checklist: [...(trip.brief.checklist ?? []), { id: "weather-backup", label: "Download confirmations and prepare a flexible weather backup for every high-altitude travel day", complete: false }] } } } };
 export const MissingOptionalState: Story = { args: { storyTrip: { ...trip, brief: { ...trip.brief, checklist: trip.brief.checklist?.filter((item) => item.id !== "offline") } } } };
 export const Mobile320: Story = { parameters: { viewport: { defaultViewport: "morrovia320" } } };

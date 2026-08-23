@@ -7,8 +7,8 @@ const meta = {
   title: "Pages/Profile",
   component: ProfileForm,
   args: {
-    name: "Shaun Whiting",
-    email: "shaunwhiting89@gmail.com",
+    name: "Sam Rivera",
+    email: "traveller@example.com",
     initialLanguage: "en",
     initialTravelProfile: {
       pace: "balanced",

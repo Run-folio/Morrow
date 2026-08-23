@@ -30,6 +30,7 @@ import { applyRecommendation, recommendationImpact, reviewTrip, tripHealth, undo
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { parseMapWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
+import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import styles from "@/app/journey/journey.module.css";
 import mobileNav from "@/app/journey/plan-mobile-nav.module.css";
@@ -58,7 +59,10 @@ const shapeDayTabs: ShapeDayTab[] = ["plan", "stay", "eat", "see"];
 type TripHealthDetail = "accommodation" | "travel" | "activities" | "budget";
 
 function customBriefFromEasyT(trip: EasyTTrip): CustomBrief {
-  const duration = Math.max(1, Math.round((+new Date(`${trip.endDate}T00:00:00`) - +new Date(`${trip.startDate}T00:00:00`)) / 86400000) + 1);
+  const start = parseIsoDate(trip.startDate);
+  const end = parseIsoDate(trip.endDate);
+  const datedDuration = start && end && end >= start ? Math.round((end.getTime() - start.getTime()) / 86400000) + 1 : 0;
+  const duration = Math.max(1, datedDuration || Math.max(0, ...trip.planItems.map((item) => item.dayNumber)));
   const pickDetails = Object.fromEntries(trip.stops.map((stop) => [
     stop.id,
     trip.planItems
@@ -144,8 +148,9 @@ function customPlaceDetails(place: CustomPick | undefined) {
     { title: "Before you go", copy: check },
   ];
 }
-function customDate(startDate: string, offset: number) { const date = new Date(`${startDate || "2027-03-01"}T00:00:00`); date.setDate(date.getDate() + offset); return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date); }
-function nextIsoDate(date: string) { const next = new Date(`${date}T00:00:00`); next.setDate(next.getDate() + 1); return next.toISOString().slice(0, 10); }
+function customDate(startDate: string, offset: number) { const date = parseIsoDate(startDate); if (!date) return "Date to confirm"; date.setDate(date.getDate() + offset); return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date); }
+function customDateRange(startDate: string, endDate: string) { const start = formatIsoDate(startDate, "en", { month: "short", day: "numeric" }); const end = formatIsoDate(endDate, "en", { month: "short", day: "numeric" }); return start && end ? `${start} to ${end}` : "Dates to confirm"; }
+function nextIsoDate(date: string) { const next = parseIsoDate(date); if (!next) return ""; next.setDate(next.getDate() + 1); return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`; }
 const planningBases: Record<string, string> = { peru: "Cusco", colombia: "Bogotá", japan: "Tokyo", china: "Beijing", italy: "Rome", france: "Paris", spain: "Barcelona", thailand: "Bangkok", vietnam: "Hanoi", indonesia: "Bali", "south korea": "Seoul", mexico: "Mexico City", portugal: "Lisbon", greece: "Athens", turkey: "Istanbul", "united kingdom": "London", "united states": "New York", australia: "Sydney", brazil: "Rio de Janeiro", morocco: "Marrakech", india: "Delhi", egypt: "Cairo", "new zealand": "Auckland", "south africa": "Cape Town" };
 function planningBase(destination: string) { return getCountryIntelligence(destination)?.preferredFirstBase ?? planningBases[destination.toLowerCase()] ?? destination; }
 function formatEstimate(minutes: number | null) { return minutes === null ? "Confirm connection" : `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m approx.`; }
@@ -194,7 +199,7 @@ function makeCustomJourney(brief: CustomBrief) {
     const estimate = estimateLeg({ name: from.city, country: from.country, coordinates: from.coordinates ?? undefined }, { id: stop.id, name: stop.city, country: stop.country, coordinates: stop.coordinates ?? undefined });
     return { from: from.id, to: stop.id, mode: journeyTransportMode(estimate.mode), label: estimate.label, detail: `${estimate.distanceKm ? `${estimate.distanceKm.toLocaleString()} km · ` : ""}${estimate.note}`, duration: formatEstimate(estimate.durationMinutes) };
   });
-  return { title: "Your Journey", dateRange: `${customDate(brief.startDate, 0)} to ${customDate(brief.startDate, Math.max(0, totalDays - 1))}`, stops, legs, calendar };
+  return { title: "Your Journey", dateRange: parseIsoDate(brief.startDate) ? `${customDate(brief.startDate, 0)} to ${customDate(brief.startDate, Math.max(0, totalDays - 1))}` : "Dates to confirm", stops, legs, calendar };
 }
 
 /**
@@ -257,13 +262,13 @@ function makeEasyTJourney(trip: EasyTTrip) {
       },
       routeConstraints,
     ) : undefined;
-    const minutes = relatedLeg?.durationMinutes ?? estimatedLeg?.durationMinutes;
-    const distanceKm = relatedLeg?.distanceKm ?? estimatedLeg?.distanceKm;
+    const minutes = relatedLeg ? relatedLeg.durationMinutes : estimatedLeg?.durationMinutes;
+    const distanceKm = relatedLeg ? relatedLeg.distanceKm : estimatedLeg?.distanceKm;
     const travel = movedBase ? {
       mode: relatedLeg ? journeyTransportMode(relatedLeg.mode) : estimatedLeg ? journeyTransportMode(estimatedLeg.mode) : (index === 0 ? "flight" : "road"),
       from: index === 0 ? trip.brief.origin : previousBase?.name,
-      detail: `${distanceKm ? `${distanceKm.toLocaleString()} km · ` : ""}${relatedLeg?.provider ?? estimatedLeg?.note ?? `Travel to ${base?.name ?? city}`}`,
-      duration: minutes ? `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m` : "Confirm the best connection",
+      detail: relatedLeg && relatedLeg.durationMinutes === null && relatedLeg.distanceKm === null ? "Connection details to confirm" : `${distanceKm ? `${distanceKm.toLocaleString()} km · ` : ""}${relatedLeg?.provider ?? estimatedLeg?.note ?? `Travel to ${base?.name ?? city}`}`,
+      duration: minutes ? `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m` : "Timing to confirm",
     } satisfies JourneyCalendarDay["travel"] : undefined;
 
     stops.push({
@@ -304,7 +309,7 @@ function makeEasyTJourney(trip: EasyTTrip) {
   });
   return {
     title: trip.title || "Your Journey",
-    dateRange: `${customDate(trip.startDate, 0)} to ${customDate(trip.endDate, 0)}`,
+    dateRange: customDateRange(trip.startDate, trip.endDate),
     stops,
     legs,
     calendar,
@@ -315,6 +320,9 @@ export type JourneyMapPlannerWorkspaceProps = {
   trip?: EasyTTrip | null;
   presentation?: "focused" | "shell";
 };
+
+const emptyJourneyStop: JourneyStop = { id: "empty", city: "Trip", country: "", date: "Date to confirm", coordinates: null, theme: "transit", marker: "plane", description: "", highlights: [], aiPrompt: "" };
+const emptyJourneyDay: JourneyCalendarDay = { id: "empty", date: "Date to confirm", label: "", stopId: "empty", city: "Trip", title: "Itinerary to confirm", items: [] };
 
 export function JourneyMapPlannerWorkspace({
   trip: providedTrip = null,
@@ -340,6 +348,7 @@ export function JourneyMapPlannerWorkspace({
   const [customBrief, setCustomBrief] = useState<CustomBrief | null>(() => providedTrip ? customBriefFromEasyT(providedTrip) : null);
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(providedTrip);
   const [planHydrated, setPlanHydrated] = useState(Boolean(providedTrip) || !isPlanningPreview);
+  const [explicitTripIssue, setExplicitTripIssue] = useState<"auth" | "missing" | null>(null);
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
   const [placeMedia, setPlaceMedia] = useState<Record<string, { image?: string; alt?: string; description?: string; sourceUrl?: string; sourceLabel?: string; coordinates?: [number, number] }>>({});
   const [cloudSaveState, setCloudSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -405,12 +414,12 @@ export function JourneyMapPlannerWorkspace({
     ? `/journey/new?trip=${encodeURIComponent(customTrip.id)}&view=itinerary`
     : "/journey/new";
   const selected = useMemo(
-    () => journey.stops.find((stop) => stop.id === selectedId) ?? journey.stops[0],
+    () => journey.stops.find((stop) => stop.id === selectedId) ?? journey.stops[0] ?? emptyJourneyStop,
     [selectedId, journey.stops],
   );
-  const selectedDay = journey.calendar.find((day) => day.id === selectedDayId) ?? journey.calendar[0];
+  const selectedDay = journey.calendar.find((day) => day.id === selectedDayId) ?? journey.calendar[0] ?? emptyJourneyDay;
   const selectedDayIndex = journey.calendar.findIndex((day) => day.id === selectedDay.id);
-  const selectedPlanItem = customTrip?.planItems.find((item) => item.dayNumber === selectedDayIndex + 1);
+  const selectedPlanItem = customTrip?.planItems.find((item) => `${customTrip.id}-calendar-${item.dayNumber}` === selectedDay.id);
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
   const selectedLeg = customTrip?.legs.find((leg) => leg.toStopId === selectedPlanItem?.stopId);
   const transportAlternatives = useMemo(() => {
@@ -430,7 +439,7 @@ export function JourneyMapPlannerWorkspace({
     );
   }, [customTrip, selectedLeg]);
   const selectedActivities = selectedPlanItem?.notes ?? selectedDay.items;
-  const selectedDayNotes = customTrip?.brief.dayNotes?.[selectedDayIndex + 1] ?? [];
+  const selectedDayNotes = selectedPlanItem ? customTrip?.brief.dayNotes?.[selectedPlanItem.dayNumber] ?? [] : [];
   useEffect(() => {
     setLanguage(languageFromStorage());
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
@@ -974,6 +983,7 @@ export function JourneyMapPlannerWorkspace({
     hasMounted.current = true;
     const hydratePlan = async () => {
       if (!isPlanningPreview) return;
+      setExplicitTripIssue(null);
       if (providedTrip) {
         if (session?.user?.id && providedTrip.ownerId && providedTrip.ownerId !== session.user.id) {
           setCustomTrip(null);
@@ -1013,6 +1023,7 @@ export function JourneyMapPlannerWorkspace({
           setCustomTrip(null);
           setCustomBrief(null);
           setHasUnsavedChanges(false);
+          if (tripId) setExplicitTripIssue("missing");
           return;
         }
         if (activeTrip) {
@@ -1029,6 +1040,12 @@ export function JourneyMapPlannerWorkspace({
             setMapMode("detail");
           }
           setHasUnsavedChanges(false);
+          return;
+        }
+        if (tripId) {
+          setCustomTrip(null);
+          setCustomBrief(null);
+          setExplicitTripIssue(activeOwnerId ? "missing" : "auth");
           return;
         }
         // Older local drafts remain readable during migration, but new plans no
@@ -1131,7 +1148,7 @@ export function JourneyMapPlannerWorkspace({
   }, [selectedDayId]);
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || !journey.calendar.length) return;
     const timer = window.setTimeout(() => {
       if (selectedDayIndex === journey.calendar.length - 1) {
         setIsPlaying(false);
@@ -1159,6 +1176,7 @@ export function JourneyMapPlannerWorkspace({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (!journey.calendar.length) return;
       const target = event.target as HTMLElement | null;
       if (target?.matches("input, textarea, select")) return;
       if (event.key === "ArrowRight" || event.key === "ArrowDown") {
@@ -1200,6 +1218,20 @@ export function JourneyMapPlannerWorkspace({
         <main className={`${styles.journey} ${styles.planLoading}`} aria-busy="true">
         <span className={styles.planLoadingSpinner} aria-hidden="true" />
         <p>Loading your journey…</p>
+        </main>
+      </>
+    );
+  }
+
+  if (isPlanningPreview && (explicitTripIssue || (customTrip && journey.calendar.length === 0))) {
+    const needsAuth = explicitTripIssue === "auth";
+    return (
+      <>
+        {!isShellPresentation ? <div className={styles.productNavigation}><EasyTNavigation current="prototype" /></div> : null}
+        <main className={`${styles.journey} ${styles.planUnavailable}`}>
+          <h1>{needsAuth ? "Sign in to open this trip" : customTrip ? "This trip has no planned days yet" : "This trip is unavailable"}</h1>
+          <p>{needsAuth ? "The requested trip is not available on this device. Sign in to check the saved cloud copy." : customTrip ? "Add or regenerate itinerary days before using the map workspace." : "It may have been removed, or you may not have access to it."}</p>
+          <Link href={needsAuth ? `/journey/login?next=${encodeURIComponent(`/journey/plan?trip=${searchParams.get("trip") ?? ""}`)}` : customTrip ? `/journey/new?trip=${encodeURIComponent(customTrip.id)}&view=itinerary` : "/journey/dashboard"}>{needsAuth ? "Sign in" : customTrip ? "Edit itinerary" : "Back to trips"}</Link>
         </main>
       </>
     );

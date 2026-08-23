@@ -6,7 +6,7 @@ import EasyTNavigation from "../../easyt-navigation";
 import { getAuth } from "@/lib/auth";
 import { listEasyTRouteControls } from "@/lib/easyt/admin-content";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
-import { canonicalPublicRouteSlug, publicRouteDetailFor } from "@/lib/easyt/public-route";
+import { canonicalPublicRouteSlug, isPublishedPublicRouteKey, publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { publicRouteMetadataFor } from "@/lib/easyt/public-route-seo";
 import { ensureEasyTUser, getEasyTUserPreferences } from "@/lib/easyt/repository";
 import RouteDetailView from "./route-detail-view";
@@ -25,6 +25,7 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const canonicalSlug = canonicalPublicRouteSlug(slug);
   if (canonicalSlug !== slug) permanentRedirect(`/journey/routes/${canonicalSlug}`);
+  if (!isPublishedPublicRouteKey(canonicalSlug)) notFound();
   const detail = routeDetail(canonicalSlug);
   if (!detail) notFound();
   const controls = await listEasyTRouteControls().catch(() => []);

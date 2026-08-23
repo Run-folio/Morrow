@@ -22,6 +22,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import ResilientImage from "@/components/easyt/resilient-image";
 import {
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
@@ -34,6 +35,7 @@ import { classifyAnalyticsSaveError, trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { summarizeStampRows } from "@/lib/easyt/stamps";
+import { formatIsoDate, parseIsoDate, tripLifecycle } from "@/lib/easyt/trip-lifecycle";
 import accountStyles from "../account.module.css";
 import styles from "./dashboard.module.css";
 
@@ -54,14 +56,15 @@ function routeLabel(trip: EasyTTrip, fallback: string) {
 }
 
 function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {
-  if (!trip.startDate || !trip.endDate) return language === "es" ? "Fechas por confirmar" : "Dates to confirm";
-  const start = new Date(`${trip.startDate}T00:00:00`);
-  const end = new Date(`${trip.endDate}T00:00:00`);
-  if (Number.isNaN(+start) || Number.isNaN(+end)) return `${trip.startDate} → ${trip.endDate}`;
+  if (!parseIsoDate(trip.startDate) || !parseIsoDate(trip.endDate)) return language === "es" ? "Fechas por confirmar" : "Dates to confirm";
   const locale = language === "es" ? "es" : "en-GB";
-  const startText = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(start);
-  const endText = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" }).format(end);
+  const startText = formatIsoDate(trip.startDate, locale, { month: "short", day: "numeric" });
+  const endText = formatIsoDate(trip.endDate, locale, { month: "short", day: "numeric", year: "numeric" });
   return `${startText} – ${endText}`;
+}
+
+function startDateSortKey(trip: EasyTTrip) {
+  return parseIsoDate(trip.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
 }
 
 function featuredTripFrom(trips: EasyTTrip[]) {
@@ -70,11 +73,13 @@ function featuredTripFrom(trips: EasyTTrip[]) {
     .filter((trip) => trip.status === "draft")
     .sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))[0];
   if (activeDraft) return activeDraft;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const underway = available
+    .filter((trip) => ["starts-today", "started", "in-progress", "ends-today"].includes(tripLifecycle(trip.startDate, trip.endDate).state))
+    .sort((a, b) => startDateSortKey(b) - startDateSortKey(a))[0];
+  if (underway) return underway;
   const upcoming = available
-    .filter((trip) => timestamp(trip.startDate) >= +today)
-    .sort((a, b) => timestamp(a.startDate) - timestamp(b.startDate))[0];
+    .filter((trip) => tripLifecycle(trip.startDate, trip.endDate).state === "upcoming")
+    .sort((a, b) => startDateSortKey(a) - startDateSortKey(b))[0];
   return upcoming ?? available.sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))[0] ?? null;
 }
 
@@ -169,7 +174,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     });
     return result.sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
-      if (sort === "upcoming") return timestamp(a.startDate) - timestamp(b.startDate);
+      if (sort === "upcoming") return startDateSortKey(a) - startDateSortKey(b);
       return timestamp(b.updatedAt) - timestamp(a.updatedAt);
     });
   }, [query, sort, trips, view]);
@@ -257,14 +262,15 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
                 </Link>
               </div>
             </div>
-            {tripImage(featuredTrip) ? (
-              <img className={styles.continueImage} src={tripImage(featuredTrip) ?? ""} alt="" />
-            ) : (
-              <div className={styles.continueImageFallback} aria-hidden="true">
+            <ResilientImage
+              className={styles.continueImage}
+              src={tripImage(featuredTrip)}
+              alt=""
+              fallback={<div className={styles.continueImageFallback} aria-hidden="true">
                 <span>{featuredTrip.stops.length || 1}</span>
                 <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
-              </div>
-            )}
+              </div>}
+            />
           </article>
         ) : (
           <article className={`${styles.continueCard} ${styles.continueEmpty}`}>
@@ -307,7 +313,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <span className={styles.srOnly}>{isSpanish ? "Ordenar viajes" : "Sort trips"}</span>
               <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
                 <option value="updated">{isSpanish ? "Ordenar: Actualizados" : "Sort by: Recently updated"}</option>
-                <option value="upcoming">{isSpanish ? "Ordenar: Próximos" : "Sort by: Upcoming"}</option>
+                <option value="upcoming">{isSpanish ? "Ordenar: Fecha de inicio" : "Sort by: Start date"}</option>
                 <option value="title">{isSpanish ? "Ordenar: Título" : "Sort by: Title"}</option>
               </select>
             </label>
@@ -395,7 +401,7 @@ function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }:
     <div className={styles.tripCardMeta}><span>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
     <h3>{trip.title}</h3>
     <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
-    {tripImage(trip) ? <img src={tripImage(trip) ?? ""} alt="" className={styles.tripImage} /> : <div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>}
+    <ResilientImage src={tripImage(trip)} alt="" className={styles.tripImage} fallback={<div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>} />
     <div className={styles.tripCardActions}>
       <Link className={styles.openAction} href={tripWorkspaceHref(trip.id)} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></Link>
       <Link className={styles.editAction} href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}><Edit3 aria-hidden="true" />{copy.edit}</Link>

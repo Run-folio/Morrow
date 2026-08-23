@@ -60,9 +60,52 @@ test("progress is derived rather than persisted", () => {
   assert.equal(nextTripPrepTask(tasks), null);
 });
 
-test("countdown handles dated, missing, today and started trips without fake values", () => {
-  assert.equal(tripDepartureCountdown("2026-10-01", new Date("2026-09-01T12:00:00")).label, "30 days to go");
-  assert.equal(tripDepartureCountdown("", new Date("2026-09-01T12:00:00")).days, null);
-  assert.equal(tripDepartureCountdown("2026-09-01", new Date("2026-09-01T12:00:00")).label, "Departure is today.");
-  assert.equal(tripDepartureCountdown("2026-08-31", new Date("2026-09-01T12:00:00")).label, "This trip has started.");
+test("progress handles genuine zero and complete states", () => {
+  assert.deepEqual(tripPrepProgress([]), { complete: 0, inProgress: 0, toDo: 0, total: 0, percent: 0 });
+  assert.equal(tripPrepProgress([{ id: "done", title: "Done", detail: "Done", category: "must", status: "complete", kind: "checklist" }]).percent, 100);
+});
+
+test("missing and invalid dates remain visible blocking Prep tasks", () => {
+  const source = trip();
+  source.startDate = "";
+  source.endDate = "";
+  source.stops[0] = { ...source.stops[0], arrivalDate: null, departureDate: null };
+  const tasks = deriveTripPrepTasks({
+    trip: source,
+    profile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "2028-01" },
+    bookingActions: [],
+    readinessCards: [],
+    now: new Date("2026-09-01T12:00:00"),
+  });
+  assert.equal(tasks.find((task) => task.id === "trip-dates")?.status, "to-do");
+  assert.match(tasks.find((task) => task.id === "accommodation")?.detail ?? "", /confirm the missing stop dates/i);
+  assert.notEqual(tripPrepProgress(tasks).percent, 100);
+
+  source.startDate = "2026-02-31";
+  source.endDate = "2026-02-20";
+  assert.equal(deriveTripPrepTasks({ trip: source, profile: { nationalities: [], residenceCountry: "", passportExpiryMonth: "" }, bookingActions: [], readinessCards: [] })[0]?.id, "trip-dates");
+});
+
+test("an explicit passport checklist never claims missing traveller context was saved", () => {
+  const source = trip();
+  source.brief.checklist = [{ id: "passport", label: "Review passport validity", complete: true }];
+  const passport = deriveTripPrepTasks({
+    trip: source,
+    profile: { nationalities: [], residenceCountry: "", passportExpiryMonth: "" },
+    bookingActions: [],
+    readinessCards: [],
+  }).find((task) => task.id === "traveller-passport");
+  assert.equal(passport?.title, "Review passport validity");
+  assert.match(passport?.detail ?? "", /saved trip checklist/i);
+  assert.doesNotMatch(passport?.detail ?? "", /traveller context is saved/i);
+});
+
+test("countdown handles upcoming, missing, invalid, active and ended trips without fake values", () => {
+  assert.equal(tripDepartureCountdown("2026-10-01", "2026-10-06", new Date("2026-09-01T12:00:00")).label, "30 days to go");
+  assert.equal(tripDepartureCountdown("", "", new Date("2026-09-01T12:00:00")).days, null);
+  assert.equal(tripDepartureCountdown("2026-02-31", "2026-03-05", new Date("2026-02-01T12:00:00")).state, "invalid");
+  assert.equal(tripDepartureCountdown("2026-09-01", "2026-09-05", new Date("2026-09-01T08:00:00")).label, "Departure is today.");
+  assert.equal(tripDepartureCountdown("2026-08-31", "", new Date("2026-09-01T08:00:00")).label, "This trip has started.");
+  assert.equal(tripDepartureCountdown("2026-08-31", "2026-09-02", new Date("2026-09-01T08:00:00")).label, "This trip is in progress.");
+  assert.equal(tripDepartureCountdown("2026-08-20", "2026-08-31", new Date("2026-09-01T08:00:00")).label, "This trip has ended.");
 });

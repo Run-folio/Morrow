@@ -1,12 +1,13 @@
-import { accommodationProgress, stayBookingForStop } from "./accommodation.ts";
+import { accommodationDatesReady, accommodationProgress, stayBookingForStop } from "./accommodation.ts";
 import type { BookingReadinessAction } from "./booking-readiness.ts";
 import type { EasyTTrip, TripChecklistItem } from "./trip.ts";
+import { tripLifecycle } from "./trip-lifecycle.ts";
 import type { ReadinessCard, TravelReadinessProfile } from "./travel-readiness.ts";
 import { mapWorkspaceHref } from "./trip-workspace-links.ts";
 
 export type TripPrepTaskStatus = "complete" | "in-progress" | "to-do" | "urgent";
 export type TripPrepTaskCategory = "must" | "good" | "nice";
-export type TripPrepTaskKind = "passport" | "accommodation" | "flight" | "insurance" | "connectivity" | "transport" | "activity" | "checklist";
+export type TripPrepTaskKind = "dates" | "passport" | "accommodation" | "flight" | "insurance" | "connectivity" | "transport" | "activity" | "checklist";
 
 export type TripPrepTask = {
   id: string;
@@ -37,20 +38,18 @@ function checklistStatus(item: TripChecklistItem | undefined): TripPrepTaskStatu
   return item ? (item.complete ? "complete" : "to-do") : undefined;
 }
 
-function daysUntil(startDate: string, now: Date) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return null;
-  const start = new Date(`${startDate}T12:00:00`);
-  if (Number.isNaN(start.getTime())) return null;
-  return Math.ceil((start.getTime() - now.getTime()) / 86_400_000);
-}
-
-export function tripDepartureCountdown(startDate: string, now = new Date()) {
-  const days = daysUntil(startDate, now);
-  if (days === null) return { days: null, label: "Add dates to see your departure countdown." };
-  if (days < 0) return { days, label: "This trip has started." };
-  if (days === 0) return { days, label: "Departure is today." };
-  if (days === 1) return { days, label: "1 day to go" };
-  return { days, label: `${days} days to go` };
+export function tripDepartureCountdown(startDate: string, endDate: string, now = new Date()) {
+  const lifecycle = tripLifecycle(startDate, endDate, now);
+  const days = lifecycle.daysUntilStart;
+  if (lifecycle.state === "unavailable") return { days: null, label: "Add dates to see your trip timeline.", state: lifecycle.state };
+  if (lifecycle.state === "invalid") return { days, label: "Review the trip dates before relying on this timeline.", state: lifecycle.state };
+  if (lifecycle.state === "starts-today") return { days, label: "Departure is today.", state: lifecycle.state };
+  if (lifecycle.state === "started") return { days, label: "This trip has started.", state: lifecycle.state };
+  if (lifecycle.state === "in-progress") return { days, label: "This trip is in progress.", state: lifecycle.state };
+  if (lifecycle.state === "ends-today") return { days, label: "This trip ends today.", state: lifecycle.state };
+  if (lifecycle.state === "ended") return { days, label: "This trip has ended.", state: lifecycle.state };
+  if (days === 1) return { days, label: "1 day to go", state: lifecycle.state };
+  return { days, label: `${days} days to go`, state: lifecycle.state };
 }
 
 function categoryForChecklist(item: TripChecklistItem): TripPrepTaskCategory {
@@ -115,22 +114,45 @@ export function deriveTripPrepTasks({
   const tasks: TripPrepTask[] = [];
   const checklist = trip.brief.checklist ?? [];
   const consumedChecklist = new Set<string>();
-  const departure = daysUntil(trip.startDate, now);
+  const lifecycle = tripLifecycle(trip.startDate, trip.endDate, now);
+  const datesReady = Boolean(lifecycle.start && lifecycle.end && lifecycle.state !== "invalid");
+
+  if (!datesReady) tasks.push({
+    id: "trip-dates",
+    title: "Trip dates",
+    detail: lifecycle.state === "invalid"
+      ? "Review the start and end dates; they need to be valid and in order."
+      : "Add both start and end dates before relying on time-sensitive Prep guidance.",
+    category: "must",
+    status: "to-do",
+    kind: "dates",
+    action: { label: "Review dates", href: `/journey/new?trip=${encodeURIComponent(trip.id)}` },
+  });
 
   const passportChecklist = matchingChecklist(checklist, /passport|visa|entry/i);
   if (passportChecklist) consumedChecklist.add(passportChecklist.id);
   const travellerBasicsReady = Boolean(profile.nationalities.length && profile.residenceCountry);
   const passportReady = Boolean(travellerBasicsReady && profile.passportExpiryMonth);
   const passportStatus = checklistStatus(passportChecklist)
-    ?? (passportReady ? "complete" : travellerBasicsReady ? "in-progress" : departure !== null && departure <= 30 ? "urgent" : "to-do");
+    ?? (passportReady
+      ? "complete"
+      : travellerBasicsReady
+        ? "in-progress"
+        : lifecycle.daysUntilStart !== null && lifecycle.daysUntilStart >= 0 && lifecycle.daysUntilStart <= 30
+          ? "urgent"
+          : "to-do");
   tasks.push({
     id: "traveller-passport",
-    title: "Passport and traveller details",
-    detail: passportReady
-      ? "Traveller context is saved; verify destination rules with the official sources before booking."
-      : travellerBasicsReady
-        ? "Add a passport expiry month to make the existing validity reminder more useful."
-        : "Add nationality and residence for a more useful entry-check starting point.",
+    title: passportChecklist?.label ?? "Passport and traveller details",
+    detail: passportChecklist
+      ? passportChecklist.complete
+        ? "Marked complete on your saved trip checklist. Verify official entry rules before booking."
+        : "Still on your saved trip checklist. Verify official entry rules before booking."
+      : passportReady
+        ? "Traveller context is saved; verify destination rules with the official sources before booking."
+        : travellerBasicsReady
+          ? "Add a passport expiry month to make the existing validity reminder more useful."
+          : "Add nationality and residence for a more useful entry-check starting point.",
     category: "must",
     status: passportStatus,
     kind: "passport",
@@ -141,19 +163,26 @@ export function deriveTripPrepTasks({
   if (stays.stops.length) {
     const accommodationChecklist = matchingChecklist(checklist, /accommodation|hotel|stay/i);
     if (accommodationChecklist) consumedChecklist.add(accommodationChecklist.id);
+    const firstDatesMissing = stays.stops.find((stop) => !accommodationDatesReady(stop));
     const firstMissing = stays.stops.find((stop) => !stayBookingForStop(trip, stop));
     tasks.push({
       id: "accommodation",
       title: "Accommodation",
-      detail: `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stop" : "stops"} sorted.`,
+      detail: firstDatesMissing
+        ? `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stop has" : "stops have"} a saved stay; confirm the missing stop dates.`
+        : `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stop" : "stops"} sorted.`,
       category: "must",
-      status: stays.complete ? "complete" : stays.sortedCount ? "in-progress" : "to-do",
+      status: stays.complete ? "complete" : stays.sortedCount || stays.datesReadyCount ? "in-progress" : "to-do",
       kind: "accommodation",
-      action: firstMissing ? {
-        label: "Find stays",
-        href: mapWorkspaceHref(trip.id, firstMissing.id, "stay"),
-        stopId: firstMissing.id,
-      } : undefined,
+      action: firstDatesMissing
+        ? { label: "Review dates", href: `/journey/new?trip=${encodeURIComponent(trip.id)}` }
+        : firstMissing
+          ? {
+            label: "Find stays",
+            href: mapWorkspaceHref(trip.id, firstMissing.id, "stay"),
+            stopId: firstMissing.id,
+          }
+          : undefined,
     });
   }
 
@@ -219,7 +248,7 @@ export function tripPrepProgress(tasks: TripPrepTask[]) {
     inProgress,
     toDo,
     total: tasks.length,
-    percent: tasks.length ? Math.round((complete / tasks.length) * 100) : 100,
+    percent: tasks.length ? Math.round((complete / tasks.length) * 100) : 0,
   };
 }
 
@@ -227,11 +256,12 @@ export function nextTripPrepTask(tasks: TripPrepTask[]) {
   const rank = (task: TripPrepTask) => {
     if (task.status === "urgent") return 0;
     const category = task.category === "must" ? 0 : task.category === "good" ? 100 : 200;
-    const essentialKind = task.kind === "passport" ? 10
-      : task.kind === "accommodation" ? 20
-        : task.kind === "insurance" ? 30
-          : task.kind === "flight" ? 40
-            : 50;
+    const essentialKind = task.kind === "dates" ? 0
+      : task.kind === "passport" ? 10
+        : task.kind === "accommodation" ? 20
+          : task.kind === "insurance" ? 30
+            : task.kind === "flight" ? 40
+              : 50;
     const state = task.status === "in-progress" ? 0 : 1;
     return category + essentialKind + state;
   };
