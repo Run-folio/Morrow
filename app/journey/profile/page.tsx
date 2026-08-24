@@ -41,6 +41,8 @@ export default async function EasyTProfilePage() {
         <h1>{copy.profileTitle}</h1>
         <p className={styles.profileIntro}>{profileIntro}</p>
         <ProfileForm
+          key={session.user.id}
+          ownerId={session.user.id}
           name={session.user.name || ""}
           email={session.user.email}
           initialLanguage={preferences.language}

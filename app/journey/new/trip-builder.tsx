@@ -41,6 +41,7 @@ import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsF
 import { PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, selectPlaceCandidate, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
+import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 
 /* ---------------------------------------------------------------- data */
 
@@ -265,14 +266,19 @@ export default function TripBuilder() {
 function TripBuilderDocument() {
   const { data: session, isPending: sessionPending, error: sessionError } = authClient.useSession();
   const authenticatedOwnerId = session?.user?.id ?? null;
+  const lastAuthenticatedOwnerIdRef = useRef<string | null>(authenticatedOwnerId);
+  if (authenticatedOwnerId) lastAuthenticatedOwnerIdRef.current = authenticatedOwnerId;
   const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(null);
   const [browserOffline, setBrowserOffline] = useState(false);
   const [browserContextReady, setBrowserContextReady] = useState(false);
   const sessionUnavailable = Boolean(sessionError
     && (typeof (sessionError as { status?: unknown }).status !== "number"
       || (sessionError as { status?: number }).status !== 401));
+  const expiredSessionOwnerId = !sessionPending && !authenticatedOwnerId && !browserOffline
+    ? lastAuthenticatedOwnerIdRef.current
+    : null;
   const activeBrowserOwnerId = ownerIdForBrowserRecovery({
-    authenticatedOwnerId,
+    authenticatedOwnerId: authenticatedOwnerId ?? expiredSessionOwnerId,
     sessionPending,
     browserOffline: browserOffline || sessionUnavailable,
     rememberedOwnerId,
@@ -443,10 +449,14 @@ function TripBuilderDocument() {
   }, [authenticatedOwnerId]);
 
   useEffect(() => {
-    if (session !== null || sessionPending || sessionError || browserOffline) return;
+    if (expiredSessionOwnerId) setCloudAuthInterrupted(true);
+  }, [expiredSessionOwnerId]);
+
+  useEffect(() => {
+    if (session !== null || sessionPending || sessionError || browserOffline || expiredSessionOwnerId) return;
     forgetRememberedOwner();
     setRememberedOwnerId(null);
-  }, [browserOffline, session, sessionError, sessionPending]);
+  }, [browserOffline, expiredSessionOwnerId, session, sessionError, sessionPending]);
 
   useEffect(() => {
     if (sessionPending || !browserContextReady) return;
@@ -544,7 +554,7 @@ function TripBuilderDocument() {
           setTripOwnerId(activeOwnerId);
         }
         try {
-          const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
+          const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(activeBrowserOwnerId)) ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
         } catch { setBudget(defaultTravelProfile.budget); }
         let homeDraft: HomeTripDraft | null = null;
@@ -648,7 +658,7 @@ function TripBuilderDocument() {
           // A route has its own starting level, but an account preference still
           // wins when present so the plan reflects the traveller, not the card.
           try {
-            const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
+            const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(activeBrowserOwnerId)) ?? "null");
             if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); } else setBudget(seed.budget);
             } catch { setBudget(seed.budget); }
           }

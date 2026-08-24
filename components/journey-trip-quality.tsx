@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { reviewTripQuality, type TripQualityMention, type TripQualityStop } from "@/lib/easyt/trip-quality";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import styles from "./journey-trip-quality.module.css";
 
-export function JourneyTripQuality({ origin, originCoordinates, startDate, endDate, stops, mentions, language = "en", onAddMissingPlace, onReviewOrigin, onReviewDates, onReviewTraveller }: {
+export function JourneyTripQuality({ ownerId, origin, originCoordinates, startDate, endDate, stops, mentions, language = "en", onAddMissingPlace, onReviewOrigin, onReviewDates, onReviewTraveller }: {
+  ownerId?: string | null;
   origin?: string;
   originCoordinates?: [number, number];
   startDate?: string;
@@ -22,8 +24,8 @@ export function JourneyTripQuality({ origin, originCoordinates, startDate, endDa
 }) {
   const [profile, setProfile] = useState<TravelReadinessProfile | null>(null);
   useEffect(() => {
-    try { setProfile(JSON.parse(window.localStorage.getItem("easyt-travel-readiness-profile") ?? "null")); } catch { setProfile(null); }
-  }, []);
+    try { setProfile(JSON.parse(window.localStorage.getItem(travelReadinessStorageKey(ownerId)) ?? "null")); } catch { setProfile(null); }
+  }, [ownerId]);
   const checks = useMemo(() => reviewTripQuality({ origin, originCoordinates, startDate, endDate, stops, mentions, travellerReady: Boolean(profile?.nationalities?.length && profile.residenceCountry) }), [origin, originCoordinates, startDate, endDate, stops, mentions, profile]);
   const complete = checks.filter((check) => check.state === "complete").length;
   const copy = language === "es"

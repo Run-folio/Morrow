@@ -1,13 +1,18 @@
 import type { StructuredTripBrief } from "./structured-trip-brief.ts";
 
 export type PlannerShadowMode = "off" | "shadow";
-export type PlannerShadowStatus = "disabled" | "completed" | "unavailable" | "failed" | "invalid-response";
+export type PlannerShadowStatus = "disabled" | "completed" | "unavailable" | "failed" | "provider-failure" | "timeout" | "invalid-response";
 export type PlannerShadowCandidate = { id: string; stopIds: string[]; summary: string };
 export type PlannerShadowInput = { rawTravellerPrompt: string; structuredBrief: StructuredTripBrief; selectedRouteDirection: string; routeCandidates: PlannerShadowCandidate[]; engineFacts: { routeState: "insufficient-data" | "current-order" | "recommendation"; selectedStopIds: string[]; comfortableDays: number; shortfallDays: number; routeConstraintIssueCodes: string[]; scoreExplanation?: string } };
 export type IntentReview = { suggestedBriefCorrections: Array<{ subject: "duration" | "route-order" | "transport" | "place-ambiguity" | "pace" | "booking" | "unknown"; classification: "hard" | "soft"; canonicalPlaceIds: string[]; rationale: string }>; ambiguities: Array<{ canonicalPlaceIds: string[]; question: string }>; candidatePreference?: { candidateId: string; rationale: string }; challenges: Array<{ code: "time" | "transfer" | "constraint" | "uncertainty"; rationale: string }>; liveResearchNeeds: Array<"transport-schedule" | "availability" | "price" | "entry-requirements" | "weather" | "accessibility" | "opening-hours"> };
 export type PlannerShadowResult = { mode: PlannerShadowMode; status: PlannerShadowStatus; review: IntentReview | null };
 export type PlannerReviewProvider = { model: string; review(input: PlannerShadowInput, signal: AbortSignal): Promise<{ review: unknown; usage?: { inputTokens?: number; outputTokens?: number } }> };
 export type PlannerShadowLog = { model: string; mode: PlannerShadowMode; latencyMs: number; usage?: { inputTokens?: number; outputTokens?: number }; status: PlannerShadowStatus };
+
+/** Deliberately carries no provider message into aggregate-safe shadow logs. */
+export class PlannerShadowProviderError extends Error {
+  constructor() { super("Planner shadow provider failed."); this.name = "PlannerShadowProviderError"; }
+}
 
 const subjects = new Set(["duration", "route-order", "transport", "place-ambiguity", "pace", "booking", "unknown"]);
 const classifications = new Set(["hard", "soft"]); const challenges = new Set(["time", "transfer", "constraint", "uncertainty"]); const research = new Set(["transport-schedule", "availability", "price", "entry-requirements", "weather", "accessibility", "opening-hours"]);
@@ -37,6 +42,12 @@ export async function evaluatePlannerShadow(input: PlannerShadowInput, options: 
   if (!options.provider) return { mode: "shadow", status: "unavailable", review: null };
   const startedAt = Date.now(); let status: PlannerShadowStatus = "failed"; let usage: PlannerShadowLog["usage"];
   try { const response = await options.provider.review(input, AbortSignal.timeout(options.timeoutMs ?? 8_000)); usage = response.usage; const review = normalizeIntentReview(response.review, input); status = review ? "completed" : "invalid-response"; return { mode: "shadow", status, review }; }
-  catch { return { mode: "shadow", status, review: null }; }
+  catch (error) {
+    const name = error instanceof Error ? error.name : "";
+    status = name === "TimeoutError" || name === "AbortError"
+      ? "timeout"
+      : error instanceof PlannerShadowProviderError ? "provider-failure" : "failed";
+    return { mode: "shadow", status, review: null };
+  }
   finally { options.log?.({ model: options.provider.model, mode: "shadow", latencyMs: Date.now() - startedAt, usage, status }); }
 }

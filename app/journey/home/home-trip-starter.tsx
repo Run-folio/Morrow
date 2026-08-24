@@ -7,6 +7,7 @@ import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
+import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import { createHomeTripDraft, HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
@@ -59,13 +60,13 @@ export default function HomeTripStarter() {
   useEffect(() => {
     setLanguage(languageFromStorage());
     try {
-      const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
+      const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(session?.user?.id ?? null)) ?? "null");
       setTravelProfile(isTravelProfile(savedProfile) ? savedProfile : null);
     } catch { setTravelProfile(null); }
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
-  }, []);
+  }, [session?.user?.id]);
 
   const markPromptStarted = (inputMethod: "text" | "voice", value: string) => {
     if (promptStartedRef.current || value.trim().length < 3) return;

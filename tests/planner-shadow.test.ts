@@ -3,7 +3,9 @@ import test from "node:test";
 import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
 import { createGroqPlannerReviewProvider } from "../lib/easyt/groq-planner-review.ts";
 import { executePlannerShadowRequest } from "../lib/easyt/planner-shadow-api.ts";
-import { evaluatePlannerShadow, normalizeIntentReview, plannerShadowMode, type PlannerShadowInput } from "../lib/easyt/planner-shadow.ts";
+import { evaluatePlannerShadow, normalizeIntentReview, PlannerShadowProviderError, plannerShadowMode, type PlannerShadowInput } from "../lib/easyt/planner-shadow.ts";
+import { runPlannerShadowAudit } from "../benchmarks/prompt-engine/planner-shadow-audit.ts";
+import { assertReplayFixtureCurrent, runHybridEvaluation } from "../benchmarks/prompt-engine/hybrid-evaluation.ts";
 
 const input = (): PlannerShadowInput => ({
   rawTravellerPrompt: "10 days from Tokyo to Kyoto, with food and no driving.",
@@ -51,6 +53,11 @@ test("API request contract defaults to a deterministic disabled shadow response"
   assert.deepEqual(response, { mode: "off", status: "disabled", review: null });
 });
 
+test("provider failures are classified without exposing provider messages", async () => {
+  const response = await evaluatePlannerShadow(input(), { mode: "shadow", provider: { model: "fixture", review: async () => { throw new PlannerShadowProviderError(); } } });
+  assert.deepEqual(response, { mode: "shadow", status: "provider-failure", review: null });
+});
+
 test("Groq client makes one bounded, schema-constrained fixture request", async () => {
   let calls = 0; let requestBody: Record<string, unknown> | undefined;
   const provider = createGroqPlannerReviewProvider("fixture-key", async (_url, init) => {
@@ -63,4 +70,35 @@ test("Groq client makes one bounded, schema-constrained fixture request", async 
   assert.equal(requestBody?.max_completion_tokens, 700);
   assert.equal((requestBody?.response_format as { type?: string }).type, "json_schema");
   assert.deepEqual(response.usage, { inputTokens: 12, outputTokens: 8 });
+});
+
+test("prompt gauntlet shadow audit stays aggregate-only and bounded", async () => {
+  let calls = 0;
+  const report = await runPlannerShadowAudit({
+    mode: "fixture",
+    provider: {
+      model: "fixture",
+      review: async () => {
+        calls += 1;
+        return { review: { suggestedBriefCorrections: [], ambiguities: [], challenges: [], liveResearchNeeds: [] }, usage: { inputTokens: 10, outputTokens: 5 } };
+      },
+    },
+  });
+  assert.equal(calls, 15);
+  assert.equal(report.caseCount, 15);
+  assert.equal(report.completion.completed, 15);
+  assert.equal(report.tokens.total, 225);
+  assert.equal(JSON.stringify(report).includes("Tokyo"), false);
+  assert.equal(JSON.stringify(report).includes("rawTravellerPrompt"), false);
+});
+
+test("hybrid evaluation replays sanitized fixtures and never uses a live provider", async () => {
+  assertReplayFixtureCurrent();
+  const report = await runHybridEvaluation();
+  assert.equal(report.mode, "replay");
+  assert.equal(report.calls.live, 0);
+  assert.equal(report.calls.replay, 15);
+  assert.equal(report.deterministic.total, 196);
+  assert.equal(report.hybrid.total, 196);
+  assert.equal(report.intentReview.completion.completed, 15);
 });

@@ -12,7 +12,7 @@ export function validPlannerShadowInput(value: unknown): value is PlannerShadowI
 /** Pure request boundary shared by the Next route and fixture tests. */
 export async function executePlannerShadowRequest(
   value: unknown,
-  options: { environment?: { NODE_ENV?: string; MORROVIA_PLANNER_SHADOW_MODE?: string; GROQ_API_KEY?: string }; provider?: PlannerReviewProvider; log?: (event: { model: string; mode: "off" | "shadow"; latencyMs: number; usage?: { inputTokens?: number; outputTokens?: number }; status: "disabled" | "completed" | "unavailable" | "failed" | "invalid-response" }) => void } = {},
+  options: { environment?: { NODE_ENV?: string; MORROVIA_PLANNER_SHADOW_MODE?: string; GROQ_API_KEY?: string }; provider?: PlannerReviewProvider; log?: (event: { model: string; mode: "off" | "shadow"; latencyMs: number; usage?: { inputTokens?: number; outputTokens?: number }; status: "disabled" | "completed" | "unavailable" | "failed" | "provider-failure" | "timeout" | "invalid-response" }) => void } = {},
 ) {
   if (!validPlannerShadowInput(value)) return null;
   const environment = options.environment ?? process.env;

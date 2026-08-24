@@ -1,5 +1,6 @@
 import { captureJourneyBrief } from "../../lib/easyt/journey-capture.ts";
 import { assessRouteIntelligence } from "../../lib/easyt/planner.ts";
+import type { PlannerShadowInput } from "../../lib/easyt/planner-shadow.ts";
 import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief } from "../../lib/easyt/structured-trip-brief.ts";
 import { PROMPT_ENGINE_CASES, PROMPT_ENGINE_DIMENSIONS, type PromptEngineCase, type PromptEngineDimension } from "./fixtures.ts";
 
@@ -23,7 +24,7 @@ export type PromptEngineSummary = {
 const has = <T>(values: readonly T[], value: T) => values.includes(value);
 const score = (ok: boolean) => ok ? 2 : 0;
 
-function routeAssessment(scenario: PromptEngineCase, brief: ReturnType<typeof captureJourneyBrief>["structuredBrief"]) {
+export function routeAssessment(scenario: PromptEngineCase, brief: ReturnType<typeof captureJourneyBrief>["structuredBrief"]) {
   if (!scenario.recordedPlan) return undefined;
   const idsByName = new Map(scenario.recordedPlan.stops.map((stop) => [stop.name.toLocaleLowerCase(), stop.id]));
   const operationalBrief = mergeStructuredTripBrief(brief, {
@@ -40,6 +41,35 @@ function routeAssessment(scenario: PromptEngineCase, brief: ReturnType<typeof ca
     constraints: routeConstraintsFromStructuredTripBrief(operationalBrief),
     scoringPreferences: routeScoringPreferencesFromStructuredBrief(operationalBrief),
   });
+}
+
+/**
+ * Builds an ephemeral, deterministic-only audit input. It is intentionally
+ * separate from TripDocument creation and is never persisted by the harness.
+ */
+export function plannerShadowInputForPromptEngineCase(scenario: PromptEngineCase): PlannerShadowInput {
+  const capture = captureJourneyBrief(scenario.rawPrompt);
+  const brief = capture.structuredBrief;
+  const assessment = routeAssessment(scenario, brief);
+  const candidates = assessment?.route.candidates ?? [];
+  return {
+    rawTravellerPrompt: scenario.rawPrompt,
+    structuredBrief: brief,
+    selectedRouteDirection: assessment?.route.state ?? "insufficient-data",
+    routeCandidates: candidates.map((candidate) => ({
+      id: `candidate-${candidate.metadata.candidateIndex}`,
+      stopIds: candidate.stops.map((stop) => stop.id),
+      summary: candidate.stops.map((stop) => stop.name).join(" → "),
+    })),
+    engineFacts: {
+      routeState: assessment?.route.state ?? "insufficient-data",
+      selectedStopIds: assessment?.route.recommendedStopIds ?? [],
+      comfortableDays: assessment?.comfortableDays ?? 0,
+      shortfallDays: assessment?.shortfallDays ?? 0,
+      routeConstraintIssueCodes: assessment?.route.constraintIssues?.map((issue) => issue.code) ?? [],
+      scoreExplanation: assessment?.route.summary,
+    },
+  };
 }
 
 export function evaluatePromptEngineCase(scenario: PromptEngineCase): PromptEngineResult {

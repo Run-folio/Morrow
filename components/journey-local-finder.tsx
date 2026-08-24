@@ -7,6 +7,8 @@ import { finderMoments, recommendNearbyPlace, type FinderMoment } from "@/lib/ea
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { trackEvent } from "@/lib/analytics";
 import styles from "@/app/journey/journey.module.css";
+import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
+import { authClient } from "@/lib/auth-client";
 
 export type JourneyLocalPlace = { id: string; name: string; address: string; category: string; coordinates: [number, number]; mapsUrl: string; bookingUrl?: string; distanceKm?: number; operational?: boolean; availability?: "available" | "check"; provider?: "booking-demand" | "google-places" | "openstreetmap"; rating?: number; priceLevel?: string; price?: { total: number; currency: string }; cancellation?: string };
 type MealPace = "quick" | "relaxed" | "occasion";
@@ -68,7 +70,9 @@ function inventorySearchPayload(value: unknown) {
   };
 }
 
-export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, staySearch, selectedPlaceId, onPlaceSelect, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void; onRemovePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
+export function JourneyLocalFinder({ ownerId, kind, city, country, dayId, coordinates, staySearch, selectedPlaceId, onPlaceSelect, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { ownerId?: string | null; kind: "restaurant" | "stay"; city: string; country: string; dayId: string; coordinates: [number, number]; staySearch?: StaySearch; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void; onRemovePlace?: (place: { name: string; coordinates: [number, number] }, kind: "restaurant" | "stay") => void }) {
+  const { data: session } = authClient.useSession();
+  const contextOwnerId = session?.user?.id ?? ownerId ?? null;
   // These defaults are the existing “Show best matches” choice. Keeping them
   // selected makes the finder useful immediately; the same controls remain
   // available as optional refinements below.
@@ -97,10 +101,10 @@ export function JourneyLocalFinder({ kind, city, country, dayId, coordinates, st
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
+      const stored = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(contextOwnerId)) ?? "null");
       if (isTravelProfile(stored)) setProfile(stored);
     } catch { /* Finder recommendations stay useful with the default profile. */ }
-  }, []);
+  }, [contextOwnerId]);
 
   useEffect(() => {
     let active = true;

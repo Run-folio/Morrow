@@ -18,7 +18,8 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -32,11 +33,17 @@ import {
   loadTripRecovery,
   markTripRecoveryState,
   promoteTripToEasyT,
+  reconcileTripCloudMutation,
   saveTripToEasyT,
   tripForRecoveryScope,
+  EASYT_LAST_OWNER_KEY,
+  loadRememberedOwner,
 } from "@/lib/easyt/storage";
-import { canPromoteTripForOwner } from "@/lib/easyt/trip-promotion";
-import { tripConflictResolutionActions, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
+import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
+import { journeyReauthenticationPath } from "@/lib/easyt/trip-continuity";
+import { runClientMutation } from "@/lib/easyt/client-mutation";
+import { conflictHasCloudCopy, tripConflictResolutionActions, tripSyncRecoveryPath, type TripSaveConflictReason } from "@/lib/easyt/trip-continuity";
+import type { TripPromotionConflictReason } from "@/lib/easyt/trip-promotion";
 import { classifyAnalyticsSaveError, trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -103,10 +110,15 @@ function trackTripReopened(trip: EasyTTrip) {
 
 export default function DashboardClient({ trips, stamps, ownerId }: { trips: EasyTTrip[]; stamps: StampSummary[]; ownerId: string }) {
   const router = useRouter();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const authenticatedOwnerRef = useRef<string | null>(ownerId);
+  if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
+  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);
   const [view, setView] = useState<TripStatus>(() => trips.some((trip) => trip.status === "draft") ? "draft" : trips.some((trip) => trip.status === "planned") ? "planned" : "archived");
   const [sort, setSort] = useState<SortMode>("updated");
   const [query, setQuery] = useState("");
   const [working, setWorking] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const [gifting, setGifting] = useState<EasyTTrip | null>(null);
   const [giftEmail, setGiftEmail] = useState("");
   const [giftNote, setGiftNote] = useState("");
@@ -119,6 +131,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     kind: "failed" | "conflict" | "auth";
     tripId: string;
     message: string;
+    conflictReason?: TripSaveConflictReason | TripPromotionConflictReason;
   } | null>(null);
   const [syncingLocalTrip, setSyncingLocalTrip] = useState(false);
   const copy = easytCopy[language].dashboard;
@@ -130,18 +143,51 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
   }, []);
 
+  const boundary = ownerBoundaryState({
+    renderedOwnerId: ownerId,
+    sessionOwnerId: session?.user?.id,
+    rememberedOwnerId,
+    sessionPending,
+    previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,
+  });
+
+  useEffect(() => {
+    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    if (boundary === "mismatch") router.refresh();
+  }, [boundary, router]);
+
   const syncLocalTrip = useCallback(async () => {
     const recovery = loadCurrentTripRecovery(ownerId);
     const localTrip = recovery?.trip;
-    if (!localTrip || !canPromoteTripForOwner(localTrip, ownerId)) return;
+    if (!localTrip || (localTrip.ownerId !== null && localTrip.ownerId !== ownerId)) return;
+    if (localTrip.ownerId === null && localTrip.status !== "draft") return;
+    if (recovery.state === "conflict") {
+      setSyncIssue({
+        kind: "conflict",
+        tripId: localTrip.id,
+        conflictReason: recovery.conflictReason,
+        message: recovery.conflictReason === "cloud-deleted"
+          ? "This trip was removed from the cloud. Its pending device edits remain available for recovery."
+          : "This device copy conflicts with a newer cloud revision and was not applied.",
+      });
+      return;
+    }
     const scopedLocalTrip = tripForRecoveryScope(localTrip, recovery);
     if (!scopedLocalTrip) return;
     setSyncIssue(null);
     setSyncingLocalTrip(true);
     try {
-      const result = localTrip.ownerId
-        ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
-        : await promoteTripToEasyT(scopedLocalTrip);
+      const result = localTrip.ownerId === null
+        ? await promoteTripToEasyT(localTrip)
+        : { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const };
       // A successful response is the first safe point at which the cloud form
       // may resolve this exact pending write. A newer recovery remains intact.
       cacheCanonicalTrip(result.trip, recovery);
@@ -160,11 +206,14 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     } catch (error) {
       const conflict = error instanceof EasyTTripPromotionConflictError || error instanceof EasyTTripSaveConflictError;
       const authInterrupted = error instanceof EasyTTripAuthError;
-      if (conflict) cacheCanonicalTrip(error.canonicalTrip);
-      markTripRecoveryState(recovery, authInterrupted ? "auth" : conflict ? "conflict" : "network");
+      const conflictReason = conflict ? error.reason : undefined;
+      if (conflict && conflictReason === "cloud-deleted") reconcileTripCloudMutation(ownerId, localTrip.id, "delete");
+      else if (conflict) cacheCanonicalTrip(error.canonicalTrip);
+      markTripRecoveryState(recovery, authInterrupted ? "auth" : conflict ? "conflict" : "network", conflictReason);
       setSyncIssue({
         kind: authInterrupted ? "auth" : conflict ? "conflict" : "failed",
         tripId: localTrip.id,
+        conflictReason,
         message: authInterrupted
           ? "Your session ended before this device copy could sync."
           : conflict
@@ -202,21 +251,49 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
     setWorking(id);
-    const response = await fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    setWorking(null);
-    if (response.ok) router.refresh();
+    setActionError("");
+    try {
+      const result = await runClientMutation(() => fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      }));
+      if (result.kind === "network") {
+        setActionError("This trip could not be updated. Check your connection and try again.");
+        return;
+      }
+      const response = result.value;
+      if (response.ok) {
+        if (action === "archive" || action === "restore") {
+          const payload = await response.json() as { trip?: EasyTTrip };
+          if (payload.trip) reconcileTripCloudMutation(ownerId, id, action, payload.trip);
+        }
+        router.refresh();
+      }
+      else setActionError(response.status === 401 ? "Your session ended. Sign in again before changing this trip." : "This trip could not be updated. Please try again.");
+    } catch {
+      setActionError("This trip could not be updated. Check your connection and try again.");
+    } finally {
+      setWorking(null);
+    }
   };
 
   const remove = async (id: string) => {
     if (!window.confirm(language === "es" ? "¿Eliminar este viaje guardado?" : "Remove this saved trip?")) return;
     setWorking(id);
-    const response = await fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
-    setWorking(null);
-    if (response.ok) router.refresh();
+    setActionError("");
+    try {
+      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (response.ok) {
+        reconcileTripCloudMutation(ownerId, id, "delete");
+        router.refresh();
+      }
+      else setActionError(response.status === 401 ? "Your session ended. Sign in again before removing this trip." : "This trip could not be removed. Please try again.");
+    } catch {
+      setActionError("This trip could not be removed. Check your connection and try again.");
+    } finally {
+      setWorking(null);
+    }
   };
 
   const openGift = (trip: EasyTTrip) => {
@@ -232,20 +309,25 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     if (!gifting) return;
     setGiftState("sending");
     setGiftError("");
-    const response = await fetch(`/api/easyt/trips/${encodeURIComponent(gifting.id)}/gift`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: giftEmail, note: giftNote }),
-    });
-    const payload = (await response.json()) as { error?: string; claimUrl?: string; delivered?: boolean };
-    if (!response.ok || !payload.claimUrl) {
-      setGiftState("idle");
-      setGiftError(payload.error || (language === "es" ? "No se pudo crear la invitación." : "Unable to create invitation."));
-      return;
+    try {
+      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(gifting.id)}/gift`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: giftEmail, note: giftNote }),
+      });
+      const payload = (await response.json()) as { error?: string; claimUrl?: string; delivered?: boolean };
+      if (!response.ok || !payload.claimUrl) {
+        setGiftError(response.status === 401 ? "Your session ended. Sign in again before sharing this trip." : payload.error || (language === "es" ? "No se pudo crear la invitación." : "Unable to create invitation."));
+        return;
+      }
+      setClaimUrl(payload.claimUrl);
+      setDelivered(Boolean(payload.delivered));
+      setGiftState("complete");
+    } catch {
+      setGiftError(language === "es" ? "Revisa tu conexión e inténtalo de nuevo." : "Check your connection and try again.");
+    } finally {
+      setGiftState((current) => current === "complete" ? current : "idle");
     }
-    setClaimUrl(payload.claimUrl);
-    setDelivered(Boolean(payload.delivered));
-    setGiftState("complete");
   };
 
   const stampSummary = summarizeStampRows(stamps);
@@ -253,18 +335,23 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const wantCount = stampSummary.want;
   const isSpanish = language === "es";
   const conflictActions = syncIssue ? tripConflictResolutionActions(syncIssue.tripId) : null;
+  const cloudConflictAvailable = conflictHasCloudCopy(syncIssue?.conflictReason);
+
+  if (boundary === "mismatch") return <section className={styles.syncNotice} role="status">Account changed. Refreshing your private dashboard…</section>;
+  if (boundary === "expired" || boundary === "signed-out") return <section className={styles.syncNotice} role="alert"><strong>Your session ended</strong><span>Your saved trips are hidden until you sign in again.</span><EasyTLinkButton href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton></section>;
 
   return (
     <>
+      {actionError ? <aside className={styles.syncNotice} role="alert"><AlertTriangle aria-hidden="true" /><span>{actionError}</span>{actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : null}</aside> : null}
       {syncIssue ? <aside className={styles.syncNotice} role="alert">
         <AlertTriangle aria-hidden="true" />
         <div>
-          <strong>{syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}</strong>
+          <strong>{syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.conflictReason === "cloud-deleted" ? (isSpanish ? "El viaje fue eliminado de la nube" : "Trip removed from the cloud") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}</strong>
           <p>{syncIssue.message} {isSpanish ? "La copia de este dispositivo no se ha eliminado." : "The copy on this device has not been removed."}</p>
         </div>
         <span>
           {syncIssue.kind === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void syncLocalTrip()} loading={syncingLocalTrip}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}
-          {syncIssue.kind === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Iniciar sesión de nuevo" : "Sign in again"}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={syncIssue.kind === "conflict" ? conflictActions!.cloudHref : tripSyncRecoveryPath(syncIssue.tripId)}>{syncIssue.kind === "conflict" ? (isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel) : (isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel)}</EasyTLinkButton>}
+          {syncIssue.kind === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Iniciar sesión de nuevo" : "Sign in again"}</EasyTLinkButton> : syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>}
         </span>
       </aside> : null}
       <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>

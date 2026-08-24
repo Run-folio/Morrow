@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarDays, House, Luggage, Map } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
 import {
   cacheCanonicalTrip,
@@ -12,9 +13,12 @@ import {
   loadTripRecovery,
   subscribeToTripStorage,
   type TripRecoveryRecord,
+  EASYT_LAST_OWNER_KEY,
+  loadRememberedOwner,
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
-import { tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
+import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
+import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import styles from "./trip-shell.module.css";
@@ -23,6 +27,11 @@ const TripShellTripContext = createContext<EasyTTrip | null>(null);
 
 export function TripShellTripProvider({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
   const pathname = usePathname();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(null);
+  const authenticatedOwnerRef = useRef<string | null>(cacheTrip ? trip.ownerId : null);
+  if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
+  const [returnTarget, setReturnTarget] = useState(pathname);
   const [activeTrip, setActiveTrip] = useState(trip);
   const [deviceRecovery, setDeviceRecovery] = useState<TripRecoveryRecord | null>(null);
   const [discardFailed, setDiscardFailed] = useState(false);
@@ -38,6 +47,31 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     && deviceRecovery.ownerId === trip.ownerId
     ? deviceRecovery
     : null;
+
+  useEffect(() => {
+    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner();
+    };
+    refreshOwner();
+    setReturnTarget(`${window.location.pathname}${window.location.search}${window.location.hash}`);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [pathname]);
+
+  const ownerBoundary = cacheTrip && trip.ownerId
+    ? ownerBoundaryState({
+        renderedOwnerId: trip.ownerId,
+        sessionOwnerId: session?.user?.id,
+        rememberedOwnerId,
+        sessionPending,
+        previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,
+      })
+    : "current";
+
+  useEffect(() => {
+    if (ownerBoundary === "mismatch") window.location.reload();
+  }, [ownerBoundary]);
 
   useEffect(() => {
     setActiveTrip(trip);
@@ -107,8 +141,21 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     setDiscardFailed(true);
   };
 
+  if (ownerBoundary === "mismatch") {
+    return <section className={styles.resolving} role="status">Account changed. Opening the current account’s trip context…</section>;
+  }
+
   return (
     <>
+      {ownerBoundary === "expired" || ownerBoundary === "signed-out" ? (
+        <div className={styles.content}>
+          <aside className={styles.syncNotice} role="alert">
+            <strong>Your session ended</strong>
+            <span>This trip remains visible and unchanged. Sign in before editing or syncing it.</span>
+            <EasyTLinkButton size="small" href={journeyReauthenticationPath(returnTarget)}>Sign in and return here</EasyTLinkButton>
+          </aside>
+        </div>
+      ) : null}
       {visibleDeviceRecovery ? (
         <div className={styles.content}>
           <aside className={styles.syncNotice} role="alert">

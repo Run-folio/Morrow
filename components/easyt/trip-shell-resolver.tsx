@@ -76,7 +76,7 @@ export default function TripShellResolver({
     try {
       const result = localTrip.ownerId
         ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
-        : await promoteTripToEasyT(scopedLocalTrip);
+        : await promoteTripToEasyT(localTrip);
       const cached = cacheCanonicalTrip(result.trip, recovery);
       const remainingRecovery = loadTripRecovery(tripId, ownerId);
       if (!responseIsCurrent()) return;

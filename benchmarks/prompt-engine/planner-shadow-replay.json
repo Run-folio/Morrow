@@ -1,0 +1,23 @@
+{
+  "kind": "morrovia-planner-shadow-replay-v1",
+  "model": "openai/gpt-oss-120b",
+  "schemaVersion": "morrovia_intent_review/v1",
+  "promptVersion": "advisory-critic/v1",
+  "cases": {
+    "japan-explicit-constraints": { "promptHash": "6815c1ef69536fcc", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "patagonia-regions-unknown-bases": { "promptHash": "3e270171430f8dff", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose a routable base before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "unknown-place-remains-unknown": { "promptHash": "323902e1db4a0221", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Clarify the unresolved place before routing." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "georgia-ambiguity": { "promptHash": "fd3f5e1a6836acee", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Clarify the destination identity before routing." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "peru-anchor-and-region": { "promptHash": "eaa8d64697a8114b", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose a routable base before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "italy-exclusion": { "promptHash": "d87418e5d1c9a3ad", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose a routable base before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "alias-deduplication": { "promptHash": "d4655e62450d3d41", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose a routable base before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "french-alps-nesting": { "promptHash": "458edb866a61ae5d", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose a routable base before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "southeast-asia-fixed-anchor": { "promptHash": "e5de566087d053aa", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "maximum-stops-conflict": { "promptHash": "18dd8e32c1ad7f81", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "minimal-intent-unknowns": { "promptHash": "63203dcf5d56acc0", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose routable bases before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "budget-question-is-not-budget": { "promptHash": "4f31d530f11cabe5", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "caucasus-context-resolves-georgia": { "promptHash": "40dd8eea25281cb3", "review": { "suggestedBriefCorrections": [], "ambiguities": [{ "canonicalPlaceIds": [], "question": "Choose routable bases before comparing the route." }], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "short-italy-time-realism": { "promptHash": "886261c6d353a011", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } },
+    "spanish-aliases-and-origin": { "promptHash": "63c501240631ccea", "review": { "suggestedBriefCorrections": [], "ambiguities": [], "challenges": [], "liveResearchNeeds": [] }, "trace": { "turns": 1, "requestCount": 1 } }
+  }
+}

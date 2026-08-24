@@ -7,3 +7,9 @@ Each case records hard facts, acceptable variation, prohibited outcomes, expecte
 Scores are 0 or 2 for each of seven dimensions: intent, constraints, route, time realism, state preservation, uncertainty and explanation. The 15-case baseline is 196/210. `baseline.json` is a regression contract, not a target to edit when behavior changes.
 
 Run `npm run benchmark:prompt-engine` for the score and dimension deltas, or `npm run test:prompt-engine` in CI. Add new entries to `fixtures.ts`; no harness rewrite is needed as the suite grows toward 40–60 cases. Keep subjective judgment in `reviewNotes` and deterministic facts in the machine-checked fields.
+
+## Hybrid evaluation
+
+`npm run benchmark:hybrid` is replay-only by default: it compares deterministic, deterministic-plus-intent-review, and an evaluation-only hybrid projection across the same cards without a network call. The replay fixture stores prompt hashes, model/schema/prompt versions, and sanitized structural responses only; drift fails until an explicitly approved record run replaces it.
+
+Live is opt-in (`MORROVIA_HYBRID_EVAL_MODE=live`) and uses the bounded suite only for intentional prompt/model changes. `MORROVIA_HYBRID_EVAL_SMOKE=yes` limits it to one case. A second live run requires both `MORROVIA_HYBRID_EVAL_RUNS=2` and `MORROVIA_HYBRID_EVAL_MEASURE_NONDETERMINISM=yes`. Record mode additionally requires `MORROVIA_HYBRID_EVAL_RECORD_APPROVED=yes`.

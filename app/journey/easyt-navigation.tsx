@@ -39,14 +39,15 @@ export default function EasyTNavigation({
   storageOwnerId,
 }: EasyTNavigationProps) {
   const router = useRouter();
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   const [language, setLanguage] = useState<Language>("en");
   const [isAdmin, setIsAdmin] = useState(false);
-  const activeAccount =
-    account ||
-    (session?.user
+  const [signOutBusy, setSignOutBusy] = useState(false);
+  const activeAccount = sessionPending
+    ? account
+    : session?.user
       ? { id: session.user.id, name: session.user.name, email: session.user.email }
-      : undefined);
+      : undefined;
 
   useEffect(() => {
     if (account?.language) {
@@ -105,11 +106,15 @@ export default function EasyTNavigation({
   const signOut = async () => {
     // Remove the offline address hint before the session is cleared so a cold
     // signed-out shell cannot reopen the previous account's local documents.
+    setSignOutBusy(true);
     forgetRememberedOwner();
-    await authClient.signOut();
-    resetAnalyticsIdentity();
-    router.push("/journey/login");
-    router.refresh();
+    try {
+      await authClient.signOut();
+      resetAnalyticsIdentity();
+    } finally {
+      setSignOutBusy(false);
+      window.location.assign("/journey/login");
+    }
   };
 
   const beginNewTrip = (event: ReactMouseEvent<HTMLAnchorElement>) => {
@@ -169,7 +174,7 @@ export default function EasyTNavigation({
             <Link className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
             <Link className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy"><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
             {isAdmin && <Link className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin"><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
-            <button type="button" onClick={signOut}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
+            <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
           </div>
         </details> : <Link href="/journey/dashboard">{language === "es" ? "Iniciar sesión" : "Sign in"}</Link>}
         <label className={styles.landingLanguage}>
@@ -195,7 +200,7 @@ export default function EasyTNavigation({
             {activeAccount ? <>
               <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
               <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
-              <button type="button" onClick={signOut}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
+              <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
             </> : <Link href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{language === "es" ? "Iniciar sesión" : "Sign in"}</span></Link>}
             <label className={styles.compactLanguage}>
               <Languages aria-hidden="true" />

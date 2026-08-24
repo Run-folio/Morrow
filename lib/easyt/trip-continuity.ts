@@ -40,6 +40,18 @@ export function tripSyncSignInPath(tripId: string) {
   return `/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(tripId))}`;
 }
 
+export function safeJourneyReturnTarget(target: string | null | undefined) {
+  return target?.startsWith("/journey/") ? target : "/journey/dashboard";
+}
+
+export function journeyReauthenticationPath(target: string | null | undefined) {
+  return `/journey/login?next=${encodeURIComponent(safeJourneyReturnTarget(target))}`;
+}
+
+export function conflictHasCloudCopy(reason: TripSaveConflictReason | "cloud-newer" | "cloud-different" | undefined) {
+  return reason !== "cloud-deleted";
+}
+
 /** Shared conflict actions keep the cloud and device destinations distinct. */
 export function tripConflictResolutionActions(tripId: string) {
   return {

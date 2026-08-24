@@ -46,8 +46,7 @@ import {
   type TravelReadinessProfile,
 } from "@/lib/easyt/travel-readiness";
 import styles from "./trip-prep-workspace.module.css";
-
-const profileStorageKey = "easyt-travel-readiness-profile";
+import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 
 type Props = {
   trip: EasyTTrip;
@@ -104,6 +103,7 @@ function tripMentions(trip: EasyTTrip) {
 function DetailedPrep({ trip, language, onProfileSaved }: { trip: EasyTTrip; language: "en" | "es"; onProfileSaved?: (profile: TravelReadinessProfile) => void }) {
   return <>
     <JourneyTripQuality
+      ownerId={trip.ownerId}
       origin={trip.brief.origin}
       originCoordinates={trip.brief.originCoordinates}
       startDate={trip.startDate}
@@ -114,7 +114,7 @@ function DetailedPrep({ trip, language, onProfileSaved }: { trip: EasyTTrip; lan
     />
     <JourneyTripPrepAccommodation trip={trip} />
     <JourneyBookingReadiness trip={trip} language={language} excludeCategories={["accommodation"]} />
-    <JourneyTripReadiness countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} language={language} hideConnectivity onProfileSaved={onProfileSaved} />
+    <JourneyTripReadiness ownerId={trip.ownerId} countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} language={language} hideConnectivity onProfileSaved={onProfileSaved} />
   </>;
 }
 
@@ -201,14 +201,14 @@ export default function TripPrepWorkspace({
   useEffect(() => {
     if (initialProfile) return;
     try {
-      const stored = JSON.parse(window.localStorage.getItem(profileStorageKey) ?? "null") as Partial<TravelReadinessProfile> | null;
+      const stored = JSON.parse(window.localStorage.getItem(travelReadinessStorageKey(trip.ownerId)) ?? "null") as Partial<TravelReadinessProfile> | null;
       if (stored && Array.isArray(stored.nationalities)) setProfile({
         nationalities: stored.nationalities.filter((country): country is string => typeof country === "string"),
         residenceCountry: typeof stored.residenceCountry === "string" ? stored.residenceCountry : "",
         passportExpiryMonth: typeof stored.passportExpiryMonth === "string" ? stored.passportExpiryMonth : "",
       });
     } catch { /* Use the existing privacy-safe empty profile. */ }
-  }, [initialProfile]);
+  }, [initialProfile, trip.ownerId]);
 
   useEffect(() => {
     if (presentation === "legacy" || initialActions !== undefined || initialProviderStatus !== undefined) return;

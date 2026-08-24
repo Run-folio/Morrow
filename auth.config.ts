@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
-import { getEasyTAuthSecret } from "@/lib/easyt/auth-environment";
+import { getEasyTAuthSecret, isEasyTEmailVerificationRequired } from "@/lib/easyt/auth-environment";
 import { passwordResetEmail, sendEasyTEmail, verificationEmail } from "@/lib/easyt/email";
 
 const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -14,7 +14,7 @@ function createAuth(databaseUrl: string, secret: string) {
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
-      requireEmailVerification: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
+      requireEmailVerification: isEasyTEmailVerificationRequired(),
       sendResetPassword: async ({ user, token }) => {
         // Better Auth's generated URL targets the API endpoint directly. Send
         // travellers to Morrovia's reset form instead, which then submits the
@@ -31,11 +31,11 @@ function createAuth(databaseUrl: string, secret: string) {
       sendVerificationEmail: async ({ user, url }) => {
         await sendEasyTEmail({ to: user.email, ...verificationEmail(url) });
       },
-      sendOnSignUp: true,
+      sendOnSignUp: isEasyTEmailVerificationRequired(),
       // Existing accounts created before email delivery was configured need a
       // way to recover without a separate support flow. A blocked sign-in
       // sends a fresh one-time verification link.
-      sendOnSignIn: true,
+      sendOnSignIn: isEasyTEmailVerificationRequired(),
       autoSignInAfterVerification: true,
     },
     socialProviders: googleEnabled ? {

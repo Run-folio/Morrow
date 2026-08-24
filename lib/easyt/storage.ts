@@ -26,6 +26,7 @@ export const EASYT_LAST_OWNER_KEY = "easyt:last-owner:v1";
 const LEGACY_JOURNEY_PLAN_KEY = "journey:planned-trip";
 
 export type TripRecoveryState = "pending" | "network" | "auth" | "conflict";
+export type TripRecoveryConflictReason = TripSaveConflictReason | TripPromotionConflictReason;
 
 export type EasyTBrowserStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
 
@@ -35,6 +36,7 @@ export type TripRecoveryRecord = {
   tripId: string;
   trip: EasyTTrip;
   state: TripRecoveryState;
+  conflictReason?: TripRecoveryConflictReason;
   writeId: string;
   savedAt: string;
 };
@@ -278,6 +280,11 @@ function isTripRecoveryRecord(value: unknown): value is TripRecoveryRecord {
     && typeof record.writeId === "string"
     && typeof record.savedAt === "string"
     && (record.state === "pending" || record.state === "network" || record.state === "auth" || record.state === "conflict")
+    && (record.conflictReason === undefined
+      || record.conflictReason === "cloud-changed"
+      || record.conflictReason === "cloud-newer"
+      || record.conflictReason === "cloud-different"
+      || record.conflictReason === "cloud-deleted")
     && isEasyTTrip(record.trip)
     && record.trip.id === record.tripId
     && recoveryScopeAcceptsTrip(record.ownerId, record.trip);
@@ -533,11 +540,44 @@ export function markTripRecoveryStateInStorage(
   storage: EasyTBrowserStorage,
   handle: TripRecoveryHandle,
   state: TripRecoveryState,
+  conflictReason?: TripRecoveryConflictReason,
 ) {
   const current = loadTripRecoveryFromStorage(storage, handle.tripId, handle.ownerId);
   if (!current || current.writeId !== handle.writeId) return false;
   const key = recoveryRecordKey(storage, handle);
-  return key ? safeSet(storage, key, JSON.stringify({ ...current, state })) : false;
+  return key ? safeSet(storage, key, JSON.stringify({
+    ...current,
+    state,
+    conflictReason: state === "conflict" ? conflictReason : undefined,
+  })) : false;
+}
+
+export type TripCloudMutation = "archive" | "restore" | "delete";
+
+/** Keep the clean cache aligned with dashboard mutations without consuming pending edits. */
+export function reconcileTripCloudMutationInStorage(
+  storage: EasyTBrowserStorage,
+  ownerId: string,
+  tripId: string,
+  mutation: TripCloudMutation,
+  canonicalTrip?: EasyTTrip,
+) {
+  const recovery = loadTripRecoveryFromStorage(storage, tripId, ownerId);
+  if (mutation === "delete") {
+    const cacheRemoved = safeRemove(storage, tripCacheStorageKey(ownerId, tripId));
+    if (recovery) markTripRecoveryStateInStorage(storage, recovery, "conflict", "cloud-deleted");
+    if (loadCurrentTripIdFromStorage(storage, ownerId) === tripId && !recovery) {
+      safeRemove(storage, currentTripStorageKey(ownerId));
+    }
+    return { cacheUpdated: cacheRemoved, recoveryQuarantined: Boolean(recovery) };
+  }
+  if (!canonicalTrip || canonicalTrip.id !== tripId || canonicalTrip.ownerId !== ownerId) {
+    return { cacheUpdated: false, recoveryQuarantined: false };
+  }
+  const shouldCacheCanonical = Boolean(loadCachedTripFromStorage(storage, tripId, ownerId) || recovery);
+  const cacheUpdated = shouldCacheCanonical ? cacheCanonicalTripToStorage(storage, canonicalTrip) : false;
+  if (recovery) markTripRecoveryStateInStorage(storage, recovery, "conflict", "cloud-changed");
+  return { cacheUpdated, recoveryQuarantined: Boolean(recovery) };
 }
 
 /** Remove only the recovery version acknowledged by a successful cloud save. */
@@ -785,12 +825,22 @@ export function saveActiveTrip(trip: EasyTTrip) {
   return saveTripRecovery(trip);
 }
 
-export function markTripRecoveryState(handle: TripRecoveryHandle, state: TripRecoveryState) {
+export function markTripRecoveryState(handle: TripRecoveryHandle, state: TripRecoveryState, conflictReason?: TripRecoveryConflictReason) {
   const storage = browserStorage();
   if (!storage) return false;
-  const marked = markTripRecoveryStateInStorage(storage, handle, state);
+  const marked = markTripRecoveryStateInStorage(storage, handle, state, conflictReason);
   if (marked) dispatchTripStorageChange({ kind: "recovery", ownerId: handle.ownerId, tripId: handle.tripId });
   return marked;
+}
+
+export function reconcileTripCloudMutation(ownerId: string, tripId: string, mutation: TripCloudMutation, canonicalTrip?: EasyTTrip) {
+  const storage = browserStorage();
+  if (!storage) return { cacheUpdated: false, recoveryQuarantined: false };
+  const result = reconcileTripCloudMutationInStorage(storage, ownerId, tripId, mutation, canonicalTrip);
+  if (result.cacheUpdated) dispatchTripStorageChange({ kind: "cache", ownerId, tripId });
+  else if (mutation === "delete") dispatchTripStorageChange({ kind: "current-cleared", ownerId, tripId });
+  if (result.recoveryQuarantined) dispatchTripStorageChange({ kind: "recovery", ownerId, tripId });
+  return result;
 }
 
 export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecoveryHandle) {
@@ -841,10 +891,6 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
       payload.conflictReason,
     );
   }
-  // An owned device copy may outlive a failed initial sync. A genuinely
-  // missing row can safely retry through the existing insert-only boundary;
-  // deleted and changed rows return 409 above and are never recreated here.
-  if (response.status === 404) return (await promoteTripToEasyT(trip, request)).trip;
   if (!response.ok) {
     throw new Error(payload?.error || "Morrovia cloud save failed.");
   }
@@ -859,6 +905,10 @@ export async function saveTripRecoveryToEasyT(
 ) {
   const scopedTrip = tripForRecoveryScope(trip, recovery);
   if (!scopedTrip) throw new Error("Trip recovery ownership mismatch.");
+  if (trip.ownerId === null) {
+    if (trip.status !== "draft") throw new Error("Only an ownerless draft can be promoted.");
+    return (await promoteTripToEasyT(trip, request)).trip;
+  }
   return saveTripToEasyT(scopedTrip, request);
 }
 
@@ -881,6 +931,9 @@ export class EasyTTripPromotionConflictError extends Error {
 
 /** Insert-only local-to-cloud boundary. Existing cloud state is never updated. */
 export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch = fetch): Promise<EasyTTripPromotion> {
+  if (trip.ownerId !== null || trip.status !== "draft") {
+    throw new Error("Only an ownerless draft can be promoted.");
+  }
   const response = await requestTripPromotion(trip, request);
   const payload = await response.json().catch(() => null) as {
     trip?: unknown;

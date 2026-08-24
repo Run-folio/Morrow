@@ -290,7 +290,7 @@ test("cold offline owner selection reopens only the last verified account and A 
   const ownerBoundBody = tripForRecoveryScope(ownerATrip, ownerARecovery.handle);
   assert.equal(ownerBoundBody?.ownerId, "owner-a");
   assert.equal(canPromoteTripForOwner(ownerBoundBody!, "owner-b"), false);
-  assert.equal(canPromoteTripForOwner(ownerBoundBody!, "owner-a"), true);
+  assert.equal(canPromoteTripForOwner(ownerBoundBody!, "owner-a"), false, "owner binding routes this recovery through revision-aware save, never promotion");
   assert.equal(canUseHydratedTripScope(ownerARecovery.handle.ownerId, "owner-b"), false);
 
   assert.equal(forgetRememberedOwnerInStorage(storage), true);
@@ -312,7 +312,7 @@ test("an owner-scoped unclaimed recovery is owner-bound before any network reque
 
   await assert.rejects(() => saveTripRecoveryToEasyT(trip, handle, request), /ownership mismatch/i);
   assert.ok(requestedBody);
-  assert.equal((requestedBody as EasyTTrip).ownerId, "owner-a");
+  assert.equal((requestedBody as EasyTTrip).ownerId, null, "promotion keeps an ownerless draft ownerless until the repository claims it");
   assert.equal(trip.ownerId, null, "binding must not mutate the recovery body");
 });
 

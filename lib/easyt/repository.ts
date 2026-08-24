@@ -616,7 +616,7 @@ export async function promoteTripForOwner(
 
 export async function archiveTripForOwner(ownerId: string, tripId: string) {
   const sql = getEasyTDatabase();
-  await sql`
+  const rows = (await sql`
     update easyt_trips
     set status = 'archived', updated_at = now(),
       document = jsonb_set(
@@ -624,12 +624,14 @@ export async function archiveTripForOwner(ownerId: string, tripId: string) {
         '{updatedAt}', to_jsonb(now()::text), true
       )
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
-  `;
+    returning document
+  `) as TripDocumentRow[];
+  return rows[0] && isEasyTTrip(rows[0].document) ? rows[0].document : null;
 }
 
 export async function restoreTripForOwner(ownerId: string, tripId: string) {
   const sql = getEasyTDatabase();
-  await sql`
+  const rows = (await sql`
     update easyt_trips
     set status = 'draft', updated_at = now(),
       document = jsonb_set(
@@ -637,7 +639,9 @@ export async function restoreTripForOwner(ownerId: string, tripId: string) {
         '{updatedAt}', to_jsonb(now()::text), true
       )
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
-  `;
+    returning document
+  `) as TripDocumentRow[];
+  return rows[0] && isEasyTTrip(rows[0].document) ? rows[0].document : null;
 }
 
 export async function duplicateTripForOwner(

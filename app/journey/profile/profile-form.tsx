@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { BedDouble, Coffee, Footprints, Gem, Landmark, Luggage, Sparkles, Sun, Trees, Wallet, Zap } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import {
   EasyTButton,
   EasyTField,
+  EasyTLinkButton,
 } from "@/components/easyt/easyt-controls";
 import styles from "../account.module.css";
 import { easytCopy } from "@/lib/easyt/i18n";
 import { type TravelProfile } from "@/lib/easyt/travel-profile";
 import { type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import { ownerBoundaryState, travelProfileStorageKey, travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
+import { EASYT_LAST_OWNER_KEY, loadRememberedOwner } from "@/lib/easyt/storage";
+import { journeyReauthenticationPath } from "@/lib/easyt/trip-continuity";
 
 const paceOptions = [
   { value: "slow", label: "Slow", detail: "One good thing at a time", icon: Sun },
@@ -44,18 +48,24 @@ const rangeProgress = (index: number) => ({
 }) as CSSProperties;
 
 export default function ProfileForm({
+  ownerId,
   name: initialName,
   email,
   initialLanguage,
   initialTravelProfile,
   initialTravelReadinessProfile,
 }: {
+  ownerId: string;
   name: string;
   email: string;
   initialLanguage: "en" | "es";
   initialTravelProfile: TravelProfile;
   initialTravelReadinessProfile: TravelReadinessProfile;
 }) {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const authenticatedOwnerRef = useRef<string | null>(ownerId);
+  if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
+  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);
   const [name, setName] = useState(initialName);
   const [language, setLanguage] = useState(initialLanguage);
   const [accountMessage, setAccountMessage] = useState<SaveMessage | null>(null);
@@ -131,6 +141,17 @@ export default function ProfileForm({
     setTravelMessage(null);
   }, [nationalitiesInput, travelProfile, travelReadinessProfile]);
 
+  const boundary = ownerBoundaryState({ renderedOwnerId: ownerId, sessionOwnerId: session?.user?.id, rememberedOwnerId, sessionPending, previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current });
+  useEffect(() => {
+    const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const onStorage = (event: StorageEvent) => { if (event.key === EASYT_LAST_OWNER_KEY) refreshOwner(); };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  useEffect(() => {
+    if (boundary === "mismatch") window.location.reload();
+  }, [boundary]);
+
   const save = async (event: FormEvent) => {
     event.preventDefault();
     setAccountSaving(true);
@@ -158,8 +179,8 @@ export default function ProfileForm({
         body: JSON.stringify({ language, travelProfile, travelReadinessProfile }),
       });
       if (response.ok) {
-        window.localStorage.setItem("easyt-travel-profile", JSON.stringify(travelProfile));
-        window.localStorage.setItem("easyt-travel-readiness-profile", JSON.stringify(travelReadinessProfile));
+        window.localStorage.setItem(travelProfileStorageKey(ownerId), JSON.stringify(travelProfile));
+        window.localStorage.setItem(travelReadinessStorageKey(ownerId), JSON.stringify(travelReadinessProfile));
       }
       setTravelMessage({
         text: response.ok ? messages.preferencesSaved : messages.preferencesError,
@@ -171,6 +192,9 @@ export default function ProfileForm({
       setTravelSaving(false);
     }
   };
+
+  if (boundary === "mismatch") return <section className={styles.profileCard} role="status">Account changed. Refreshing your private profile…</section>;
+  if (boundary === "expired" || boundary === "signed-out") return <section className={styles.profileCard} role="alert"><h2>Your session ended</h2><p>Your private profile is hidden until you sign in again.</p><EasyTLinkButton href={journeyReauthenticationPath("/journey/profile")}>Sign in again</EasyTLinkButton></section>;
 
   return (
     <div className={styles.profileGrid}>

@@ -13,6 +13,7 @@ export default function LoginForm({
   callbackURL,
   googleEnabled,
   configured,
+  emailVerificationRequired,
   showSetupNotice,
   initialMode,
   initialEmail,
@@ -22,6 +23,7 @@ export default function LoginForm({
   callbackURL: string;
   googleEnabled: boolean;
   configured: boolean;
+  emailVerificationRequired: boolean;
   showSetupNotice: boolean;
   initialMode?: "sign-in" | "sign-up";
   initialEmail?: string;
@@ -52,7 +54,7 @@ export default function LoginForm({
         setError(message.toLowerCase().includes("email not verified")
           ? "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again."
           : genericError);
-      } else if (mode === "sign-up") {
+      } else if (mode === "sign-up" && emailVerificationRequired) {
         window.location.assign(`/journey/login?next=${encodeURIComponent(callbackURL)}&email=${encodeURIComponent(submittedEmail)}&sent=1`);
       } else {
         window.location.assign(callbackURL);

@@ -5,9 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { defaultTravelReadinessProfile, type ReadinessCard, type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { trackEvent } from "@/lib/analytics";
+import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import styles from "./journey-trip-readiness.module.css";
-
-const profileStorageKey = "easyt-travel-readiness-profile";
 
 const iconFor = (id: ReadinessCard["id"]) => ({
   entry: FileCheck2,
@@ -19,12 +18,14 @@ const iconFor = (id: ReadinessCard["id"]) => ({
 })[id];
 
 export function JourneyTripReadiness({
+  ownerId,
   countries,
   startDate,
   language = "en",
   hideConnectivity = false,
   onProfileSaved,
 }: {
+  ownerId?: string | null;
   countries: string[];
   startDate?: string;
   language?: "en" | "es";
@@ -42,14 +43,14 @@ export function JourneyTripReadiness({
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(window.localStorage.getItem(profileStorageKey) ?? "null") as Partial<TravelReadinessProfile> | null;
+      const saved = JSON.parse(window.localStorage.getItem(travelReadinessStorageKey(ownerId)) ?? "null") as Partial<TravelReadinessProfile> | null;
       if (saved && Array.isArray(saved.nationalities)) setProfile({
         nationalities: saved.nationalities.filter((country): country is string => typeof country === "string"),
         residenceCountry: typeof saved.residenceCountry === "string" ? saved.residenceCountry : "",
         passportExpiryMonth: typeof saved.passportExpiryMonth === "string" ? saved.passportExpiryMonth : "",
       });
     } catch { /* Start with the privacy-safe empty profile. */ }
-  }, []);
+  }, [ownerId]);
 
   useEffect(() => {
     if (!destinations.length) { setCards([]); return; }
@@ -66,7 +67,7 @@ export function JourneyTripReadiness({
   }, [destinations, profile, startDate]);
 
   const saveProfile = () => {
-    window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
+    window.localStorage.setItem(travelReadinessStorageKey(ownerId), JSON.stringify(profile));
     onProfileSaved?.(profile);
   };
 

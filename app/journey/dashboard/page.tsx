@@ -50,7 +50,7 @@ export default async function EasyTDashboardPage() {
             </p>
           </div>
         </div>
-        <DashboardClient trips={trips} stamps={stamps} ownerId={session.user.id} />
+        <DashboardClient key={session.user.id} trips={trips} stamps={stamps} ownerId={session.user.id} />
       </section>
     </main>
   );

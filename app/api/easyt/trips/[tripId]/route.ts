@@ -70,12 +70,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     };
 
     if (body.action === "archive") {
-      await archiveTripForOwner(owner.id, tripId);
-      return NextResponse.json({ ok: true });
+      const trip = await archiveTripForOwner(owner.id, tripId);
+      return trip ? NextResponse.json({ ok: true, trip }) : NextResponse.json({ error: "Trip not found." }, { status: 404 });
     }
     if (body.action === "restore") {
-      await restoreTripForOwner(owner.id, tripId);
-      return NextResponse.json({ ok: true });
+      const trip = await restoreTripForOwner(owner.id, tripId);
+      return trip ? NextResponse.json({ ok: true, trip }) : NextResponse.json({ error: "Trip not found." }, { status: 404 });
     }
     if (body.action === "duplicate") {
       const trip = await duplicateTripForOwner(owner.id, tripId);

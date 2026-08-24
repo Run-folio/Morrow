@@ -9,12 +9,12 @@ export type ExistingTripPromotionDecision =
   | { outcome: "already-canonical" }
   | { outcome: "conflict"; conflictReason: TripPromotionConflictReason };
 
-/** An unclaimed browser draft may be claimed; an owned draft may only return to its owner. */
+/** Promotion is the insert-only claim boundary, exclusively for ownerless drafts. */
 export function canPromoteTripForOwner(
-  trip: Pick<EasyTTrip, "ownerId">,
-  ownerId: string,
+  trip: Pick<EasyTTrip, "ownerId" | "status">,
+  _ownerId: string,
 ) {
-  return !trip.ownerId || trip.ownerId === ownerId;
+  return trip.ownerId === null && trip.status === "draft";
 }
 
 export function requestTripPromotion(

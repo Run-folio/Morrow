@@ -7,6 +7,7 @@ const meta = {
   title: "Pages/Profile",
   component: ProfileForm,
   args: {
+    ownerId: "storybook-owner",
     name: "Sam Rivera",
     email: "traveller@example.com",
     initialLanguage: "en",

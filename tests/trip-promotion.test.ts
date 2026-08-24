@@ -137,10 +137,11 @@ test("promotion and JSON persistence preserve place intelligence while remapping
   );
 });
 
-test("promotion accepts an unclaimed or same-owner local trip and rejects another owner", () => {
+test("promotion accepts only an ownerless draft", () => {
   assert.equal(canPromoteTripForOwner(localTrip(), "owner-a"), true);
-  assert.equal(canPromoteTripForOwner(localTrip({ ownerId: "owner-a" }), "owner-a"), true);
+  assert.equal(canPromoteTripForOwner(localTrip({ ownerId: "owner-a" }), "owner-a"), false);
   assert.equal(canPromoteTripForOwner(localTrip({ ownerId: "owner-b" }), "owner-a"), false);
+  assert.equal(canPromoteTripForOwner(localTrip({ status: "planned" }), "owner-a"), false);
 });
 
 test("stale local state is classified as a newer-cloud conflict", () => {

@@ -5,3 +5,7 @@ export function getEasyTAuthSecret() {
 export function isEasyTAuthConfigured() {
   return Boolean(process.env.DATABASE_URL && getEasyTAuthSecret());
 }
+
+export function isEasyTEmailVerificationRequired() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+}
