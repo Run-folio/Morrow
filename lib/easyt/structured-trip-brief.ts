@@ -309,6 +309,7 @@ export function extractStructuredTripBrief(
   parserVersion?: string,
   suppliedPlaceIntelligence?: PlaceIntelligenceResult,
 ): StructuredTripBrief {
+  const sourcePrompt = prompt;
   const rawPrompt = prompt.trim();
   // Capture may supply this result so the provider-neutral boundary runs only
   // once. Direct callers receive the same deterministic behavior here.
@@ -416,7 +417,7 @@ export function extractStructuredTripBrief(
     budget,
     hardConstraints,
     softPreferences,
-    source: { rawPrompt, parserVersion: parserVersion ?? placeIntelligence.parserVersion, inputs: ["prompt"] },
+    source: { rawPrompt: sourcePrompt, parserVersion: parserVersion ?? placeIntelligence.parserVersion, inputs: ["prompt"] },
     confidence: destinations.length || duration || travellers ? "high" : "low",
     issues: [],
     placeMentions,

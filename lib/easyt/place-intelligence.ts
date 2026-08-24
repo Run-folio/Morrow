@@ -189,9 +189,13 @@ type RawCatalogMatch = { entry: PlaceCatalogEntry; alias: string; start: number;
 const ORDER_LANGUAGE = /(?:→|->|\bthen\b|\bnext\b|\bvia\b|\bthrough\b|\bto\b|\bfly(?:ing)? into\b|\bfrom\b.+\bto\b|\bstart(?:ing)?\b.+\b(?:finish|end)(?:ing)?\b)/i;
 const UNKNOWN_CANDIDATE = /\b(?:the\s+)?[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*(?:\s+(?:de|del|la|las|los|of|the|[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*)){0,3}/gu;
 const NON_PLACE_PHRASES = new Set([
-  "a", "about", "add", "avoid", "days", "do", "easter", "five", "fly", "flying", "finish", "finishing", "for", "four", "from", "i", "is", "it",
-  "nature", "no", "one", "prefer", "relaxed", "road", "route", "september", "skip", "start", "starting", "the", "three", "trip",
+  "a", "about", "add", "avoid", "days", "do", "easter", "five", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "i", "is", "it",
+  "keep", "keep the", "nature", "no", "one", "prefer", "relaxed", "road", "route", "skip", "start", "starting", "the", "three", "trip",
   "ten", "two", "we", "week", "weeks", "with", "without",
+  "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+  "spring", "summer", "autumn", "fall", "winter", "wet season", "dry season", "high season", "low season", "shoulder season",
+  "culture", "cities", "beach", "beaches", "hiking", "mountains", "history", "architecture", "wildlife", "wine", "nightlife",
+  "slow", "balanced", "packed", "flexible", "important", "must", "please", "ideally", "maybe",
 ]);
 
 export function normalizePlacePhrase(value: string) {

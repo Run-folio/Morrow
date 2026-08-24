@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
+import { createHomeTripDraft, HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
@@ -22,7 +23,6 @@ const copy = {
 } as const;
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
-function addDays(value: string, days: number) { const date = new Date(`${value}T00:00:00`); date.setDate(date.getDate() + Math.max(0, days - 1)); return iso(date); }
 function travelStyleLabels(profile: TravelProfile, language: EasyTLanguage) {
   const labels = language === "es"
     ? {
@@ -75,8 +75,8 @@ export default function HomeTripStarter() {
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const tripBrief = brief.trim();
-    if (!tripBrief) return;
+    const tripBrief = brief;
+    if (!tripBrief.trim()) return;
     trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: true });
     trackEvent("trip_generation_started", { trip_source: "homepage", has_dates: datesExplicit, traveller_count: travellers, is_authenticated: Boolean(session?.user) });
     setLoading(true);
@@ -90,8 +90,17 @@ export default function HomeTripStarter() {
       const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
       trackEvent("easyt_trip_capture_reviewed", { source: "homepage_builder", parser_version: payload.parserVersion, place_count: payload.mentions.length, unresolved_count: unresolvedCount, region_count: payload.regions.length, has_duration: Boolean(payload.durationDays) });
       if (unresolvedCount) trackEvent("easyt_trip_capture_place_unresolved", { source: "homepage_builder", unresolved_count: unresolvedCount });
-      const proposedEndDate = payload.durationDays ? addDays(startDate, payload.durationDays) : endDate;
-      window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify({ locationMentions: payload.mentions, routeHints: payload.routeHints, regions: payload.regions, parserVersion: payload.parserVersion, structuredBrief: payload.structuredBrief, startDate, endDate: proposedEndDate, datesExplicit, travellers, travellersExplicit, interests, brief: payload.rawBrief }));
+      const handoffId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(createHomeTripDraft({
+        capture: payload,
+        handoffId,
+        datesExplicit,
+        startDate,
+        endDate,
+        travellers,
+        travellersExplicit,
+        interests,
+      })));
       router.push("/journey/new?homeDraft=1");
     } catch {
       setCaptureError(language === "es" ? "No pudimos entender tu viaje. Inténtalo de nuevo." : "We couldn't understand your trip. Please try again.");

@@ -1,0 +1,30 @@
+{
+  "total": 196,
+  "maxTotal": 210,
+  "dimensions": {
+    "intent": 26,
+    "constraints": 26,
+    "route": 26,
+    "time-realism": 30,
+    "state-preservation": 30,
+    "uncertainty": 28,
+    "explanation": 30
+  },
+  "cases": [
+    { "id": "japan-explicit-constraints", "score": 10, "dimensions": { "intent": 2, "constraints": 0, "route": 0, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["hard constraint changed", "route state is not appropriate for the captured intent"] },
+    { "id": "patagonia-regions-unknown-bases", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "unknown-place-remains-unknown", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "georgia-ambiguity", "score": 12, "dimensions": { "intent": 0, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["intent facts changed"] },
+    { "id": "peru-anchor-and-region", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "italy-exclusion", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "alias-deduplication", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "french-alps-nesting", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "southeast-asia-fixed-anchor", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "maximum-stops-conflict", "score": 10, "dimensions": { "intent": 2, "constraints": 0, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 0, "explanation": 2 }, "deterministicFailures": ["hard constraint changed", "expected warning or conflict missing"] },
+    { "id": "minimal-intent-unknowns", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "budget-question-is-not-budget", "score": 12, "dimensions": { "intent": 2, "constraints": 2, "route": 0, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["route state is not appropriate for the captured intent"] },
+    { "id": "caucasus-context-resolves-georgia", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "short-italy-time-realism", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
+    { "id": "spanish-aliases-and-origin", "score": 12, "dimensions": { "intent": 0, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["intent facts changed"] }
+  ]
+}

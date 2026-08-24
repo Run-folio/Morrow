@@ -46,7 +46,7 @@ function captureFromResolution(rawBrief: string, resolution: PlaceIntelligenceRe
 
 /** One deterministic interpretation shared by homepage and builder capture. */
 export function captureJourneyBrief(brief: string, context: PlaceResolutionContext = {}): JourneyCaptureResult {
-  const rawBrief = brief.trim();
+  const rawBrief = brief;
   return captureFromResolution(rawBrief, resolvePlaceMentions(rawBrief, context));
 }
 
@@ -59,6 +59,6 @@ export async function captureJourneyBriefWithProvider(
   provider: PlaceIntelligenceProvider,
   context: PlaceResolutionContext = {},
 ): Promise<JourneyCaptureResult> {
-  const rawBrief = brief.trim();
+  const rawBrief = brief;
   return captureFromResolution(rawBrief, await resolvePlaceMentionsWithProvider(rawBrief, provider, context));
 }
