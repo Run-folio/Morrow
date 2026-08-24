@@ -16,6 +16,7 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
   const endDate = localIsoDate(end);
   return {
     sourceRouteKey: draft.routeKey,
+    curatedRoute: draft.curatedRoute,
     origin: draft.origin,
     originCoordinates: draft.originCoordinates,
     destinations: draft.destinations,

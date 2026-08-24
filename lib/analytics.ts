@@ -14,6 +14,13 @@ export type LaunchAnalyticsEventMap = {
   route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };
   trip_generation_started: { trip_source: TripSource; has_dates: boolean; traveller_count: number; is_authenticated: boolean };
+  trip_intent_created: { traveller_count: number; stop_count: number; duration_days: number; dates_flexible: boolean; fixed_commitment_count: number; avoid_driving: boolean };
+  route_generated: { stop_count: number; duration_days: number; has_recommendation: boolean; shortfall_days: number; has_fixed_commitments: boolean };
+  route_accepted: { method: string; stop_count: number; duration_days: number; has_recommendation?: boolean };
+  trip_refined: { change_type: string; affected_stop_count: number };
+  health_check_shown: { blocking_count: number; caution_count: number; issue_count: number };
+  health_issue_resolved: { rule: string };
+  trip_ready: { stop_count: number; duration_days: number };
   trip_generated: { trip_source: TripSource; trip_id?: string; stop_count: number; duration_days?: number; traveller_count: number; has_dates: boolean; save_state: "local"; result: "usable" };
   trip_generation_failed: { trip_source: TripSource; error_type: "capture" | "network" | "invalid_result" | "unknown"; is_authenticated: boolean };
   trip_saved: { trip_source: TripSource; trip_id?: string; save_state: SaveState; stop_count?: number; is_authenticated: boolean };
@@ -29,21 +36,16 @@ export type LaunchAnalyticsEventMap = {
   accommodation_search_started: { source: "map" | "itinerary" | "prep"; destination_count: number; has_dates: boolean; provider?: string };
   stamp_status_changed: { previous_status: StampStatus; next_status: StampStatus; source: StampStatusSource; is_authenticated: boolean };
   stamp_note_added: { source: "country_card"; is_authenticated: boolean };
-  easyt_trip_capture_reviewed: { source: "homepage_builder"; parser_version: string; place_count: number; unresolved_count: number; region_count: number; has_duration: boolean };
-  easyt_trip_capture_place_unresolved: { source: "homepage_builder"; unresolved_count: number };
-  easyt_trip_capture_failed: { source: "homepage_builder" };
 };
 
 export type LegacyAnalyticsEventName =
   | "cv_download_clicked" | "email_contact_clicked" | "linkedin_clicked" | "case_study_opened"
   | "case_study_cta_clicked" | "journey_prototype_clicked" | "scroll_depth_reached" | "copy_email_clicked"
-  | "book_call_clicked" | "easyt_trip_started" | "trip_intent_created" | "route_generated" | "route_accepted"
-  | "trip_refined" | "health_check_shown" | "health_issue_resolved" | "trip_ready" | "booking_attributed"
+  | "book_call_clicked" | "booking_attributed"
   | "trip_shared" | "collaborator_joined" | "decision_resolved" | "budget_viewed" | "accommodation_action_viewed"
   | "accommodation_map_opened" | "attraction_refinement_viewed" | "attraction_selected" | "attraction_removed"
   | "attraction_filter_used" | "attraction_map_opened" | "easyt_trip_capture_place_resolved"
-  | "easyt_featured_route_opened" | "easyt_finder_started" | "easyt_accommodation_inventory_viewed"
-  | "easyt_accommodation_affiliate_clicked" | "easyt_readiness_affiliate_clicked" | "easyt_trip_quality_reviewed"
+  | "easyt_featured_route_opened" | "easyt_finder_started" | "easyt_trip_quality_reviewed"
   | "easyt_stamps_opened" | "easyt_trip_saved" | "easyt_trip_exported" | "easyt_share_created" | "easyt_error_shown";
 
 export type AnalyticsEventName = keyof LaunchAnalyticsEventMap | LegacyAnalyticsEventName;
@@ -144,6 +146,7 @@ function ensurePostHogInitialized() {
       autocapture: false,
       capture_pageview: false,
       capture_pageleave: false,
+      disable_session_recording: true,
       disable_surveys: true,
       person_profiles: "identified_only",
       opt_out_capturing_by_default: true,

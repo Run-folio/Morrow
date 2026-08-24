@@ -1,12 +1,14 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
 import { normalizePlacePhrase, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { EasyTTrip } from "./trip.ts";
+import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
 export type HomeTripDraft = {
   handoffId?: string;
   sourceRouteKey?: string;
+  curatedRoute?: CuratedRouteKnowledge;
   origin?: string;
   originCoordinates?: [number, number];
   destination?: { id: string; name: string; country: string; coordinates?: [number, number] };

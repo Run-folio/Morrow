@@ -2,6 +2,7 @@ import { assessRouteIntelligence, estimateLegForConstraints, routeIntelligenceFo
 import { cascadeTripSchedule } from "./cascade.ts";
 import { routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief } from "./structured-trip-brief.ts";
 import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "./trip.ts";
+import { curatedConnectionFor, reconcileCuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 
 export type DayOrderReplan =
   | { state: "recalculated"; trip: EasyTTrip; stopIds: string[] }
@@ -13,6 +14,7 @@ const totalDaysFor = (trip: EasyTTrip) => Math.max(1, Math.round(
 
 const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlanningConstraints): TripLeg[] => stops.slice(1).map((stop, index) => {
   const from = stops[index];
+  const curated = curatedConnectionFor(trip.brief.curatedRoute, from.id, stop.id);
   const estimate = estimateLegForConstraints(
     { name: from.name, country: from.country, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : undefined },
     { id: stop.id, name: stop.name, country: stop.country, coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined },
@@ -22,11 +24,13 @@ const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlan
     id: `${trip.id}-leg-${index + 1}`,
     fromStopId: from.id,
     toStopId: stop.id,
-    mode: estimate.mode,
+    mode: curated?.mode ?? estimate.mode,
     distanceKm: estimate.distanceKm,
-    durationMinutes: estimate.durationMinutes,
-    provider: estimate.note,
-    routeMetadata: { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
+    durationMinutes: curated?.planningMinutes ?? estimate.durationMinutes,
+    provider: curated?.note ?? estimate.note,
+    routeMetadata: curated
+      ? { planningEstimate: true, source: "curated-route", curatedRouteTransfer: curated, label: estimate.label, routingConfidence: curated.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence }
+      : { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
   };
 });
 
@@ -83,7 +87,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
     },
     allocations: Object.fromEntries(stops.map((stop) => [stop.id, Math.max(1, (stop.nights ?? 0) + 1)])),
   });
-  const replanned = cascadeTripSchedule({ ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, routeAssessment: routeIntelligenceForPersistence(routeAssessment) } }).trip;
+  const replanned = cascadeTripSchedule({ ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, curatedRoute: reconcileCuratedRouteKnowledge(trip.brief.curatedRoute, fullOrder), routeAssessment: routeIntelligenceForPersistence(routeAssessment) } }).trip;
   return {
     state: "recalculated",
     stopIds: fullOrder,

@@ -24,7 +24,9 @@ EasyT is not trying to replace booking sites, a local guide or a traveller’s j
 
 ### Pick one primary audience
 
-**Primary customer:** English- and Spanish-speaking independent travellers, roughly 25–45, planning a 5–14 day international, multi-stop trip in Asia, South America or Europe. They value food, culture, nature and flexibility; they use their phone while travelling; they are willing to pay to remove planning stress.
+**Primary customer:** English- and Spanish-speaking independent travellers, roughly 25–45, planning complex, multi-stop international trips in Asia, South America or Europe. They value food, culture, nature and flexibility; they use their phone while travelling; they are willing to pay to remove planning stress.
+
+**Duration posture:** Treat roughly 1–12 weeks as an exploratory supported range, from a week-long multi-city break to a multi-month journey. Duration alone is not a customer qualifier or a reason to reject a viable trip. A likely 2–6 week complexity sweet spot is an internal hypothesis to validate through research, not a proven or public claim.
 
 **Early use case:** “I have a rough idea of where I want to go, but I need a realistic route and want the freedom to adjust it.”
 

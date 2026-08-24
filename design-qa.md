@@ -401,6 +401,25 @@ final result: passed
 
 ---
 
+# Hostile cloud/provider follow-up verification
+
+- Scope: post-P0/P1 regression verification only; no product or trip-data mutation was performed.
+- Cloud/session fixture matrix: 76 persistence, ownership, session-expiry, deep-link return, retry, conflict, lifecycle and readiness cases passed.
+- Shared visible-facts matrix: 9 hostile cases passed, including empty plans, invalid/missing/reversed dates, repeated stops, unknown transport, no-driving, transfer severity, coverage and shared Trip Health projections.
+- Live provider probes: one read-only request per route returned usable configured Unsplash image/context metadata and OpenStreetMap results; stay fallback correctly reported check-only availability and no live inventory claim.
+- Responsive local checks: Dashboard sign-in boundary plus Map, Prep, Passport and Stamps were checked at 320, 390, 768 and desktop widths. All had zero page-level horizontal overflow. Dashboard correctly redirected an unauthenticated request to login.
+- Image fallback: route-image parsing/fallback tests passed; malformed and unavailable provider responses settle without fabricating imagery.
+
+## Remaining hardening
+
+- P2: repeat the visual signed-in production pass once the connected-browser control path is stable. A production Morrovia tab was available, but read-only control timed out before it could be claimed; fixture coverage was used for authenticated session expiry, exact return targets, cloud/local conflicts, and ended/current/future lifecycle states. Do not work around this by clearing cookies, logging out a real account, or mutating a cloud trip.
+- P3: add a reusable browser-level image-error fixture for each image-bearing surface (Map, itinerary, Stamps) so broken remote-image rendering is exercised alongside the existing route-photo provider parsing coverage.
+- P3: retain the current bounded provider timeouts and fallback semantics; if provider observability is expanded, record aggregate source/fallback/timeout counts only, never query text, account data, booking data, or full trip documents.
+
+final result: passed with P2 production-browser follow-up
+
+---
+
 # Routes / Route Detail premium refinement design QA
 
 ## Comparison target and evidence

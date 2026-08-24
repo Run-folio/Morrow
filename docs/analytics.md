@@ -10,7 +10,7 @@ Add these in the production deployment environment.
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 NEXT_PUBLIC_CLARITY_PROJECT_ID=xxxxxxxxxx
 NEXT_PUBLIC_POSTHOG_KEY=phc_xxxxxxxxxx
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=production
 GOOGLE_SITE_VERIFICATION=your-google-search-console-token
 ```
@@ -90,13 +90,13 @@ Authenticated travellers are identified with the existing opaque application use
 
 The PostHog launch funnel is intentionally small:
 
-- Planning/generation: `homepage_prompt_started`, `trip_generation_started`, `trip_generated`, `trip_generation_failed`.
+- Planning/generation: `homepage_prompt_started` is a leading prompt-engagement signal; `trip_generation_started` is the submitted planning action; `trip_intent_created`, `route_generated`, `trip_generated` and `trip_generation_failed` measure the resulting journey stages.
 - Persistence: `trip_saved`, `trip_save_failed`, `trip_reopened`.
 - Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`, `trip_prep_viewed`.
 - Monetisation: the existing `affiliate_click` contract (`category`, `provider`, and optional opaque trip/stop context) plus `accommodation_search_started`.
-- Supported edits/repairs: `trip_edit_started` and `route_repair_applied`.
+- Supported edits/repairs: `trip_refined`, `trip_edit_started`, `route_repair_applied` and `trip_ready`.
 
-Legacy GA4 events remain available and are not renamed. `affiliate_click` keeps its existing `category`/`provider` property contract rather than creating a duplicate PostHog-specific variant.
+`easyt_trip_started`, `easyt_trip_capture_reviewed`, `easyt_trip_capture_place_unresolved`, `easyt_trip_capture_failed`, `easyt_accommodation_inventory_viewed`, `easyt_accommodation_affiliate_clicked` and `easyt_readiness_affiliate_clicked` are retired: each was either a duplicate of the retained product milestone or implementation-detail noise. Historical data remains in PostHog; new traffic uses the canonical event above. `affiliate_click` keeps its existing `category`/`provider` property contract rather than creating a duplicate PostHog-specific variant.
 
 First-reached planning events use namespaced local/session storage only after consent, so deduplication never creates analytics-specific browser state for visitors who have not opted in. Deliberate interaction events do not need deduplication storage.
 

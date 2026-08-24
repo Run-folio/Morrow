@@ -6,7 +6,7 @@ const singleStopReferenceKeys = new Set([
 ]);
 const manyStopReferenceKeys = new Set([
   "stopIds", "mustSeeStopIds", "optionalStopIds", "currentStopIds",
-  "recommendedStopIds", "requiredStopIds", "excludedStopIds",
+  "recommendedStopIds", "requiredStopIds", "excludedStopIds", "canonicalStopIds",
 ]);
 const stopReferenceRecordKeys = new Set([
   "selectedPlaces", "dayAllocations", "nightAllocations", "arrivalDates",

@@ -1,5 +1,6 @@
 import { estimateLegForConstraints, type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
+import { curatedConnectionFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
@@ -166,6 +167,8 @@ export type TripBrief = {
   originCoordinates?: [number, number];
   /** Public editorial route used as the starting point, when one exists. */
   sourceRouteKey?: string;
+  /** Reviewed route evidence retained from Route Detail into the editable trip. */
+  curatedRoute?: CuratedRouteKnowledge;
   mustDo: string;
   pace: TripPace;
   hotelChanges: HotelChanges;
@@ -297,6 +300,7 @@ export type BuilderDay = {
 export type BuilderTripInput = {
   id: string;
   sourceRouteKey?: string;
+  curatedRoute?: CuratedRouteKnowledge;
   origin: string;
   stops: Array<{ id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
@@ -364,6 +368,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       nights,
     };
   });
+  const curatedRoute = reconcileCuratedRouteKnowledge(input.curatedRoute, stops.map((stop) => stop.id));
 
   const stopByName = new Map(stops.map((stop) => [stop.name, stop]));
   const planItems = input.draft.map((day, index): PlanItem => {
@@ -404,6 +409,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       origin: input.origin,
       originCoordinates: input.originCoordinates,
       sourceRouteKey: input.sourceRouteKey,
+      curatedRoute,
       mustDo: input.mustDo,
       pace: input.pace,
       hotelChanges: input.hotels,
@@ -428,16 +434,19 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     stops,
     legs: input.stops.slice(1).map((stop, index) => {
       const from = input.stops[index];
+      const curated = curatedConnectionFor(curatedRoute, from.id, stop.id);
       const estimate = estimateLegForConstraints(from, stop, legConstraints);
       return {
         id: `${input.id}-leg-${index + 1}`,
         fromStopId: from.id,
         toStopId: stop.id,
-        mode: estimate.mode,
+        mode: curated?.mode ?? estimate.mode,
         distanceKm: estimate.distanceKm,
-        durationMinutes: estimate.durationMinutes,
-        provider: estimate.note,
-        routeMetadata: { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
+        durationMinutes: curated?.planningMinutes ?? estimate.durationMinutes,
+        provider: curated?.note ?? estimate.note,
+        routeMetadata: curated
+          ? { planningEstimate: true, source: "curated-route", curatedRouteTransfer: curated, label: estimate.label, routingConfidence: curated.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence }
+          : { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
       };
     }),
     planItems,

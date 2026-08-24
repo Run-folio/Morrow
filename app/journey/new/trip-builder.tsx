@@ -42,6 +42,7 @@ import { PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, selectPl
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
 import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
+import { curatedStopFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "@/lib/easyt/curated-route-knowledge";
 
 /* ---------------------------------------------------------------- data */
 
@@ -339,6 +340,7 @@ function TripBuilderDocument() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [routeHints, setRouteHints] = useState<string[]>([]);
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
+  const [curatedRoute, setCuratedRoute] = useState<CuratedRouteKnowledge | undefined>();
   const [stopInput, setStopInput] = useState("");
   const [stopError, setStopError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
@@ -479,6 +481,7 @@ function TripBuilderDocument() {
       setTripBrief(saved.brief.mustDo);
       setOriginCoordinates(saved.brief.originCoordinates);
       setSourceRouteKey(saved.brief.sourceRouteKey);
+      setCuratedRoute(saved.brief.curatedRoute);
       setStops(saved.stops.map(({ id, name, country, countryCode, region, providerId, longitude, latitude }) => ({ id, name, country, countryCode, region, providerId, coordinates: longitude !== null && latitude !== null ? [longitude, latitude] : undefined })));
       setStartDate(saved.startDate);
       setEndDate(saved.endDate);
@@ -572,6 +575,7 @@ function TripBuilderDocument() {
           setHasPromptContext(true);
           setArrivedFromHomepage(true);
           setSourceRouteKey(homeDraft.sourceRouteKey);
+          setCuratedRoute(homeDraft.curatedRoute);
           if (homeDraft.decisionSelections) setDecisionSelections(homeDraft.decisionSelections);
           if (homeDraft.origin) setOrigin(homeDraft.origin);
           if (homeDraft.originCoordinates) setOriginCoordinates(homeDraft.originCoordinates);
@@ -707,6 +711,10 @@ function TripBuilderDocument() {
     return Number.isFinite(d) && d > 0 ? d : 1;
   }, [startDate, endDate]);
   const totalNights = useMemo(() => tripNightsBetween(startDate, endDate), [startDate, endDate]);
+  const currentCuratedRoute = useMemo(
+    () => reconcileCuratedRouteKnowledge(curatedRoute, stops.map((stop) => stop.id)),
+    [curatedRoute, stops],
+  );
   const analyticsTripSource = sourceRouteKey ? "route" as const : arrivedFromHomepage ? "homepage" as const : "builder" as const;
 
   const effectiveIntent = useMemo<TripIntent>(() => ({
@@ -920,6 +928,7 @@ function TripBuilderDocument() {
       const arrivalImpact = estimateLegForConstraints(previous, stop, structuredRouteConstraints).transferImpact;
       const isLocked = scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id]);
       const preferredNights = dayAllocations[stop.id];
+      const curatedStop = curatedStopFor(currentCuratedRoute, stop.id);
       const routeStartingNights = sourceRouteKey && preferredNights !== undefined ? preferredNights : undefined;
       return {
         ...stop,
@@ -928,13 +937,13 @@ function TripBuilderDocument() {
         anchor: briefDestination?.role === "trip-anchor" || briefDestination?.role === "must-visit",
         preferredNights,
         fixedNights: isLocked && preferredNights !== undefined ? preferredNights : undefined,
-        fallbackMinimumNights: routeStartingNights ?? minimumNights[stop.id],
-        fallbackIdealNights: routeStartingNights ?? recommendedNights[stop.id],
+        fallbackMinimumNights: curatedStop?.minimumNights ?? routeStartingNights ?? minimumNights[stop.id],
+        fallbackIdealNights: curatedStop?.recommendedNights ?? routeStartingNights ?? recommendedNights[stop.id],
         preferenceWeight: picks[stop.id]?.length ?? 0,
         arrivalImpact,
       };
     });
-  }, [stops, structuredRouteConstraints.requiredStopIds, effectiveIntent, effectiveStructuredBrief.destinations, origin, originCoordinates, scheduleLocks, dayAllocations, minimumNights, recommendedNights, picks, sourceRouteKey]);
+  }, [stops, structuredRouteConstraints.requiredStopIds, effectiveIntent, effectiveStructuredBrief.destinations, origin, originCoordinates, scheduleLocks, dayAllocations, minimumNights, recommendedNights, picks, sourceRouteKey, currentCuratedRoute]);
   const fixedAllocationCommitments = useMemo(() => effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({
     label: commitment.label,
     date: commitment.date,
@@ -1069,7 +1078,7 @@ function TripBuilderDocument() {
 
   const updateRouteNightDraft = (stopId: string, requested: number) => {
     if (scheduleLocks.stopIds.includes(stopId) || scheduleLocks.arrivalDates[stopId]) return;
-    setRouteNightDraft((current) => ({ ...(current ?? allocation), [stopId]: Math.max(0, Math.min(60, Math.round(requested) || 0)) }));
+    setRouteNightDraft((current) => ({ ...(current ?? allocation), [stopId]: Math.max(0, Math.min(totalNights, Math.round(requested) || 0)) }));
   };
 
   const applyRouteNightsToDates = () => {
@@ -1377,6 +1386,7 @@ function TripBuilderDocument() {
     const built = tripFromBuilder({
       id: tripId,
       sourceRouteKey,
+      curatedRoute: currentCuratedRoute,
       origin,
       stops,
       startDate,
@@ -1417,7 +1427,7 @@ function TripBuilderDocument() {
     });
     const cascaded = cascadeTripSchedule({ ...built, ownerId: tripOwnerId }).trip;
     return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
-  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
+  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
   const buildInvariant = useMemo(() => canBuildTrip({
     origin,
@@ -1929,6 +1939,8 @@ function TripBuilderDocument() {
 
               {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
                 <div>
+                  {currentCuratedRoute && <p>{currentCuratedRoute.coverage.state === "fully-supported" ? "REVIEWED ROUTE FACTS" : "ROUTE COVERAGE CHANGED"}</p>}
+                  {currentCuratedRoute && <span>{currentCuratedRoute.coverage.reason} Reviewed {currentCuratedRoute.reviewedAt}; transfer schedules still need confirmation where noted.</span>}
                   <p>{routeCopy.eyebrow}</p>
                   {routeRecommendationVisible ? <>
                     <h3>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")} {routeCopy.cleanerOrder}</h3>
@@ -1972,7 +1984,7 @@ function TripBuilderDocument() {
                     <article className={styles.routeStopCard}>
                       <span className={styles.routeNumber}>{index + 1}</span>
                       <div className={styles.routeStopPlace}><small>{(stop.country || "verified stop").toUpperCase()}</small><h3>{stop.name}</h3></div>
-                      <div className={styles.routeStopTiming}><strong><Clock /> {editingRouteStopId === stop.id ? <input aria-label={`Nights in ${stop.name}`} type="number" min="0" max="60" value={routeAllocation[stop.id] ?? 0} disabled={scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id])} onChange={(event) => updateRouteNightDraft(stop.id, Number(event.target.value))} /> : <>{routeAllocation[stop.id] ?? 0} {(routeAllocation[stop.id] ?? 0) === 1 ? "night" : "nights"}</>}</strong><span><CalendarDays /> {fmtLong(arrival)} – {fmtLong(iso(departure))}</span></div>
+                      <div className={styles.routeStopTiming}><strong><Clock /> {editingRouteStopId === stop.id ? <input aria-label={`Nights in ${stop.name}`} type="number" min="0" max={totalNights} value={routeAllocation[stop.id] ?? 0} disabled={scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id])} onChange={(event) => updateRouteNightDraft(stop.id, Number(event.target.value))} /> : <>{routeAllocation[stop.id] ?? 0} {(routeAllocation[stop.id] ?? 0) === 1 ? "night" : "nights"}</>}</strong><span><CalendarDays /> {fmtLong(arrival)} – {fmtLong(iso(departure))}</span></div>
                       <p>{durationReason}</p>
                       <div className={styles.routeStopActions}>{editingRouteStopId === stop.id ? <><span className={styles.routeReorderLabel}><GripVertical /> {language === "es" ? "REORDENAR" : "REORDER"}</span><div className={styles.routeEditorButtons}><button type="button" aria-label={`Move ${stop.name} up`} onClick={() => moveStop(index, index - 1)} disabled={index === 0}><ArrowUp /></button><button type="button" aria-label={`Move ${stop.name} down`} onClick={() => moveStop(index, index + 1)} disabled={index === stops.length - 1}><ArrowDown /></button><button type="button" onClick={() => removeStop(stop.id)} disabled={scheduleLocks.stopIds.includes(stop.id)}><Trash2 /> {language === "es" ? "Quitar" : "Remove"}</button></div><button type="button" onClick={() => setEditingRouteStopId(null)}><Check /> {language === "es" ? "Listo" : "Done"}</button></> : <button type="button" onClick={() => beginRouteEdit(stop.id)} disabled={scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id])}><Pencil /> {language === "es" ? "Editar" : "Edit"}</button>}</div>
                     </article>

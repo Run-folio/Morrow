@@ -112,16 +112,16 @@ const privacySafeGeneration: LaunchAnalyticsEventMap["trip_generated"] = {
 };
 assert.equal(privacySafeGeneration.stop_count, 4);
 
-const privacySafeCapture: LaunchAnalyticsEventMap["easyt_trip_capture_reviewed"] = {
-  source: "homepage_builder",
-  parser_version: "place-intelligence-v1-deterministic",
-  place_count: 3,
-  unresolved_count: 0,
-  region_count: 3,
-  has_duration: true,
+const privacySafeIntent: LaunchAnalyticsEventMap["trip_intent_created"] = {
+  traveller_count: 2,
+  stop_count: 3,
+  duration_days: 10,
+  dates_flexible: true,
+  fixed_commitment_count: 0,
+  avoid_driving: false,
 };
-assert.deepEqual(Object.keys(privacySafeCapture).sort(), [
-  "has_duration", "parser_version", "place_count", "region_count", "source", "unresolved_count",
+assert.deepEqual(Object.keys(privacySafeIntent).sort(), [
+  "avoid_driving", "dates_flexible", "duration_days", "fixed_commitment_count", "stop_count", "traveller_count",
 ]);
 
 const privacySafeStampStatus: LaunchAnalyticsEventMap["stamp_status_changed"] = {
@@ -151,8 +151,8 @@ assert.deepEqual(Object.keys(privacySafeRouteStart).sort(), ["duration_days", "p
 if (false) {
   // @ts-expect-error launch payloads deliberately reject raw prompt text
   trackEvent("trip_generated", { ...privacySafeGeneration, raw_prompt: "private trip text" });
-  // @ts-expect-error capture payloads reject prompts, phrases and resolution details
-  trackEvent("easyt_trip_capture_reviewed", { ...privacySafeCapture, raw_prompt: "private trip text" });
+  // @ts-expect-error intent payloads reject prompts, phrases and resolution details
+  trackEvent("trip_intent_created", { ...privacySafeIntent, raw_prompt: "private trip text" });
   // @ts-expect-error stamp events deliberately reject country names and identifiers
   trackEvent("stamp_status_changed", { ...privacySafeStampStatus, country_name: "France" });
   // @ts-expect-error stamp-note events deliberately reject raw note or memory text

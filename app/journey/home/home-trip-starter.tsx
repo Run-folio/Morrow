@@ -78,7 +78,6 @@ export default function HomeTripStarter() {
     event.preventDefault();
     const tripBrief = brief;
     if (!tripBrief.trim()) return;
-    trackEvent("easyt_trip_started", { source: "homepage_builder", has_brief: true });
     trackEvent("trip_generation_started", { trip_source: "homepage", has_dates: datesExplicit, traveller_count: travellers, is_authenticated: Boolean(session?.user) });
     setLoading(true);
     setCaptureError("");
@@ -88,9 +87,6 @@ export default function HomeTripStarter() {
       responseReceived = true;
       const payload = await response.json() as JourneyCaptureResult & { message?: string };
       if (!response.ok) throw new Error(payload.message || "Capture failed");
-      const unresolvedCount = payload.mentions.filter((mention) => mention.status === "unresolved").length;
-      trackEvent("easyt_trip_capture_reviewed", { source: "homepage_builder", parser_version: payload.parserVersion, place_count: payload.mentions.length, unresolved_count: unresolvedCount, region_count: payload.regions.length, has_duration: Boolean(payload.durationDays) });
-      if (unresolvedCount) trackEvent("easyt_trip_capture_place_unresolved", { source: "homepage_builder", unresolved_count: unresolvedCount });
       const handoffId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(createHomeTripDraft({
         capture: payload,
@@ -105,7 +101,6 @@ export default function HomeTripStarter() {
       router.push("/journey/new?homeDraft=1");
     } catch {
       setCaptureError(language === "es" ? "No pudimos entender tu viaje. Inténtalo de nuevo." : "We couldn't understand your trip. Please try again.");
-      trackEvent("easyt_trip_capture_failed", { source: "homepage_builder" });
       trackEvent("trip_generation_failed", { trip_source: "homepage", error_type: responseReceived ? "capture" : "network", is_authenticated: Boolean(session?.user) });
     } finally {
       setLoading(false);

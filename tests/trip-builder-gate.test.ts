@@ -58,6 +58,37 @@ test("valid builder document passes the authoritative invariant", () => {
   assert.deepEqual(result.conflicts, []);
 });
 
+test("a viable itinerary is not rejected across the exploratory duration range", () => {
+  for (const durationDays of [7, 14, 28, 42, 56, 84]) {
+    const input = validInput();
+    const startDate = "2026-10-01";
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const dateFor = (offset: number) => new Date(start.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
+    const endDate = dateFor(durationDays - 1);
+    const allocations = { tokyo: 1, kyoto: durationDays - 2 };
+    input.startDate = startDate;
+    input.endDate = endDate;
+    input.durationDays = durationDays;
+    input.expectedDurationDays = durationDays;
+    input.allocations = allocations;
+    input.nightAllocation = allocatedNightResult(allocations);
+    input.document = {
+      startDate,
+      endDate,
+      stops: [{ id: "tokyo" }, { id: "kyoto" }],
+      planItems: Array.from({ length: durationDays }, (_, index) => ({
+        stopId: index === 0 ? "tokyo" : "kyoto",
+        dayNumber: index + 1,
+        date: dateFor(index),
+      })),
+    } as Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate">;
+
+    const result = canBuildTrip(input);
+    assert.equal(result.canBuildTrip, true, `${durationDays}-day itinerary should not fail on duration alone`);
+    assert.equal(result.conflicts.some((conflict) => conflict.code === "invalid-dates" || conflict.code === "duration-conflict"), false);
+  }
+});
+
 test("progress tab cannot bypass unresolved place review", () => {
   const input = validInput();
   input.placeIssues = [{ mentionId: "mystery", blocksRoute: true, message: "Confirm Mystery Coast before building the route." }];

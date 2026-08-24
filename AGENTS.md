@@ -12,12 +12,17 @@ Morrovia helps travellers turn a messy set of destinations, dates, preferences a
 
 Optimise first for:
 
-- Independent travellers planning multi-stop international trips
-- 1–3 week trips
+- Independent travellers planning complex, multi-stop international trips
 - Couples / two travellers initially
 - 2–6 destinations or stops
 - Trips combining flights, trains, driving, hotels and activities
 - Travellers who want something more adventurous than a package holiday
+
+Duration is not a target-customer requirement. Morrovia should support exploratory
+trips of roughly 1–12 weeks, from a week-long multi-city break to a multi-month
+journey, without rejecting an otherwise viable trip for duration alone. The
+likely 2–6 week complexity sweet spot is an internal research hypothesis to
+validate, not a proven or public product claim.
 - Trips complex enough that planning across many tabs, maps and booking sites becomes painful
 
 The product can support broader travel use cases, but product decisions should prioritise this customer first.

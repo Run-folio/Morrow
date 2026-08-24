@@ -6,6 +6,7 @@ import { routeFamilyByKey, type RouteConfidence, type RouteConnection, type Rout
 import { routeImages } from "./route-images.ts";
 import { inspirationByKey } from "./inspiration.ts";
 import { mergeStructuredTripBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
+import { curatedRouteKnowledgeFor, isBetaCuratedRoute, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 
 export const LEGACY_PUBLIC_ROUTE_SLUGS: Readonly<Record<string, string>> = {
   "portugal-coast": "portugal-atlantic",
@@ -131,6 +132,7 @@ export type PublicRoutePlanDraft = {
   countries: string[];
   interests: string[];
   routeHints: string[];
+  curatedRoute?: CuratedRouteKnowledge;
   structuredBrief: StructuredTripBrief;
 };
 
@@ -277,6 +279,15 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
     countries: [...detail.countries],
     interests: [...route.interests],
     routeHints: route.stops.map((stop) => stop.reason),
+    ...(isBetaCuratedRoute(route.key) ? {
+      curatedRoute: curatedRouteKnowledgeFor(route, detail.stops.map((stop) => ({
+        id: stop.id,
+        name: stop.name,
+        country: stop.country,
+        canonicalPlaceId: destinations.find((destination) => destination.id === stop.id)?.canonicalPlaceId,
+        nights: stop.nights,
+      }))),
+    } : {}),
     structuredBrief,
   };
 }

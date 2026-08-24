@@ -151,6 +151,27 @@ test("loose language remains approximate and separates inferred pace and region"
   assert.equal(brief.preferredRegions.some((region) => region.value === "Mountains"), true);
 });
 
+test("duration capture covers the exploratory range without treating duration as a segment gate", () => {
+  const cases = [
+    ["One week in Japan with Tokyo and Kyoto.", 7],
+    ["Two weeks in Japan with Tokyo and Kyoto.", 14],
+    ["Four weeks in Japan with Tokyo and Kyoto.", 28],
+    ["Six weeks in Japan with Tokyo and Kyoto.", 42],
+    ["Eight weeks in Japan with Tokyo and Kyoto.", 56],
+    ["Twelve weeks in Japan with Tokyo and Kyoto.", 84],
+  ] as const;
+
+  for (const [prompt, days] of cases) {
+    const brief = extractStructuredTripBrief(prompt);
+    assert.deepEqual(brief.duration && { value: brief.duration.value, unit: brief.duration.unit, precision: brief.duration.precision }, {
+      value: days,
+      unit: "days",
+      precision: "exact",
+    });
+    assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "duration"), true);
+  }
+});
+
 test("no driving is hard while a train preference remains soft", () => {
   const brief = extractStructuredTripBrief("I don't want to drive, and I'd prefer trains instead of flights when practical.");
   assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "no-driving"), true);

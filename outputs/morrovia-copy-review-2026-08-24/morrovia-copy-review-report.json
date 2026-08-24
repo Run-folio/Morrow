@@ -1,0 +1,910 @@
+{
+  "originalRows": 2077,
+  "exactGroups": 207,
+  "exactGroupedRows": 512,
+  "nearGroups": 47,
+  "allGroups": 254,
+  "queueSize": 60,
+  "sourceSummaryNeedsContext": 589,
+  "sourceRowContextMarkers": 0,
+  "contextResolved": 0,
+  "contextAmbiguous": 589,
+  "terminology": [
+    {
+      "ref": "TERM-01",
+      "conflict": "Trip / journey",
+      "affectedRows": 202
+    },
+    {
+      "ref": "TERM-02",
+      "conflict": "Stop / destination / place",
+      "affectedRows": 125
+    },
+    {
+      "ref": "TERM-03",
+      "conflict": "Route / plan",
+      "affectedRows": 125
+    },
+    {
+      "ref": "TERM-04",
+      "conflict": "Ready / sorted / booked",
+      "affectedRows": 40
+    },
+    {
+      "ref": "TERM-05",
+      "conflict": "Error / recovery",
+      "affectedRows": 4
+    }
+  ],
+  "queue": [
+    {
+      "id": "UX-001",
+      "tier": "1 · Core journey",
+      "type": "Near UX pattern",
+      "rows": 42,
+      "copyIds": [
+        "MRV-E3C5EB7894",
+        "MRV-53F4F92644",
+        "MRV-64D935A45C",
+        "MRV-1C09F54B15",
+        "MRV-088D4F0046",
+        "MRV-7570347076",
+        "MRV-A6D0D515B5",
+        "MRV-B6DA990239",
+        "MRV-38A414D35C",
+        "MRV-1E6A6E6437",
+        "MRV-4669117300",
+        "MRV-753996BB11",
+        "MRV-8F7519CD0D",
+        "MRV-97355C9EBF",
+        "MRV-B3BCCC51CA",
+        "MRV-2E39F5D628",
+        "MRV-A3B51FC8D3",
+        "MRV-A260C767BB",
+        "MRV-58AA011FC1",
+        "MRV-4622DFF227",
+        "MRV-443E2C6453",
+        "MRV-34EAF2EC59",
+        "MRV-84166DB1DD",
+        "MRV-2AEE1F8A7A",
+        "MRV-DB4E90A05F",
+        "MRV-50F460FCE7",
+        "MRV-8DE073C365",
+        "MRV-07BA78574B",
+        "MRV-3578352777",
+        "MRV-8157AC7622",
+        "MRV-2FC7F4EB99",
+        "MRV-FCB2266EDD",
+        "MRV-6ECF86CB1D",
+        "MRV-5207664943",
+        "MRV-DC15D5BCB5",
+        "MRV-E47BC3C874",
+        "MRV-15C719CDC1",
+        "MRV-0865D42D5E",
+        "MRV-0156E17650",
+        "MRV-CF3915F010",
+        "MRV-F7D40F0EE3",
+        "MRV-28C5F1E8F5"
+      ]
+    },
+    {
+      "id": "UX-002",
+      "tier": "1 · Core journey",
+      "type": "Near UX pattern",
+      "rows": 11,
+      "copyIds": [
+        "MRV-068EE3BC5A",
+        "MRV-A60628B87C",
+        "MRV-AE4B742A33",
+        "MRV-6B94EB86B5",
+        "MRV-B19454A280",
+        "MRV-FDDA8E06BD",
+        "MRV-A14224F236",
+        "MRV-A16DA76B61",
+        "MRV-AE60132583",
+        "MRV-369A0CB730",
+        "MRV-3FB64476CF"
+      ]
+    },
+    {
+      "id": "EX-001",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 4,
+      "copyIds": [
+        "MRV-7570347076",
+        "MRV-1E6A6E6437",
+        "MRV-07BA78574B",
+        "MRV-B2A8E1B473"
+      ]
+    },
+    {
+      "id": "EX-002",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 4,
+      "copyIds": [
+        "MRV-088D4F0046",
+        "MRV-38A414D35C",
+        "MRV-8DE073C365",
+        "MRV-F225335A8A"
+      ]
+    },
+    {
+      "id": "EX-003",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-443E2C6453",
+        "MRV-34EAF2EC59",
+        "MRV-84166DB1DD"
+      ]
+    },
+    {
+      "id": "EX-004",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-753996BB11",
+        "MRV-50F460FCE7",
+        "MRV-2FC7F4EB99"
+      ]
+    },
+    {
+      "id": "EX-005",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-6652BB854C",
+        "MRV-FEAC4484B8",
+        "MRV-C32AAB2B1D"
+      ]
+    },
+    {
+      "id": "EX-006",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-F6D14DBED1",
+        "MRV-231B3ABA75",
+        "MRV-DB4E90A05F"
+      ]
+    },
+    {
+      "id": "EX-007",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-6D78B63E0C",
+        "MRV-965163E6E7"
+      ]
+    },
+    {
+      "id": "EX-008",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-6D61F4BF64",
+        "MRV-D98A3A6F0A"
+      ]
+    },
+    {
+      "id": "EX-009",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-536DAEE3D3",
+        "MRV-2E39F5D628"
+      ]
+    },
+    {
+      "id": "EX-010",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-1736E7073F",
+        "MRV-6120BA909A"
+      ]
+    },
+    {
+      "id": "EX-011",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-068EE3BC5A",
+        "MRV-6B94EB86B5"
+      ]
+    },
+    {
+      "id": "EX-012",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-A60628B87C",
+        "MRV-FDDA8E06BD"
+      ]
+    },
+    {
+      "id": "EX-013",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-6CDE988866",
+        "MRV-75A0ADBC09"
+      ]
+    },
+    {
+      "id": "EX-014",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-89B5F43394",
+        "MRV-774387A5FF"
+      ]
+    },
+    {
+      "id": "EX-015",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-570539A046",
+        "MRV-F2D09FF4B3"
+      ]
+    },
+    {
+      "id": "EX-016",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-B9D44D351F",
+        "MRV-04ED587DC2"
+      ]
+    },
+    {
+      "id": "EX-017",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-57B3F02664",
+        "MRV-D72C7DD7D3"
+      ]
+    },
+    {
+      "id": "EX-018",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-901C93455D",
+        "MRV-176805446B"
+      ]
+    },
+    {
+      "id": "UX-009",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 17,
+      "copyIds": [
+        "MRV-82FB1BC8ED",
+        "MRV-BA9FF4F1A4",
+        "MRV-76B9E70DA7",
+        "MRV-0C528C96DD",
+        "MRV-14DC233AC6",
+        "MRV-A6CDF20B3F",
+        "MRV-ED00046D4C",
+        "MRV-48C2E96C0E",
+        "MRV-985D955DAF",
+        "MRV-A59A7F147C",
+        "MRV-EEE33AB497",
+        "MRV-F699E97023",
+        "MRV-07B733DD4A",
+        "MRV-3983DBFF82",
+        "MRV-E78A9E1EDD",
+        "MRV-3DB4AFFEAF",
+        "MRV-96FBAD9841"
+      ]
+    },
+    {
+      "id": "UX-010",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 21,
+      "copyIds": [
+        "MRV-A10EBE5DD6",
+        "MRV-87C8CE3300",
+        "MRV-66D4C853A7",
+        "MRV-901C93455D",
+        "MRV-176805446B",
+        "MRV-57B3F02664",
+        "MRV-F8578F7D1C",
+        "MRV-D72C7DD7D3",
+        "MRV-995878B9E0",
+        "MRV-B12D1AB337",
+        "MRV-2F6F13AD86",
+        "MRV-447F53D288",
+        "MRV-D048CBB349",
+        "MRV-32087F2694",
+        "MRV-BBCB5F0071",
+        "MRV-62D0465825",
+        "MRV-570539A046",
+        "MRV-D7A4F16D7F",
+        "MRV-F2D09FF4B3",
+        "MRV-B9D44D351F",
+        "MRV-04ED587DC2"
+      ]
+    },
+    {
+      "id": "EX-105",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Exact phrase",
+      "rows": 8,
+      "copyIds": [
+        "MRV-5EF1CD8265",
+        "MRV-AE321B93DE",
+        "MRV-55E40675CF",
+        "MRV-80179377FE",
+        "MRV-5A41D8C73F",
+        "MRV-CFC51C571B",
+        "MRV-2E2E4B9FB6",
+        "MRV-8C9CF4BC20"
+      ]
+    },
+    {
+      "id": "UX-012",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 8,
+      "copyIds": [
+        "MRV-97AD9F4756",
+        "MRV-26F373A2FB",
+        "MRV-B5D3E7C994",
+        "MRV-4090755A3A",
+        "MRV-BBD525FB87",
+        "MRV-3087C069A4",
+        "MRV-0CE2A4BAF3",
+        "MRV-48FA4634B3"
+      ]
+    },
+    {
+      "id": "EX-106",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Exact phrase",
+      "rows": 7,
+      "copyIds": [
+        "MRV-26F373A2FB",
+        "MRV-B5D3E7C994",
+        "MRV-4090755A3A",
+        "MRV-0CE2A4BAF3",
+        "MRV-38298656DA",
+        "MRV-A16DA76B61",
+        "MRV-48FA4634B3"
+      ]
+    },
+    {
+      "id": "UX-013",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 6,
+      "copyIds": [
+        "MRV-59DE0F444E",
+        "MRV-978638629F",
+        "MRV-BE87089670",
+        "MRV-6D78B63E0C",
+        "MRV-965163E6E7",
+        "MRV-7C601BD104"
+      ]
+    },
+    {
+      "id": "UX-014",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 5,
+      "copyIds": [
+        "MRV-7F1754A0C8",
+        "MRV-48C4B7BE65",
+        "MRV-1489DBF0C7",
+        "MRV-7B59F62A2A",
+        "MRV-66B8EB9352"
+      ]
+    },
+    {
+      "id": "EX-107",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Exact phrase",
+      "rows": 4,
+      "copyIds": [
+        "MRV-39FD6DA931",
+        "MRV-39E5EB68AA",
+        "MRV-EA31150D69",
+        "MRV-11D46C01F6"
+      ]
+    },
+    {
+      "id": "EX-108",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-BBD525FB87",
+        "MRV-3087C069A4"
+      ]
+    },
+    {
+      "id": "UX-015",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 68,
+      "copyIds": [
+        "MRV-CEF0870571",
+        "MRV-F818CE89D1",
+        "MRV-A05395E847",
+        "MRV-B607D9CF46",
+        "MRV-46D60347F9",
+        "MRV-E9392819E5",
+        "MRV-A6C280CA7B",
+        "MRV-62BA8F5317",
+        "MRV-DC0F11A372",
+        "MRV-65D5D42BFA",
+        "MRV-B53CCC6DB4",
+        "MRV-427C67E3CF",
+        "MRV-F7F34BBB5B",
+        "MRV-05492C749E",
+        "MRV-6D39B86D42",
+        "MRV-1720D79948",
+        "MRV-73F9B06885",
+        "MRV-768092EDAD",
+        "MRV-0F3C69ED61",
+        "MRV-773E746F54",
+        "MRV-B117B67912",
+        "MRV-37FF687DBB",
+        "MRV-4AB96E045B",
+        "MRV-6E53FCD274",
+        "MRV-A16C8D2A13",
+        "MRV-4FDA2380A3",
+        "MRV-B364FA83E7",
+        "MRV-7ABACE34D8",
+        "MRV-A638ECDDD0",
+        "MRV-C78398B884",
+        "MRV-FA5824CFC4",
+        "MRV-3F37898D54",
+        "MRV-B4F6B27DFA",
+        "MRV-68F8B0A662",
+        "MRV-C1E190C76E",
+        "MRV-62239CFB4D",
+        "MRV-26074D98C0",
+        "MRV-72FE6F4A01",
+        "MRV-B573C0EEF2",
+        "MRV-DED92DF262",
+        "MRV-80BA3F53D6",
+        "MRV-67E9E22C0B",
+        "MRV-6ACE7F7810",
+        "MRV-5ED99EB6B9",
+        "MRV-61BFAB3D41",
+        "MRV-CE8C139869",
+        "MRV-D609FAA9E7",
+        "MRV-86860A8A8A",
+        "MRV-DB1B76EE1B",
+        "MRV-85A633324B",
+        "MRV-4239C03FE9",
+        "MRV-71F3CAED62",
+        "MRV-D6CB4B66A2",
+        "MRV-EF429FB2F8",
+        "MRV-D73EC8AB5A",
+        "MRV-A5C326E2FF",
+        "MRV-396EDA0072",
+        "MRV-6FADA593B2",
+        "MRV-CB9E0BBA78",
+        "MRV-BF53C98D14",
+        "MRV-67B058629F",
+        "MRV-045D9DC2A2",
+        "MRV-E364A88DDF",
+        "MRV-05653B7DB0",
+        "MRV-E860BA25C6",
+        "MRV-C44E226084",
+        "MRV-2C0CCA9518",
+        "MRV-2CF99ECAA2"
+      ]
+    },
+    {
+      "id": "UX-016",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 32,
+      "copyIds": [
+        "MRV-FFD17F2516",
+        "MRV-8B41D8E336",
+        "MRV-0987316DF0",
+        "MRV-51E0354C57",
+        "MRV-FCD0EFA4DA",
+        "MRV-2886EEAE55",
+        "MRV-67580B63F1",
+        "MRV-3848E69A94",
+        "MRV-F80044EA05",
+        "MRV-9FC68AE6DB",
+        "MRV-93EF5C61A1",
+        "MRV-54321CAB77",
+        "MRV-6F383DFE20",
+        "MRV-76313EF625",
+        "MRV-760F42CA9F",
+        "MRV-620A7657F8",
+        "MRV-6BA0253C18",
+        "MRV-85A544CD4A",
+        "MRV-F76A6495D2",
+        "MRV-3BBEA6D355",
+        "MRV-4C0CCCA0D6",
+        "MRV-A51C3097B4",
+        "MRV-D8DBF0D148",
+        "MRV-98228C9568",
+        "MRV-C25BA8F4F8",
+        "MRV-D591326260",
+        "MRV-A05DE57326",
+        "MRV-CD2A0B3743",
+        "MRV-413C2666ED",
+        "MRV-96D56AAC2B",
+        "MRV-148EA86944",
+        "MRV-E3EC91B1CB"
+      ]
+    },
+    {
+      "id": "UX-017",
+      "tier": "2 · Trust / high-stakes",
+      "type": "Near UX pattern",
+      "rows": 23,
+      "copyIds": [
+        "MRV-C41449C7F5",
+        "MRV-4C0B47A932",
+        "MRV-4BE010C7F4",
+        "MRV-F9CB7BB46B",
+        "MRV-1839593D90",
+        "MRV-C3332B1CAC",
+        "MRV-51978018B1",
+        "MRV-28FEF86DD8",
+        "MRV-C8A764610F",
+        "MRV-8FC6DB4792",
+        "MRV-2A75D06F7C",
+        "MRV-ECEE9A8233",
+        "MRV-1FFBFBE1FD",
+        "MRV-F8AA94649C",
+        "MRV-53D4E9BEF6",
+        "MRV-85325F0EDF",
+        "MRV-E94B95F957",
+        "MRV-C27F65CBA3",
+        "MRV-2BCF798451",
+        "MRV-068DCF388A",
+        "MRV-672AFE2C44",
+        "MRV-D026D50157",
+        "MRV-C6420ED935"
+      ]
+    },
+    {
+      "id": "EX-138",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-E3C5EB7894",
+        "MRV-41FC3CAE56",
+        "MRV-28C5F1E8F5"
+      ]
+    },
+    {
+      "id": "UX-039",
+      "tier": "3 · Error / recovery",
+      "type": "Near UX pattern",
+      "rows": 19,
+      "copyIds": [
+        "MRV-36943DAFF1",
+        "MRV-60426B0E38",
+        "MRV-EF57263745",
+        "MRV-A4A23E9C68",
+        "MRV-C34804026F",
+        "MRV-62B1E48603",
+        "MRV-313659E736",
+        "MRV-06409C5163",
+        "MRV-75107314E7",
+        "MRV-A85A633742",
+        "MRV-2B83245292",
+        "MRV-38B556FFB8",
+        "MRV-1AA8481343",
+        "MRV-4EA364A256",
+        "MRV-934AA98296",
+        "MRV-40717AB74F",
+        "MRV-653BF99FC9",
+        "MRV-585C15EE49",
+        "MRV-97464C36DE"
+      ]
+    },
+    {
+      "id": "EX-139",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-72FE6F4A01",
+        "MRV-B573C0EEF2",
+        "MRV-80BA3F53D6"
+      ]
+    },
+    {
+      "id": "EX-140",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-51E0354C57",
+        "MRV-68CCD0BFCA"
+      ]
+    },
+    {
+      "id": "EX-141",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-E7360A3868",
+        "MRV-DFFD00A9C6"
+      ]
+    },
+    {
+      "id": "EX-142",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-08B3A9BAC5",
+        "MRV-8EBBE0E0F5"
+      ]
+    },
+    {
+      "id": "EX-143",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-CD2A0B3743",
+        "MRV-413C2666ED"
+      ]
+    },
+    {
+      "id": "EX-144",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-1369DF7788",
+        "MRV-E3A31FDAC7"
+      ]
+    },
+    {
+      "id": "UX-040",
+      "tier": "3 · Error / recovery",
+      "type": "Near UX pattern",
+      "rows": 2,
+      "copyIds": [
+        "MRV-5B92762C43",
+        "MRV-C61402CD2F"
+      ]
+    },
+    {
+      "id": "EX-145",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 4,
+      "copyIds": [
+        "MRV-BD4A8B3031",
+        "MRV-6D37B21E06",
+        "MRV-02BDE48061",
+        "MRV-9137E4C896"
+      ]
+    },
+    {
+      "id": "EX-146",
+      "tier": "3 · Error / recovery",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-F3F04A2230",
+        "MRV-E3B347B88D"
+      ]
+    },
+    {
+      "id": "UX-041",
+      "tier": "3 · Error / recovery",
+      "type": "Near UX pattern",
+      "rows": 4,
+      "copyIds": [
+        "MRV-2E20489326",
+        "MRV-DB2CBFBA1B",
+        "MRV-DFE8833389",
+        "MRV-E1D74C4A23"
+      ]
+    },
+    {
+      "id": "EX-175",
+      "tier": "4 · Onboarding / empty",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-2E3A4F7913",
+        "MRV-7D105D90CB"
+      ]
+    },
+    {
+      "id": "EX-176",
+      "tier": "4 · Onboarding / empty",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-FB0E99B617",
+        "MRV-CF98A619E0"
+      ]
+    },
+    {
+      "id": "UX-047",
+      "tier": "4 · Onboarding / empty",
+      "type": "Near UX pattern",
+      "rows": 3,
+      "copyIds": [
+        "MRV-A083CB22F6",
+        "MRV-86A131187B",
+        "MRV-627996A6A9"
+      ]
+    },
+    {
+      "id": "EX-177",
+      "tier": "4 · Onboarding / empty",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-1FE685A06C",
+        "MRV-020C0E8448"
+      ]
+    },
+    {
+      "id": "EX-178",
+      "tier": "5 · Navigation",
+      "type": "Exact phrase",
+      "rows": 3,
+      "copyIds": [
+        "MRV-0F9AA93184",
+        "MRV-B16FACBA59",
+        "MRV-472CD5B9F7"
+      ]
+    },
+    {
+      "id": "EX-179",
+      "tier": "5 · Navigation",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-C4CD7EA67E",
+        "MRV-3C6E74B7B0"
+      ]
+    },
+    {
+      "id": "EX-180",
+      "tier": "5 · Navigation",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-29B91F3E02",
+        "MRV-274AF0FBBE"
+      ]
+    },
+    {
+      "id": "EX-181",
+      "tier": "5 · Navigation",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-0803E42A2E",
+        "MRV-EAE286E0B1"
+      ]
+    },
+    {
+      "id": "EX-182",
+      "tier": "5 · Navigation",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-1B2E491747",
+        "MRV-92F9B7EC9D"
+      ]
+    },
+    {
+      "id": "EX-183",
+      "tier": "6 · Long-tail",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-5DC34DED5B",
+        "MRV-15A00DAA49"
+      ]
+    },
+    {
+      "id": "EX-184",
+      "tier": "6 · Long-tail / accessibility",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-ECF9D91C3A",
+        "MRV-7DE8BE3D81"
+      ]
+    },
+    {
+      "id": "EX-185",
+      "tier": "6 · Long-tail",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-E75FC5A2E7",
+        "MRV-F467ABF404"
+      ]
+    },
+    {
+      "id": "EX-019",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-DC15D5BCB5",
+        "MRV-0865D42D5E"
+      ]
+    },
+    {
+      "id": "EX-020",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-B12D1AB337",
+        "MRV-7A9431DE4D"
+      ]
+    },
+    {
+      "id": "EX-021",
+      "tier": "1 · Core journey",
+      "type": "Exact phrase",
+      "rows": 2,
+      "copyIds": [
+        "MRV-B0E7E56F3D",
+        "MRV-AACB24B24E"
+      ]
+    },
+    {
+      "id": "UX-003",
+      "tier": "1 · Core journey",
+      "type": "Near UX pattern",
+      "rows": 12,
+      "copyIds": [
+        "MRV-15DDF9323E",
+        "MRV-A0C70BD7B6",
+        "MRV-C58FD5E8D0",
+        "MRV-0375FA42E4",
+        "MRV-8A24CEA7AE",
+        "MRV-F8CD059CC7",
+        "MRV-505A624784",
+        "MRV-6FF650EDC2",
+        "MRV-A33189D7C0",
+        "MRV-704CE050F7",
+        "MRV-F538A7B4F5",
+        "MRV-34936A7ACC"
+      ]
+    }
+  ]
+}
