@@ -416,6 +416,24 @@ test("loadRequestedTrip falls back to the exact cached document when the cloud r
   assert.equal(await loadRequestedTrip(cached.id, "owner-b"), null);
 });
 
+test("loadRequestedTrip does not use a local cache after a definitive cloud 404", async (context) => {
+  const storage = new MemoryBrowserStorage();
+  const cached = browserTrip({ id: "trip-requested-deleted", title: "Stale local copy" });
+  assert.equal(cacheCanonicalTripToStorage(storage, cached), true);
+
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const originalFetch = globalThis.fetch;
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: storage } });
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: "Trip not found." }), { status: 404 });
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (windowDescriptor) Object.defineProperty(globalThis, "window", windowDescriptor);
+    else Reflect.deleteProperty(globalThis, "window");
+  });
+
+  assert.equal(await loadRequestedTrip(cached.id, "owner-a"), null);
+});
+
 test("offline requested-trip composition returns dirty recovery ahead of the same clean cache", async (context) => {
   const storage = new MemoryBrowserStorage();
   const tripId = "trip-requested-dirty-offline";

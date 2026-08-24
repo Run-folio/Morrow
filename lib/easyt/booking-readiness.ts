@@ -1,5 +1,6 @@
 import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
+import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport";
 export type BookingReadinessAction = {
@@ -31,9 +32,7 @@ const withParams = (base: string, params: Record<string, string | undefined>) =>
 };
 
 const stopDatesAreStable = (stop: TripStop, trip: EasyTTrip) => Boolean(
-  stop.arrivalDate && stop.departureDate
-  && stop.arrivalDate >= trip.startDate
-  && stop.departureDate <= new Date(+new Date(`${trip.endDate}T00:00:00`) + 86400000).toISOString().slice(0, 10)
+  stableStopDateRange(stop, trip)
   && !(trip.brief.cascadeStatus?.conflicts ?? []).some((conflict) => conflict.includes(stop.name)),
 );
 
@@ -46,6 +45,7 @@ const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionS
 export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfiguration = {}): BookingReadinessAction[] {
   const actions: BookingReadinessAction[] = [];
   const health = tripHealth(trip);
+  const dateFacts = deriveTripDateFacts(trip);
   const stableStops = trip.stops.filter((stop) => stopDatesAreStable(stop, trip));
 
   stableStops.forEach((stop) => {
@@ -70,7 +70,7 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
 
   const first = [...trip.stops].sort((a, b) => a.order - b.order)[0];
   const last = [...trip.stops].sort((a, b) => a.order - b.order).at(-1);
-  if (first && last && trip.brief.origin && trip.startDate && trip.endDate && health.blockingCount === 0) {
+  if (first && last && trip.brief.origin && dateFacts.state === "valid" && health.isReady) {
     const openJaw = first.id !== last.id;
     actions.push({
       id: "trip-flights", category: "flight", provider: "google-flights", title: openJaw ? "Check an open-jaw flight" : "Check return flights",

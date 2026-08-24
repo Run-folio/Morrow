@@ -266,6 +266,8 @@ export type EasyTTrip = {
   ownerId: string | null;
   title: string;
   status: TripStatus;
+  /** Retained only while archived so restore returns the trip to its prior planning state. */
+  archivedFromStatus?: Exclude<TripStatus, "archived">;
   startDate: string;
   endDate: string;
   travellers: number;
@@ -311,6 +313,7 @@ export type BuilderTripInput = {
   placeDetails?: Record<string, Array<{ title: string; coordinates?: [number, number]; image?: string; sourceUrl?: string }>>;
   originCoordinates?: [number, number];
   createdAt?: string;
+  status?: Exclude<TripStatus, "archived">;
   capturedIntent?: TripCapturedIntent;
   routeAssessment?: RouteIntelligenceAssessment;
   intent?: TripIntent;
@@ -392,7 +395,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     id: input.id,
     ownerId: null,
     title: `${input.origin} to ${stops.map((stop) => stop.name).join(" & ")}`,
-    status: "draft",
+    status: input.status ?? "draft",
     startDate: input.startDate,
     endDate: input.endDate,
     travellers: input.intent?.travellers ?? 2,

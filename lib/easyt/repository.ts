@@ -7,6 +7,7 @@ import {
   canPromoteTripForOwner,
   canonicalTripForOwner,
   decideExistingTripPromotion,
+  duplicateTripDocument,
   type TripPromotionConflictReason,
 } from "./trip-promotion";
 import {
@@ -303,11 +304,16 @@ export async function saveTripForOwner(
         start_date = ${document.startDate},
         end_date = ${document.endDate},
         travellers = ${document.travellers},
-        status = ${document.status},
+        status = case when document ->> 'status' = 'planned' and ${document.status} = 'draft' then 'planned' else ${document.status} end,
         pace = ${document.brief.pace},
         currency = ${document.currency},
         brief = ${JSON.stringify(document.brief)},
-        document = current_setting('morrovia.save_document')::jsonb,
+        document = jsonb_set(
+          current_setting('morrovia.save_document')::jsonb,
+          '{status}',
+          to_jsonb(case when document ->> 'status' = 'planned' and ${document.status} = 'draft' then 'planned' else ${document.status} end),
+          true
+        ),
         schema_version = ${document.schemaVersion},
         updated_at = ${document.updatedAt}
       where id = ${document.id}
@@ -620,7 +626,10 @@ export async function archiveTripForOwner(ownerId: string, tripId: string) {
     update easyt_trips
     set status = 'archived', updated_at = now(),
       document = jsonb_set(
-        jsonb_set(document, '{status}', '"archived"'::jsonb, true),
+        jsonb_set(
+          jsonb_set(document, '{archivedFromStatus}', to_jsonb(case when document ->> 'status' = 'planned' then 'planned' else 'draft' end), true),
+          '{status}', '"archived"'::jsonb, true
+        ),
         '{updatedAt}', to_jsonb(now()::text), true
       )
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
@@ -633,9 +642,9 @@ export async function restoreTripForOwner(ownerId: string, tripId: string) {
   const sql = getEasyTDatabase();
   const rows = (await sql`
     update easyt_trips
-    set status = 'draft', updated_at = now(),
+    set status = case when document ->> 'archivedFromStatus' = 'planned' then 'planned' else 'draft' end, updated_at = now(),
       document = jsonb_set(
-        jsonb_set(document, '{status}', '"draft"'::jsonb, true),
+        jsonb_set(document - 'archivedFromStatus', '{status}', to_jsonb(case when document ->> 'archivedFromStatus' = 'planned' then 'planned' else 'draft' end), true),
         '{updatedAt}', to_jsonb(now()::text), true
       )
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
@@ -661,39 +670,7 @@ async function copyTripForOwner(
 ): Promise<EasyTTrip> {
   const now = new Date().toISOString();
   const id = randomUUID();
-  const stopIds = new Map(
-    source.stops.map((stop) => [stop.id, `${id}-stop-${randomUUID()}`]),
-  );
-  const stops = source.stops.map((stop) => ({
-    ...stop,
-    id: stopIds.get(stop.id)!,
-  }));
-  const duplicate: EasyTTrip = {
-    ...source,
-    id,
-    ownerId,
-    title,
-    status: "draft",
-    stops,
-    legs: source.legs.map((leg) => ({
-      ...leg,
-      id: `${id}-leg-${randomUUID()}`,
-      fromStopId: stopIds.get(leg.fromStopId) ?? leg.fromStopId,
-      toStopId: stopIds.get(leg.toStopId) ?? leg.toStopId,
-    })),
-    planItems: source.planItems.map((item) => ({
-      ...item,
-      id: `${id}-item-${randomUUID()}`,
-      stopId: stopIds.get(item.stopId) ?? item.stopId,
-    })),
-    recommendations: source.recommendations.map((recommendation) => ({
-      ...recommendation,
-      id: `${id}-recommendation-${randomUUID()}`,
-      status: "open",
-    })),
-    createdAt: now,
-    updatedAt: now,
-  };
+  const duplicate = duplicateTripDocument(source, { id, now, nextId: randomUUID, title });
 
   const result = await promoteTripForOwner(ownerId, duplicate);
   if (result.outcome === "conflict") {

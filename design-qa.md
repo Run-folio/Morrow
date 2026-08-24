@@ -810,3 +810,52 @@ No actionable P0, P1, or P2 differences remain.
 - P3: the production map topology supports the canonical catalogue, but very small island states remain easier to select from the explorer than directly on the map.
 
 final result: passed
+
+---
+
+# Passport design QA
+
+- Source visual truth: `/Users/shaun/Downloads/ChatGPT Image Aug 23, 2026, 02_58_03 PM (2).png`
+- Implementation: `http://localhost:3008/journey/passport`
+- Final implementation screenshot: `/private/tmp/morrovia-passport-final-top-v3.png`
+- Final side-by-side comparison: `/private/tmp/morrovia-passport-comparison-final-v3.png`
+- Focused result capture: `/private/tmp/morrovia-passport-desktop-final-lower.png`
+- Responsive captures: `/private/tmp/morrovia-passport-768.png`, `/private/tmp/morrovia-passport-390-top.png`, `/private/tmp/morrovia-passport-320-after-change.png`
+- Source pixels: 1024 × 1536. The source top region was cropped to the matching 16:9 viewport and normalized to 1280 × 720.
+- Implementation pixels/CSS viewport: 1280 × 720 at reported DPR 2; browser capture output is CSS-pixel normalized at 1280 × 720.
+- State: English, United Kingdom passport, Guatemala destination, successful Passport Index result, official-source handoff visible.
+
+## Full-view comparison evidence
+
+The final side-by-side comparison confirms the same editorial hierarchy, three-line hero rhythm, Morrovia navigation, paired controls, privacy line, primary action, and beginning of the result surface. The implementation intentionally uses longer cautionary copy and replaces unsupported mock claims with supported Passport Index fields and explicit confirmation guidance.
+
+## Focused region evidence
+
+The focused result capture verifies the result heading, three fact cards, confidence treatment, official-source strip, and beginning of grouped considerations at readable scale. Icons use the existing Lucide family; no source illustration was replaced with CSS or handcrafted SVG art.
+
+## Required fidelity surfaces
+
+- Typography: current Morrovia display/UI/meta fonts and weights retained; final hero width reproduces the source's three-line wrap.
+- Spacing/layout: 1180px desktop frame, source-like hero/form rhythm, consistent 18px result spacing, and no horizontal overflow.
+- Colors/tokens: Morrovia ink, signal pink, action indigo, semantic success/warning, paper, line, lilac and tint tokens used throughout.
+- Image/asset quality: the source contains only brand/navigation and simple line icons; implementation uses the live brand/navigation plus one consistent icon library.
+- Copy/content: source hierarchy retained while unsupported visa certainty, passport-validity claims, onward-ticket claims, prices and guarantees are omitted.
+- Accessibility/behavior: labelled controls, semantic headings/regions, live loading/error output, result/error focus, 52px controls, reduced-motion handling, and immediate stale-result invalidation verified.
+
+## Comparison history
+
+1. P1 — A legacy wildcard selector applied the page width to nested hero/result classes, compressing the headline and creating horizontal overflow. Removed the obsolete Passport overrides from `surface-editorial.module.css`; post-fix captures show zero overflow.
+2. P0 — Production interaction could discard a current fast response because its request ID was captured inside a deferred state updater. Moved IDs to an explicit monotonic ref and added a regression test; production browser checks now return and focus the result in English and Spanish.
+3. P2 — The desktop hero was materially wider than the source and wrapped the second line differently. Iteratively reduced the title measure to 450px; the final side-by-side capture matches the source's three-line composition.
+
+Post-fix responsive evidence: 768 × 900, 390 × 844 and 320 × 720 all report document width equal to viewport width, zero overflowing elements, visible results, and 52px select/button heights. Changing destination at 320px cleared the previous result immediately. Final production console check reported no errors or warnings.
+
+## Findings
+
+No actionable P0, P1 or P2 findings remain. The longer implementation intro is an intentional trust/data-boundary difference from the visual mock.
+
+## Follow-up polish
+
+No blocking follow-up. A future real-device pass may compare native select rendering across iOS and Android.
+
+final result: passed

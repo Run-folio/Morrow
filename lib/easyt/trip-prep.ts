@@ -1,7 +1,7 @@
 import { accommodationDatesReady, accommodationProgress, stayBookingForStop } from "./accommodation.ts";
 import type { BookingReadinessAction } from "./booking-readiness.ts";
-import type { EasyTTrip, TripChecklistItem } from "./trip.ts";
-import { tripLifecycle } from "./trip-lifecycle.ts";
+import { tripIntentForTrip, type EasyTTrip, type TripChecklistItem } from "./trip.ts";
+import { deriveTripDateFacts } from "./trip-facts.ts";
 import type { ReadinessCard, TravelReadinessProfile } from "./travel-readiness.ts";
 import { mapWorkspaceHref } from "./trip-workspace-links.ts";
 
@@ -39,7 +39,7 @@ function checklistStatus(item: TripChecklistItem | undefined): TripPrepTaskStatu
 }
 
 export function tripDepartureCountdown(startDate: string, endDate: string, now = new Date()) {
-  const lifecycle = tripLifecycle(startDate, endDate, now);
+  const lifecycle = deriveTripDateFacts({ startDate, endDate }, now).lifecycle;
   const days = lifecycle.daysUntilStart;
   if (lifecycle.state === "unavailable") return { days: null, label: "Add dates to see your trip timeline.", state: lifecycle.state };
   if (lifecycle.state === "invalid") return { days, label: "Review the trip dates before relying on this timeline.", state: lifecycle.state };
@@ -114,8 +114,10 @@ export function deriveTripPrepTasks({
   const tasks: TripPrepTask[] = [];
   const checklist = trip.brief.checklist ?? [];
   const consumedChecklist = new Set<string>();
-  const lifecycle = tripLifecycle(trip.startDate, trip.endDate, now);
-  const datesReady = Boolean(lifecycle.start && lifecycle.end && lifecycle.state !== "invalid");
+  const dateFacts = deriveTripDateFacts(trip, now);
+  const lifecycle = dateFacts.lifecycle;
+  const datesReady = dateFacts.state === "valid";
+  const avoidDriving = tripIntentForTrip(trip).hardConstraints.avoidDriving;
 
   if (!datesReady) tasks.push({
     id: "trip-dates",
@@ -138,7 +140,8 @@ export function deriveTripPrepTasks({
       ? "complete"
       : travellerBasicsReady
         ? "in-progress"
-        : lifecycle.daysUntilStart !== null && lifecycle.daysUntilStart >= 0 && lifecycle.daysUntilStart <= 30
+        : (lifecycle.state === "upcoming" || lifecycle.state === "starts-today")
+          && lifecycle.daysUntilStart !== null && lifecycle.daysUntilStart <= 30
           ? "urgent"
           : "to-do");
   tasks.push({
@@ -163,7 +166,7 @@ export function deriveTripPrepTasks({
   if (stays.stops.length) {
     const accommodationChecklist = matchingChecklist(checklist, /accommodation|hotel|stay/i);
     if (accommodationChecklist) consumedChecklist.add(accommodationChecklist.id);
-    const firstDatesMissing = stays.stops.find((stop) => !accommodationDatesReady(stop));
+    const firstDatesMissing = stays.stops.find((stop) => !accommodationDatesReady(stop, trip));
     const firstMissing = stays.stops.find((stop) => !stayBookingForStop(trip, stop));
     tasks.push({
       id: "accommodation",
@@ -209,15 +212,15 @@ export function deriveTripPrepTasks({
     "car-rental": /transport|transfer|car|drive/i,
     "ground-transport": /transport|transfer|train|ferry/i,
   };
-  bookingActions.filter((action) => action.category !== "accommodation").forEach((action) => {
+  bookingActions.filter((action) => action.category !== "accommodation" && !(avoidDriving && action.category === "car-rental")).forEach((action) => {
     const pattern = actionPatterns[action.category];
     const item = pattern ? matchingChecklist(checklist, pattern) : undefined;
     if (item) consumedChecklist.add(item.id);
     tasks.push(bookingTask(action, checklistStatus(item) ?? "to-do"));
   });
 
-  const driving = readinessById.get("driving");
-  if (driving && !tasks.some((task) => task.kind === "transport")) tasks.push({
+  const driving = avoidDriving ? undefined : readinessById.get("driving");
+  if (driving && !avoidDriving && !tasks.some((task) => task.kind === "transport")) tasks.push({
     id: "driving-readiness",
     title: driving.title,
     detail: driving.detail,

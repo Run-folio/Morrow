@@ -49,6 +49,16 @@ import {
   type StampStatusFilter,
   type StampStatusRecord,
 } from "@/lib/easyt/stamps";
+import {
+  clearSyncedStampDirty,
+  emptyStampDirtyRecords,
+  markStampDirty,
+  mergeGuestStamps,
+  mergeRemoteStamps,
+  stampRecordHasContent,
+  type StampDirtyRecords,
+  type StampRecords,
+} from "@/lib/easyt/stamp-persistence";
 
 import styles from "./stamped.module.css";
 
@@ -209,6 +219,17 @@ function updateTextRecord(record: TextRecord, countryId: string, value: string) 
   }
   return { ...record, [countryId]: value };
 }
+
+const guestPromotionConsentKey = "easyt-stamped-guest-promotion-consent";
+
+const normalizeDirtyRecords = (value: unknown): StampDirtyRecords => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return emptyStampDirtyRecords();
+  const record = value as Partial<StampDirtyRecords>;
+  const values = (field: keyof StampDirtyRecords) => Array.isArray(record[field])
+    ? record[field].filter((id): id is string => typeof id === "string" && Boolean(normalizeStampCountryId(id))).map((id) => normalizeStampCountryId(id)!)
+    : [];
+  return { statuses: values("statuses"), memories: values("memories"), photos: values("photos") };
+};
 
 export function StampedExperience({
   authenticated,
@@ -403,7 +424,7 @@ export function StampedExperience({
       {!authenticated && savePrompt ? <div className={styles.notice} role="status">
         <span><strong>{labels.keep}</strong> · {labels.keepText}</span>
         <span className={styles.noticeActions}>
-          <EasyTLinkButton href="/journey/login?mode=sign-up&next=%2Fjourney%2Fstamped" size="small">{labels.keepAction}</EasyTLinkButton>
+          <EasyTLinkButton href="/journey/login?mode=sign-up&next=%2Fjourney%2Fstamped" size="small" onClick={() => window.localStorage.setItem(guestPromotionConsentKey, "1")}>{labels.keepAction}</EasyTLinkButton>
           {onDismissSavePrompt ? <button type="button" onClick={onDismissSavePrompt}>{language === "es" ? "Ahora no" : "Not now"}</button> : null}
         </span>
       </div> : null}
@@ -602,9 +623,32 @@ export default function StampedClient({ userKey, authenticated }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savePrompt, setSavePrompt] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [dirty, setDirty] = useState<StampDirtyRecords>(emptyStampDirtyRecords);
   const statusStorageKey = `easyt-stamped-${userKey ?? "guest"}`;
   const memoryStorageKey = `easyt-stamp-memories-${userKey ?? "guest"}`;
   const photoStorageKey = `easyt-stamp-photos-${userKey ?? "guest"}`;
+  const dirtyStorageKey = `easyt-stamp-pending-${userKey ?? "guest"}`;
+
+  const persistDirty = (next: StampDirtyRecords) => {
+    setDirty(next);
+    window.localStorage.setItem(dirtyStorageKey, JSON.stringify(next));
+  };
+
+  const markDirty = (field: keyof StampDirtyRecords, countryId: string) => {
+    setDirty((current) => {
+      const next = markStampDirty(current, field, countryId);
+      window.localStorage.setItem(dirtyStorageKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearDirty = (successful: Partial<StampDirtyRecords>) => {
+    setDirty((current) => {
+      const next = clearSyncedStampDirty(current, successful);
+      window.localStorage.setItem(dirtyStorageKey, JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const saved = window.localStorage.getItem("easyt-language");
@@ -622,9 +666,11 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     const cachedStatuses = normalizeStampStatuses(safeParse(window.localStorage.getItem(statusStorageKey)));
     const cachedMemories = normalizeTextRecord(safeParse(window.localStorage.getItem(memoryStorageKey)));
     const cachedPhotos = normalizeTextRecord(safeParse(window.localStorage.getItem(photoStorageKey)));
+    const cachedDirty = normalizeDirtyRecords(safeParse(window.localStorage.getItem(dirtyStorageKey)));
     setStatuses(cachedStatuses);
     setMemories(cachedMemories);
     setPhotos(cachedPhotos);
+    setDirty(cachedDirty);
 
     if (!isAuthenticated) {
       setReady(true);
@@ -641,24 +687,44 @@ export default function StampedClient({ userKey, authenticated }: Props) {
         const remoteStatuses = normalizeStampStatuses(data.statuses);
         const remoteMemories = normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.note ?? ""])));
         const remotePhotos = normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.photoData ?? ""])));
-        const guestStatuses = normalizeStampStatuses(safeParse(window.localStorage.getItem("easyt-stamped-guest")));
+        const guestRecords: StampRecords = {
+          statuses: normalizeStampStatuses(safeParse(window.localStorage.getItem("easyt-stamped-guest"))),
+          memories: normalizeTextRecord(safeParse(window.localStorage.getItem("easyt-stamp-memories-guest"))),
+          photos: normalizeTextRecord(safeParse(window.localStorage.getItem("easyt-stamp-photos-guest"))),
+        };
         const claimedBy = window.localStorage.getItem("easyt-stamped-guest-claimed-by");
-        const canClaimGuest = Boolean(userKey && Object.keys(guestStatuses).length && (!claimedBy || claimedBy === userKey));
-        const mergedStatuses = canClaimGuest ? { ...guestStatuses, ...remoteStatuses } : remoteStatuses;
+        const guestConsent = window.localStorage.getItem(guestPromotionConsentKey) === "1";
+        const canClaimGuest = Boolean(userKey && guestConsent && stampRecordHasContent(guestRecords) && (!claimedBy || claimedBy === userKey));
+        const remote: StampRecords = { statuses: remoteStatuses, memories: remoteMemories, photos: remotePhotos };
+        const claimed = canClaimGuest ? mergeGuestStamps(remote, guestRecords) : remote;
+        const merged = mergeRemoteStamps(claimed, { statuses: cachedStatuses, memories: cachedMemories, photos: cachedPhotos }, cachedDirty);
 
         if (canClaimGuest) {
-          const missingGuestRows = Object.entries(guestStatuses).filter(([countryId]) => !remoteStatuses[countryId]);
-          const migrated = await Promise.all(missingGuestRows.map(async ([countryId, status]) => {
+          const migrations = [
+            ...Object.entries(guestRecords.statuses).filter(([countryId]) => !remoteStatuses[countryId]).map(async ([countryId, status]) => {
             const migration = await fetch("/api/easyt/stamped", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ countryId, status }),
             });
             return migration.ok;
-          }));
+            }),
+            ...[...new Set([...Object.keys(claimed.memories), ...Object.keys(claimed.photos)])].filter((countryId) => claimed.memories[countryId] !== remoteMemories[countryId] || claimed.photos[countryId] !== remotePhotos[countryId]).map(async (countryId) => {
+              const migration = await fetch("/api/easyt/stamped", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ countryId, note: claimed.memories[countryId] ?? "", photoData: claimed.photos[countryId] ?? null }),
+              });
+              return migration.ok;
+            }),
+          ];
+          const migrated = await Promise.all(migrations);
           if (migrated.every(Boolean) && userKey) {
             window.localStorage.setItem("easyt-stamped-guest-claimed-by", userKey);
             window.localStorage.removeItem("easyt-stamped-guest");
+            window.localStorage.removeItem("easyt-stamp-memories-guest");
+            window.localStorage.removeItem("easyt-stamp-photos-guest");
+            window.localStorage.removeItem(guestPromotionConsentKey);
           } else if (!migrated.every(Boolean)) {
             setSaveError(language === "es"
               ? "Algunos sellos de este dispositivo aún no se han sincronizado con tu cuenta."
@@ -666,13 +732,36 @@ export default function StampedClient({ userKey, authenticated }: Props) {
           }
         }
 
+        const syncedStatuses: string[] = [];
+        const syncedMemories: string[] = [];
+        const syncedPhotos: string[] = [];
+        await Promise.all([
+          ...cachedDirty.statuses.map(async (countryId) => {
+            const response = await fetch("/api/easyt/stamped", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ countryId, status: merged.statuses[countryId] ?? null }) });
+            if (response.ok) syncedStatuses.push(countryId);
+          }),
+          ...[...new Set([...cachedDirty.memories, ...cachedDirty.photos])].map(async (countryId) => {
+            const response = await fetch("/api/easyt/stamped", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ countryId, note: merged.memories[countryId] ?? "", photoData: merged.photos[countryId] ?? null }) });
+            if (response.ok) {
+              if (cachedDirty.memories.includes(countryId)) syncedMemories.push(countryId);
+              if (cachedDirty.photos.includes(countryId)) syncedPhotos.push(countryId);
+            }
+          }),
+        ]);
+        if (syncedStatuses.length || syncedMemories.length || syncedPhotos.length) {
+          persistDirty(clearSyncedStampDirty(cachedDirty, { statuses: syncedStatuses, memories: syncedMemories, photos: syncedPhotos }));
+        }
+
         if (cancelled) return;
-        setStatuses(mergedStatuses);
-        setMemories(remoteMemories);
-        setPhotos(remotePhotos);
-      } catch (error) {
+        setStatuses(merged.statuses);
+        setMemories(merged.memories);
+        setPhotos(merged.photos);
+      } catch {
         if (!cancelled) {
-          setLoadError(error instanceof Error ? error.message : "Unable to load your stamps.");
+          // Database and provider failures are not useful traveller-facing
+          // copy. Keep the retry path, but do not expose internals in this
+          // compact mobile notice.
+          setLoadError(language === "es" ? "No pudimos cargar tus sellos. Inténtalo de nuevo." : "We couldn't load your stamps. Please try again.");
         }
       } finally {
         if (!cancelled) setReady(true);
@@ -689,10 +778,11 @@ export default function StampedClient({ userKey, authenticated }: Props) {
       window.localStorage.setItem(statusStorageKey, JSON.stringify(statuses));
       window.localStorage.setItem(memoryStorageKey, JSON.stringify(memories));
       window.localStorage.setItem(photoStorageKey, JSON.stringify(photos));
+      window.localStorage.setItem(dirtyStorageKey, JSON.stringify(dirty));
     } catch {
       setSaveError(language === "es" ? "Este dispositivo no pudo guardar el último cambio." : "This device could not save the latest change.");
     }
-  }, [language, memories, memoryStorageKey, photos, photoStorageKey, ready, statuses, statusStorageKey]);
+  }, [dirty, dirtyStorageKey, language, memories, memoryStorageKey, photos, photoStorageKey, ready, statuses, statusStorageKey]);
 
   const changeStatus = async (countryId: string, nextStatus: StampStatus | null, source: StatusSource) => {
     const previousStatus = statuses[countryId] ?? null;
@@ -704,6 +794,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
       delete next[countryId];
       return next;
     });
+    markDirty("statuses", countryId);
 
     if (!isAuthenticated) {
       setSavePrompt(true);
@@ -723,6 +814,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
         body: JSON.stringify({ countryId, status: nextStatus }),
       });
       if (!response.ok) throw new Error("Unable to save this stamp.");
+      clearDirty({ statuses: [countryId] });
       trackEvent("stamp_status_changed", {
         previous_status: previousStatus ?? "unmarked",
         next_status: nextStatus ?? "unmarked",
@@ -739,6 +831,8 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     setSaveError(null);
     setMemories((current) => updateTextRecord(current, countryId, note));
     setPhotos((current) => updateTextRecord(current, countryId, photoData ?? ""));
+    markDirty("memories", countryId);
+    markDirty("photos", countryId);
 
     if (!isAuthenticated) {
       setSavePrompt(true);
@@ -753,6 +847,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
         body: JSON.stringify({ countryId, note, photoData }),
       });
       if (!response.ok) throw new Error("Unable to save this memory.");
+      clearDirty({ memories: [countryId], photos: [countryId] });
       if (!previousNote && note) trackEvent("stamp_note_added", { source: "country_card", is_authenticated: true });
       return true;
     } catch {

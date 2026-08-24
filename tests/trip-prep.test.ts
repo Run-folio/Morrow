@@ -109,3 +109,52 @@ test("countdown handles upcoming, missing, invalid, active and ended trips witho
   assert.equal(tripDepartureCountdown("2026-08-31", "2026-09-02", new Date("2026-09-01T08:00:00")).label, "This trip is in progress.");
   assert.equal(tripDepartureCountdown("2026-08-20", "2026-08-31", new Date("2026-09-01T08:00:00")).label, "This trip has ended.");
 });
+
+test("the departure date remains today throughout the local calendar day", () => {
+  const moments = [
+    new Date(2026, 8, 1, 0, 1),
+    new Date(2026, 8, 1, 12, 0),
+    new Date(2026, 8, 1, 23, 59),
+  ];
+  for (const now of moments) {
+    const countdown = tripDepartureCountdown("2026-09-01", "2026-09-05", now);
+    assert.deepEqual({ state: countdown.state, label: countdown.label }, { state: "starts-today", label: "Departure is today." });
+  }
+  assert.equal(tripDepartureCountdown("2026-09-02", "2026-09-05", new Date(2026, 8, 1, 23, 59)).label, "1 day to go");
+});
+
+test("ended trips retain records without urgent pre-departure passport work", () => {
+  const source = trip();
+  source.startDate = "2026-08-01";
+  source.endDate = "2026-08-05";
+  const tasks = deriveTripPrepTasks({
+    trip: source,
+    profile: { nationalities: [], residenceCountry: "", passportExpiryMonth: "" },
+    bookingActions: [],
+    readinessCards: [],
+    now: new Date(2026, 8, 1, 12),
+  });
+  assert.equal(tripDepartureCountdown(source.startDate, source.endDate, new Date(2026, 8, 1, 12)).label, "This trip has ended.");
+  assert.notEqual(tasks.find((task) => task.id === "traveller-passport")?.status, "urgent");
+});
+
+test("avoid-driving excludes generated driving work from readiness progress", () => {
+  const source = trip();
+  source.brief.bookings = [{ id: "stay-cusco", type: "stay", title: "Cusco stay", date: "2026-10-01", confirmation: null, url: null }];
+  source.brief.checklist = source.brief.checklist?.map((item) => ({ ...item, complete: true }));
+  source.brief.intent = {
+    version: 1,
+    travellers: 2,
+    timing: { flexibility: "fixed", durationDays: 6 },
+    hardConstraints: { originRequired: true, mustSeeStopIds: ["cusco"], optionalStopIds: [], fixedCommitments: [], avoidDriving: true },
+    preferences: { budgetSensitivity: "mid", transportModes: ["train", "flight"], pace: "balanced", interests: [], dislikes: [] },
+  };
+  const tasks = deriveTripPrepTasks({
+    trip: source,
+    profile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "2028-01" },
+    bookingActions: [],
+    readinessCards: [{ id: "driving", priority: "useful", title: "If you plan to drive", detail: "Should not block this trip." }],
+  });
+  assert.equal(tasks.some((task) => task.id === "driving-readiness"), false);
+  assert.equal(tripPrepProgress(tasks).percent, 100);
+});

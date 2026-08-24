@@ -39,6 +39,7 @@ import {
   type TripPrepTaskStatus,
 } from "@/lib/easyt/trip-prep";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import {
   defaultTravelReadinessProfile,
@@ -114,7 +115,7 @@ function DetailedPrep({ trip, language, onProfileSaved }: { trip: EasyTTrip; lan
     />
     <JourneyTripPrepAccommodation trip={trip} />
     <JourneyBookingReadiness trip={trip} language={language} excludeCategories={["accommodation"]} />
-    <JourneyTripReadiness ownerId={trip.ownerId} countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} language={language} hideConnectivity onProfileSaved={onProfileSaved} />
+    <JourneyTripReadiness ownerId={trip.ownerId} countries={trip.stops.map((stop) => stop.country)} startDate={trip.startDate} avoidDriving={tripIntentForTrip(trip).hardConstraints.avoidDriving} language={language} hideConnectivity onProfileSaved={onProfileSaved} />
   </>;
 }
 
@@ -191,6 +192,7 @@ export default function TripPrepWorkspace({
   initialProviderStatus,
   now,
 }: Props) {
+  const avoidDriving = tripIntentForTrip(trip).hardConstraints.avoidDriving;
   const [profile, setProfile] = useState<TravelReadinessProfile>(initialProfile ?? defaultTravelReadinessProfile);
   const [actions, setActions] = useState<BookingReadinessAction[]>(initialActions ?? []);
   const [readinessCards, setReadinessCards] = useState<ReadinessCard[]>(initialReadinessCards ?? []);
@@ -249,7 +251,7 @@ export default function TripPrepWorkspace({
     void fetch("/api/journey-readiness", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, profile, language }),
+      body: JSON.stringify({ countries: trip.stops.map((stop) => stop.country), startDate: trip.startDate, avoidDriving, profile, language }),
     }).then(async (response) => {
       if (!response.ok) throw new Error("Travel readiness unavailable");
       const payload = await response.json() as { cards?: ReadinessCard[] };
@@ -265,7 +267,7 @@ export default function TripPrepWorkspace({
       setReadinessStatus("unavailable");
     });
     return () => { active = false; };
-  }, [initialProviderStatus, initialReadinessCards, language, presentation, profile, trip.startDate, trip.stops]);
+  }, [avoidDriving, initialProviderStatus, initialReadinessCards, language, presentation, profile, trip.startDate, trip.stops]);
 
   if (presentation === "legacy") return <DetailedPrep trip={trip} language={language} />;
 

@@ -42,10 +42,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  args: { ownerId: "storybook-owner" },
+};
 
 export const LongValues: Story = {
   args: {
+    ownerId: "storybook-owner-long-values",
     name: "Alexandra Montgomery-Rutherford",
     email: "alexandra.montgomery-rutherford@example-travel-company.com",
     initialTravelReadinessProfile: {
@@ -57,5 +60,6 @@ export const LongValues: Story = {
 };
 
 export const NarrowScreen: Story = {
+  args: { ownerId: "storybook-owner-narrow" },
   parameters: { viewport: { defaultViewport: "morrovia320" } },
 };

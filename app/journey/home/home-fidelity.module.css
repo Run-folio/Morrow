@@ -185,3 +185,12 @@
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
   .footerCtaCopy { padding-bottom: 26px !important; }
 }
+
+@media (max-width: 430px) {
+  .promptCard { padding: 14px !important; }
+  .promptField { gap: 8px !important; padding: 12px !important; }
+  .promptHelp p { font-size: 12px; }
+  .promptHelp span,
+  .promptExamples { display: none; }
+  .promptTextareaField textarea { min-height: 102px !important; }
+}

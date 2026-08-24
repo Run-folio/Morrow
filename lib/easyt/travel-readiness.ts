@@ -110,6 +110,8 @@ export const entrySourcesByCountry: Record<string, EntrySourceRecord> = {
 type ReadinessInput = {
   countries: string[];
   startDate?: string;
+  /** A hard transport constraint from the canonical trip intent. */
+  avoidDriving?: boolean;
   profile: TravelReadinessProfile;
   sailyHref?: string;
   language?: "en" | "es";
@@ -148,7 +150,7 @@ const adviceSourceFor = (residence: string) => {
   return undefined;
 };
 
-export const buildTripReadiness = ({ countries, startDate, profile, sailyHref, language = "en" }: ReadinessInput): ReadinessCard[] => {
+export const buildTripReadiness = ({ countries, startDate, avoidDriving = false, profile, sailyHref, language = "en" }: ReadinessInput): ReadinessCard[] => {
   const destinations = [...new Set(countries.map(canonicalCountry).filter(Boolean))];
   if (!destinations.length) return [];
   const advice = adviceSourceFor(profile.residenceCountry);
@@ -200,7 +202,7 @@ export const buildTripReadiness = ({ countries, startDate, profile, sailyHref, l
     note: "Do not rely on a connectivity setup without testing the latest destination guidance first.",
   });
 
-  if (destinations.length > 1 || /usa|united states|australia|new zealand|iceland|south africa|costa rica/i.test(destinations.join(" "))) cards.push({
+  if (!avoidDriving && (destinations.length > 1 || /usa|united states|australia|new zealand|iceland|south africa|costa rica/i.test(destinations.join(" ")))) cards.push({
     id: "driving",
     priority: "useful",
     title: "If you plan to drive",

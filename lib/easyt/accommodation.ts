@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripBooking, TripStop } from "./trip";
+import { stableStopDateRange } from "./trip-facts.ts";
 import { parseIsoDate } from "./trip-lifecycle.ts";
 
 /**
@@ -10,7 +11,8 @@ export function overnightAccommodationStops(trip: EasyTTrip): TripStop[] {
   return trip.stops.filter((stop) => (stop.nights ?? 0) > 0);
 }
 
-export function accommodationDatesReady(stop: TripStop): boolean {
+export function accommodationDatesReady(stop: TripStop, trip?: Pick<EasyTTrip, "startDate" | "endDate">): boolean {
+  if (trip) return Boolean(stableStopDateRange(stop, trip));
   const arrival = parseIsoDate(stop.arrivalDate);
   const departure = parseIsoDate(stop.departureDate);
   return Boolean(arrival && departure && departure.getTime() > arrival.getTime());
@@ -29,7 +31,7 @@ export function stayBookingForStop(trip: EasyTTrip, stop: TripStop): TripBooking
 export function accommodationProgress(trip: EasyTTrip) {
   const stops = overnightAccommodationStops(trip);
   const sortedCount = stops.filter((stop) => Boolean(stayBookingForStop(trip, stop))).length;
-  const datesReadyCount = stops.filter(accommodationDatesReady).length;
+  const datesReadyCount = stops.filter((stop) => accommodationDatesReady(stop, trip)).length;
   return {
     stops,
     sortedCount,

@@ -1672,6 +1672,14 @@
   border-radius: var(--morrovia-control-radius);
 }
 
+@media (max-width: 680px) {
+  .feedback {
+    right: 12px;
+    bottom: calc(var(--morrovia-mobile-dock-offset, 0px) + 12px);
+    width: min(248px, calc(100vw - 24px));
+  }
+}
+
 /* Stamps summary remains a dashboard detail, but now shares the same account surface. */
 .stampsSummary {
   border-color: var(--morrovia-line);

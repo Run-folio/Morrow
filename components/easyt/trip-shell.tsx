@@ -2,41 +2,17 @@ import type { ReactNode } from "react";
 import { CalendarDays, Clock3, Edit3, MapPin, Route } from "lucide-react";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
+import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { EasyTLinkButton } from "./easyt-controls";
 import { TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
 import styles from "./trip-shell.module.css";
 
-function parsedDate(value: string) {
-  if (!value) return null;
-  const date = new Date(`${value}T12:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatSingleDate(date: Date, includeYear = true) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: includeYear ? "numeric" : undefined,
-  }).format(date);
-}
-
 export function formatTripShellDates(startDate: string, endDate: string) {
-  const start = parsedDate(startDate);
-  const end = parsedDate(endDate);
-  if (start && end) {
-    const sameYear = start.getFullYear() === end.getFullYear();
-    return `${formatSingleDate(start, !sameYear)} – ${formatSingleDate(end)}`;
-  }
-  if (start) return `From ${formatSingleDate(start)}`;
-  if (end) return `Until ${formatSingleDate(end)}`;
-  return "Dates to confirm";
+  return deriveTripDateFacts({ startDate, endDate }).rangeLabel;
 }
 
 export function tripShellDuration(startDate: string, endDate: string) {
-  const start = parsedDate(startDate);
-  const end = parsedDate(endDate);
-  if (!start || !end || end < start) return null;
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  return deriveTripDateFacts({ startDate, endDate }).durationDays;
 }
 
 function statusLabel(status: TripStatus) {

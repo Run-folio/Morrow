@@ -15,6 +15,15 @@ test("builds a privacy-safe international trip readiness checklist", () => {
   assert.match(cards.find((card) => card.id === "passport")?.note ?? "", /Never add a passport number/i);
 });
 
+test("does not create a driving readiness card when driving is a hard trip constraint", () => {
+  const cards = buildTripReadiness({
+    countries: ["Japan", "Thailand"],
+    avoidDriving: true,
+    profile: defaultTravelReadinessProfile,
+  });
+  assert.equal(cards.some((card) => card.id === "driving"), false);
+});
+
 test("adds neutral mainland China connectivity guidance without promoting a VPN", () => {
   const cards = buildTripReadiness({ countries: ["China"], profile: defaultTravelReadinessProfile });
   const chinaCard = cards.find((card) => card.id === "china-internet");

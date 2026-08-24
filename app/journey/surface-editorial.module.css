@@ -24,14 +24,4 @@
 .prep :global([class*="trip-prep_side"]){border:1px solid var(--morrovia-line,#d9d8ee);border-radius:16px;background:linear-gradient(145deg,var(--morrovia-ink,#17106f),#302a8b);box-shadow:0 18px 42px rgba(23,16,111,.16)}
 .prep :global([class*="trip-prep_switcher"]>*){border-color:var(--morrovia-line,#d9d8ee);border-radius:9px;color:var(--morrovia-ink,#17106f)}.prep :global([class*="trip-prep_switcher"] span){background:var(--morrovia-action,#3025ce);color:#fff}
 
-/* Passport: form remains fast, with a stronger, trustworthy information card. */
-.passport :global([class*="passport_hero"]),.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){width:var(--morrovia-page)}
-.passport :global([class*="passport_hero"] h1),.passport :global([class*="passport_bottom"] h2),.passport :global([class*="passport_result"] h2){font-family:var(--morrovia-display,Georgia,serif);color:var(--morrovia-ink,#17106f)}
-.passport :global([class*="passport_hero"] p),.passport :global([class*="passport_result"]>p),.passport :global([class*="passport_bottom"] p),.passport :global([class*="passport_resultHeading"] p){color:var(--morrovia-signal,#f42b7a)}
-.passport :global([class*="passport_tool"]){border-color:var(--morrovia-line,#d9d8ee);border-radius:18px;box-shadow:0 18px 46px rgba(23,16,111,.07)}
-.passport :global([class*="passport_form"] select){border-color:var(--morrovia-line,#d9d8ee);border-radius:10px;color:var(--morrovia-ink,#17106f)}
-.passport :global([class*="passport_form"] button),.passport :global([class*="passport_bottom"] a){border-radius:10px;background:var(--morrovia-action,#3025ce)}.passport :global([class*="passport_form"] button):hover,.passport :global([class*="passport_bottom"] a):hover{background:var(--morrovia-action-hover,#251dc0)}
-.passport :global([class*="passport_result"]){border:1px solid #f5d8e6;border-radius:15px;background:linear-gradient(145deg,#fff7fb,#fff)}
-.passport :global([class*="passport_facts"] section){border-color:var(--morrovia-line,#d9d8ee);border-radius:11px}.passport :global([class*="passport_bottom"]){border:1px solid var(--morrovia-line,#d9d8ee);border-radius:18px;background:linear-gradient(110deg,#fff4f8,#f2f0ff)}
 @media(max-width:760px){.prep :global([class*="trip-prep_hero"]),.prep :global([class*="trip-prep_summary"]),.prep :global([class*="trip-prep_content"]){width:var(--morrovia-page)}}
-@media(max-width:720px){.passport :global([class*="passport_hero"]),.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){width:var(--morrovia-page)}.passport :global([class*="passport_tool"]),.passport :global([class*="passport_bottom"]){border-radius:15px}}

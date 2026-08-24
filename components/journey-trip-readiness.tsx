@@ -21,6 +21,7 @@ export function JourneyTripReadiness({
   ownerId,
   countries,
   startDate,
+  avoidDriving = false,
   language = "en",
   hideConnectivity = false,
   onProfileSaved,
@@ -28,6 +29,7 @@ export function JourneyTripReadiness({
   ownerId?: string | null;
   countries: string[];
   startDate?: string;
+  avoidDriving?: boolean;
   language?: "en" | "es";
   hideConnectivity?: boolean;
   onProfileSaved?: (profile: TravelReadinessProfile) => void;
@@ -58,13 +60,13 @@ export function JourneyTripReadiness({
     void fetch("/api/journey-readiness", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ countries: destinations, startDate, profile, language }),
+      body: JSON.stringify({ countries: destinations, startDate, avoidDriving, profile, language }),
     }).then(async (response) => {
       const payload = await response.json() as { cards?: ReadinessCard[] };
       if (active && response.ok) setCards(payload.cards ?? []);
     }).catch(() => { if (active) setCards([]); });
     return () => { active = false; };
-  }, [destinations, profile, startDate]);
+  }, [avoidDriving, destinations, language, profile, startDate]);
 
   const saveProfile = () => {
     window.localStorage.setItem(travelReadinessStorageKey(ownerId), JSON.stringify(profile));

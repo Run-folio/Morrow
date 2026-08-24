@@ -15,6 +15,8 @@ import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "@/lib/easyt/trip";
 import type { JourneyImage } from "@/lib/journey";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { itineraryNotesForDisplay } from "@/lib/easyt/itinerary-presentation";
+import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";
+import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
 import styles from "./trip-itinerary-workspace.module.css";
@@ -32,31 +34,13 @@ type ItineraryWorkspaceProps = {
 const pad = (value: number) => String(value).padStart(2, "0");
 
 function displayDate(value: string, language: "en" | "es", compact = false) {
-  const date = value ? new Date(`${value}T12:00:00`) : null;
-  if (!date || Number.isNaN(date.getTime())) return value || "Date to confirm";
-  return new Intl.DateTimeFormat(language === "es" ? "es" : "en", compact
+  return formatIsoDate(value, language === "es" ? "es" : "en", compact
     ? { month: "short", day: "numeric" }
-    : { month: "short", day: "numeric", year: "numeric" }).format(date);
-}
-
-function durationLabel(minutes: number | null) {
-  if (minutes === null) return null;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder} min` : ""}`.trim();
+    : { month: "short", day: "numeric", year: "numeric" }) ?? (language === "es" ? "Fecha por confirmar" : "Date to confirm");
 }
 
 function stopForDay(trip: EasyTTrip, day: PlanItem) {
   return trip.stops.find((stop) => stop.id === day.stopId) ?? null;
-}
-
-function incomingLegForDay(trip: EasyTTrip, day: PlanItem, index: number) {
-  if (index === 0) return null;
-  const previous = trip.planItems[index - 1];
-  if (!previous || previous.stopId === day.stopId) return null;
-  return trip.legs.find((leg) => leg.fromStopId === previous.stopId && leg.toStopId === day.stopId)
-    ?? trip.legs.find((leg) => leg.toStopId === day.stopId)
-    ?? null;
 }
 
 function imageFromPlanItem(day: PlanItem, stop: TripStop | null, index: number): JourneyImage | null {
@@ -182,7 +166,7 @@ export default function TripItineraryWorkspace({
   const active = days[index];
   const stop = stopForDay(trip, active);
   const image = imageFromPlanItem(active, stop, index) ?? remoteImages[active.id] ?? null;
-  const incomingLeg = incomingLegForDay({ ...trip, planItems: days }, active, index);
+  const incomingLeg = incomingLegForPlanItem(trip, active);
   const displayNotes = itineraryNotesForDisplay(active, incomingLeg, trip);
 
   if (presentation === "legacy") {
@@ -351,7 +335,7 @@ function DayImage({ image, day, stop, sourceLabel, className, fallbackClassName 
 function TransferRow({ leg, copy, trip }: { leg: TripLeg; copy: ReturnType<typeof itineraryCopy>; trip: EasyTTrip }) {
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
   const to = trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
-  const duration = durationLabel(leg.durationMinutes);
+  const duration = leg.durationMinutes === null ? null : formatTripDuration(leg.durationMinutes);
   return (
     <div className={styles.detailRow}>
       <span className={styles.detailIcon}><Route aria-hidden="true" /></span>

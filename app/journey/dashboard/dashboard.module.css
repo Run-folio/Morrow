@@ -557,6 +557,21 @@
 .tripMenu a svg { width: 16px; }
 .tripMenu .deleteAction { color: var(--morrovia-danger, #be284c); }
 
+.statusFilters button:focus-visible,
+.sortControl select:focus-visible,
+.searchControl:focus-within,
+.tripMenu summary:focus-visible,
+.tripMenu button:focus-visible,
+.tripMenu a:focus-visible,
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible,
+.openAction:focus-visible,
+.editAction:focus-visible {
+  outline: 2px solid var(--morrovia-signal, #ff347f);
+  outline-offset: 2px;
+  box-shadow: var(--morrovia-focus-ring);
+}
+
 .emptyState {
   grid-column: 1 / -1;
   display: grid;
@@ -608,9 +623,11 @@
   .continueImageFallback { order: -1; width: calc(100% - 24px); height: 156px; margin: 12px 12px 4px; }
   .continueActions { align-items: stretch; flex-direction: column; }
   .progressStrip { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 4px 12px 12px; }
-  .progressStrip li { min-width: 0; padding: 10px 4px; justify-content: center; }
+  .progressStrip li { min-width: 0; padding: 10px 3px; justify-content: center; }
   .progressStrip li > span { flex-basis: 25px; width: 25px; height: 25px; }
-  .progressStrip div { display: none; }
+  .progressStrip div { display: block; min-width: 0; }
+  .progressStrip b { font-size: .61rem; }
+  .progressStrip small { display: none; }
   .stampsCard { min-height: 280px; padding: 25px 22px; }
   .stampsMap { top: 48px; right: -60px; width: 75%; opacity: .28; }
   .libraryToolbar { margin-bottom: 16px; }
@@ -622,6 +639,7 @@
   .searchControl { width: auto; }
   .tripGrid { grid-template-columns: 1fr; }
   .tripCard { min-height: 315px; }
+  .tripLibrary { padding-bottom: calc(var(--morrovia-mobile-dock-offset, 0px) + 18px); }
 }
 
 @media (max-width: 390px) {

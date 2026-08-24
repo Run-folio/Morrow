@@ -1,3 +1,5 @@
+import { deriveTripDateFacts } from "./trip-facts.ts";
+
 export type TripQualityMention = {
   sourceText: string;
   canonicalName: string;
@@ -34,7 +36,8 @@ export function reviewTripQuality(input: {
     .map((mention) => mention.sourceText)
     .filter((place, index, all) => all.indexOf(place) === index);
   const originResolved = Boolean(input.origin?.trim() && input.originCoordinates);
-  const datesReady = Boolean(input.startDate && input.endDate && input.endDate >= input.startDate);
+  const dateFacts = deriveTripDateFacts({ startDate: input.startDate ?? "", endDate: input.endDate ?? "" });
+  const datesReady = dateFacts.state === "valid";
   const placesState = !requestedStops.length || !missingPlaces.length
     ? "complete"
     : input.stops.length ? "needs-attention" : "missing";
@@ -46,9 +49,9 @@ export function reviewTripQuality(input: {
     detail: originResolved ? "Confirmed for this route." : input.origin?.trim() ? "Check this place before relying on route timings." : "Add where you are leaving from.",
   }, {
     id: "dates",
-    state: datesReady ? "complete" : "missing",
+    state: datesReady ? "complete" : dateFacts.state === "invalid" ? "needs-attention" : "missing",
     title: "Travel dates",
-    detail: datesReady ? "Set and ready to shape availability and preparation." : "Add dates before using availability or preparation guidance.",
+    detail: datesReady ? "Set and ready to shape availability and preparation." : dateFacts.state === "invalid" ? "Review the dates before using availability or preparation guidance." : "Add dates before using availability or preparation guidance.",
   }, {
     id: "requested-places",
     state: placesState,

@@ -17,7 +17,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
-import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
+import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripStatus, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { allocateTripNights, calendarDayAllocationsFromNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
@@ -307,6 +307,7 @@ function TripBuilderDocument() {
   };
   const [tripId, setTripId] = useState(() => `trip-${crypto.randomUUID()}`);
   const [tripOwnerId, setTripOwnerId] = useState<string | null>(null);
+  const [tripStatus, setTripStatus] = useState<TripStatus>("draft");
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [tripUpdatedAt, setTripUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -471,6 +472,7 @@ function TripBuilderDocument() {
       if (!saved || !active) return;
       setTripId(saved.id);
       setTripOwnerId(saved.ownerId);
+      setTripStatus(saved.status);
       setCreatedAt(saved.createdAt);
       setTripUpdatedAt(saved.updatedAt);
       setOrigin(saved.brief.origin);
@@ -1391,6 +1393,7 @@ function TripBuilderDocument() {
       placeDetails: discoveredPlaces,
       originCoordinates,
       createdAt,
+      status: tripStatus === "archived" ? "draft" : tripStatus,
       capturedIntent: intakeMentions.length ? {
         originalBrief: tripBrief,
         parserVersion: effectiveStructuredBrief.source.parserVersion,
@@ -1414,7 +1417,7 @@ function TripBuilderDocument() {
     });
     const cascaded = cascadeTripSchedule({ ...built, ownerId: tripOwnerId }).trip;
     return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
-  }, [tripId, tripOwnerId, tripUpdatedAt, sourceRouteKey, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
+  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
   const buildInvariant = useMemo(() => canBuildTrip({
     origin,
@@ -1553,7 +1556,7 @@ function TripBuilderDocument() {
       return null;
     }
     const usableTrip = recordGeneratedTrip();
-    const requestTrip = activeTripDocument;
+    const requestTrip: EasyTTrip = { ...activeTripDocument, status: activeTripDocument.status === "archived" ? "archived" : "planned" };
     const recovery = persistDeviceRecovery(requestTrip);
     try {
       if (arrivedFromHomepage) removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, requestTrip, recovery.stored, resolvingLocations);
@@ -1625,6 +1628,7 @@ function TripBuilderDocument() {
       }
       recoveryHandleRef.current = null;
       setTripOwnerId(saved.ownerId);
+      setTripStatus(saved.status);
       setTripUpdatedAt(saved.updatedAt);
       setCloudAuthInterrupted(false);
       setDeviceRecoveryBlocked(false);

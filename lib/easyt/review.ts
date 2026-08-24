@@ -1,10 +1,12 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
-import { estimateLegForConstraints, findDestinationIntegrityIssues, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { findDestinationIntegrityIssues, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
 import { legPlanningConfidenceFromMetadata } from "./planning-confidence.ts";
 import { routeConstraintsFromStructuredTripBrief } from "./structured-trip-brief.ts";
 import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfer-impact.ts";
+import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, orderedTripPlanItems, transferSeverity } from "./trip-facts.ts";
+import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -78,7 +80,14 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const persistedLegEstimator: PlanLegEstimator = (from, to) => {
     const fromStopId = "id" in from ? from.id : undefined;
     const persisted = fromStopId ? trip.legs.find((leg) => leg.fromStopId === fromStopId && leg.toStopId === to.id) : undefined;
-    if (!persisted || persisted.mode === "walk") return estimateLegForConstraints(from, to, validationConstraints);
+    if (!persisted || persisted.mode === "walk") return {
+      mode: "unknown",
+      distanceKm: null,
+      durationMinutes: null,
+      label: `${from.name} → ${to.name}`,
+      note: "No persisted transport fact is available for this connection.",
+      confidence: "unconfirmed",
+    };
     const supportedMode: EstimatedLeg["mode"] = persisted.mode;
     const savedConfidence = persisted.routeMetadata.routingConfidence;
     const confidence: EstimatedLeg["confidence"] = savedConfidence === "high" || savedConfidence === "medium" || savedConfidence === "unconfirmed"
@@ -117,7 +126,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     excludedTransportModes: avoidDriving ? ["road"] : structuredConstraints.excludedTransportModes,
     fixedCommitments: planningFixedCommitments,
   };
-  const dateNights = Math.max(0, Math.round((+new Date(`${trip.endDate}T00:00:00Z`) - +new Date(`${trip.startDate}T00:00:00Z`)) / 86_400_000));
+  const dateFacts = deriveTripDateFacts(trip);
+  const coverage = deriveItineraryCoverage(trip);
+  const dateNights = dateFacts.durationDays === null ? 0 : Math.max(0, dateFacts.durationDays - 1);
   const finalValidation = validateFinalPlan({
     plan: {
       version: 1,
@@ -148,7 +159,32 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     "duplicate-stop",
     "transport-restriction-conflict",
   ]);
-  const surfacedCriticIssues = finalValidation.issues.filter((item) => surfacedCriticCodes.has(item.code));
+  const hasUnknownNights = trip.stops.some((stop) => stop.nights === null);
+  const surfacedCriticIssues = dateFacts.state === "valid"
+    ? finalValidation.issues.filter((item) => surfacedCriticCodes.has(item.code) && !(hasUnknownNights && item.code === "total-nights-mismatch"))
+    : [];
+  if (dateFacts.state !== "valid") {
+    results.push(recommendation(trip, {
+      rule: "trip-dates",
+      severity: "critical",
+      message: dateFacts.state === "invalid" ? "Review the trip dates before relying on this plan." : "Add valid trip dates before relying on this plan.",
+      evidence: dateFacts.state === "invalid" ? "The saved dates are malformed or reversed." : "A complete start and end date is not saved.",
+      affectedDays: [],
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+  if (hasUnknownNights) {
+    results.push(recommendation(trip, {
+      rule: "stay-duration-confidence",
+      severity: "info",
+      message: "At least one stop still needs a confirmed number of nights.",
+      evidence: "Missing stay duration remains unknown and is not treated as a zero-night stop.",
+      affectedDays: trip.planItems.filter((item) => trip.stops.some((stop) => stop.id === item.stopId && stop.nights === null)).map((item) => item.dayNumber),
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
   const nightAllocation = trip.brief.nightAllocation;
   if (nightAllocation && nightAllocation.state !== "allocated") {
     const firstConflict = nightAllocation.conflicts[0];
@@ -215,7 +251,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       .map((item) => item.dayNumber);
     results.push(recommendation(trip, {
       rule: "driving-load",
-      severity: longLeg.minutes >= 420 ? "critical" : "warning",
+      severity: transferSeverity(longLeg.minutes) === "critical" ? "critical" : "warning",
       message: `${Math.floor(longLeg.minutes / 60)}h ${longLeg.minutes % 60}m of estimated road travel may dominate this transfer day.`,
       evidence: `${longLeg.leg.provider ?? "Planning estimate"}; ${longLeg.leg.distanceKm ? `${longLeg.leg.distanceKm.toLocaleString()} km` : "distance not confirmed"}.`,
       affectedDays,
@@ -232,8 +268,8 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     const destination = trip.stops.find((stop) => stop.id === dayDominatingLeg.leg.toStopId)?.name ?? "the next stop";
     results.push(recommendation(trip, {
       rule: "travel-day-impact",
-      severity: dayDominatingLeg.minutes >= 600 ? "critical" : "warning",
-      message: `The transfer into ${destination} consumes ${dayDominatingLeg.minutes >= 600 ? "a full travel day or more" : "most of the travel day"}.`,
+      severity: transferSeverity(dayDominatingLeg.minutes) === "critical" ? "critical" : "warning",
+      message: `The transfer into ${destination} consumes ${transferSeverity(dayDominatingLeg.minutes) === "critical" ? "a full travel day or more" : "most of the travel day"}.`,
       evidence: `${Math.floor(dayDominatingLeg.minutes / 60)}h ${dayDominatingLeg.minutes % 60}m realistic door-to-door planning impact; verify the actual service and access time before booking.`,
       affectedDays: trip.planItems.filter((item) => item.stopId === dayDominatingLeg.leg.toStopId).map((item) => item.dayNumber),
       confidence: "medium",
@@ -267,6 +303,24 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
+  const orderedDays = orderedTripPlanItems(trip);
+  const missingTransition = orderedDays.find((day, index) => {
+    const previous = orderedDays[index - 1];
+    return previous && previous.stopId !== day.stopId && !incomingLegForPlanItem(trip, day);
+  });
+  if (missingTransition) {
+    const destination = trip.stops.find((stop) => stop.id === missingTransition.stopId)?.name ?? "the next stop";
+    results.push(recommendation(trip, {
+      rule: "connection-confidence",
+      severity: "info",
+      message: `The connection into ${destination} still needs a saved transport leg before Morrovia can judge the day realistically.`,
+      evidence: "No persisted mode, distance, or duration is available for this itinerary transition.",
+      affectedDays: [missingTransition.dayNumber],
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
+
   const unknownLeg = trip.legs.find((leg) => leg.mode === "unknown");
   if (unknownLeg) {
     const destination = trip.stops.find((stop) => stop.id === unknownLeg.toStopId)?.name ?? "the next stop";
@@ -295,9 +349,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
-  const plannedDays = trip.planItems.length;
-  const totalDays = Math.max(1, Math.round((+new Date(`${trip.endDate}T00:00:00`) - +new Date(`${trip.startDate}T00:00:00`)) / 86400000) + 1);
-  if (plannedDays < totalDays) {
+  const plannedDays = coverage.plannedDays;
+  const totalDays = coverage.expectedDays;
+  if (totalDays !== null && plannedDays < totalDays) {
     results.push(recommendation(trip, {
       rule: "plan-coverage",
       severity: "warning",
@@ -310,7 +364,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const openDays = trip.planItems.filter((item) => item.type === "open").length;
-  if (trip.brief.pace === "slow" && totalDays >= 5 && openDays === 0) {
+  if (trip.brief.pace === "slow" && totalDays !== null && totalDays >= 5 && openDays === 0) {
     results.push(recommendation(trip, {
       rule: "flex-space",
       severity: "info",
@@ -322,7 +376,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
-  if (trip.stops.length >= 3 && totalDays < trip.stops.length * 2) {
+  if (totalDays !== null && trip.stops.length >= 3 && totalDays < trip.stops.length * 2) {
     results.push(recommendation(trip, {
       rule: "stop-density",
       severity: totalDays < trip.stops.length ? "critical" : "warning",
@@ -334,34 +388,42 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
-  trip.stops.forEach((stop) => {
-    const inbound = trip.legs.find((leg) => leg.toStopId === stop.id);
+  orderedTripPlanItems(trip).forEach((day) => {
+    const inbound = incomingLegForPlanItem(trip, day);
+    if (!inbound) return;
+    const stop = trip.stops.find((item) => item.id === day.stopId);
+    if (!stop) return;
     const minutes = inbound ? realisticMinutes(inbound) ?? 0 : 0;
-    if ((stop.nights ?? 0) <= 1 && minutes >= 240) {
+    if (stop.nights !== null && stop.nights <= 1 && minutes >= 240) {
       results.push(recommendation(trip, {
         rule: "short-stop-heavy-transfer",
-        severity: minutes >= 420 ? "critical" : "warning",
+        severity: transferSeverity(minutes) === "critical" ? "critical" : "warning",
         message: `${stop.name} has ${stop.nights === 0 ? "no overnight" : "one night"} after a ${Math.floor(minutes / 60)}h transfer.`,
         evidence: "The transfer uses a large share of the time this stop is meant to provide.",
-        affectedDays: trip.planItems.filter((item) => item.stopId === stop.id).map((item) => item.dayNumber),
+        affectedDays: [day.dayNumber],
         confidence: "high",
         proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },
       }, results.length));
     }
-    if (minutes >= Math.max(360, ((stop.nights ?? 0) + 1) * 300)) {
+    if (stop.nights !== null && minutes >= Math.max(360, (stop.nights + 1) * 300)) {
       results.push(recommendation(trip, {
         rule: "transit-to-time-ratio",
         severity: "warning",
         message: `The transfer into ${stop.name} is large relative to the time planned there.`,
-        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m estimated transit for ${Math.max(0, stop.nights ?? 0)} planned nights.`,
-        affectedDays: trip.planItems.filter((item) => item.stopId === stop.id).map((item) => item.dayNumber),
+        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m estimated transit for ${Math.max(0, stop.nights)} planned nights.`,
+        affectedDays: [day.dayNumber],
         confidence: "high",
         proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },
       }, results.length));
     }
   });
 
-  const outOfRangeCommitments = planningFixedCommitments.filter((item) => item.date && (item.date < trip.startDate || item.date > trip.endDate));
+  const outOfRangeCommitments = dateFacts.state === "valid" && dateFacts.start && dateFacts.end
+    ? planningFixedCommitments.filter((item) => {
+      const commitment = parseIsoDate(item.date);
+      return commitment ? commitment < dateFacts.start! || commitment > dateFacts.end! : Boolean(item.date);
+    })
+    : [];
   if (outOfRangeCommitments.length) {
     results.push(recommendation(trip, {
       rule: "fixed-date-conflict",
@@ -400,10 +462,13 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const finalStop = [...trip.stops].sort((a, b) => a.order - b.order).at(-1);
-  if (finalStop?.departureDate && finalStop.departureDate !== new Date(+new Date(`${trip.endDate}T00:00:00`) + 86400000).toISOString().slice(0, 10)) {
+  const expectedDeparture = dateFacts.end ? new Date(dateFacts.end) : null;
+  expectedDeparture?.setDate(expectedDeparture.getDate() + 1);
+  const expectedDepartureKey = expectedDeparture ? isoDateKey(expectedDeparture) : "";
+  if (dateFacts.state === "valid" && finalStop?.departureDate && parseIsoDate(finalStop.departureDate) && finalStop.departureDate !== expectedDepartureKey) {
     results.push(recommendation(trip, {
       rule: "trip-end-mismatch",
-      severity: finalStop.departureDate > new Date(+new Date(`${trip.endDate}T00:00:00`) + 86400000).toISOString().slice(0, 10) ? "critical" : "warning",
+      severity: finalStop.departureDate > expectedDepartureKey ? "critical" : "warning",
       message: `The final stop ends on ${finalStop.departureDate}, not at the end of the trip.`,
       evidence: `Trip end is ${trip.endDate}; check the final stay and departure plan.`,
       affectedDays: trip.planItems.filter((item) => item.stopId === finalStop.id).map((item) => item.dayNumber),
@@ -465,8 +530,10 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
 
 export type TripHealth = {
   issues: TripRecommendation[];
+  openIssueCount: number;
   blockingCount: number;
   cautionCount: number;
+  status: "blocked" | "needs-review" | "ready";
   isReady: boolean;
 };
 
@@ -476,8 +543,30 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const blockingCount = openIssues.filter((item) => item.severity === "critical").length;
   const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
   const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
+  const hasUnknownStayDuration = openIssues.some((item) => item.rule === "stay-duration-confidence");
   const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute);
-  return { issues: current, blockingCount, cautionCount, isReady: blockingCount === 0 && !hasUnresolvedTransport && !hasUnresolvedPlaceIntent };
+  const hasCompleteItinerary = deriveItineraryCoverage(trip).state === "complete";
+  const hasValidDates = deriveTripDateFacts(trip).state === "valid";
+  const isReady = blockingCount === 0 && !hasUnresolvedTransport && !hasUnknownStayDuration && !hasUnresolvedPlaceIntent && hasCompleteItinerary && hasValidDates;
+  const status = blockingCount ? "blocked" : !isReady || openIssues.length ? "needs-review" : "ready";
+  return { issues: current, openIssueCount: openIssues.length, blockingCount, cautionCount, status, isReady };
+}
+
+export function tripHealthSummary(trip: EasyTTrip) {
+  const health = tripHealth(trip);
+  return {
+    health,
+    issueCount: health.openIssueCount,
+    status: health.status,
+    headline: health.openIssueCount
+      ? `${health.openIssueCount} ${health.openIssueCount === 1 ? "thing" : "things"} to review`
+      : "Trip looks good",
+    detail: health.blockingCount
+      ? "Resolve the blocking issue first"
+      : health.openIssueCount
+        ? "Start with the highest-priority checks"
+        : "No critical route issues found",
+  };
 }
 
 export function recommendationImpact(item: TripRecommendation) {

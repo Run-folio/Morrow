@@ -959,16 +959,29 @@ export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch 
   return { trip: payload.trip, outcome: payload.outcome };
 }
 
-export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {
+type TripCloudLoadResult =
+  | { kind: "found"; trip: EasyTTrip }
+  | { kind: "missing" }
+  | { kind: "unavailable" };
+
+async function loadTripFromEasyTResult(tripId: string): Promise<TripCloudLoadResult> {
   const response = await fetch(`/api/easyt/trips/${encodeURIComponent(tripId)}`, { cache: "no-store" });
-  if (response.status === 404 || response.status === 401) return null;
-  if (!response.ok) throw new Error("Morrovia cloud load failed.");
+  // A 404/401 is a definitive access boundary, not an offline condition. Do
+  // not reveal a stale browser cache after a deletion or owner-scoped 404.
+  if (response.status === 404 || response.status === 401) return { kind: "missing" };
+  if (!response.ok) return { kind: "unavailable" };
   const payload = await response.json() as { trip: EasyTTrip };
-  if (!isEasyTTrip(payload.trip) || payload.trip.id !== tripId) return null;
+  if (!isEasyTTrip(payload.trip) || payload.trip.id !== tripId) return { kind: "missing" };
   // A verified API response is safe to keep for an offline reopen. This clean
   // cache write never touches a pending recovery for the same owner and trip.
   cacheCanonicalTrip(payload.trip);
-  return payload.trip;
+  return { kind: "found", trip: payload.trip };
+}
+
+export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {
+  const result = await loadTripFromEasyTResult(tripId);
+  if (result.kind === "unavailable") throw new Error("Morrovia cloud load failed.");
+  return result.kind === "found" ? result.trip : null;
 }
 
 /**
@@ -979,8 +992,9 @@ export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | nul
  */
 export async function loadRequestedTrip(tripId: string, ownerId: string | null = null): Promise<EasyTTrip | null> {
   try {
-    const cloudTrip = await loadTripFromEasyT(tripId);
-    if (cloudTrip) return cloudTrip;
+    const cloud = await loadTripFromEasyTResult(tripId);
+    if (cloud.kind === "found") return cloud.trip;
+    if (cloud.kind === "missing") return null;
   } catch {
     // The exact active local document remains usable if cloud loading is
     // temporarily unavailable, matching the established planner behaviour.

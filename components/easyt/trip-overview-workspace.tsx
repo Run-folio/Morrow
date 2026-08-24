@@ -18,8 +18,8 @@ import {
 import { useEffect, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
-import { tripHealth } from "@/lib/easyt/review";
-import { parseIsoDate } from "@/lib/easyt/trip-lifecycle";
+import { tripHealth, tripHealthSummary } from "@/lib/easyt/review";
+import { deriveItineraryCoverage, formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
@@ -47,24 +47,7 @@ type OverviewIssue = {
   href: string;
 };
 
-const DAY_MS = 86_400_000;
 const WORKSPACE_ORIENTATION_KEY = "morrovia-workspace-orientation-seen-v1";
-
-function expectedTripDays(trip: EasyTTrip) {
-  const start = parseIsoDate(trip.startDate);
-  const end = parseIsoDate(trip.endDate);
-  if (!start || !end || end < start) {
-    return trip.planItems.length;
-  }
-  return Math.round((end.getTime() - start.getTime()) / DAY_MS) + 1;
-}
-
-function durationLabel(minutes: number | null) {
-  if (minutes === null) return "Timing to confirm";
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim();
-}
 
 function routeIssueHref(tripId: string) {
   return `/journey/plan?trip=${encodeURIComponent(tripId)}`;
@@ -77,8 +60,8 @@ function recommendationHref(trip: EasyTTrip, recommendation: TripRecommendation)
 
 function openHealthIssues(trip: EasyTTrip) {
   return tripHealth(trip).issues
-    .filter((issue) => issue.status === "open" && (issue.severity === "critical" || issue.severity === "warning"))
-    .sort((left, right) => left.severity === right.severity ? 0 : left.severity === "critical" ? -1 : 1);
+    .filter((issue) => issue.status === "open")
+    .sort((left, right) => ({ critical: 0, warning: 1, info: 2 }[left.severity] - { critical: 0, warning: 1, info: 2 }[right.severity]));
 }
 
 /**
@@ -86,11 +69,11 @@ function openHealthIssues(trip: EasyTTrip) {
  * second readiness model or replace Plan Review intelligence.
  */
 export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
-  const daysExpected = expectedTripDays(trip);
-  const itineraryComplete = daysExpected > 0 && trip.planItems.length >= daysExpected;
+  const coverage = deriveItineraryCoverage(trip);
+  const itineraryComplete = coverage.state === "complete";
   const accommodation = accommodationProgress(trip);
   const missingStay = accommodation.stops.find((stop) => !stayBookingForStop(trip, stop));
-  const issues = openHealthIssues(trip);
+  const issues = openHealthIssues(trip).filter((issue) => issue.severity !== "info");
   const critical = issues.find((issue) => issue.severity === "critical");
   const prep = trip.brief.checklist ?? [];
   const prepComplete = prep.length > 0 && prep.every((item) => item.complete);
@@ -103,8 +86,8 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     kind: "route",
   };
   if (!itineraryComplete) return {
-    title: trip.planItems.length ? "Finish shaping the itinerary" : "Start shaping the itinerary",
-    detail: `${trip.planItems.length} of ${daysExpected || "your"} trip days currently have a plan.`,
+    title: coverage.plannedDays ? "Finish shaping the itinerary" : "Start shaping the itinerary",
+    detail: coverage.label,
     label: "Continue itinerary",
     href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
     kind: "itinerary",
@@ -143,23 +126,12 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
 }
 
 function issueSummary(trip: EasyTTrip): OverviewIssue[] {
-  const issues: OverviewIssue[] = openHealthIssues(trip).map((issue: TripRecommendation) => ({
+  return openHealthIssues(trip).map((issue: TripRecommendation) => ({
     id: issue.id,
     message: issue.message,
     severity: issue.severity === "critical" ? "critical" : "warning",
     href: recommendationHref(trip, issue),
   }));
-  const accommodation = accommodationProgress(trip);
-  if (!accommodation.complete && accommodation.stops.length) {
-    const missing = accommodation.stops.filter((stop) => !stayBookingForStop(trip, stop));
-    if (missing.length) issues.push({
-      id: `${trip.id}-overview-stays`,
-      message: `${missing.length === 1 ? `${missing[0].name} stay` : `${missing.length} stays`} still ${missing.length === 1 ? "needs" : "need"} sorting.`,
-      severity: "warning",
-      href: mapWorkspaceHref(trip.id, missing[0].id, "stay"),
-    });
-  }
-  return issues.slice(0, 2);
 }
 
 function stopImage(trip: EasyTTrip, stop: TripStop, index: number) {
@@ -183,10 +155,12 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
   }, [firstArrival]);
   const action = overviewActionForTrip(trip);
   const issues = issueSummary(trip);
-  const health = tripHealth(trip);
+  const visibleIssues = issues.slice(0, 2);
+  const healthSummary = tripHealthSummary(trip);
+  const health = healthSummary.health;
   const accommodation = accommodationProgress(trip);
-  const expectedDays = expectedTripDays(trip);
-  const itineraryPercent = expectedDays ? Math.min(100, Math.round((trip.planItems.length / expectedDays) * 100)) : 0;
+  const coverage = deriveItineraryCoverage(trip);
+  const itineraryPercent = coverage.percent ?? 0;
   const stayPercent = accommodation.stops.length ? Math.round((accommodation.sortedCount / accommodation.stops.length) * 100) : 100;
   const checklist = trip.brief.checklist ?? [];
   const prepCompleteCount = checklist.filter((item) => item.complete).length;
@@ -234,11 +208,11 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
           <div className={styles.healthHeading}>
             {health.blockingCount ? <CircleAlert className={styles.healthCritical} aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
             <div>
-              <h2>{issues.length ? `${issues.length} ${issues.length === 1 ? "thing" : "things"} to review` : "Trip looks good"}</h2>
-              <span>{health.blockingCount ? "Resolve the blocking issue first" : issues.length ? "The route works, with a few details to settle" : "No critical route issues found"}</span>
+              <h2>{healthSummary.headline}</h2>
+              <span>{healthSummary.detail}</span>
             </div>
           </div>
-          {issues.length ? <ul>{issues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : undefined}><CircleAlert aria-hidden="true" /><Link href={issue.href}>{issue.message}</Link></li>)}</ul> : <div className={styles.clearHealth}><ShieldCheck aria-hidden="true" />Keep live timings and entry guidance checked before booking.</div>}
+          {visibleIssues.length ? <ul>{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : undefined}><CircleAlert aria-hidden="true" /><Link href={issue.href}>{issue.message}</Link></li>)}</ul> : <div className={styles.clearHealth}><ShieldCheck aria-hidden="true" />Keep live timings and entry guidance checked before booking.</div>}
           <Link href={issues[0]?.href ?? routeIssueHref(trip.id)}>Review trip<ChevronRight aria-hidden="true" /></Link>
         </article>
 
@@ -248,7 +222,7 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
             <Link href={`/journey/${encodeURIComponent(trip.id)}/prep`}>Review prep<ChevronRight aria-hidden="true" /></Link>
           </div>
           <div className={styles.progressGrid}>
-            <ProgressItem icon={CalendarCheck2} label="Itinerary" detail={itineraryPercent === 100 ? `${expectedDays} days planned` : `${trip.planItems.length} of ${expectedDays} days planned`} percent={itineraryPercent} complete={itineraryPercent === 100} />
+            <ProgressItem icon={CalendarCheck2} label="Itinerary" detail={coverage.label} percent={itineraryPercent} complete={coverage.state === "complete"} />
             <ProgressItem icon={BedDouble} label="Stays" detail={accommodation.stops.length ? `${accommodation.sortedCount} of ${accommodation.stops.length} sorted` : "No overnight stays"} percent={stayPercent} complete={stayPercent === 100} />
             <ProgressItem icon={ShieldCheck} label="Saved checklist" detail={checklist.length ? `${prepCompleteCount} of ${checklist.length} complete` : "Review practicals"} percent={prepPercent} complete={checklist.length > 0 && prepPercent === 100} />
           </div>
@@ -276,9 +250,9 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
                     alt={image?.alt ?? ""}
                     fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>}
                   />
-                  <div><h3>{stop.name}</h3><span>{stop.nights ?? 0} {(stop.nights ?? 0) === 1 ? "night" : "nights"}</span></div>
+                  <div><h3>{stop.name}</h3><span>{formatTripNights(stop.nights)}</span></div>
                 </article></Link>
-                {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? durationLabel(leg.durationMinutes) : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
+                {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? formatTripDuration(leg.durationMinutes) : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
               </li>;
             })}
           </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}

@@ -48,7 +48,10 @@ import { classifyAnalyticsSaveError, trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { summarizeStampRows } from "@/lib/easyt/stamps";
-import { formatIsoDate, parseIsoDate, tripLifecycle } from "@/lib/easyt/trip-lifecycle";
+import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
+import { dashboardHeroTrip, tripStartDateSortKey } from "@/lib/easyt/trip-status";
+import { tripReadinessSummary } from "@/lib/easyt/trip-readiness-summary";
 import accountStyles from "../account.module.css";
 import styles from "./dashboard.module.css";
 
@@ -65,7 +68,7 @@ function tripImage(trip: EasyTTrip) {
 }
 
 function routeLabel(trip: EasyTTrip, fallback: string) {
-  return trip.stops.map((stop) => stop.name).join(" → ") || fallback;
+  return [...trip.stops].sort((left, right) => left.order - right.order).map((stop) => stop.name).join(" → ") || fallback;
 }
 
 function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {
@@ -76,24 +79,8 @@ function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {
   return `${startText} – ${endText}`;
 }
 
-function startDateSortKey(trip: EasyTTrip) {
-  return parseIsoDate(trip.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-}
-
 function featuredTripFrom(trips: EasyTTrip[]) {
-  const available = trips.filter((trip) => trip.status !== "archived");
-  const activeDraft = available
-    .filter((trip) => trip.status === "draft")
-    .sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))[0];
-  if (activeDraft) return activeDraft;
-  const underway = available
-    .filter((trip) => ["starts-today", "started", "in-progress", "ends-today"].includes(tripLifecycle(trip.startDate, trip.endDate).state))
-    .sort((a, b) => startDateSortKey(b) - startDateSortKey(a))[0];
-  if (underway) return underway;
-  const upcoming = available
-    .filter((trip) => tripLifecycle(trip.startDate, trip.endDate).state === "upcoming")
-    .sort((a, b) => startDateSortKey(a) - startDateSortKey(b))[0];
-  return upcoming ?? available.sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt))[0] ?? null;
+  return dashboardHeroTrip(trips);
 }
 
 function statusLabel(status: TripStatus, language: EasyTLanguage) {
@@ -104,8 +91,9 @@ function statusLabel(status: TripStatus, language: EasyTLanguage) {
 function trackTripReopened(trip: EasyTTrip) {
   // Dashboard rows are owner-scoped cloud documents. Cache that exact
   // revision before navigation so dashboard and direct links resolve alike.
-  cacheCanonicalTrip(trip);
-  trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length });
+  // Storage and analytics are both best effort: neither may block Open.
+  try { cacheCanonicalTrip(trip); } catch { /* Browser storage can be disabled or full. */ }
+  try { trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length }); } catch { /* Navigation remains primary. */ }
 }
 
 export default function DashboardClient({ trips, stamps, ownerId }: { trips: EasyTTrip[]; stamps: StampSummary[]; ownerId: string }) {
@@ -119,6 +107,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [query, setQuery] = useState("");
   const [working, setWorking] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [failedAction, setFailedAction] = useState<{ id: string; action: "archive" | "restore" | "duplicate" } | null>(null);
   const [gifting, setGifting] = useState<EasyTTrip | null>(null);
   const [giftEmail, setGiftEmail] = useState("");
   const [giftNote, setGiftNote] = useState("");
@@ -128,12 +117,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [delivered, setDelivered] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [syncIssue, setSyncIssue] = useState<{
-    kind: "failed" | "conflict" | "auth";
+    kind: "failed" | "conflict" | "auth" | "owner";
     tripId: string;
     message: string;
     conflictReason?: TripSaveConflictReason | TripPromotionConflictReason;
   } | null>(null);
   const [syncingLocalTrip, setSyncingLocalTrip] = useState(false);
+  const [recoveryState, setRecoveryState] = useState<"checking" | "none" | "syncing" | "issue">("checking");
   const copy = easytCopy[language].dashboard;
 
   useEffect(() => {
@@ -167,9 +157,26 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const syncLocalTrip = useCallback(async () => {
     const recovery = loadCurrentTripRecovery(ownerId);
     const localTrip = recovery?.trip;
-    if (!localTrip || (localTrip.ownerId !== null && localTrip.ownerId !== ownerId)) return;
-    if (localTrip.ownerId === null && localTrip.status !== "draft") return;
+    if (!localTrip) {
+      setRecoveryState("none");
+      return;
+    }
+    if (localTrip.ownerId !== null && localTrip.ownerId !== ownerId) {
+      setRecoveryState("issue");
+      setSyncIssue({
+        kind: "owner",
+        tripId: localTrip.id,
+        message: "A device trip belongs to a different account. It was not opened or changed here; sign in to that account to review its recovery.",
+      });
+      return;
+    }
+    if (localTrip.ownerId === null && localTrip.status !== "draft") {
+      setRecoveryState("issue");
+      setSyncIssue({ kind: "failed", tripId: localTrip.id, message: "Only an unfinished device draft can be added to this account. The device copy was left unchanged." });
+      return;
+    }
     if (recovery.state === "conflict") {
+      setRecoveryState("issue");
       setSyncIssue({
         kind: "conflict",
         tripId: localTrip.id,
@@ -181,8 +188,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       return;
     }
     const scopedLocalTrip = tripForRecoveryScope(localTrip, recovery);
-    if (!scopedLocalTrip) return;
+    if (!scopedLocalTrip) {
+      setRecoveryState("issue");
+      setSyncIssue({ kind: "owner", tripId: localTrip.id, message: "This device trip could not be matched safely to this account. It was left unchanged; sign in to the original account to recover it." });
+      return;
+    }
     setSyncIssue(null);
+    setRecoveryState("syncing");
     setSyncingLocalTrip(true);
     try {
       const result = localTrip.ownerId === null
@@ -193,12 +205,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       cacheCanonicalTrip(result.trip, recovery);
       const remainingRecovery = loadTripRecovery(result.trip.id, ownerId);
       if (remainingRecovery) {
+        setRecoveryState("issue");
         setSyncIssue({
           kind: "failed",
           tripId: result.trip.id,
           message: "A newer device edit was preserved while the earlier version finished syncing.",
         });
-      }
+      } else setRecoveryState("none");
       if (result.outcome === "promoted") {
         trackEvent("trip_saved", { trip_source: "dashboard", trip_id: result.trip.id, save_state: "cloud", stop_count: result.trip.stops.length, is_authenticated: true });
       }
@@ -220,6 +233,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           ? error.message
           : "This trip could not sync to your account. It is still saved on this device.",
       });
+      setRecoveryState("issue");
       trackEvent("trip_save_failed", { trip_source: "dashboard", trip_id: localTrip.id, save_state: "cloud", error_type: classifyAnalyticsSaveError(error), is_authenticated: true });
     } finally {
       setSyncingLocalTrip(false);
@@ -240,11 +254,11 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     const normalizedQuery = query.trim().toLocaleLowerCase();
     const result = trips.filter((trip) => trip.status === view).filter((trip) => {
       if (!normalizedQuery) return true;
-      return `${trip.title} ${routeLabel(trip, "")}`.toLocaleLowerCase().includes(normalizedQuery);
+      return `${tripDisplayTitle(trip)} ${routeLabel(trip, "")}`.toLocaleLowerCase().includes(normalizedQuery);
     });
     return result.sort((a, b) => {
-      if (sort === "title") return a.title.localeCompare(b.title);
-      if (sort === "upcoming") return startDateSortKey(a) - startDateSortKey(b);
+      if (sort === "title") return tripDisplayTitle(a).localeCompare(tripDisplayTitle(b));
+      if (sort === "upcoming") return tripStartDateSortKey(a) - tripStartDateSortKey(b);
       return timestamp(b.updatedAt) - timestamp(a.updatedAt);
     });
   }, [query, sort, trips, view]);
@@ -252,6 +266,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
     setWorking(id);
     setActionError("");
+    setFailedAction(null);
     try {
       const result = await runClientMutation(() => fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -260,6 +275,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       }));
       if (result.kind === "network") {
         setActionError("This trip could not be updated. Check your connection and try again.");
+        setFailedAction({ id, action });
         return;
       }
       const response = result.value;
@@ -270,9 +286,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         }
         router.refresh();
       }
-      else setActionError(response.status === 401 ? "Your session ended. Sign in again before changing this trip." : "This trip could not be updated. Please try again.");
+      else {
+        setActionError(response.status === 401 ? "Your session ended. Sign in again before changing this trip." : "This trip could not be updated. Please try again.");
+        if (response.status !== 401) setFailedAction({ id, action });
+      }
     } catch {
       setActionError("This trip could not be updated. Check your connection and try again.");
+      setFailedAction({ id, action });
     } finally {
       setWorking(null);
     }
@@ -342,16 +362,16 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   return (
     <>
-      {actionError ? <aside className={styles.syncNotice} role="alert"><AlertTriangle aria-hidden="true" /><span>{actionError}</span>{actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : null}</aside> : null}
+      {actionError ? <aside className={styles.syncNotice} role="alert"><AlertTriangle aria-hidden="true" /><span>{actionError}</span>{actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}</aside> : null}
       {syncIssue ? <aside className={styles.syncNotice} role="alert">
         <AlertTriangle aria-hidden="true" />
         <div>
-          <strong>{syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.conflictReason === "cloud-deleted" ? (isSpanish ? "El viaje fue eliminado de la nube" : "Trip removed from the cloud") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}</strong>
+          <strong>{syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.kind === "owner" ? (isSpanish ? "La copia pertenece a otra cuenta" : "Device copy belongs to another account") : syncIssue.conflictReason === "cloud-deleted" ? (isSpanish ? "El viaje fue eliminado de la nube" : "Trip removed from the cloud") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}</strong>
           <p>{syncIssue.message} {isSpanish ? "La copia de este dispositivo no se ha eliminado." : "The copy on this device has not been removed."}</p>
         </div>
         <span>
           {syncIssue.kind === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void syncLocalTrip()} loading={syncingLocalTrip}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}
-          {syncIssue.kind === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Iniciar sesión de nuevo" : "Sign in again"}</EasyTLinkButton> : syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>}
+          {syncIssue.kind === "auth" || syncIssue.kind === "owner" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Cambiar de cuenta" : "Switch account"}</EasyTLinkButton> : syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>}
         </span>
       </aside> : null}
       <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>
@@ -359,7 +379,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           <article className={styles.continueCard}>
             <div className={styles.continueCopy}>
               <p className={styles.eyebrow}>{isSpanish ? "Continúa este viaje" : "Continue this trip"}</p>
-              <h2>{featuredTrip.title}</h2>
+              <h2>{tripDisplayTitle(featuredTrip)}</h2>
               <p className={styles.route}>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
               <p className={styles.continueHint}>{isSpanish ? "Vuelve al plan y continúa desde donde lo dejaste." : "Pick up the plan where you left it and keep shaping the details."}</p>
               <div className={styles.continueActions}>
@@ -380,6 +400,14 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
                 <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
               </div>}
             />
+          </article>
+        ) : recoveryState === "checking" || recoveryState === "syncing" ? (
+          <article className={`${styles.continueCard} ${styles.continueEmpty}`} aria-live="polite">
+            <div className={styles.continueCopy}>
+              <p className={styles.eyebrow}>{isSpanish ? "Recuperación" : "Recovery"}</p>
+              <h2>{isSpanish ? "Comprobando un viaje guardado en este dispositivo…" : "Checking for a saved trip on this device…"}</h2>
+              <p className={styles.continueHint}>{isSpanish ? "No crearemos ni ocultaremos nada mientras termina la comprobación." : "Nothing will be created or hidden while this safety check finishes."}</p>
+            </div>
           </article>
         ) : (
           <article className={`${styles.continueCard} ${styles.continueEmpty}`}>
@@ -402,7 +430,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
             <span><b>{visitedCount}</b>{isSpanish ? "visitados" : "visited"}</span>
             <span><b>{wantCount}</b>{isSpanish ? "por visitar" : "want to visit"}</span>
           </div>
-          <img src="/journey/illustrations/global-route-confirm.png" alt="" className={styles.stampsMap} />
+          <ResilientImage src="/journey/illustrations/global-route-confirm.png" alt="" className={styles.stampsMap} fallback={null} />
           <Link className={styles.secondaryAction} href="/journey/stamped">{isSpanish ? "Abrir Sellos" : "Open Stamped"}<ArrowRight aria-hidden="true" /></Link>
         </section> : null}
       </section>
@@ -410,9 +438,9 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       {trips.length ? <section className={styles.tripLibrary} aria-labelledby="trip-library-title">
         <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
         <div className={styles.libraryToolbar}>
-          <div className={styles.statusFilters} role="group" aria-label={isSpanish ? "Estado del viaje" : "Trip status"}>
+          <div className={styles.statusFilters} role="group" aria-label={isSpanish ? "Filtrar por estado del viaje" : "Filter by trip status"}>
             {(["draft", "planned", "archived"] as TripStatus[]).map((status) => (
-              <button key={status} type="button" aria-pressed={view === status} onClick={() => setView(status)}>
+              <button key={status} type="button" aria-controls="dashboard-trip-grid" aria-pressed={view === status} onClick={() => setView(status)}>
                 {statusLabel(status, language)} <span>{counts[status]}</span>
               </button>
             ))}
@@ -435,7 +463,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           </div>
         </div>
 
-        <div className={styles.tripGrid}>
+        <div id="dashboard-trip-grid" className={styles.tripGrid}>
           {visibleTrips.map((trip) => (
             <TripCard
               key={trip.id}
@@ -465,7 +493,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
             <button className={accountStyles.giftClose} type="button" onClick={() => setGifting(null)} aria-label={isSpanish ? "Cerrar diálogo" : "Close gift dialog"}><X aria-hidden="true" /></button>
             <span className={accountStyles.giftDialogIcon}><Gift aria-hidden="true" /></span>
             <p className={accountStyles.eyebrow}>{copy.giftTitle}</p>
-            <h2 id="gift-title">{isSpanish ? "Compartir" : "Share"} {gifting.title}</h2>
+            <h2 id="gift-title">{isSpanish ? "Compartir" : "Share"} {tripDisplayTitle(gifting)}</h2>
             {giftState === "complete" ? (
               <div className={accountStyles.giftComplete}>
                 <p>{delivered ? copy.inviteSent : copy.inviteReady}</p>
@@ -506,16 +534,26 @@ function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }:
   onGift: (trip: EasyTTrip) => void;
   onRemove: (id: string) => void;
 }) {
+  const readiness = tripReadinessSummary(trip);
+  const readinessLabels = language === "es"
+    ? { itinerary: "Itinerario", stays: "Estancias", route: "Ruta", prep: "Preparación" }
+    : { itinerary: "Itinerary", stays: "Stays", route: "Route", prep: "Prep" };
   return <article className={`${styles.tripCard} ${working ? styles.working : ""} ${trip.status === "draft" ? styles.activeTripCard : ""}`}>
     <div className={styles.tripCardMeta}><span>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
-    <h3>{trip.title}</h3>
+    <h3>{tripDisplayTitle(trip)}</h3>
     <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
     <ResilientImage src={tripImage(trip)} alt="" className={styles.tripImage} fallback={<div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>} />
+    <ul className={styles.progressStrip} aria-label={language === "es" ? "Resumen de preparación del viaje" : "Trip readiness summary"}>
+      {readiness.signals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.currentStage : undefined}>
+        <span aria-hidden="true">{signal.complete ? "✓" : signal.blocked ? "!" : "•"}</span>
+        <div><b>{readinessLabels[signal.id]}</b><small>{signal.label}</small></div>
+      </li>)}
+    </ul>
     <div className={styles.tripCardActions}>
       <Link className={styles.openAction} href={tripWorkspaceHref(trip.id)} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></Link>
       <Link className={styles.editAction} href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}><Edit3 aria-hidden="true" />{copy.edit}</Link>
       <details className={styles.tripMenu}>
-        <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${trip.title}`}><MoreHorizontal aria-hidden="true" /></summary>
+        <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${tripDisplayTitle(trip)}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
           <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
           {trip.status === "archived" ? <button type="button" onClick={() => onAction(trip.id, "restore")}><RotateCcw aria-hidden="true" />{copy.restore}</button> : <button type="button" onClick={() => onAction(trip.id, "archive")}><Archive aria-hidden="true" />{copy.archive}</button>}
