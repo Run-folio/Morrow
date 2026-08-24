@@ -13,10 +13,11 @@ import {
   ArrowDown, ArrowUp, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   Check, Clock, GripVertical, Lock, MapPin, Pencil, Plane, Plus, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, loadActiveTrip, loadRequestedTrip, saveActiveTrip, saveTripToEasyT } from "@/lib/easyt/storage";
-import { tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
-import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { cascadeTripSchedule } from "@/lib/easyt/cascade";
 import { allocateTripNights, calendarDayAllocationsFromNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
@@ -255,10 +256,32 @@ function RadioGroup<T extends string>({ label, help, value, options, onChange }:
 /* ------------------------------------------------------------- main */
 
 export default function TripBuilder() {
-  const { data: session } = authClient.useSession();
+  const searchParams = useSearchParams();
+  return <TripBuilderDocument key={searchParams.toString()} />;
+}
+
+function TripBuilderDocument() {
+  const { data: session, isPending: sessionPending, error: sessionError } = authClient.useSession();
+  const authenticatedOwnerId = session?.user?.id ?? null;
+  const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(null);
+  const [browserOffline, setBrowserOffline] = useState(false);
+  const [browserContextReady, setBrowserContextReady] = useState(false);
+  const sessionUnavailable = Boolean(sessionError
+    && (typeof (sessionError as { status?: unknown }).status !== "number"
+      || (sessionError as { status?: number }).status !== 401));
+  const activeBrowserOwnerId = ownerIdForBrowserRecovery({
+    authenticatedOwnerId,
+    sessionPending,
+    browserOffline: browserOffline || sessionUnavailable,
+    rememberedOwnerId,
+  });
   const generationStartedRef = useRef(false);
   const generationCompletedRef = useRef(false);
   const localSaveTrackedRef = useRef(false);
+  const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
+  const hydratedOwnerScopeRef = useRef<string | null | undefined>(undefined);
+  const activeBrowserOwnerIdRef = useRef(activeBrowserOwnerId);
+  activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const copy = easytCopy[language].builder;
   const ui = language === "es" ? {
@@ -278,10 +301,13 @@ export default function TripBuilder() {
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [tripUpdatedAt, setTripUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [tripUnavailable, setTripUnavailable] = useState(false);
   const [saveState, setSaveState] = useState<"saving" | "local" | "cloud" | "error">("saving");
   const [cloudSaveError, setCloudSaveError] = useState("");
   const [cloudConflictTrip, setCloudConflictTrip] = useState<ReturnType<typeof loadActiveTrip>>(null);
   const [cloudAuthInterrupted, setCloudAuthInterrupted] = useState(false);
+  const [deviceStorageBlocked, setDeviceStorageBlocked] = useState(false);
+  const [deviceRecoveryBlocked, setDeviceRecoveryBlocked] = useState(false);
   // Existing draft links may still name an old third stage; they now resolve
   // to Time instead of stranding a traveller in removed setup UI.
   const [step, setStep] = useState(0);
@@ -383,6 +409,50 @@ export default function TripBuilder() {
     setLanguage(languageFromStorage());
     const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
     window.addEventListener("easyt-language-change", updateLanguage);
+    return () => window.removeEventListener("easyt-language-change", updateLanguage);
+  }, []);
+
+  useEffect(() => {
+    const updateRememberedOwner = () => setRememberedOwnerId(loadRememberedOwner());
+    const updateConnectivity = () => setBrowserOffline(window.navigator.onLine === false);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === EASYT_LAST_OWNER_KEY) updateRememberedOwner();
+    };
+    updateRememberedOwner();
+    updateConnectivity();
+    setBrowserContextReady(true);
+    window.addEventListener("online", updateConnectivity);
+    window.addEventListener("offline", updateConnectivity);
+    window.addEventListener(EASYT_LAST_OWNER_CHANGE_EVENT, updateRememberedOwner);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("online", updateConnectivity);
+      window.removeEventListener("offline", updateConnectivity);
+      window.removeEventListener(EASYT_LAST_OWNER_CHANGE_EVENT, updateRememberedOwner);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authenticatedOwnerId) return;
+    rememberLastOwner(authenticatedOwnerId);
+    setRememberedOwnerId(authenticatedOwnerId);
+  }, [authenticatedOwnerId]);
+
+  useEffect(() => {
+    if (session !== null || sessionPending || sessionError || browserOffline) return;
+    forgetRememberedOwner();
+    setRememberedOwnerId(null);
+  }, [browserOffline, session, sessionError, sessionPending]);
+
+  useEffect(() => {
+    if (sessionPending || !browserContextReady) return;
+    if (canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)) return;
+    const previousOwnerScope = hydratedOwnerScopeRef.current;
+    hydratedOwnerScopeRef.current = undefined;
+    recoveryHandleRef.current = null;
+    setHydrated(false);
+    setTripUnavailable(false);
     let active = true;
     const applySaved = (saved: ReturnType<typeof loadActiveTrip>) => {
       if (!saved || !active) return;
@@ -425,25 +495,51 @@ export default function TripBuilder() {
     };
     const hydrate = async () => {
       const params = new URLSearchParams(window.location.search);
+      const activeOwnerId = activeBrowserOwnerId;
       const requestedStep = Number(params.get("step"));
       if (Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep <= 2) {
         setStep(Math.min(1, requestedStep));
       }
       const tripIdFromUrl = params.get("trip");
       const showItinerary = params.get("view") === "itinerary";
-      if (tripIdFromUrl) {
-        let activeOwnerId = session?.user?.id;
-        if (!activeOwnerId) {
-          const currentSession = await authClient.getSession().catch(() => null);
-          activeOwnerId = currentSession?.data?.user?.id;
+      if (!tripIdFromUrl && typeof previousOwnerScope === "string" && previousOwnerScope !== activeOwnerId) {
+        if (active) {
+          hydratedOwnerScopeRef.current = activeOwnerId;
+          setTripUnavailable(true);
+          setHydrated(true);
         }
-        const requestedTrip = await loadRequestedTrip(tripIdFromUrl, activeOwnerId);
+        return;
+      }
+      if (tripIdFromUrl) {
+        const explicitRecovery = params.get("recover") === "1";
+        if (authenticatedOwnerId && explicitRecovery) {
+          const claimed = claimGuestTripRecoveryForOwner(tripIdFromUrl, authenticatedOwnerId);
+          if (claimed?.stored) recoveryHandleRef.current = claimed.handle;
+        }
+        const ownerScope = activeOwnerId;
+        const requestedRecovery = explicitRecovery ? loadTripRecovery(tripIdFromUrl, ownerScope) : null;
+        const requestedTrip = requestedRecovery?.trip ?? await loadRequestedTrip(tripIdFromUrl, ownerScope);
+        if (!active) return;
         if (requestedTrip) {
+          const matchingRecovery = requestedRecovery ?? loadTripRecovery(tripIdFromUrl, ownerScope);
+          recoveryHandleRef.current = matchingRecovery
+            && JSON.stringify(matchingRecovery.trip) === JSON.stringify(requestedTrip)
+            ? matchingRecovery
+            : null;
           applySaved(requestedTrip);
-          saveActiveTrip(requestedTrip);
+          if (!requestedTrip.ownerId && activeOwnerId) setTripOwnerId(activeOwnerId);
           if (showItinerary) setGenerated(true);
+        } else {
+          setTripUnavailable(true);
         }
       } else {
+        if (activeOwnerId) {
+          if (previousOwnerScope === null) {
+            const claimed = claimGuestTripRecoveryForOwner(tripId, activeOwnerId);
+            if (claimed?.stored) recoveryHandleRef.current = claimed.handle;
+          }
+          setTripOwnerId(activeOwnerId);
+        }
         try {
           const savedProfile = JSON.parse(window.localStorage.getItem("easyt-travel-profile") ?? "null");
           if (isTravelProfile(savedProfile)) { setBudget(savedProfile.budget); setTravelProfile(savedProfile); setHasSavedTravelProfile(true); }
@@ -547,11 +643,14 @@ export default function TripBuilder() {
           }
         }
       }
-      if (active) setHydrated(true);
+      if (active) {
+        hydratedOwnerScopeRef.current = activeOwnerId;
+        setHydrated(true);
+      }
     };
     void hydrate();
-    return () => { active = false; window.removeEventListener("easyt-language-change", updateLanguage); };
-  }, []);
+    return () => { active = false; };
+  }, [activeBrowserOwnerId, authenticatedOwnerId, browserContextReady, sessionPending]);
 
   useEffect(() => {
     stops.forEach((stop) => {
@@ -571,8 +670,14 @@ export default function TripBuilder() {
       // Keep the first account's browser copy quarantined, but never leave it
       // visible after this tab observes a different authenticated account.
       window.location.assign("/journey/dashboard");
+      return;
     }
-  }, [session?.user?.id, tripOwnerId]);
+    if (hydrated && session?.user?.id && !tripOwnerId) {
+      const claimed = claimGuestTripRecoveryForOwner(tripId, session.user.id);
+      if (claimed?.stored) recoveryHandleRef.current = claimed.handle;
+      setTripOwnerId(session.user.id);
+    }
+  }, [hydrated, session?.user?.id, tripId, tripOwnerId]);
 
   const totalDays = useMemo(() => {
     const d = Math.round((+new Date(`${endDate}T00:00:00`) - +new Date(`${startDate}T00:00:00`)) / 86400000) + 1;
@@ -1291,16 +1396,77 @@ export default function TripBuilder() {
     return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
   }, [tripId, tripOwnerId, tripUpdatedAt, sourceRouteKey, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
+  const persistDeviceRecovery = useCallback((trip: EasyTTrip) => {
+    const ownerId = activeBrowserOwnerId;
+    if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
+      || (trip.ownerId && trip.ownerId !== ownerId)) {
+      return {
+        stored: false,
+        handle: { ownerId, tripId: trip.id, writeId: `scope-mismatch-${Date.now()}` },
+        blockedByExistingRecovery: true,
+      };
+    }
+    const currentHandle = recoveryHandleRef.current;
+    const replacement = currentHandle?.tripId === trip.id && currentHandle.ownerId === ownerId
+      ? currentHandle
+      : null;
+    const recovery = saveTripRecovery(trip, {
+      ownerId,
+      replace: replacement ?? undefined,
+    });
+    if (recovery.stored) recoveryHandleRef.current = recovery.handle;
+    return recovery;
+  }, [activeBrowserOwnerId]);
+
+  useEffect(() => {
+    const preserveBeforeNewTrip = (event: Event) => {
+      if (!hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
+      const recovery = persistDeviceRecovery(activeTripDocument);
+      setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
+      if (shouldAllowNewTripNavigation(recovery)) {
+        setSaveState("local");
+        return;
+      }
+      event.preventDefault();
+      setSaveState("error");
+      setCloudSaveError(recovery.blockedByExistingRecovery
+        ? (language === "es"
+          ? "Resuelve primero la copia de recuperación de este dispositivo antes de empezar otro viaje."
+          : "Open or resolve this device's recovery copy before starting another trip.")
+        : (language === "es"
+          ? "No pudimos guardar los cambios más recientes, así que no iniciamos otro viaje."
+          : "The latest changes could not be saved, so Morrovia did not start another trip."));
+    };
+    window.addEventListener(EASYT_BEFORE_NEW_TRIP_EVENT, preserveBeforeNewTrip);
+    return () => window.removeEventListener(EASYT_BEFORE_NEW_TRIP_EVENT, preserveBeforeNewTrip);
+  }, [activeTripDocument, hydrated, language, origin, persistDeviceRecovery, stops.length, tripBrief]);
+
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
     setSaveState("saving");
     const timer = window.setTimeout(() => {
-      saveActiveTrip(activeTripDocument);
-      if (arrivedFromHomepage) window.localStorage.removeItem("easyt-home-trip-draft");
-      setSaveState("local");
+      const recovery = persistDeviceRecovery(activeTripDocument);
+      if (arrivedFromHomepage && recovery.stored) {
+        try { window.localStorage.removeItem("easyt-home-trip-draft"); } catch { /* Recovery result below remains authoritative. */ }
+      }
+      setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
+      setSaveState(recovery.stored ? "local" : "error");
+      if (!recovery.stored && !cloudConflictTrip) {
+        setCloudSaveError(recovery.blockedByExistingRecovery
+          ? (language === "es"
+            ? "Ya hay cambios de este dispositivo que deben resolverse antes de editar la copia en la nube."
+            : "This device already has separate edits. Open that device copy to continue or resolve it explicitly.")
+          : (language === "es"
+            ? "El navegador bloqueó el almacenamiento. Mantén esta pestaña abierta antes de salir."
+            : "Browser storage is blocked. Keep this tab open before leaving."));
+      } else if (!cloudConflictTrip && (deviceStorageBlocked || deviceRecoveryBlocked)) {
+        setCloudSaveError("");
+      }
     }, 450);
     return () => window.clearTimeout(timer);
-  }, [hydrated, activeTripDocument, arrivedFromHomepage]);
+  }, [hydrated, activeTripDocument, arrivedFromHomepage, cloudConflictTrip, deviceRecoveryBlocked, deviceStorageBlocked, language, persistDeviceRecovery]);
 
   const recordGeneratedTrip = () => {
     if (generationCompletedRef.current) return activeTripDocument.stops.length > 0 && activeTripDocument.planItems.length > 0;
@@ -1328,9 +1494,25 @@ export default function TripBuilder() {
 
   const persistGeneratedTrip = async () => {
     const usableTrip = recordGeneratedTrip();
+    const requestTrip = activeTripDocument;
+    const recovery = persistDeviceRecovery(requestTrip);
     try {
-      saveActiveTrip(activeTripDocument);
-      if (arrivedFromHomepage) window.localStorage.removeItem("easyt-home-trip-draft");
+      if (arrivedFromHomepage && recovery.stored) {
+        try { window.localStorage.removeItem("easyt-home-trip-draft"); } catch { /* The trip recovery is stored separately. */ }
+      }
+      setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+      setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
+      if (!recovery.stored) {
+        setCloudSaveError(recovery.blockedByExistingRecovery
+          ? (language === "es"
+            ? "Ya existe una copia de recuperación en este dispositivo. Ábrela antes de guardar cambios desde la nube."
+            : "A separate recovery copy already exists on this device. Open it before saving changes from the cloud copy.")
+          : (language === "es"
+            ? "Este navegador no pudo guardar los cambios más recientes. Mantén esta pestaña abierta e inténtalo de nuevo."
+            : "This browser could not save the latest changes. Keep this tab open and try again."));
+        setSaveState("error");
+        return null;
+      }
       if (usableTrip && !localSaveTrackedRef.current) {
         localSaveTrackedRef.current = true;
         trackEvent("trip_saved", {
@@ -1341,17 +1523,55 @@ export default function TripBuilder() {
           is_authenticated: Boolean(session?.user),
         });
       }
-      if (!session?.user) return activeTripDocument;
+      if (cloudConflictTrip) {
+        setCloudSaveError("This trip changed on another device. Open the cloud copy before trying another cloud save; your device edits remain preserved.");
+        setSaveState("error");
+        return null;
+      }
+      if (!session?.user) return requestTrip;
+      const requestOwnerId = session.user.id;
+      if (recovery.handle.ownerId !== requestOwnerId
+        || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, requestOwnerId)
+        || activeBrowserOwnerIdRef.current !== requestOwnerId) {
+        setCloudSaveError("The active account changed before this trip could sync. Reopen the trip from the current account; the device copy remains preserved.");
+        setSaveState("error");
+        return null;
+      }
 
       setSaveState("saving");
       setCloudSaveError("");
-      setCloudConflictTrip(null);
       setCloudAuthInterrupted(false);
-      const saved = await saveTripToEasyT(activeTripDocument);
-      saveActiveTrip(saved);
+      const saved = await saveTripRecoveryToEasyT(requestTrip, recovery.handle);
+      const currentHandle = recoveryHandleRef.current;
+      const responseIsCurrent = currentHandle?.ownerId === recovery.handle.ownerId
+        && currentHandle.tripId === recovery.handle.tripId
+        && currentHandle.writeId === recovery.handle.writeId
+        && hydratedOwnerScopeRef.current === requestOwnerId
+        && activeBrowserOwnerIdRef.current === requestOwnerId;
+      if (!responseIsCurrent) return null;
+      if (saved.id !== recovery.handle.tripId || saved.ownerId !== requestOwnerId) {
+        setCloudSaveError("The cloud returned a different trip document. This device copy remains preserved and was not acknowledged.");
+        setSaveState("error");
+        return null;
+      }
+      const cached = cacheCanonicalTrip(saved, recovery.handle);
+      const remainingRecovery = loadTripRecovery(saved.id, recovery.handle.ownerId);
+      if (!cached.stored || remainingRecovery) {
+        recoveryHandleRef.current = null;
+        setDeviceRecoveryBlocked(Boolean(remainingRecovery));
+        setDeviceStorageBlocked(!cached.stored);
+        setCloudSaveError(remainingRecovery
+          ? "A newer device edit was preserved while this version finished syncing. Open the device copy before continuing."
+          : "The cloud save completed, but this browser could not keep its offline copy. Keep this tab open and try again.");
+        setSaveState("error");
+        return null;
+      }
+      recoveryHandleRef.current = null;
       setTripOwnerId(saved.ownerId);
       setTripUpdatedAt(saved.updatedAt);
       setCloudAuthInterrupted(false);
+      setDeviceRecoveryBlocked(false);
+      setDeviceStorageBlocked(false);
       setSaveState("cloud");
       trackEvent("trip_saved", {
         trip_source: analyticsTripSource,
@@ -1366,7 +1586,14 @@ export default function TripBuilder() {
         ? error.canonicalTrip
         : null;
       const authInterrupted = error instanceof EasyTTripAuthError;
-      setCloudConflictTrip(conflictTrip);
+      if (recovery.stored) markTripRecoveryState(recovery.handle, authInterrupted ? "auth" : conflictTrip ? "conflict" : "network");
+      const responseOwnerId = recovery.handle.ownerId;
+      const currentHandle = recoveryHandleRef.current;
+      if (activeBrowserOwnerIdRef.current !== responseOwnerId
+        || hydratedOwnerScopeRef.current !== responseOwnerId
+        || currentHandle?.ownerId !== responseOwnerId
+        || currentHandle.tripId !== recovery.handle.tripId) return null;
+      if (conflictTrip) setCloudConflictTrip(conflictTrip);
       setCloudAuthInterrupted(authInterrupted);
       setCloudSaveError(authInterrupted
         ? "Your session expired. This trip is still saved on this device; sign in again to sync it."
@@ -1376,7 +1603,7 @@ export default function TripBuilder() {
       setSaveState("error");
       trackEvent("trip_save_failed", {
         trip_source: analyticsTripSource,
-        trip_id: activeTripDocument.id,
+        trip_id: requestTrip.id,
         save_state: session?.user ? "cloud" : "local",
         error_type: classifyAnalyticsSaveError(error),
         is_authenticated: Boolean(session?.user),
@@ -1389,7 +1616,13 @@ export default function TripBuilder() {
     setOpeningTrip(true);
     acceptCurrentRoute("continue");
     const saved = await persistGeneratedTrip();
-    if (!saved) { setOpeningTrip(false); return; }
+    const resultOwnerId = saved?.ownerId ?? hydratedOwnerScopeRef.current ?? null;
+    if (!saved
+      || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
+      || resultOwnerId !== activeBrowserOwnerIdRef.current) {
+      setOpeningTrip(false);
+      return;
+    }
     const destination = !saved.ownerId
       ? `/journey/plan?trip=${encodeURIComponent(saved.id)}`
       : !session?.user
@@ -1424,12 +1657,32 @@ export default function TripBuilder() {
     setBuildRequested(false);
     void (async () => {
       const saved = await persistGeneratedTrip();
-      if (saved) window.location.assign(!saved.ownerId ? `/journey/plan?trip=${encodeURIComponent(saved.id)}` : !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
-      else setOpeningTrip(false);
+      const resultOwnerId = saved?.ownerId ?? hydratedOwnerScopeRef.current ?? null;
+      if (saved
+        && canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
+        && resultOwnerId === activeBrowserOwnerIdRef.current) {
+        window.location.assign(!saved.ownerId ? `/journey/plan?trip=${encodeURIComponent(saved.id)}` : !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
+      } else setOpeningTrip(false);
     })();
   }, [buildRequested, activeTripDocument]);
 
   /* ------------------------------------------------------------ draft view */
+
+  const ownerScopeMismatch = hydrated && (
+    !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerId)
+    || Boolean(tripOwnerId && tripOwnerId !== activeBrowserOwnerId)
+  );
+  const syncAction = tripEditorSyncAction({
+    hasCloudConflict: Boolean(cloudConflictTrip),
+    hasDeviceRecoveryIssue: deviceRecoveryBlocked,
+    authInterrupted: cloudAuthInterrupted,
+  });
+  if (!hydrated || ownerScopeMismatch) {
+    return <div className={`${styles.shellWide} ${mobilePolish.builder}`} aria-busy="true"><div className={styles.locationResolution} role="status">Checking the current account before opening this trip…</div></div>;
+  }
+  if (tripUnavailable) {
+    return <div className={`${styles.shellWide} ${mobilePolish.builder}`}><aside className={styles.cloudSaveError} role="alert"><span>This trip is not available to the current browser account. Its original device copy remains preserved in its owner scope.</span></aside></div>;
+  }
 
   if (generated && activeTripDocument.planItems.length) {
     return (
@@ -1442,7 +1695,12 @@ export default function TripBuilder() {
         onOpenMap={() => {
           void (async () => {
             const saved = await persistGeneratedTrip();
-            if (saved) window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : `/journey/plan?trip=${encodeURIComponent(saved.id)}`);
+            const resultOwnerId = saved?.ownerId ?? hydratedOwnerScopeRef.current ?? null;
+            if (saved
+              && canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
+              && resultOwnerId === activeBrowserOwnerIdRef.current) {
+              window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : `/journey/plan?trip=${encodeURIComponent(saved.id)}`);
+            }
           })();
         }}
       />
@@ -1765,18 +2023,27 @@ export default function TripBuilder() {
         </aside>}
       </div>
 
-      {cloudSaveError ? <aside className={styles.cloudSaveError} role="alert"><span>{cloudSaveError}</span><button type="button" onClick={cloudAuthInterrupted ? () => {
-        window.location.assign(tripSyncSignInPath(activeTripDocument.id));
-      } : cloudConflictTrip ? () => {
-        saveActiveTrip(cloudConflictTrip);
+      {cloudSaveError ? <aside className={styles.cloudSaveError} role="alert"><span>{cloudSaveError}</span><button type="button" onClick={syncAction === "reload-cloud" ? () => {
+        if (!cloudConflictTrip) return;
+        cacheCanonicalTrip(cloudConflictTrip);
+        recoveryHandleRef.current = null;
         window.location.assign(tripWorkspaceHref(cloudConflictTrip.id));
-      } : () => void openBuiltTrip()}>{cloudAuthInterrupted ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again") : cloudConflictTrip ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
+      } : syncAction === "open-device" ? () => {
+        window.location.assign(tripSyncRecoveryPath(activeTripDocument.id));
+      } : deviceStorageBlocked ? () => {
+        const recovery = persistDeviceRecovery(activeTripDocument);
+        setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+        setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
+        if (recovery.stored) { setCloudSaveError(""); setSaveState("local"); }
+      } : syncAction === "sign-in" ? () => {
+        window.location.assign(tripSyncSignInPath(activeTripDocument.id));
+      } : () => void openBuiltTrip()}>{syncAction === "reload-cloud" ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : syncAction === "open-device" ? (language === "es" ? "Abrir copia del dispositivo" : "Open device copy") : deviceStorageBlocked ? (language === "es" ? "Reintentar guardado" : "Try device save again") : syncAction === "sign-in" ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
       {(step !== 0 || hasPromptContext) && <div className={styles.wizardFoot}>
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>
           <small className={styles.saveState}>{saveState === "saving" ? ui.savingChanges : saveState === "cloud" ? (language === "es" ? "Guardado en tu cuenta" : "Saved to your account") : saveState === "error" ? (language === "es" ? "No sincronizado" : "Not synced") : ui.savedDevice}</small>
           {gate && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip} aria-busy={openingTrip || undefined}
+          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip || Boolean(cloudConflictTrip)} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate) return;
               if (step === 0 && !(await validateOrigin())) return;

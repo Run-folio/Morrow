@@ -40,6 +40,35 @@ export function tripSyncSignInPath(tripId: string) {
   return `/journey/login?next=${encodeURIComponent(tripSyncRecoveryPath(tripId))}`;
 }
 
+/** Shared conflict actions keep the cloud and device destinations distinct. */
+export function tripConflictResolutionActions(tripId: string) {
+  return {
+    cloudHref: `/journey/${encodeURIComponent(tripId)}`,
+    deviceHref: tripSyncRecoveryPath(tripId),
+    openCloudLabel: "Open cloud copy",
+    openDeviceLabel: "Open device copy",
+    discardDeviceLabel: "Discard device copy",
+  } as const;
+}
+
+export type TripEditorSyncAction = "reload-cloud" | "open-device" | "sign-in" | "retry";
+
+/** An unresolved cloud conflict remains the primary resolution after local edits. */
+export function tripEditorSyncAction({
+  hasCloudConflict,
+  hasDeviceRecoveryIssue,
+  authInterrupted,
+}: {
+  hasCloudConflict: boolean;
+  hasDeviceRecoveryIssue: boolean;
+  authInterrupted: boolean;
+}): TripEditorSyncAction {
+  if (hasCloudConflict) return "reload-cloud";
+  if (hasDeviceRecoveryIssue) return "open-device";
+  if (authInterrupted) return "sign-in";
+  return "retry";
+}
+
 /**
  * `updatedAt` is the existing trip document's cloud revision token. Treat it
  * as opaque: an edit may be saved only when it is based on the exact revision

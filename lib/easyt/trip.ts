@@ -1,6 +1,6 @@
-import { estimateLegForConstraints, type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "@/lib/easyt/planner";
-import type { NightAllocationResult } from "@/lib/easyt/night-allocation";
-import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { estimateLegForConstraints, type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
+import type { NightAllocationResult } from "./night-allocation.ts";
+import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 

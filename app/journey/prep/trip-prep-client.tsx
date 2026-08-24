@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarDays, Map, MapPin, Plane, Route, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import EasyTNavigation from "../easyt-navigation";
 import TripPrepWorkspace from "@/components/easyt/trip-prep-workspace";
-import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
+import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip } from "@/lib/easyt/trip";
@@ -16,26 +17,40 @@ import styles from "./trip-prep.module.css";
 import editorial from "../surface-editorial.module.css";
 
 export default function TripPrepClient() {
-  const { data: session } = authClient.useSession();
+  const searchParams = useSearchParams();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const visibleOwnerId = session?.user?.id ?? null;
+  const tripId = searchParams.get("trip");
+  const documentIdentity = JSON.stringify([visibleOwnerId, tripId]);
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
+  const [hydratedOwnerScope, setHydratedOwnerScope] = useState<string | null | undefined>(undefined);
+  const [hydratedDocumentIdentity, setHydratedDocumentIdentity] = useState<string | undefined>(undefined);
   const [tripResolved, setTripResolved] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   useEffect(() => {
     let active = true;
     setLanguage(languageFromStorage());
-    const id = new URLSearchParams(window.location.search).get("trip");
+    setTripResolved(false);
+    setHydratedOwnerScope(undefined);
+    setHydratedDocumentIdentity(undefined);
+    if (sessionPending) return () => { active = false; };
     void (async () => {
-      const cloud = id ? await loadTripFromEasyT(id).catch(() => null) : null;
-      const local = loadActiveTrip();
+      const cloud = tripId ? await loadTripFromEasyT(tripId).catch(() => null) : null;
+      const local = tripId ? loadLocalTrip(tripId, visibleOwnerId) : loadActiveTrip(visibleOwnerId);
       if (!active) return;
-      const resolved = cloud ?? requestedTripMatch(id ?? local?.id ?? "", local, session?.user?.id);
-      if (cloud) saveActiveTrip(cloud);
+      const resolved = cloud ?? requestedTripMatch(tripId ?? local?.id ?? "", local, session?.user?.id);
+      if (cloud) cacheCanonicalTrip(cloud);
+      setHydratedOwnerScope(cloud?.ownerId ?? visibleOwnerId);
+      setHydratedDocumentIdentity(documentIdentity);
       setTrip(resolved);
       setTripResolved(true);
     })();
     return () => { active = false; };
-  }, [session?.user?.id]);
-  if (!tripResolved) return <JourneyLoading />;
+  }, [documentIdentity, session?.user?.id, sessionPending, tripId, visibleOwnerId]);
+  const documentScopeMismatch = Boolean(trip
+    && (!canUseHydratedTripScope(hydratedOwnerScope, visibleOwnerId)
+      || hydratedDocumentIdentity !== documentIdentity));
+  if (sessionPending || !tripResolved || documentScopeMismatch) return <JourneyLoading />;
   if (!trip) return <main className={`${styles.page} ${editorial.surface} ${editorial.prep} morrovia-editorial-page`}><EasyTNavigation current="home" /><section className={styles.empty}><p>TRIP PREP</p><h1>Choose a trip first.</h1><span>Once you have a route, its practical preparation will live here.</span><Link href="/journey/dashboard">See your trips <ArrowRight /></Link></section></main>;
   const mapHref = `/journey/plan?trip=${encodeURIComponent(trip.id)}`;
   const builderHref = `/journey/new?trip=${encodeURIComponent(trip.id)}&view=itinerary`;

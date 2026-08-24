@@ -5,6 +5,7 @@ import {
   useId,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type MouseEventHandler,
   type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
@@ -87,7 +88,7 @@ export function EasyTLinkButton({
   variant,
   fullWidth,
   onClick,
-}: SharedControlProps & { href: string; onClick?: () => void }) {
+}: SharedControlProps & { href: string; onClick?: MouseEventHandler<HTMLAnchorElement> }) {
   return (
     <Link
       href={href}

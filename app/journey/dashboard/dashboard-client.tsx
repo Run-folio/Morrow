@@ -24,13 +24,19 @@ import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import ResilientImage from "@/components/easyt/resilient-image";
 import {
+  cacheCanonicalTrip,
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
-  loadActiveTrip,
+  EasyTTripSaveConflictError,
+  loadCurrentTripRecovery,
+  loadTripRecovery,
+  markTripRecoveryState,
   promoteTripToEasyT,
-  saveActiveTrip,
+  saveTripToEasyT,
+  tripForRecoveryScope,
 } from "@/lib/easyt/storage";
 import { canPromoteTripForOwner } from "@/lib/easyt/trip-promotion";
+import { tripConflictResolutionActions, tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { classifyAnalyticsSaveError, trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -91,7 +97,7 @@ function statusLabel(status: TripStatus, language: EasyTLanguage) {
 function trackTripReopened(trip: EasyTTrip) {
   // Dashboard rows are owner-scoped cloud documents. Cache that exact
   // revision before navigation so dashboard and direct links resolve alike.
-  saveActiveTrip(trip);
+  cacheCanonicalTrip(trip);
   trackEvent("trip_reopened", { trip_id: trip.id, source: "dashboard", save_state: "cloud", stop_count: trip.stops.length });
 }
 
@@ -125,22 +131,37 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   }, []);
 
   const syncLocalTrip = useCallback(async () => {
-    const localTrip = loadActiveTrip();
+    const recovery = loadCurrentTripRecovery(ownerId);
+    const localTrip = recovery?.trip;
     if (!localTrip || !canPromoteTripForOwner(localTrip, ownerId)) return;
+    const scopedLocalTrip = tripForRecoveryScope(localTrip, recovery);
+    if (!scopedLocalTrip) return;
     setSyncIssue(null);
     setSyncingLocalTrip(true);
     try {
-      const result = await promoteTripToEasyT(localTrip);
+      const result = localTrip.ownerId
+        ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
+        : await promoteTripToEasyT(scopedLocalTrip);
       // A successful response is the first safe point at which the cloud form
-      // replaces the browser draft and becomes the local fallback too.
-      saveActiveTrip(result.trip);
+      // may resolve this exact pending write. A newer recovery remains intact.
+      cacheCanonicalTrip(result.trip, recovery);
+      const remainingRecovery = loadTripRecovery(result.trip.id, ownerId);
+      if (remainingRecovery) {
+        setSyncIssue({
+          kind: "failed",
+          tripId: result.trip.id,
+          message: "A newer device edit was preserved while the earlier version finished syncing.",
+        });
+      }
       if (result.outcome === "promoted") {
         trackEvent("trip_saved", { trip_source: "dashboard", trip_id: result.trip.id, save_state: "cloud", stop_count: result.trip.stops.length, is_authenticated: true });
       }
       if (!trips.some((trip) => trip.id === result.trip.id)) router.refresh();
     } catch (error) {
-      const conflict = error instanceof EasyTTripPromotionConflictError;
+      const conflict = error instanceof EasyTTripPromotionConflictError || error instanceof EasyTTripSaveConflictError;
       const authInterrupted = error instanceof EasyTTripAuthError;
+      if (conflict) cacheCanonicalTrip(error.canonicalTrip);
+      markTripRecoveryState(recovery, authInterrupted ? "auth" : conflict ? "conflict" : "network");
       setSyncIssue({
         kind: authInterrupted ? "auth" : conflict ? "conflict" : "failed",
         tripId: localTrip.id,
@@ -231,6 +252,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const visitedCount = stampSummary.visited;
   const wantCount = stampSummary.want;
   const isSpanish = language === "es";
+  const conflictActions = syncIssue ? tripConflictResolutionActions(syncIssue.tripId) : null;
 
   return (
     <>
@@ -242,7 +264,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </div>
         <span>
           {syncIssue.kind === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void syncLocalTrip()} loading={syncingLocalTrip}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}
-          {syncIssue.kind === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Iniciar sesión de nuevo" : "Sign in again"}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripWorkspaceHref(syncIssue.tripId)}>{syncIssue.kind === "conflict" ? (isSpanish ? "Abrir copia en la nube" : "Open cloud copy") : (isSpanish ? "Abrir copia del dispositivo" : "Open device copy")}</EasyTLinkButton>}
+          {syncIssue.kind === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Iniciar sesión de nuevo" : "Sign in again"}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={syncIssue.kind === "conflict" ? conflictActions!.cloudHref : tripSyncRecoveryPath(syncIssue.tripId)}>{syncIssue.kind === "conflict" ? (isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel) : (isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel)}</EasyTLinkButton>}
         </span>
       </aside> : null}
       <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>

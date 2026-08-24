@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronRight, CircleAlert, MapPin, Route, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import EasyTNavigation from "../easyt-navigation";
-import { loadActiveTrip, loadTripFromEasyT, saveActiveTrip } from "@/lib/easyt/storage";
+import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalTrip, loadTripFromEasyT } from "@/lib/easyt/storage";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
@@ -57,9 +57,15 @@ function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, n
 
 export default function MapPlanNext() {
   const searchParams = useSearchParams();
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const visibleOwnerId = session?.user?.id ?? null;
   const tripId = searchParams.get("trip");
+  const documentIdentity = JSON.stringify([visibleOwnerId, tripId]);
+  const currentDocumentIdentityRef = useRef(documentIdentity);
+  currentDocumentIdentityRef.current = documentIdentity;
   const [trip, setTrip] = useState<EasyTTrip | null>(null);
+  const [hydratedOwnerScope, setHydratedOwnerScope] = useState<string | null | undefined>(undefined);
+  const [hydratedDocumentIdentity, setHydratedDocumentIdentity] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [selectedStopId, setSelectedStopId] = useState("");
   const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, [number, number]>>({});
@@ -67,24 +73,42 @@ export default function MapPlanNext() {
   const [showDecisions, setShowDecisions] = useState(true);
 
   useEffect(() => {
+    if (sessionPending) return;
     let active = true;
+    setLoading(true);
+    setHydratedOwnerScope(undefined);
+    setHydratedDocumentIdentity(undefined);
+    setTrip(null);
+    setSelectedStopId("");
+    setResolvedCoordinates({});
     void (async () => {
-      const local = loadActiveTrip();
+      const ownerScope = visibleOwnerId;
+      const local = tripId ? loadLocalTrip(tripId, ownerScope) : loadActiveTrip(ownerScope);
       let next = requestedTripMatch(tripId ?? local?.id ?? "", local, session?.user?.id);
+      let resolvedOwnerScope: string | null = ownerScope;
       if (tripId) {
-        try { next = await loadTripFromEasyT(tripId) ?? next; } catch { /* retain the local canonical copy */ }
+        try {
+          const cloud = await loadTripFromEasyT(tripId);
+          if (cloud) {
+            cacheCanonicalTrip(cloud);
+            next = cloud;
+            resolvedOwnerScope = cloud.ownerId;
+          }
+        } catch { /* retain the exact owner-scoped local copy */ }
       }
       if (!active) return;
-      if (next) saveActiveTrip(next);
+      setHydratedOwnerScope(resolvedOwnerScope);
+      setHydratedDocumentIdentity(documentIdentity);
       setTrip(next);
       setSelectedStopId(next?.stops.slice().sort((a, b) => a.order - b.order)[0]?.id ?? "");
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [session?.user?.id, tripId]);
+  }, [documentIdentity, session?.user?.id, sessionPending, tripId, visibleOwnerId]);
 
   useEffect(() => {
-    if (!trip) return;
+    if (!trip || !hydratedDocumentIdentity || hydratedDocumentIdentity !== documentIdentity) return;
+    const geocodeDocumentIdentity = hydratedDocumentIdentity;
     const missingStops = trip.stops.filter((stop) => stop.longitude === null || stop.latitude === null);
     if (!missingStops.length) return;
     let active = true;
@@ -93,11 +117,11 @@ export default function MapPlanNext() {
       const payload = await response.json() as { result?: { coordinates?: [number, number] } | null };
       return [stop.id, payload.result?.coordinates] as const;
     })).then((results) => {
-      if (!active) return;
+      if (!active || currentDocumentIdentityRef.current !== geocodeDocumentIdentity) return;
       setResolvedCoordinates(Object.fromEntries(results.filter((entry): entry is [string, [number, number]] => Boolean(entry[1]))));
     }).catch(() => undefined);
     return () => { active = false; };
-  }, [trip]);
+  }, [documentIdentity, hydratedDocumentIdentity, trip]);
 
   const map = useMemo(() => trip ? mapData(trip, resolvedCoordinates) : { stops: [], legs: [] }, [resolvedCoordinates, trip]);
   const selectedStop = map.stops.find((stop) => stop.id === selectedStopId) ?? map.stops[0];
@@ -110,7 +134,11 @@ export default function MapPlanNext() {
   const noopPin = useCallback((_pin: PlannerMapPin) => undefined, []);
   const noopDrop = useCallback((_coordinates: [number, number]) => undefined, []);
 
-  if (loading) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
+  const documentScopeMismatch = Boolean(trip
+    && (!canUseHydratedTripScope(hydratedOwnerScope, visibleOwnerId)
+      || hydratedDocumentIdentity !== documentIdentity));
+
+  if (sessionPending || loading || documentScopeMismatch) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
   if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></section></main>;
 
   const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : selectedLeg.mode === "road" ? "Road" : selectedLeg.mode === "ferry" ? "Ferry" : "Mode to confirm"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";

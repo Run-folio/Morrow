@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   ChevronDown,
   Languages,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics";
-import { clearActiveTrip } from "@/lib/easyt/storage";
+import { beginNewTripNavigation, forgetRememberedOwner, rememberLastOwner } from "@/lib/easyt/storage";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
 import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -27,6 +27,7 @@ import styles from "./easyt-navigation.module.css";
 type EasyTNavigationProps = {
   current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport" | "routes";
   account?: { id?: string; name?: string | null; email: string; language?: Language };
+  storageOwnerId?: string | null;
   landing?: boolean;
 };
 
@@ -35,6 +36,7 @@ type Language = EasyTLanguage;
 export default function EasyTNavigation({
   current,
   account,
+  storageOwnerId,
 }: EasyTNavigationProps) {
   const router = useRouter();
   const { data: session } = authClient.useSession();
@@ -63,7 +65,10 @@ export default function EasyTNavigation({
   }, []);
 
   useEffect(() => {
-    if (activeAccount?.id) identifyAnalyticsUser(activeAccount.id);
+    if (activeAccount?.id) {
+      identifyAnalyticsUser(activeAccount.id);
+      rememberLastOwner(activeAccount.id);
+    }
   }, [activeAccount?.id]);
 
   useEffect(() => {
@@ -98,10 +103,25 @@ export default function EasyTNavigation({
   };
 
   const signOut = async () => {
+    // Remove the offline address hint before the session is cleared so a cold
+    // signed-out shell cannot reopen the previous account's local documents.
+    forgetRememberedOwner();
     await authClient.signOut();
     resetAnalyticsIdentity();
     router.push("/journey/login");
     router.refresh();
+  };
+
+  const beginNewTrip = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    const preserved = beginNewTripNavigation(activeAccount?.id ?? storageOwnerId ?? null, window);
+    event.preventDefault();
+    if (!preserved) {
+      return;
+    }
+    // New trip is a document boundary even when this link is clicked from an
+    // already-queryless builder. A hard navigation guarantees fresh client
+    // state, and the public service-worker shell still supports it offline.
+    window.location.assign("/journey/new");
   };
 
   const labels = easytCopy[language].nav;
@@ -122,7 +142,7 @@ export default function EasyTNavigation({
           href="/journey/new"
           icon={Plus}
           size="small"
-          onClick={() => clearActiveTrip()}
+          onClick={beginNewTrip}
         >
           <span>{labels.newTrip}</span>
         </EasyTLinkButton>
@@ -165,7 +185,7 @@ export default function EasyTNavigation({
             <span>{language === "es" ? "Menú" : "Menu"}</span>
           </summary>
           <div className={styles.compactPopover}>
-            <Link href="/journey/new" onClick={() => clearActiveTrip()}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
+            <Link href="/journey/new" onClick={beginNewTrip}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
             <Link href="/journey/home#how-it-works"><span>{language === "es" ? "Cómo funciona" : "How it works"}</span></Link>
             <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
             <Link href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
@@ -204,7 +224,7 @@ export default function EasyTNavigation({
             <Map aria-hidden="true" />
             <span>{labels.trips}</span>
           </Link>
-          <Link className={styles.dockPrimary} href="/journey/new">
+          <Link className={styles.dockPrimary} href="/journey/new" onClick={beginNewTrip}>
             <Plus aria-hidden="true" />
             <span>{labels.newTrip}</span>
           </Link>

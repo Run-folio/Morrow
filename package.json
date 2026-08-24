@@ -21,7 +21,7 @@
     "test:public-routes": "node --experimental-strip-types --test tests/public-route.test.ts tests/public-route-handoff.test.ts tests/public-route-seo.test.ts",
     "test:analytics": "node --experimental-strip-types --test tests/analytics.test.ts",
     "test:stamps": "node --experimental-strip-types --test tests/stamps.test.ts",
-    "test:persistence": "node --experimental-strip-types --test tests/trip-id-resolution.test.ts tests/trip-promotion.test.ts tests/trip-continuity.test.ts tests/trip-sync-recovery.test.ts",
+    "test:persistence": "node --experimental-strip-types --test tests/trip-id-resolution.test.ts tests/trip-promotion.test.ts tests/trip-continuity.test.ts tests/trip-sync-recovery.test.ts tests/trip-browser-storage.test.ts",
     "test:destination-knowledge": "node --experimental-strip-types --test tests/destination-knowledge.test.ts",
     "test:transfer-impact": "node --experimental-strip-types --test tests/transfer-impact.test.ts",
     "test:transport-feasibility": "node --experimental-strip-types --test tests/transport-feasibility.test.ts",
