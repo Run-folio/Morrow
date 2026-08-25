@@ -5,7 +5,11 @@ import {
   tripSyncAuthError,
   type TripSaveConflictReason,
 } from "./trip-continuity.ts";
-import { requestTripPromotion, type TripPromotionConflictReason } from "./trip-promotion.ts";
+import {
+  canonicalTripForOwner,
+  requestTripPromotion,
+  type TripPromotionConflictReason,
+} from "./trip-promotion.ts";
 
 export { EasyTTripSaveConflictError } from "./trip-continuity.ts";
 export { EasyTTripAuthError } from "./trip-continuity.ts";
@@ -441,6 +445,42 @@ function sameRecoveryDocument(left: EasyTTrip, right: EasyTTrip) {
   return JSON.stringify(leftDocument) === JSON.stringify(rightDocument);
 }
 
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, child]) => child !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, stableJsonValue(child)]),
+  );
+}
+
+/**
+ * A recovery is redundant only when the canonical server normalization of its
+ * entire durable trip document matches the cloud document. Traveller content,
+ * status and createdAt remain significant; owner assignment, updatedAt and
+ * stop-reference namespacing are normalized through the repository's own
+ * canonicalization function rather than ignored field by field.
+ */
+export function tripRecoveryMatchesCanonical(
+  recovery: Pick<TripRecoveryRecord, "ownerId" | "tripId" | "trip">,
+  canonicalTrip: EasyTTrip,
+) {
+  if (!canonicalTrip.ownerId
+    || recovery.ownerId !== canonicalTrip.ownerId
+    || recovery.tripId !== canonicalTrip.id
+    || recovery.trip.id !== canonicalTrip.id
+    || (recovery.trip.ownerId !== null && recovery.trip.ownerId !== canonicalTrip.ownerId)) return false;
+  const normalizedRecovery = canonicalTripForOwner(
+    canonicalTrip.ownerId,
+    recovery.trip,
+    canonicalTrip.updatedAt,
+  );
+  return JSON.stringify(stableJsonValue(normalizedRecovery))
+    === JSON.stringify(stableJsonValue(canonicalTrip));
+}
+
 function writeTripRecoveryToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
@@ -549,6 +589,20 @@ export function cacheCanonicalTripWithRecoveryToStorage(
     ? resolveTripRecoveryInStorage(storage, resolvedRecovery)
     : false;
   return { stored, recoveryResolved };
+}
+
+/** Resolve a stranded recovery only after proving it is the canonical document. */
+export function resolveCanonicalEquivalentTripRecoveryInStorage(
+  storage: EasyTBrowserStorage,
+  canonicalTrip: EasyTTrip,
+  recovery: TripRecoveryRecord,
+) {
+  const equivalent = tripRecoveryMatchesCanonical(recovery, canonicalTrip);
+  if (!equivalent) return { equivalent, stored: false, recoveryResolved: false };
+  return {
+    equivalent,
+    ...cacheCanonicalTripWithRecoveryToStorage(storage, canonicalTrip, recovery),
+  };
 }
 
 /** Update status only while this is still the exact pending write. */
@@ -868,6 +922,20 @@ export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecov
     dispatchTripStorageChange({ kind: "resolved", ownerId: resolvedRecovery.ownerId, tripId: resolvedRecovery.tripId });
   }
   return { stored, recoveryResolved };
+}
+
+export function resolveCanonicalEquivalentTripRecovery(
+  canonicalTrip: EasyTTrip,
+  recovery: TripRecoveryRecord,
+) {
+  const storage = browserStorage();
+  if (!storage) return { equivalent: tripRecoveryMatchesCanonical(recovery, canonicalTrip), stored: false, recoveryResolved: false };
+  const result = resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonicalTrip, recovery);
+  if (result.stored) dispatchTripStorageChange({ kind: "cache", ownerId: canonicalTrip.ownerId, tripId: canonicalTrip.id });
+  if (result.recoveryResolved) {
+    dispatchTripStorageChange({ kind: "resolved", ownerId: recovery.ownerId, tripId: recovery.tripId });
+  }
+  return result;
 }
 
 export function discardTripRecovery(handle: TripRecoveryHandle, confirmed: boolean) {

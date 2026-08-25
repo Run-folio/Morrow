@@ -26,6 +26,7 @@ import {
   markTripRecoveryStateInStorage,
   ownerIdForBrowserRecovery,
   rememberLastOwnerInStorage,
+  resolveCanonicalEquivalentTripRecoveryInStorage,
   resolveTripRecoveryInStorage,
   saveTripRecoveryToStorage,
   saveTripRecoveryToEasyT,
@@ -33,11 +34,12 @@ import {
   tripCacheStorageKey,
   tripRecoveryStorageKey,
   tripForRecoveryScope,
+  tripRecoveryMatchesCanonical,
   tripStorageEventMatches,
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
-import { canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
+import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 function browserTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
@@ -217,6 +219,86 @@ test("canonical caching resolves only the same owner, trip, and recovery write",
   assert.equal(exact.stored, true);
   assert.equal(exact.recoveryResolved, true);
   assert.equal(loadTripRecoveryFromStorage(storage, pending.id, "owner-a"), null);
+});
+
+test("hydration resolves a stranded Build recovery only when its server-normalized document is canonical-equivalent", () => {
+  const ownerId = "owner-a";
+  const local = browserTrip({
+    id: "trip-stranded-build",
+    ownerId: null,
+    status: "planned",
+    brief: {
+      origin: "London",
+      mustDo: "Keep this exact plan",
+      pace: "slow",
+      hotelChanges: "few",
+      budgetBand: "mid",
+      selectedPlaces: { lisbon: ["Alfama"] },
+      decisionSelections: { routeOrder: "entered", transportByLeg: {} },
+    },
+    stops: [{
+      id: "lisbon", order: 0, name: "Lisbon", country: "Portugal",
+      latitude: 38.72, longitude: -9.14, arrivalDate: "2026-12-01",
+      departureDate: "2026-12-08", nights: 7,
+    }],
+    planItems: [{
+      id: "day-1", stopId: "lisbon", dayNumber: 1, date: "2026-12-01",
+      type: "activity", title: "Alfama", reason: "Requested", notes: [],
+      startsAt: null, endsAt: null, bookingUrl: null, latitude: 38.71, longitude: -9.13,
+    }],
+  });
+  const storage = new MemoryBrowserStorage();
+  saveTripRecoveryToStorage(storage, local, {
+    ownerId,
+    writeId: "stranded-build-write",
+  });
+  const normalized = canonicalTripForOwner(ownerId, local, "2026-08-23T12:00:00.000Z");
+  // JSONB responses do not promise object-key insertion order. Rebuild the
+  // same document in a different order to exercise semantic comparison.
+  const canonical: EasyTTrip = {
+    updatedAt: normalized.updatedAt,
+    createdAt: normalized.createdAt,
+    recommendations: normalized.recommendations,
+    planItems: normalized.planItems,
+    legs: normalized.legs,
+    stops: normalized.stops,
+    brief: normalized.brief,
+    currency: normalized.currency,
+    travellers: normalized.travellers,
+    endDate: normalized.endDate,
+    startDate: normalized.startDate,
+    status: normalized.status,
+    title: normalized.title,
+    ownerId: normalized.ownerId,
+    id: normalized.id,
+    schemaVersion: normalized.schemaVersion,
+  };
+
+  assert.notEqual(JSON.stringify(canonical), JSON.stringify(normalized), "the fixture must differ in key order");
+  const storedRecovery = loadTripRecoveryFromStorage(storage, local.id, ownerId)!;
+  assert.equal(tripRecoveryMatchesCanonical(storedRecovery, canonical), true);
+  const result = resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, storedRecovery);
+
+  assert.deepEqual(result, { equivalent: true, stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId), null);
+  assert.deepEqual(loadCachedTripFromStorage(storage, local.id, ownerId), canonical);
+});
+
+test("hydration preserves a same-ID recovery with meaningful traveller edits", () => {
+  const ownerId = "owner-a";
+  const local = browserTrip({ id: "trip-meaningful-local", ownerId: null, status: "planned", title: "My newer route" });
+  const cloud = canonicalTripForOwner(ownerId, { ...local, title: "Cloud route" }, "2026-08-23T12:00:00.000Z");
+  const storage = new MemoryBrowserStorage();
+  saveTripRecoveryToStorage(storage, local, { ownerId, writeId: "meaningful-write" });
+  const recovery = loadTripRecoveryFromStorage(storage, local.id, ownerId)!;
+
+  assert.equal(tripRecoveryMatchesCanonical(recovery, cloud), false);
+  assert.deepEqual(
+    resolveCanonicalEquivalentTripRecoveryInStorage(storage, cloud, recovery),
+    { equivalent: false, stored: false, recoveryResolved: false },
+  );
+  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId)?.trip.title, "My newer route");
+  assert.equal(loadCachedTripFromStorage(storage, local.id, ownerId), null);
 });
 
 test("an owner-scoped unclaimed recovery survives A to B to A switching without becoming accessible to B", () => {

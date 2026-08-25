@@ -11,6 +11,7 @@ import {
   discardTripRecovery,
   EASYT_ACTIVE_TRIP_CHANGE_EVENT,
   loadTripRecovery,
+  resolveCanonicalEquivalentTripRecovery,
   subscribeToTripStorage,
   type TripRecoveryRecord,
   EASYT_LAST_OWNER_KEY,
@@ -89,7 +90,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     };
     window.addEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
     return () => window.removeEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
-  }, [cacheTrip, trip.id, trip.ownerId]);
+  }, [cacheTrip, trip]);
 
   useEffect(() => {
     if (!cacheTrip) {
@@ -100,12 +101,18 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     setDiscardFailed(false);
     const refreshRecovery = () => {
       const recovery = loadTripRecovery(trip.id, trip.ownerId);
-      setDeviceRecovery(recovery);
-      if (!recovery) setDiscardFailed(false);
+      const reconciliation = recovery
+        ? resolveCanonicalEquivalentTripRecovery(trip, recovery)
+        : null;
+      const remainingRecovery = reconciliation?.recoveryResolved
+        ? loadTripRecovery(trip.id, trip.ownerId)
+        : recovery;
+      setDeviceRecovery(remainingRecovery);
+      if (!remainingRecovery) setDiscardFailed(false);
     };
     refreshRecovery();
     return subscribeToTripStorage(trip.ownerId, trip.id, refreshRecovery);
-  }, [cacheTrip, trip.id, trip.ownerId]);
+  }, [cacheTrip, trip]);
 
   useEffect(() => {
     const visitKey = workspaceVisitKey(pathname);

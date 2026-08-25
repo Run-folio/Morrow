@@ -34,6 +34,7 @@ import {
   markTripRecoveryState,
   promoteTripToEasyT,
   reconcileTripCloudMutation,
+  resolveCanonicalEquivalentTripRecovery,
   saveTripToEasyT,
   tripForRecoveryScope,
   EASYT_LAST_OWNER_KEY,
@@ -170,9 +171,47 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       });
       return;
     }
+    const canonicalTrip = trips.find((trip) => trip.id === localTrip.id);
+    if (canonicalTrip) {
+      const reconciliation = resolveCanonicalEquivalentTripRecovery(canonicalTrip, recovery);
+      if (reconciliation.recoveryResolved) {
+        const remainingRecovery = loadTripRecovery(localTrip.id, ownerId);
+        if (!remainingRecovery) {
+          setSyncIssue(null);
+          setRecoveryState("none");
+          return;
+        }
+        setRecoveryState("issue");
+        setSyncIssue({
+          kind: "failed",
+          tripId: localTrip.id,
+          message: "A newer device edit was preserved while the acknowledged cloud copy was reconciled.",
+        });
+        return;
+      }
+      if (reconciliation.equivalent) {
+        setRecoveryState("issue");
+        setSyncIssue({
+          kind: "failed",
+          tripId: localTrip.id,
+          message: "This trip is saved to your account, but its matching device recovery could not be cleared because browser storage is unavailable.",
+        });
+        return;
+      }
+    }
     if (localTrip.ownerId === null && localTrip.status !== "draft") {
       setRecoveryState("issue");
-      setSyncIssue({ kind: "failed", tripId: localTrip.id, message: "Only an unfinished device draft can be added to this account. The device copy was left unchanged." });
+      if (canonicalTrip) {
+        markTripRecoveryState(recovery, "conflict", "cloud-different");
+        setSyncIssue({
+          kind: "conflict",
+          tripId: localTrip.id,
+          conflictReason: "cloud-different",
+          message: "This device copy has changes that are not in the saved cloud trip. Morrovia kept both copies separate.",
+        });
+      } else {
+        setSyncIssue({ kind: "failed", tripId: localTrip.id, message: "Only an unfinished device draft can be added to this account. The device copy was left unchanged." });
+      }
       return;
     }
     if (recovery.state === "conflict") {
@@ -371,7 +410,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         </div>
         <span>
           {syncIssue.kind === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void syncLocalTrip()} loading={syncingLocalTrip}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}
-          {syncIssue.kind === "auth" || syncIssue.kind === "owner" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Cambiar de cuenta" : "Switch account"}</EasyTLinkButton> : syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>}
+          {syncIssue.kind === "auth" || syncIssue.kind === "owner" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Cambiar de cuenta" : "Switch account"}</EasyTLinkButton> : <>
+            {syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : null}
+            <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>
+          </>}
         </span>
       </aside> : null}
       <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>
@@ -517,7 +559,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   );
 }
 
-function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }: {
+export function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }: {
   trip: EasyTTrip;
   language: EasyTLanguage;
   copy: {
@@ -538,13 +580,20 @@ function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }:
   const readinessLabels = language === "es"
     ? { itinerary: "Itinerario", stays: "Estancias", route: "Ruta", prep: "Preparación" }
     : { itinerary: "Itinerary", stays: "Stays", route: "Route", prep: "Prep" };
-  return <article className={`${styles.tripCard} ${working ? styles.working : ""} ${trip.status === "draft" ? styles.activeTripCard : ""}`}>
+  const routeSignal = readiness.signals.find((signal) => signal.id === "route")!;
+  const prepSignal = readiness.signals.find((signal) => signal.id === "prep")!;
+  const cardSignals = [
+    readiness.signals.find((signal) => signal.id === "itinerary")!,
+    readiness.signals.find((signal) => signal.id === "stays")!,
+    routeSignal.blocked || !routeSignal.complete ? routeSignal : prepSignal,
+  ];
+  return <article className={`${styles.tripCard} ${working ? styles.working : ""}`}>
     <div className={styles.tripCardMeta}><span>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
     <h3>{tripDisplayTitle(trip)}</h3>
     <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
     <ResilientImage src={tripImage(trip)} alt="" className={styles.tripImage} fallback={<div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>} />
-    <ul className={styles.progressStrip} aria-label={language === "es" ? "Resumen de preparación del viaje" : "Trip readiness summary"}>
-      {readiness.signals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.currentStage : undefined}>
+    <ul className={styles.cardReadiness} aria-label={language === "es" ? "Resumen de preparación del viaje" : "Trip readiness summary"}>
+      {cardSignals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.currentStage : undefined}>
         <span aria-hidden="true">{signal.complete ? "✓" : signal.blocked ? "!" : "•"}</span>
         <div><b>{readinessLabels[signal.id]}</b><small>{signal.label}</small></div>
       </li>)}
