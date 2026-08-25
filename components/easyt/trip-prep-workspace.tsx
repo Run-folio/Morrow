@@ -131,14 +131,30 @@ function TaskAction({ task, tripId, onOpenDetails, compact = false }: {
   if (!action.href) return null;
   const onClick = () => {
     if (task.kind === "accommodation" && action.stopId) trackEvent("accommodation_map_opened", { trip_id: tripId, stop_id: action.stopId });
-    if (action.affiliate && action.bookingCategory && action.provider) trackEvent("affiliate_click", {
+    if (action.provider === "omio") trackEvent("affiliate_link_clicked", {
+      partner: "omio",
+      placement: "booking_readiness_transport",
+      tripId,
+      transferId: action.transferId,
+      originStopId: action.originStopId,
+      destinationStopId: action.destinationStopId,
+    });
+    else if (action.provider === "viator") trackEvent("affiliate_link_clicked", {
+      partner: "viator",
+      placement: "trip_prep_booking_readiness",
+      tripId,
+      stopId: action.stopId,
+    });
+    else if (action.affiliate && action.bookingCategory && action.provider) trackEvent("affiliate_click", {
       category: action.bookingCategory,
       provider: action.provider,
       trip_id: tripId,
       stop_id: action.stopId,
+      placement: "trip_prep_booking_readiness",
+      workspace_view: "prep",
     });
   };
-  if (action.external) return <a className={compact ? styles.compactAction : styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "noreferrer sponsored" : "noreferrer"} onClick={onClick}>{action.label}<ExternalLink aria-hidden="true" /></a>;
+  if (action.external) return <a className={compact ? styles.compactAction : styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={action.provider === "omio" ? `${action.label} — opens Omio in a new tab` : undefined} onClick={onClick}>{action.label}<ExternalLink aria-hidden="true" /></a>;
   return <Link className={compact ? styles.compactAction : styles.taskAction} href={action.href} onClick={onClick}>{action.label}<ArrowRight aria-hidden="true" /></Link>;
 }
 

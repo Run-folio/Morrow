@@ -30,6 +30,15 @@ export type LaunchAnalyticsEventMap = {
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
   trip_prep_viewed: { trip_id?: string; workspace_view: "prep"; route_mode: RouteMode; stop_count?: number };
   affiliate_click: { category: string; provider: string; trip_id?: string; stop_id?: string; placement?: string; workspace_view?: WorkspaceView; destination_count?: number };
+  affiliate_link_clicked: {
+    partner: "viator" | "omio";
+    placement: "trip_prep_booking_readiness" | "booking_readiness_transport" | "itinerary_transfer" | "overview_next_action";
+    tripId?: string;
+    stopId?: string;
+    transferId?: string;
+    originStopId?: string;
+    destinationStopId?: string;
+  };
   trip_edit_started: { trip_id?: string; source: "dashboard" | "workspace" };
   trip_reopened: { trip_id?: string; source: "dashboard"; save_state: "cloud"; stop_count?: number };
   route_repair_applied: { trip_id?: string; repair_count: number; repair_category: string; had_hard_issue?: boolean; source: "map" };

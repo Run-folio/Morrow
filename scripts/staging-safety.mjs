@@ -92,7 +92,9 @@ export async function verifyStagingDatabase(config) {
         current_database() as database_name,
         current_setting('app.morrovia_environment', true) as environment,
         to_regclass('public.easyt_users') is not null as has_users,
-        to_regclass('public.easyt_trips') is not null as has_trips
+        to_regclass('public.easyt_trips') is not null as has_trips,
+        to_regclass('public.easyt_country_stamps') is not null as has_country_stamps,
+        to_regclass('public.easyt_country_memories') is not null as has_country_memories
     `);
     const row = result.rows[0];
     if (row.database_name !== config.expectedDbName) {
@@ -101,7 +103,7 @@ export async function verifyStagingDatabase(config) {
     if (row.environment !== "staging") {
       throw new Error("Database is missing app.morrovia_environment=staging.");
     }
-    if (!row.has_users || !row.has_trips) {
+    if (!row.has_users || !row.has_trips || !row.has_country_stamps || !row.has_country_memories) {
       throw new Error("Staging migrations have not created the required persistence tables.");
     }
     return { client, report: { stagingUrl: config.stagingUrl, database: row.database_name, databaseHost: config.expectedDbHost } };

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { bookingDemandHandoffUrl } from "@/lib/easyt/accommodation";
 
 type BookingSearchResult = {
   id?: number | string;
@@ -89,7 +90,12 @@ export async function GET(request: NextRequest) {
       const detail = details.get(String(result.id));
       const name = localized(detail?.name);
       const coordinates = detail?.location?.coordinates;
-      const bookingUrl = typeof detail?.url === "string" ? detail.url : detail?.url?.web || result.url || result.deep_link_url;
+      const bookingUrl = bookingDemandHandoffUrl({
+        deepLinkUrl: result.deep_link_url,
+        searchUrl: result.url,
+        detailWebUrl: typeof detail?.url === "object" ? detail.url.web : undefined,
+        detailUrl: typeof detail?.url === "string" ? detail.url : undefined,
+      });
       const propertyLatitude = coordinates?.latitude;
       const propertyLongitude = coordinates?.longitude;
       if (!name || !bookingUrl || !Number.isFinite(propertyLatitude) || !Number.isFinite(propertyLongitude)) return [];

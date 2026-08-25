@@ -8,6 +8,7 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  ExternalLink,
   Map,
   MapPin,
   Route,
@@ -20,6 +21,8 @@ import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommoda
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth, tripHealthSummary } from "@/lib/easyt/review";
 import { deriveItineraryCoverage, formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
+import { omioBookingActionForLeg } from "@/lib/easyt/booking-readiness";
+import { trackEvent } from "@/lib/analytics";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
@@ -36,8 +39,13 @@ type OverviewAction = {
   detail: string;
   label: string;
   href: string;
-  kind: "route" | "itinerary" | "stay" | "prep" | "ready";
+  kind: "route" | "itinerary" | "stay" | "prep" | "ready" | "transport";
   stopId?: string;
+  external?: boolean;
+  affiliate?: boolean;
+  transferId?: string;
+  originStopId?: string;
+  destinationStopId?: string;
 };
 
 type OverviewIssue = {
@@ -107,7 +115,7 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     href: recommendationHref(trip, issues[0]),
     kind: "route",
   };
-  if (!prepComplete) return {
+  if (prep.length > 0 && !prepComplete) return {
     title: prep.length ? "Finish the remaining trip prep" : "Review the practical details",
     detail: prep.length
       ? `${prep.filter((item) => item.complete).length} of ${prep.length} saved prep tasks are complete.`
@@ -115,6 +123,19 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     label: "Review prep",
     href: `/journey/${encodeURIComponent(trip.id)}/prep`,
     kind: "prep",
+  };
+  const omioAction = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg)).find((action) => Boolean(action));
+  if (omioAction) return {
+    title: omioAction.title,
+    detail: omioAction.detail,
+    label: omioAction.cta,
+    href: omioAction.href,
+    kind: "transport",
+    external: true,
+    affiliate: true,
+    transferId: omioAction.transferId,
+    originStopId: omioAction.originStopId,
+    destinationStopId: omioAction.destinationStopId,
   };
   return {
     title: "Your trip is looking ready",
@@ -172,9 +193,9 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
   const actionImage = actionImageStop ? stopImage(trip, actionImageStop, orderedStops.indexOf(actionImageStop)) : null;
   const ActionIcon = action.kind === "stay" ? BedDouble
     : action.kind === "itinerary" ? CalendarCheck2
-      : action.kind === "prep" ? ShieldCheck
-        : action.kind === "ready" ? CheckCircle2
-          : Route;
+        : action.kind === "prep" ? ShieldCheck
+          : action.kind === "ready" ? CheckCircle2
+            : Route;
 
   return (
     <section className={styles.overview} aria-label="Trip overview">
@@ -194,7 +215,8 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
             <span className={styles.actionIcon}><ActionIcon aria-hidden="true" /></span>
             <h2>{action.title}</h2>
             <span>{action.detail}</span>
-            <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>
+            {action.external ? <a href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${action.label} — opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId })}>{action.label}<ExternalLink aria-hidden="true" /></a> : <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>}
+            {action.affiliate ? <small className={styles.affiliateDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
           </div>
           <ResilientImage
             src={actionImage?.src}

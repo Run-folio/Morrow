@@ -102,6 +102,62 @@ test("route_started is a no-op without analytics consent", () => {
   assert.deepEqual(calls, []);
 });
 
+test("Viator affiliate clicks use the dedicated, privacy-safe event", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("granted", calls);
+  try {
+    trackEvent("affiliate_link_clicked", {
+      partner: "viator",
+      placement: "trip_prep_booking_readiness",
+      tripId: "trip-123",
+      stopId: "stop-456",
+    });
+    const [kind, name, payload] = calls[0] as [string, string, Record<string, unknown>];
+    assert.equal(kind, "event");
+    assert.equal(name, "affiliate_link_clicked");
+    assert.deepEqual(payload, {
+      environment: "development",
+      page_path: "/journey/routes/andean-highlands",
+      partner: "viator",
+      placement: "trip_prep_booking_readiness",
+      stopId: "stop-456",
+      tripId: "trip-123",
+    });
+  } finally {
+    restore();
+  }
+});
+
+test("Omio affiliate clicks carry placement and opaque trip-transfer identifiers only", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("granted", calls);
+  try {
+    trackEvent("affiliate_link_clicked", {
+      partner: "omio",
+      placement: "itinerary_transfer",
+      tripId: "trip-123",
+      transferId: "leg-456",
+      originStopId: "stop-1",
+      destinationStopId: "stop-2",
+    });
+    const [kind, name, payload] = calls[0] as [string, string, Record<string, unknown>];
+    assert.equal(kind, "event");
+    assert.equal(name, "affiliate_link_clicked");
+    assert.deepEqual(payload, {
+      destinationStopId: "stop-2",
+      environment: "development",
+      originStopId: "stop-1",
+      page_path: "/journey/routes/andean-highlands",
+      partner: "omio",
+      placement: "itinerary_transfer",
+      transferId: "leg-456",
+      tripId: "trip-123",
+    });
+  } finally {
+    restore();
+  }
+});
+
 const privacySafeGeneration: LaunchAnalyticsEventMap["trip_generated"] = {
   trip_source: "homepage",
   stop_count: 4,

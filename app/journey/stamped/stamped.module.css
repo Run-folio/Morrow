@@ -169,6 +169,12 @@
   color: var(--morrovia-danger);
 }
 
+.notice[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--morrovia-warning) 30%, var(--morrovia-line));
+  background: var(--morrovia-warning-soft);
+  color: var(--morrovia-warning);
+}
+
 .noticeActions {
   display: flex;
   align-items: center;
@@ -189,7 +195,7 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 370px;
+  grid-template-columns: minmax(0, 1fr) 450px;
   height: 690px;
   min-height: 690px;
   overflow: hidden;
@@ -530,7 +536,8 @@
 .closeButton:focus-visible,
 .editMemory:focus-visible,
 .rowCountry:focus-visible,
-.rowStatus select:focus-visible,
+.rowActions button:focus-visible,
+.regionHeading button:focus-visible,
 .searchBox input:focus-visible,
 .regionSelect select:focus-visible,
 .notice button:focus-visible {
@@ -722,6 +729,54 @@
   scrollbar-color: var(--morrovia-line) transparent;
 }
 
+.regionGroup + .regionGroup {
+  margin-top: 4px;
+}
+
+.regionHeading {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  margin: 0;
+  background: #fff;
+}
+
+.regionHeading button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-bottom: 1px solid var(--morrovia-line);
+  background: #fff;
+  color: var(--morrovia-ink);
+  padding: 0 4px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.regionHeading button > span:first-child {
+  font: 600 17px/1.1 var(--morrovia-display);
+}
+
+.regionHeading button > span:nth-child(2) {
+  color: var(--morrovia-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.regionHeading svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 160ms ease;
+}
+
+.regionHeading button[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
 .listMeta {
   position: sticky;
   z-index: 2;
@@ -753,12 +808,17 @@
 
 .countryRow {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
+  display: block;
   min-height: 52px;
   border-bottom: 1px solid var(--morrovia-line);
+}
+
+.rowMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(62px, auto) 96px;
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
 }
 
 .countryRow[data-selected="true"] {
@@ -797,55 +857,75 @@
   white-space: nowrap;
 }
 
-.rowStatus {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.rowStatus::before {
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: #aaa8bd;
-  content: "";
-}
-
-.rowStatus[data-status="visited"]::before {
-  background: var(--morrovia-success);
-}
-
-.rowStatus[data-status="want"]::before {
-  background: var(--morrovia-action);
-}
-
-.rowStatus select {
-  max-width: 112px;
-  min-height: 38px;
-  appearance: none;
-  border: 0;
-  background: transparent;
+.rowStatusText {
   color: var(--morrovia-muted);
-  padding: 7px 22px 7px 0;
-  font: 600 10px/1 var(--morrovia-ui);
-  cursor: pointer;
+  font-size: 10px;
+  font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.rowStatus[data-status="visited"] select {
+.rowStatusText[data-status="visited"] {
   color: var(--morrovia-success);
 }
 
-.rowStatus[data-status="want"] select {
+.rowStatusText[data-status="want"] {
   color: var(--morrovia-action);
 }
 
-.rowStatus svg {
-  position: absolute;
-  right: 2px;
-  width: 13px;
-  height: 13px;
-  pointer-events: none;
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.rowActions button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--morrovia-ink-soft);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--morrovia-ink-soft);
+  padding: 0;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.rowActions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.rowActions button[data-status="visited"][data-active="true"] {
+  border-color: var(--morrovia-success);
+  background: var(--morrovia-success);
+  color: #fff;
+}
+
+.rowActions button[data-status="want"][data-active="true"] {
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-action);
+  color: #fff;
+}
+
+.rowActions button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.rowActions svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.rowError {
+  margin: -2px 0 8px 28px;
+  color: var(--morrovia-danger);
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .noResults {
@@ -893,7 +973,7 @@
   .hero { grid-template-columns: minmax(0, .88fr) minmax(460px, 1.12fr); gap: 40px; }
   .statItem { grid-template-columns: 34px 1fr; padding: 20px 16px; }
   .statIcon { width: 34px; height: 34px; }
-  .workspace { grid-template-columns: minmax(0, 1fr) 340px; }
+  .workspace { grid-template-columns: minmax(0, 1fr) 410px; }
   .map { padding-inline: 12px; }
 }
 
@@ -904,9 +984,9 @@
   .statsPanel,
   .statsLoading { max-width: 680px; }
   .workspace { display: flex; flex-direction: column; height: auto; }
-  .mapPanel { min-height: 520px; }
+  .mapPanel { order: 2; min-height: 520px; }
   .map { min-height: 430px; max-height: 500px; }
-  .explorerPanel { min-height: 640px; border-top: 1px solid var(--morrovia-line); border-left: 0; }
+  .explorerPanel { order: 1; min-height: 640px; border-bottom: 1px solid var(--morrovia-line); border-left: 0; }
   .countryList { max-height: 520px; }
 }
 
@@ -946,10 +1026,11 @@
   .filterRow { align-items: flex-start; flex-direction: column; }
   .regionSelect { width: 100%; }
   .regionSelect select { flex: 1; max-width: none; }
-  .countryList { max-height: 500px; padding-inline: 10px; }
-  .countryRow { min-height: 56px; }
+  .countryList { max-height: 500px; padding-inline: 10px; padding-bottom: calc(var(--morrovia-mobile-dock-offset) + 18px); scroll-padding-bottom: calc(var(--morrovia-mobile-dock-offset) + 18px); }
+  .countryRow { min-height: 60px; }
+  .rowMain { grid-template-columns: minmax(0, 1fr) 64px 96px; gap: 6px; min-height: 60px; }
   .rowCountry strong { font-size: 12px; }
-  .rowStatus select { min-height: 44px; max-width: 122px; font-size: 10px; }
+  .rowStatusText { font-size: 10px; }
 }
 
 @media (max-width: 360px) {
@@ -959,6 +1040,7 @@
   .statusTabs :global(button),
   .statusControl :global(button) { padding-inline: 5px; font-size: 10px; }
   .rowCountry strong { max-width: 118px; }
+  .rowMain { grid-template-columns: minmax(0, 1fr) 58px 92px; gap: 4px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

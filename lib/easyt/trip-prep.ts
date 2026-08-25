@@ -24,6 +24,9 @@ export type TripPrepTask = {
     provider?: string;
     bookingCategory?: BookingReadinessAction["category"];
     stopId?: string;
+    transferId?: string;
+    originStopId?: string;
+    destinationStopId?: string;
     opensDetails?: boolean;
   };
 };
@@ -79,6 +82,7 @@ function bookingTask(action: BookingReadinessAction, status: TripPrepTaskStatus)
     "car-rental": { category: "good", kind: "transport" },
     connectivity: { category: "good", kind: "connectivity" },
     "ground-transport": { category: "good", kind: "transport" },
+    transport: { category: "good", kind: "transport" },
   };
   return {
     id: action.id,
@@ -94,6 +98,9 @@ function bookingTask(action: BookingReadinessAction, status: TripPrepTaskStatus)
       provider: action.provider,
       bookingCategory: action.category,
       stopId: action.stopId,
+      transferId: action.transferId,
+      originStopId: action.originStopId,
+      destinationStopId: action.destinationStopId,
     },
   };
 }
@@ -211,6 +218,7 @@ export function deriveTripPrepTasks({
     connectivity: /esim|data|connect/i,
     "car-rental": /transport|transfer|car|drive/i,
     "ground-transport": /transport|transfer|train|ferry/i,
+    transport: /transport|transfer|train|ferry|flight|bus|coach/i,
   };
   bookingActions.filter((action) => action.category !== "accommodation" && !(avoidDriving && action.category === "car-rental")).forEach((action) => {
     const pattern = actionPatterns[action.category];

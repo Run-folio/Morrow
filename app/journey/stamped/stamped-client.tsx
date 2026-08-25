@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   Camera,
+  Check,
   ChevronDown,
   Globe2,
   MapPin,
@@ -38,6 +39,8 @@ import {
   STAMP_REGIONS,
   STAMP_TOPOLOGY_ALIASES,
   filterStampCountries,
+  groupStampCountries,
+  nextStampStatus,
   normalizeStampCountryId,
   normalizeStampStatuses,
   stampCountryFlag,
@@ -77,6 +80,7 @@ export type StampedExperienceProps = {
   initialSelectedCountryId?: string | null;
   language?: Language;
   loadError?: string | null;
+  loadState?: "current" | "stale" | "error";
   memories: TextRecord;
   onClearError?: () => void;
   onDismissSavePrompt?: () => void;
@@ -84,9 +88,12 @@ export type StampedExperienceProps = {
   onRetryLoad?: () => void;
   onStatusChange: (countryId: string, status: StampStatus | null, source: StatusSource) => Promise<void> | void;
   photos: TextRecord;
+  pendingStatusIds?: readonly string[];
   ready: boolean;
   saveError?: string | null;
   savePrompt?: boolean;
+  secondaryWarning?: string | null;
+  statusError?: { countryId: string; message: string } | null;
   statuses: StampStatusRecord;
 };
 
@@ -118,13 +125,18 @@ const copy = {
     keepAction: "Create account",
     keepText: "Sign in to keep this travel record across your devices.",
     loading: "Loading your stamps",
+    markVisited: (country: string) => `Mark ${country} as visited`,
+    markWant: (country: string) => `Add ${country} to want to visit`,
     memory: "Note & memory",
     memoryCount: "Notes & memories",
     memoryPlaceholder: "A meal, a person, a moment…",
     noResults: "No countries match those filters.",
+    notYet: "Not yet",
     photoLarge: "Choose an image smaller than 1.5 MB.",
     photoRemove: "Remove photo",
     retry: "Try again",
+    removeVisited: (country: string) => `Remove visited mark from ${country}`,
+    removeWant: (country: string) => `Remove ${country} from want to visit`,
     save: "Save memory",
     search: "Search countries",
     status: "Status",
@@ -133,6 +145,7 @@ const copy = {
     statusLabel: { unmarked: "Unmarked", visited: "Visited", want: "Want to visit" } as Record<StatusValue, string>,
     statsVisited: "Countries seen",
     statsWant: "Want to visit",
+    stale: "Showing the saved copy on this device. It may be out of date.",
     subtitle: "A simple way to keep a living record of where you’ve been and the places still calling.",
     title: "Your world, marked.",
     unmarkedMemory: "This memory is preserved even while the country is unmarked.",
@@ -163,13 +176,18 @@ const copy = {
     keepAction: "Crear cuenta",
     keepText: "Inicia sesión para conservar este registro en todos tus dispositivos.",
     loading: "Cargando tus sellos",
+    markVisited: (country: string) => `Marcar ${country} como visitado`,
+    markWant: (country: string) => `Añadir ${country} a Quiero visitar`,
     memory: "Nota y recuerdo",
     memoryCount: "Notas y recuerdos",
     memoryPlaceholder: "Una comida, una persona, un momento…",
     noResults: "No hay países que coincidan con esos filtros.",
+    notYet: "Aún no",
     photoLarge: "Elige una imagen de menos de 1,5 MB.",
     photoRemove: "Quitar foto",
     retry: "Intentar de nuevo",
+    removeVisited: (country: string) => `Quitar la marca de visitado de ${country}`,
+    removeWant: (country: string) => `Quitar ${country} de Quiero visitar`,
     save: "Guardar recuerdo",
     search: "Buscar países",
     status: "Estado",
@@ -178,6 +196,7 @@ const copy = {
     statusLabel: { unmarked: "Sin marcar", visited: "Visitado", want: "Quiero ir" } as Record<StatusValue, string>,
     statsVisited: "Países visitados",
     statsWant: "Quiero visitar",
+    stale: "Mostramos la copia guardada en este dispositivo. Puede estar desactualizada.",
     subtitle: "Una forma sencilla de guardar un registro vivo de dónde has estado y de los lugares que aún te llaman.",
     title: "Tu mundo, marcado.",
     unmarkedMemory: "Este recuerdo se conserva aunque el país no esté marcado.",
@@ -236,6 +255,7 @@ export function StampedExperience({
   initialSelectedCountryId = null,
   language = "en",
   loadError,
+  loadState = "current",
   memories,
   onClearError,
   onDismissSavePrompt,
@@ -243,9 +263,12 @@ export function StampedExperience({
   onRetryLoad,
   onStatusChange,
   photos,
+  pendingStatusIds = [],
   ready,
   saveError,
   savePrompt,
+  secondaryWarning,
+  statusError,
   statuses,
 }: StampedExperienceProps) {
   const labels = copy[language];
@@ -259,6 +282,8 @@ export function StampedExperience({
   const [draftPhoto, setDraftPhoto] = useState<string | null>(null);
   const [editorError, setEditorError] = useState("");
   const [savingMemory, setSavingMemory] = useState(false);
+  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(() => new Set(STAMP_REGIONS));
+  const [expansionRestored, setExpansionRestored] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const mapPanelRef = useRef<HTMLElement>(null);
   const restoreFocusRef = useRef<FocusableElement | null>(null);
@@ -286,6 +311,8 @@ export function StampedExperience({
     status: statusFilter,
     statuses,
   }), [region, search, statusFilter, statuses]);
+  const countryGroups = useMemo(() => groupStampCountries(filteredCountries, statuses), [filteredCountries, statuses]);
+  const pendingStatuses = useMemo(() => new Set(pendingStatusIds), [pendingStatusIds]);
 
   const summary = useMemo(() => summarizeStampRecords({ statuses, memories, photos }), [memories, photos, statuses]);
   const isEmpty = ready && summary.visited === 0 && summary.want === 0 && summary.memories === 0;
@@ -293,6 +320,22 @@ export function StampedExperience({
   const selectedStatus = selectedCountry ? statuses[selectedCountry.id] : undefined;
   const selectedNote = selectedCountry ? memories[selectedCountry.id] ?? "" : "";
   const selectedPhoto = selectedCountry ? photos[selectedCountry.id] ?? "" : "";
+
+  useEffect(() => {
+    const saved = window.sessionStorage.getItem("morrovia-stamps-expanded-regions");
+    if (saved) {
+      const parsed = safeParse(saved);
+      if (Array.isArray(parsed)) {
+        setExpandedRegions(new Set(parsed.filter((value): value is string => typeof value === "string" && STAMP_REGIONS.includes(value as never))));
+      }
+    }
+    setExpansionRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!expansionRestored) return;
+    window.sessionStorage.setItem("morrovia-stamps-expanded-regions", JSON.stringify([...expandedRegions]));
+  }, [expandedRegions, expansionRestored]);
 
   useEffect(() => {
     if (!selectedCountryId) return;
@@ -374,6 +417,15 @@ export function StampedExperience({
     }, 0);
   };
 
+  const toggleRegion = (stampRegion: string) => {
+    setExpandedRegions((current) => {
+      const next = new Set(current);
+      if (next.has(stampRegion)) next.delete(stampRegion);
+      else next.add(stampRegion);
+      return next;
+    });
+  };
+
   return (
     <div className={styles.shell}>
       <section className={styles.hero} data-empty={isEmpty || undefined}>
@@ -414,6 +466,16 @@ export function StampedExperience({
           {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
           {onClearError ? <button type="button" onClick={onClearError}>{language === "es" ? "Cerrar" : "Dismiss"}</button> : null}
         </span>
+      </div> : null}
+
+      {loadState === "stale" ? <div className={styles.notice} data-tone="warning" role="status">
+        <span>{labels.stale}</span>
+        {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
+      </div> : null}
+
+      {secondaryWarning ? <div className={styles.notice} data-tone="warning" role="status">
+        <span>{secondaryWarning}</span>
+        {onRetryLoad ? <button type="button" onClick={onRetryLoad}>{labels.retry}</button> : null}
       </div> : null}
 
       {saveError ? <div className={styles.notice} data-tone="error" role="alert">
@@ -575,33 +637,43 @@ export function StampedExperience({
           </div>
 
           <div className={styles.countryList}>
-            <p className={styles.listMeta}>{labels.countries}</p>
-            {filteredCountries.length ? <ul className={styles.countryRows}>
-              {filteredCountries.map((country: StampCountry) => {
-                const countryStatus = statuses[country.id];
-                const value = statusValue(countryStatus);
-                return <li key={country.id} className={styles.countryRow} data-selected={selectedCountryId === country.id || undefined}>
-                  <button type="button" className={styles.rowCountry} aria-controls="selected-stamp-country" aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
-                    <span className={styles.flag} aria-hidden="true">{stampCountryFlag(country.id)}</span>
-                    <strong>{country.name}</strong>
-                  </button>
-                  <label className={styles.rowStatus} data-status={value}>
-                    <span className={styles.srOnly}>{labels.statusFor(country.name)}</span>
-                    <select value={value} onChange={(event) => {
-                      const next = event.target.value as StatusValue;
-                      restoreFocusRef.current = event.currentTarget;
-                      setSelectedCountryId(country.id);
-                      void onStatusChange(country.id, next === "unmarked" ? null : next, "explorer");
-                    }}>
-                      <option value="unmarked">{labels.statusLabel.unmarked}</option>
-                      <option value="visited">{labels.statusLabel.visited}</option>
-                      <option value="want">{labels.statusLabel.want}</option>
-                    </select>
+            {filteredCountries.length ? countryGroups.map((group) => {
+              const forcedOpen = Boolean(search.trim()) || region !== "all";
+              const expanded = forcedOpen || expandedRegions.has(group.region);
+              const groupId = `stamp-region-${group.region.toLowerCase()}`;
+              return <section className={styles.regionGroup} key={group.region}>
+                <h3 className={styles.regionHeading}>
+                  <button type="button" aria-expanded={expanded} aria-controls={groupId} onClick={() => toggleRegion(group.region)}>
+                    <span>{group.region}</span>
+                    <span>{group.visited} {language === "es" ? "visitados" : "visited"}</span>
                     <ChevronDown aria-hidden="true" />
-                  </label>
-                </li>;
-              })}
-            </ul> : <div className={styles.noResults}>
+                  </button>
+                </h3>
+                {expanded ? <ul id={groupId} className={styles.countryRows}>
+                  {group.countries.map((country: StampCountry) => {
+                    const countryStatus = statuses[country.id];
+                    const value = statusValue(countryStatus);
+                    const pending = pendingStatuses.has(country.id);
+                    const visitedLabel = countryStatus === "visited" ? labels.removeVisited(country.name) : labels.markVisited(country.name);
+                    const wantLabel = countryStatus === "want" ? labels.removeWant(country.name) : labels.markWant(country.name);
+                    return <li key={country.id} className={styles.countryRow} data-selected={selectedCountryId === country.id || undefined}>
+                      <div className={styles.rowMain}>
+                        <button type="button" className={styles.rowCountry} aria-controls="selected-stamp-country" aria-pressed={selectedCountryId === country.id} onClick={(event) => chooseCountry(country.id, event.currentTarget, true)}>
+                          <span className={styles.flag} aria-hidden="true">{stampCountryFlag(country.id)}</span>
+                          <strong>{country.name}</strong>
+                        </button>
+                        <span className={styles.rowStatusText} data-status={value}>{countryStatus ? statusName(countryStatus, labels) : labels.notYet}</span>
+                        <span className={styles.rowActions} role="group" aria-label={labels.statusFor(country.name)} aria-busy={pending || undefined}>
+                          <button type="button" data-status="visited" data-active={countryStatus === "visited" || undefined} disabled={pending} aria-pressed={countryStatus === "visited"} aria-label={visitedLabel} title={visitedLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "visited"), "explorer")}><Check aria-hidden="true" /></button>
+                          <button type="button" data-status="want" data-active={countryStatus === "want" || undefined} disabled={pending} aria-pressed={countryStatus === "want"} aria-label={wantLabel} title={wantLabel} onClick={() => void onStatusChange(country.id, nextStampStatus(countryStatus, "want"), "explorer")}><Plus aria-hidden="true" /></button>
+                        </span>
+                      </div>
+                      {statusError?.countryId === country.id ? <p className={styles.rowError} role="alert">{statusError.message}</p> : null}
+                    </li>;
+                  })}
+                </ul> : null}
+              </section>;
+            }) : <div className={styles.noResults}>
               <strong>{labels.noResults}</strong>
               <button type="button" onClick={() => { setSearch(""); setRegion("all"); setStatusFilter("all"); }}>{labels.clearFilters}</button>
             </div>}
@@ -620,7 +692,11 @@ export default function StampedClient({ userKey, authenticated }: Props) {
   const [photos, setPhotos] = useState<TextRecord>({});
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<"current" | "stale" | "error">("current");
+  const [secondaryWarning, setSecondaryWarning] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<{ countryId: string; message: string } | null>(null);
+  const [pendingStatusIds, setPendingStatusIds] = useState<string[]>([]);
   const [savePrompt, setSavePrompt] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [dirty, setDirty] = useState<StampDirtyRecords>(emptyStampDirtyRecords);
@@ -662,6 +738,8 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     let cancelled = false;
     setReady(false);
     setLoadError(null);
+    setLoadState("current");
+    setSecondaryWarning(null);
 
     const cachedStatuses = normalizeStampStatuses(safeParse(window.localStorage.getItem(statusStorageKey)));
     const cachedMemories = normalizeTextRecord(safeParse(window.localStorage.getItem(memoryStorageKey)));
@@ -673,6 +751,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     setDirty(cachedDirty);
 
     if (!isAuthenticated) {
+      setLoadState("current");
       setReady(true);
       return () => { cancelled = true; };
     }
@@ -680,13 +759,18 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     const load = async () => {
       try {
         const response = await fetch("/api/easyt/stamped", { cache: "no-store" });
-        const data = await response.json() as { error?: string; statuses?: unknown; memories?: Record<string, { note?: string; photoData?: string }> };
+        const data = await response.json() as { error?: string; statuses?: unknown; memories?: Record<string, { note?: string; photoData?: string }>; warnings?: string[] };
         if (!response.ok) throw new Error(data.error || "Unable to load your stamps.");
         if (cancelled) return;
 
         const remoteStatuses = normalizeStampStatuses(data.statuses);
-        const remoteMemories = normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.note ?? ""])));
-        const remotePhotos = normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.photoData ?? ""])));
+        const memoriesUnavailable = data.warnings?.includes("memories_unavailable") ?? false;
+        const remoteMemories = memoriesUnavailable
+          ? cachedMemories
+          : normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.note ?? ""])));
+        const remotePhotos = memoriesUnavailable
+          ? cachedPhotos
+          : normalizeTextRecord(Object.fromEntries(Object.entries(data.memories ?? {}).map(([id, memory]) => [id, memory.photoData ?? ""])));
         const guestRecords: StampRecords = {
           statuses: normalizeStampStatuses(safeParse(window.localStorage.getItem("easyt-stamped-guest"))),
           memories: normalizeTextRecord(safeParse(window.localStorage.getItem("easyt-stamp-memories-guest"))),
@@ -756,12 +840,20 @@ export default function StampedClient({ userKey, authenticated }: Props) {
         setStatuses(merged.statuses);
         setMemories(merged.memories);
         setPhotos(merged.photos);
-      } catch {
+        setLoadState("current");
+        if (memoriesUnavailable) {
+          setSecondaryWarning(language === "es"
+            ? "Tus sellos están actualizados, pero los recuerdos guardados podrían estar desactualizados."
+            : "Your stamp states are current, but saved memories may be out of date.");
+        }
+      } catch (error) {
         if (!cancelled) {
-          // Database and provider failures are not useful traveller-facing
-          // copy. Keep the retry path, but do not expose internals in this
-          // compact mobile notice.
-          setLoadError(language === "es" ? "No pudimos cargar tus sellos. Inténtalo de nuevo." : "We couldn't load your stamps. Please try again.");
+          const hasCachedCopy = stampRecordHasContent({ statuses: cachedStatuses, memories: cachedMemories, photos: cachedPhotos });
+          setLoadState(hasCachedCopy ? "stale" : "error");
+          if (!hasCachedCopy) setLoadError(language === "es" ? "No pudimos cargar tus sellos. Inténtalo de nuevo." : "We couldn't load your stamps. Please try again.");
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[stamped] GET /api/easyt/stamped failed", error instanceof Error ? error.name : "UnknownError");
+          }
         }
       } finally {
         if (!cancelled) setReady(true);
@@ -785,9 +877,11 @@ export default function StampedClient({ userKey, authenticated }: Props) {
   }, [dirty, dirtyStorageKey, language, memories, memoryStorageKey, photos, photoStorageKey, ready, statuses, statusStorageKey]);
 
   const changeStatus = async (countryId: string, nextStatus: StampStatus | null, source: StatusSource) => {
+    if (pendingStatusIds.includes(countryId)) return;
     const previousStatus = statuses[countryId] ?? null;
     if (previousStatus === nextStatus) return;
     setSaveError(null);
+    setStatusError(null);
     setStatuses((current) => {
       if (nextStatus) return { ...current, [countryId]: nextStatus };
       const next = { ...current };
@@ -807,6 +901,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
       return;
     }
 
+    setPendingStatusIds((current) => [...current, countryId]);
     try {
       const response = await fetch("/api/easyt/stamped", {
         method: "PUT",
@@ -822,12 +917,25 @@ export default function StampedClient({ userKey, authenticated }: Props) {
         is_authenticated: true,
       });
     } catch {
-      setSaveError(language === "es" ? "No pudimos guardar este sello en tu cuenta. El cambio sigue en este dispositivo." : "We could not save this stamp to your account. The change is still on this device.");
+      setStatuses((current) => {
+        if (previousStatus) return { ...current, [countryId]: previousStatus };
+        const next = { ...current };
+        delete next[countryId];
+        return next;
+      });
+      clearDirty({ statuses: [countryId] });
+      setStatusError({
+        countryId,
+        message: language === "es" ? "No se guardó el cambio. Restauramos el estado anterior." : "That change was not saved. We restored the previous status.",
+      });
+    } finally {
+      setPendingStatusIds((current) => current.filter((id) => id !== countryId));
     }
   };
 
   const saveMemory = async (countryId: string, note: string, photoData: string | null) => {
     const previousNote = memories[countryId]?.trim() ?? "";
+    const previousPhoto = photos[countryId] ?? "";
     setSaveError(null);
     setMemories((current) => updateTextRecord(current, countryId, note));
     setPhotos((current) => updateTextRecord(current, countryId, photoData ?? ""));
@@ -851,7 +959,10 @@ export default function StampedClient({ userKey, authenticated }: Props) {
       if (!previousNote && note) trackEvent("stamp_note_added", { source: "country_card", is_authenticated: true });
       return true;
     } catch {
-      setSaveError(language === "es" ? "No pudimos guardar este recuerdo en tu cuenta. El cambio sigue en este dispositivo." : "We could not save this memory to your account. The change is still on this device.");
+      setMemories((current) => updateTextRecord(current, countryId, previousNote));
+      setPhotos((current) => updateTextRecord(current, countryId, previousPhoto));
+      clearDirty({ memories: [countryId], photos: [countryId] });
+      setSaveError(language === "es" ? "No se guardó el recuerdo. Restauramos la versión anterior." : "That memory was not saved. We restored the previous version.");
       return false;
     }
   };
@@ -860,6 +971,7 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     authenticated={isAuthenticated}
     language={language}
     loadError={loadError}
+    loadState={loadState}
     memories={memories}
     onClearError={() => { setLoadError(null); setSaveError(null); }}
     onDismissSavePrompt={() => setSavePrompt(false)}
@@ -867,9 +979,12 @@ export default function StampedClient({ userKey, authenticated }: Props) {
     onRetryLoad={() => setReloadToken((current) => current + 1)}
     onStatusChange={changeStatus}
     photos={photos}
+    pendingStatusIds={pendingStatusIds}
     ready={ready}
     saveError={saveError}
     savePrompt={savePrompt}
+    secondaryWarning={secondaryWarning}
+    statusError={statusError}
     statuses={statuses}
   />;
 }

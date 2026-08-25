@@ -105,6 +105,14 @@
   color: #fff;
 }
 
+.affiliateDisclosure {
+  display: block;
+  max-width: 360px;
+  margin-top: 7px;
+  color: var(--morrovia-muted);
+  font: 700 8px/1.35 var(--morrovia-meta);
+}
+
 .nextCopy a svg,
 .healthCard a svg,
 .sectionHeading a svg,

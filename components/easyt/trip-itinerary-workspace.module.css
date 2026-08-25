@@ -328,6 +328,35 @@
   text-align: right;
 }
 
+.transferRow { grid-template-columns: 28px 26px minmax(0, 1fr) auto; }
+
+.omioAction {
+  grid-column: 3 / -1;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 2px 0 4px;
+}
+
+.omioAction a {
+  min-height: 44px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink);
+  background: #fff;
+  font: 750 10px/1.2 var(--morrovia-ui);
+  text-decoration: none;
+}
+
+.omioAction a:hover { border-color: var(--morrovia-action); color: var(--morrovia-action); }
+.omioAction a:focus-visible { outline: 2px solid var(--morrovia-ink); outline-offset: 2px; }
+.omioAction a svg { width: 14px; height: 14px; }
+.omioAction small { color: var(--morrovia-muted); font: 700 8px/1.35 var(--morrovia-meta); }
+
 
 .noDetails {
   margin: 0;
@@ -438,6 +467,7 @@
   .dayPanel { padding: 24px 16px 28px; }
   .rail { max-width: 100%; overflow: hidden; }
   .dayHeader { display: block; }
+  .omioAction a { width: 100%; justify-content: center; }
   .location { margin-top: 12px; }
   .dayHeader h2 { font-size: clamp(32px, 10vw, 42px); }
   .dayImage { height: 220px; }

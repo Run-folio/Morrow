@@ -2,7 +2,7 @@ import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 
-export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport";
+export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport";
 export type BookingReadinessAction = {
   id: string;
   category: BookingCategory;
@@ -13,6 +13,9 @@ export type BookingReadinessAction = {
   href: string;
   tripId: string;
   stopId?: string;
+  transferId?: string;
+  originStopId?: string;
+  destinationStopId?: string;
   affiliate: boolean;
   livePrice: boolean;
 };
@@ -20,10 +23,26 @@ export type BookingReadinessAction = {
 export type AffiliateConfiguration = {
   bookingUrl?: string;
   activitiesUrl?: string;
+  activitiesProvider?: string;
   carHireUrl?: string;
   sailyUrl?: string;
   groundTransportUrl?: string;
 };
+
+/**
+ * Approved partner destinations. General links stay intact here rather than
+ * being recreated in individual surfaces or enriched with trip data.
+ */
+export const affiliatePartners = {
+  viator: {
+    provider: "viator",
+    activitiesUrl: "https://www.viator.com/?pid=P00315646&mcid=42383&medium=link&campaign=morrovia-general-activities",
+  },
+  omio: {
+    provider: "omio",
+    transportUrl: "https://omio.sjv.io/2RBeqD",
+  },
+} as const;
 
 const withParams = (base: string, params: Record<string, string | undefined>) => {
   const url = new URL(base);
@@ -38,14 +57,73 @@ const stopDatesAreStable = (stop: TripStop, trip: EasyTTrip) => Boolean(
 
 const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionSelections?.transportByLeg[leg.id];
 
+const normalise = (value: string) => value.trim().toLocaleLowerCase();
+
+function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from: TripStop, to: TripStop) {
+  const fromName = normalise(from.name);
+  const toName = normalise(to.name);
+  return (trip.brief.bookings ?? []).find((booking) => {
+    if (booking.type !== "transport") return false;
+    if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
+    const title = normalise(booking.title);
+    return Boolean(fromName && toName && title.includes(fromName) && title.includes(toName));
+  });
+}
+
+function describesCoachOrBus(leg: TripLeg) {
+  const detail = `${leg.provider ?? ""} ${JSON.stringify(leg.routeMetadata)}`.toLocaleLowerCase();
+  return /\b(bus|coach|shuttle)\b/.test(detail);
+}
+
+function isLocalTransfer(leg: TripLeg) {
+  const detail = `${leg.provider ?? ""} ${JSON.stringify(leg.routeMetadata)}`.toLocaleLowerCase();
+  return /\b(local|taxi|private transfer|walking|walk)\b/.test(detail)
+    || (typeof leg.distanceKm === "number" && leg.distanceKm < 40);
+}
+
+export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): BookingReadinessAction | null {
+  const dateFacts = deriveTripDateFacts(trip, now);
+  if (dateFacts.state !== "valid" || dateFacts.lifecycle.state === "ended") return null;
+  const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
+  const to = trip.stops.find((stop) => stop.id === leg.toStopId);
+  if (!from || !to || from.id === to.id || !from.name.trim() || !to.name.trim()) return null;
+  if (transportBookingForLeg(trip, leg, from, to) || isLocalTransfer(leg)) return null;
+
+  const supported = ["train", "flight", "ferry"].includes(leg.mode)
+    || (leg.mode === "road" && describesCoachOrBus(leg));
+  const needsComparison = leg.mode === "unknown" && typeof leg.distanceKm === "number" && leg.distanceKm >= 40;
+  if (!supported && !needsComparison) return null;
+
+  const partial = leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null;
+  return {
+    id: `omio-${leg.id}`,
+    category: "transport",
+    provider: affiliatePartners.omio.provider,
+    title: partial ? `Check transport options for ${from.name} → ${to.name}` : `Compare transport for ${from.name} → ${to.name}`,
+    detail: partial
+      ? "Check live options before relying on this connection; coverage and schedules vary by route."
+      : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare live options before booking.`,
+    cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
+    href: affiliatePartners.omio.transportUrl,
+    tripId: trip.id,
+    stopId: to.id,
+    transferId: leg.id,
+    originStopId: from.id,
+    destinationStopId: to.id,
+    affiliate: true,
+    livePrice: false,
+  };
+}
+
 /**
  * Builds next actions from stable itinerary facts. URLs and providers are kept
  * here so UI components never need partner-specific query construction.
  */
-export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfiguration = {}): BookingReadinessAction[] {
+export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfiguration = {}, now = new Date()): BookingReadinessAction[] {
   const actions: BookingReadinessAction[] = [];
   const health = tripHealth(trip);
-  const dateFacts = deriveTripDateFacts(trip);
+  const dateFacts = deriveTripDateFacts(trip, now);
+  if (dateFacts.lifecycle.state === "ended") return actions;
   const stableStops = trip.stops.filter((stop) => stopDatesAreStable(stop, trip));
 
   stableStops.forEach((stop) => {
@@ -60,9 +138,9 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     if ((stop.nights ?? 0) >= 2 && selectedActivities.length) {
       const activityBase = config.activitiesUrl || "https://www.google.com/search";
       actions.push({
-        id: `activity-${stop.id}`, category: "activity", provider: config.activitiesUrl ? "activities-partner" : "google", title: `Check major activities in ${stop.name}`,
+        id: `activity-${stop.id}`, category: "activity", provider: config.activitiesProvider ?? (config.activitiesUrl ? "activities-partner" : "google"), title: `Check major activities in ${stop.name}`,
         detail: `${selectedActivities.slice(0, 2).join(" · ")}${selectedActivities.length > 2 ? ` · +${selectedActivities.length - 2} more` : ""}. Check dates, opening days and cancellation terms before booking.`,
-        cta: "Check options", href: withParams(activityBase, config.activitiesUrl ? { destination: stop.name, from: stop.arrivalDate ?? undefined, to: stop.departureDate ?? undefined } : { q: `${selectedActivities[0]} ${stop.name} official tickets` }),
+        cta: config.activitiesProvider === "viator" ? "Find activities on Viator" : "Check options", href: config.activitiesUrl ?? withParams(activityBase, { q: `${selectedActivities[0]} ${stop.name} official tickets` }),
         tripId: trip.id, stopId: stop.id, affiliate: Boolean(config.activitiesUrl), livePrice: false,
       });
     }
@@ -94,7 +172,10 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     });
   }
 
-  if (config.groundTransportUrl) trip.legs.filter((leg) => ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
+  const omioActions = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg, now)).filter((action): action is BookingReadinessAction => Boolean(action));
+  actions.push(...omioActions);
+
+  if (config.groundTransportUrl) trip.legs.filter((leg) => !omioActions.some((action) => action.transferId === leg.id) && ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
     const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
     const to = trip.stops.find((stop) => stop.id === leg.toStopId);
     if (!from || !to) return;

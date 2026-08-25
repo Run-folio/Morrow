@@ -46,6 +46,12 @@ export type StampCountryFilterInput = {
   status?: StampStatusFilter;
 };
 
+export type StampCountryGroup = {
+  region: StampRegion;
+  countries: StampCountry[];
+  visited: number;
+};
+
 export type StampRecordSummaryInput = {
   statuses?: unknown;
   /** Current UI note records and API `{ note, photoData }` records are both accepted. */
@@ -244,6 +250,22 @@ export function filterStampCountries(input: StampCountryFilterInput = {}): Stamp
     return (SEARCH_TERMS_BY_COUNTRY_ID.get(country.id) ?? [normalizeLookupKey(country.name)])
       .some((term) => term.includes(query));
   }).sort((first, second) => first.name.localeCompare(second.name));
+}
+
+export function groupStampCountries(
+  countries: readonly StampCountry[],
+  statuses: unknown,
+): StampCountryGroup[] {
+  const normalizedStatuses = normalizeStampStatuses(statuses);
+  return STAMP_REGIONS.flatMap((region) => {
+    const regionCountries = countries.filter((country) => country.region === region);
+    if (!regionCountries.length) return [];
+    return [{
+      region,
+      countries: regionCountries,
+      visited: STAMP_COUNTRIES_BY_REGION[region].filter((country) => normalizedStatuses[country.id] === "visited").length,
+    }];
+  });
 }
 
 const hasContent = (value: unknown) => typeof value === "string" && value.trim().length > 0;

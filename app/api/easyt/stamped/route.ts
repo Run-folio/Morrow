@@ -5,11 +5,32 @@ import { normalizeStampCountryId, normalizeStampStatuses } from "@/lib/easyt/sta
 
 export const dynamic = "force-dynamic";
 
+const diagnostic = (error: unknown) => {
+  if (!error || typeof error !== "object") return { name: "UnknownError" };
+  const candidate = error as { code?: unknown; name?: unknown };
+  return {
+    name: typeof candidate.name === "string" ? candidate.name : "Error",
+    code: typeof candidate.code === "string" ? candidate.code : undefined,
+  };
+};
+
 export async function GET() {
   try {
     const owner = await requireEasyTOwner();
-    const [rows, memories] = await Promise.all([getCountryStamps(owner.id), getCountryMemories(owner.id)]);
+    const rows = await getCountryStamps(owner.id);
     const statuses = normalizeStampStatuses(Object.fromEntries(rows.map((row) => [row.countryId, row.status])));
+    let memories: Awaited<ReturnType<typeof getCountryMemories>> = [];
+    let memoryWarning: "memories_unavailable" | undefined;
+    try {
+      memories = await getCountryMemories(owner.id);
+    } catch (error) {
+      memoryWarning = "memories_unavailable";
+      console.error("[stamped] Secondary resource failed", {
+        endpoint: "GET /api/easyt/stamped",
+        resource: "memories",
+        ...diagnostic(error),
+      });
+    }
     const normalizedMemories = Object.fromEntries(memories.flatMap((memory) => {
       const countryId = normalizeStampCountryId(memory.countryId);
       return countryId ? [[countryId, { note: memory.note ?? "", photoData: memory.photoData ?? "" }]] : [];
@@ -17,10 +38,17 @@ export async function GET() {
     return NextResponse.json({
       statuses,
       memories: normalizedMemories,
+      warnings: memoryWarning ? [memoryWarning] : [],
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load stamps.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized" ? 401 : 500 });
+    console.error("[stamped] Primary resource failed", {
+      endpoint: "GET /api/easyt/stamped",
+      resource: "statuses",
+      ...diagnostic(error),
+    });
+    const unauthorized = message === "Unauthorized";
+    return NextResponse.json({ error: unauthorized ? "Unauthorized" : "Unable to load stamps." }, { status: unauthorized ? 401 : 500 });
   }
 }
 
@@ -34,7 +62,13 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to save country memory.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized" ? 401 : 500 });
+    console.error("[stamped] Mutation failed", {
+      endpoint: "PATCH /api/easyt/stamped",
+      resource: "memories",
+      ...diagnostic(error),
+    });
+    const unauthorized = message === "Unauthorized";
+    return NextResponse.json({ error: unauthorized ? "Unauthorized" : "Unable to save country memory." }, { status: unauthorized ? 401 : 500 });
   }
 }
 
@@ -50,6 +84,12 @@ export async function PUT(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to save stamp.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized" ? 401 : 500 });
+    console.error("[stamped] Mutation failed", {
+      endpoint: "PUT /api/easyt/stamped",
+      resource: "statuses",
+      ...diagnostic(error),
+    });
+    const unauthorized = message === "Unauthorized";
+    return NextResponse.json({ error: unauthorized ? "Unauthorized" : "Unable to save stamp." }, { status: unauthorized ? 401 : 500 });
   }
 }

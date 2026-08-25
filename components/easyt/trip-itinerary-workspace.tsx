@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
   MapPin,
   Route,
   Sparkles,
@@ -17,6 +18,8 @@ import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { itineraryNotesForDisplay } from "@/lib/easyt/itinerary-presentation";
 import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-facts";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
+import { trackEvent } from "@/lib/analytics";
+import { omioBookingActionForLeg } from "@/lib/easyt/booking-readiness";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
 import styles from "./trip-itinerary-workspace.module.css";
@@ -336,12 +339,14 @@ function TransferRow({ leg, copy, trip }: { leg: TripLeg; copy: ReturnType<typeo
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
   const to = trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
   const duration = leg.durationMinutes === null ? null : formatTripDuration(leg.durationMinutes);
+  const omioAction = omioBookingActionForLeg(trip, leg);
   return (
-    <div className={styles.detailRow}>
+    <div className={`${styles.detailRow} ${omioAction ? styles.transferRow : ""}`}>
       <span className={styles.detailIcon}><Route aria-hidden="true" /></span>
       <b>01</b>
       <p><strong>{copy.transfer}</strong>{from && to ? `${from} → ${to}` : leg.mode}{duration ? <small className={styles.estimateLabel}>{copy.estimate}</small> : null}</p>
       {duration ? <span className={styles.duration}>~{duration}</span> : null}
+      {omioAction ? <span className={styles.omioAction}><a href={omioAction.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${omioAction.cta} — opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId })}>{omioAction.cta}<ExternalLink aria-hidden="true" /></a><small>Partner link · Morrovia may earn a commission at no extra cost to you.</small></span> : null}
     </div>
   );
 }

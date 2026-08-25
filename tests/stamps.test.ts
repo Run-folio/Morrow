@@ -7,6 +7,7 @@ import {
   STAMP_REGIONS,
   STAMP_TOPOLOGY_ALIASES,
   filterStampCountries,
+  groupStampCountries,
   isStampCountryId,
   isStampStatus,
   legacyStampCountryId,
@@ -121,6 +122,22 @@ test("composes search, region and status filtering from one status record", () =
   assert.deepEqual(
     filterStampCountries().slice(0, 3).map((country) => country.name),
     ["Afghanistan", "Albania", "Algeria"],
+  );
+});
+
+test("groups filtered countries by continent while keeping truthful visited totals", () => {
+  const statuses = { france: "visited", japan: "visited", spain: "want" };
+  const filtered = filterStampCountries({ statuses, status: "visited" });
+  assert.deepEqual(
+    groupStampCountries(filtered, statuses).map((group) => ({
+      region: group.region,
+      countries: group.countries.map((country) => country.name),
+      visited: group.visited,
+    })),
+    [
+      { region: "Asia", countries: ["Japan"], visited: 1 },
+      { region: "Europe", countries: ["France"], visited: 1 },
+    ],
   );
 });
 

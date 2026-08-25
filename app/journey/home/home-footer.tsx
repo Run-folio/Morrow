@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Signal, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { trackEvent } from "@/lib/analytics";
 import MorroviaFooter from "@/components/morrovia-footer";
 import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
@@ -25,7 +26,7 @@ export default function HomeFooter() {
     <section className={styles.sailyBanner} aria-label="Saily travel eSIM">
       <div className={styles.sailyLogo}><img src="/journey/partners/saily-logo-negative-bg.svg" alt="Saily" /></div>
       <div className={styles.sailyCopy}><span><Signal aria-hidden="true" /> {language === "es" ? "CONECTIVIDAD DE VIAJE" : "TRAVEL CONNECTIVITY"}</span><h2>{text.partnerTitle}</h2><p>{text.partnerBody}</p></div>
-      <div className={styles.sailyAction}><a href="https://go.saily.site/aff_c?offer_id=101&aff_id=16085" target="_blank" rel="noreferrer sponsored">{text.partnerAction} <ArrowRight aria-hidden="true" /></a><small>{text.partnerDisclosure}</small></div>
+      <div className={styles.sailyAction}><a href="https://go.saily.site/aff_c?offer_id=101&aff_id=16085" target="_blank" rel="sponsored noopener noreferrer" aria-label={`${text.partnerAction} — opens Saily in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "connectivity", provider: "saily", placement: "home_footer" })}>{text.partnerAction} <ArrowRight aria-hidden="true" /></a><small>{text.partnerDisclosure}</small></div>
     </section>
     <MorroviaFooter />
   </footer>;

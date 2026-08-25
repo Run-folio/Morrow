@@ -1,3 +1,53 @@
+# Stamps reliability and country-marking QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Downloads/Screenshot 2026-08-25 at 8.12.36 AM.png` (2048 × 1304 px) for the current Morrovia desktop shell, map, summary and filters; `/Users/shaun/Downloads/WhatsApp Image 2026-08-07 at 15.08.43 (2).jpeg` (600 × 1332 px) for the continent and exposed row-action interaction.
+- **Implementation:** Storybook `Morrovia/Stamps/EstablishedTraveller` at `http://localhost:6006/iframe.html?id=morrovia-stamps--established-traveller&viewMode=story`.
+- **Browser-rendered evidence:** `artifacts/stamps-reliability/implementation-1440.png`, `implementation-768.png`, `implementation-390.png`, and `implementation-320.png`.
+- **Combined comparison evidence:** `artifacts/stamps-reliability/comparison-desktop.png` and `comparison-mobile-actions.png`.
+- **Viewport and density:** 1440 × 1000, 768 × 900, 390 × 844, and 320 × 780 CSS px. The in-app Browser reported DPR 2 while returning CSS-sized PNGs with the page drawn at half scale; `*-normalized.png` files crop the populated top-left half and resample it to the reported CSS capture size solely for visual comparison.
+- **State:** established signed-in fixture with visited, want-to-visit and memory data; responsive geometry was also checked at the required empty widths through the existing stories.
+
+## Required fidelity surfaces
+
+- **Fonts and typography:** existing Morrovia display, UI and metadata fonts remain unchanged. Continent headers use the established display role; row copy uses the existing compact UI hierarchy.
+- **Spacing and layout rhythm:** the current map/workspace proportions remain intact, with the explorer widened to 450px on wide desktop and 410px before the stacked breakpoint. Rows retain a compact rhythm while preserving 44 × 44px action targets.
+- **Colors and visual tokens:** active Visited uses `--morrovia-success`; active Want to visit uses `--morrovia-action`; inactive controls, focus rings, warnings and errors use existing semantic tokens.
+- **Image quality and assets:** the production world-atlas map and Unicode country flags are preserved. No reference imagery, logo or non-standard icon was replaced by drawn CSS/SVG art; row actions use the project’s existing Lucide icon dependency.
+- **Copy and content:** every row exposes flag, country, Not yet/Visited/Want to visit, Visited toggle and Want-to-visit toggle. Active accessible labels explain removal.
+
+## Full-view and focused comparison evidence
+
+- The desktop combined comparison confirms the existing hero, summaries, map, selected-country card, filters and scrollable explorer remain the dominant composition; the intentional changes are the wider explorer and grouped rows.
+- The mobile focused comparison confirms the previous design’s continent summary plus visible circular check/plus actions are restored inside the current Morrovia filters and navigation.
+- Focused responsive geometry found no page-level horizontal overflow at 320, 390 or 768px. The explorer precedes the map below 900px, and row action buttons measure exactly 44 × 44 CSS px at 320 and 390px.
+
+## Interaction and accessibility evidence
+
+- Continent disclosure changes `aria-expanded` and hides/shows its controlled list.
+- Search for Japan automatically exposed the matching Asia section.
+- Clicking active Want to visit returned Japan to Unmarked; clicking again restored Want to visit.
+- Region and status filters continued to reduce the canonical country set without empty groups.
+- Row controls are native buttons with `aria-pressed`, active/remove labels, tooltips, visible focus treatment and a labelled status group.
+- Browser console contained no implementation errors; only Storybook’s existing Next.js runtime-config deprecation warning appeared.
+
+## Comparison history
+
+1. The starting implementation used a flat 197-country list and a hidden status select, while a failed composite load displayed cached counts/map state as current.
+2. The first implementation restored continent grouping and exposed actions, separated primary stamp-state loading from secondary memories, added stale-data disclosure, and rolled failed writes back.
+3. Responsive inspection confirmed the 450px desktop panel, list-first stacked order, 44px mobile targets, bottom list padding and zero horizontal overflow. No post-capture P0/P1/P2 fix was required.
+
+## Findings
+
+- No actionable P0, P1 or P2 visual or interaction mismatch remains.
+- P3: at 320px, long country names intentionally ellipsize to preserve status text and both 44px primary actions.
+- Environment limitation: signed-in staging could not be replayed because no staging credential or `.env.staging` connection is available in the workspace; production was not accessed or modified.
+
+**final result: passed**
+
+---
+
 +# Homepage fidelity follow-up QA
 
 ## Comparison target
