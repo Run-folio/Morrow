@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryCloudTrace, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripScheduleLocks, type TripStatus, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
@@ -152,6 +152,15 @@ const parseTyped = (text: string) => {
 };
 const placesFor = (stop: Stop, discovered: Record<string, Place[]>): Place[] =>
   discovered[stop.id] ?? CATALOG[stop.name.trim().toLowerCase()] ?? [];
+
+type StagingTripSyncTraceDetails = Record<string, boolean | number | string | null>;
+
+function traceStagingTripSync(event: string, details: StagingTripSyncTraceDetails) {
+  if (typeof window === "undefined" || window.location.hostname !== "staging.morrovia.com") return;
+  // Staging-only diagnostics deliberately exclude trip, account and request
+  // data. Write IDs and revisions are opaque coordination tokens.
+  console.info("[Morrovia staging trip sync]", event, details);
+}
 
 const suggestionsFor = (stop?: Stop) => {
   if (!stop) return [];
@@ -1465,10 +1474,17 @@ function TripBuilderDocument() {
     if (conflict.stage === "places") setHasPromptContext(true);
   };
 
-  const persistDeviceRecovery = useCallback((trip: EasyTTrip) => {
+  const persistDeviceRecovery = useCallback((trip: EasyTTrip, source: "autosave" | "before-new-trip" | "build" = "autosave") => {
     const ownerId = activeBrowserOwnerId;
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)
       || (trip.ownerId && trip.ownerId !== ownerId)) {
+      traceStagingTripSync("recovery-write-rejected", {
+        source,
+        reason: "owner-scope-mismatch",
+        buildWriteId: recoveryHandleRef.current?.writeId ?? null,
+        currentWriteId: recoveryHandleRef.current?.writeId ?? null,
+        status: trip.status,
+      });
       return {
         stored: false,
         handle: { ownerId, tripId: trip.id, writeId: `scope-mismatch-${Date.now()}` },
@@ -1484,13 +1500,23 @@ function TripBuilderDocument() {
       replace: replacement ?? undefined,
     });
     if (recovery.stored) recoveryHandleRef.current = recovery.handle;
+    traceStagingTripSync("recovery-write", {
+      source,
+      previousWriteId: currentHandle?.writeId ?? null,
+      currentWriteId: recovery.handle.writeId,
+      writeIdChanged: currentHandle?.writeId !== recovery.handle.writeId,
+      stored: recovery.stored,
+      blocked: recovery.blockedByExistingRecovery,
+      status: trip.status,
+      revision: trip.updatedAt,
+    });
     return recovery;
   }, [activeBrowserOwnerId]);
 
   useEffect(() => {
     const preserveBeforeNewTrip = (event: Event) => {
       if (!hydrated || (!origin.trim() && !tripBrief.trim() && !stops.length)) return;
-      const recovery = persistDeviceRecovery(activeTripDocument);
+      const recovery = persistDeviceRecovery(activeTripDocument, "before-new-trip");
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
       if (shouldAllowNewTripNavigation(recovery)) {
@@ -1513,9 +1539,14 @@ function TripBuilderDocument() {
 
   useEffect(() => {
     if (!hydrated || !origin.trim() || !stops.length) return;
+    traceStagingTripSync("autosave-scheduled", {
+      currentWriteId: recoveryHandleRef.current?.writeId ?? null,
+      status: activeTripDocument.status,
+      revision: activeTripDocument.updatedAt,
+    });
     setSaveState("saving");
     const timer = window.setTimeout(() => {
-      const recovery = persistDeviceRecovery(activeTripDocument);
+      const recovery = persistDeviceRecovery(activeTripDocument, "autosave");
       if (arrivedFromHomepage) removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, activeTripDocument, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
       setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
@@ -1567,7 +1598,15 @@ function TripBuilderDocument() {
     }
     const usableTrip = recordGeneratedTrip();
     const requestTrip: EasyTTrip = { ...activeTripDocument, status: activeTripDocument.status === "archived" ? "archived" : "planned" };
-    const recovery = persistDeviceRecovery(requestTrip);
+    const recovery = persistDeviceRecovery(requestTrip, "build");
+    const buildWriteId = recovery.handle.writeId;
+    traceStagingTripSync("build-persistence-started", {
+      buildWriteId,
+      currentWriteId: recoveryHandleRef.current?.writeId ?? null,
+      revision: requestTrip.updatedAt,
+      status: requestTrip.status,
+      authenticated: Boolean(session?.user),
+    });
     try {
       if (arrivedFromHomepage) removeHomeTripDraftIfDurable(window.localStorage, homeDraftRef.current, requestTrip, recovery.stored, resolvingLocations);
       setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
@@ -1611,14 +1650,49 @@ function TripBuilderDocument() {
       setSaveState("saving");
       setCloudSaveError("");
       setCloudAuthInterrupted(false);
-      const saved = await saveTripRecoveryToEasyT(requestTrip, recovery.handle);
+      const traceCloudResult: TripRecoveryCloudTrace = (result) => {
+        traceStagingTripSync(`${result.phase}-response`, {
+          buildWriteId,
+          currentWriteId: recoveryHandleRef.current?.writeId ?? null,
+          revision: result.revision,
+          status: result.status,
+          ownerAssigned: result.ownerAssigned,
+          httpStatus: result.httpStatus ?? null,
+          validTrip: result.validTrip ?? null,
+        });
+      };
+      const saved = await saveTripRecoveryToEasyT(requestTrip, recovery.handle, fetch, traceCloudResult);
       const currentHandle = recoveryHandleRef.current;
-      const responseIsCurrent = currentHandle?.ownerId === recovery.handle.ownerId
-        && currentHandle.tripId === recovery.handle.tripId
-        && currentHandle.writeId === recovery.handle.writeId
-        && hydratedOwnerScopeRef.current === requestOwnerId
-        && activeBrowserOwnerIdRef.current === requestOwnerId;
-      if (!responseIsCurrent) return null;
+      const recoveryOwnerMatches = currentHandle?.ownerId === recovery.handle.ownerId;
+      const recoveryTripMatches = currentHandle?.tripId === recovery.handle.tripId;
+      const recoveryWriteMatches = currentHandle?.writeId === recovery.handle.writeId;
+      const hydratedOwnerMatches = hydratedOwnerScopeRef.current === requestOwnerId;
+      const browserOwnerMatches = activeBrowserOwnerIdRef.current === requestOwnerId;
+      const responseIsCurrent = recoveryOwnerMatches
+        && recoveryTripMatches
+        && recoveryWriteMatches
+        && hydratedOwnerMatches
+        && browserOwnerMatches;
+      traceStagingTripSync("acknowledgement-decision", {
+        buildWriteId,
+        currentWriteId: currentHandle?.writeId ?? null,
+        accepted: responseIsCurrent,
+        recoveryOwnerMatches,
+        recoveryTripMatches,
+        recoveryWriteMatches,
+        hydratedOwnerMatches,
+        browserOwnerMatches,
+        putRevision: saved.updatedAt,
+      });
+      if (!responseIsCurrent) {
+        traceStagingTripSync("persistence-finished", {
+          result: "unacknowledged",
+          reason: recoveryWriteMatches ? "owner-or-trip-scope-changed" : "recovery-write-changed",
+          buildWriteId,
+          currentWriteId: currentHandle?.writeId ?? null,
+        });
+        return null;
+      }
       if (saved.id !== recovery.handle.tripId || saved.ownerId !== requestOwnerId) {
         setCloudSaveError("The cloud returned a different trip document. This device copy remains preserved and was not acknowledged.");
         setSaveState("error");
@@ -1626,6 +1700,12 @@ function TripBuilderDocument() {
       }
       const cached = cacheCanonicalTrip(saved, recovery.handle);
       const remainingRecovery = loadTripRecovery(saved.id, recovery.handle.ownerId);
+      traceStagingTripSync("canonical-cache-result", {
+        buildWriteId,
+        cached: cached.stored,
+        recoveryResolved: cached.recoveryResolved,
+        remainingWriteId: remainingRecovery?.writeId ?? null,
+      });
       if (!cached.stored || remainingRecovery) {
         recoveryHandleRef.current = null;
         setDeviceRecoveryBlocked(Boolean(remainingRecovery));
@@ -1644,6 +1724,13 @@ function TripBuilderDocument() {
       setDeviceRecoveryBlocked(false);
       setDeviceStorageBlocked(false);
       setSaveState("cloud");
+      traceStagingTripSync("persistence-finished", {
+        result: "saved",
+        reason: "canonical-acknowledged",
+        buildWriteId,
+        currentWriteId: null,
+        putRevision: saved.updatedAt,
+      });
       trackEvent("trip_saved", {
         trip_source: analyticsTripSource,
         trip_id: saved.id,
@@ -1653,6 +1740,13 @@ function TripBuilderDocument() {
       });
       return saved;
     } catch (error) {
+      traceStagingTripSync("persistence-finished", {
+        result: "error",
+        reason: error instanceof Error ? error.message : "unknown-error",
+        buildWriteId,
+        currentWriteId: recoveryHandleRef.current?.writeId ?? null,
+        errorType: classifyAnalyticsSaveError(error),
+      });
       const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
         ? error.canonicalTrip
         : null;

@@ -49,6 +49,15 @@ export type TripRecoveryWriteResult = {
   blockedByExistingRecovery: boolean;
 };
 
+export type TripRecoveryCloudTrace = (event: {
+  phase: "promoted" | "update-http" | "updated";
+  revision: string | null;
+  status: EasyTTrip["status"] | null;
+  ownerAssigned: boolean;
+  httpStatus?: number;
+  validTrip?: boolean;
+}) => void;
+
 export function shouldAllowNewTripNavigation(result: Pick<TripRecoveryWriteResult, "stored">) {
   return result.stored;
 }
@@ -878,7 +887,11 @@ export function tripForRecoveryScope(trip: EasyTTrip, recovery: TripRecoveryHand
   return trip.ownerId === recovery.ownerId ? trip : { ...trip, ownerId: recovery.ownerId };
 }
 
-export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = fetch): Promise<EasyTTrip> {
+export async function saveTripToEasyT(
+  trip: EasyTTrip,
+  request: typeof fetch = fetch,
+  trace?: TripRecoveryCloudTrace,
+): Promise<EasyTTrip> {
   if (!trip.ownerId) return (await promoteTripToEasyT(trip, request)).trip;
   const response = await requestTripUpdate(trip, request);
   const payload = await response.json().catch(() => null) as {
@@ -886,6 +899,15 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
     conflictReason?: TripSaveConflictReason;
     error?: string;
   } | null;
+  const responseTrip = isEasyTTrip(payload?.trip) ? payload.trip : null;
+  trace?.({
+    phase: "update-http",
+    revision: responseTrip?.updatedAt ?? null,
+    status: responseTrip?.status ?? null,
+    ownerAssigned: Boolean(responseTrip?.ownerId),
+    httpStatus: response.status,
+    validTrip: Boolean(responseTrip),
+  });
   const authError = tripSyncAuthError(response.status, payload?.error);
   if (authError) throw authError;
   if (response.status === 409 && payload && isEasyTTrip(payload.trip) && payload.conflictReason) {
@@ -906,6 +928,7 @@ export async function saveTripRecoveryToEasyT(
   trip: EasyTTrip,
   recovery: TripRecoveryHandle,
   request: typeof fetch = fetch,
+  trace?: TripRecoveryCloudTrace,
 ) {
   const scopedTrip = tripForRecoveryScope(trip, recovery);
   if (!scopedTrip) throw new Error("Trip recovery ownership mismatch.");
@@ -919,11 +942,30 @@ export async function saveTripRecoveryToEasyT(
       throw new Error("Only an ownerless draft or newly built trip can be promoted.");
     }
     const promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, request)).trip;
-    return trip.status === "draft"
-      ? promoted
-      : saveTripToEasyT({ ...promoted, status: trip.status }, request);
+    trace?.({
+      phase: "promoted",
+      revision: promoted.updatedAt,
+      status: promoted.status,
+      ownerAssigned: Boolean(promoted.ownerId),
+    });
+    if (trip.status === "draft") return promoted;
+    const updated = await saveTripToEasyT({ ...promoted, status: trip.status }, request, trace);
+    trace?.({
+      phase: "updated",
+      revision: updated.updatedAt,
+      status: updated.status,
+      ownerAssigned: Boolean(updated.ownerId),
+    });
+    return updated;
   }
-  return saveTripToEasyT(scopedTrip, request);
+  const updated = await saveTripToEasyT(scopedTrip, request, trace);
+  trace?.({
+    phase: "updated",
+    revision: updated.updatedAt,
+    status: updated.status,
+    ownerAssigned: Boolean(updated.ownerId),
+  });
+  return updated;
 }
 
 export type EasyTTripPromotion = {
