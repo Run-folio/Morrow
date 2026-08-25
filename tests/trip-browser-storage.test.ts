@@ -599,9 +599,10 @@ test("builder autosave reuses the Build write ID for the same planned document",
     replace: draftWrite.handle,
   });
 
-  // This is the builder's delayed 450 ms autosave firing while the same
-  // promotion/update request is still in flight.
-  const autosave = saveTripRecoveryToStorage(storage, planned, {
+  // This is the builder's delayed 450 ms autosave after a save-state render
+  // reconstructed the same ownerless document with a fresh local timestamp.
+  const rerenderedPlanned = { ...planned, updatedAt: "2026-08-23T11:00:00.450Z" };
+  const autosave = saveTripRecoveryToStorage(storage, rerenderedPlanned, {
     ownerId: "owner-a",
     writeId: "autosave-write",
     replace: buildWrite.handle,
@@ -612,6 +613,7 @@ test("builder autosave reuses the Build write ID for the same planned document",
   assert.equal(autosave.handle.tripId, buildWrite.handle.tripId);
   assert.equal(autosave.handle.writeId, buildWrite.handle.writeId);
   assert.equal(loadTripRecoveryFromStorage(storage, planned.id, "owner-a")?.writeId, "build-write");
+  assert.equal(loadTripRecoveryFromStorage(storage, planned.id, "owner-a")?.trip.updatedAt, planned.updatedAt);
   const acknowledged = cacheCanonicalTripWithRecoveryToStorage(
     storage,
     { ...planned, ownerId: "owner-a", updatedAt: "2026-08-23T12:00:00.000Z" },

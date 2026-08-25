@@ -204,9 +204,14 @@ test("a clean-browser Build acknowledges the normalized canonical trip before da
     );
     cloudTrips.set(planned.id, planned);
 
-    // Reproduce the builder's delayed autosave while the planned response is
-    // in flight. An identical render must retain the Build acknowledgement ID.
-    const autosave = saveTripRecoveryToStorage(storage, plannedLocal, {
+    // Reproduce the actual browser ordering: a save-state render reconstructs
+    // the same ownerless planned document with a fresh local timestamp while
+    // the canonical planned response is still in flight.
+    const rerenderedPlannedLocal = {
+      ...plannedLocal,
+      updatedAt: "2026-08-20T11:00:00.450Z",
+    };
+    const autosave = saveTripRecoveryToStorage(storage, rerenderedPlannedLocal, {
       ownerId,
       writeId: "delayed-autosave",
       replace: buildRecovery.handle,

@@ -438,6 +438,18 @@ function nextRecoverySavedAt(existing: TripRecoveryRecord | null, requested?: st
   return new Date(Number.isFinite(previous) && previous >= next ? previous + 1 : next).toISOString();
 }
 
+function sameRecoveryDocument(left: EasyTTrip, right: EasyTTrip) {
+  if (JSON.stringify(left) === JSON.stringify(right)) return true;
+  // An ownerless builder document has no canonical cloud revision yet.
+  // React may reconstruct the same durable trip while an async Build is in
+  // flight; a fresh local updatedAt alone is not a new traveller edit and must
+  // not invalidate the write ID waiting for acknowledgement.
+  if (left.ownerId !== null || right.ownerId !== null) return false;
+  const { updatedAt: _leftUpdatedAt, ...leftDocument } = left;
+  const { updatedAt: _rightUpdatedAt, ...rightDocument } = right;
+  return JSON.stringify(leftDocument) === JSON.stringify(rightDocument);
+}
+
 function writeTripRecoveryToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
@@ -455,11 +467,11 @@ function writeTripRecoveryToStorage(
   if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
-    // A render/autosave of the exact durable document is not a new edit. Build
-    // waits for an acknowledgement keyed to this write ID; rotating it for an
-    // identical autosave would turn a successful canonical response into a
-    // false stale-write result.
-    if (JSON.stringify(existing.trip) === JSON.stringify(trip)) {
+    // A render/autosave of the same durable document is not a new edit. Build
+    // waits for an acknowledgement keyed to this write ID; rotating it for a
+    // render-equivalent autosave would turn a successful canonical response
+    // into a false stale-write result.
+    if (sameRecoveryDocument(existing.trip, trip)) {
       setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
       return { stored: true, handle: existing, blockedByExistingRecovery: false };
     }

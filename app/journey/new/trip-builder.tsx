@@ -964,11 +964,14 @@ function TripBuilderDocument() {
     fixedCommitments: fixedAllocationCommitments,
     knowledge: sourceRouteKey ? routeHandoffNightKnowledge : undefined,
   }), [totalNights, nightAllocationStops, effectiveIntent.preferences.pace, fixedAllocationCommitments, sourceRouteKey]);
-  const allocation = nightAllocation.allocations ?? Object.fromEntries(stops.map((stop) => [
+  const allocation = useMemo(() => nightAllocation.allocations ?? Object.fromEntries(stops.map((stop) => [
     stop.id,
     Math.max(0, Math.round(dayAllocations[stop.id] ?? recommendedNights[stop.id] ?? 0)),
-  ]));
-  const calendarDayAllocations = calendarDayAllocationsFromNights(stops.map((stop) => stop.id), allocation);
+  ])), [nightAllocation, stops, dayAllocations, recommendedNights]);
+  const calendarDayAllocations = useMemo(
+    () => calendarDayAllocationsFromNights(stops.map((stop) => stop.id), allocation),
+    [stops, allocation],
+  );
   const compressedStops = stops.flatMap((stop) => {
     const duration = routeIntelligence.durations[stop.id];
     const days = allocation[stop.id] ?? 0;
