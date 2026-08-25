@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { authFormErrorMessage } from "@/lib/easyt/auth-feedback";
 import {
   EasyTButton,
   EasyTField,
@@ -42,25 +43,19 @@ export default function LoginForm({
     const submittedEmail = String(data.get("email") || "");
     const password = String(data.get("password") || "");
     const name = String(data.get("name") || "Traveller");
-    const genericError = mode === "sign-up"
-      ? "We could not create your account just now. Check the details and try again."
-      : "We could not sign you in. Check your email and password, then try again.";
     try {
       const result = mode === "sign-up"
         ? await authClient.signUp.email({ name, email, password, callbackURL })
         : await authClient.signIn.email({ email: submittedEmail, password, callbackURL });
       if (result.error) {
-        const message = result.error.message || "";
-        setError(message.toLowerCase().includes("email not verified")
-          ? "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again."
-          : genericError);
+        setError(authFormErrorMessage({ mode, message: result.error.message, code: result.error.code }));
       } else if (mode === "sign-up" && emailVerificationRequired) {
         window.location.assign(`/journey/login?next=${encodeURIComponent(callbackURL)}&email=${encodeURIComponent(submittedEmail)}&sent=1`);
       } else {
         window.location.assign(callbackURL);
       }
     } catch {
-      setError(genericError);
+      setError(authFormErrorMessage({ mode }));
     } finally {
       setBusy(false);
     }

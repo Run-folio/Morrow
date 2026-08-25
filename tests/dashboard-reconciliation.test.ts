@@ -92,6 +92,69 @@ test("an owned pending edit with a matching revision uses the CAS save path", as
   assert.equal(saved.updatedAt, "2026-08-20T12:00:00.000Z");
 });
 
+test("the first authenticated Build trip promotes its ID before it performs the planned save", async () => {
+  const built = trip({ ownerId: null, status: "planned", title: "First authenticated build" });
+  const recovery = saveTripRecoveryToStorage(new MemoryStorage(), built, {
+    ownerId: "owner-a",
+    writeId: "first-build",
+  });
+  const promoted = { ...built, ownerId: "owner-a", status: "draft" as const };
+  const planned = { ...promoted, status: "planned" as const, updatedAt: "2026-08-20T12:00:00.000Z" };
+  const requests: Array<{ endpoint: string; method: string; body: EasyTTrip }> = [];
+
+  const saved = await saveTripRecoveryToEasyT(built, recovery.handle, async (input, init) => {
+    const body = JSON.parse(String(init?.body)) as EasyTTrip;
+    requests.push({ endpoint: String(input), method: String(init?.method), body });
+    if (requests.length === 1) {
+      return response({ trip: promoted, outcome: "promoted" }, 201);
+    }
+    return response({ trip: planned });
+  });
+
+  assert.deepEqual(requests.map(({ endpoint, method }) => ({ endpoint, method })), [
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}/promote`, method: "POST" },
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}`, method: "PUT" },
+  ]);
+  assert.equal(requests[0]?.body.ownerId, null);
+  assert.equal(requests[0]?.body.status, "draft");
+  assert.equal(requests[1]?.body.ownerId, "owner-a");
+  assert.equal(requests[1]?.body.status, "planned");
+  assert.deepEqual(saved, planned);
+});
+
+test("a failed first Build retry reuses its promoted ID and retries the planned save", async () => {
+  const built = trip({ ownerId: null, status: "planned", title: "Retry first build" });
+  const recovery = saveTripRecoveryToStorage(new MemoryStorage(), built, {
+    ownerId: "owner-a",
+    writeId: "retry-first-build",
+  });
+  const promoted = { ...built, ownerId: "owner-a", status: "draft" as const };
+  const planned = { ...promoted, status: "planned" as const, updatedAt: "2026-08-20T12:00:00.000Z" };
+  const requests: Array<{ endpoint: string; method: string }> = [];
+  let attempt = 0;
+  const request: typeof fetch = async (input, init) => {
+    requests.push({ endpoint: String(input), method: String(init?.method) });
+    if (requests.length === 1) return response({ trip: promoted, outcome: "promoted" }, 201);
+    if (requests.length === 2) throw new TypeError("network unavailable");
+    attempt += 1;
+    if (attempt === 1) return response({ trip: promoted, outcome: "already-canonical" });
+    return response({ trip: planned });
+  };
+
+  await assert.rejects(() => saveTripRecoveryToEasyT(built, recovery.handle, request), /network unavailable/i);
+  const saved = await saveTripRecoveryToEasyT(built, recovery.handle, request);
+
+  assert.deepEqual(requests, [
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}/promote`, method: "POST" },
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}`, method: "PUT" },
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}/promote`, method: "POST" },
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(built.id)}`, method: "PUT" },
+  ]);
+  assert.equal(saved.id, built.id);
+  assert.equal(saved.ownerId, "owner-a");
+  assert.equal(saved.status, "planned");
+});
+
 test("an owned 404 never falls through to insert-only promotion", async () => {
   const owned = trip();
   const endpoints: string[] = [];

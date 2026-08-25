@@ -5,6 +5,25 @@ export const TEST_ACCOUNTS = [
   { name: "Test User B", email: "test-user-b@morrovia-staging.test", passwordKey: "STAGING_TEST_PASSWORD_B" },
 ];
 
+export const REQUIRED_STAGING_SCHEMA_COLUMNS = {
+  easyt_users: ["id", "email", "preferences"],
+  easyt_trips: ["id", "owner_id", "document", "deleted_at"],
+  easyt_country_stamps: ["owner_id", "country_id"],
+  easyt_country_memories: ["owner_id", "country_id"],
+};
+
+export function missingStagingSchemaColumns(rows) {
+  const columnsByTable = new Map();
+  for (const row of rows) {
+    const columns = columnsByTable.get(row.table_name) ?? new Set();
+    columns.add(row.column_name);
+    columnsByTable.set(row.table_name, columns);
+  }
+  return Object.entries(REQUIRED_STAGING_SCHEMA_COLUMNS).flatMap(([table, columns]) =>
+    columns.filter((column) => !columnsByTable.get(table)?.has(column)).map((column) => `${table}.${column}`),
+  );
+}
+
 const DISABLED_PROVIDER_KEYS = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
@@ -105,6 +124,16 @@ export async function verifyStagingDatabase(config) {
     }
     if (!row.has_users || !row.has_trips || !row.has_country_stamps || !row.has_country_memories) {
       throw new Error("Staging migrations have not created the required persistence tables.");
+    }
+    const schemaResult = await client.query(`
+      select table_name, column_name
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = any($1::text[])
+    `, [Object.keys(REQUIRED_STAGING_SCHEMA_COLUMNS)]);
+    const missingColumns = missingStagingSchemaColumns(schemaResult.rows);
+    if (missingColumns.length) {
+      throw new Error(`Staging schema does not match the application migrations: missing ${missingColumns.join(", ")}.`);
     }
     return { client, report: { stagingUrl: config.stagingUrl, database: row.database_name, databaseHost: config.expectedDbHost } };
   } catch (error) {

@@ -545,7 +545,6 @@ function TripBuilderDocument() {
             ? matchingRecovery
             : null;
           applySaved(requestedTrip);
-          if (!requestedTrip.ownerId && activeOwnerId) setTripOwnerId(activeOwnerId);
           if (showItinerary) setGenerated(true);
         } else {
           setTripUnavailable(true);
@@ -556,7 +555,6 @@ function TripBuilderDocument() {
             const claimed = claimGuestTripRecoveryForOwner(tripId, activeOwnerId);
             if (claimed?.stored) recoveryHandleRef.current = claimed.handle;
           }
-          setTripOwnerId(activeOwnerId);
         }
         try {
           const savedProfile = JSON.parse(window.localStorage.getItem(travelProfileStorageKey(activeBrowserOwnerId)) ?? "null");
@@ -700,9 +698,11 @@ function TripBuilderDocument() {
       return;
     }
     if (hydrated && session?.user?.id && !tripOwnerId) {
+      // A recovery scope protects the local document for this account. It is
+      // not cloud ownership: the first authenticated write must remain an
+      // ownerless promotion until the repository creates the canonical row.
       const claimed = claimGuestTripRecoveryForOwner(tripId, session.user.id);
       if (claimed?.stored) recoveryHandleRef.current = claimed.handle;
-      setTripOwnerId(session.user.id);
     }
   }, [hydrated, session?.user?.id, tripId, tripOwnerId]);
 
@@ -1683,6 +1683,15 @@ function TripBuilderDocument() {
     }
   };
 
+  const settleUnacknowledgedBuild = () => {
+    // A stale response, interrupted account scope, or failed save must never
+    // leave the primary action looking active after it has stopped. The local
+    // recovery document has already been written before cloud persistence.
+    setOpeningTrip(false);
+    setSaveState("error");
+    setCloudSaveError((current) => current || "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
+  };
+
   const openBuiltTrip = async () => {
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
@@ -1695,7 +1704,7 @@ function TripBuilderDocument() {
     if (!saved
       || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
       || resultOwnerId !== activeBrowserOwnerIdRef.current) {
-      setOpeningTrip(false);
+      settleUnacknowledgedBuild();
       return;
     }
     const destination = !saved.ownerId
@@ -1745,7 +1754,7 @@ function TripBuilderDocument() {
         && canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
         && resultOwnerId === activeBrowserOwnerIdRef.current) {
         window.location.assign(!saved.ownerId ? `/journey/plan?trip=${encodeURIComponent(saved.id)}` : !session?.user ? tripSyncSignInPath(saved.id) : firstTripWorkspaceHref(saved.id));
-      } else setOpeningTrip(false);
+      } else settleUnacknowledgedBuild();
     })();
   }, [buildRequested, activeTripDocument, buildInvariant.canBuildTrip]);
 
@@ -1788,7 +1797,7 @@ function TripBuilderDocument() {
               && canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
               && resultOwnerId === activeBrowserOwnerIdRef.current) {
               window.location.assign(saved.ownerId && !session?.user ? tripSyncSignInPath(saved.id) : `/journey/plan?trip=${encodeURIComponent(saved.id)}`);
-            }
+            } else settleUnacknowledgedBuild();
           })();
         }}
       />

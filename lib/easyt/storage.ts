@@ -906,8 +906,18 @@ export async function saveTripRecoveryToEasyT(
   const scopedTrip = tripForRecoveryScope(trip, recovery);
   if (!scopedTrip) throw new Error("Trip recovery ownership mismatch.");
   if (trip.ownerId === null) {
-    if (trip.status !== "draft") throw new Error("Only an ownerless draft can be promoted.");
-    return (await promoteTripToEasyT(trip, request)).trip;
+    // Promotion remains an insert-only draft boundary. Building a new trip
+    // produces a planned document, so first claim its exact ID as a draft,
+    // then make the normal revision-checked transition to planned. This keeps
+    // an authenticated first save from being mistaken for an update to a row
+    // that does not exist yet.
+    if (trip.status !== "draft" && trip.status !== "planned") {
+      throw new Error("Only an ownerless draft or newly built trip can be promoted.");
+    }
+    const promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, request)).trip;
+    return trip.status === "draft"
+      ? promoted
+      : saveTripToEasyT({ ...promoted, status: trip.status }, request);
   }
   return saveTripToEasyT(scopedTrip, request);
 }
