@@ -1699,9 +1699,9 @@ function TripBuilderDocument() {
     }
     setOpeningTrip(true);
     acceptCurrentRoute("continue");
-    // Build changes durable state. Persist from the following render so the
-    // recovery write, autosave and cloud request all describe the same planned
-    // document instead of racing a draft render against a planned request.
+    // Route acceptance and the draft -> planned transition are durable edits.
+    // Persist from the resulting render so Build recovery, delayed autosave
+    // and the cloud request all refer to one document and one write ID.
     setTripStatus("planned");
     setBuildRequested(true);
   };

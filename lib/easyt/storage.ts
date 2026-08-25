@@ -446,10 +446,10 @@ function writeTripRecoveryToStorage(
   if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
-    // Re-rendering the exact durable document is not a new edit. In
-    // particular, the builder autosave may run while Build Trip is waiting for
-    // its cloud acknowledgement; rotating the write ID here would make that
-    // valid response look stale and strand the primary action.
+    // A render/autosave of the exact durable document is not a new edit. Build
+    // waits for an acknowledgement keyed to this write ID; rotating it for an
+    // identical autosave would turn a successful canonical response into a
+    // false stale-write result.
     if (JSON.stringify(existing.trip) === JSON.stringify(trip)) {
       setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
       return { stored: true, handle: existing, blockedByExistingRecovery: false };

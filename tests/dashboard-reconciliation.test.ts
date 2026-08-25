@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { conflictHasCloudCopy } from "../lib/easyt/trip-continuity.ts";
+import { conflictHasCloudCopy, nextTripUpdatedAt } from "../lib/easyt/trip-continuity.ts";
 import {
   EasyTTripSaveConflictError,
+  cacheCanonicalTripWithRecoveryToStorage,
   cacheCanonicalTripToStorage,
+  canUseHydratedTripScope,
   currentTripStorageKey,
   loadCachedTripFromStorage,
   loadCurrentTripIdFromStorage,
@@ -17,6 +19,8 @@ import {
   saveTripRecoveryToStorage,
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
+import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
+import { firstTripWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 class MemoryStorage implements EasyTBrowserStorage {
@@ -120,6 +124,135 @@ test("the first authenticated Build trip promotes its ID before it performs the 
   assert.equal(requests[1]?.body.ownerId, "owner-a");
   assert.equal(requests[1]?.body.status, "planned");
   assert.deepEqual(saved, planned);
+});
+
+test("a clean-browser Build acknowledges the normalized canonical trip before dashboard hydration", async () => {
+  const storage = new MemoryStorage();
+  const ownerId = "owner-a";
+  const draft = trip({
+    id: "trip-clean-browser-build",
+    ownerId: null,
+    status: "draft",
+    title: "Clean browser Build",
+    brief: {
+      origin: "London",
+      mustDo: "Visit Senso-ji",
+      pace: "slow",
+      hotelChanges: "few",
+      budgetBand: "mid",
+      selectedPlaces: { tokyo: ["Senso-ji"] },
+      decisionSelections: { routeOrder: "entered", transportByLeg: {} },
+    },
+    stops: [{
+      id: "tokyo", order: 0, name: "Tokyo", country: "Japan",
+      latitude: 35.68, longitude: 139.76,
+      arrivalDate: "2026-11-01", departureDate: "2026-11-08", nights: 7,
+    }],
+    legs: [],
+    planItems: [{
+      id: "day-1", stopId: "tokyo", dayNumber: 1, date: "2026-11-01",
+      type: "activity", title: "Senso-ji", reason: "Requested", notes: [],
+      startsAt: null, endsAt: null, bookingUrl: null, latitude: 35.71, longitude: 139.8,
+    }],
+  });
+  const initialRecovery = saveTripRecoveryToStorage(storage, draft, {
+    ownerId,
+    writeId: "draft-write",
+  });
+  const plannedLocal = { ...draft, status: "planned" as const };
+  const buildRecovery = saveTripRecoveryToStorage(storage, plannedLocal, {
+    ownerId,
+    writeId: "build-write",
+    replace: initialRecovery.handle,
+  });
+
+  const cloudTrips = new Map<string, EasyTTrip>();
+  const requestSequence: Array<{
+    endpoint: string;
+    method: string;
+    requestStatus: EasyTTrip["status"];
+    requestOwnerId: string | null;
+    requestRevision: string;
+    recoveryWriteId: string | undefined;
+  }> = [];
+  const request: typeof fetch = async (input, init) => {
+    const endpoint = String(input);
+    const body = JSON.parse(String(init?.body)) as EasyTTrip;
+    requestSequence.push({
+      endpoint,
+      method: String(init?.method),
+      requestStatus: body.status,
+      requestOwnerId: body.ownerId,
+      requestRevision: body.updatedAt,
+      recoveryWriteId: loadTripRecoveryFromStorage(storage, body.id, ownerId)?.writeId,
+    });
+
+    if (endpoint.endsWith("/promote")) {
+      assert.equal(cloudTrips.has(body.id), false);
+      const promoted = canonicalTripForOwner(ownerId, body);
+      cloudTrips.set(promoted.id, promoted);
+      return response({ trip: promoted, outcome: "promoted" }, 201);
+    }
+
+    const current = cloudTrips.get(body.id);
+    assert.ok(current);
+    assert.equal(body.updatedAt, current.updatedAt, "PUT must use the promotion response revision");
+    const planned = canonicalTripForOwner(
+      ownerId,
+      body,
+      nextTripUpdatedAt(body.updatedAt, new Date("2026-08-20T12:00:00.000Z")),
+    );
+    cloudTrips.set(planned.id, planned);
+
+    // Reproduce the builder's delayed autosave while the planned response is
+    // in flight. An identical render must retain the Build acknowledgement ID.
+    const autosave = saveTripRecoveryToStorage(storage, plannedLocal, {
+      ownerId,
+      writeId: "delayed-autosave",
+      replace: buildRecovery.handle,
+    });
+    assert.equal(autosave.handle.writeId, buildRecovery.handle.writeId);
+    return response({ trip: planned });
+  };
+
+  const canonical = await saveTripRecoveryToEasyT(plannedLocal, buildRecovery.handle, request);
+  const recoveryBeforeAcknowledgement = loadTripRecoveryFromStorage(storage, canonical.id, ownerId);
+  assert.equal(recoveryBeforeAcknowledgement?.writeId, buildRecovery.handle.writeId);
+  const acknowledgement = cacheCanonicalTripWithRecoveryToStorage(storage, canonical, buildRecovery.handle);
+  const dashboardRecovery = loadCurrentTripRecoveryFromStorage(storage, ownerId);
+
+  assert.deepEqual(requestSequence.map(({ endpoint, method, requestStatus, requestOwnerId, recoveryWriteId }) => ({
+    endpoint, method, requestStatus, requestOwnerId, recoveryWriteId,
+  })), [
+    {
+      endpoint: `/api/easyt/trips/${encodeURIComponent(draft.id)}/promote`,
+      method: "POST",
+      requestStatus: "draft",
+      requestOwnerId: null,
+      recoveryWriteId: "build-write",
+    },
+    {
+      endpoint: `/api/easyt/trips/${encodeURIComponent(draft.id)}`,
+      method: "PUT",
+      requestStatus: "planned",
+      requestOwnerId: ownerId,
+      recoveryWriteId: "build-write",
+    },
+  ]);
+  assert.equal(requestSequence[0]?.requestRevision, draft.updatedAt);
+  assert.equal(requestSequence[1]?.requestRevision, draft.updatedAt);
+  assert.equal(canonical.updatedAt, "2026-08-20T12:00:00.000Z");
+  assert.equal(canonical.ownerId, ownerId);
+  assert.equal(canonical.status, "planned");
+  assert.equal(canonical.stops[0]?.id, `${draft.id}-stop-tokyo`, "the test includes server-normalized stop identities");
+  assert.equal(acknowledgement.stored, true);
+  assert.equal(acknowledgement.recoveryResolved, true);
+  assert.equal(loadTripRecoveryFromStorage(storage, canonical.id, ownerId), null);
+  assert.equal(dashboardRecovery, null, "dashboard hydration must have no local copy to classify as a conflict");
+  assert.equal(cloudTrips.size, 1);
+  assert.deepEqual(cloudTrips.get(canonical.id), canonical);
+  assert.equal(canUseHydratedTripScope(ownerId, ownerId), true);
+  assert.equal(firstTripWorkspaceHref(canonical.id), `/journey/${encodeURIComponent(canonical.id)}?created=1`);
 });
 
 test("a failed first Build retry reuses its promoted ID and retries the planned save", async () => {
