@@ -3,7 +3,7 @@ import EasyTNavigation from "../easyt-navigation";
 import styles from "../privacy/privacy-current.module.css";
 
 export const metadata = {
-  title: "Affiliate disclosure · Morrovia",
+  title: "Affiliate disclosure",
   description: "How Morrovia uses affiliate and referral links.",
 };
 

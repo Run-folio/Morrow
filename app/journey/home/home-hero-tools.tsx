@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, BedDouble, Compass, Globe2, Luggage, MapPin, Plane, Route, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { EasyTFirstVisitTourPrompt } from "@/components/easyt/easyt-product-tour";
 import HomeTripStarter from "./home-trip-starter";
 import styles from "./home.module.css";
 
@@ -32,6 +33,7 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
         <p className={styles.eyebrow}>{text.eyebrow}</p>
         <h1><span className={styles.heroTitleLead}>{text.titleLead}</span><span className={styles.heroTitleLine}>{text.titleMiddle} <span className={styles.heroTitleEmphasis}>{text.titleEmphasis}</span></span></h1>
         <p className={styles.lede}>{text.ledeLead}<br /><strong>{text.ledeBrand}</strong>{text.ledeTail}</p>
+        <EasyTFirstVisitTourPrompt />
         <HomeTripStarter />
       </div>
       <div className={styles.heroRoute} aria-label={text.exploreJapan}>

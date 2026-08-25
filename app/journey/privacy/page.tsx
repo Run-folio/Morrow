@@ -3,7 +3,7 @@ import MorroviaFooter from "@/components/morrovia-footer";
 import PrivacyNotice from "./privacy-notice";
 
 export const metadata = {
-  title: "Privacy · Morrovia",
+  title: "Privacy",
   description: "How Morrovia collects, uses and protects travel-planning data.",
   robots: { index: true, follow: true },
 };

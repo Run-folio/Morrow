@@ -4,7 +4,7 @@ import styles from "../account.module.css";
 import { isEasyTAuthConfigured, isEasyTEmailVerificationRequired } from "@/lib/easyt/auth-environment";
 import { isCanonicalTripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 
-export const metadata = { title: "Sign in · Morrovia" };
+export const metadata = { title: "Sign in" };
 
 export default async function EasyTLoginPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string; mode?: string; email?: string; sent?: string }> }) {
   const { next, setup, mode, email, sent } = await searchParams;

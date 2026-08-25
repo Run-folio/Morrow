@@ -7,7 +7,7 @@ import EasyTNavigation from "../../easyt-navigation";
 import styles from "../../account.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Admin audit · Morrovia" };
+export const metadata = { title: "Admin audit" };
 
 export default async function EasyTAuditPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });

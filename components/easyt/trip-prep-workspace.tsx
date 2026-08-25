@@ -298,10 +298,11 @@ export default function TripPrepWorkspace({
     ? "Some provider-backed Prep checks are unavailable. Retry before treating this as final."
     : "Checking provider-backed Prep tasks…";
   const departureDate = formatIsoDate(trip.startDate, "en-GB", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
+  const remainingTasks = nextTask ? tasks.filter((task) => task.id !== nextTask.id) : tasks;
   const grouped = {
-    must: tasks.filter((task) => task.category === "must"),
-    good: tasks.filter((task) => task.category === "good"),
-    nice: tasks.filter((task) => task.category === "nice"),
+    must: remainingTasks.filter((task) => task.category === "must"),
+    good: remainingTasks.filter((task) => task.category === "good"),
+    nice: remainingTasks.filter((task) => task.category === "nice"),
   };
   const openDetails = () => {
     setDetailsOpen(true);

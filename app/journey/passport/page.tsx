@@ -1,7 +1,7 @@
 import PassportDestinationClient from "./passport-destination-client";
 
 export const metadata = {
-  title: "Passport to Destination · Morrovia",
+  title: "Passport to Destination",
   description: "Find official entry and visa sources for your passport and destination.",
 };
 

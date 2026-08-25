@@ -157,7 +157,7 @@ export default function EasyTNavigation({
         <Link href="/journey/passport">{language === "es" ? "Información de pasaporte" : "Passport info"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
         <span className={styles.landingTour}>
-          <EasyTProductTour triggerLabel={labels.tour} />
+          <EasyTProductTour triggerLabel={labels.tour} dispatchOpen />
         </span>
         {activeAccount ? <details className={styles.accountMenu}>
           <summary className={styles.landingMenuTrigger}>
@@ -196,7 +196,7 @@ export default function EasyTNavigation({
             <Link href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
             <Link href="/journey/passport"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Información de pasaporte" : "Passport info"}</span></Link>
             <span className={styles.compactDivider} aria-hidden="true" />
-            <span className={styles.compactTour}><EasyTProductTour triggerLabel={labels.tour} /></span>
+            <span className={styles.compactTour}><EasyTProductTour triggerLabel={labels.tour} dispatchOpen /></span>
             {activeAccount ? <>
               <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
               <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
@@ -248,6 +248,7 @@ export default function EasyTNavigation({
             <span>{activeAccount ? labels.account : (language === "es" ? "Pasaporte" : "Passport")}</span>
           </Link>
       </nav>
+      <EasyTProductTour showTrigger={false} listenForOpen />
     </>
   );
 }

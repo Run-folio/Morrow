@@ -7,7 +7,7 @@ import StampedClient from "./stamped-client";
 import styles from "./stamped.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Stamped · Morrovia" };
+export const metadata = { title: "Stamped" };
 
 export default async function StampedPage() {
   let session: any = null;

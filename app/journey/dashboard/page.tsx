@@ -14,7 +14,7 @@ import dashboardStyles from "./dashboard.module.css";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Trips · Morrovia" };
+export const metadata = { title: "Trips" };
 
 export default async function EasyTDashboardPage() {
   if (!isEasyTAuthConfigured()) {

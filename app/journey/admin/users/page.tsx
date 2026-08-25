@@ -8,7 +8,7 @@ import UserSupport from "./user-support";
 import styles from "../../account.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Users & support · Morrovia" };
+export const metadata = { title: "Users & support" };
 
 export default async function EasyTUsersAdminPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });

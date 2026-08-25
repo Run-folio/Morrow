@@ -12,7 +12,7 @@ import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 import { easytCopy } from "@/lib/easyt/i18n";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Profile · Morrovia" };
+export const metadata = { title: "Profile" };
 
 export default async function EasyTProfilePage() {
   if (!isEasyTAuthConfigured())

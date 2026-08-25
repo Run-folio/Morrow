@@ -9,7 +9,7 @@ import RouteControls from "./route-controls";
 import styles from "../../account.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Route catalogue · Morrovia" };
+export const metadata = { title: "Route catalogue" };
 
 export default async function RouteCataloguePage() {
   const session = await getAuth().api.getSession({ headers: await headers() });

@@ -8,7 +8,7 @@ import EasyTNavigation from "../easyt-navigation";
 import styles from "../account.module.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Admin · Morrovia" };
+export const metadata = { title: "Admin" };
 
 const areas = [
   {
