@@ -1692,27 +1692,18 @@ function TripBuilderDocument() {
     setCloudSaveError((current) => current || "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
   };
 
-  const openBuiltTrip = async () => {
+  const openBuiltTrip = () => {
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
       return;
     }
     setOpeningTrip(true);
     acceptCurrentRoute("continue");
-    const saved = await persistGeneratedTrip();
-    const resultOwnerId = saved?.ownerId ?? hydratedOwnerScopeRef.current ?? null;
-    if (!saved
-      || !canUseHydratedTripScope(hydratedOwnerScopeRef.current, activeBrowserOwnerIdRef.current)
-      || resultOwnerId !== activeBrowserOwnerIdRef.current) {
-      settleUnacknowledgedBuild();
-      return;
-    }
-    const destination = !saved.ownerId
-      ? `/journey/plan?trip=${encodeURIComponent(saved.id)}`
-      : !session?.user
-        ? tripSyncSignInPath(saved.id)
-        : firstTripWorkspaceHref(saved.id);
-    window.location.assign(destination);
+    // Build changes durable state. Persist from the following render so the
+    // recovery write, autosave and cloud request all describe the same planned
+    // document instead of racing a draft render against a planned request.
+    setTripStatus("planned");
+    setBuildRequested(true);
   };
 
   const buildTrip = () => {
@@ -1734,10 +1725,11 @@ function TripBuilderDocument() {
     // before opening the editable trip, unless they already protected an order.
     if (routeRecommendationVisible && decisionSelections.routeOrder !== "entered" && !scheduleLocks.stopIds.length && !Object.keys(scheduleLocks.arrivalDates).length) {
       applyRecommendedOrder();
+      setTripStatus("planned");
       setBuildRequested(true);
       return;
     }
-    void openBuiltTrip();
+    openBuiltTrip();
   };
 
   useEffect(() => {
@@ -2141,7 +2133,7 @@ function TripBuilderDocument() {
         if (recovery.stored) { setCloudSaveError(""); setSaveState("local"); }
       } : syncAction === "sign-in" ? () => {
         window.location.assign(tripSyncSignInPath(activeTripDocument.id));
-      } : () => void openBuiltTrip()}>{syncAction === "reload-cloud" ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : syncAction === "open-device" ? (language === "es" ? "Abrir copia del dispositivo" : "Open device copy") : deviceStorageBlocked ? (language === "es" ? "Reintentar guardado" : "Try device save again") : syncAction === "sign-in" ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
+      } : openBuiltTrip}>{syncAction === "reload-cloud" ? (language === "es" ? "Abrir copia en la nube" : "Open cloud copy") : syncAction === "open-device" ? (language === "es" ? "Abrir copia del dispositivo" : "Open device copy") : deviceStorageBlocked ? (language === "es" ? "Reintentar guardado" : "Try device save again") : syncAction === "sign-in" ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again") : (language === "es" ? "Reintentar" : "Try again")}</button></aside> : null}
       {(step !== 0 || hasPromptContext) && <div className={styles.wizardFoot}>
         <button type="button" className={styles.ghost} disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>{copy.back}</button>
         <div className={styles.footRight}>

@@ -581,6 +581,47 @@ test("only the matching successful write can resolve recovery and an older ACK c
   assert.equal(loadCachedTripFromStorage(storage, first.id, "owner-a")?.title, "Acknowledged cloud");
 });
 
+test("builder autosave reuses the Build write ID for the same planned document", () => {
+  const storage = new MemoryBrowserStorage();
+  const draft = browserTrip({
+    id: "trip-build-autosave",
+    ownerId: null,
+    title: "Build request waiting for cloud acknowledgement",
+  });
+  const draftWrite = saveTripRecoveryToStorage(storage, draft, {
+    ownerId: "owner-a",
+    writeId: "draft-write",
+  });
+  const planned = { ...draft, status: "planned" as const };
+  const buildWrite = saveTripRecoveryToStorage(storage, planned, {
+    ownerId: "owner-a",
+    writeId: "build-write",
+    replace: draftWrite.handle,
+  });
+
+  // This is the builder's delayed 450 ms autosave firing while the same
+  // promotion/update request is still in flight.
+  const autosave = saveTripRecoveryToStorage(storage, planned, {
+    ownerId: "owner-a",
+    writeId: "autosave-write",
+    replace: buildWrite.handle,
+  });
+
+  assert.equal(autosave.stored, true);
+  assert.equal(autosave.handle.ownerId, buildWrite.handle.ownerId);
+  assert.equal(autosave.handle.tripId, buildWrite.handle.tripId);
+  assert.equal(autosave.handle.writeId, buildWrite.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage, planned.id, "owner-a")?.writeId, "build-write");
+  const acknowledged = cacheCanonicalTripWithRecoveryToStorage(
+    storage,
+    { ...planned, ownerId: "owner-a", updatedAt: "2026-08-23T12:00:00.000Z" },
+    buildWrite.handle,
+  );
+  assert.equal(acknowledged.stored, true);
+  assert.equal(acknowledged.recoveryResolved, true);
+  assert.equal(loadTripRecoveryFromStorage(storage, planned.id, "owner-a"), null);
+});
+
 test("a cross-tab write interleaved inside an older ACK cleanup remains recoverable", () => {
   const storage = new MemoryBrowserStorage();
   const first = browserTrip({ id: "trip-interleaved", title: "First tab edit" });

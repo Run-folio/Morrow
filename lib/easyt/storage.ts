@@ -446,18 +446,22 @@ function writeTripRecoveryToStorage(
   if (!recoveryScopeAcceptsTrip(ownerId, trip)) return { stored: false, handle, blockedByExistingRecovery: false };
   const existing = loadTripRecoveryFromStorage(storage, trip.id, ownerId);
   if (existing) {
+    // Re-rendering the exact durable document is not a new edit. In
+    // particular, the builder autosave may run while Build Trip is waiting for
+    // its cloud acknowledgement; rotating the write ID here would make that
+    // valid response look stale and strand the primary action.
+    if (JSON.stringify(existing.trip) === JSON.stringify(trip)) {
+      setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
+      return { stored: true, handle: existing, blockedByExistingRecovery: false };
+    }
     const expected = options.replace;
     const replacingExactWrite = expected?.ownerId === ownerId
       && expected.tripId === trip.id
       && expected.writeId === existing.writeId;
     if (!replacingExactWrite) {
-      // Re-rendering the same recovery is idempotent. Any different document
-      // must prove it was opened from this exact recovery before replacing it;
-      // a canonical cloud view never has that handle.
-      if (JSON.stringify(existing.trip) === JSON.stringify(trip)) {
-        setCurrentTripInStorage(storage, ownerId, trip.id, [tripRecoveryStorageKey(ownerId, trip.id)]);
-        return { stored: true, handle: existing, blockedByExistingRecovery: false };
-      }
+      // Any different document must prove it was opened from this exact
+      // recovery before replacing it; a canonical cloud view never has that
+      // handle.
       return { stored: false, handle: existing, blockedByExistingRecovery: true };
     }
   }
