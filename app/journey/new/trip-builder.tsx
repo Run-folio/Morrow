@@ -159,7 +159,7 @@ function traceStagingTripSync(event: string, details: StagingTripSyncTraceDetail
   if (typeof window === "undefined" || window.location.hostname !== "staging.morrovia.com") return;
   // Staging-only diagnostics deliberately exclude trip, account and request
   // data. Write IDs and revisions are opaque coordination tokens.
-  console.info("[Morrovia staging trip sync]", event, details);
+  console.info(`[Morrovia staging trip sync] ${event} ${JSON.stringify(details)}`);
 }
 
 const suggestionsFor = (stop?: Stop) => {
