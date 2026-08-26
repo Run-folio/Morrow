@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BedDouble, Compass, Luggage, Sparkles } from "lucide-react";
+import { ArrowRight, BedDouble, Compass, Globe2, Luggage, MapPin, Plane, Route, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import HomeTripStarter from "./home-trip-starter";
@@ -33,6 +33,19 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
         <h1><span className={styles.heroTitleLead}>{text.titleLead}</span><span className={styles.heroTitleLine}>{text.titleMiddle} <span className={styles.heroTitleEmphasis}>{text.titleEmphasis}</span></span></h1>
         <p className={styles.lede}>{text.ledeLead}<br /><strong>{text.ledeBrand}</strong>{text.ledeTail}</p>
         <HomeTripStarter />
+      </div>
+      <div className={styles.heroRoute} aria-label={text.exploreJapan}>
+        <img className={styles.heroRouteMap} src="/journey/illustrations/southeast-asia-route-hero-v3.png" alt="Watercolor route illustration from Bangkok to Siem Reap, Phnom Penh and Ho Chi Minh City" />
+        <div className={styles.heroRouteStrip}>
+          <div><b>1</b><span><strong>{text.bangkok}</strong><small>3 {text.nights}</small></span></div>
+          <em><Plane aria-hidden="true" /> {text.flightOne}</em>
+          <div><b>2</b><span><strong>{text.siemReap}</strong><small>3 {text.nights}</small></span></div>
+          <em>{text.road}</em>
+          <div><b>3</b><span><strong>{text.phnomPenh}</strong><small>2 {text.nights}</small></span></div>
+          <em><Plane aria-hidden="true" /> {text.flightTwo}</em>
+          <div><b>4</b><span><strong>{text.hoChiMinh}</strong><small>3 {text.nights}</small></span></div>
+          <p><Sparkles aria-hidden="true" /> {text.totalNights}<i>•</i> <Route aria-hidden="true" /> {text.transfers}<i>•</i> <Globe2 aria-hidden="true" /> {text.countries}<i>•</i> <MapPin aria-hidden="true" /> {text.stops}</p>
+        </div>
       </div>
     </section> : null}
     {showTools ? <section className={styles.tools}>

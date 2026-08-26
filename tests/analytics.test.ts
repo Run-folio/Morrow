@@ -168,6 +168,10 @@ test("commercial click reporting maps either established event to one stable KPI
     partner: "omio", placement: "itinerary_transfer", tripId: "trip-123", transferId: "leg-456",
     originStopId: "stop-1", destinationStopId: "stop-2",
   });
+  const tripCom = normalizeCommercialOutboundClick("affiliate_click", {
+    category: "accommodation", provider: "trip.com", trip_id: "trip-123", stop_id: "stop-456",
+    placement: "trip_prep_accommodation", workspace_view: "prep",
+  });
   assert.deepEqual(booking, {
     canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "booking_com",
     placement: "itinerary_accommodation", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "itinerary",
@@ -176,7 +180,11 @@ test("commercial click reporting maps either established event to one stable KPI
     canonical_event: "commercial_outbound_click", source_event: "affiliate_link_clicked", partner: "omio",
     placement: "itinerary_transfer", category: "transport", trip_id: "trip-123", transfer_id: "leg-456",
   });
-  assert.equal([booking, omio].filter(Boolean).length, 2, "each source click becomes one KPI record, never one per property");
+  assert.deepEqual(tripCom, {
+    canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "trip_com",
+    placement: "trip_prep_accommodation", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "prep",
+  });
+  assert.equal([booking, omio, tripCom].filter(Boolean).length, 3, "each source click becomes one KPI record, never one per property");
   assert.equal(JSON.stringify(omio).includes("stop-1"), false, "origin/destination stop IDs are not part of the reporting contract");
 });
 

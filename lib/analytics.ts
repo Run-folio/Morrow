@@ -10,7 +10,7 @@ type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
 
-export type CommercialOutboundPartner = "booking_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
+export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
 export type CommercialOutboundPlacement = "home_footer" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "overview_next_action" | "map_stay_finder" | "unknown_legacy";
 export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activity" | "car_rental" | "flight" | "other";
 export type CommercialOutboundClick = {
@@ -120,10 +120,11 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
   const sourcePartner = String(properties.partner ?? properties.provider ?? "").trim().toLocaleLowerCase();
   const partner: CommercialOutboundPartner = sourcePartner === "booking.com" || sourcePartner === "booking-demand"
     ? "booking_com"
-    : sourcePartner === "saily" ? "saily"
-      : sourcePartner === "omio" ? "omio"
-        : sourcePartner === "viator" ? "viator"
-          : sourcePartner ? "configured_partner" : "unknown_legacy";
+    : sourcePartner === "trip.com" ? "trip_com"
+      : sourcePartner === "saily" ? "saily"
+        : sourcePartner === "omio" ? "omio"
+          : sourcePartner === "viator" ? "viator"
+            : sourcePartner ? "configured_partner" : "unknown_legacy";
   const sourcePlacement = String(properties.placement ?? "").trim();
   const placement: CommercialOutboundPlacement = sourcePlacement === "home_footer" ? "home_footer"
     : sourcePlacement === "trip_readiness" ? "trip_readiness"

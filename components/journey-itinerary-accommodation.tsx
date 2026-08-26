@@ -61,7 +61,7 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
           </div>
           {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></button></div></> : <div className={styles.stayActions}>
             <button type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></button>
-            {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "itinerary_accommodation", workspace_view: "itinerary" }); }}>Check availability <ArrowUpRight /></a> : null}
+            {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "itinerary_accommodation", workspace_view: "itinerary" }); }}>{action.cta} <ArrowUpRight /></a> : null}
           </div>}
         </article>;
       })}

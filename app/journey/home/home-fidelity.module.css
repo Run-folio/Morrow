@@ -1,17 +1,15 @@
 .promptCard {
-  padding: 38px 34px 46px !important;
+  padding: 18px !important;
   overflow: hidden !important;
 }
 
 .promptField {
   display: grid !important;
-  box-sizing: border-box;
-  height: 252px !important;
-  min-height: 252px !important;
-  gap: 0 !important;
-  padding: 26px !important;
+  min-height: 0 !important;
+  gap: 10px !important;
+  padding: 14px !important;
   border: 1px solid #d9d6ef !important;
-  border-radius: 22px !important;
+  border-radius: 12px !important;
   background: #fff !important;
 }
 
@@ -25,10 +23,9 @@
   resize: vertical !important;
 }
 
-.promptTextareaField { display: flex; min-height: 100%; flex-direction: column; align-items: flex-start; }
-.voiceInput { position: static; margin-top: 20px; }
-.voiceInput :global(button) { min-width: 138px; min-height: 72px !important; padding: 0 24px !important; border-radius: var(--morrovia-control-radius, 10px); font-size: 18px !important; gap: 11px; }
-.voiceInput :global(button svg) { width: 20px !important; height: 20px !important; }
+.promptTextareaField { position: relative; }
+.voiceInput { position: absolute; right: 10px; bottom: 8px; left: auto; z-index: 1; }
+.promptTextareaField textarea { padding-bottom: 44px !important; }
 
 .promptHelp { display: grid; gap: 3px; }
 .promptHelp p,
@@ -48,7 +45,7 @@
   align-items: flex-start;
   justify-content: flex-end;
   gap: 12px;
-  padding-top: 24px;
+  padding-top: 2px;
 }
 
 .travelStyle {
@@ -100,23 +97,22 @@
 
 .promptAction button { white-space: nowrap; }
 
-.promptAttributes { display: grid; gap: 8px; margin-top: 18px; }
+.promptAttributes { display: grid; gap: 8px; margin-top: 0; }
 
-.attributeActions { display: flex; flex-wrap: wrap; gap: 12px; }
+.attributeActions { display: flex; flex-wrap: wrap; gap: 7px; }
 
 .attributeActions button,
 .interestPanel button {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  min-height: 60px;
-  height: 62px;
-  padding: 0 34px;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
   border: 1px solid var(--morrovia-line, #d9d6ef);
   border-radius: 999px;
   background: var(--morrovia-paper, #fbfaff);
   color: var(--morrovia-ink, #17106f);
-  font: 700 16px/1 var(--morrovia-ui, Arial, sans-serif);
+  font: 650 11px/1 var(--morrovia-ui, Arial, sans-serif);
   cursor: pointer;
 }
 
@@ -127,7 +123,7 @@
   background: var(--morrovia-lilac, #f2f0ff);
 }
 
-.attributeActions svg { width: 23px; height: 23px; color: var(--morrovia-signal, #f42b7a); }
+.attributeActions svg { width: 15px; height: 15px; color: var(--morrovia-signal, #f42b7a); }
 
 .attributePanel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .attributePanel label,
@@ -172,20 +168,14 @@
 
 @media (max-width: 720px) {
   .promptCard { padding: 18px !important; }
-  .promptField { height: 220px !important; min-height: 220px !important; padding: 18px !important; border-radius: 15px !important; }
+  .promptField { padding: 13px !important; }
   .promptFooter { align-items: stretch; flex-direction: column; }
   .promptAction { width: 100%; }
   .promptAction button { width: 100%; }
   .travelStyleChips span { font-size: 10px; }
-  .voiceInput { margin-top: 14px; }
-  .voiceInput :global(button) { min-width: 0; min-height: 44px !important; height: 44px; padding: 0 14px !important; font-size: 12px !important; gap: 7px; }
-  .voiceInput :global(button svg) { width: 16px !important; height: 16px !important; }
+  .voiceInput { right: 8px; bottom: 8px; left: auto; }
   .promptExamples > div { display: grid; grid-template-columns: 1fr; }
   .attributePanel { grid-template-columns: 1fr; }
-  .attributeActions { gap: 8px; }
-  .attributeActions button { min-height: 44px; height: 44px; padding: 0 11px; gap: 6px; font-size: 11px; }
-  .attributeActions svg { width: 16px; height: 16px; }
-  .promptFooter { padding-top: 20px; }
   .routeImage { height: 218px !important; }
   .proofArtwork { height: 184px !important; }
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
@@ -193,10 +183,10 @@
 }
 
 @media (max-width: 430px) {
-  .promptCard { padding: 18px !important; }
-  .promptField { gap: 0 !important; padding: 16px !important; }
+  .promptCard { padding: 14px !important; }
+  .promptField { gap: 8px !important; padding: 12px !important; }
   .promptHelp p { font-size: 12px; }
   .promptHelp span,
   .promptExamples { display: none; }
-  .promptTextareaField textarea { min-height: 96px !important; }
+  .promptTextareaField textarea { min-height: 102px !important; }
 }

@@ -451,6 +451,157 @@ final result: passed
 
 ---
 
+# Builder Step 2 — Dates and nights QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Downloads/ChatGPT Image Aug 26, 2026, 01_22_16 PM.png` (1448 × 1086 px, expanded route/timing state) and `/Users/shaun/Downloads/ChatGPT Image Aug 26, 2026, 01_46_51 PM.png` (1448 × 1086 px, compact warning state).
+- **Implementation:** `http://localhost:3000/journey/new?homeDraft=1`, backed by `app/journey/new/trip-builder.tsx` and `app/journey/new/trip-builder.module.css`.
+- **Browser-rendered evidence:** `artifacts/builder-time-step-approved/after-320.png`, `after-390.png`, `after-768.png`, `after-1024.png`, `after-1440.png`, and `warning-expanded-1440.png`.
+- **Combined comparison:** `artifacts/builder-time-step-approved/design-comparison.png`; both source and implementation were normalized into 720 × 540 cells. The implementation cells use the populated builder frame rather than the in-app Browser's unused host-canvas area.
+- **Responsive viewports:** 320 × 812, 390 × 844, 768 × 1024, 1024 × 900, and 1440 × 900 CSS px. The Browser host captured a larger DPR-scaled canvas, so `after-*-focused.png` files crop the tested viewport only; layout decisions were checked against semantic DOM and rendered CSS geometry, not inferred from PNG dimensions.
+- **States:** truthful three-stop draft; default factual state with route insights expanded; disclosures collapsed/reopened; blocking zero-night conflict expanded and focused; restored valid allocation; return to Places and back to Dates and nights with state preserved.
+
+## Capability and product-truth boundary
+
+- Dates, travellers, budget preference, stop order, night allocation, locks/constraints, scored route candidates, transfer estimates, usable time, persistence, and final validation come directly from existing builder/planner data.
+- Average transfer, total usable days, flagged backtracking count, and candidate improvement are safely derived from those existing values.
+- Live fares, live timetables, and unvalidated alternative routes are unavailable and are not shown. When no scored, constraint-safe candidate can be applied, the warning offers **Review route** back to Places instead of fabricating an alternative.
+
+## Required fidelity surfaces
+
+- **Typography and copy:** exact STEP 2 OF 2 lockup, source-aligned display headline scale, exact supporting sentence, Morrovia display/UI/meta roles, and no decorative underline or period.
+- **Layout and rhythm:** shared two-step shell, compact dates/travellers/budget row, allocation line, compact four-column nights table, expandable route intelligence, warning disclosure, persistent footer, and desktop trip-at-a-glance rail.
+- **Colors and components:** existing Morrovia semantic ink, signal, action, line, tint, warning, success, focus, button, icon, radius, and shadow tokens remain the implementation source.
+- **Data and imagery:** no decorative illustration was introduced. Every visible route claim is grounded in the current draft or existing planner output.
+- **Responsive behavior:** desktop keeps the reference's main/rail split; tablet stacks the rail after the main content; 320/390 use stacked controls and stop rows with visible transfer, night, usable-time, and reorder affordances. Night and reorder controls retain 44 px touch targets.
+- **Accessibility:** semantic table roles and column headers, specific night-control labels, keyboard stop reordering, disclosure state, blocking alert focus, native control semantics, and text labels independent of color were verified.
+
+## Full-view and focused comparison evidence
+
+- The combined desktop comparison confirms the source hierarchy: completed Places step, active Dates and nights step, compact data controls, allocation status, dense nights table, route insight disclosure, contextual warning, trip rail, and footer action.
+- The blocking comparison intentionally differs in content because the tested draft has no validated alternative candidate; it shows the required truthful **Review route** fallback and disables Build trip.
+- Focused 320, 390, 768, 1024, and 1440 captures confirm there is no page-level horizontal overflow, clipped table content, overlap between the footer and builder content, or inaccessible mobile control.
+
+## Interaction and browser evidence
+
+- Opened and dismissed the date picker; changed travellers 2 → 3 → 2; opened and dismissed budget choices.
+- Collapsed and reopened Route insights.
+- Reordered stops with ArrowDown and restored them with state intact.
+- Returned to Places and then Dates and nights; starting point, stops, dates, nights, travellers, and budget state remained intact.
+- Set Edinburgh to zero nights: the blocking warning expanded, received focus, displayed the existing validator reason, exposed Review route, and disabled Build trip. Restoring nights removed the warning and re-enabled Build trip.
+- The rendered page showed no Next.js runtime error overlay or browser-visible application error during the checked states.
+
+## Comparison history
+
+1. The first implementation comparison found a P2 desktop typography mismatch: the headline was materially larger than the approved source. Its clamp was reduced to the source-aligned 42–48 px range.
+2. The first 390 px pass found a P2 mobile hierarchy issue: a legacy flex `order` moved allocation status below the table and narrow grid tracks cramped night controls. The Step 2 responsive rules now restore reading order and reserve explicit width for 44 px night/reorder controls.
+3. The refreshed combined and responsive comparisons show no remaining actionable P0, P1, or P2 visual, interaction, state, or accessibility mismatch.
+
+## Findings
+
+- No actionable P0, P1, or P2 issue remains.
+- Accepted state difference: evidence uses the real three-stop local draft instead of the reference's illustrative five-stop Spain draft.
+- Accepted capability difference: the warning does not invent or display unvalidated alternatives when the existing route engine has none it can safely apply.
+
+final result: passed
+
+---
+
+# Homepage two-column hero restoration QA
+
+## Comparison target
+
+- **Source visual truth:** `/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/TemporaryItems/NSIRD_screencaptureui_FxUear/Screenshot 2026-08-26 at 1.19.07 PM.png` (2994 × 1450 px, Retina desktop capture).
+- **Implementation:** `http://localhost:3000/journey/home`.
+- **Before evidence:** `artifacts/home-hero-two-column/before-single-column.png` (1132 × 1294 px), showing the route illustration and practical trip strip absent from the hero.
+- **After evidence:** `artifacts/home-hero-two-column/after-desktop-1440.png` (1408 × 900 capture from a 1440 × 900 CSS viewport), `after-tablet-768.png`, `after-mobile-390.png`, and `after-mobile-320.png`.
+- **Combined comparison:** `artifacts/home-hero-two-column/comparison-source-after-desktop.png` places the approved screenshot and final browser render in one image.
+- **State:** English guest homepage, default empty trip prompt, desktop and responsive navigation states.
+
+## Full-view and focused comparison evidence
+
+- The combined desktop comparison confirms the source hierarchy is restored: compact prompt-led left column, free-floating four-stop watercolor route on the right, and a practical itinerary strip below the illustration.
+- The focused 390px capture confirms the same two content sides are preserved as a deliberate stack. The route artwork, all four cities, nights, transfers, countries and stop totals remain readable without document overflow.
+- Browser geometry reported document width equal to viewport width at 1440, 768, 390 and 320px. The right-side illustration and strip remain fully inside their responsive container.
+
+## Required fidelity surfaces
+
+- **Fonts and typography:** existing Morrovia display, UI and metadata fonts remain unchanged. The headline retains its two-line wrap, pink underline and current production copy.
+- **Spacing and layout rhythm:** desktop uses the approved 37/63 prompt-to-route balance. The prompt was returned to compact field, pill and footer proportions so it no longer competes with or pushes below the route preview.
+- **Colors and visual tokens:** existing Morrovia ink, signal, action, paper, line, lilac and shadow tokens are retained.
+- **Image quality and asset fidelity:** the existing high-resolution `southeast-asia-route-hero-v3.png` asset is restored without regeneration, stretching or CSS approximation. It uses intrinsic aspect-ratio sizing and remains sharp at each tested width.
+- **Copy and content:** Bangkok, Siem Reap, Phnom Penh and Ho Chi Minh City plus 11 nights / 3 transfers / 3 countries / 4 stops match the supplied reference and localized copy model.
+- **Interaction and accessibility:** voice, date, traveller, interest and shared primary-button behavior are unchanged. Add dates exposes two date inputs with `aria-expanded`; the typed prompt remains editable. Browser console reported no errors.
+
+## Comparison history
+
+1. **P1:** the initial build rendered only the oversized editorial left column because the previous commit removed the route markup and all `.heroRoute*` layout rules. The existing watercolor asset remained in `public/` but had no consumer. Restored the shared hero route structure, stop strip and icon-backed totals.
+2. **P2:** the first restoration retained the single-column Figma prompt scale, leaving an excessively tall field and oversized pills beside the route. Restored the compact homepage prompt geometry while retaining the shared Storybook button component and all form behavior.
+3. The final browser pass confirms the two-column source composition at desktop, a complete stacked composition at 768/390/320, zero horizontal overflow, working prompt controls and no console errors.
+
+## Findings
+
+No actionable P0, P1 or P2 mismatch remains. The production navigation and live homepage sections below the hero intentionally remain unchanged from the current Morrovia application.
+
+final result: passed
+
+---
+
+# Homepage prompt → Builder Step 1 handoff design QA
+
+- Approved visual source: `/Users/shaun/Downloads/ChatGPT Image Aug 26, 2026, 12_40_36 PM.png`
+- Current-state evidence: `/Users/shaun/Desktop/Screenshot 2026-08-26 at 11.31.55 AM.png`
+- Local implementation: `http://localhost:3000/journey/new?homeDraft=1`
+- Final desktop capture: `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/after/desktop-1440.png`
+- Final 390px capture: `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/after/mobile-390.png`
+- Combined comparison input: `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/comparison/approved-vs-implemented.png`
+- Additional responsive evidence: `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/after/mobile-320.png`, `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/after/tablet-768.png`, and `/Users/shaun/Documents/Morrovia/artifacts/builder-handoff-approved/after/tablet-1024.png`
+- State evidence: `advanced-fixed-plan-1440.png`, `route-recommendation-1440.png`, `blocking-place-1440.png`, and `direct-new-trip-390.png` in the same `after` directory
+- Source dimensions: 1446 × 1087 px
+- Desktop implementation viewport: 1440 × 1087 CSS px; capture is 1408 × 1087 px because the in-app browser reserves 32 px for its own surface chrome
+- Verified viewports: 320, 390, 768, 1024, and 1440 CSS px
+- Primary state: homepage prompt handoff, English, Lisbon origin, four Spain stops, two travellers, 18-day preference, resolved place review, healthy route
+
+## Findings
+
+No actionable P0, P1, or P2 typography, layout, token, image, responsive, accessibility, or interaction issue remains.
+
+- Typography and hierarchy: Step 1 uses the approved heading and supporting copy, with the title lockup above the first review control. The homepage handoff no longer repeats intake messaging.
+- Layout and rhythm: the compact stepper, individual Starting point and Stops cards, compact optional preference treatment, collapsed Advanced row, quiet Route Check, illustration band, saved state, CTA, and concise rail follow the approved composition.
+- Responsive behavior: document width equals viewport width at every verified size. At 320px all stop names remain fully legible, touch controls remain at least 36 × 44 px, and the interaction order remains origin → stops → preferences → Advanced → Route Check → CTA → summary.
+- Asset quality: `builder-route-watercolor.png` is a 1881 × 836 raster export rendered with intrinsic aspect ratio and `object-fit: cover`; it is never stretched. It contains a generic Morrovia route landscape, four route markers, and no landmark-specific promise.
+- Shared behavior: direct New trip, refresh, curated route entry, fixed plans, route-order choices, unresolved-place gating, persistence messaging, and Step 2 use the existing canonical state and mutations.
+
+## Interaction, accessibility, and state evidence
+
+- Homepage submission was exercised through the live prompt and arrived at `/journey/new?homeDraft=1`; no raw prompt is repeated on the review screen.
+- Advanced exposes `aria-expanded`, is collapsed by default, preserves a saved fixed plan, and changes the route status to `Your fixed plans are protected.`
+- Healthy routes show exactly `Your route flows well.`; a deliberately inefficient route exposes both `Use this order` and `Keep my order`.
+- Ambiguous Granada evidence remained visible and disabled `Set dates & nights` until the place was resolved.
+- The enabled CTA advanced to the existing Step 2 `Make the time feel right.` surface.
+- Direct `/journey/new` and refresh each rendered one `Tell us the shape` heading above the prompt at desktop and 390px.
+- The curated `?route=morocco-rail` entry retained the standard Builder presentation rather than receiving homepage-handoff styling.
+- No horizontal overflow was found at 320, 390, 768, 1024, or 1440px.
+
+## Comparison history
+
+1. The legacy handoff reused the full Step 1 editor, including a second intake-style header, dense geography presentation, oversized route-decision surface, persistent footer, and long summary rail. It was replaced with a state-scoped review presentation while retaining the same canonical mutations and gates.
+2. The first responsive pass kept stop names from clipping but truncated them at 320px. The redundant mobile drag glyph was removed, move controls were compacted, and all four names now render in full.
+3. The generic Builder tablet breakpoint stacked and centered Route Check. The homepage handoff now restores the approved horizontal status treatment through 768px and retains the stacked action layout only on narrow phones.
+4. The final side-by-side comparison tightened the desktop headline and shortened the homepage-only rail to `Dates next` and city-only stop labels.
+
+## Validation and accepted differences
+
+- Focused Builder gate/layout tests, homepage route tests, browser persistence tests, analytics tests, typecheck, production build, and `git diff --check` passed.
+- The generated illustration is intentionally not a pixel clone of the approved artwork. It follows the same global watercolor route concept without inventing a recognisable destination or making the screen feel like a country-specific campaign.
+- The final evidence has an 18-day preference chip because it was derived from the real homepage prompt; the approved mock's example state omitted preferences.
+- The resolved Granada stop is appended after resolution by existing canonical place logic, so the evidence order differs from the illustrative mock while interaction and route validation remain truthful.
+
+final result: passed
+
+---
+
 # Approved homepage hero QA — Codex ready
 
 ## Comparison target

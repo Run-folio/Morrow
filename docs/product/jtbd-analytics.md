@@ -45,7 +45,7 @@ Morrovia keeps the established source events rather than migrating working CTA i
 
 | Source event | Exact trigger | Current partners | Reporting treatment |
 | --- | --- | --- | --- |
-| `affiliate_click` | A commercial CTA with a generic partner action is deliberately selected. | Booking.com/Booking Demand, Saily, configured activity, car-hire and ground-transport partners. | Included in the commercial outbound-click union. |
+| `affiliate_click` | A commercial CTA with a generic partner action is deliberately selected. | Trip.com, Booking.com/Booking Demand, Saily, configured activity, car-hire and ground-transport partners. | Included in the commercial outbound-click union. |
 | `affiliate_link_clicked` | An Omio or Viator commercial CTA is deliberately selected. | Omio, Viator. | Included in the same union; its legacy camel-case IDs are normalized only in reporting. |
 
 One CTA handler must emit **one** member of this union. Omio and Viator take their dedicated branch; all other affiliate actions take the generic branch. Non-affiliate fallbacks do not emit either event. The production normalizer, `normalizeCommercialOutboundClick`, exists only to define the reporting projection; it does not send a second event or change CTA behaviour.
@@ -55,6 +55,7 @@ One CTA handler must emit **one** member of this union. Omio and Viator take the
 | Canonical partner | Source provider/partner values |
 | --- | --- |
 | `booking_com` | `booking.com`, `booking-demand` |
+| `trip_com` | `trip.com` |
 | `saily` | `saily` |
 | `omio` | `omio` |
 | `viator` | `viator` |

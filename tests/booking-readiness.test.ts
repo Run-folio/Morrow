@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { affiliatePartners, buildBookingReadiness, omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
+import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -15,21 +15,36 @@ const trip = (): EasyTTrip => ({
   recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
 });
 
-test("creates contextual accommodation, activity, flight and connectivity actions from stable itinerary data", () => {
+test("creates Trip.com accommodation, activity, flight and connectivity actions from stable itinerary data", () => {
   const actions = buildBookingReadiness(trip());
   assert.equal(actions.filter((action) => action.category === "accommodation").length, 2);
   assert.equal(actions.some((action) => action.category === "activity" && action.stopId === "paris"), true);
   assert.equal(actions.some((action) => action.category === "flight"), true);
   assert.equal(actions.some((action) => action.category === "connectivity"), true);
-  assert.match(actions.find((action) => action.id === "stay-paris")?.href ?? "", /checkin=2026-10-01/);
+  const stay = actions.find((action) => action.id === "stay-paris");
+  assert.equal(stay?.href, affiliatePartners.tripCom.accommodationUrl);
+  assert.equal(stay?.provider, "trip.com");
+  assert.equal(stay?.cta, "Find accommodation on Trip.com");
+  assert.equal(stay?.affiliate, true);
 });
 
-test("marks configured partner actions without claiming a live price", () => {
-  const actions = buildBookingReadiness(trip(), { bookingUrl: "https://partner.example/stays", sailyUrl: "https://partner.example/esim" });
+test("the generic Trip.com URL is never enriched with trip context", () => {
+  const source = trip();
+  const stop = source.stops[0]!;
+  const href = getAccommodationBookingUrl({
+    stop,
+    dates: { checkIn: "2026-10-01", checkOut: "2026-10-04" },
+    travellers: 2,
+  });
+  assert.equal(href, "https://www.trip.com/t/pdAWQqi56W2");
+  assert.equal(new URL(href).search, "");
+
+  const actions = buildBookingReadiness(source, { sailyUrl: "https://partner.example/esim" });
   const stay = actions.find((action) => action.id === "stay-paris");
   assert.equal(stay?.affiliate, true);
-  assert.equal(stay?.provider, "booking.com");
+  assert.equal(stay?.provider, "trip.com");
   assert.equal(stay?.livePrice, false);
+  assert.equal(stay?.href, affiliatePartners.tripCom.accommodationUrl);
 });
 
 test("uses the approved Viator general activities URL without adding trip parameters", () => {
@@ -42,6 +57,11 @@ test("uses the approved Viator general activities URL without adding trip parame
   assert.equal(action?.provider, "viator");
   assert.equal(action?.cta, "Find activities on Viator");
   assert.equal(action?.affiliate, true);
+});
+
+test("keeps existing Omio and Viator partner destinations unchanged", () => {
+  assert.equal(affiliatePartners.omio.transportUrl, "https://omio.sjv.io/2RBeqD");
+  assert.equal(affiliatePartners.viator.activitiesUrl, "https://www.viator.com/?pid=P00315646&mcid=42383&medium=link&campaign=morrovia-general-activities");
 });
 
 test("does not offer flights while a blocking schedule conflict remains", () => {

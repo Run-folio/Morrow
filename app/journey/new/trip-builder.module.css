@@ -626,3 +626,529 @@
   .locationDialog{max-height:calc(100svh - var(--morrovia-mobile-dock-offset) - 32px);padding:20px;border-radius:16px}
   .routeExplanation{grid-template-columns:1fr;padding:14px}.routeExplanation>svg{margin:0}
 }
+
+/* Approved homepage-prompt handoff. This state reuses the builder's canonical
+   mutations and validation while presenting the interpreted brief as a calm,
+   concise review rather than a second intake form. */
+.homepageHandoff {
+  --builder-rail-width: clamp(314px, 24.5vw, 360px);
+  width: 100%;
+  max-width: 1440px;
+  min-height: calc(100svh - 24px);
+  margin: 12px auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--morrovia-paper);
+  box-shadow: 0 18px 52px rgba(23, 16, 111, .07);
+}
+.homepageHandoff .steps {
+  min-height: 108px;
+  padding: 22px 13% 17px;
+  background: rgba(255, 255, 255, .66);
+}
+.homepageHandoff .steps:before { top: 39px; }
+.homepageHandoff .stepTab {
+  display: grid;
+  grid-template-rows: 36px auto;
+  justify-items: center;
+  align-items: start;
+  gap: 7px;
+  min-height: 68px;
+  padding: 0;
+  background: transparent;
+  text-align: center;
+}
+.homepageHandoff .stepTab > b {
+  width: 34px;
+  height: 34px;
+  background: var(--morrovia-paper);
+  font-size: 11px;
+}
+.homepageHandoff .stepTab > span { display: block; text-align: center; }
+.homepageHandoff .stepTab > span > span { font-size: 14px; font-weight: 750; }
+.homepageHandoff .stepTab small { display: none; }
+.homepageHandoff .stepTabOn > b { background: var(--signal); }
+.homepageHandoff .wizardBody,
+.homepageHandoff .wizardBody:has(.placesSummaryRail) {
+  grid-template-columns: minmax(0, 1fr) var(--builder-rail-width);
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, .38);
+  box-shadow: none;
+}
+.homepageHandoff .pane {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 30px 64px 0;
+}
+.homepageHandoff .stack { gap: 16px; }
+.homepageHandoff .stepHero { gap: 8px; margin: 0 0 10px; }
+.homepageHandoff .stepHero p { font-size: 10px; letter-spacing: .14em; }
+.homepageHandoff .stepHero h1 {
+  max-width: 760px;
+  font-size: clamp(42px, 3.33vw, 48px);
+  line-height: 1;
+  letter-spacing: -.048em;
+}
+.homepageHandoff .stepHero span {
+  max-width: 760px;
+  color: var(--morrovia-ink-soft);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.homepageHandoff .tripUnderstood {
+  display: grid;
+  gap: 16px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.homepageHandoff .placesSection,
+.homepageHandoff .tripUnderstood .intentPanel,
+.homepageHandoff .routeCheck {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .86);
+  box-shadow: none;
+}
+.homepageHandoff .placesSection {
+  gap: 14px;
+  padding: 18px 24px;
+}
+.homepageHandoff .handoffOrigin {
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 88px;
+}
+.homepageHandoff .handoffSectionTitle { color: var(--ink); font-size: 15px; }
+.homepageHandoff .handoffOrigin .originChip { min-height: 44px; justify-self: start; }
+.homepageHandoff .handoffEdit,
+.homepageHandoff .placesSectionHead > button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink);
+  font: 700 12px var(--morrovia-ui);
+  cursor: pointer;
+}
+.homepageHandoff .handoffEdit:hover,
+.homepageHandoff .placesSectionHead > button:hover { border-color: var(--morrovia-signal); color: var(--morrovia-signal); }
+.homepageHandoff .handoffEdit svg,
+.homepageHandoff .placesSectionHead > button svg { width: 15px; height: 15px; }
+.homepageHandoff .handoffOrigin .inlineEditor,
+.homepageHandoff .handoffOrigin .hintError { grid-column: 1 / -1; }
+.homepageHandoff .placesSectionHead { align-items: flex-start; }
+.homepageHandoff .placesSectionHead > div { display: grid; gap: 4px; }
+.homepageHandoff .placesSectionHead > div > strong { color: var(--ink); font-size: 15px; }
+.homepageHandoff .placesSectionHead > div > small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.handoffStops { display: flex; flex-wrap: wrap; gap: 8px; }
+.handoffStop {
+  display: grid;
+  grid-template-columns: 14px 26px minmax(52px, auto) auto;
+  align-items: center;
+  min-height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  cursor: grab;
+}
+.handoffStop:active { cursor: grabbing; }
+.handoffStopDragging { opacity: .48; }
+.handoffStop > svg { width: 14px; height: 14px; margin-left: 10px; color: #8883d3; }
+.handoffStop > b {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--morrovia-lilac);
+  font: 700 12px var(--morrovia-display);
+}
+.handoffStop > span:not(.handoffStopMoves) { padding: 0 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.handoffStopRemove,
+.handoffStopMoves button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.handoffStopRemove:hover,
+.handoffStopMoves button:hover:not(:disabled) { background: var(--morrovia-lilac); color: var(--morrovia-signal); }
+.handoffStopRemove:disabled,
+.handoffStopMoves button:disabled { color: var(--muted); cursor: not-allowed; opacity: .5; }
+.handoffStopRemove svg,
+.handoffStopMoves svg { width: 14px; height: 14px; }
+.handoffStopMoves { display: none; }
+.homepageHandoff .pickedPreferences {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  border: 0;
+}
+.homepageHandoff .pickedPreferences > strong { flex: none; }
+.homepageHandoff .pickedPreferences > div { gap: 6px; }
+.homepageHandoff .pickedPreferences span { min-height: 30px; line-height: 30px; }
+.homepageHandoff .tripUnderstood .intentPanel {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.homepageHandoff .tripUnderstood .intentPanel:has(.detailsToggle + *) {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .86);
+}
+.homepageHandoff .tripUnderstood .detailsToggle {
+  display: flex;
+  width: 100%;
+  min-height: 82px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+}
+.homepageHandoff .detailsToggle > span { display: grid; gap: 5px; }
+.homepageHandoff .detailsToggle b { font-size: 15px; }
+.homepageHandoff .detailsToggle small { color: var(--morrovia-ink-soft); font-size: 12px; font-weight: 500; line-height: 1.35; }
+.homepageHandoff .detailsToggle > svg { width: 18px; height: 18px; flex: none; }
+.homepageHandoff .advancedContent { display: grid; gap: 15px; padding: 20px 24px; border-top: 1px solid var(--line); background: #fcfbff; }
+.homepageHandoff .routeCheck {
+  box-sizing: border-box;
+  min-height: 84px;
+  align-items: center;
+  padding: 14px 24px;
+}
+.homepageHandoff .routeCheck > .handoffRouteStatus { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: 18px; }
+.homepageHandoff .handoffRouteStatus > div { display: grid; gap: 7px; }
+.homepageHandoff .handoffRouteStatus p { margin: 0; }
+.homepageHandoff .handoffRouteStatus h3 { font-size: 16px; letter-spacing: -.02em; }
+.homepageHandoff .handoffRouteStatus span { font-size: 12px; }
+.routeSuccessIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: #d9f5d8;
+  color: #18964d;
+}
+.routeSuccessIcon > svg { width: 20px; height: 20px; }
+.homepageHandoff .handoffIllustration {
+  display: block;
+  width: calc(100% + 128px);
+  height: 214px;
+  margin: -4px -64px 0;
+  object-fit: cover;
+  object-position: center bottom;
+}
+.homepageHandoff .handoffActions {
+  display: flex;
+  min-height: 90px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  margin: 0 -64px;
+  padding: 14px 48px;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, .72);
+}
+.handoffSaveState { display: inline-flex; align-items: center; gap: 8px; color: var(--morrovia-ink-soft); font-size: 12px; font-weight: 600; }
+.handoffSaveState svg { width: 16px; height: 16px; color: var(--morrovia-action); }
+.handoffCta { min-width: 236px; }
+.homepageHandoff .placesSummaryRail {
+  min-height: 100%;
+  gap: 17px;
+  padding: 38px 40px;
+  background: #faf9ff;
+}
+.homepageHandoff .placesSummaryStat { align-items: center; }
+.homepageHandoff .placesSummaryStat > svg { box-sizing: content-box; }
+.homepageHandoff .placesSummaryStat b { font-size: 14px; }
+.homepageHandoff .placesSummaryStops { margin-top: 4px; padding-top: 18px; }
+.homepageHandoff .placesSummaryStops li { padding: 11px 0; }
+.homepageHandoff .placesSummaryStops strong { font-size: 13px; }
+
+@media(max-width:1024px){
+  .homepageHandoff { --builder-rail-width: 300px; }
+  .homepageHandoff .pane { padding-inline: 40px; }
+  .homepageHandoff .handoffIllustration { width: calc(100% + 80px); margin-inline: -40px; }
+  .homepageHandoff .handoffActions { margin-inline: -40px; padding-inline: 34px; }
+  .homepageHandoff .placesSummaryRail { padding-inline: 26px; }
+}
+
+@media(max-width:840px){
+  .homepageHandoff { width: calc(100% - 16px); margin: 8px auto; }
+  .homepageHandoff .wizardBody,
+  .homepageHandoff .wizardBody:has(.placesSummaryRail) { grid-template-columns: 1fr; }
+  .homepageHandoff .pane { padding: 28px 28px 0; }
+  .homepageHandoff .placesSummaryRail {
+    display: grid;
+    min-height: 0;
+    padding: 28px;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .homepageHandoff .handoffIllustration { width: calc(100% + 56px); margin-inline: -28px; }
+  .homepageHandoff .handoffActions { margin-inline: -28px; padding-inline: 28px; }
+  .homepageHandoff .routeCheck { align-items: center; flex-direction: row; }
+}
+
+@media(max-width:700px){
+  .homepageHandoff .steps { min-height: 90px; padding: 15px 8% 12px; }
+  .homepageHandoff .steps:before { top: 31px; }
+  .homepageHandoff .stepTab { grid-template-rows: 30px auto; min-height: 60px; }
+  .homepageHandoff .stepTab > b { width: 28px; height: 28px; }
+  .homepageHandoff .stepHero h1 { font-size: clamp(36px, 10.4vw, 46px); }
+  .homepageHandoff .stepHero span { max-width: 520px; font-size: 14px; }
+  .homepageHandoff .handoffOrigin { grid-template-columns: 1fr auto; gap: 10px; }
+  .homepageHandoff .handoffSectionTitle { grid-column: 1 / -1; }
+  .homepageHandoff .handoffOrigin .originChip { grid-column: 1; }
+  .homepageHandoff .handoffOrigin .handoffEdit { grid-column: 2; }
+  .homepageHandoff .pickedPreferences { align-items: flex-start; flex-direction: column; }
+  .homepageHandoff .handoffIllustration { height: 150px; }
+  .homepageHandoff .handoffActions { min-height: 0; flex-wrap: wrap; padding-block: 18px; }
+  .homepageHandoff .handoffActions .gate { width: 100%; order: -1; text-align: right; }
+}
+
+@media(max-width:520px){
+  .homepageHandoff { width: 100%; min-height: 100svh; margin: 0; border-inline: 0; border-radius: 0; }
+  .homepageHandoff .pane { padding: 22px 16px 0; }
+  .homepageHandoff .stepHero { margin-bottom: 6px; }
+  .homepageHandoff .stepHero h1 { max-width: 330px; }
+  .homepageHandoff .tripUnderstood { gap: 12px; }
+  .homepageHandoff .placesSection { padding: 15px 16px; }
+  .homepageHandoff .handoffOrigin { min-height: 0; }
+  .homepageHandoff .handoffOrigin .originChip { max-width: 100%; }
+  .homepageHandoff .placesSectionHead > div > small { max-width: 180px; }
+  .homepageHandoff .placesSectionHead > button { flex: none; padding-inline: 10px; white-space: nowrap; }
+  .handoffStops { display: grid; grid-template-columns: 1fr; }
+  .handoffStop { grid-template-columns: 26px minmax(0, 1fr) auto auto; width: 100%; }
+  .handoffStop > svg { display: none; }
+  .handoffStop > span:not(.handoffStopMoves) { overflow: hidden; padding-inline: 4px; font-size: 12px; text-overflow: ellipsis; }
+  .handoffStopMoves { display: flex; }
+  .handoffStopRemove,
+  .handoffStopMoves button { width: 44px; }
+  .homepageHandoff .tripUnderstood .detailsToggle { min-height: 76px; padding: 14px 16px; }
+  .homepageHandoff .advancedContent { padding: 17px 16px; }
+  .homepageHandoff .routeCheck { align-items: stretch; flex-direction: column; min-height: 0; padding: 15px 16px; }
+  .homepageHandoff .routeCheckActions { width: 100%; justify-content: flex-end; }
+  .homepageHandoff .handoffIllustration { width: calc(100% + 32px); height: 126px; margin-inline: -16px; }
+  .homepageHandoff .handoffActions { justify-content: stretch; gap: 12px; margin-inline: -16px; padding: 16px; }
+  .homepageHandoff .handoffSaveState { justify-content: center; width: 100%; }
+  .homepageHandoff .handoffCta { width: 100%; min-width: 0; }
+  .homepageHandoff .placesSummaryRail { padding: 24px 20px calc(24px + var(--morrovia-mobile-dock-offset)); }
+}
+
+/* Approved Time step: one compact planning surface with progressively
+   disclosed route evidence and warnings. */
+.shellWide { width: calc(100% - 16px); max-width: 1440px; margin: 8px auto 32px; }
+.wizardBody:has(.timeSummaryRail) { grid-template-columns: minmax(0, 1fr) minmax(284px, 24%); }
+.timeStep { gap: 13px; }
+.timeStep .stepHero { gap: 7px; margin-bottom: 8px; }
+.timeStep .stepHero h2 { font-size: clamp(42px, 3.15vw, 48px); }
+.timeStep .stepHero span { color: var(--morrovia-action); font-size: 15px; }
+
+.timeControls {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(140px, .72fr) minmax(220px, 1.18fr);
+  gap: 0;
+  min-height: 72px;
+  overflow: visible;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.timeControls .dateConfirmSection { grid-column: auto; padding: 0; }
+.timeControls .dateRow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; height: 100%; }
+.timeControls .dateConfirmSection .card,
+.timeControl { min-height: 72px; padding: 12px 18px; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: transparent; }
+.timeControls .dateConfirmSection .card { height: 100%; }
+.timeControls .dateConfirmSection .card:first-child { border-radius: 9px 0 0 9px; }
+.timeControls .cardTrigger { display: grid; gap: 7px; width: 100%; min-height: 46px; text-align: left; }
+.timeControls .cardLabel,
+.timeControl > span { color: var(--morrovia-action); font: 600 11px/1.2 var(--font-geist-sans, Geist, system-ui, sans-serif); letter-spacing: 0; text-transform: none; }
+.timeControls .cardValue { display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; gap: 8px; min-height: 22px; }
+.timeControls .cardValue svg { width: 17px; height: 17px; color: var(--ink); }
+.timeControls .cardValue strong { overflow: hidden; color: var(--ink); font: 700 13px/1.2 var(--font-geist-sans, Geist, system-ui, sans-serif); text-overflow: ellipsis; white-space: nowrap; }
+.timeControl { position: relative; display: grid; align-content: center; gap: 8px; }
+.budgetControl { border-right: 0; }
+.timeInputValue { display: grid; grid-template-columns: 19px minmax(0, 1fr) 16px; align-items: center; gap: 7px; }
+.timeInputValue > svg { position: static; width: 17px; height: 17px; color: var(--ink); }
+.timeInputValue input { width: 100%; min-height: 22px; padding: 0; border: 0; appearance: textfield; background: transparent; color: var(--ink); font: 700 14px/1.2 var(--font-geist-sans, Geist, system-ui, sans-serif); outline: 0; }
+.timeInputValue input::-webkit-inner-spin-button { appearance: none; }
+.budgetValue { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.budgetValue p { overflow: hidden; color: var(--ink); font-size: 12px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.budgetValue button { flex: none; min-height: 32px; padding: 0; border: 0; background: transparent; color: var(--morrovia-action); font: 700 12px var(--font-geist-sans, Geist, system-ui, sans-serif); cursor: pointer; }
+.budgetControl .budgetChoices { position: absolute; z-index: 12; top: calc(100% + 6px); right: 0; min-width: 230px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 14px 34px rgba(20, 18, 93, .12); }
+
+.timeAllocationState { display: flex; align-items: center; gap: 9px; margin: 1px 0 0; color: var(--morrovia-action); font-size: 13px; }
+.timeAllocationState svg { width: 18px; height: 18px; color: var(--morrovia-action); }
+.timeAllocationState strong,
+.timeAllocationState b { color: inherit; font-weight: 650; }
+
+.routeTimePlanner { border-radius: 10px; }
+.routeTimePlanner > header { padding: 11px 20px; }
+.routeTimePlanner h3 { font-family: var(--font-geist-sans, Geist, system-ui, sans-serif); font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.routeTimeColumns,
+.routeTimeRow { grid-template-columns: minmax(170px, 1.25fr) minmax(150px, 1fr) minmax(104px, .58fr) minmax(104px, .58fr); gap: 14px; padding-right: 20px; padding-left: 56px; }
+.routeTimeColumns { min-height: 35px; color: var(--morrovia-action); }
+.routeTimeRow { min-height: 52px; }
+.routeGrip { left: 10px; width: 44px; height: 44px; border: 0; background: transparent; color: var(--morrovia-action); }
+.routeGrip:focus-visible { border-radius: 7px; outline: 2px solid var(--signal); outline-offset: -2px; }
+.routeStopName { gap: 9px; }
+.routeStopName > b { width: 26px; height: 26px; border: 0; background: var(--morrovia-lilac); font-family: var(--font-geist-sans, Geist, system-ui, sans-serif); font-size: 12px; }
+.routeStopName strong { font-family: var(--font-geist-sans, Geist, system-ui, sans-serif); font-size: 13px; font-weight: 700; letter-spacing: 0; }
+.routeStopName small,
+.routeTransferSummary small { font-size: 10px; }
+.routeTransferSummary strong { font-size: 12px; }
+.nightsControl { grid-template-columns: 34px 24px 34px; grid-template-rows: auto; gap: 5px; }
+.nightsControl button { width: 34px; height: 34px; border-radius: 8px; }
+.nightsControl strong { font-size: 14px; }
+.usableTime { justify-content: flex-start; font-size: 12px; }
+.routeTimeRow:not(:last-child) .routeStopName > b:after { display: none; }
+
+.routeInsights,
+.timingWarning { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.timingWarning { border-color: var(--morrovia-warning-line, #eccb96); background: var(--morrovia-warning-soft, #fffaf2); }
+.timingWarningBlocking { border-color: var(--signal); }
+.timingWarning:focus { outline: 3px solid color-mix(in srgb, var(--signal) 24%, transparent); outline-offset: 3px; }
+.disclosureHead { display: grid; grid-template-columns: 24px minmax(0, 1fr) 20px; align-items: center; gap: 11px; width: 100%; min-height: 62px; padding: 11px 18px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.disclosureHead > svg { width: 20px; height: 20px; color: var(--morrovia-action); }
+.timingWarning .disclosureHead > svg:first-child { color: var(--morrovia-warning, #a56f10); }
+.disclosureHead > svg:last-child { transition: transform .18s ease; }
+.disclosureHead[aria-expanded="true"] > svg:last-child { transform: rotate(90deg); }
+.disclosureHead > span { display: grid; gap: 3px; min-width: 0; }
+.disclosureHead strong { font-size: 13px; }
+.disclosureHead small { overflow: hidden; color: var(--morrovia-action); font-size: 11px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.routeInsightContent { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 14px 14px; }
+.routeInsightContent article { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; min-height: 96px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.routeInsightContent article > svg { width: 20px; height: 20px; color: var(--signal); }
+.routeInsightContent article:nth-child(2) > svg { color: var(--morrovia-action); }
+.routeInsightContent article:nth-child(3) > svg { color: #bd720c; }
+.routeInsightContent article > div { display: grid; align-content: start; gap: 4px; }
+.routeInsightContent article strong { color: var(--ink); font-size: 12px; }
+.routeInsightContent article p { margin: 0; color: var(--morrovia-action); font-size: 10px; line-height: 1.35; }
+.routeInsightContent article small { color: var(--morrovia-action); font-size: 10px; }
+.routeInsightAction { grid-column: 1 / -1; justify-self: end; display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--morrovia-action); font-weight: 700; cursor: pointer; }
+.routeInsightAction svg { width: 15px; }
+
+.timingWarningContent { display: grid; grid-template-columns: minmax(220px, .78fr) minmax(300px, 1.2fr); gap: 16px; padding: 0 16px 16px; }
+.timingWarningContent > section { display: grid; align-content: start; gap: 8px; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--morrovia-warning, #a56f10) 24%, #fff); border-radius: 9px; background: rgba(255, 255, 255, .7); }
+.timingWarningContent > section > strong { color: var(--ink); font-size: 12px; }
+.timingWarningContent ul { display: grid; gap: 5px; margin: 0; padding-left: 18px; color: var(--morrovia-action); font-size: 11px; line-height: 1.35; }
+.timingAlternatives { display: grid; gap: 6px; }
+.timingAlternatives article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+.timingAlternatives article > div { display: grid; gap: 2px; min-width: 0; }
+.timingAlternatives b { overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.timingAlternatives small { color: var(--morrovia-action); font-size: 10px; }
+.timingAlternatives button,
+.reviewRouteFallback button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 11px; border: 1px solid var(--morrovia-action); border-radius: 7px; background: #fff; color: var(--morrovia-action); font: 700 11px var(--font-geist-sans, Geist, system-ui, sans-serif); cursor: pointer; }
+.reviewRouteFallback { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.reviewRouteFallback p { margin: 0; color: var(--morrovia-action); font-size: 11px; line-height: 1.35; }
+.reviewRouteFallback button { flex: none; }
+.reviewRouteFallback svg { width: 14px; }
+
+.timeSummaryRail { align-self: stretch; min-height: 100%; padding: 40px 34px; border-left: 1px solid var(--line); background: #fbfaff; }
+.timingSummary { gap: 18px; padding: 0; border: 0; }
+.timingSummary h2 { font-size: 22px; line-height: 1.05; }
+.timeSummaryStats { display: grid; gap: 13px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.timeSummaryStats > div { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 9px; }
+.timeSummaryStats svg { box-sizing: content-box; width: 16px; height: 16px; padding: 7px; border-radius: 50%; background: var(--morrovia-lilac); color: var(--ink); }
+.timeSummaryStats strong { color: var(--ink); font-size: 13px; }
+.timeSummaryStops { display: grid; gap: 0; margin: 0; padding: 0 0 18px; border-bottom: 1px solid var(--line); list-style: none; }
+.timeSummaryStops li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 9px; padding: 8px 0; }
+.timeSummaryStops li > b { display: grid; place-items: center; align-self: start; width: 26px; height: 26px; border-radius: 50%; background: var(--morrovia-lilac); color: var(--ink); font-size: 11px; }
+.timeSummaryStops li > div { display: grid; gap: 3px; }
+.timeSummaryStops strong { color: var(--ink); font-size: 12px; }
+.timeSummaryStops small { color: var(--morrovia-action); font-size: 10px; }
+.timeSummaryAllocation { display: flex; align-items: center; gap: 9px; margin: 0; color: var(--morrovia-action); font-size: 11px; font-weight: 650; }
+.timeSummaryAllocation svg { width: 17px; height: 17px; }
+
+@media(max-width:1024px){
+  .wizardBody:has(.timeSummaryRail) { grid-template-columns: minmax(0, 1fr) 286px; }
+  .pane { padding-inline: 30px; }
+  .timeControls { grid-template-columns: minmax(0, 1fr) minmax(130px, .52fr); }
+  .timeControls .dateConfirmSection { grid-column: 1; }
+  .budgetControl { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .timeControl { border-right: 0; }
+  .budgetControl .budgetChoices { right: auto; left: 0; }
+  .routeInsightContent { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .routeInsightContent article:last-of-type { grid-column: 1 / -1; }
+}
+
+@media(max-width:840px){
+  .wizardBody:has(.timeSummaryRail) { grid-template-columns: 1fr; }
+  .timeSummaryRail { min-height: 0; padding: 28px 30px; border-top: 1px solid var(--line); border-left: 0; }
+  .timingSummary { grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr); }
+  .timingSummary > small,
+  .timingSummary > h2 { grid-column: 1 / -1; }
+  .timeSummaryStats { border-bottom: 0; }
+  .timeSummaryStops { grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 0; }
+  .timeSummaryAllocation { grid-column: 1 / -1; padding-top: 15px; border-top: 1px solid var(--line); }
+}
+
+@media(max-width:700px){
+  .shellWide { width: 100%; margin: 0; border-inline: 0; border-radius: 0; }
+  .timeStep .stepHero h2 { font-size: clamp(38px, 11vw, 48px); }
+  .timeSummaryRail { display: none; }
+  .timeControls { grid-template-columns: 1fr; }
+  .timeControls .dateConfirmSection,
+  .budgetControl { grid-column: auto; }
+  .timeControls .dateRow { grid-template-columns: 1fr; }
+  .timeControls .dateConfirmSection .card,
+  .timeControl { min-height: 68px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .timeControls .dateConfirmSection .card:first-child { border-radius: 9px 9px 0 0; }
+  .budgetControl { border-top: 0; border-bottom: 0; }
+  .budgetControl .budgetChoices { position: static; min-width: 0; box-shadow: none; }
+  .timeAllocationState { order: 0; flex-wrap: wrap; font-size: 12px; }
+  .routeTimeRow { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "grip stop stop" "transfer transfer transfer" "nights nights usable" "moves moves moves"; gap: 9px 10px; padding: 13px 12px; }
+  .routeGrip { grid-area: grip; position: static; align-self: center; width: 44px; height: 44px; }
+  .routeStopName { grid-area: stop; }
+  .routeTransferSummary { grid-area: transfer; padding-left: 54px; }
+  .nightsControl { grid-area: nights; grid-template-columns: 44px 24px 44px; gap: 5px; }
+  .nightsControl button { width: 44px; height: 44px; }
+  .usableTime { grid-area: usable; align-self: center; justify-self: end; }
+  .routeMoveButtons { grid-area: moves; justify-self: end; gap: 6px; }
+  .routeMoveButtons button { width: 44px; height: 44px; border-radius: 8px; }
+  .routeInsightContent { grid-template-columns: 1fr; }
+  .routeInsightContent article:last-of-type { grid-column: auto; }
+  .timingWarningContent { grid-template-columns: 1fr; }
+  .disclosureHead { min-height: 68px; padding-inline: 14px; }
+  .disclosureHead small { white-space: normal; }
+  .reviewRouteFallback { align-items: stretch; flex-direction: column; }
+  .reviewRouteFallback button { justify-content: center; min-height: 44px; }
+  .timingAlternatives article { grid-template-columns: 1fr; }
+  .timingAlternatives button { justify-content: center; min-height: 44px; }
+}
+
+@media(max-width:390px){
+  .pane { padding-inline: 14px; }
+  .timeStep .stepHero h2 { font-size: 39px; }
+  .routeTimePlanner > header { padding-inline: 14px; }
+  .routeTimeRow { padding-inline: 9px; }
+  .routeInsightContent,
+  .timingWarningContent { padding-inline: 10px; }
+  .wizardFoot .footRight { gap: 8px; }
+}

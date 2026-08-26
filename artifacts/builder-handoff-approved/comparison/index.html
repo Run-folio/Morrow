@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Builder handoff comparison</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #ecebf4;
+        color: #17116b;
+        font: 600 14px/1.4 system-ui, sans-serif;
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+      }
+      figure { margin: 0; }
+      figcaption {
+        margin-bottom: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 14px;
+        box-shadow: 0 12px 30px rgb(23 17 107 / 12%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <figure>
+        <figcaption>Approved target</figcaption>
+        <img src="../approved-target.png" alt="Approved Builder handoff" />
+      </figure>
+      <figure>
+        <figcaption>Implemented result</figcaption>
+        <img src="../after/desktop-1440.png" alt="Implemented Builder handoff" />
+      </figure>
+    </main>
+  </body>
+</html>

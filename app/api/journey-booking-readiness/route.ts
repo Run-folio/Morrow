@@ -13,7 +13,6 @@ export async function POST(request: Request) {
     const body = await request.json() as { trip?: unknown };
     if (!isEasyTTrip(body.trip)) return NextResponse.json({ error: "A valid trip is required." }, { status: 400 });
     return NextResponse.json({ actions: buildBookingReadiness(body.trip, {
-      bookingUrl: optionalAffiliateConfiguration.urls.bookingUrl,
       activitiesUrl: affiliatePartners.viator.activitiesUrl,
       activitiesProvider: affiliatePartners.viator.provider,
       carHireUrl: optionalAffiliateConfiguration.urls.carHireUrl,

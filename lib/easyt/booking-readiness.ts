@@ -21,7 +21,6 @@ export type BookingReadinessAction = {
 };
 
 export type AffiliateConfiguration = {
-  bookingUrl?: string;
   activitiesUrl?: string;
   activitiesProvider?: string;
   carHireUrl?: string;
@@ -34,6 +33,10 @@ export type AffiliateConfiguration = {
  * being recreated in individual surfaces or enriched with trip data.
  */
 export const affiliatePartners = {
+  tripCom: {
+    provider: "trip.com",
+    accommodationUrl: "https://www.trip.com/t/pdAWQqi56W2",
+  },
   viator: {
     provider: "viator",
     activitiesUrl: "https://www.viator.com/?pid=P00315646&mcid=42383&medium=link&campaign=morrovia-general-activities",
@@ -43,6 +46,20 @@ export const affiliatePartners = {
     transportUrl: "https://omio.sjv.io/2RBeqD",
   },
 } as const;
+
+export type AccommodationBookingUrlInput = {
+  stop: Pick<TripStop, "id" | "name" | "country">;
+  dates: { checkIn: string; checkOut: string };
+  travellers: number;
+};
+
+/**
+ * Trip.com currently approves this generic affiliate URL only. Contextual
+ * Trip.com links or API support can be added here later without changing UI callers.
+ */
+export function getAccommodationBookingUrl(_input: AccommodationBookingUrlInput) {
+  return affiliatePartners.tripCom.accommodationUrl;
+}
 
 const withParams = (base: string, params: Record<string, string | undefined>) => {
   const url = new URL(base);
@@ -127,12 +144,13 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
   const stableStops = trip.stops.filter((stop) => stopDatesAreStable(stop, trip));
 
   stableStops.forEach((stop) => {
-    const bookingBase = config.bookingUrl || "https://www.booking.com/searchresults.html";
+    const dates = stableStopDateRange(stop, trip);
+    if (!dates) return;
     actions.push({
-      id: `stay-${stop.id}`, category: "accommodation", provider: "booking.com", title: `Find a stay in ${stop.name}`,
-      detail: `${stop.arrivalDate} to ${stop.departureDate} · ${trip.travellers} traveller${trip.travellers === 1 ? "" : "s"}. Availability and prices are confirmed by the provider.`,
-      cta: "Check availability", href: withParams(bookingBase, { ss: `${stop.name}, ${stop.country}`, checkin: stop.arrivalDate ?? undefined, checkout: stop.departureDate ?? undefined, group_adults: String(trip.travellers), no_rooms: "1" }),
-      tripId: trip.id, stopId: stop.id, affiliate: Boolean(config.bookingUrl), livePrice: false,
+      id: `stay-${stop.id}`, category: "accommodation", provider: affiliatePartners.tripCom.provider, title: `Find a stay in ${stop.name}`,
+      detail: `${dates.checkIn} to ${dates.checkOut} · ${trip.travellers} traveller${trip.travellers === 1 ? "" : "s"}. Availability and prices are confirmed by Trip.com.`,
+      cta: "Find accommodation on Trip.com", href: getAccommodationBookingUrl({ stop, dates, travellers: trip.travellers }),
+      tripId: trip.id, stopId: stop.id, affiliate: true, livePrice: false,
     });
     const selectedActivities = trip.brief.selectedPlaces[stop.id] ?? [];
     if ((stop.nights ?? 0) >= 2 && selectedActivities.length) {

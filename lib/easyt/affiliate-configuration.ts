@@ -1,7 +1,6 @@
-export type OptionalAffiliatePartner = "booking" | "car_hire" | "saily" | "ground_transport";
+export type OptionalAffiliatePartner = "car_hire" | "saily" | "ground_transport";
 
 export type OptionalAffiliateUrls = {
-  bookingUrl?: string;
   carHireUrl?: string;
   sailyUrl?: string;
   groundTransportUrl?: string;
@@ -22,7 +21,6 @@ export type OptionalAffiliateConfiguration = {
 type Environment = Record<string, string | undefined>;
 
 const partners = [
-  { partner: "booking", urlKey: "BOOKING_AFFILIATE_URL", enabledKey: "BOOKING_AFFILIATE_ENABLED", target: "bookingUrl" },
   { partner: "car_hire", urlKey: "CAR_HIRE_AFFILIATE_URL", enabledKey: "CAR_HIRE_AFFILIATE_ENABLED", target: "carHireUrl" },
   { partner: "saily", urlKey: "SAILY_AFFILIATE_URL", enabledKey: "SAILY_AFFILIATE_ENABLED", target: "sailyUrl" },
   { partner: "ground_transport", urlKey: "GROUND_TRANSPORT_AFFILIATE_URL", enabledKey: "GROUND_TRANSPORT_AFFILIATE_ENABLED", target: "groundTransportUrl" },
