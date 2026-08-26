@@ -20,7 +20,7 @@ const copy = {
     collectItems: [
       ["Account details", "Your name, email address, account identifier and authentication records. Passwords are handled by the authentication system and are never shown inside Morrovia."],
       ["Trip information", "Your trip title, dates, destinations, selected places, plan items, notes, pins and the practical route details you save."],
-      ["Profile and memories", "Your travel-profile choices, language preference, country stamps, country notes and any photo you choose to attach to a stamp. If you choose to personalise trip-preparation reminders, this can include nationality or nationalities, country of residence and passport-expiry month only — never a passport number, scan or image."],
+      ["Profile and memories", "Your travel-profile choices, language preference, country stamps, country notes and any photo you choose to attach to a stamp. If you choose to personalise trip-preparation reminders, this can include nationality or nationalities, country of residence and passport-expiry month only. It never includes a passport number, scan or image."],
       ["Feedback and email records", "Ratings and comments you send, plus a record of transactional email delivery such as verification, password reset and trip-gift emails."],
     ],
     location: "Location and nearby search",

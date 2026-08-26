@@ -154,7 +154,7 @@ function TaskAction({ task, tripId, onOpenDetails, compact = false }: {
       workspace_view: "prep",
     });
   };
-  if (action.external) return <a className={compact ? styles.compactAction : styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={action.provider === "omio" ? `${action.label} — opens Omio in a new tab` : undefined} onClick={onClick}>{action.label}<ExternalLink aria-hidden="true" /></a>;
+  if (action.external) return <a className={compact ? styles.compactAction : styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={action.provider === "omio" ? `${action.label}, opens Omio in a new tab` : undefined} onClick={onClick}>{action.label}<ExternalLink aria-hidden="true" /></a>;
   return <Link className={compact ? styles.compactAction : styles.taskAction} href={action.href} onClick={onClick}>{action.label}<ArrowRight aria-hidden="true" /></Link>;
 }
 
@@ -319,7 +319,7 @@ export default function TripPrepWorkspace({
       <section className={styles.progressCard} aria-labelledby="prep-progress-title">
         <div className={styles.progressCopy}>
           <p>OVERALL PROGRESS</p>
-          <h3 id="prep-progress-title">{providersAvailable ? `${progress.percent}%` : "—"}</h3>
+          <h3 id="prep-progress-title">{providersAvailable ? `${progress.percent}%` : "N/A"}</h3>
           <span>{providersAvailable ? `${progress.complete} of ${progress.total} tasks complete` : providerMessage}</span>
           <div
             className={styles.progressTrack}
@@ -333,9 +333,9 @@ export default function TripPrepWorkspace({
         </div>
         <div className={styles.progressIllustration} aria-hidden="true"><img src="/journey/illustrations/prep-triptych.png" alt="" /></div>
         <dl className={styles.progressStats}>
-          <div><dt><Check aria-hidden="true" />Complete</dt><dd>{providersAvailable ? progress.complete : "—"}</dd></div>
-          <div><dt><Circle aria-hidden="true" />In progress</dt><dd>{providersAvailable ? progress.inProgress : "—"}</dd></div>
-          <div><dt><Circle aria-hidden="true" />To do</dt><dd>{providersAvailable ? progress.toDo : "—"}</dd></div>
+          <div><dt><Check aria-hidden="true" />Complete</dt><dd>{providersAvailable ? progress.complete : "N/A"}</dd></div>
+          <div><dt><Circle aria-hidden="true" />In progress</dt><dd>{providersAvailable ? progress.inProgress : "N/A"}</dd></div>
+          <div><dt><Circle aria-hidden="true" />To do</dt><dd>{providersAvailable ? progress.toDo : "N/A"}</dd></div>
         </dl>
       </section>
 

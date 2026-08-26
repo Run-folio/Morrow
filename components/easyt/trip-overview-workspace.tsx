@@ -215,7 +215,7 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
             <span className={styles.actionIcon}><ActionIcon aria-hidden="true" /></span>
             <h2>{action.title}</h2>
             <span>{action.detail}</span>
-            {action.external ? <a href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${action.label} — opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId })}>{action.label}<ExternalLink aria-hidden="true" /></a> : <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>}
+            {action.external ? <a href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${action.label}, opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId })}>{action.label}<ExternalLink aria-hidden="true" /></a> : <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>}
             {action.affiliate ? <small className={styles.affiliateDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
           </div>
           <ResilientImage

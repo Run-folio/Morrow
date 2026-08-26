@@ -5,8 +5,8 @@
   .tour :global([class*="overlay"]){align-items:end;padding:12px;overflow:auto}
   .tour :global([class*="dialog"]){grid-template-columns:1fr;max-height:calc(100svh - 24px);overflow:auto;border-radius:24px}
   .tour :global([class*="visual"]){min-height:0;padding:18px}
-  .tour :global([class*="device"]){width:min(280px,100%);border-radius:17px}
-  .tour :global([class*="screen"]){height:150px;border-radius:12px}
+  .tour :global([class*="device"]){width:min(250px,100%);border-radius:17px}
+  .tour :global([class*="screen"]){aspect-ratio:3/4;height:auto;border-radius:12px}
   .tour :global([class*="content"]){gap:13px;padding:24px 22px calc(22px + env(safe-area-inset-bottom))}
   .tour :global([class*="content"] h2){font-size:30px}
   .tour :global([class*="content"] > p:not([class*="label"])){font-size:14px;line-height:1.45}
@@ -15,5 +15,5 @@
   .tour :global([class*="back"]),.tour :global([class*="next"]){width:100%;padding-inline:10px}
   .tour :global([class*="skip"]){justify-self:center}
 }
-@media(max-width:380px){.tour :global([class*="visual"]){padding:10px}.tour :global([class*="screen"]){height:128px}.tour :global([class*="content"]){padding-top:20px}.tour :global([class*="content"] h2){font-size:27px}}
+@media(max-width:380px){.tour :global([class*="visual"]){padding:10px}.tour :global([class*="content"]){padding-top:20px}.tour :global([class*="content"] h2){font-size:27px}}
 @media(max-width:520px){.tour :global([class*="overlay"]){padding-bottom:var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom)))}.tour :global([class*="dialog"]){max-height:calc(100svh - var(--morrovia-mobile-dock-offset,calc(82px + env(safe-area-inset-bottom))) - 12px)}}

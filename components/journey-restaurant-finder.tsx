@@ -186,7 +186,7 @@ export function JourneyRestaurantFinder({ stopId, city, dayId, onSelectRestauran
         {ranked.length > 1 ? <button type="button" onClick={() => { setSavedSelections((current) => { const updated = { ...current }; delete updated[dayId]; return updated; }); setResultIndex((index) => index + 1); }}>{isSavedForDay ? "Change pick" : "Try another"}</button> : null}
         <button type="button" aria-label="Change restaurant preferences" onClick={() => saveAnswers({ meal: activeMeal })}><RotateCcw /></button>
       </div>
-      <small>Shortlist for March 2027 — confirm hours closer to travel.</small>
+      <small>Shortlist for March 2027. Confirm hours closer to travel.</small>
     </article> : null}
   </section>;
 }

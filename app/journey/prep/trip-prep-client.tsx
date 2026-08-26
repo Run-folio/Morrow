@@ -63,7 +63,7 @@ export default function TripPrepClient() {
     <section className={styles.summary}><article><CalendarDays /><small>DATES</small><strong>{trip.startDate} → {trip.endDate}</strong></article><article><Plane /><small>DEPARTURE</small><strong>{trip.brief.origin || "Add departure"}</strong></article><article><Route /><small>ROUTE</small><strong>{trip.stops.length} stops · {new Set(trip.stops.map((stop) => stop.country)).size} countries</strong></article></section>
     <section className={styles.content}>
       <div className={styles.main}><TripPrepWorkspace trip={trip} language={language} presentation="legacy" /></div>
-      <aside className={styles.side}><p>MAKE IT USEFUL</p><h2>Plan first. Prepare once the route is real.</h2><span>Entry guidance, connectivity and the practical decisions belong here—not in the route builder.</span><Link href={builderHref}>Edit the route <MapPin /></Link><Link href={mapHref}>Open map plan <Map /></Link></aside>
+      <aside className={styles.side}><p>MAKE IT USEFUL</p><h2>Plan first. Prepare once the route is real.</h2><span>Entry guidance, connectivity and the practical decisions belong here, not in the route builder.</span><Link href={builderHref}>Edit the route <MapPin /></Link><Link href={mapHref}>Open map plan <Map /></Link></aside>
     </section>
   </main>;
 }

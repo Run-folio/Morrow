@@ -1,0 +1,278 @@
+[
+  {
+    "label": "320",
+    "step": 1,
+    "dialog": [
+      296,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "describe-trip-mobile.png",
+    "viewport": [
+      320,
+      844
+    ]
+  },
+  {
+    "label": "320",
+    "step": 2,
+    "dialog": [
+      296,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "shape-route-mobile.png",
+    "viewport": [
+      320,
+      844
+    ]
+  },
+  {
+    "label": "320",
+    "step": 3,
+    "dialog": [
+      296,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "trip-workspace-mobile.png",
+    "viewport": [
+      320,
+      844
+    ]
+  },
+  {
+    "label": "390",
+    "step": 1,
+    "dialog": [
+      366,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "describe-trip-mobile.png",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "label": "390",
+    "step": 2,
+    "dialog": [
+      366,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "shape-route-mobile.png",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "label": "390",
+    "step": 3,
+    "dialog": [
+      366,
+      750
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      320
+    ],
+    "screen": [
+      240,
+      320
+    ],
+    "scroll": false,
+    "src": "trip-workspace-mobile.png",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "label": "768",
+    "step": 1,
+    "dialog": [
+      728,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "describe-trip.png",
+    "viewport": [
+      768,
+      1024
+    ]
+  },
+  {
+    "label": "768",
+    "step": 2,
+    "dialog": [
+      728,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "shape-route.png",
+    "viewport": [
+      768,
+      1024
+    ]
+  },
+  {
+    "label": "768",
+    "step": 3,
+    "dialog": [
+      728,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "trip-workspace.png",
+    "viewport": [
+      768,
+      1024
+    ]
+  },
+  {
+    "label": "desktop",
+    "step": 1,
+    "dialog": [
+      980,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "describe-trip.png",
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "label": "desktop",
+    "step": 2,
+    "dialog": [
+      980,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "shape-route.png",
+    "viewport": [
+      1440,
+      900
+    ]
+  },
+  {
+    "label": "desktop",
+    "step": 3,
+    "dialog": [
+      980,
+      760
+    ],
+    "fit": "cover",
+    "natural": [
+      240,
+      480
+    ],
+    "screen": [
+      240,
+      480
+    ],
+    "scroll": false,
+    "src": "trip-workspace.png",
+    "viewport": [
+      1440,
+      900
+    ]
+  }
+]

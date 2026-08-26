@@ -9,7 +9,7 @@ const copy = {
   en: [
     [Sparkles, "Thoughtful first plan", "We plan the hard part, so you can focus on the fun."],
     [CalendarDays, "Saves hours of planning", "Compare options and book with confidence."],
-    [LockKeyhole, "Yours to make", "It’s your trip—edit, swap, and shape it your way."],
+    [LockKeyhole, "Yours to make", "It’s your trip. Edit, swap and shape it your way."],
   ],
   es: [
     [Sparkles, "Un primer plan pensado", "Hacemos la parte difícil para que disfrutes lo importante."],

@@ -14,18 +14,18 @@ const copy = {
     trigger: "Guide", close: "Close product tour", step: "Step", of: "of", back: "Back", next: "Next", finish: "Done", skip: "Skip tour",
     prompt: "New to Morrovia?", takeTour: "Take a 60-second tour", dismissPrompt: "Dismiss tour invitation",
     steps: [
-      { label: "01 · Describe your trip", title: "Start with the trip in your head.", copy: "Tell Morrovia the places or regions, dates, pace and constraints that matter. A short description is enough to begin.", image: "/journey/product-shots/tour/describe-trip.png", alt: "Morrovia trip description prompt on mobile" },
-      { label: "02 · Shape the route", title: "Check the route before the detail.", copy: "Morrovia turns your brief into stops, nights and a sensible order. Review what it understood, resolve assumptions and change anything before the plan is built.", image: "/journey/product-shots/tour/shape-route.png", alt: "Morrovia route shaping screen on mobile" },
-      { label: "03 · Use your workspace", title: "Know where to refine the trip.", copy: "Overview surfaces the next decision and Trip Health. Itinerary shapes each day, Map keeps the route visible, and Prep holds practical tasks.", image: "/journey/product-shots/tour/trip-workspace.png", alt: "Morrovia trip workspace with Overview, Itinerary, Map and Prep" },
+      { label: "01 · Describe your trip", title: "Start with the trip in your head.", copy: "Tell Morrovia the places or regions, dates, pace and constraints that matter. A short description is enough to begin.", image: "/journey/product-shots/tour/describe-trip.png", mobileImage: "/journey/product-shots/tour/describe-trip-mobile.png", alt: "Morrovia trip description prompt on mobile" },
+      { label: "02 · Shape the route", title: "Check the route before the detail.", copy: "Morrovia turns your brief into stops, nights and a sensible order. Review what it understood, resolve assumptions and change anything before the plan is built.", image: "/journey/product-shots/tour/shape-route.png", mobileImage: "/journey/product-shots/tour/shape-route-mobile.png", alt: "Morrovia route shaping screen on mobile" },
+      { label: "03 · Use your workspace", title: "Know where to refine the trip.", copy: "Overview surfaces the next decision and Trip Health. Itinerary shapes each day, Map keeps the route visible, and Prep holds practical tasks.", image: "/journey/product-shots/tour/trip-workspace.png", mobileImage: "/journey/product-shots/tour/trip-workspace-mobile.png", alt: "Morrovia trip workspace with Overview, Itinerary, Map and Prep" },
     ],
   },
   es: {
     trigger: "Guía", close: "Cerrar recorrido del producto", step: "Paso", of: "de", back: "Atrás", next: "Siguiente", finish: "Listo", skip: "Omitir recorrido",
     prompt: "¿Primera vez en Morrovia?", takeTour: "Haz el recorrido de 60 segundos", dismissPrompt: "Descartar invitación al recorrido",
     steps: [
-      { label: "01 · Describe tu viaje", title: "Empieza con el viaje que tienes en mente.", copy: "Cuéntale a Morrovia los lugares o regiones, fechas, ritmo y límites que importan. Una descripción breve basta para empezar.", image: "/journey/product-shots/tour/describe-trip.png", alt: "Campo para describir un viaje en Morrovia desde móvil" },
-      { label: "02 · Da forma a la ruta", title: "Revisa la ruta antes del detalle.", copy: "Morrovia convierte tu idea en paradas, noches y un orden lógico. Revisa lo entendido, resuelve supuestos y cambia lo necesario antes de crear el plan.", image: "/journey/product-shots/tour/shape-route.png", alt: "Pantalla móvil para dar forma a una ruta en Morrovia" },
-      { label: "03 · Usa tu espacio de viaje", title: "Ten claro dónde perfeccionar el viaje.", copy: "Resumen muestra la próxima decisión y el estado del viaje. Itinerario organiza cada día, Mapa mantiene visible la ruta y Preparativos reúne las tareas prácticas.", image: "/journey/product-shots/tour/trip-workspace.png", alt: "Espacio de viaje de Morrovia con Resumen, Itinerario, Mapa y Preparativos" },
+      { label: "01 · Describe tu viaje", title: "Empieza con el viaje que tienes en mente.", copy: "Cuéntale a Morrovia los lugares o regiones, fechas, ritmo y límites que importan. Una descripción breve basta para empezar.", image: "/journey/product-shots/tour/describe-trip.png", mobileImage: "/journey/product-shots/tour/describe-trip-mobile.png", alt: "Campo para describir un viaje en Morrovia desde móvil" },
+      { label: "02 · Da forma a la ruta", title: "Revisa la ruta antes del detalle.", copy: "Morrovia convierte tu idea en paradas, noches y un orden lógico. Revisa lo entendido, resuelve supuestos y cambia lo necesario antes de crear el plan.", image: "/journey/product-shots/tour/shape-route.png", mobileImage: "/journey/product-shots/tour/shape-route-mobile.png", alt: "Pantalla móvil para dar forma a una ruta en Morrovia" },
+      { label: "03 · Usa tu espacio de viaje", title: "Ten claro dónde perfeccionar el viaje.", copy: "Resumen muestra la próxima decisión y el estado del viaje. Itinerario organiza cada día, Mapa mantiene visible la ruta y Preparativos reúne las tareas prácticas.", image: "/journey/product-shots/tour/trip-workspace.png", mobileImage: "/journey/product-shots/tour/trip-workspace-mobile.png", alt: "Espacio de viaje de Morrovia con Resumen, Itinerario, Mapa y Preparativos" },
     ],
   },
 } as const;
@@ -121,7 +121,7 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
     {open ? <div className={styles.overlay} role="presentation" onMouseDown={close}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="easyt-tour-title" aria-describedby="easyt-tour-description" onMouseDown={(event) => event.stopPropagation()}>
         <button className={styles.close} type="button" onClick={close} aria-label={text.close}><X aria-hidden="true" /></button>
-        <div className={styles.visual}><div className={styles.device}><div className={styles.screen}><img src={current.image} alt={current.alt} /></div></div></div>
+        <div className={styles.visual}><div className={styles.device}><div className={styles.screen}><picture><source media="(max-width: 680px)" srcSet={current.mobileImage} /><img src={current.image} alt={current.alt} /></picture></div></div></div>
         <div className={styles.content}>
           <p className={styles.label}>{current.label}</p>
           <h2 id="easyt-tour-title">{current.title}</h2>

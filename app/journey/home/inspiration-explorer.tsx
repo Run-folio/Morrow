@@ -3,18 +3,13 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { HomepageRouteCard } from "@/lib/easyt/homepage-routes";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
 import styles from "./home-explorer.module.css";
 import fidelity from "./home-fidelity.module.css";
 
-const routes = [
-  { key: "home-peru-bolivia", place: "Peru + Bolivia", title: ["Peru + Bolivia", "Perú + Bolivia"], detail: ["High-altitude history, local culture, and otherworldly landscapes.", "Historia de altura, cultura local y paisajes extraordinarios."], href: "/journey/routes/andean-highlands", bases: "Lima → Cusco → La Paz", query: ["Machu Picchu Peru mountains", "Cusco Peru travel", "Bolivia Andes travel"], stats: "2–3 stops · 10–14 days" },
-  { key: "home-spain-portugal", place: "Spain + Portugal", title: ["Spain + Portugal", "España + Portugal"], detail: ["Timeless cities, coastal escapes, and world-class foodscapes.", "Ciudades atemporales, costas y gastronomía memorable."], href: "/journey/routes/portugal-spain", bases: "Barcelona → Lisbon → Porto", query: ["Portugal Spain coastal city travel", "Lisbon Portugal travel", "Seville Spain travel"], stats: "2–3 stops · 10–14 days" },
-  { key: "home-vietnam-thailand-cambodia", place: "Vietnam + Thailand + Cambodia", title: ["Vietnam + Thailand + Cambodia", "Vietnam + Tailandia + Camboya"], detail: ["Temples, street food, beaches, and slow moments that stay with you.", "Templos, comida callejera, playas y momentos que se quedan contigo."], href: "/journey/routes/thailand-vietnam-cambodia", bases: "Hanoi → Bangkok → Siem Reap", query: ["Southeast Asia temples travel", "Hoi An Vietnam travel", "Angkor Wat Cambodia travel"], stats: "2–4 stops · 14–20 days" },
-];
-
-export default function InspirationExplorer() {
+export default function InspirationExplorer({ routes }: { routes: HomepageRouteCard[] }) {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [photos, setPhotos] = useState<Record<string, CachedRoutePhoto>>({});
   const [pendingPhotoKeys, setPendingPhotoKeys] = useState<Set<string>>(() => new Set(routes.map((route) => route.key)));
@@ -37,6 +32,5 @@ export default function InspirationExplorer() {
     });
     return () => { active = false; };
   }, []);
-  const index = language === "es" ? 1 : 0;
-  return <section className={styles.explorer} id="routes"><header className={styles.explorerHead}><div><p className={styles.eyebrow}>{language === "es" ? "EXPLORA RUTAS MULTIPAÍS" : "EXPLORE MULTI-COUNTRY ROUTES"}</p><h2>{language === "es" ? "Elige una ruta con una mirada propia." : "Choose a route with a point of view."}</h2></div><Link className={styles.browseLink} href="/journey/discover">{language === "es" ? "Ver todas las rutas" : "View all routes"} <ArrowRight aria-hidden="true" /></Link></header><div className={styles.routeGrid}>{routes.map((route) => { const photo = photos[route.key]; const photoPending = !photo && pendingPhotoKeys.has(route.key); return <Link className={`${styles.routeCard} ${fidelity.routeCard}`} key={route.key} href={route.href}><div className={`${styles.routeImage} ${fidelity.routeImage} ${photoPending ? styles.routeImageLoading : ""}`} style={photo ? { ["--route-photo" as string]: `url(${photo.src})` } : undefined}>{photo ? <small>{photo.sourceLabel}</small> : null}</div><div><strong>{route.title[index]}</strong><span className={styles.routeBases}>{route.bases}</span><span className={styles.routeStats}><MapPin aria-hidden="true" /> {route.stats.split(" · ")[0]} <Clock3 aria-hidden="true" /> {route.stats.split(" · ")[1]}</span><p>{route.detail[index]}</p><i>{language === "es" ? "Explorar ruta" : "Explore route"} <ArrowRight aria-hidden="true" /></i></div></Link>; })}</div></section>;
+  return <section className={styles.explorer} id="routes"><header className={styles.explorerHead}><div><p className={styles.eyebrow}>{language === "es" ? "EXPLORA RUTAS MULTIPAÍS" : "EXPLORE MULTI-COUNTRY ROUTES"}</p><h2>{language === "es" ? "Elige una ruta con una mirada propia." : "Choose a route with a point of view."}</h2></div><Link className={styles.browseLink} href="/journey/discover">{language === "es" ? "Ver todas las rutas" : "View all routes"} <ArrowRight aria-hidden="true" /></Link></header><div className={styles.routeGrid}>{routes.map((route) => { const photo = photos[route.key]; const photoPending = !photo && pendingPhotoKeys.has(route.key); return <Link className={`${styles.routeCard} ${fidelity.routeCard}`} key={route.key} href={route.href}><div className={`${styles.routeImage} ${fidelity.routeImage} ${photoPending ? styles.routeImageLoading : ""}`} style={photo ? { ["--route-photo" as string]: `url(${photo.src})` } : undefined}>{photo ? <small>{photo.sourceLabel}</small> : null}</div><div><strong>{route.title}</strong><span className={styles.routeBases}>{route.bases}</span><span className={styles.routeStats}><MapPin aria-hidden="true" /> {route.stopCount} {language === "es" ? "paradas" : "stops"} <Clock3 aria-hidden="true" /> {route.dayRange.min}–{route.dayRange.max} {language === "es" ? "días" : "days"}</span><p>{route.detail}</p><i>{language === "es" ? "Explorar ruta" : "Explore route"} <ArrowRight aria-hidden="true" /></i></div></Link>; })}</div></section>;
 }

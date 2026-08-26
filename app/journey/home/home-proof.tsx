@@ -12,7 +12,7 @@ const copy = {
     items: [
       [MapPinned, "Your trip, in your words", "Tell us where, when, and what matters."],
       [Route, "We build the best flow", "We order your places for less time travelling and more time enjoying."],
-      [Scale, "Nights, trade-offs, your call", "See night recommendations and trade-offs—then make it yours."],
+      [Scale, "Nights, trade-offs, your call", "See night recommendations and trade-offs, then make it yours."],
     ],
   },
   es: {

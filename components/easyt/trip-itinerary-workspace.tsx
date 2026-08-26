@@ -346,7 +346,7 @@ function TransferRow({ leg, copy, trip }: { leg: TripLeg; copy: ReturnType<typeo
       <b>01</b>
       <p><strong>{copy.transfer}</strong>{from && to ? `${from} → ${to}` : leg.mode}{duration ? <small className={styles.estimateLabel}>{copy.estimate}</small> : null}</p>
       {duration ? <span className={styles.duration}>~{duration}</span> : null}
-      {omioAction ? <span className={styles.omioAction}><a href={omioAction.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${omioAction.cta} — opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId })}>{omioAction.cta}<ExternalLink aria-hidden="true" /></a><small>Partner link · Morrovia may earn a commission at no extra cost to you.</small></span> : null}
+      {omioAction ? <span className={styles.omioAction}><a href={omioAction.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${omioAction.cta}, opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId })}>{omioAction.cta}<ExternalLink aria-hidden="true" /></a><small>Partner link · Morrovia may earn a commission at no extra cost to you.</small></span> : null}
     </div>
   );
 }

@@ -10,7 +10,7 @@ import styles from "./home.module.css";
 import fidelity from "./home-fidelity.module.css";
 
 const copy = {
-  en: { title: "A first route is a better place to start.", lede: "Tell us the shape of your trip and we’ll do the hard part—then leave the rest in your hands.", action: "Start my trip", partnerTitle: "Stay connected, wherever the route takes you.", partnerBody: "Choose a travel eSIM before you leave, so maps, tickets and the useful details stay within reach.", partnerAction: "Explore Saily eSIMs", partnerDisclosure: "Partner link · Morrovia may earn a commission at no extra cost to you." },
+  en: { title: "A first route is a better place to start.", lede: "Tell us the shape of your trip and we’ll do the hard part. The rest stays in your hands.", action: "Start my trip", partnerTitle: "Stay connected, wherever the route takes you.", partnerBody: "Choose a travel eSIM before you leave, so maps, tickets and the useful details stay within reach.", partnerAction: "Explore Saily eSIMs", partnerDisclosure: "Partner link · Morrovia may earn a commission at no extra cost to you." },
   es: { title: "Una primera ruta es un mejor lugar para empezar.", lede: "Cuéntanos la forma de tu viaje y haremos la parte difícil; después, el resto queda en tus manos.", action: "Empezar mi viaje", partnerTitle: "Mantente conectado, dondequiera que te lleve la ruta.", partnerBody: "Elige una eSIM de viaje antes de salir para tener mapas, billetes y los detalles útiles siempre a mano.", partnerAction: "Ver las eSIM de Saily", partnerDisclosure: "Enlace de socio · Morrovia puede recibir una comisión sin coste adicional para ti." },
 } as const;
 
@@ -26,7 +26,7 @@ export default function HomeFooter() {
     <section className={styles.sailyBanner} aria-label="Saily travel eSIM">
       <div className={styles.sailyLogo}><img src="/journey/partners/saily-logo-negative-bg.svg" alt="Saily" /></div>
       <div className={styles.sailyCopy}><span><Signal aria-hidden="true" /> {language === "es" ? "CONECTIVIDAD DE VIAJE" : "TRAVEL CONNECTIVITY"}</span><h2>{text.partnerTitle}</h2><p>{text.partnerBody}</p></div>
-      <div className={styles.sailyAction}><a href="https://go.saily.site/aff_c?offer_id=101&aff_id=16085" target="_blank" rel="sponsored noopener noreferrer" aria-label={`${text.partnerAction} — opens Saily in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "connectivity", provider: "saily", placement: "home_footer" })}>{text.partnerAction} <ArrowRight aria-hidden="true" /></a><small>{text.partnerDisclosure}</small></div>
+      <div className={styles.sailyAction}><a href="https://go.saily.site/aff_c?offer_id=101&aff_id=16085" target="_blank" rel="sponsored noopener noreferrer" aria-label={`${text.partnerAction}, opens Saily in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "connectivity", provider: "saily", placement: "home_footer" })}>{text.partnerAction} <ArrowRight aria-hidden="true" /></a><small>{text.partnerDisclosure}</small></div>
     </section>
     <MorroviaFooter />
   </footer>;
