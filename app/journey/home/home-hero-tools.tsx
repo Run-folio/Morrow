@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BedDouble, Compass, Globe2, Luggage, MapPin, Plane, Route, Sparkles } from "lucide-react";
+import { ArrowRight, BedDouble, Compass, Luggage, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
-import { EasyTFirstVisitTourPrompt } from "@/components/easyt/easyt-product-tour";
 import HomeTripStarter from "./home-trip-starter";
 import styles from "./home.module.css";
 
 const copy = {
   en: {
     eyebrow: "FOR THE TRIPS WITH MORE MOVING PARTS", titleLead: "Complex trips,", titleMiddle: "made", titleEmphasis: "simple.",
-    ledeLead: "For independent travellers planning multi-stop international trips.", ledeBrand: "Morrovia", ledeTail: " gives you a thoughtful first plan, then it's over to you to make it yours.",
+    ledeLead: "For independent travellers planning multi-stop international trips.", ledeBrand: "Morrovia", ledeTail: " gives you a thoughtful first plan, then you make it yours.",
     routes: "See featured routes", scratch: "Start from scratch", personal: "Personal, not packaged", useful: "Useful before and during the trip", chapter: "Start with what you know", japan: "Places, timing\nand what matters", routeMeta: "Your trip brief", routeStops: "Tell us where, when and how you want it to feel", exploreJapan: "A Southeast Asia route from Bangkok to Ho Chi Minh City", out: "Useful before you book", nearby: "Passport to destination", nearbyText: "Visa and tourist-entry rules, passport validity and permitted stay, all clearly explained by country.", story: "Plan with confidence", stamps: "Stays where the route settles", stampsText: "Smart suggestions near the places you’ll actually be, not random lists.", openMap: "Check your passport", prep: "Travel prep", prepText: "Weather, packing tips, local basics and things to know before you go.", openPrep: "Open trip prep",
     bangkok: "Bangkok", siemReap: "Siem Reap", phnomPenh: "Phnom Penh", hoChiMinh: "Ho Chi Minh City", nights: "nights", flightOne: "1h 20m by flight", road: "6h by road", flightTwo: "1h 10m by flight", transfers: "3 transfers", countries: "3 countries", stops: "4 stops", totalNights: "11 nights",
   },
@@ -33,21 +32,7 @@ export default function HomeHeroTools({ showHero = true, showTools = true }: { s
         <p className={styles.eyebrow}>{text.eyebrow}</p>
         <h1><span className={styles.heroTitleLead}>{text.titleLead}</span><span className={styles.heroTitleLine}>{text.titleMiddle} <span className={styles.heroTitleEmphasis}>{text.titleEmphasis}</span></span></h1>
         <p className={styles.lede}>{text.ledeLead}<br /><strong>{text.ledeBrand}</strong>{text.ledeTail}</p>
-        <EasyTFirstVisitTourPrompt />
         <HomeTripStarter />
-      </div>
-      <div className={styles.heroRoute} aria-label={text.exploreJapan}>
-        <img className={styles.heroRouteMap} src="/journey/illustrations/southeast-asia-route-hero-v3.png" alt="Watercolor route illustration from Bangkok to Siem Reap, Phnom Penh and Ho Chi Minh City" />
-        <div className={styles.heroRouteStrip}>
-          <div><b>1</b><span><strong>{text.bangkok}</strong><small>3 {text.nights}</small></span></div>
-          <em><Plane aria-hidden="true" /> {text.flightOne}</em>
-          <div><b>2</b><span><strong>{text.siemReap}</strong><small>3 {text.nights}</small></span></div>
-          <em>{text.road}</em>
-          <div><b>3</b><span><strong>{text.phnomPenh}</strong><small>2 {text.nights}</small></span></div>
-          <em><Plane aria-hidden="true" /> {text.flightTwo}</em>
-          <div><b>4</b><span><strong>{text.hoChiMinh}</strong><small>3 {text.nights}</small></span></div>
-          <p><Sparkles aria-hidden="true" /> {text.totalNights}<i>•</i> <Route aria-hidden="true" /> {text.transfers}<i>•</i> <Globe2 aria-hidden="true" /> {text.countries}<i>•</i> <MapPin aria-hidden="true" /> {text.stops}</p>
-        </div>
       </div>
     </section> : null}
     {showTools ? <section className={styles.tools}>

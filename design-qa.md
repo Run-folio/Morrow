@@ -451,6 +451,54 @@ final result: passed
 
 ---
 
+# Approved homepage hero QA — Codex ready
+
+## Comparison target
+
+- **Source visual truth:** `/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/TemporaryItems/NSIRD_screencaptureui_xVUyid/Screenshot 2026-08-26 at 10.56.40 AM.png` (1132 × 1294 px), supplied as the approved export of the Figma frame “Homepage - Morrovia” on the “Codex ready” page.
+- **Implementation:** `http://localhost:3000/journey/home`.
+- **Browser-rendered evidence:** `artifacts/homepage-hero-figma/after/desktop.png`, `390.png`, `320.png`, and `768.png`.
+- **Combined comparison evidence:** `artifacts/homepage-hero-figma/comparison-desktop.png` and `comparison-form.png`.
+- **Viewport and density:** 1132 × 1294 desktop, 768 × 1024 tablet, 390 × 1000 phone, and 320 × 900 phone at reported DPR 1. The in-app Browser returned CSS-sized screenshots with the page rasterized at half scale in the top-left; normalized files crop that populated half and resample it to the reported CSS viewport solely for like-for-like visual comparison. Rendered CSS geometry is recorded in `artifacts/homepage-hero-figma/after/render-metrics.json`.
+- **State:** English guest homepage, empty prompt, voice support available, attribute panels closed.
+
+## Required fidelity surfaces
+
+- **Fonts and typography:** the existing Morrovia display, UI and metadata fonts are preserved. The two-line 140px desktop display lockup, 1.02 line height, negative tracking and pink underline match the reference hierarchy and wrapping; mobile scales to the same two-line hierarchy without overflow.
+- **Spacing and layout rhythm:** the desktop hero is 956px wide and left aligned within the frame; the trip card is 916 × 578px. Eyebrow, title, lede and card starts align with the approved composition. The prompt is 846 × 252px against the 848 × 252px reference region.
+- **Colors and visual tokens:** ink, soft ink, signal pink, action indigo, paper and line colors use the current Morrovia semantic tokens.
+- **Image quality and assets:** the approved hero contains no raster imagery. Existing Lucide calendar, traveller, heart, microphone and arrow icons are retained; no replacement CSS or handcrafted SVG art was introduced.
+- **Copy and content:** eyebrow, headline, supporting copy, prompt guidance, label, pills and primary action match the approved English frame. Morrovia retains the requested emphasis.
+
+## Full-view and focused comparison evidence
+
+- The desktop side-by-side comparison confirms the approved single-column hero replaces the previous two-column route illustration, while preserving the rest of the homepage below the hero.
+- The focused form comparison confirms the label, prompt frame, two-line guidance, Speak placement, attribute pills and right-aligned primary action follow the approved structure.
+- The primary action intentionally uses the existing Storybook `EasyTButton` large variant without local visual overrides, as explicitly required. Its label/arrow order is adjusted structurally, not through a new button style.
+
+## Interaction and accessibility evidence
+
+- Date, traveller and interest controls open and close at 390px without horizontal overflow; the form expands to 523px, 452px and 468px respectively in the tested states.
+- A real homepage submission with “Ten days in Japan, Tokyo and Kyoto, relaxed pace.” navigated to `/journey/new?homeDraft=1`; Step 1 rendered and the builder exposed Tokyo and Kyoto in the understood route.
+- Voice control, native textarea label, loading/disabled state, focus treatment, analytics calls and draft persistence remain wired through their existing components and handlers.
+- Browser console reported no errors in the final homepage state.
+
+## Comparison history
+
+1. **P1:** the starting hero was a dense two-column layout with a route illustration and a generic multi-part prompt, materially different from the approved frame. Replaced it with the approved single editorial column and focused trip-entry card while preserving behaviour.
+2. **P2:** the first form pass placed the prompt and controls 8–16px too low and left the Speak control and pills materially smaller than the source. Reduced the card’s top rhythm, fixed the prompt to 252px, and matched Speak/pill dimensions and positions.
+3. **Post-fix:** desktop region starts, card size, prompt size, Speak placement and pill dimensions now align with the source. Responsive checks at 320, 390, 768 and desktop report no horizontal overflow.
+
+## Findings
+
+- No actionable P0, P1 or P2 visual or interaction mismatch remains.
+- Accepted constraint: the primary action keeps the existing Storybook large-control geometry instead of introducing a one-off Figma-only button treatment.
+- The named Figma page/frame was not queried directly because no node-specific Figma URL was supplied; the attached approved frame export was used as the exact visual source.
+
+final result: passed
+
+---
+
 # Hostile cloud/provider follow-up verification
 
 - Scope: post-P0/P1 regression verification only; no product or trip-data mutation was performed.
