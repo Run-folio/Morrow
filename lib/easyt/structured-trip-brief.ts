@@ -58,7 +58,9 @@ export type TripBriefHardConstraint =
   | { type: "duration"; duration: TripBriefDuration }
   | { type: "start-at" | "end-at" | "must-visit" | "excluded-destination"; value: string; provenance: TripBriefProvenance }
   | { type: "no-driving"; value: true; provenance: TripBriefProvenance }
+  | { type: "no-flying"; value: true; provenance: TripBriefProvenance }
   | { type: "maximum-stops"; value: number; provenance: TripBriefProvenance }
+  | { type: "maximum-transfer-time"; value: number; unit: "minutes"; provenance: TripBriefProvenance }
   | { type: "fixed-commitment"; value: string; date?: string; provenance: TripBriefProvenance };
 export type TripBriefSoftPreference = {
   type: "transport" | "pace" | "interest" | "accommodation" | "budget" | "region";
@@ -66,7 +68,7 @@ export type TripBriefSoftPreference = {
   provenance: TripBriefProvenance;
 };
 export type TripBriefValidationIssue = {
-  code: "END_BEFORE_START" | "DURATION_DATE_MISMATCH" | "INVALID_TRAVELLERS" | "REQUIRED_DESTINATION_EXCLUDED" | "MAX_STOPS_BELOW_REQUIRED";
+  code: "END_BEFORE_START" | "DURATION_DATE_MISMATCH" | "INVALID_TRAVELLERS" | "REQUIRED_DESTINATION_EXCLUDED" | "MAX_STOPS_BELOW_REQUIRED" | "UNSUPPORTED_TOTAL_BUDGET_CONSTRAINT";
   severity: "error" | "warning";
   message: string;
   fields: string[];
@@ -133,9 +135,11 @@ export type StructuredTripBriefBuilderInput = {
   accommodationPreferences?: string[];
   budget?: "value" | "mid" | "high";
   maximumStops?: number;
+  maximumTransferMinutes?: number;
   excludedDestinations?: string[];
   fixedCommitments?: Array<{ label: string; date?: string }>;
   avoidDriving?: boolean;
+  avoidFlying?: boolean;
   placeSelections?: PlaceSelection[];
   removedPlaceMentionIds?: string[];
 };
@@ -207,7 +211,7 @@ function extractedInterests(prompt: string) {
     ["nature", /\b(nature|outdoors|wildlife)\b/],
     ["culture", /\b(culture|museums?|heritage|history)\b/],
     ["mountains", /\b(mountains?|alps|hiking|trekking)\b/],
-    ["coast", /\b(coast|beach|seaside|ocean)\b/],
+    ["coast", /\b(coasts?|beaches?|seaside|ocean)\b/],
   ].flatMap(([value, pattern]) => (pattern as RegExp).test(text) ? [value as string] : []);
 }
 
@@ -228,6 +232,15 @@ function maximumStopsFromPrompt(prompt: string) {
   const text = normalize(prompt);
   const match = /\b(?:no more than|at most|maximum(?: of)?|max(?:imum)?(?: of)?|only)\s+(\d{1,2})\s+(?:stops?|bases?|destinations?)\b/.exec(text);
   return match ? { value: Number(match[1]), sourceText: match[0] } : undefined;
+}
+
+function maximumTransferMinutesFromPrompt(prompt: string) {
+  const text = normalize(prompt);
+  const match = /\b(?:(?:no|avoid)\s+(?:individual\s+)?transfers?\s+(?:over|above|longer than)|max(?:imum)?\s+(?:transfer(?: time)?|leg)(?:\s+of)?|transfers?\s+(?:must be|under|below|no more than))\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|minutes?|mins?)\b/.exec(text);
+  if (!match) return undefined;
+  const value = Number(match[1]);
+  const minutes = /^h/.test(match[2]) ? Math.round(value * 60) : Math.round(value);
+  return minutes > 0 ? { value: minutes, sourceText: match[0] } : undefined;
 }
 
 const regionPlaceTypes = new Set<PlaceType>([
@@ -359,11 +372,16 @@ export function extractStructuredTripBrief(
     || /\bno[-\s]+driving\b/i.test(rawPrompt)
     || /\b(?:i\s+)?(?:don't|dont|do not|won't|will not)\s+(?:want to\s+)?driv(?:e|ing)\b/i.test(rawPrompt);
   if (noDriving) hardConstraints.push({ type: "no-driving", value: true, provenance: promptExplicit("no driving") });
+  const noFlying = /\b(?:no|without)\s+(?:flights?|flying)\b/i.test(rawPrompt)
+    || /\b(?:i\s+)?(?:don't|dont|do not|won't|will not)\s+(?:want to\s+)?fly\b/i.test(rawPrompt);
+  if (noFlying) hardConstraints.push({ type: "no-flying", value: true, provenance: promptExplicit("no flights") });
   const maximumStops = maximumStopsFromPrompt(rawPrompt);
   if (maximumStops) hardConstraints.push({ type: "maximum-stops", value: maximumStops.value, provenance: promptExplicit(maximumStops.sourceText) });
+  const maximumTransferMinutes = maximumTransferMinutesFromPrompt(rawPrompt);
+  if (maximumTransferMinutes) hardConstraints.push({ type: "maximum-transfer-time", value: maximumTransferMinutes.value, unit: "minutes", provenance: promptExplicit(maximumTransferMinutes.sourceText) });
 
   const transportPreferences: StructuredTripBrief["transportPreferences"] = [];
-  const avoidsFlights = /\b(?:instead of|rather than|avoid)\s+(?:taking\s+)?flights?\b/i.test(rawPrompt);
+  const avoidsFlights = noFlying || /\b(?:instead of|rather than|avoid)\s+(?:taking\s+)?flights?\b/i.test(rawPrompt);
   (parsed.transportModes ?? []).filter((mode) => (!noDriving || mode !== "drive") && (!avoidsFlights || mode !== "flight")).forEach((mode) => transportPreferences.push({ value: mode, provenance: promptInferred(sourceExcerpt(rawPrompt, mode)) }));
   if (/\bground transport\b/i.test(rawPrompt)) transportPreferences.push({ value: "ground", provenance: promptInferred("ground transport") });
   if (/\b(prefer|rather|instead of).{0,28}train|trains?.{0,28}(when practical|where sensible|if practical)/i.test(rawPrompt)) {
@@ -477,7 +495,7 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     fixed: input.dates.fixed !== undefined ? fact(input.dates.fixed) : base.dates.fixed,
   } : base.dates;
   const hardConstraints = base.hardConstraints.filter((constraint) => ![
-    "duration", "start-at", "end-at", "must-visit", "no-driving", "maximum-stops", "excluded-destination", "fixed-commitment",
+    "duration", "start-at", "end-at", "must-visit", "no-driving", "no-flying", "maximum-stops", "maximum-transfer-time", "excluded-destination", "fixed-commitment",
   ].includes(constraint.type));
   if (duration?.precision === "exact") hardConstraints.push({ type: "duration", duration });
   const destinationIsActive = (destination: TripBriefDestination) => !destination.placeMentionId
@@ -493,9 +511,14 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   mustVisit.forEach((destination) => hardConstraints.push({ type: "must-visit", value: destination.name, provenance: destination.provenance }));
   const existingNoDriving = base.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "no-driving" } => constraint.type === "no-driving");
   if (input.avoidDriving ?? Boolean(existingNoDriving)) hardConstraints.push({ type: "no-driving", value: true, provenance: existingNoDriving?.provenance ?? builderExplicit() });
+  const existingNoFlying = base.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "no-flying" } => constraint.type === "no-flying");
+  if (input.avoidFlying ?? Boolean(existingNoFlying)) hardConstraints.push({ type: "no-flying", value: true, provenance: existingNoFlying?.provenance ?? builderExplicit() });
   const priorMaximum = base.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-stops" }> => constraint.type === "maximum-stops");
   if (input.maximumStops !== undefined) hardConstraints.push({ type: "maximum-stops", value: input.maximumStops, provenance: builderExplicit() });
   else if (priorMaximum) hardConstraints.push(priorMaximum);
+  const priorMaximumTransfer = base.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-transfer-time" }> => constraint.type === "maximum-transfer-time");
+  if (input.maximumTransferMinutes !== undefined) hardConstraints.push({ type: "maximum-transfer-time", value: input.maximumTransferMinutes, unit: "minutes", provenance: builderExplicit() });
+  else if (priorMaximumTransfer) hardConstraints.push(priorMaximumTransfer);
   if (input.excludedDestinations) input.excludedDestinations.forEach((value) => hardConstraints.push({ type: "excluded-destination", value, provenance: builderExplicit() }));
   else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "excluded-destination" && !removedNames.has(normalize(constraint.value))));
   if (input.fixedCommitments) input.fixedCommitments.forEach((item) => hardConstraints.push({ type: "fixed-commitment", value: item.label, date: item.date, provenance: builderExplicit() }));
@@ -586,16 +609,30 @@ export function validateStructuredTripBrief(brief: Omit<StructuredTripBrief, "is
   }
   if (brief.travellers && (!Number.isInteger(brief.travellers.value) || brief.travellers.value < 1)) issues.push({ code: "INVALID_TRAVELLERS", severity: "error", message: "Traveller count must be at least one.", fields: ["travellers"] });
   const excluded = brief.hardConstraints.filter((constraint): constraint is TripBriefHardConstraint & { type: "excluded-destination"; value: string } => constraint.type === "excluded-destination");
-  const conflict = brief.mustVisit.find((required) => excluded.some((item) => normalize(item.value) === normalize(required.name)));
-  if (conflict) issues.push({ code: "REQUIRED_DESTINATION_EXCLUDED", severity: "error", message: `${conflict.name} is both required and excluded.`, fields: ["mustVisit", "hardConstraints"] });
+  const conflict = brief.mustVisit.find((required) => excluded.some((item) => {
+    const excludedIdentity = normalize(item.value);
+    return excludedIdentity === normalize(required.name)
+      || (required.parentCountries ?? []).some((country) => normalize(country) === excludedIdentity);
+  }));
+  if (conflict) issues.push({ code: "REQUIRED_DESTINATION_EXCLUDED", severity: "error", message: `${conflict.name} is required but lies inside an explicitly excluded destination.`, fields: ["mustVisit", "hardConstraints"] });
   const maxStops = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-stops" }> => constraint.type === "maximum-stops");
   if (maxStops && maxStops.value < brief.mustVisit.length) issues.push({ code: "MAX_STOPS_BELOW_REQUIRED", severity: "error", message: `The maximum of ${maxStops.value} stops cannot include all ${brief.mustVisit.length} required places.`, fields: ["mustVisit", "hardConstraints.maximumStops"] });
+  const rawPrompt = brief.source.rawPrompt ?? "";
+  const explicitTotalBudget = /(?:[£$€]\s*\d[\d,.]*|\b\d[\d,.]*\s*(?:gbp|usd|eur|pounds?|dollars?|euros?))\b/i.test(rawPrompt)
+    && /\b(?:total|all[- ]in|entire trip|whole trip|maximum|max|budget)\b/i.test(rawPrompt);
+  if (explicitTotalBudget) issues.push({
+    code: "UNSUPPORTED_TOTAL_BUDGET_CONSTRAINT",
+    severity: "error",
+    message: "Morrovia cannot verify an exact total-trip budget from its current non-live pricing evidence.",
+    fields: ["budget", "source.rawPrompt"],
+  });
   return issues;
 }
 
 export function routePreferencesFromStructuredBrief(brief: StructuredTripBrief) {
   const avoidDriving = brief.hardConstraints.some((constraint) => constraint.type === "no-driving");
-  const avoidFlights = brief.transportPreferences.some((preference) => preference.value === "avoid-flight");
+  const avoidFlights = brief.hardConstraints.some((constraint) => constraint.type === "no-flying")
+    || brief.transportPreferences.some((preference) => preference.value === "avoid-flight");
   const modes = brief.transportPreferences
     .flatMap((preference) => preference.value === "ground" ? ["train" as const, "drive" as const] : preference.value === "avoid-flight" ? [] : [preference.value])
     .filter((mode) => !avoidDriving || mode !== "drive");
@@ -622,6 +659,7 @@ export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBri
   const start = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "start-at"; value: string } => constraint.type === "start-at");
   const end = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "end-at"; value: string } => constraint.type === "end-at");
   const maximum = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-stops" }> => constraint.type === "maximum-stops");
+  const maximumTransfer = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-transfer-time" }> => constraint.type === "maximum-transfer-time");
   const fixedCommitments = brief.hardConstraints
     .filter((constraint): constraint is Extract<TripBriefHardConstraint, { type: "fixed-commitment" }> => constraint.type === "fixed-commitment")
     .map((constraint) => ({ label: constraint.value, date: constraint.date }));
@@ -632,15 +670,20 @@ export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBri
     .filter((constraint): constraint is TripBriefHardConstraint & { type: "excluded-destination"; value: string } => constraint.type === "excluded-destination")
     .flatMap((constraint) => destinationId(constraint.value) ?? []);
   const preferences = routePreferencesFromStructuredBrief(brief);
+  const noFlying = brief.hardConstraints.some((constraint) => constraint.type === "no-flying");
   return {
     fixedStartStopId: start ? destinationId(start.value) : undefined,
     fixedEndStopId: end ? destinationId(end.value) : undefined,
     requiredStopIds: unique(requiredStopIds, (id) => id),
     excludedStopIds: unique(excludedStopIds, (id) => id),
     maximumStops: maximum?.value,
+    maximumTransferMinutes: maximumTransfer?.value,
     fixedCommitments,
     avoidDriving: preferences.avoidDriving,
-    excludedTransportModes: preferences.avoidDriving ? ["road" as const] : [],
+    excludedTransportModes: [
+      ...(preferences.avoidDriving ? ["road" as const] : []),
+      ...(noFlying ? ["flight" as const] : []),
+    ],
     transportModes: preferences.transportModes,
   };
 }

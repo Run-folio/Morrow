@@ -155,6 +155,22 @@ test("provider enrichment is bounded and deduplicates repeated canonical results
   assert.equal(enriched.mentions[0]?.sourceTexts.length, 1);
 });
 
+test("malformed provider payloads remain deterministic unresolved data", async () => {
+  const deterministic = resolvePlaceMentions("Mystery Coast");
+  const malformed = await resolvePlaceMentionsWithProvider("Mystery Coast", {
+    id: "malformed-fixture",
+    label: "Malformed fixture",
+    lookup: async () => [
+      null,
+      { providerId: 42, canonicalName: "Injected", placeType: "city" },
+      { providerId: "bad-type", canonicalName: "Injected", placeType: "script" },
+      { providerId: "bad-coordinates", canonicalName: "Injected", placeType: "city", coordinates: ["x", 1] },
+    ] as unknown as ReturnType<PlaceIntelligenceProvider["lookup"]> extends Promise<infer T> ? T : never,
+  });
+
+  assert.deepEqual(malformed, deterministic);
+});
+
 test("curated regional base suggestions are traceable and never invented for unsupported regions", () => {
   const expectedRoutes = new Map([
     ["patagonia", "route-catalog:patagonia-w-circuit"],

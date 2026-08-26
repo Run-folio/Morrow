@@ -24,6 +24,13 @@ test("Prep affiliate clicks carry stable placement without raw destination data"
   assert.doesNotMatch(source, /trackEvent\("affiliate_click",\s*\{[^}]*\b(?:city|country|traveller|raw_prompt):/);
 });
 
+test("accommodation fallbacks are not reported as commercial clicks", () => {
+  const prep = readFileSync("components/journey-trip-prep-accommodation.tsx", "utf8");
+  const itinerary = readFileSync("components/journey-itinerary-accommodation.tsx", "utf8");
+  assert.match(prep, /if \(action\.affiliate\) trackEvent\("affiliate_click"/);
+  assert.match(itinerary, /if \(action\.affiliate\) trackEvent\("affiliate_click"/);
+});
+
 test("non-affiliate stay fallbacks are not marked sponsored", () => {
   const source = readFileSync("components/journey-local-finder.tsx", "utf8");
   assert.match(source, /rel=\{chosen\.provider === "booking-demand" \? "sponsored noopener noreferrer" : "noopener noreferrer"\}/);

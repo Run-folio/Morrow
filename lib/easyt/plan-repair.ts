@@ -201,7 +201,7 @@ const stateKey = (plan: FinalPlan) => JSON.stringify({
 });
 
 const categoryFor = (issue: PlanValidationIssue): PlanRepairCategory => {
-  if (issue.code === "fixed-start-broken" || issue.code === "fixed-end-broken" || issue.code === "hard-constraint-violation" || issue.code === "transport-restriction-conflict") return "constraints";
+  if (issue.code === "fixed-start-broken" || issue.code === "fixed-end-broken" || issue.code === "hard-constraint-violation" || issue.code === "transport-restriction-conflict" || issue.code === "maximum-transfer-time-conflict") return "constraints";
   if (issue.code === "duplicate-stop") return "identity";
   if (issue.code === "total-nights-mismatch" || issue.code === "below-minimum-stay" || issue.code === "minimum-stay-conflict" || issue.code === "one-night-anchor-after-large-transfer" || issue.code === "extreme-pacing") return "night-allocation";
   return "route-order";

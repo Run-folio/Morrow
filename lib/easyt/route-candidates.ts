@@ -1,4 +1,5 @@
 import type { EstimatedLeg, PlannerStop, RoutePlanningConstraints } from "./planner.ts";
+import { transferDoorToDoorMinutes } from "./transfer-impact.ts";
 
 export type RouteCandidateSource =
   | "existing"
@@ -19,7 +20,8 @@ export type RouteConstraintIssue = {
     | "maximum-stops-exceeded"
     | "required-stops-exceed-maximum"
     | "fixed-commitment-conflict"
-    | "forbidden-transport-mode";
+    | "forbidden-transport-mode"
+    | "maximum-transfer-time-exceeded";
   message: string;
   stopIds: string[];
 };
@@ -166,6 +168,20 @@ function candidateIssues(
       issues.push({
         code: "forbidden-transport-mode",
         message: `Existing route data establishes ${conflicts.map((leg) => leg.mode).filter((mode, index, all) => all.indexOf(mode) === index).join(" or ")} on this ordering, which conflicts with a hard transport constraint.`,
+        stopIds: stops.map((stop) => stop.id),
+      });
+    }
+  }
+  if (constraints?.maximumTransferMinutes !== undefined) {
+    const { legs } = routeEstimate(origin, stops, estimateLeg);
+    const conflicts = legs.filter((leg) => {
+      const realisticMinutes = transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes);
+      return realisticMinutes !== null && realisticMinutes > constraints.maximumTransferMinutes!;
+    });
+    if (conflicts.length) {
+      issues.push({
+        code: "maximum-transfer-time-exceeded",
+        message: `Every retained route ordering includes a transfer longer than the hard maximum of ${constraints.maximumTransferMinutes} minutes.`,
         stopIds: stops.map((stop) => stop.id),
       });
     }

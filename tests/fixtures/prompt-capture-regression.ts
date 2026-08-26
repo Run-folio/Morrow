@@ -1,0 +1,503 @@
+export type PromptCaptureFailureBoundary = "capture/parser" | "place resolution" | "StructuredTripBrief mapping" | "handoff" | "planner";
+
+export type PromptCaptureRegressionFixture = {
+  id: string;
+  rawPrompt: string;
+  requiredHardFacts: {
+    durationDays?: number;
+    duration?: { value: number; unit: "days" | "nights" };
+    canonicalPlaceIds?: string[];
+    routablePlaceIds?: string[];
+    hardConstraints?: string[];
+    softPreferences?: string[];
+    datesMustRemainUnknown?: boolean;
+    originCanonicalPlaceId?: string;
+    preservedUnresolvedTexts?: string[];
+  };
+  acceptableVariations: string[];
+  prohibitedOutcomes: string[];
+  expectedAmbiguityWarnings: string[];
+  failureBoundary: PromptCaptureFailureBoundary;
+  providerScenario?: "partial-failure" | "partial-response" | "timeout";
+  semanticExpectation?: {
+    originSourceText: string | null;
+    duration: { value: number; unit: "days" | "nights" | "weeks" } | null;
+    destinationSourceTexts: string[];
+    destinationInterpretations?: Record<string, string | null>;
+    destinationRoles?: Record<string, "route-stop" | "planning-area" | "unknown">;
+    destinationCertainties?: Record<string, "explicit" | "likely" | "ambiguous">;
+    pointsOfInterest?: Array<{ sourceText: string; interpretedText: string | null; likelyDestinationSourceText: string | null }>;
+    departureMode?: "flight" | "train" | "drive" | "bus" | "ferry" | "ground" | null;
+    departureSourceText?: string | null;
+    interStopModes?: Array<"flight" | "train" | "drive" | "bus" | "ferry" | "ground">;
+    interStopSourceText?: string | null;
+    avoidModes?: Array<"flight" | "train" | "drive" | "bus" | "ferry" | "ground">;
+    avoidSourceTexts?: Partial<Record<"flight" | "train" | "drive" | "bus" | "ferry" | "ground", string>>;
+    explicitDateTexts?: string[];
+    pace?: { sourceText: string; value: "relaxed" | "balanced" | "packed" } | null;
+    interests?: Array<{ sourceText: string; value: "food" | "coast" | "nightlife" | "culture" | "nature" | "adventure" | "shopping" | "wellness" | "other" }>;
+    constraints?: Array<{ sourceText: string; kind: "no-driving" | "no-flying" | "must-visit" | "maximum-stops" | "maximum-transfer" | "fixed-commitment" | "budget" | "accessibility" | "other"; strength: "hard" | "soft" }>;
+    ambiguities?: Array<{ sourceText: string; kind: "origin" | "duration" | "date" | "destination" | "poi" | "transport" | "constraint" | "other" }>;
+    unresolvedMeaningfulText?: string[];
+    forbiddenDestinationTerms?: string[];
+  };
+};
+
+/**
+ * Regression cards for raw private-beta prose. These are assertions about the
+ * shared capture boundary, not a second intent parser or a planner benchmark.
+ */
+export const PROMPT_CAPTURE_REGRESSION_CASES: PromptCaptureRegressionFixture[] = [
+  {
+    id: "real-homepage-europe-typos-and-pois",
+    rawPrompt: "paris, porto, rome, colusseum, pathanon, athen for 3 wks, flying from london",
+    requiredHardFacts: {
+      durationDays: 21,
+      canonicalPlaceIds: ["paris", "porto", "rome", "athens", "london"],
+      routablePlaceIds: ["paris", "porto", "rome", "athens", "london"],
+      datesMustRemainUnknown: true,
+      originCanonicalPlaceId: "london",
+      preservedUnresolvedTexts: ["colusseum", "pathanon"],
+    },
+    acceptableVariations: ["POIs may remain unverified until Place Intelligence or a bounded provider resolves them."],
+    prohibitedOutcomes: ["Colosseum or Parthenon becoming overnight stops", "London becoming an inter-city stop", "Flight mode being applied to every leg"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: "london",
+      duration: { value: 3, unit: "weeks" },
+      destinationSourceTexts: ["paris", "porto", "rome", "athen"],
+      destinationInterpretations: { athen: "Athens" },
+      pointsOfInterest: [
+        { sourceText: "colusseum", interpretedText: "Colosseum", likelyDestinationSourceText: "rome" },
+        { sourceText: "pathanon", interpretedText: "Parthenon", likelyDestinationSourceText: "athen" },
+      ],
+      departureMode: "flight",
+      departureSourceText: "flying from london",
+      interStopModes: [],
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["food", "beaches", "nightlife", "relaxed", "museums", "cheap", "nature", "don't rush"],
+    },
+  },
+  {
+    id: "semantic-similar-europe-landmarks",
+    rawPrompt: "london paris barcelona sagrada familia rome vatican for two weeks",
+    requiredHardFacts: { durationDays: 14, canonicalPlaceIds: ["london", "paris", "barcelona", "sagrada-familia", "rome"], routablePlaceIds: ["london", "paris", "barcelona", "rome"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Vatican may remain semantic POI text until Place Intelligence can resolve it."],
+    prohibitedOutcomes: ["Sagrada Familia or Vatican becoming overnight stops", "An origin being invented", "Invented dates"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: { value: 2, unit: "weeks" },
+      destinationSourceTexts: ["london", "paris", "barcelona", "rome"],
+      pointsOfInterest: [{ sourceText: "sagrada familia", interpretedText: "Sagrada Família", likelyDestinationSourceText: "barcelona" }, { sourceText: "vatican", interpretedText: "Vatican", likelyDestinationSourceText: "rome" }],
+      departureMode: null,
+      interStopModes: [],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "semantic-similar-japan-poi-typo-origin",
+    rawPrompt: "tokyo kyoto fushimi inari oska 12 days flying from manchester",
+    requiredHardFacts: { durationDays: 12, canonicalPlaceIds: ["tokyo", "kyoto", "osaka"], routablePlaceIds: ["tokyo", "kyoto", "osaka"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Manchester remains unresolved while preserving its origin role."],
+    prohibitedOutcomes: ["Fushimi Inari becoming an overnight stop", "Manchester becoming an inter-city stop", "Departure flight mode becoming every inter-stop leg"],
+    expectedAmbiguityWarnings: ["unresolved_place"],
+    failureBoundary: "place resolution",
+    semanticExpectation: {
+      originSourceText: "manchester",
+      duration: { value: 12, unit: "days" },
+      destinationSourceTexts: ["tokyo", "kyoto", "oska"],
+      destinationInterpretations: { oska: "Osaka" },
+      pointsOfInterest: [{ sourceText: "fushimi inari", interpretedText: "Fushimi Inari", likelyDestinationSourceText: "kyoto" }],
+      departureMode: "flight",
+      departureSourceText: "flying from manchester",
+      interStopModes: [],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "semantic-similar-peru-poi-origin",
+    rawPrompt: "cusco machu pichu lima for 3 wks from london",
+    requiredHardFacts: { durationDays: 21, canonicalPlaceIds: ["cusco", "lima", "london"], routablePlaceIds: ["cusco", "lima", "london"], originCanonicalPlaceId: "london", datesMustRemainUnknown: true },
+    acceptableVariations: ["Machu pichu remains semantic POI text until Place Intelligence can resolve it."],
+    prohibitedOutcomes: ["Machu pichu becoming an overnight stop", "London becoming an inter-city stop", "A departure mode being invented"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: "london",
+      duration: { value: 3, unit: "weeks" },
+      destinationSourceTexts: ["cusco", "lima"],
+      pointsOfInterest: [{ sourceText: "machu pichu", interpretedText: "Machu Picchu", likelyDestinationSourceText: "cusco" }],
+      departureMode: null,
+      interStopModes: [],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "semantic-similar-us-pois-origin",
+    rawPrompt: "new york boston freedom trail washington smithsonian two weeks from manchester",
+    requiredHardFacts: { durationDays: 14, canonicalPlaceIds: ["new-york-city", "boston"], routablePlaceIds: ["new-york-city", "boston"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Washington and its POIs remain semantic candidates pending deterministic resolution."],
+    prohibitedOutcomes: ["Freedom Trail or Smithsonian becoming overnight stops", "Manchester becoming an inter-city stop", "A departure mode being invented"],
+    expectedAmbiguityWarnings: ["unresolved_place"],
+    failureBoundary: "place resolution",
+    semanticExpectation: {
+      originSourceText: "manchester",
+      duration: { value: 2, unit: "weeks" },
+      destinationSourceTexts: ["new york", "boston", "washington"],
+      pointsOfInterest: [{ sourceText: "freedom trail", interpretedText: "Freedom Trail", likelyDestinationSourceText: "boston" }, { sourceText: "smithsonian", interpretedText: "Smithsonian", likelyDestinationSourceText: "washington" }],
+      departureMode: null,
+      interStopModes: [],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "semantic-similar-italy-pois-origin",
+    rawPrompt: "rome colosseum florence uffizi venice 10 days from london",
+    requiredHardFacts: { durationDays: 10, canonicalPlaceIds: ["rome", "florence", "venice", "london"], routablePlaceIds: ["rome", "florence", "venice", "london"], originCanonicalPlaceId: "london", datesMustRemainUnknown: true },
+    acceptableVariations: ["Colosseum and Uffizi remain semantic POIs rather than route stops."],
+    prohibitedOutcomes: ["Colosseum or Uffizi becoming overnight stops", "London becoming an inter-city stop", "A departure mode being invented"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: "london",
+      duration: { value: 10, unit: "days" },
+      destinationSourceTexts: ["rome", "florence", "venice"],
+      pointsOfInterest: [{ sourceText: "colosseum", interpretedText: "Colosseum", likelyDestinationSourceText: "rome" }, { sourceText: "uffizi", interpretedText: "Uffizi", likelyDestinationSourceText: "florence" }],
+      departureMode: null,
+      interStopModes: [],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "minimal-japan-two-weeks",
+    rawPrompt: "Japan for two weeks",
+    requiredHardFacts: { durationDays: 14, canonicalPlaceIds: ["japan"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Japan remains a planning area awaiting a city/base choice."],
+    prohibitedOutcomes: ["Invented calendar dates", "Japan silently converted into a city stop"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: { originSourceText: null, duration: { value: 2, unit: "weeks" }, destinationSourceTexts: ["Japan"], destinationRoles: { Japan: "planning-area" }, explicitDateTexts: [] },
+  },
+  {
+    id: "vague-warm-asia",
+    rawPrompt: "somewhere warm in Asia for 10 days",
+    requiredHardFacts: { durationDays: 10, datesMustRemainUnknown: true },
+    acceptableVariations: ["Asia is retained as an unresolved geographic scope for review."],
+    prohibitedOutcomes: ["A fabricated Asian destination", "Warm recorded as a route stop"],
+    expectedAmbiguityWarnings: ["unresolved_place", "missing_routable_destination"],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: { value: 10, unit: "days" },
+      destinationSourceTexts: ["Asia"],
+      destinationRoles: { Asia: "planning-area" },
+      destinationCertainties: { Asia: "likely" },
+      interests: [{ sourceText: "warm", value: "other" }],
+      ambiguities: [{ sourceText: "somewhere warm in Asia", kind: "destination" }],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "duration-without-dates",
+    rawPrompt: "12 nights in Peru",
+    requiredHardFacts: { duration: { value: 12, unit: "nights" }, canonicalPlaceIds: ["peru"], datesMustRemainUnknown: true },
+    acceptableVariations: ["The handoff may expose 13 calendar days while retaining 12 nights as the stated duration."],
+    prohibitedOutcomes: ["Invented start or end date", "Peru silently converted into a city"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: { originSourceText: null, duration: { value: 12, unit: "nights" }, destinationSourceTexts: ["Peru"], destinationRoles: { Peru: "planning-area" }, explicitDateTexts: [] },
+  },
+  {
+    id: "destination-without-preferences",
+    rawPrompt: "Tokyo",
+    requiredHardFacts: { canonicalPlaceIds: ["tokyo"], routablePlaceIds: ["tokyo"], datesMustRemainUnknown: true },
+    acceptableVariations: ["No pace, interests or transport preference is inferred."],
+    prohibitedOutcomes: ["Invented duration", "Invented preferences"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "handoff",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["Tokyo"], explicitDateTexts: [] },
+  },
+  {
+    id: "messy-lowercase-typo-route",
+    rawPrompt: "10 day japn tokyo kyto oska maybe hiroshma dont want too rusheed",
+    requiredHardFacts: { durationDays: 10, canonicalPlaceIds: ["japan", "tokyo", "kyoto", "osaka", "hiroshima"], routablePlaceIds: ["tokyo", "kyoto", "osaka", "hiroshima"], datesMustRemainUnknown: true },
+    acceptableVariations: ["The maybe-qualified Hiroshima may remain optional."],
+    prohibitedOutcomes: ["A safely corrected typo disappearing from the usable route", "Invented dates"],
+    expectedAmbiguityWarnings: ["region_requires_base"],
+    failureBoundary: "place resolution",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: { value: 10, unit: "days" },
+      destinationSourceTexts: ["japn", "tokyo", "kyto", "oska", "hiroshma"],
+      destinationInterpretations: { japn: "Japan", kyto: "Kyoto", oska: "Osaka", hiroshma: "Hiroshima" },
+      destinationRoles: { japn: "planning-area" },
+      destinationCertainties: { hiroshma: "likely" },
+      pace: { sourceText: "dont want too rusheed", value: "relaxed" },
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["dont want too rusheed"],
+    },
+  },
+  {
+    id: "shorthand-punctuation-and-typo",
+    rawPrompt: "2 wks tokyo/kyoto + oska, trains pls",
+    requiredHardFacts: { durationDays: 14, canonicalPlaceIds: ["tokyo", "kyoto", "osaka"], routablePlaceIds: ["tokyo", "kyoto", "osaka"], softPreferences: ["transport:train"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Route order may stay unordered when the traveller did not state an order."],
+    prohibitedOutcomes: ["The wks duration disappearing", "The Osaka typo disappearing"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: { value: 2, unit: "weeks" },
+      destinationSourceTexts: ["tokyo", "kyoto", "oska"],
+      destinationInterpretations: { oska: "Osaka" },
+      interStopModes: ["train"],
+      interStopSourceText: "trains pls",
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "lowercase-conversational-preferences",
+    rawPrompt: "tokyo kyoto osaka food no driving",
+    requiredHardFacts: { canonicalPlaceIds: ["tokyo", "kyoto", "osaka"], routablePlaceIds: ["tokyo", "kyoto", "osaka"], hardConstraints: ["no-driving"], softPreferences: ["interest:food"], datesMustRemainUnknown: true },
+    acceptableVariations: ["No transport mode needs to be inferred beyond the no-driving constraint."],
+    prohibitedOutcomes: ["Food becoming a destination", "A road-mode preference being invented"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["tokyo", "kyoto", "osaka"],
+      interests: [{ sourceText: "food", value: "food" }],
+      avoidModes: ["drive"],
+      avoidSourceTexts: { drive: "no driving" },
+      constraints: [{ sourceText: "no driving", kind: "no-driving", strength: "hard" }],
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["food"],
+    },
+  },
+  {
+    id: "ambiguous-georgia",
+    rawPrompt: "Georgia",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["The phrase remains reviewable rather than choosing the country or US state."],
+    prohibitedOutcomes: ["Silent geographic guess", "A routable city stop"],
+    expectedAmbiguityWarnings: ["ambiguous_place", "missing_routable_destination"],
+    failureBoundary: "place resolution",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["Georgia"], destinationRoles: { Georgia: "unknown" }, destinationCertainties: { Georgia: "ambiguous" }, ambiguities: [{ sourceText: "Georgia", kind: "destination" }], explicitDateTexts: [] },
+  },
+  {
+    id: "ambiguous-granada",
+    rawPrompt: "Granada",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["The phrase remains reviewable rather than choosing Spain or Nicaragua."],
+    prohibitedOutcomes: ["Silent geographic guess", "A routable city stop"],
+    expectedAmbiguityWarnings: ["ambiguous_place", "missing_routable_destination"],
+    failureBoundary: "place resolution",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["Granada"], destinationRoles: { Granada: "unknown" }, destinationCertainties: { Granada: "ambiguous" }, ambiguities: [{ sourceText: "Granada", kind: "destination" }], explicitDateTexts: [] },
+  },
+  {
+    id: "unresolved-san-jose",
+    rawPrompt: "San José",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["The accented city name remains unresolved until enough context is supplied."],
+    prohibitedOutcomes: ["Silent country guess", "A fabricated route stop"],
+    expectedAmbiguityWarnings: ["unresolved_place", "missing_routable_destination"],
+    failureBoundary: "place resolution",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["San José"], destinationRoles: { "San José": "unknown" }, destinationCertainties: { "San José": "ambiguous" }, ambiguities: [{ sourceText: "San José", kind: "destination" }], explicitDateTexts: [] },
+  },
+  {
+    id: "unresolved-victoria",
+    rawPrompt: "Victoria",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["The phrase remains reviewable without assuming an Australian, Canadian or other Victoria."],
+    prohibitedOutcomes: ["Silent geographic guess", "A fabricated route stop"],
+    expectedAmbiguityWarnings: ["unresolved_place", "missing_routable_destination"],
+    failureBoundary: "place resolution",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["Victoria"], destinationRoles: { Victoria: "unknown" }, destinationCertainties: { Victoria: "ambiguous" }, ambiguities: [{ sourceText: "Victoria", kind: "destination" }], explicitDateTexts: [] },
+  },
+  {
+    id: "regional-island-intent",
+    rawPrompt: "Greek islands for 10 days",
+    requiredHardFacts: { durationDays: 10, canonicalPlaceIds: ["greek-islands"], datesMustRemainUnknown: true },
+    acceptableVariations: ["The islands remain a planning area that needs a base/route selection."],
+    prohibitedOutcomes: ["A fake city named Greek Islands", "Invented dates"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
+    failureBoundary: "handoff",
+    semanticExpectation: { originSourceText: null, duration: { value: 10, unit: "days" }, destinationSourceTexts: ["Greek islands"], destinationRoles: { "Greek islands": "planning-area" }, explicitDateTexts: [] },
+  },
+  {
+    id: "airport-alias-with-city",
+    rawPrompt: "fly into CDG then Paris",
+    requiredHardFacts: { canonicalPlaceIds: ["paris"], routablePlaceIds: ["paris"], datesMustRemainUnknown: true },
+    acceptableVariations: ["CDG may merge into Paris as an arrival gateway alias."],
+    prohibitedOutcomes: ["A separate fake CDG city stop", "Duplicate Paris route stop"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["Paris"],
+      ambiguities: [{ sourceText: "fly into CDG", kind: "transport" }],
+      unresolvedMeaningfulText: ["CDG"],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "day-numbers-without-month",
+    rawPrompt: "land 4th leave 14th tokyo kyoto?? maybe takayama",
+    requiredHardFacts: { canonicalPlaceIds: ["tokyo", "kyoto", "takayama"], routablePlaceIds: ["tokyo", "kyoto", "takayama"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Kyoto and Takayama may be optional because the traveller expressed uncertainty."],
+    prohibitedOutcomes: ["A guessed month/year", "A fixed date range derived from day numbers alone"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["tokyo", "kyoto", "takayama"],
+      destinationCertainties: { kyoto: "ambiguous", takayama: "likely" },
+      ambiguities: [{ sourceText: "kyoto??", kind: "destination" }, { sourceText: "maybe takayama", kind: "destination" }],
+      explicitDateTexts: ["4th", "14th"],
+    },
+  },
+  {
+    id: "month-without-year",
+    rawPrompt: "October in Japan",
+    requiredHardFacts: { canonicalPlaceIds: ["japan"], datesMustRemainUnknown: true },
+    acceptableVariations: ["October remains timing context, not a fixed calendar date."],
+    prohibitedOutcomes: ["October becoming geography", "An invented year/date range"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
+    failureBoundary: "capture/parser",
+    semanticExpectation: { originSourceText: null, duration: null, destinationSourceTexts: ["Japan"], destinationRoles: { Japan: "planning-area" }, explicitDateTexts: ["October"] },
+  },
+  {
+    id: "season-and-interests",
+    rawPrompt: "winter in Japan, food and nature",
+    requiredHardFacts: { canonicalPlaceIds: ["japan"], softPreferences: ["interest:food", "interest:nature"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Winter remains a non-fixed seasonal preference."],
+    prohibitedOutcomes: ["Winter, food or nature becoming a destination", "Invented dates"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["Japan"],
+      destinationRoles: { Japan: "planning-area" },
+      explicitDateTexts: ["winter"],
+      interests: [{ sourceText: "food", value: "food" }, { sourceText: "nature", value: "nature" }],
+      forbiddenDestinationTerms: ["food", "nature"],
+    },
+  },
+  {
+    id: "preferences-without-geography",
+    rawPrompt: "food nature beaches keep it relaxed trains preferred no driving must keep food",
+    requiredHardFacts: { hardConstraints: ["no-driving"], softPreferences: ["interest:food", "interest:nature", "interest:coast", "pace:relaxed", "transport:train"], datesMustRemainUnknown: true },
+    acceptableVariations: ["No routable destination is produced until the traveller names geography."],
+    prohibitedOutcomes: ["Food, nature or beaches becoming blocking destinations", "A fabricated city"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: [],
+      interStopModes: ["train"],
+      interStopSourceText: "trains preferred",
+      avoidModes: ["drive"],
+      avoidSourceTexts: { drive: "no driving" },
+      pace: { sourceText: "keep it relaxed", value: "relaxed" },
+      interests: [{ sourceText: "food", value: "food" }, { sourceText: "nature", value: "nature" }, { sourceText: "beaches", value: "coast" }],
+      constraints: [{ sourceText: "no driving", kind: "no-driving", strength: "hard" }, { sourceText: "must keep food", kind: "other", strength: "hard" }],
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["food", "nature", "beaches", "keep it relaxed"],
+    },
+  },
+  {
+    id: "partial-typo-resolution",
+    rawPrompt: "Barcelon, Madrid and Lost Ridge",
+    requiredHardFacts: { canonicalPlaceIds: ["barcelona", "madrid"], routablePlaceIds: ["barcelona", "madrid"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Lost Ridge remains unresolved and requires review."],
+    prohibitedOutcomes: ["Resolved Barcelona or Madrid disappearing", "Lost Ridge silently guessed"],
+    expectedAmbiguityWarnings: ["unresolved_place"],
+    failureBoundary: "place resolution",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["Barcelon", "Madrid", "Lost Ridge"],
+      destinationInterpretations: { Barcelon: "Barcelona" },
+      destinationRoles: { "Lost Ridge": "unknown" },
+      destinationCertainties: { "Lost Ridge": "ambiguous" },
+      ambiguities: [{ sourceText: "Lost Ridge", kind: "destination" }],
+      explicitDateTexts: [],
+    },
+  },
+  {
+    id: "semantic-false-geography-italy-preferences",
+    rawPrompt: "italy food wine relaxed 2 weeks",
+    requiredHardFacts: { durationDays: 14, datesMustRemainUnknown: true },
+    acceptableVariations: ["Italy remains geographic scope while food, wine and relaxed remain preferences."],
+    prohibitedOutcomes: ["Food, wine or relaxed becoming a destination", "A city being invented", "Invented dates"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: { value: 2, unit: "weeks" },
+      destinationSourceTexts: ["italy"],
+      destinationRoles: { italy: "planning-area" },
+      pace: { sourceText: "relaxed", value: "relaxed" },
+      interests: [{ sourceText: "food", value: "food" }, { sourceText: "wine", value: "other" }],
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["food", "wine", "relaxed"],
+    },
+  },
+  {
+    id: "semantic-false-geography-romance-architecture-budget",
+    rawPrompt: "Paris and Rome, romantic architecture, keep it cheap, don't rush",
+    requiredHardFacts: { canonicalPlaceIds: ["paris", "rome"], routablePlaceIds: ["paris", "rome"], datesMustRemainUnknown: true },
+    acceptableVariations: ["Romantic and architecture remain interests; budget and pace remain preferences."],
+    prohibitedOutcomes: ["Romantic, architecture, cheap or don't rush becoming destinations", "A destination being invented", "Invented dates"],
+    expectedAmbiguityWarnings: [],
+    failureBoundary: "StructuredTripBrief mapping",
+    semanticExpectation: {
+      originSourceText: null,
+      duration: null,
+      destinationSourceTexts: ["Paris", "Rome"],
+      pace: { sourceText: "don't rush", value: "relaxed" },
+      interests: [{ sourceText: "romantic", value: "other" }, { sourceText: "architecture", value: "culture" }],
+      constraints: [{ sourceText: "keep it cheap", kind: "budget", strength: "soft" }],
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["romantic", "architecture", "keep it cheap", "don't rush"],
+    },
+  },
+  {
+    id: "provider-partial-failure",
+    rawPrompt: "Mystery Coast, Hidden Bay and Lost Ridge",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["A completed provider result is retained while failed and timed-out phrases stay unresolved."],
+    prohibitedOutcomes: ["A failed lookup erasing a sibling result", "A provider failure inventing geography"],
+    expectedAmbiguityWarnings: ["unresolved_place", "region_requires_base"],
+    failureBoundary: "place resolution",
+    providerScenario: "partial-failure",
+  },
+  {
+    id: "provider-partial-response",
+    rawPrompt: "Mystery Coast and Hidden Bay",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["Only the provider-returned coastal planning area is enriched."],
+    prohibitedOutcomes: ["An empty provider response erasing Mystery Coast", "Hidden Bay silently guessed"],
+    expectedAmbiguityWarnings: ["unresolved_place", "region_requires_base"],
+    failureBoundary: "place resolution",
+    providerScenario: "partial-response",
+  },
+  {
+    id: "provider-timeout",
+    rawPrompt: "Mystery Coast and Lost Ridge",
+    requiredHardFacts: { datesMustRemainUnknown: true },
+    acceptableVariations: ["A slow lookup settles within its configured bound and leaves both phrases unresolved."],
+    prohibitedOutcomes: ["An indefinitely pending capture batch", "Invented fallback geography"],
+    expectedAmbiguityWarnings: ["unresolved_place", "missing_routable_destination"],
+    failureBoundary: "place resolution",
+    providerScenario: "timeout",
+  },
+];

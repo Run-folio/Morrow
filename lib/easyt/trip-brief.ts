@@ -25,8 +25,8 @@ const unique = <T>(values: T[], key: (value: T) => string) => values.filter((val
 
 function findDurationDays(value: string) {
   const text = normalise(value);
-  const numeric = text.match(/\b(\d{1,2})\s*[- ]?\s*(days?|dias?|weeks?|semanas?)\b/);
-  if (numeric) return Number(numeric[1]) * (/week|semana/.test(numeric[2]) ? 7 : 1);
+  const numeric = text.match(/\b(\d{1,2})\s*[- ]?\s*(days?|dias?|weeks?|wks?\.?|semanas?)\b/);
+  if (numeric) return Number(numeric[1]) * (/week|wk|semana/.test(numeric[2]) ? 7 : 1);
   if (/\b(?:a\s+)?fortnight\b/.test(text)) return 14;
   if (/\b(one|a|una)\s+week\b|\buna semana\b/.test(text)) return 7;
   if (/\b(two|dos)\s+weeks?\b|\bdos semanas\b/.test(text)) return 14;

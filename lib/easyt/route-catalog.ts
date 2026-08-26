@@ -16,6 +16,38 @@ export type RouteConnection = {
   planningMinutes: number | null;
   note: string;
   confidence: RouteConfidence;
+  /** Labels from this route's sourceLinks that support this planning allowance. */
+  sourceLabels?: string[];
+};
+
+export type RouteEditorialUnknown = {
+  kind: "connection" | "route" | "imagery";
+  reference: string;
+  reason: string;
+};
+
+export type RouteReleaseMetadata = {
+  routeOrderRationale?: string;
+  editorialOwner?: string;
+  editorialReviewer?: string;
+  /** An empty array means the editor explicitly found no remaining unknowns. */
+  explicitUnknowns?: RouteEditorialUnknown[];
+  image?: {
+    asset: string;
+    rights: "owned" | "licensed" | "public-domain";
+    attribution?: string;
+    sourceUrl?: string;
+  };
+};
+
+export type RouteFamilyStop = {
+  name: string;
+  country: string;
+  coordinates: [number, number];
+  minimumNights: number;
+  /** Explicit reviewed preference; do not infer this from minimum nights at release time. */
+  recommendedNights?: number;
+  reason: string;
 };
 
 export type RouteFamily = {
@@ -27,7 +59,7 @@ export type RouteFamily = {
   bestFor: string;
   suggestedDays: { min: number; ideal: number; max: number };
   bases: string[];
-  stops: Array<{ name: string; country: string; coordinates: [number, number]; minimumNights: number; reason: string }>;
+  stops: RouteFamilyStop[];
   connections: RouteConnection[];
   seasonalNotes: string[];
   highlights?: string[];
@@ -35,6 +67,8 @@ export type RouteFamily = {
   imageQuery?: string;
   confidence: RouteConfidence;
   reviewedAt: string;
+  /** Release-only editorial facts. Omit them until they have actually been reviewed. */
+  release?: RouteReleaseMetadata;
 };
 
 const verify = "Verify current schedules, entry rules and opening hours before booking.";

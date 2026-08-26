@@ -1,6 +1,9 @@
 import type { NightAllocationResult } from "./night-allocation.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
 import type { RouteConstraintIssue } from "./route-candidates.ts";
+import type { PlanValidationReport } from "./plan-validator.ts";
+import { assessPlanRealism, type PlanRealismAssessment } from "./plan-realism.ts";
+import type { TransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip } from "./trip.ts";
 
 export type BuildTripConflictCode =
@@ -19,14 +22,15 @@ export type BuildTripConflictCode =
   | "zero-night-stop"
   | "itinerary-empty"
   | "itinerary-stop-uncovered"
-  | "itinerary-day-coverage";
+  | "itinerary-day-coverage"
+  | "final-plan-invalid";
 
 export type BuildTripConflict = {
   code: BuildTripConflictCode;
   stage: "places" | "time" | "itinerary";
   message: string;
   stopIds: string[];
-  source: "builder" | "place-intelligence" | "route-intelligence" | "structured-brief" | "night-allocation" | "itinerary";
+  source: "builder" | "place-intelligence" | "route-intelligence" | "structured-brief" | "night-allocation" | "validator" | "itinerary";
 };
 
 export type CanBuildTripInput = {
@@ -45,6 +49,10 @@ export type CanBuildTripInput = {
   structuredBriefIssues?: Array<{ severity: "error" | "warning"; message: string }>;
   nightAllocation: NightAllocationResult;
   allocations: Record<string, number>;
+  planValidation?: Pick<PlanValidationReport, "issues">;
+  transferImpacts?: readonly (TransferImpact | undefined)[];
+  routeOrderFixed?: boolean;
+  transferDayKeys?: readonly string[];
   document: Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate">;
 };
 
@@ -126,6 +134,15 @@ export function canBuildTrip(input: CanBuildTripInput) {
     if (zeroNightStopIds.length) conflicts.push(conflict({ code: "zero-night-stop", stage: "time", message: "Every retained destination needs at least one night; remove a stop or add time.", stopIds: zeroNightStopIds, source: "night-allocation" }));
   }
 
+  const finalPlanError = input.planValidation?.issues.find((item) => item.severity === "error");
+  if (finalPlanError) conflicts.push(conflict({
+    code: "final-plan-invalid",
+    stage: "itinerary",
+    message: finalPlanError.message,
+    stopIds: finalPlanError.stopIds,
+    source: "validator",
+  }));
+
   if (!input.document.planItems.length) conflicts.push(conflict({ code: "itinerary-empty", stage: "itinerary", message: "The generated itinerary is empty.", stopIds, source: "itinerary" }));
   const documentStopIds = new Set(input.document.stops.map((stop) => stop.id));
   const coveredStopIds = new Set(input.document.planItems.map((item) => item.stopId));
@@ -145,10 +162,36 @@ export function canBuildTrip(input: CanBuildTripInput) {
     conflicts.push(conflict({ code: "itinerary-day-coverage", stage: "itinerary", message: "The itinerary must cover every trip day exactly once.", stopIds, source: "itinerary" }));
   }
 
+  const validationWarnings = input.planValidation?.issues.filter((item) => item.severity === "warning") ?? [];
+  const realism: PlanRealismAssessment | null = input.planValidation
+    ? assessPlanRealism({
+        validation: input.planValidation,
+        nightAllocation: input.nightAllocation,
+        transferImpacts: input.transferImpacts,
+        routeOrderFixed: input.routeOrderFixed,
+        retainedStopIds: stopIds,
+        retainedStopNights: stopIds.map((stopId) => input.allocations[stopId] ?? 0),
+        transferDayKeys: input.transferDayKeys,
+      })
+    : null;
+  const outcome = conflicts.length
+    ? "impossible" as const
+    : input.nightAllocation.state === "compromised"
+      ? "constrained-compromise" as const
+      : validationWarnings.length
+        ? "valid-but-poor" as const
+        : "valid" as const;
   return {
     canBuildTrip: conflicts.length === 0,
     canAdvanceToTime: !conflicts.some((item) => item.stage === "places"),
     conflicts,
     firstConflict: conflicts[0],
+    qualityClassification: conflicts.length ? "impossible" as const : realism?.classification ?? (validationWarnings.length ? "reasonable with trade-offs" as const : "reasonable" as const),
+    realismReasons: realism?.reasons ?? [],
+    outcome,
+    compromises: [
+      ...(input.nightAllocation.state === "compromised" ? input.nightAllocation.conflicts.map((item) => item.message) : []),
+      ...validationWarnings.map((item) => item.message),
+    ],
   };
 }

@@ -132,6 +132,8 @@ export type RoutePlanningConstraints = {
   requiredStopIds?: string[];
   excludedStopIds?: string[];
   maximumStops?: number;
+  /** Hard ceiling for any single realistic door-to-door transfer. */
+  maximumTransferMinutes?: number;
   avoidDriving?: boolean;
   excludedTransportModes?: EstimatedLeg["mode"][];
   transportModes?: Array<"flight" | "train" | "drive">;
@@ -278,7 +280,10 @@ export function estimateLeg(
       }),
     }, { duration: headline });
   }
-  const headlineMinutes = (distanceKm / 760) * 60;
+  // Cruise speed alone makes short heuristic flights look impossibly brief
+  // (for example, a 400 km leg can fall near 30 minutes). Keep a conservative
+  // one-hour airborne planning floor without claiming a live schedule.
+  const headlineMinutes = Math.max(60, (distanceKm / 760) * 60);
   const headline = knownKnowledgeFact(headlineMinutes, "estimated", TRANSFER_IMPACT_RULE_SOURCE);
   return withLegPlanningConfidence({
     mode: "flight", distanceKm, durationMinutes: Math.round(180 + headlineMinutes), label: `${from.name} → ${to.name}`,
@@ -443,7 +448,10 @@ export function assessRouteOrder(input: {
     from: PlannerStop | { name: string; coordinates?: [number, number] },
     to: PlannerStop,
   ) => estimateLegForConstraints(from, to, input.constraints);
-  const generation = generateRouteCandidates({ ...input, estimateLeg: constrainedEstimateLeg });
+  // Candidate pruning must see the supported underlying mode. The constrained
+  // wrapper deliberately turns a forbidden mode into `unknown` for downstream
+  // presentation, which would otherwise hide the hard conflict from generation.
+  const generation = generateRouteCandidates({ ...input, estimateLeg });
   const legacyPreferredModes = input.constraints?.transportModes?.map((mode) => mode === "drive" ? "road" as const : mode);
   const scoring = scoreRouteCandidates({
     origin: input.origin,

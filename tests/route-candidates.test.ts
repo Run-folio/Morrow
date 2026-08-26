@@ -94,3 +94,20 @@ test("a required-stop maximum contradiction returns a structured issue without d
   assert.equal(result.constraintIssues.some((issue) => issue.code === "required-stops-exceed-maximum"), true);
   assert.equal(result.constraintIssues.some((issue) => issue.code === "maximum-stops-exceeded"), true);
 });
+
+test("a maximum transfer ceiling rejects every violating candidate before scoring", () => {
+  const stops = [stop("a", 0), stop("b", 1), stop("c", 2)];
+  const threeHours = (from: { coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg => ({
+    ...estimatedLeg(from, to),
+    durationMinutes: 180,
+  });
+  const result = generateRouteCandidates({
+    origin,
+    stops,
+    constraints: { maximumTransferMinutes: 120 },
+    estimateLeg: threeHours,
+  });
+
+  assert.equal(result.candidates.length, 0);
+  assert.equal(result.constraintIssues.some((issue) => issue.code === "maximum-transfer-time-exceeded"), true);
+});

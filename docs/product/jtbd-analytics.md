@@ -33,7 +33,99 @@ These typed events answer the minimum launch questions without replacing the exi
 | `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |
 | `accommodation_search_started` | The existing stay finder starts its map/inventory search. | `source`, `destination_count`, `has_dates`, `provider` |
 
-`affiliate_click` remains the single monetisation handoff event and retains its existing `category` and `provider` contract. Do not introduce PostHog-specific aliases for the same click.
+`affiliate_click` remains the generic monetisation handoff event and retains its existing `category` and `provider` contract. The established Omio/Viator `affiliate_link_clicked` event remains a separate source only where it is already in use; do not introduce PostHog-specific aliases for the same click.
+
+## Commercial outbound-click reporting contract
+
+### Canonical KPI
+
+**Commercial outbound clicks** is the count of deliberate, consented clicks that open an affiliate-supported partner destination. It is a click KPI, not a booking, availability check, quote request, or revenue estimate.
+
+Morrovia keeps the established source events rather than migrating working CTA instrumentation solely for naming consistency:
+
+| Source event | Exact trigger | Current partners | Reporting treatment |
+| --- | --- | --- | --- |
+| `affiliate_click` | A commercial CTA with a generic partner action is deliberately selected. | Booking.com/Booking Demand, Saily, configured activity, car-hire and ground-transport partners. | Included in the commercial outbound-click union. |
+| `affiliate_link_clicked` | An Omio or Viator commercial CTA is deliberately selected. | Omio, Viator. | Included in the same union; its legacy camel-case IDs are normalized only in reporting. |
+
+One CTA handler must emit **one** member of this union. Omio and Viator take their dedicated branch; all other affiliate actions take the generic branch. Non-affiliate fallbacks do not emit either event. The production normalizer, `normalizeCommercialOutboundClick`, exists only to define the reporting projection; it does not send a second event or change CTA behaviour.
+
+### Canonical partner taxonomy
+
+| Canonical partner | Source provider/partner values |
+| --- | --- |
+| `booking_com` | `booking.com`, `booking-demand` |
+| `saily` | `saily` |
+| `omio` | `omio` |
+| `viator` | `viator` |
+| `configured_partner` | A configured optional activity, car-hire or ground-transport provider not in the named set |
+| `unknown_legacy` | Historical record with no usable provider/partner value; report separately, never silently map it to a named partner |
+
+### Canonical placement taxonomy
+
+`home_footer`, `trip_readiness`, `booking_readiness`, `trip_prep_accommodation`, `itinerary_accommodation`, `itinerary_transfer`, `overview_next_action`, `map_stay_finder`, and `unknown_legacy` are the only reporting values. Legacy `trip_prep_booking_readiness` and `booking_readiness_transport` both normalize to `booking_readiness`.
+
+### Property allow-list
+
+The reporting projection is:
+
+```text
+canonical_event = commercial_outbound_click
+source_event    = affiliate_click | affiliate_link_clicked
+partner         = canonical partner taxonomy
+placement       = canonical placement taxonomy
+category        = accommodation | connectivity | transport | ground_transport |
+                  activity | car_rental | flight | other
+trip_id?        = opaque product ID
+stop_id?        = opaque product ID
+transfer_id?    = opaque product ID
+workspace_view? = overview | itinerary | map | prep
+destination_count? = coarse number
+```
+
+`originStopId` and `destinationStopId` may remain on the existing dedicated Omio source event for operational continuity, but are ignored by the commercial reporting projection. Do not add URLs, partner query parameters, destination names, origin/destination text, raw prompts, traveller names, booking details, notes, passport/profile context, email, payment data, prices or availability to either source event or the projection.
+
+### Dedupe rule
+
+Count one normalized record for each source event in the union. Current CTA handlers are mutually exclusive, so a legitimate click enters only one source event. Never dedupe separate deliberate clicks merely because their trip and placement match.
+
+If a future release accidentally emits both source event names for the same interaction, keep the earliest event in a one-second window only when partner, placement, category, opaque trip/stop/transfer context match **and the two source event names differ**. Prefer the vendor event UUID (`$insert_id` in PostHog or the exported GA event ID) when available. Treat a same-name duplicate as an instrumentation defect to investigate, not as a revenue conversion.
+
+### Example warehouse query / pseudocode
+
+```sql
+WITH commercial_source AS (
+  SELECT event_id, event_timestamp, user_or_session_id, event_name, properties
+  FROM analytics_events
+  WHERE consented = TRUE
+    AND event_name IN ('affiliate_click', 'affiliate_link_clicked')
+), normalized AS (
+  SELECT event_id, event_timestamp, user_or_session_id,
+         normalizeCommercialOutboundClick(event_name, properties) AS click
+  FROM commercial_source
+), sequenced AS (
+  SELECT event_id, event_timestamp, user_or_session_id, click.*,
+         LAG(source_event) OVER interaction_window AS previous_source_event,
+         LAG(event_timestamp) OVER interaction_window AS previous_timestamp
+  FROM normalized
+  WINDOW interaction_window AS (
+    PARTITION BY user_or_session_id, partner, placement, category,
+                 COALESCE(trip_id, ''), COALESCE(stop_id, ''), COALESCE(transfer_id, '')
+    ORDER BY event_timestamp
+  )
+)
+SELECT partner, placement, category,
+       COUNT(*) AS commercial_outbound_clicks,
+       COUNT(DISTINCT trip_id) AS trips_with_commercial_click
+FROM sequenced
+WHERE NOT (
+  source_event <> previous_source_event
+  AND event_timestamp - previous_timestamp <= INTERVAL '1 second'
+)
+GROUP BY partner, placement, category;
+```
+
+Use a vendor event UUID to remove exact ingestion duplicates first when one is available; the query shows the fallback for a historical dual-emitter incident. Retain a dashboard annotation for that incident. Do not use this click KPI as a booking or commission measure; confirmed provider conversion data remains server-side and separately deduplicated by immutable provider transaction ID.
 
 ### First-trip activation definition
 
@@ -75,6 +167,7 @@ These events never include country names, country codes or country IDs; note or 
 | `attraction_filter_used` | Traveller narrows the destination shortlist by category. | `trip_id`, `stop_id`, `filter` | Every deliberate filter change away from All. |
 | `attraction_map_opened` | Traveller opens deeper map discovery from destination refinement. | `trip_id`, `stop_id` | Every deliberate open. |
 | `affiliate_click` | Traveller deliberately opens an affiliate-supported next action. | `category`, `provider`, plus `trip_id` and `stop_id` when the surface has them | Each outbound click is counted; do not infer a booking from it. |
+| `affiliate_link_clicked` | Traveller deliberately opens the established Omio or Viator next action. | `partner`, `placement`, plus opaque trip/stop/transfer IDs where the existing surface has them | Included in the same commercial outbound-click reporting union; do not emit alongside `affiliate_click`. |
 | `booking_attributed` | A partner webhook, reporting export, or approved server-to-server attribution identifies a completed booking. | `provider`, `category`, `trip_id` when available, `commission_amount`, `commission_currency`, `commission_status` | Server-only. Unique provider conversion ID; updates amend the same conversion rather than creating a new event. |
 
 ## Collaboration events
@@ -89,7 +182,7 @@ These names are reserved for the collaboration MVP. They must not be emitted unt
 
 ## What the current product emits
 
-The public Route Detail page emits `route_started` only when a traveller deliberately selects its planner CTA; the consent-gated pageview already measures route views. The builder already emits intent, route generation, route acceptance and structural-refinement events. The map plan emits health and readiness events. Booking Readiness emits the common `affiliate_click` event for contextual partner actions. This pass adds `budget_viewed` and normalises the Saily readiness link to `affiliate_click` as well as its existing partner-specific event. Stamps uses the shared consent-gated pageview and emits `stamp_status_changed` and `stamp_note_added` only from their successful production save paths.
+The public Route Detail page emits `route_started` only when a traveller deliberately selects its planner CTA; the consent-gated pageview already measures route views. The builder already emits intent, route generation, route acceptance and structural-refinement events. The map plan emits health and readiness events. Commercial CTAs emit exactly one member of the documented outbound-click union: the generic event for supported partners and the established dedicated event for Omio or Viator. Saily uses the generic event only. Stamps uses the shared consent-gated pageview and emits `stamp_status_changed` and `stamp_note_added` only from their successful production save paths.
 
 `booking_attributed`, and the collaboration events remain intentionally inactive until Morrovia receives a partner conversion signal or ships authenticated shared trips. Do not create a synthetic event from a click, a redirect or an estimated commission.
 
@@ -102,7 +195,7 @@ Use GA4 Explorations initially; configure a BigQuery export before relying on re
 | Qualified MAU | Distinct GA user pseudo IDs with a qualified `trip_intent_created` in calendar month | — | Track against ~1,000 Year-1 and ~10,000 Year-3 qualified MAU targets. |
 | Route acceptance rate | Qualified trips with `route_accepted` | Qualified trips with `route_generated` | Segment by `has_recommendation`, stop count and fixed commitments. |
 | Trip-ready rate | Qualified trips with `trip_ready` | Qualified trips with `trip_intent_created` | Treat this as planning completion, not a booking. |
-| Planner → affiliate-click rate | Qualified trips with `affiliate_click` after intent | Qualified trips with intent | Report by category and provider. |
+| Planner → commercial outbound-click rate | Qualified trips with a canonical commercial outbound click after intent | Qualified trips with intent | Report by canonical partner, placement and category. |
 | Planner → attributed-booking conversion | Qualified trips with a confirmed `booking_attributed` | Qualified trips with intent | The planning assumption is ~12%; show `not available` until verified conversion data exists. |
 | Average affiliate revenue per monetised trip | Sum of confirmed commission amounts | Distinct trips with confirmed positive commission | Keep pending/estimated revenue in a separate metric. Planning assumption: ~£70 per monetised trip. |
 

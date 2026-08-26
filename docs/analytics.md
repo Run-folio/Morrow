@@ -93,10 +93,12 @@ The PostHog launch funnel is intentionally small:
 - Planning/generation: `homepage_prompt_started` is a leading prompt-engagement signal; `trip_generation_started` is the submitted planning action; `trip_intent_created`, `route_generated`, `trip_generated` and `trip_generation_failed` measure the resulting journey stages.
 - Persistence: `trip_saved`, `trip_save_failed`, `trip_reopened`.
 - Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`, `trip_prep_viewed`.
-- Monetisation: the existing `affiliate_click` contract (`category`, `provider`, and optional opaque trip/stop context) plus `accommodation_search_started`.
+- Monetisation: the documented commercial outbound-click reporting union (`affiliate_click` plus established Omio/Viator `affiliate_link_clicked`) and `accommodation_search_started`.
 - Supported edits/repairs: `trip_refined`, `trip_edit_started`, `route_repair_applied` and `trip_ready`.
 
 `easyt_trip_started`, `easyt_trip_capture_reviewed`, `easyt_trip_capture_place_unresolved`, `easyt_trip_capture_failed`, `easyt_accommodation_inventory_viewed`, `easyt_accommodation_affiliate_clicked` and `easyt_readiness_affiliate_clicked` are retired: each was either a duplicate of the retained product milestone or implementation-detail noise. Historical data remains in PostHog; new traffic uses the canonical event above. `affiliate_click` keeps its existing `category`/`provider` property contract rather than creating a duplicate PostHog-specific variant.
+
+Commercial reporting uses a documented union of `affiliate_click` and the established Omio/Viator `affiliate_link_clicked` event. The reporting projection, stable partner/placement taxonomies, privacy allow-list, and cross-event dedupe rule are defined in [the JTBD analytics contract](product/jtbd-analytics.md#commercial-outbound-click-reporting-contract). Do not add a second event for the same CTA.
 
 First-reached planning events use namespaced local/session storage only after consent, so deduplication never creates analytics-specific browser state for visitors who have not opted in. Deliberate interaction events do not need deduplication storage.
 

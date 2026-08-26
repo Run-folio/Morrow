@@ -309,6 +309,34 @@ test("fixed commitments survive unrelated merges and reach route planning", () =
   assert.equal(updated.hardConstraints.some((constraint) => constraint.type === "fixed-commitment"), true);
 });
 
+test("explicit no-flight and maximum-transfer wording become hard route constraints", () => {
+  const brief = mergeStructuredTripBrief(
+    extractStructuredTripBrief("Tokyo and Sydney with no flights and no transfer over 2 hours."),
+    { destinations: [{ id: "tokyo", name: "Tokyo" }, { id: "sydney", name: "Sydney" }] },
+  );
+  const constraints = routeConstraintsFromStructuredTripBrief(brief);
+
+  assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "no-flying"), true);
+  assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "maximum-transfer-time" && constraint.value === 120), true);
+  assert.equal(constraints.excludedTransportModes?.includes("flight"), true);
+  assert.equal(constraints.maximumTransferMinutes, 120);
+});
+
+test("an exact total-trip budget is rejected as unverified rather than treated as pricing certainty", () => {
+  const brief = extractStructuredTripBrief("£500 total for two weeks of luxury in Zurich and Zermatt.");
+  assert.equal(brief.budget?.value, "high");
+  assert.equal(brief.issues.some((issue) => issue.code === "UNSUPPORTED_TOTAL_BUDGET_CONSTRAINT" && issue.severity === "error"), true);
+});
+
+test("excluding a required stop's country is a structured contradiction", () => {
+  const brief = mergeStructuredTripBrief(extractStructuredTripBrief("Zurich is essential."), {
+    destinations: [{ id: "zurich", name: "Zurich", parentCountries: ["Switzerland"], role: "must-visit", priority: "required" }],
+    mustVisit: ["Zurich"],
+    excludedDestinations: ["Switzerland"],
+  });
+  assert.equal(brief.issues.some((issue) => issue.code === "REQUIRED_DESTINATION_EXCLUDED" && issue.severity === "error"), true);
+});
+
 test("debug format exposes provenance without becoming production UI", () => {
   const brief = mergeStructuredTripBrief(extractStructuredTripBrief("Tokyo is essential."), { travellers: 2 });
   const debug = formatStructuredTripBriefDebug(brief);

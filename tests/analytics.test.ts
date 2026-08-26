@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   classifyAnalyticsSaveError,
   cleanAnalyticsProperties,
+  normalizeCommercialOutboundClick,
   normalizeAnalyticsPath,
   sanitizeAnalyticsDestination,
   trackEvent,
@@ -158,6 +159,38 @@ test("Omio affiliate clicks carry placement and opaque trip-transfer identifiers
   }
 });
 
+test("commercial click reporting maps either established event to one stable KPI record", () => {
+  const booking = normalizeCommercialOutboundClick("affiliate_click", {
+    category: "accommodation", provider: "booking-demand", trip_id: "trip-123", stop_id: "stop-456",
+    placement: "itinerary_accommodation", workspace_view: "itinerary",
+  });
+  const omio = normalizeCommercialOutboundClick("affiliate_link_clicked", {
+    partner: "omio", placement: "itinerary_transfer", tripId: "trip-123", transferId: "leg-456",
+    originStopId: "stop-1", destinationStopId: "stop-2",
+  });
+  assert.deepEqual(booking, {
+    canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "booking_com",
+    placement: "itinerary_accommodation", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "itinerary",
+  });
+  assert.deepEqual(omio, {
+    canonical_event: "commercial_outbound_click", source_event: "affiliate_link_clicked", partner: "omio",
+    placement: "itinerary_transfer", category: "transport", trip_id: "trip-123", transfer_id: "leg-456",
+  });
+  assert.equal([booking, omio].filter(Boolean).length, 2, "each source click becomes one KPI record, never one per property");
+  assert.equal(JSON.stringify(omio).includes("stop-1"), false, "origin/destination stop IDs are not part of the reporting contract");
+});
+
+test("commercial clicks remain consent-gated", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("declined", calls);
+  try {
+    trackEvent("affiliate_click", { category: "connectivity", provider: "saily", placement: "home_footer" });
+  } finally {
+    restore();
+  }
+  assert.deepEqual(calls, []);
+});
+
 const privacySafeGeneration: LaunchAnalyticsEventMap["trip_generated"] = {
   trip_source: "homepage",
   stop_count: 4,
@@ -215,4 +248,6 @@ if (false) {
   trackEvent("stamp_note_added", { ...privacySafeStampNote, raw_note: "private memory text" });
   // @ts-expect-error public route starts reject prompts and personalised trip text
   trackEvent("route_started", { ...privacySafeRouteStart, raw_prompt: "private trip text" });
+  // @ts-expect-error commercial events reject raw traveller prompts
+  trackEvent("affiliate_click", { category: "accommodation", provider: "booking.com", raw_prompt: "private trip text" });
 }

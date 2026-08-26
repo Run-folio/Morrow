@@ -373,3 +373,24 @@ test("consumes StructuredTripBrief as the canonical hard-constraint source", () 
   assert.equal(result.plan.constraints?.requiredStopIds?.includes("anchor"), true);
   assert.equal(result.repairs[0]?.constraintsPreserved.some((item) => item.includes("fixed start gateway")), true);
 });
+
+test("maximum transfer time remains a hard unresolved validator issue", () => {
+  const threeHours: PlanLegEstimator = (from, to) => ({
+    mode: "train",
+    distanceKm: 200,
+    durationMinutes: 180,
+    label: `${from.name} → ${to.name}`,
+    note: "Deterministic maximum-transfer test.",
+    confidence: "high",
+  });
+  const result = repairFinalPlan({
+    plan: plan([stop("a", [0, 0], 2), stop("b", [1, 0], 2)], {
+      constraints: { maximumTransferMinutes: 120 },
+    }),
+    estimateLeg: threeHours,
+  });
+
+  assert.equal(result.finalValidation.issues.some((issue) => issue.code === "maximum-transfer-time-conflict" && issue.hardConstraint), true);
+  assert.equal(result.state, "unresolved");
+  assert.equal(result.repairs.length, 0);
+});

@@ -10,6 +10,22 @@ type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
 
+export type CommercialOutboundPartner = "booking_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
+export type CommercialOutboundPlacement = "home_footer" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "overview_next_action" | "map_stay_finder" | "unknown_legacy";
+export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activity" | "car_rental" | "flight" | "other";
+export type CommercialOutboundClick = {
+  canonical_event: "commercial_outbound_click";
+  source_event: "affiliate_click" | "affiliate_link_clicked";
+  partner: CommercialOutboundPartner;
+  placement: CommercialOutboundPlacement;
+  category: CommercialOutboundCategory;
+  trip_id?: string;
+  stop_id?: string;
+  transfer_id?: string;
+  workspace_view?: WorkspaceView;
+  destination_count?: number;
+};
+
 export type LaunchAnalyticsEventMap = {
   route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };
@@ -93,6 +109,55 @@ export function analyticsEnvironment(): "production" | "preview" | "development"
 
 export function cleanAnalyticsProperties(properties: AnalyticsEventProperties = {}) {
   return Object.fromEntries(Object.entries(properties).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+}
+
+/**
+ * Reporting-only union for the two established outbound commercial events.
+ * It never sends analytics, creates browser state, or retains URLs/free text.
+ */
+export function normalizeCommercialOutboundClick(eventName: string, properties: AnalyticsEventProperties): CommercialOutboundClick | null {
+  if (eventName !== "affiliate_click" && eventName !== "affiliate_link_clicked") return null;
+  const sourcePartner = String(properties.partner ?? properties.provider ?? "").trim().toLocaleLowerCase();
+  const partner: CommercialOutboundPartner = sourcePartner === "booking.com" || sourcePartner === "booking-demand"
+    ? "booking_com"
+    : sourcePartner === "saily" ? "saily"
+      : sourcePartner === "omio" ? "omio"
+        : sourcePartner === "viator" ? "viator"
+          : sourcePartner ? "configured_partner" : "unknown_legacy";
+  const sourcePlacement = String(properties.placement ?? "").trim();
+  const placement: CommercialOutboundPlacement = sourcePlacement === "home_footer" ? "home_footer"
+    : sourcePlacement === "trip_readiness" ? "trip_readiness"
+      : sourcePlacement === "trip_prep_accommodation" ? "trip_prep_accommodation"
+        : sourcePlacement === "itinerary_accommodation" ? "itinerary_accommodation"
+          : sourcePlacement === "itinerary_transfer" ? "itinerary_transfer"
+            : sourcePlacement === "overview_next_action" ? "overview_next_action"
+              : sourcePlacement === "map_stay_finder" ? "map_stay_finder"
+                : sourcePlacement === "trip_prep_booking_readiness" || sourcePlacement === "booking_readiness_transport" ? "booking_readiness"
+                  : "unknown_legacy";
+  const sourceCategory = String(properties.category ?? "").trim().toLocaleLowerCase();
+  const category: CommercialOutboundCategory = partner === "omio" ? "transport"
+    : partner === "viator" ? "activity"
+      : partner === "saily" ? "connectivity"
+        : sourceCategory === "accommodation" ? "accommodation"
+          : sourceCategory === "connectivity" ? "connectivity"
+            : sourceCategory === "transport" ? "transport"
+              : sourceCategory === "ground-transport" ? "ground_transport"
+                : sourceCategory === "activity" ? "activity"
+                  : sourceCategory === "car-rental" ? "car_rental"
+                    : sourceCategory === "flight" ? "flight" : "other";
+  const stringProperty = (snake: string, camel: string) => {
+    const value = properties[snake] ?? properties[camel];
+    return typeof value === "string" && value ? value : undefined;
+  };
+  const workspace = properties.workspace_view;
+  return {
+    canonical_event: "commercial_outbound_click", source_event: eventName, partner, placement, category,
+    ...(stringProperty("trip_id", "tripId") ? { trip_id: stringProperty("trip_id", "tripId") } : {}),
+    ...(stringProperty("stop_id", "stopId") ? { stop_id: stringProperty("stop_id", "stopId") } : {}),
+    ...(stringProperty("transfer_id", "transferId") ? { transfer_id: stringProperty("transfer_id", "transferId") } : {}),
+    ...(workspace === "overview" || workspace === "itinerary" || workspace === "map" || workspace === "prep" ? { workspace_view: workspace } : {}),
+    ...(typeof properties.destination_count === "number" ? { destination_count: properties.destination_count } : {}),
+  };
 }
 
 export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" | "conflict" | "repository" | "unknown" {

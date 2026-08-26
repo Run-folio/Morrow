@@ -6,18 +6,46 @@ export type PlannerShadowCandidate = { id: string; stopIds: string[]; summary: s
 export type PlannerShadowInput = { rawTravellerPrompt: string; structuredBrief: StructuredTripBrief; selectedRouteDirection: string; routeCandidates: PlannerShadowCandidate[]; engineFacts: { routeState: "insufficient-data" | "current-order" | "recommendation"; selectedStopIds: string[]; comfortableDays: number; shortfallDays: number; routeConstraintIssueCodes: string[]; scoreExplanation?: string } };
 export type IntentReview = { suggestedBriefCorrections: Array<{ subject: "duration" | "route-order" | "transport" | "place-ambiguity" | "pace" | "booking" | "unknown"; classification: "hard" | "soft"; canonicalPlaceIds: string[]; rationale: string }>; ambiguities: Array<{ canonicalPlaceIds: string[]; question: string }>; candidatePreference?: { candidateId: string; rationale: string }; challenges: Array<{ code: "time" | "transfer" | "constraint" | "uncertainty"; rationale: string }>; liveResearchNeeds: Array<"transport-schedule" | "availability" | "price" | "entry-requirements" | "weather" | "accessibility" | "opening-hours"> };
 export type PlannerShadowResult = { mode: PlannerShadowMode; status: PlannerShadowStatus; review: IntentReview | null };
-export type PlannerReviewProvider = { model: string; review(input: PlannerShadowInput, signal: AbortSignal): Promise<{ review: unknown; usage?: { inputTokens?: number; outputTokens?: number } }> };
-export type PlannerShadowLog = { model: string; mode: PlannerShadowMode; latencyMs: number; usage?: { inputTokens?: number; outputTokens?: number }; status: PlannerShadowStatus };
+export type PlannerShadowRateLimit = { requestLimit?: number; requestsRemaining?: number; requestResetMs?: number; tokenLimit?: number; tokensRemaining?: number; tokenResetMs?: number; retryAfterMs?: number };
+export type PlannerReviewProvider = { model: string; review(input: PlannerShadowInput, signal: AbortSignal): Promise<{ review: unknown; usage?: { inputTokens?: number; outputTokens?: number }; rateLimit?: PlannerShadowRateLimit }> };
+export type PlannerShadowSafety = { inventedCanonicalIds: number; invalidCandidatePreference: boolean };
+export type PlannerShadowLog = { model: string; mode: PlannerShadowMode; latencyMs: number; usage?: { inputTokens?: number; outputTokens?: number }; rateLimit?: PlannerShadowRateLimit; status: PlannerShadowStatus; safety?: PlannerShadowSafety; providerError?: { status?: number; category: PlannerShadowProviderError["category"]; reason: PlannerShadowProviderError["reason"]; retryAfterMs?: number } };
 
 /** Deliberately carries no provider message into aggregate-safe shadow logs. */
 export class PlannerShadowProviderError extends Error {
-  constructor() { super("Planner shadow provider failed."); this.name = "PlannerShadowProviderError"; }
+  readonly status?: number;
+  readonly category: "auth" | "invalid-request" | "model" | "rate-limit" | "provider" | "malformed-response";
+  readonly reason: "schema" | "token-budget" | "input" | "parameter" | "generation" | "unknown";
+  readonly rateLimit?: PlannerShadowRateLimit;
+
+  constructor(detail: { status?: number; category?: "auth" | "invalid-request" | "model" | "rate-limit" | "provider" | "malformed-response"; reason?: "schema" | "token-budget" | "input" | "parameter" | "generation" | "unknown"; rateLimit?: PlannerShadowRateLimit } = {}) {
+    super("Planner shadow provider failed.");
+    this.name = "PlannerShadowProviderError";
+    this.status = detail.status;
+    this.category = detail.category ?? "provider";
+    this.reason = detail.reason ?? "unknown";
+    this.rateLimit = detail.rateLimit;
+  }
 }
 
 const subjects = new Set(["duration", "route-order", "transport", "place-ambiguity", "pace", "booking", "unknown"]);
 const classifications = new Set(["hard", "soft"]); const challenges = new Set(["time", "transfer", "constraint", "uncertainty"]); const research = new Set(["transport-schedule", "availability", "price", "entry-requirements", "weather", "accessibility", "opening-hours"]);
 const text = (value: unknown, max = 400) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const strings = (value: unknown, max = 6) => Array.isArray(value) ? value.flatMap((item) => typeof item === "string" && item.trim() ? [item.trim().slice(0, 120)] : []).slice(0, max) : [];
+
+/** Inspect only aggregate boundary violations; never retain provider prose or IDs. */
+export function intentReviewSafety(value: unknown, input: PlannerShadowInput): PlannerShadowSafety {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const known = new Set(input.structuredBrief.placeMentions?.flatMap((mention) => mention.canonicalPlaceId ?? []) ?? []);
+  const correctionIds = Array.isArray(raw.suggestedBriefCorrections) ? raw.suggestedBriefCorrections.flatMap((item) => item && typeof item === "object" ? strings((item as Record<string, unknown>).canonicalPlaceIds) : []) : [];
+  const ambiguityIds = Array.isArray(raw.ambiguities) ? raw.ambiguities.flatMap((item) => item && typeof item === "object" ? strings((item as Record<string, unknown>).canonicalPlaceIds) : []) : [];
+  const candidate = raw.candidatePreference && typeof raw.candidatePreference === "object" ? raw.candidatePreference as Record<string, unknown> : undefined;
+  const candidateId = text(candidate?.candidateId, 120);
+  return {
+    inventedCanonicalIds: [...correctionIds, ...ambiguityIds].filter((id) => !known.has(id)).length,
+    invalidCandidatePreference: Boolean(candidateId && !input.routeCandidates.some((item) => item.id === candidateId)),
+  };
+}
 
 /** Reject advisory references that are not already present in deterministic Place Intelligence. */
 export function normalizeIntentReview(value: unknown, input: PlannerShadowInput): IntentReview | null {
@@ -40,14 +68,15 @@ export function plannerShadowMode(environment: { NODE_ENV?: string; MORROVIA_PLA
 export async function evaluatePlannerShadow(input: PlannerShadowInput, options: { mode: PlannerShadowMode; provider?: PlannerReviewProvider; timeoutMs?: number; log?: (event: PlannerShadowLog) => void }): Promise<PlannerShadowResult> {
   if (options.mode === "off") return { mode: "off", status: "disabled", review: null };
   if (!options.provider) return { mode: "shadow", status: "unavailable", review: null };
-  const startedAt = Date.now(); let status: PlannerShadowStatus = "failed"; let usage: PlannerShadowLog["usage"];
-  try { const response = await options.provider.review(input, AbortSignal.timeout(options.timeoutMs ?? 8_000)); usage = response.usage; const review = normalizeIntentReview(response.review, input); status = review ? "completed" : "invalid-response"; return { mode: "shadow", status, review }; }
+  const startedAt = Date.now(); let status: PlannerShadowStatus = "failed"; let usage: PlannerShadowLog["usage"]; let rateLimit: PlannerShadowLog["rateLimit"]; let safety: PlannerShadowLog["safety"]; let providerError: PlannerShadowLog["providerError"];
+  try { const response = await options.provider.review(input, AbortSignal.timeout(options.timeoutMs ?? 8_000)); usage = response.usage; rateLimit = response.rateLimit; safety = intentReviewSafety(response.review, input); const review = normalizeIntentReview(response.review, input); status = review ? "completed" : "invalid-response"; return { mode: "shadow", status, review }; }
   catch (error) {
     const name = error instanceof Error ? error.name : "";
+    if (error instanceof PlannerShadowProviderError) providerError = { status: error.status, category: error.category, reason: error.reason, ...(error.rateLimit?.retryAfterMs ? { retryAfterMs: error.rateLimit.retryAfterMs } : {}) };
     status = name === "TimeoutError" || name === "AbortError"
       ? "timeout"
       : error instanceof PlannerShadowProviderError ? "provider-failure" : "failed";
     return { mode: "shadow", status, review: null };
   }
-  finally { options.log?.({ model: options.provider.model, mode: "shadow", latencyMs: Date.now() - startedAt, usage, status }); }
+  finally { options.log?.({ model: options.provider.model, mode: "shadow", latencyMs: Date.now() - startedAt, usage, ...(rateLimit ? { rateLimit } : {}), status, ...(safety ? { safety } : {}), ...(providerError ? { providerError } : {}) }); }
 }

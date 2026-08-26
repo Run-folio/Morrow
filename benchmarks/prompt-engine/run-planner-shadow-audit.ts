@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createGroqPlannerReviewProvider } from "../../lib/easyt/groq-planner-review.ts";
-import { runPlannerShadowAudit } from "./planner-shadow-audit.ts";
+import { plannerShadowLivePacing, runPlannerShadowAudit } from "./planner-shadow-audit.ts";
 
 function configuredKey() {
   if (process.env.GROQ_API_KEY) return process.env.GROQ_API_KEY;
@@ -15,5 +15,10 @@ if (process.env.MORROVIA_PLANNER_SHADOW_AUDIT !== "live") {
 }
 const apiKey = configuredKey();
 if (!apiKey) throw new Error("GROQ_API_KEY is required for the live planner-shadow audit.");
-const report = await runPlannerShadowAudit({ provider: createGroqPlannerReviewProvider(apiKey), mode: "live" });
+const report = await runPlannerShadowAudit({
+  provider: createGroqPlannerReviewProvider(apiKey),
+  mode: "live",
+  pacing: plannerShadowLivePacing(),
+  progress: (event) => console.error(JSON.stringify({ kind: "planner-shadow-progress-v1", ...event })),
+});
 console.log(JSON.stringify(report, null, 2));

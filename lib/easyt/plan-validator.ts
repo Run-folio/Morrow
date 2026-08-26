@@ -1,6 +1,6 @@
 import { destinationKnowledge, type DestinationKnowledgeStore } from "./destination-knowledge.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
-import { estimateLegForConstraints, haversineKm, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { estimateLeg, haversineKm, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import {
   routeConstraintsFromStructuredTripBrief,
   type StructuredTripBrief,
@@ -22,7 +22,8 @@ export type PlanValidationIssueCode =
   | "unsupported-transfer"
   | "duplicate-stop"
   | "fixed-date-conflict"
-  | "transport-restriction-conflict";
+  | "transport-restriction-conflict"
+  | "maximum-transfer-time-conflict";
 
 export type PlanValidationSeverity = "error" | "warning";
 export type PlanIssueRepairability = "automatic" | "manual" | "none";
@@ -169,16 +170,17 @@ const ISSUE_ORDER: Record<PlanValidationIssueCode, number> = {
   "fixed-end-broken": 2,
   "hard-constraint-violation": 3,
   "transport-restriction-conflict": 4,
-  "duplicate-stop": 5,
-  "fixed-date-conflict": 6,
-  "total-nights-mismatch": 7,
-  "below-minimum-stay": 8,
-  "minimum-stay-conflict": 9,
-  "one-night-anchor-after-large-transfer": 10,
-  "extreme-pacing": 11,
-  "unsupported-transfer": 12,
-  "excessive-travel-day-burden": 13,
-  "unnecessary-backtracking": 14,
+  "maximum-transfer-time-conflict": 5,
+  "duplicate-stop": 6,
+  "fixed-date-conflict": 7,
+  "total-nights-mismatch": 8,
+  "below-minimum-stay": 9,
+  "minimum-stay-conflict": 10,
+  "one-night-anchor-after-large-transfer": 11,
+  "extreme-pacing": 12,
+  "unsupported-transfer": 13,
+  "excessive-travel-day-burden": 14,
+  "unnecessary-backtracking": 15,
 };
 
 const normalizedPace = (pace: FinalPlan["pace"]): "relaxed" | "balanced" | "fast" => pace === "relaxed"
@@ -220,6 +222,7 @@ export function planWithStructuredBriefConstraints(plan: FinalPlan, brief: Struc
       fixedStartStopId: structured.fixedStartStopId ?? existing.fixedStartStopId,
       fixedEndStopId: structured.fixedEndStopId ?? existing.fixedEndStopId,
       maximumStops: structured.maximumStops ?? existing.maximumStops,
+      maximumTransferMinutes: structured.maximumTransferMinutes ?? existing.maximumTransferMinutes,
       requiredStopIds: unique([...(existing.requiredStopIds ?? []), ...(structured.requiredStopIds ?? [])]),
       excludedStopIds: unique([...(existing.excludedStopIds ?? []), ...(structured.excludedStopIds ?? [])]),
       optionalStopIds: existing.optionalStopIds,
@@ -394,6 +397,23 @@ function routeConstraintIssues(plan: FinalPlan, legs: readonly LegFact[], struct
       sources: structuredBrief ? ["structured-trip-brief", "transfer-impact"] : ["final-plan", "transfer-impact"],
     }));
   }
+  const excessiveTransfers = constraints?.maximumTransferMinutes === undefined
+    ? []
+    : legs.filter((fact) => fact.realisticMinutes !== null && fact.realisticMinutes > constraints.maximumTransferMinutes!);
+  if (excessiveTransfers.length) {
+    issues.push(issue({
+      code: "maximum-transfer-time-conflict", severity: "error", hardConstraint: true,
+      repairability: "none",
+      message: `Every retained route includes a transfer longer than the hard maximum of ${constraints?.maximumTransferMinutes} minutes.`,
+      stopIds: unique(excessiveTransfers.flatMap((item) => [item.fromStopId, item.toStopId].filter((id): id is string => Boolean(id)))),
+      legIndexes: excessiveTransfers.map((item) => item.index),
+      evidence: {
+        maximumTransferMinutes: constraints?.maximumTransferMinutes ?? null,
+        detectedTransferMinutes: excessiveTransfers.map((item) => item.realisticMinutes as number),
+      },
+      sources: structuredBrief ? ["structured-trip-brief", "transfer-impact"] : ["final-plan", "transfer-impact"],
+    }));
+  }
   return issues;
 }
 
@@ -406,7 +426,9 @@ export function validateFinalPlan(input: ValidateFinalPlanInput): PlanValidation
   const plan = planWithStructuredBriefConstraints(input.plan, input.structuredBrief);
   const config = input.config ?? DEFAULT_PLAN_VALIDATION_CONFIG;
   const knowledge = input.knowledge ?? destinationKnowledge;
-  const estimateLeg = input.estimateLeg ?? ((from, to) => estimateLegForConstraints(from, to, plan.constraints));
+  // Validation needs the supported underlying mode so a constrained wrapper
+  // cannot turn a known hard conflict into an innocuous unknown transfer.
+  const estimatePlanLeg = input.estimateLeg ?? estimateLeg;
   const issues: PlanValidationIssue[] = [];
   const ids = plan.stops.map((stop) => stop.id);
   const duplicateIds = unique(ids.filter((id, index) => ids.indexOf(id) !== index));
@@ -422,7 +444,7 @@ export function validateFinalPlan(input: ValidateFinalPlanInput): PlanValidation
     }));
   }
 
-  const legs = duplicateIds.length ? [] : legsFor(plan, estimateLeg);
+  const legs = duplicateIds.length ? [] : legsFor(plan, estimatePlanLeg);
   issues.push(...routeConstraintIssues(plan, legs, input.structuredBrief));
 
   const allocatedNights = plan.stops.reduce((total, stop) => total + (Number.isFinite(stop.nights) ? Math.max(0, Math.round(stop.nights)) : 0), 0);

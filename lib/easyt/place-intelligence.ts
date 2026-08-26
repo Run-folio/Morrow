@@ -188,6 +188,9 @@ type RawCatalogMatch = { entry: PlaceCatalogEntry; alias: string; start: number;
 
 const ORDER_LANGUAGE = /(?:→|->|\bthen\b|\bnext\b|\bvia\b|\bthrough\b|\bto\b|\bfly(?:ing)? into\b|\bfrom\b.+\bto\b|\bstart(?:ing)?\b.+\b(?:finish|end)(?:ing)?\b)/i;
 const UNKNOWN_CANDIDATE = /\b(?:the\s+)?[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*(?:\s+(?:de|del|la|las|los|of|the|[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*)){0,3}/gu;
+const LOWERCASE_TYPO_CANDIDATE = /\b[\p{Ll}][\p{L}'’.-]{3,}\b/gu;
+const DELIMITED_UNKNOWN_CANDIDATE = /(?:^|[,;])\s*([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})\s*(?=,|;|$)/gu;
+const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*(?:out of|from)\s+([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})/giu;
 const NON_PLACE_PHRASES = new Set([
   "a", "about", "add", "avoid", "days", "do", "easter", "five", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "i", "is", "it",
   "keep", "keep the", "nature", "no", "one", "prefer", "relaxed", "road", "route", "skip", "start", "starting", "the", "three", "trip",
@@ -323,7 +326,7 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly home from$|return(?:ing)? from$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)? (?:in|at)$/.test(before)) return "fixed_start";
-  if (/(?:leaving from|departing from|depart from|from|desde|saliendo de)$/.test(before)) return "origin";
+  if (/(?:leaving from|departing from|depart from|fly(?:ing)? out of|from|desde|saliendo de)$/.test(before)) return "origin";
   if (/(?:fly|flying) into$|(?:arrive|arriving) (?:in|at)$/.test(before)) return "gateway";
   if (/^(?:is )?(?:essential|required|a must|non negotiable|the priority|definitely)/.test(after)
     || /(?:must visit|cannot miss|cant miss|essential|non negotiable|definitely)[^,.]{0,24}$/.test(before)
@@ -374,18 +377,65 @@ function levenshtein(left: string, right: string) {
 }
 
 function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; end: number }>) {
-  const candidates: Array<{ sourceText: string; start: number; end: number; fuzzy?: PlaceCatalogEntry }> = [];
+  const candidates: Array<{ sourceText: string; start: number; end: number; fuzzy?: PlaceCatalogEntry; reviewOnly?: boolean; forcedRole?: PlaceMentionRole }> = [];
+  const intersectsKnownRange = (start: number, end: number) => occupied.some((range) => range.start < end && range.end > start)
+    || candidates.some((candidate) => candidate.start < end && candidate.end > start);
+  const fuzzyMatchFor = (normalized: string, minimumCanonicalLength = 7) => {
+    const fuzzyEntries = PLACE_CATALOG.filter((entry) => {
+      const canonical = normalizePlacePhrase(entry.canonicalName);
+      return canonical.length >= minimumCanonicalLength && levenshtein(normalized, canonical) === 1;
+    });
+    return fuzzyEntries.length === 1 ? fuzzyEntries[0] : undefined;
+  };
+  for (const match of prompt.matchAll(EXPLICIT_ORIGIN_CANDIDATE)) {
+    const captured = match[1];
+    const relativeStart = match[0].lastIndexOf(captured);
+    const start = (match.index ?? 0) + Math.max(0, relativeStart);
+    const capturedEnd = start + captured.length;
+    const nextKnownStart = occupied.map((range) => range.start).filter((value) => value >= start && value < capturedEnd).sort((left, right) => left - right)[0];
+    const end = nextKnownStart ?? capturedEnd;
+    const sourceText = prompt.slice(start, end).trim().replace(/\s+(?:to|through|via|for)$/i, "");
+    if (!sourceText || occupied.some((range) => range.start < start + sourceText.length && range.end > start)) continue;
+    const normalized = normalizePlacePhrase(sourceText);
+    if (!normalized || normalized.split(" ").some((word) => NON_PLACE_PHRASES.has(word))) continue;
+    candidates.push({ sourceText, start, end: start + sourceText.length, reviewOnly: true, forcedRole: "origin" });
+  }
   for (const match of prompt.matchAll(UNKNOWN_CANDIDATE)) {
     const sourceText = match[0].trim();
     const start = match.index ?? 0;
     const end = start + match[0].length;
-    if (occupied.some((range) => range.start < end && range.end > start)) continue;
+    if (intersectsKnownRange(start, end)) continue;
     const normalized = normalizePlacePhrase(sourceText).replace(/^the /, "");
     if (!normalized || NON_PLACE_PHRASES.has(normalized) || [...NON_PLACE_PHRASES].some((word) => normalized === `${word} trip`)) continue;
     if (/^\d|\b(?:day|days|week|weeks|night|nights|traveller|travellers)\b/.test(normalized)) continue;
-    const fuzzyEntries = PLACE_CATALOG.filter((entry) => normalizePlacePhrase(entry.canonicalName).length >= 7
-      && levenshtein(normalized, normalizePlacePhrase(entry.canonicalName)) === 1);
-    candidates.push({ sourceText, start, end, fuzzy: fuzzyEntries.length === 1 ? fuzzyEntries[0] : undefined });
+    candidates.push({ sourceText, start, end, fuzzy: fuzzyMatchFor(normalized) });
+  }
+  for (const match of prompt.matchAll(LOWERCASE_TYPO_CANDIDATE)) {
+    const sourceText = match[0].trim();
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    if (intersectsKnownRange(start, end)) continue;
+    const normalized = normalizePlacePhrase(sourceText);
+    if (!normalized || NON_PLACE_PHRASES.has(normalized)) continue;
+    const fuzzy = fuzzyMatchFor(normalized, 4);
+    // Lower-case prose is only retained when the curated catalogue gives one
+    // safe spelling correction; arbitrary conversational words stay non-geographic.
+    if (fuzzy) candidates.push({ sourceText, start, end, fuzzy });
+  }
+  // In a comma/semicolon list containing multiple known places, retain a
+  // compact unknown list item for review instead of silently deleting it.
+  // This does not resolve, fuzzy-match or make the phrase routable.
+  if (occupied.length >= 2) for (const match of prompt.matchAll(DELIMITED_UNKNOWN_CANDIDATE)) {
+    const sourceText = match[1].trim();
+    const relativeStart = match[0].indexOf(match[1]);
+    const start = (match.index ?? 0) + Math.max(0, relativeStart);
+    const end = start + match[1].length;
+    if (intersectsKnownRange(start, end)) continue;
+    const normalized = normalizePlacePhrase(sourceText);
+    const words = normalized.split(" ");
+    if (!normalized || words.some((word) => NON_PLACE_PHRASES.has(word))) continue;
+    if (/\b(?:day|days|week|weeks|wks?|night|nights|traveller|travellers|cheap|budget|affordable|museum|museums|somewhere|warm|cold|train|trains)\b/.test(normalized)) continue;
+    candidates.push({ sourceText, start, end, reviewOnly: true });
   }
   return candidates;
 }
@@ -563,7 +613,9 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   const occupied = resolved.map((mention) => ({ start: mention._start, end: mention._end }));
   for (const candidate of unresolvedCandidates(prompt, occupied)) {
     const savedSelection = (context.selectedPlaces ?? []).find((place) => normalizePlacePhrase(place.canonicalName) === normalizePlacePhrase(candidate.sourceText));
-    const role = roleAt(prompt, candidate.sourceText, candidate.start, savedSelection?.placeType ?? candidate.fuzzy?.placeType ?? "unknown");
+    const role = candidate.forcedRole ?? (candidate.reviewOnly
+      ? "anchor"
+      : roleAt(prompt, candidate.sourceText, candidate.start, savedSelection?.placeType ?? candidate.fuzzy?.placeType ?? "unknown"));
     if (savedSelection) {
       const source: PlaceProvenance = {
         id: `builder-context:${savedSelection.canonicalPlaceId}`,
@@ -665,6 +717,48 @@ function providerCandidate(candidate: PlaceProviderCandidate, provider: PlaceInt
   };
 }
 
+const PROVIDER_PLACE_TYPES = new Set<PlaceType>([
+  "country", "macro_region", "region", "sub_region", "island", "archipelago", "city", "town", "natural_area", "coast",
+  "mountain_range", "valley", "travel_corridor", "landmark", "transport_gateway", "unknown",
+]);
+const PROVIDER_ROUTABILITY = new Set<PlaceRoutability>([
+  "direct_destination", "planning_area", "anchor_or_poi", "needs_base_selection", "non_routable_reference",
+]);
+
+function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((candidate): PlaceProviderCandidate[] => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+    const record = candidate as Record<string, unknown>;
+    const providerId = typeof record.providerId === "string" ? record.providerId.trim() : "";
+    const canonicalName = typeof record.canonicalName === "string" ? record.canonicalName.trim() : "";
+    const placeType = typeof record.placeType === "string" && PROVIDER_PLACE_TYPES.has(record.placeType as PlaceType)
+      ? record.placeType as PlaceType
+      : null;
+    if (!providerId || !canonicalName || !placeType) return [];
+    const aliases = Array.isArray(record.aliases) ? record.aliases.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
+    const parentCountries = Array.isArray(record.parentCountries) ? record.parentCountries.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
+    const rawCoordinates = record.coordinates;
+    if (rawCoordinates !== undefined && (!Array.isArray(rawCoordinates) || rawCoordinates.length !== 2 || !rawCoordinates.every((value) => typeof value === "number" && Number.isFinite(value)))) return [];
+    const coordinates = Array.isArray(rawCoordinates)
+      ? [rawCoordinates[0], rawCoordinates[1]] as [number, number]
+      : undefined;
+    const routability = typeof record.routability === "string" && PROVIDER_ROUTABILITY.has(record.routability as PlaceRoutability)
+      ? record.routability as PlaceRoutability
+      : undefined;
+    return [{
+      providerId,
+      canonicalName,
+      placeType,
+      ...(aliases ? { aliases } : {}),
+      ...(parentCountries ? { parentCountries } : {}),
+      ...(typeof record.parentRegionId === "string" && record.parentRegionId.trim() ? { parentRegionId: record.parentRegionId.trim() } : {}),
+      ...(coordinates ? { coordinates } : {}),
+      ...(routability ? { routability } : {}),
+    }];
+  });
+}
+
 function boundedProviderLookup(
   provider: PlaceIntelligenceProvider,
   phrase: string,
@@ -682,7 +776,7 @@ function boundedProviderLookup(
     const timeout = setTimeout(() => finish([]), timeoutMs);
     Promise.resolve()
       .then(() => provider.lookup(phrase, context))
-      .then((candidates) => finish(candidates))
+      .then((candidates) => finish(providerCandidatesFromUnknown(candidates)))
       .catch(() => finish([]));
   });
 }

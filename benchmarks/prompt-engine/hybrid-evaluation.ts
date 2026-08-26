@@ -72,6 +72,7 @@ export async function runHybridEvaluation(options: { mode?: HybridEvaluationMode
   const deltas = Object.fromEntries(PROMPT_ENGINE_DIMENSIONS.map((dimension) => [dimension, 0])) as Record<PromptEngineDimension, number>;
   const hardFailures = [
     ...(intentReview.completion.fallback ? [`intent-review fallback ${intentReview.completion.fallback}/${intentReview.caseCount}`] : []),
+    ...(intentReview.execution.stoppedEarly ? [`intent-review stopped early: ${intentReview.execution.stopReason}`] : []),
     ...(intentReview.ambiguity.missed ? [`intent-review missed ${intentReview.ambiguity.missed} required ambiguity signals`] : []),
   ];
   const hybrid = { total: baseline.total, maxTotal: baseline.maxTotal, dimensionDeltas: deltas, hardFailures };
@@ -82,5 +83,5 @@ export async function runHybridEvaluation(options: { mode?: HybridEvaluationMode
     const replacement: ReplayFixture = { kind: "morrovia-planner-shadow-replay-v1", ...REPLAY_METADATA, cases: Object.fromEntries(PROMPT_ENGINE_CASES.map((scenario) => [scenario.id, recorded.get(hash(scenario.rawPrompt))!])) };
     writeFileSync(fixturePath, `${JSON.stringify(replacement, null, 2)}\n`);
   }
-  return { mode, hardFailures, deterministic: baseline, intentReview, hybrid, calls: { live: mode === "live" ? intentReview.caseCount : 0, replay: mode === "live" ? 0 : intentReview.caseCount }, estimatedCostUsd: totalTokens || !intentReview.tokens.missingUsageCalls ? cost : null };
+  return { mode, hardFailures, deterministic: baseline, intentReview, hybrid, calls: { live: mode === "live" ? intentReview.execution.attempted : 0, replay: mode === "live" ? 0 : intentReview.execution.attempted }, estimatedCostUsd: totalTokens || !intentReview.tokens.missingUsageCalls ? cost : null };
 }

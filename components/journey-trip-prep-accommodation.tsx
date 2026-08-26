@@ -44,7 +44,7 @@ export function JourneyTripPrepAccommodation({ trip }: { trip: EasyTTrip }) {
         {sorted ? <p className={styles.savedName}>{booking?.title || "Accommodation saved"}</p> : null}
         <div className={styles.actions}>
           <Link href={plannerHref} onClick={() => trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id })}>{sorted ? "Manage stay" : "Find a stay"}<Map aria-hidden="true" /></Link>
-          {!sorted && datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "trip_prep_accommodation", workspace_view: "prep" })}>Check availability <ArrowUpRight aria-hidden="true" /></a> : null}
+          {!sorted && datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "trip_prep_accommodation", workspace_view: "prep" }); }}>Check availability <ArrowUpRight aria-hidden="true" /></a> : null}
         </div>
       </article>;
     })}</div>

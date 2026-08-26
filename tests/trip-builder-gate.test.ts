@@ -56,6 +56,7 @@ test("valid builder document passes the authoritative invariant", () => {
   assert.equal(result.canAdvanceToTime, true);
   assert.equal(result.canBuildTrip, true);
   assert.deepEqual(result.conflicts, []);
+  assert.equal(result.qualityClassification, "reasonable");
 });
 
 test("a viable itinerary is not rejected across the exploratory duration range", () => {
@@ -95,6 +96,7 @@ test("progress tab cannot bypass unresolved place review", () => {
   const result = canBuildTrip(input);
   assert.equal(result.canAdvanceToTime, false);
   assert.equal(result.canBuildTrip, false);
+  assert.equal(result.qualityClassification, "impossible");
   assert.equal(result.firstConflict?.code, "place-review-required");
 });
 
@@ -186,4 +188,50 @@ test("date and night-allocation contradictions block final persistence", () => {
   assert.equal(result.canBuildTrip, false);
   assert.equal(result.conflicts.some((conflict) => conflict.code === "invalid-dates"), true);
   assert.equal(result.conflicts.some((conflict) => conflict.code === "night-allocation-conflict"), true);
+});
+
+test("the final validator blocks build, persistence and navigation through the same gate", () => {
+  const input = validInput();
+  input.planValidation = {
+    issues: [{
+      id: "plan-issue-fixed-date",
+      code: "fixed-date-conflict",
+      severity: "error",
+      message: "A protected booking conflicts with the final calendar.",
+      stopIds: ["kyoto"],
+      legIndexes: [],
+      hardConstraint: true,
+      repairability: "manual",
+      evidence: {},
+      sources: ["final-plan"],
+      relatedTripHealthFindingIds: [],
+    }],
+  };
+  const result = canBuildTrip(input);
+
+  assert.equal(result.canBuildTrip, false);
+  assert.equal(result.outcome, "impossible");
+  assert.equal(result.conflicts.some((conflict) => conflict.code === "final-plan-invalid" && conflict.source === "validator"), true);
+});
+
+test("the builder gate preserves distinct feasible and unknown realism outcomes", () => {
+  const compressed = validInput();
+  compressed.planValidation = {
+    issues: [{
+      id: "plan-issue-extreme-pacing", code: "extreme-pacing", severity: "warning",
+      message: "Repeated one-night stops make this route unusually compressed.", stopIds: ["tokyo", "kyoto"], legIndexes: [],
+      hardConstraint: false, repairability: "automatic", evidence: { oneNightStopCount: 2 }, sources: ["final-plan"], relatedTripHealthFindingIds: [],
+    }],
+  };
+  assert.equal(canBuildTrip(compressed).qualityClassification, "exhausting but feasible");
+
+  const unsupported = validInput();
+  unsupported.planValidation = {
+    issues: [{
+      id: "plan-issue-unsupported-transfer", code: "unsupported-transfer", severity: "warning",
+      message: "The ferry connection lacks enough supported data.", stopIds: ["tokyo", "kyoto"], legIndexes: [1],
+      hardConstraint: false, repairability: "manual", evidence: { unconfirmedLegs: 1 }, sources: ["transfer-impact"], relatedTripHealthFindingIds: [],
+    }],
+  };
+  assert.equal(canBuildTrip(unsupported).qualityClassification, "unknown due to insufficient transport evidence");
 });

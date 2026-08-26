@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
+import { resolveOptionalAffiliateConfiguration, warnOptionalAffiliateConfiguration } from "@/lib/easyt/affiliate-configuration";
 import { buildTripReadiness, defaultTravelReadinessProfile, isTravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 
 export const dynamic = "force-dynamic";
+
+const optionalAffiliateConfiguration = resolveOptionalAffiliateConfiguration();
+warnOptionalAffiliateConfiguration(optionalAffiliateConfiguration);
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +18,7 @@ export async function POST(request: Request) {
       startDate: typeof body.startDate === "string" ? body.startDate : undefined,
       avoidDriving: body.avoidDriving === true,
       profile,
-      sailyHref: process.env.SAILY_AFFILIATE_URL,
+      sailyHref: optionalAffiliateConfiguration.urls.sailyUrl,
       language: body.language === "es" ? "es" : "en",
     }) });
   } catch {

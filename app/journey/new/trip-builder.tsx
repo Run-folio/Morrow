@@ -36,6 +36,8 @@ import { firstTripWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-work
 import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
 import { HOME_TRIP_DRAFT_KEY, homeTripDraftTimingFlexibility, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
 import { canBuildTrip } from "@/lib/easyt/can-build-trip";
+import { validateFinalPlan } from "@/lib/easyt/plan-validator";
+import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore } from "@/lib/easyt/destination-knowledge";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, selectPlaceCandidate, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
@@ -1432,6 +1434,50 @@ function TripBuilderDocument() {
     return tripOwnerId && tripUpdatedAt ? { ...cascaded, updatedAt: tripUpdatedAt } : cascaded;
   }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, stops, startDate, endDate, picks, tripBrief, budget, calendarDayAllocations, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections]);
 
+  const finalPlanValidation = useMemo(() => {
+    const documentStops = new Map(activeTripDocument.stops.map((stop) => [stop.id, stop]));
+    const allocationInputs = new Map(nightAllocationStops.map((stop) => [stop.id, stop]));
+    const requiredStopIds = [...new Set([
+      ...(structuredRouteConstraints.requiredStopIds ?? []),
+      ...effectiveIntent.hardConstraints.mustSeeStopIds,
+    ])];
+    return validateFinalPlan({
+      plan: {
+        version: 1,
+        origin: { name: origin, coordinates: originCoordinates },
+        stops: stops.map((stop) => {
+          const documentStop = documentStops.get(stop.id);
+          const allocationInput = allocationInputs.get(stop.id);
+          return {
+            ...stop,
+            nights: Math.max(0, Math.round(allocation[stop.id] ?? 0)),
+            arrivalDate: documentStop?.arrivalDate,
+            departureDate: documentStop?.departureDate,
+            fixedNights: allocationInput?.fixedNights,
+            required: requiredStopIds.includes(stop.id),
+            optional: effectiveIntent.hardConstraints.optionalStopIds.includes(stop.id),
+            anchor: allocationInput?.anchor,
+            fallbackMinimumNights: allocationInput?.fallbackMinimumNights,
+            fallbackIdealNights: allocationInput?.fallbackIdealNights,
+            preferenceWeight: allocationInput?.preferenceWeight,
+          };
+        }),
+        totalNights,
+        pace: effectiveIntent.preferences.pace,
+        startDate,
+        endDate,
+        constraints: {
+          ...structuredRouteConstraints,
+          requiredStopIds,
+          optionalStopIds: effectiveIntent.hardConstraints.optionalStopIds,
+        },
+        scheduleLocks,
+      },
+      structuredBrief: effectiveStructuredBrief,
+      nightAllocation,
+    });
+  }, [activeTripDocument.stops, nightAllocationStops, structuredRouteConstraints, effectiveIntent, origin, originCoordinates, stops, allocation, totalNights, startDate, endDate, scheduleLocks, effectiveStructuredBrief, nightAllocation]);
+
   const buildInvariant = useMemo(() => canBuildTrip({
     origin,
     originCoordinates,
@@ -1453,8 +1499,11 @@ function TripBuilderDocument() {
     structuredBriefIssues: effectiveStructuredBrief.issues,
     nightAllocation,
     allocations: allocation,
+    planValidation: finalPlanValidation,
+    transferImpacts: activeTripDocument.legs.map((leg) => transferImpactFromMetadata(leg.routeMetadata.transferImpact)),
+    routeOrderFixed: Boolean(structuredRouteConstraints.fixedCommitments?.length),
     document: activeTripDocument,
-  }), [origin, originCoordinates, stops, placeReviewReady, placeIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, activeTripDocument]);
+  }), [origin, originCoordinates, stops, placeReviewReady, placeIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
   const gateConflict = step === 0
     ? buildInvariant.conflicts.find((conflict) => conflict.stage === "places")
     : buildInvariant.firstConflict;

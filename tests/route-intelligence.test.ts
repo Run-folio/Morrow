@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessRouteIntelligence, assessRouteOrder, legDecisionAlternatives, recommendStopDurations, usableStopDays } from "../lib/easyt/planner.ts";
+import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, usableStopDays } from "../lib/easyt/planner.ts";
+import { transferHeadlineMinutes } from "../lib/easyt/transfer-impact.ts";
 
 const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
 
@@ -173,4 +174,16 @@ test("does not offer a forbidden road alternative or invent a replacement mode",
     { avoidDriving: true, excludedTransportModes: ["road"] },
   );
   assert.deepEqual(options, []);
+});
+
+test("short heuristic flights keep a conservative airborne floor without claiming a schedule", () => {
+  const leg = estimateLeg(
+    { name: "Airport arrival", coordinates: [140.3929, 35.772] },
+    { id: "kyoto", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] },
+  );
+
+  assert.equal(leg.mode, "flight");
+  assert.ok((transferHeadlineMinutes(leg.transferImpact) ?? 0) >= 60);
+  assert.ok((leg.durationMinutes ?? 0) > (transferHeadlineMinutes(leg.transferImpact) ?? 0));
+  assert.match(leg.note, /estimate|verify/i);
 });
