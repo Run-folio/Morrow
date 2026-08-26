@@ -115,11 +115,13 @@ test("Groq client reduces schema errors to a safe category without provider text
 });
 
 test("provider timeout remains one advisory fallback", async () => {
+  let calls = 0;
   const response = await evaluatePlannerShadow(input(), {
     mode: "shadow", timeoutMs: 5,
-    provider: { model: "fixture", review: async (_input, signal) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(signal.reason), { once: true })) },
+    provider: { model: "fixture", review: async () => { calls += 1; return new Promise(() => undefined); } },
   });
   assert.deepEqual(response, { mode: "shadow", status: "timeout", review: null });
+  assert.equal(calls, 1);
 });
 
 test("prompt gauntlet shadow audit stays aggregate-only and bounded", async () => {

@@ -69,7 +69,23 @@ export async function evaluatePlannerShadow(input: PlannerShadowInput, options: 
   if (options.mode === "off") return { mode: "off", status: "disabled", review: null };
   if (!options.provider) return { mode: "shadow", status: "unavailable", review: null };
   const startedAt = Date.now(); let status: PlannerShadowStatus = "failed"; let usage: PlannerShadowLog["usage"]; let rateLimit: PlannerShadowLog["rateLimit"]; let safety: PlannerShadowLog["safety"]; let providerError: PlannerShadowLog["providerError"];
-  try { const response = await options.provider.review(input, AbortSignal.timeout(options.timeoutMs ?? 8_000)); usage = response.usage; rateLimit = response.rateLimit; safety = intentReviewSafety(response.review, input); const review = normalizeIntentReview(response.review, input); status = review ? "completed" : "invalid-response"; return { mode: "shadow", status, review }; }
+  const controller = new AbortController();
+  const timeoutError = new Error("Planner shadow provider timed out.");
+  timeoutError.name = "TimeoutError";
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutBoundary = new Promise<never>((_resolve, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort(timeoutError);
+      reject(timeoutError);
+    }, options.timeoutMs ?? 8_000);
+  });
+  try {
+    const response = await Promise.race([
+      options.provider.review(input, controller.signal),
+      timeoutBoundary,
+    ]);
+    usage = response.usage; rateLimit = response.rateLimit; safety = intentReviewSafety(response.review, input); const review = normalizeIntentReview(response.review, input); status = review ? "completed" : "invalid-response"; return { mode: "shadow", status, review };
+  }
   catch (error) {
     const name = error instanceof Error ? error.name : "";
     if (error instanceof PlannerShadowProviderError) providerError = { status: error.status, category: error.category, reason: error.reason, ...(error.rateLimit?.retryAfterMs ? { retryAfterMs: error.rateLimit.retryAfterMs } : {}) };
@@ -78,5 +94,8 @@ export async function evaluatePlannerShadow(input: PlannerShadowInput, options: 
       : error instanceof PlannerShadowProviderError ? "provider-failure" : "failed";
     return { mode: "shadow", status, review: null };
   }
-  finally { options.log?.({ model: options.provider.model, mode: "shadow", latencyMs: Date.now() - startedAt, usage, ...(rateLimit ? { rateLimit } : {}), status, ...(safety ? { safety } : {}), ...(providerError ? { providerError } : {}) }); }
+  finally {
+    if (timeout) clearTimeout(timeout);
+    options.log?.({ model: options.provider.model, mode: "shadow", latencyMs: Date.now() - startedAt, usage, ...(rateLimit ? { rateLimit } : {}), status, ...(safety ? { safety } : {}), ...(providerError ? { providerError } : {}) });
+  }
 }
