@@ -110,8 +110,10 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
   for (const heading of ["Nights per stop", "STOP", "TRANSFER", "NIGHTS", "USABLE TIME"]) {
     assert.match(timeStep, new RegExp(heading));
   }
-  assert.match(timeStep, /transferDoorToDoorMinutes\(leg\.transferImpact, leg\.durationMinutes\)/,
-    "transfer values should use the existing door-to-door estimate");
+  assert.match(timeStep, /activeTripDocument\.legs\.find\(\(candidate\) => candidate\.toStopId === stop\.id\)/,
+    "transfer values should use the canonical persisted leg");
+  assert.match(timeStep, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/,
+    "the canonical door-to-door value should remain the display source");
   assert.match(timeStep, /Remove one night from \$\{stop\.name\}; \$\{days\} nights currently/);
   assert.match(timeStep, /Add one night to \$\{stop\.name\}; \$\{days\} nights currently/);
   assert.match(timeStep, /Use the arrow keys to move this stop/,

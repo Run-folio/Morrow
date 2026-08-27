@@ -5,15 +5,20 @@ import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
   schemaVersion: 1, id: "bookable", ownerId: null, title: "Bookable", status: "draft", startDate: "2026-10-01", endDate: "2026-10-06", travellers: 2, currency: "GBP",
-  brief: { origin: "London, United Kingdom", mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: { paris: ["Louvre"] }, decisionSelections: { routeOrder: "entered", transportByLeg: { leg: "fastest" } } },
+  brief: { origin: "London, United Kingdom", originCountry: "United Kingdom", originCoordinates: [-0.1276, 51.5072], mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: { paris: ["Louvre"] }, decisionSelections: { routeOrder: "entered", transportByLeg: { arrival: "fastest", leg: "fastest" } } },
   stops: [
     { id: "paris", order: 0, name: "Paris", country: "France", latitude: 48.85, longitude: 2.35, arrivalDate: "2026-10-01", departureDate: "2026-10-04", nights: 3 },
     { id: "rome", order: 1, name: "Rome", country: "Italy", latitude: 41.9, longitude: 12.49, arrivalDate: "2026-10-04", departureDate: "2026-10-07", nights: 2 },
   ],
-  legs: [{ id: "leg", fromStopId: "paris", toStopId: "rome", mode: "flight", distanceKm: 1100, durationMinutes: 330, provider: "Estimate", routeMetadata: { planningEstimate: true, decisionOption: "fastest" } }],
+  legs: [
+    { id: "arrival", fromStopId: "bookable-origin", toStopId: "paris", fromEndpoint: { kind: "origin", id: "bookable-origin", name: "London, United Kingdom", country: "United Kingdom", coordinates: [-0.1276, 51.5072] }, toEndpoint: { kind: "stop", id: "paris", name: "Paris", country: "France", coordinates: [2.35, 48.85] }, classification: "arrival", mode: "train", distanceKm: 344, durationMinutes: 270, provider: "Estimate", routeMetadata: { planningEstimate: true, decisionOption: "fastest" } },
+    { id: "leg", fromStopId: "paris", toStopId: "rome", fromEndpoint: { kind: "stop", id: "paris", name: "Paris", country: "France", coordinates: [2.35, 48.85] }, toEndpoint: { kind: "stop", id: "rome", name: "Rome", country: "Italy", coordinates: [12.49, 41.9] }, classification: "international", mode: "flight", distanceKm: 1100, durationMinutes: 330, provider: "Estimate", routeMetadata: { planningEstimate: true, decisionOption: "fastest" } },
+  ],
   planItems: Array.from({ length: 6 }, (_, index) => ({ id: `day-${index + 1}`, stopId: index < 3 ? "paris" : "rome", dayNumber: index + 1, date: `2026-10-0${index + 1}`, type: index === 0 || index === 3 ? "arrival" as const : "activity" as const, title: "Plan", reason: "", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null })),
   recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
 });
+
+const mainLeg = (source: EasyTTrip) => source.legs.find((leg) => leg.id === "leg")!;
 
 test("creates Trip.com accommodation, activity, flight and connectivity actions from stable itinerary data", () => {
   const actions = buildBookingReadiness(trip());
@@ -88,7 +93,7 @@ test("uses Trip.com tours only as the activities fallback when Viator is unavail
 
 test("uses Trip.com car rental only when a driving route actually calls for a car", () => {
   const source = trip();
-  source.legs[0] = { ...source.legs[0]!, mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.legs[1] = { ...mainLeg(source), mode: "road", distanceKm: 180, provider: "Road estimate" };
   source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
   const carRental = buildBookingReadiness(source).find((action) => action.id === "car-leg");
   assert.deepEqual({ href: carRental?.href, provider: carRental?.provider, cta: carRental?.cta, affiliate: carRental?.affiliate }, {
@@ -105,7 +110,7 @@ test("uses Trip.com car rental only when a driving route actually calls for a ca
 
 test("keeps an existing configured car-hire partner ahead of the Trip.com fallback", () => {
   const source = trip();
-  source.legs[0] = { ...source.legs[0]!, mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.legs[1] = { ...mainLeg(source), mode: "road", distanceKm: 180, provider: "Road estimate" };
   source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
   const action = buildBookingReadiness(source, { carHireUrl: "https://partner.example/car" }).find((candidate) => candidate.id === "car-leg");
   assert.equal(action?.provider, "car-hire-partner");
@@ -137,8 +142,8 @@ test("offers the exact Omio link for unbooked major train, coach, flight and fer
   ];
   for (const { mode, provider } of modes) {
     const source = trip();
-    source.legs[0] = { ...source.legs[0], mode, provider };
-    const action = omioBookingActionForLeg(source, source.legs[0]!, new Date("2026-09-01T12:00:00"));
+    source.legs[1] = { ...mainLeg(source), mode, provider };
+    const action = omioBookingActionForLeg(source, mainLeg(source), new Date("2026-09-01T12:00:00"));
     assert.equal(action?.href, affiliatePartners.omio.transportUrl);
     assert.equal(action?.transferId, "leg");
     assert.equal(action?.originStopId, "paris");
@@ -149,19 +154,19 @@ test("offers the exact Omio link for unbooked major train, coach, flight and fer
 test("does not offer Omio for booked, local, walking or driving transfers", () => {
   const source = trip();
   source.brief.bookings = [{ id: "transport-leg", type: "transport", title: "Paris to Rome flight", date: "2026-10-04", confirmation: "ABC", url: null }];
-  assert.equal(omioBookingActionForLeg(source, source.legs[0]!, new Date("2026-09-01T12:00:00")), null);
+  assert.equal(omioBookingActionForLeg(source, mainLeg(source), new Date("2026-09-01T12:00:00")), null);
 
   for (const leg of [
-    { ...trip().legs[0]!, mode: "walk" as const, distanceKm: 2 },
-    { ...trip().legs[0]!, mode: "road" as const, provider: "Driving estimate" },
-    { ...trip().legs[0]!, mode: "train" as const, provider: "Local metro", distanceKm: 12 },
+    { ...mainLeg(trip()), mode: "walk" as const, distanceKm: 2 },
+    { ...mainLeg(trip()), mode: "road" as const, provider: "Driving estimate" },
+    { ...mainLeg(trip()), mode: "train" as const, provider: "Local metro", distanceKm: 12 },
   ]) assert.equal(omioBookingActionForLeg(trip(), leg, new Date("2026-09-01T12:00:00")), null);
 });
 
 test("uses cautious Omio copy for a partial transfer and no booking actions after a trip ends", () => {
   const partial = trip();
-  partial.legs[0] = { ...partial.legs[0], durationMinutes: null };
-  assert.equal(omioBookingActionForLeg(partial, partial.legs[0]!, new Date("2026-09-01T12:00:00"))?.cta, "Check transport options on Omio");
+  partial.legs[1] = { ...mainLeg(partial), durationMinutes: null };
+  assert.equal(omioBookingActionForLeg(partial, mainLeg(partial), new Date("2026-09-01T12:00:00"))?.cta, "Check transport options on Omio");
 
   const ended = trip();
   ended.startDate = "2026-08-01";

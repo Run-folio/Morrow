@@ -29,8 +29,11 @@ test("recalculates canonical stops and legs for a contiguous day-order change", 
   assert.equal(result.state, "recalculated");
   if (result.state === "recalculated") {
     assert.deepEqual(result.trip.stops.map((stop) => stop.id), ["b", "a"]);
-    assert.equal(result.trip.legs[0]?.fromStopId, "b");
-    assert.equal(result.trip.legs[0]?.toStopId, "a");
+    assert.equal(result.trip.legs.length, 2);
+    assert.equal(result.trip.legs[0]?.fromEndpoint?.kind, "origin");
+    assert.equal(result.trip.legs[0]?.toStopId, "b");
+    assert.equal(result.trip.legs[1]?.fromStopId, "b");
+    assert.equal(result.trip.legs[1]?.toStopId, "a");
   }
 });
 

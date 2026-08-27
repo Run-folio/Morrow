@@ -20,6 +20,7 @@ import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-fac
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { trackEvent } from "@/lib/analytics";
 import { omioBookingActionForLeg } from "@/lib/easyt/booking-readiness";
+import { routeEndpointForLeg, tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
 import styles from "./trip-itinerary-workspace.module.css";
@@ -336,16 +337,17 @@ function DayImage({ image, day, stop, sourceLabel, className, fallbackClassName 
 }
 
 function TransferRow({ leg, copy, trip }: { leg: TripLeg; copy: ReturnType<typeof itineraryCopy>; trip: EasyTTrip }) {
-  const from = trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
-  const to = trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
-  const duration = leg.durationMinutes === null ? null : formatTripDuration(leg.durationMinutes);
+  const from = routeEndpointForLeg(trip, leg, "from")?.name;
+  const to = routeEndpointForLeg(trip, leg, "to")?.name;
+  const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  const duration = durationMinutes === null ? null : formatTripDuration(durationMinutes);
   const omioAction = omioBookingActionForLeg(trip, leg);
   return (
     <div className={`${styles.detailRow} ${omioAction ? styles.transferRow : ""}`}>
       <span className={styles.detailIcon}><Route aria-hidden="true" /></span>
       <b>01</b>
-      <p><strong>{copy.transfer}</strong>{from && to ? `${from} → ${to}` : leg.mode}{duration ? <small className={styles.estimateLabel}>{copy.estimate}</small> : null}</p>
-      {duration ? <span className={styles.duration}>~{duration}</span> : null}
+      <p><strong>{tripLegClassificationLabel(leg.classification)}</strong>{from && to ? `${from} → ${to}` : leg.mode}{duration ? <small className={styles.estimateLabel}>{leg.provenance === "planning_estimate" ? copy.estimate : "Saved timing"}</small> : <small className={styles.estimateLabel}>Timing needs confirmation</small>}</p>
+      {duration ? <span className={styles.duration}>~{duration}</span> : <span className={styles.duration}>To confirm</span>}
       {omioAction ? <span className={styles.omioAction}><a href={omioAction.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${omioAction.cta}, opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId })}>{omioAction.cta}<ExternalLink aria-hidden="true" /></a><small>Partner link · Morrovia may earn a commission at no extra cost to you.</small></span> : null}
     </div>
   );

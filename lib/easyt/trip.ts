@@ -1,7 +1,8 @@
-import { estimateLegForConstraints, type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
+import { type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
-import { curatedConnectionFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
+import { reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
+import { buildCanonicalTripLegs } from "./trip-legs.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -123,7 +124,33 @@ export type TripLeg = {
   durationMinutes: number | null;
   provider: string | null;
   routeMetadata: Record<string, unknown>;
+  /** Durable endpoint snapshots let the origin participate without becoming an overnight stop. */
+  fromEndpoint?: CanonicalRouteEndpoint;
+  toEndpoint?: CanonicalRouteEndpoint;
+  classification?: TripLegClassification;
+  straightLineDistanceKm?: number | null;
+  routedDistanceKm?: number | null;
+  headlineMinutes?: number | null;
+  doorToDoorMinutes?: number | null;
+  usableDayLoss?: number | null;
+  provenance?: TripLegProvenance;
+  confidence?: "high" | "medium" | "low" | "unknown";
+  scheduleNeedsChecking?: boolean;
+  warnings?: string[];
 };
+
+export type CanonicalRouteEndpoint = {
+  kind: "origin" | "stop";
+  id: string;
+  name: string;
+  country?: string;
+  canonicalPlaceId?: string;
+  providerId?: string;
+  coordinates: [number, number] | null;
+};
+
+export type TripLegClassification = "arrival" | "international" | "intercity" | "local" | "departure";
+export type TripLegProvenance = "provider" | "canonical_schedule" | "routing_engine" | "planning_estimate" | "unknown";
 
 export type PlanItem = {
   id: string;
@@ -446,22 +473,18 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       structuredBrief: input.structuredBrief,
     },
     stops,
-    legs: input.stops.slice(1).map((stop, index) => {
-      const from = input.stops[index];
-      const curated = curatedConnectionFor(curatedRoute, from.id, stop.id);
-      const estimate = estimateLegForConstraints(from, stop, legConstraints);
-      return {
-        id: `${input.id}-leg-${index + 1}`,
-        fromStopId: from.id,
-        toStopId: stop.id,
-        mode: curated?.mode ?? estimate.mode,
-        distanceKm: estimate.distanceKm,
-        durationMinutes: curated?.planningMinutes ?? estimate.durationMinutes,
-        provider: curated?.note ?? estimate.note,
-        routeMetadata: curated
-          ? { planningEstimate: true, source: "curated-route", curatedRouteTransfer: curated, label: estimate.label, routingConfidence: curated.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence }
-          : { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
-      };
+    legs: buildCanonicalTripLegs({
+      tripId: input.id,
+      origin: {
+        name: input.origin,
+        country: input.originCountry,
+        canonicalPlaceId: input.originCanonicalPlaceId,
+        providerId: input.originProviderId,
+        coordinates: input.originCoordinates ?? null,
+      },
+      stops,
+      constraints: legConstraints,
+      curatedRoute,
     }),
     planItems,
     recommendations: [],

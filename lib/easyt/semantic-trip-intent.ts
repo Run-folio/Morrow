@@ -3,7 +3,7 @@ import type { JourneyCaptureResult } from "./journey-capture.ts";
 export const SEMANTIC_TRIP_INTENT_SCHEMA_VERSION = "semantic-trip-intent/v1" as const;
 export const SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION = "raw-trip-prompt/v1" as const;
 export const SEMANTIC_INTENT_MODELS = {
-  primary: { model: "gpt-5.6-luna", reasoningEffort: "medium" },
+  primary: { model: "gpt-5.6-luna", reasoningEffort: "low" },
   escalation: { model: "gpt-5.6-terra", reasoningEffort: "medium" },
 } as const;
 export const SEMANTIC_INTENT_PRICING_USD_PER_MILLION = {
@@ -11,7 +11,7 @@ export const SEMANTIC_INTENT_PRICING_USD_PER_MILLION = {
   "gpt-5.6-terra": { input: 2.00, output: 12.00 },
 } as const;
 
-export type SemanticIntentMode = "off" | "shadow";
+export type SemanticIntentMode = "off" | "shadow" | "active";
 export type SemanticIntentCertainty = "explicit" | "likely" | "ambiguous";
 export type SemanticTransportMode = "flight" | "train" | "drive" | "bus" | "ferry" | "ground";
 
@@ -332,7 +332,7 @@ export type SemanticIntentExtractionResult = {
 };
 export type SemanticIntentShadowLog = {
   model: string;
-  mode: "shadow";
+  mode: "shadow" | "active";
   status: SemanticIntentStatus;
   latencyMs: number;
   usage?: SemanticIntentUsage;
@@ -352,7 +352,9 @@ export class SemanticIntentProviderError extends Error {
 }
 
 export function semanticIntentMode(environment: { NODE_ENV?: string; MORROVIA_SEMANTIC_INTENT_MODE?: string } = process.env): SemanticIntentMode {
-  return environment.NODE_ENV !== "production" && environment.MORROVIA_SEMANTIC_INTENT_MODE === "shadow" ? "shadow" : "off";
+  if (environment.MORROVIA_SEMANTIC_INTENT_MODE === "off") return "off";
+  if (environment.NODE_ENV !== "production" && environment.MORROVIA_SEMANTIC_INTENT_MODE === "shadow") return "shadow";
+  return environment.MORROVIA_SEMANTIC_INTENT_MODE === "active" ? "active" : "off";
 }
 
 class SemanticIntentTimeoutError extends Error { constructor() { super("Semantic intent timed out."); this.name = "TimeoutError"; } }
@@ -372,7 +374,8 @@ export async function evaluateSemanticIntentShadow(
   options: { mode: SemanticIntentMode; provider?: SemanticIntentProvider; timeoutMs?: number; log?: (event: SemanticIntentShadowLog) => void },
 ): Promise<SemanticIntentExtractionResult> {
   if (options.mode === "off") return { mode: "off", status: "disabled", intent: null, latencyMs: 0 };
-  if (!options.provider) return { mode: "shadow", status: "unavailable", intent: null, latencyMs: 0 };
+  const mode = options.mode === "active" ? "active" as const : "shadow" as const;
+  if (!options.provider) return { mode, status: "unavailable", intent: null, latencyMs: 0 };
   const startedAt = Date.now();
   let status: SemanticIntentStatus = "failed";
   let usage: SemanticIntentUsage | undefined;
@@ -386,19 +389,19 @@ export async function evaluateSemanticIntentShadow(
     if (!validation.valid) {
       status = "invalid-response";
       validationIssues = validation.issues;
-      return { mode: "shadow", status, intent: null, latencyMs: Date.now() - startedAt, usage, cost, validationIssues };
+      return { mode, status, intent: null, latencyMs: Date.now() - startedAt, usage, cost, validationIssues };
     }
     status = "completed";
-    return { mode: "shadow", status, intent: validation.intent, latencyMs: Date.now() - startedAt, usage, cost };
+    return { mode, status, intent: validation.intent, latencyMs: Date.now() - startedAt, usage, cost };
   } catch (error) {
     status = error instanceof SemanticIntentTimeoutError || (error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name))
       ? "timeout"
       : error instanceof SemanticIntentProviderError ? "provider-failure" : "failed";
-    return { mode: "shadow", status, intent: null, latencyMs: Date.now() - startedAt, usage };
+    return { mode, status, intent: null, latencyMs: Date.now() - startedAt, usage };
   } finally {
     options.log?.({
       model: options.provider.model,
-      mode: "shadow",
+      mode,
       status,
       latencyMs: Date.now() - startedAt,
       ...(usage ? { usage } : {}),

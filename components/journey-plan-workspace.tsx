@@ -48,7 +48,7 @@ export interface PlanWorkspaceProps {
     selectedDayIndex: number;
     totalDays: number;
     planItem?: PlanItem;
-    transfer?: JourneyCalendarDay["travel"];
+    transfer?: JourneyCalendarDay["travel"] & { classificationLabel?: string };
     savedRestaurant?: { restaurant: JourneyRestaurant; meal?: RestaurantMeal };
   };
   schedule: {
@@ -103,7 +103,7 @@ export function PlanWorkspace({ context, schedule, activity, notes, navigation, 
   return (
     <section className={styles.shapeDayPlan} aria-label="Selected day plan">
       <p className={styles.shapeDayContext}>{selectedDay.date} · {selectedStop.city}</p>
-      {transfer ? <div className={styles.dayTravel}><TransferIcon /><div><small>{transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration}</span>{transfer.from && transfer.detail ? <details><summary>Transfer details</summary><p>{transfer.detail}</p></details> : null}</div></div> : null}
+      {transfer ? <div className={styles.dayTravel}><TransferIcon /><div><small>{transfer.classificationLabel ?? (transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer)}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration}</span>{transfer.from && transfer.detail ? <details><summary>Transfer details</summary><p>{transfer.detail}</p></details> : null}</div></div> : null}
       {planItem ? <>
         {schedule.warning ? <p className={styles.plannerWarning}>{schedule.warning}</p> : null}
         {schedule.signals.length ? <section className={styles.scheduleHealth} aria-label={copy.scheduleHealth}>

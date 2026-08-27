@@ -93,8 +93,26 @@ test("provider capture calls one normalized lookup and preserves unknown intent 
   assert.equal(unresolved.length, 2);
   assert.equal(unresolved.every((mention) => mention.status === "unresolved" && mention.canonicalPlaceId === undefined), true);
   assert.deepEqual(capture.structuredBrief.placeMentions, capture.mentions);
-  assert.equal(capture.structuredBrief.destinations.some((destination) => destination.name === "Mystery Coast"), false);
+  assert.equal(capture.structuredBrief.destinations.some((destination) => destination.name === "Mystery Coast" && destination.resolutionStatus === "unresolved"), true);
   assert.equal(capture.structuredBrief.placeIssues?.filter((issue) => issue.code === "unresolved_place").length, 2);
+});
+
+test("P0 Central America prompt preserves one origin, seven destination intents and overland preference", () => {
+  const prompt = "Start in London and travel to Cancún, Tulum, Mexico City, Antigua, Lake Atitlán, Tikal and Belize. We would prefer to travel overland where practical.";
+  const capture = captureJourneyBrief(prompt);
+  const origin = capture.mentions.filter((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  const destinations = capture.mentions.filter((mention) => !["origin", "fixed_start", "excluded"].includes(mention.role));
+
+  assert.deepEqual(origin.map((mention) => mention.canonicalPlaceId), ["london"]);
+  assert.deepEqual(destinations.map((mention) => mention.sourceText), ["Cancún", "Tulum", "Mexico City", "Antigua", "Lake Atitlán", "Tikal", "Belize"]);
+  assert.deepEqual(destinations.map((mention) => mention.canonicalPlaceId), ["cancun", "tulum", "mexico-city", "antigua-guatemala", "lake-atitlan", "tikal", "belize"]);
+  assert.deepEqual(capture.structuredBrief.transportPreferences.map((preference) => preference.value), ["ground"]);
+  assert.equal(capture.mentions.some((mention) => mention.normalizedPhrase === "overland"), false);
+  assert.equal(capture.mentions.some((mention) => mention.canonicalName === "Guatemala City"), false);
+  assert.equal(capture.mentionCoverage.complete, true);
+  assert.deepEqual(capture.mentionCoverage.missingFromResolution, []);
+  assert.deepEqual(capture.mentionCoverage.missingFromStructuredBrief, []);
+  assert.deepEqual(capture.structuredBrief.placeIssues?.filter((issue) => issue.blocksRoute).map((issue) => issue.sourceText), ["Lake Atitlán", "Tikal", "Belize"]);
 });
 
 test("provider-enriched capture maps one fixed result through the shared brief boundary", async () => {

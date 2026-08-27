@@ -138,6 +138,10 @@
   color: var(--morrovia-ink, #17106f);
 }
 
+.fieldLabel b { color: var(--morrovia-signal, #f42b7a); }
+.fieldLabel small { margin-left: 7px; color: var(--morrovia-muted, #7673a4); font: inherit; letter-spacing: .04em; }
+.fieldDisabled .fieldLabel { color: var(--morrovia-muted, #7673a4); }
+
 .fieldControl {
   width: 100%;
   min-height: 50px;
@@ -170,6 +174,8 @@
 .fieldControl::placeholder {
   color: var(--morrovia-muted, #7673a4);
 }
+
+.textArea { min-height: 112px; padding-block: 14px; line-height: 1.5; resize: vertical; }
 
 .fieldHint,
 .fieldError {

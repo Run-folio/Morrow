@@ -35,6 +35,7 @@
 .bookingForm input:focus-visible,.bookingForm select:focus-visible{outline:none;border-color:var(--morrovia-signal,#f42b7a);box-shadow:0 0 0 3px var(--morrovia-focus-ring,rgba(244,43,122,.24))}
 .bookingForm button{border-radius:8px;background:var(--morrovia-action,#3025ce);font-family:var(--morrovia-ui,Geist,Inter,Arial,sans-serif);font-weight:700}
 .bookingForm button:hover{background:var(--morrovia-action-hover,#251dc0)}
+.bookingDate{min-width:0}
 
 .ready i{border-color:var(--morrovia-line,#d9d8ee);background:#fff}
 .ready .complete span{color:var(--morrovia-muted,#7673a4)}

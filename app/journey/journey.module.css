@@ -1147,3 +1147,106 @@
   .journey :global(.planner-map__destination-card strong){font-size:10px}
   .mapDayControl{bottom:10px;left:8px;max-width:calc(100% - 88px)}
 }
+
+/* Map composition refinement: on wide desktop, spatial intelligence belongs
+   on the left and the existing day-planning workspace belongs on the right.
+   Tablet/mobile sheets and the richer fullscreen composition remain unchanged. */
+@media(min-width:1180px){
+  .shellPlanner:not(.shellPlannerExpanded) .finderDock{
+    top:78px!important;
+    right:18px!important;
+    bottom:auto!important;
+    left:auto!important;
+    display:flex!important;
+    width:clamp(350px,24vw,400px)!important;
+    height:fit-content!important;
+    max-height:calc(100% - 96px)!important;
+    padding:0 17px 16px!important;
+    overflow:hidden!important;
+    transform:none!important;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .finderDock .shapeDayPlan,
+  .shellPlanner:not(.shellPlannerExpanded) .finderDockStay .restaurantFinder,
+  .shellPlanner:not(.shellPlannerExpanded) .finderDockEat .restaurantFinder,
+  .shellPlanner:not(.shellPlannerExpanded) .finderDockSee .shapeDaySee{
+    flex:0 1 auto!important;
+    max-height:calc(100svh - 288px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .canonicalPlannerStatus{
+    top:78px!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:18px!important;
+    width:clamp(320px,22vw,370px)!important;
+    max-width:370px!important;
+    max-height:calc(100% - 96px)!important;
+    padding:18px!important;
+    overflow-y:auto!important;
+    border-radius:16px!important;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext,
+  .shellPlanner:not(.shellPlannerExpanded) .mapPlaceContext{
+    top:78px!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:18px!important;
+    width:clamp(330px,23vw,380px)!important;
+    max-width:380px!important;
+    max-height:calc(100% - 96px)!important;
+    padding:18px!important;
+    overflow-y:auto!important;
+    border-radius:16px!important;
+    box-shadow:0 18px 42px rgba(23,16,111,.15)!important;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextPanel{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapDestinationImage{
+    order:-3;
+    width:100%;
+    height:168px;
+    min-height:0;
+    border-radius:12px;
+  }
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextEyebrow{order:-2;align-self:auto;margin-top:2px}
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextHeading{order:-1}
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextHeading h2{font-size:31px}
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapDestinationDescription{font-size:11px;line-height:1.52}
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextActions{grid-template-columns:1fr}
+  .shellPlanner:not(.shellPlannerExpanded) .mapDestinationContext .mapContextActions button{justify-content:flex-start;min-height:42px}
+  .shellPlanner:not(.shellPlannerExpanded) :global(.planner-map .maplibregl-ctrl-top-right){right:calc(clamp(350px,24vw,400px) + 34px)!important}
+  .shellPlanner:not(.shellPlannerExpanded) .pinDock{right:calc(clamp(350px,24vw,400px) + 34px)!important}
+  .shellPlanner:not(.shellPlannerExpanded) .mapAssistant{right:calc(clamp(350px,24vw,400px) + 34px)!important;bottom:18px!important}
+}
+
+/* The footer remains contextual, but its action now reads and behaves like a
+   standard Morrovia control instead of disappearing into the itinerary copy. */
+.shapeDayPlan .nextDay{
+  min-height:44px;
+  padding:7px 8px 7px 11px;
+  border:1px solid var(--hairline);
+  border-radius:10px;
+  background:#fff;
+  transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s;
+}
+.shapeDayPlan .nextDay strong{display:inline-flex;min-height:32px;align-items:center;justify-content:center;padding:0 10px;border-radius:8px;color:#fff;background:var(--morrovia-action)}
+.shapeDayPlan .nextDay:hover{color:var(--accent);background:var(--mist);border-color:color-mix(in srgb,var(--signal) 42%,var(--hairline));box-shadow:0 7px 17px rgba(23,16,111,.1)}
+.shapeDayPlan .nextDay:hover strong{background:var(--morrovia-action-hover)}
+.shapeDayPlan .nextDay:active{transform:translateY(1px)}
+.shapeDayPlan .nextDay:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+
+/* Strong but restrained feedback for the planning surfaces. */
+.finderTabs button:focus-visible,.localCandidates button:focus-visible,.restaurantActions a:focus-visible,.restaurantActions button:focus-visible,.finderFilters summary:focus-visible,.finderFilters button:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+.finderTabs button:hover:not([aria-pressed="true"]){color:var(--accent);background:#fff;box-shadow:0 3px 9px rgba(23,16,111,.08)}
+.localCandidates button{border-radius:8px;transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s}
+.localCandidates button:hover{padding-inline:8px;background:var(--mist);border-top-color:color-mix(in srgb,var(--signal) 32%,var(--hairline));box-shadow:0 5px 14px rgba(23,16,111,.07);transform:translateY(-1px)}
+.localCandidates button:active,.restaurantActions a:active,.restaurantActions button:active{transform:translateY(1px)}
+.restaurantActions a,.restaurantActions button{transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s}
+.restaurantActions a:hover,.restaurantActions button:hover{border-color:var(--signal);box-shadow:0 5px 14px rgba(244,43,122,.14)}
+.mapContextHeading>button,.mapExternalActions a,.mapContextActions button{transition:color .18s,background .18s,border-color .18s,box-shadow .18s,transform .12s}
+.mapContextHeading>button:active,.mapExternalActions a:active,.mapContextActions button:active{transform:translateY(1px)}

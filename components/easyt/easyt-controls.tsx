@@ -8,6 +8,7 @@ import {
   type MouseEventHandler,
   type ReactNode,
   type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react";
 import styles from "./easyt-controls.module.css";
 
@@ -103,17 +104,20 @@ export function EasyTLinkButton({
 
 type FieldShellProps = {
   children: ReactNode;
+  disabled?: boolean;
   error?: string;
   hint?: string;
   id: string;
   label: string;
+  optional?: boolean;
+  required?: boolean;
 };
 
-function FieldShell({ children, error, hint, id, label }: FieldShellProps) {
+function FieldShell({ children, disabled, error, hint, id, label, optional, required }: FieldShellProps) {
   const descriptionId = error || hint ? `${id}-description` : undefined;
   return (
-    <label className={`${styles.field} ${error ? styles.fieldInvalid : ""}`} htmlFor={id}>
-      <span className={styles.fieldLabel}>{label}</span>
+    <label className={`${styles.field} ${error ? styles.fieldInvalid : ""} ${disabled ? styles.fieldDisabled : ""}`} htmlFor={id}>
+      <span className={styles.fieldLabel}>{label}{required ? <b aria-hidden="true"> *</b> : optional ? <small>Optional</small> : null}</span>
       {children}
       {error ? (
         <p className={styles.fieldError} id={descriptionId} role="alert">{error}</p>
@@ -130,12 +134,13 @@ export const EasyTField = forwardRef<
     label: string;
     hint?: string;
     error?: string;
+    optional?: boolean;
   }
->(function EasyTField({ label, hint, error, id: suppliedId, ...props }, ref) {
+>(function EasyTField({ label, hint, error, optional, id: suppliedId, ...props }, ref) {
   const generatedId = useId();
   const id = suppliedId || generatedId;
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
       <input
         {...props}
         ref={ref}
@@ -154,12 +159,13 @@ export const EasyTSelect = forwardRef<
     label: string;
     hint?: string;
     error?: string;
+    optional?: boolean;
   }
->(function EasyTSelect({ label, hint, error, id: suppliedId, children, ...props }, ref) {
+>(function EasyTSelect({ label, hint, error, optional, id: suppliedId, children, ...props }, ref) {
   const generatedId = useId();
   const id = suppliedId || generatedId;
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
       <span className={styles.selectWrap}>
         <select
           {...props}
@@ -173,6 +179,31 @@ export const EasyTSelect = forwardRef<
         </select>
         <ChevronDown className={styles.selectIcon} aria-hidden="true" />
       </span>
+    </FieldShell>
+  );
+});
+
+export const EasyTTextArea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement> & {
+    label: string;
+    hint?: string;
+    error?: string;
+    optional?: boolean;
+  }
+>(function EasyTTextArea({ label, hint, error, optional, id: suppliedId, ...props }, ref) {
+  const generatedId = useId();
+  const id = suppliedId || generatedId;
+  return (
+    <FieldShell id={id} label={label} hint={hint} error={error} optional={optional} required={props.required} disabled={props.disabled}>
+      <textarea
+        {...props}
+        ref={ref}
+        id={id}
+        className={`${styles.fieldControl} ${styles.textArea}`}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error || hint ? `${id}-description` : undefined}
+      />
     </FieldShell>
   );
 });

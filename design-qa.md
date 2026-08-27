@@ -1,3 +1,47 @@
+# Map workspace composition refinement QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Downloads/Screenshot 2026-08-27 at 12.51.22 PM.png` (2047 × 980), `/Users/shaun/Downloads/Screenshot 2026-08-27 at 12.53.29 PM.png` (2048 × 1053), and `/Users/shaun/Downloads/Screenshot 2026-08-27 at 12.56.02 PM.png` (686 × 422). These are current-state/problem evidence rather than a literal visual clone target.
+- **Implementation:** deterministic `Composition*` stories under `Components/Trip map workspace` at `http://localhost:6010`.
+- **Browser-rendered evidence:** `artifacts/map-composition-refinement/desktop-destination-selected.png`, `tablet-768.png`, and `mobile-390.png`; the desktop content-normalized crop is `desktop-left.jpg` (1821 × 1133).
+- **Combined comparison evidence:** `http://localhost:6010/qa/comparison.html` and `artifacts/map-composition-refinement/source-to-refinement-comparison.png` place the supplied current-state screenshot and refined implementation in one comparison input.
+- **Viewport and density:** desktop was exercised at 1821 × 1133 CSS px, tablet at 768 × 1024 CSS px, and mobile at 391 × 867 CSS px. The in-app Browser capture controller reported `devicePixelRatio: 0.75` and returned host-scaled rasters (2428 × 1511, 1024 × 1365, and 520 × 1155 respectively); visual judgments use the reported CSS geometry and content-normalized desktop crop rather than treating host density/canvas padding as product drift.
+- **State:** Golden Triangle fixture with selected destination, provider-backed hotel/restaurant/place no-image fallbacks, Stay results, short/long Shape the day, keyboard focus, fullscreen, tablet, and mobile states.
+
+## Required fidelity surfaces
+
+- **Fonts and typography:** current Morrovia display, UI, and metadata roles remain unchanged. Panel relocation does not alter heading scale, optical weight, compact labels, wrapping, or truncation.
+- **Spacing and layout rhythm:** wide desktop now has three stable tracks—selected detail on the left, uninterrupted map in the centre, and content-driven Shape the day on the right. Whole route sits with Fullscreen and overflow in the stop strip. Panel max-heights keep long content inside internal scrolling instead of expanding the map workspace.
+- **Colors and visual tokens:** all new hover, pressed, focus, border, shadow, and filled next-day treatments use existing `--morrovia-*` semantic tokens. The canonical pink route and indigo actions remain unchanged.
+- **Image quality and asset fidelity:** destination imagery continues to use existing provider-backed assets and attribution. Current accommodation and local-place response contracts expose no verified property/place photo, so hotel, restaurant, and provider-place states deliberately render their existing no-image fallback rather than inventing or misattributing imagery.
+- **Copy and content:** canonical stop, route, day, provider, booking, and map copy remains intact. The Next footer retains `Next`, date, and destination while gaining a clearer filled action affordance.
+
+## Interaction, responsiveness, and focused evidence
+
+- Whole route uses the existing overview camera reset and reports `aria-pressed`; it is keyboard reachable beside Fullscreen and overflow.
+- Destination/place context, Shape the day, zoom, pin, co-pilot, transfer, persistence, camera, and MapLibre behavior remain on the existing architecture.
+- The long-day story measured a 613px internal plan viewport with 650px scroll content and `overflow-y: auto`; the short-day panel remains content-driven.
+- The provider hotel story rendered the selected provider heading with zero contextual images, confirming the explicit no-image state.
+- The 768px story retains the existing contextual-card/day-launcher adaptation; the 391px story retains the mobile destination sheet. Fullscreen still renders both selected detail and Shape the day.
+- Focused regions did not require separate image crops because panel type, controls, and provider fallback details were directly readable in the live deterministic stories; the browser DOM/geometry probes supplemented the full-view comparison for focus, scrolling, image absence, and responsive behavior.
+
+## Findings
+
+- No actionable P0, P1, or P2 visual, interaction, accessibility, or responsive mismatch remains in the reviewed composition states.
+- Accepted data limitation: `/api/journey-accommodation-search` and `/api/journey-local-search` do not currently return verified image URLs. Property/restaurant imagery therefore remains absent until those provider contracts expose attributable assets.
+- P3: the in-app Browser's host-scaled captures include extra canvas padding at some controller sizes. CSS viewport measurements and content crops confirm this is capture tooling, not product overflow.
+
+## Comparison history
+
+1. The supplied current state showed Shape the day competing with selected destination/place cards on the left and Whole route floating over the map. The refinement moved the selected detail left, Shape the day right, and Whole route into the existing top action cluster.
+2. The first live desktop inspection confirmed both panels were present but the host capture initially clipped the right side. DOM geometry and a density-normalized re-capture confirmed the requested three-track hierarchy without product overflow.
+3. Tablet, mobile, fullscreen, long-content, keyboard-focus, Stay-results, and provider-no-image stories were then reviewed. No post-comparison P0/P1/P2 product fix was required.
+
+**final result: passed**
+
+---
+
 # Remaining legacy Map capabilities restoration QA
 
 ## Comparison target

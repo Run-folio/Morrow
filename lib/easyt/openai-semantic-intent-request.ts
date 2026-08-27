@@ -11,15 +11,22 @@ export const SEMANTIC_INTENT_EXTRACTION_POLICY = `You extract semantic traveller
 
 Return only the supplied strict schema. Preserve source wording in every sourceText field, including spelling mistakes. interpretedText may give a cautious human-readable interpretation of a misspelling, but it is never verified or canonical geography.
 
+For origin, destinationCandidates and pointsOfInterest, sourceText is only the geographic name span copied from the prompt: use "London" from "Start in London", not "Start in London". Transport and constraint sourceText may include the surrounding phrase that carries their meaning.
+
 Boundaries:
 - Do not create canonical IDs, trip IDs, coordinates, normalized place records, verified places, prices, schedules, availability, calendar dates, years, or transport facts.
 - Date text may appear only when explicitly present in the raw prompt and must be copied exactly.
 - Origin is separate from route destinations.
-- A departure mode such as "flying from London" is not an inter-stop mode unless the traveller separately says it is.
-- Landmarks and attractions are points of interest, not overnight route stops. Link a POI only to a destination candidate already copied from the prompt.
+- transport.departure.sourceText and transport.departure.mode must either both be null or both describe an explicit departure transport phrase such as "flying from London". "Start in London" is origin only, so both departure fields are null.
+- A departure mode such as "flying from London" is not an inter-stop mode unless the traveller separately says it is. transport.interStop.sourceText is null exactly when transport.interStop.modes is empty.
+- Each geographic source phrase must appear in exactly one of destinationCandidates or pointsOfInterest, never both.
+- A landmark or attraction listed as one of the places the traveller intends to travel to is a destinationCandidate, even though deterministic place resolution may later preserve it as a non-overnight anchor. Use pointsOfInterest only when the traveller expresses the attraction as attached to a separately named destination.
+- Country, region, island, lake, natural area and landmark mentions are valid destination intentions. Do not replace them with a capital or nearby city.
+- Words describing travel style or transport, including "overland", "by train", "road trip" and "public transport", are transport meaning and never geography.
+- "overland" is inter-stop ground transport: copy the explicit overland phrase into transport.interStop.sourceText and include "ground" in transport.interStop.modes.
 - Food, wine, beaches, nightlife, relaxed pace, museums, cheap/value language, nature, romantic, architecture, and "don't rush" are preferences or constraints, never destinations by themselves.
 - Unknown and ambiguous meaning must remain unknown or ambiguous. Never fill gaps.
-- This output is advisory shadow data. It must not prescribe or mutate a trip.`;
+- This output is a bounded candidate interpretation. It must not prescribe geography or mutate a trip.`;
 
 export function buildOpenAISemanticIntentRequest(
   rawPrompt: string,
@@ -27,14 +34,14 @@ export function buildOpenAISemanticIntentRequest(
 ) {
   return {
     model,
-    reasoning: { effort: "medium" },
+    reasoning: { effort: "low" as const },
     input: [
       { role: "system", content: SEMANTIC_INTENT_EXTRACTION_POLICY },
       { role: "user", content: rawPrompt },
-    ],
+    ] as Array<{ role: "system" | "user"; content: string }>,
     text: {
       format: {
-        type: "json_schema",
+        type: "json_schema" as const,
         name: "morrovia_semantic_trip_intent",
         strict: true,
         schema: SEMANTIC_TRIP_INTENT_JSON_SCHEMA,
@@ -42,7 +49,7 @@ export function buildOpenAISemanticIntentRequest(
     },
     max_output_tokens: 1_800,
     store: false,
-  } as const;
+  };
 }
 
 type ResponsesPayload = {

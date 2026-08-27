@@ -40,6 +40,16 @@ const stop = (id: string, name: string, country: string, coordinates: [number, n
  */
 export const PROMPT_ENGINE_CASES: PromptEngineCase[] = [
   {
+    id: "p0-central-america-overland-coverage",
+    name: "Central America — seven destination intents and overland preference",
+    rawPrompt: "Start in London and travel to Cancún, Tulum, Mexico City, Antigua, Lake Atitlán, Tikal and Belize. We would prefer to travel overland where practical.",
+    expectedHardFacts: { canonicalPlaceIds: ["london", "cancun", "tulum", "mexico-city", "antigua-guatemala", "lake-atitlan", "tikal", "belize"] },
+    acceptableVariations: ["Antigua resolves to Antigua Guatemala from the surrounding Guatemala context.", "Lake Atitlán, Tikal and Belize remain destination anchors while bases are chosen."],
+    prohibitedOutcomes: ["Treat overland as a place.", "Insert Guatemala City.", "Drop any requested destination.", "Claim the route is complete before all three base decisions."],
+    expectedWarningsOrConflicts: ["region_requires_base"],
+    reviewNotes: ["Does the brief retain one origin, seven destination intents and the overland preference with zero missing mentions?"],
+  },
+  {
     id: "japan-explicit-constraints",
     name: "Japan — explicit gateways, pace and transport",
     rawPrompt: "About 12 nights in Japan. Start in Tokyo, Kyoto is essential, finish in Osaka. Two travellers want a relaxed pace, food, trains, an affordable trip, no driving and no more than 4 stops.",

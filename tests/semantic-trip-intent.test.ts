@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
+import { captureJourneyBrief, captureJourneyBriefFromSemanticIntent } from "../lib/easyt/journey-capture.ts";
 import { classifySemanticIntentDifferences, runSemanticIntentFixtureShadow } from "../benchmarks/prompt-engine/semantic-intent-shadow.ts";
 import {
   configuredOpenAISemanticIntentProvider,
@@ -35,7 +35,9 @@ import {
   type PromptCaptureRegressionFixture,
 } from "./fixtures/prompt-capture-regression.ts";
 
-const semanticFixtures = PROMPT_CAPTURE_REGRESSION_CASES.filter((fixture) => fixture.semanticExpectation);
+const semanticFixtures = PROMPT_CAPTURE_REGRESSION_CASES
+  .filter((fixture) => fixture.semanticExpectation)
+  .sort((left, right) => Number(right.id === "real-homepage-europe-typos-and-pois") - Number(left.id === "real-homepage-europe-typos-and-pois"));
 
 function sourceMatch(rawPrompt: string, pattern: RegExp) {
   return pattern.exec(rawPrompt)?.[0] ?? null;
@@ -96,7 +98,7 @@ function completed(intent: SemanticTripIntent): SemanticIntentExtractionResult {
 test("semantic contract is strict, versioned, and cannot carry planner or canonical facts", () => {
   assert.equal(SEMANTIC_TRIP_INTENT_JSON_SCHEMA.additionalProperties, false);
   assert.deepEqual(SEMANTIC_INTENT_MODELS, {
-    primary: { model: "gpt-5.6-luna", reasoningEffort: "medium" },
+    primary: { model: "gpt-5.6-luna", reasoningEffort: "low" },
     escalation: { model: "gpt-5.6-terra", reasoningEffort: "medium" },
   });
   const serialized = JSON.stringify(SEMANTIC_TRIP_INTENT_JSON_SCHEMA).toLocaleLowerCase();
@@ -137,8 +139,8 @@ test("shared-corpus harness produces a sanitized A/B report for every semantic f
   assert.equal(report.summary.falseGeography.count, 0);
   assert.ok(report.summary.falseGeography.destinationCandidates > 0);
   assert.equal(report.summary.falseGeography.rate, 0);
-  assert.deepEqual(report.summary.poi, { expected: 10, identified: 10, interpretedCorrectly: 10, associationsCorrect: 10, identificationRate: 1, associationAccuracy: 1 });
-  assert.deepEqual(report.summary.transport, { expectedSignals: 6, correctSignals: 6, accuracy: 1 });
+  assert.deepEqual(report.summary.poi, { expected: 11, identified: 11, interpretedCorrectly: 11, associationsCorrect: 11, identificationRate: 1, associationAccuracy: 1 });
+  assert.deepEqual(report.summary.transport, { expectedSignals: 7, correctSignals: 7, accuracy: 1 });
   assert.equal(report.summary.classifications["incorrect interpretation"], 0);
   assert.equal(report.summary.classifications["dangerous false geography"], 0);
   assert.equal(report.summary.classifications["fabricated fact"], 0);
@@ -170,12 +172,12 @@ test("the exact homepage prompt keeps origin, duration, POIs, and departure flig
   assert.equal(result.escalation.shouldEscalate, false);
 });
 
-test("Responses API request uses Luna medium reasoning and strict structured output; Terra reuses the same contract", () => {
+test("Responses API request uses Luna low reasoning and strict structured output; Terra reuses the same contract", () => {
   const rawPrompt = semanticFixtures[0]?.rawPrompt ?? "";
   const luna = buildOpenAISemanticIntentRequest(rawPrompt);
   const terra = buildOpenAISemanticIntentRequest(rawPrompt, SEMANTIC_INTENT_MODELS.escalation.model);
   assert.equal(luna.model, "gpt-5.6-luna");
-  assert.deepEqual(luna.reasoning, { effort: "medium" });
+  assert.deepEqual(luna.reasoning, { effort: "low" });
   assert.equal(luna.text.format.type, "json_schema");
   assert.equal(luna.text.format.strict, true);
   assert.equal(luna.store, false);
@@ -194,6 +196,26 @@ test("Responses payload parsing accepts output_text and rejects malformed JSON o
   assert.deepEqual(parsed, { value: intent, usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } });
   assert.equal(parseOpenAISemanticIntentResponse({ output_text: "{" }), null);
   assert.equal(parseOpenAISemanticIntentResponse({ output: [{ content: [{ type: "refusal", refusal: "no" }] }] }), null);
+});
+
+test("validated Luna candidates project through deterministic geography with complete mention coverage", async () => {
+  const fixture = semanticFixtures.find((item) => item.id === "p0-central-america-overland-coverage");
+  assert.ok(fixture);
+  const capture = await captureJourneyBriefFromSemanticIntent(
+    fixture.rawPrompt,
+    intentForFixture(fixture),
+    undefined,
+    {},
+    { model: "gpt-5.6-luna", status: "completed" },
+  );
+  const origin = capture.mentions.filter((mention) => mention.role === "origin");
+  const destinations = capture.mentions.filter((mention) => mention.role !== "origin");
+  assert.deepEqual(origin.map((mention) => mention.canonicalPlaceId), ["london"]);
+  assert.deepEqual(destinations.map((mention) => mention.sourceText), ["Cancún", "Tulum", "Mexico City", "Antigua", "Lake Atitlán", "Tikal", "Belize"]);
+  assert.equal(destinations.some((mention) => mention.normalizedPhrase === "overland"), false);
+  assert.equal(capture.structuredBrief.transportPreferences.some((preference) => preference.value === "ground"), true);
+  assert.equal(capture.mentionCoverage.complete, true);
+  assert.deepEqual(capture.semanticExtraction, { model: "gpt-5.6-luna", status: "completed", fallbackUsed: false });
 });
 
 test("malformed output, schema failure, timeout, and provider failure are bounded failure states", async () => {
@@ -329,6 +351,8 @@ test("configuration defaults off, production cannot opt into shadow, and logs st
   assert.equal(semanticIntentMode({}), "off");
   assert.equal(semanticIntentMode({ NODE_ENV: "development", MORROVIA_SEMANTIC_INTENT_MODE: "shadow" }), "shadow");
   assert.equal(semanticIntentMode({ NODE_ENV: "production", MORROVIA_SEMANTIC_INTENT_MODE: "shadow" }), "off");
+  assert.equal(semanticIntentServerConfig({ NODE_ENV: "production", OPENAI_API_KEY: "configured" }).mode, "active");
+  assert.equal(semanticIntentServerConfig({ NODE_ENV: "production", OPENAI_API_KEY: "configured", MORROVIA_SEMANTIC_INTENT_MODE: "off" }).mode, "off");
   const missingKeyEnvironment = { NODE_ENV: "development", MORROVIA_SEMANTIC_INTENT_MODE: "shadow" };
   assert.deepEqual(semanticIntentServerConfig(missingKeyEnvironment), {
     mode: "shadow",

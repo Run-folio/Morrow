@@ -323,6 +323,117 @@ test("derived planner rebuilds do not create a false cloud/device conflict", () 
   assert.equal(tripDocumentsCanonicalEquivalent({ ...local, brief: { ...local.brief, mustDo: "A real traveller edit" } }, canonical), false);
 });
 
+test("canonical refresh retires an aligned or stale baseline snapshot without relying on updatedAt", () => {
+  const storage = new MemoryBrowserStorage();
+  const cloudA = browserTrip({ id: "trip-stale-baseline", travellers: 2 });
+  assert.equal(cacheCanonicalTripToStorage(storage, cloudA), true);
+  const snapshot = saveTripRecoveryToStorage(storage, { ...cloudA, updatedAt: "2026-08-23T11:30:00.000Z" }, {
+    writeId: "stale-baseline",
+  });
+  assert.equal(snapshot.stored, true);
+
+  const cloudB = { ...cloudA, travellers: 3, updatedAt: "2026-08-23T12:00:00.000Z" };
+  const refreshed = cacheCanonicalTripWithRecoveryToStorage(storage, cloudB);
+
+  assert.deepEqual(refreshed, { stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
+  assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a"), cloudB);
+});
+
+test("successful Add pin save acknowledges the canonical map pin and refresh stays conflict-free", () => {
+  const storage = new MemoryBrowserStorage();
+  const cloud = browserTrip({ id: "trip-pin-ack", brief: { ...browserTrip().brief, mapPins: [] } });
+  cacheCanonicalTripToStorage(storage, cloud);
+  const pin = { id: "pin-cafe", title: "Morning cafe", category: "restaurant" as const, dayNumber: 2, latitude: 48.8566, longitude: 2.3522 };
+  const local = { ...cloud, brief: { ...cloud.brief, mapPins: [pin] } };
+  const recovery = saveTripRecoveryToStorage(storage, local, { writeId: "pin-save" });
+  const canonical = { ...local, updatedAt: "2026-08-23T12:00:00.000Z" };
+
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, canonical, recovery.handle), { stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloud.id, "owner-a"), null);
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, canonical), { stored: true, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloud.id, "owner-a"), null);
+});
+
+test("Luna preview is inert and confirmed Apply rebases an unchanged device baseline", () => {
+  const storage = new MemoryBrowserStorage();
+  const stop = { id: "rome", order: 0, name: "Rome", country: "Italy", latitude: 41.9, longitude: 12.5, arrivalDate: "2026-12-01", departureDate: "2026-12-03", nights: 2 };
+  const cloudA = browserTrip({ id: "trip-luna-reconcile", stops: [stop] });
+  cacheCanonicalTripToStorage(storage, cloudA);
+  const recovery = saveTripRecoveryToStorage(storage, cloudA, { writeId: "pre-luna-baseline" });
+  assert.equal(recovery.stored, true);
+
+  // Preview has no persistence side effect.
+  assert.deepEqual(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a")?.trip.stops[0].nights, 2);
+  assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a")?.stops[0].nights, 2);
+
+  const cloudB = { ...cloudA, stops: [{ ...stop, nights: 3 }], updatedAt: "2026-08-23T12:00:00.000Z" };
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, cloudB), { stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
+  assert.equal(loadCachedTripFromStorage(storage, cloudA.id, "owner-a")?.stops[0].nights, 3);
+});
+
+test("a real local edit remains recoverable when cloud is unchanged or independently newer", () => {
+  const storage = new MemoryBrowserStorage();
+  const cloudA = browserTrip({ id: "trip-real-divergence", travellers: 2 });
+  cacheCanonicalTripToStorage(storage, cloudA);
+  const localB = { ...cloudA, brief: { ...cloudA.brief, mustDo: "Protect my unsynced museum booking" } };
+  const recovery = saveTripRecoveryToStorage(storage, localB, { writeId: "real-local-edit" });
+  assert.equal(recovery.stored, true);
+
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, cloudA), { stored: true, recoveryResolved: false });
+  assert.equal(loadLocalTripFromStorage(storage, cloudA.id, "owner-a")?.brief.mustDo, "Protect my unsynced museum booking");
+
+  const cloudC = { ...cloudA, travellers: 3, updatedAt: "2026-08-23T12:30:00.000Z" };
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, cloudC), { stored: true, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a")?.trip.brief.mustDo, "Protect my unsynced museum booking");
+  assert.equal(loadCachedTripFromStorage(storage, cloudA.id, "owner-a")?.travellers, 3);
+
+  assert.equal(discardTripRecoveryInStorage(storage, recovery.handle, true), true);
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
+  assert.equal(loadLocalTripFromStorage(storage, cloudA.id, "owner-a")?.travellers, 3);
+});
+
+test("semantic comparison ignores canonical/provider metadata but protects every editable recovery field", () => {
+  const base = browserTrip({
+    id: "trip-semantic-fields",
+    stops: [{ id: "rome", order: 0, name: "Rome", country: "Italy", latitude: 41.9, longitude: 12.5, arrivalDate: "2026-12-01", departureDate: "2026-12-03", nights: 2 }],
+    brief: {
+      ...browserTrip().brief,
+      dayNotes: { 1: ["Call the hotel"] },
+      customActivities: { 2: ["Evening walk"] },
+      mapPins: [{ id: "pin-1", title: "Dinner", category: "restaurant", dayNumber: 2, latitude: 1, longitude: 2 }],
+      bookings: [{ id: "stay-1", type: "stay", title: "Hotel", date: "2026-12-01", confirmation: null, url: null }],
+      checklist: [{ id: "passport", label: "Passport", complete: true }],
+    },
+  });
+  const metadataOnly = {
+    ...base,
+    createdAt: "2026-08-23T09:00:00.000Z",
+    updatedAt: "2026-08-23T12:00:00.000Z",
+    brief: {
+      ...base.brief,
+      originCanonicalPlaceId: "canonical-london",
+      originProviderId: "provider-refresh",
+      originCoordinates: [-0.12, 51.5] as [number, number],
+      routeAssessment: { route: { state: "insufficient-data" as const, currentStopIds: [], recommendedStopIds: [], currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null, reasons: [], tradeoffs: [], summary: "Recalculated" }, durations: {}, comfortableDays: 0, shortfallDays: 0 },
+    },
+    stops: [{ ...base.stops[0], canonicalPlaceId: "canonical-rome", providerId: "provider-rome", latitude: 41.901, longitude: 12.501 }],
+  };
+  assert.equal(tripDocumentsCanonicalEquivalent(base, metadataOnly), true);
+
+  const meaningfulVariants: EasyTTrip[] = [
+    { ...base, startDate: "2026-12-02" },
+    { ...base, travellers: 3 },
+    { ...base, brief: { ...base.brief, dayNotes: { 1: ["Changed note"] } } },
+    { ...base, brief: { ...base.brief, customActivities: { 2: ["Changed activity"] } } },
+    { ...base, brief: { ...base.brief, mapPins: [] } },
+    { ...base, brief: { ...base.brief, bookings: [] } },
+    { ...base, brief: { ...base.brief, checklist: [] } },
+  ];
+  meaningfulVariants.forEach((variant) => assert.equal(tripDocumentsCanonicalEquivalent(variant, base), false));
+});
+
 test("the Nikko save, Map reopen and reload sequence converges while a later traveller edit remains protected", () => {
   const ownerId = "owner-a";
   const local = browserTrip({
@@ -837,7 +948,7 @@ test("quota exhaustion reports failure after clean eviction and leaves the prior
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a")?.writeId, "safe-write");
 });
 
-test("a quota-blocked current pointer cannot evict the canonical cache that makes recovery resolution safe", () => {
+test("a quota-blocked current pointer still allows an equivalent recovery to reconcile", () => {
   const storage = new MemoryBrowserStorage();
   const trip = browserTrip({ id: "trip-pointer-quota" });
   const recovery = saveTripRecoveryToStorage(storage, trip, { writeId: "pointer-recovery" });
@@ -847,7 +958,7 @@ test("a quota-blocked current pointer cannot evict the canonical cache that make
   assert.equal(cacheCanonicalTripToStorage(storage, trip), true);
   assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), trip.id);
   assert.equal(loadCachedTripFromStorage(storage, trip.id, "owner-a")?.id, trip.id);
-  assert.equal(resolveTripRecoveryInStorage(storage, recovery.handle), true);
+  assert.equal(resolveTripRecoveryInStorage(storage, recovery.handle), false);
   assert.equal(loadTripRecoveryFromStorage(storage, trip.id, "owner-a"), null);
   assert.equal(loadCachedTripFromStorage(storage, trip.id, "owner-a")?.id, trip.id);
 });

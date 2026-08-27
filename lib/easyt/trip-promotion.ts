@@ -67,8 +67,16 @@ export function remapTripStopReferences(trip: EasyTTrip, stopIds: StopIdMap): Ea
     stops: trip.stops.map((stop) => ({ ...stop, id: remappedStopId(stop.id, stopIds) })),
     legs: trip.legs.map((leg) => ({
       ...leg,
-      fromStopId: remappedStopId(leg.fromStopId, stopIds),
-      toStopId: remappedStopId(leg.toStopId, stopIds),
+      fromStopId: leg.fromEndpoint?.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.fromStopId, stopIds),
+      toStopId: leg.toEndpoint?.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.toStopId, stopIds),
+      ...(leg.fromEndpoint ? { fromEndpoint: {
+        ...leg.fromEndpoint,
+        id: leg.fromEndpoint.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.fromEndpoint.id, stopIds),
+      } } : {}),
+      ...(leg.toEndpoint ? { toEndpoint: {
+        ...leg.toEndpoint,
+        id: leg.toEndpoint.kind === "origin" ? `${trip.id}-origin` : remappedStopId(leg.toEndpoint.id, stopIds),
+      } } : {}),
       routeMetadata: remapNestedStopReferences(leg.routeMetadata, stopIds) as Record<string, unknown>,
     })),
     planItems: trip.planItems.map((item) => ({ ...item, stopId: remappedStopId(item.stopId, stopIds) })),
@@ -109,7 +117,11 @@ function collectNestedStopReferences(value: unknown, references: string[], key?:
 
 /** A durable trip must never retain a nested reference to a missing route stop. */
 export function tripStopReferenceInvariantIssues(trip: EasyTTrip) {
-  const validStopIds = new Set(trip.stops.map((stop) => stop.id));
+  const validStopIds = new Set([
+    ...trip.stops.map((stop) => stop.id),
+    `${trip.id}-origin`,
+    ...trip.legs.flatMap((leg) => [leg.fromEndpoint, leg.toEndpoint].filter((endpoint) => endpoint?.kind === "origin").map((endpoint) => endpoint!.id)),
+  ]);
   const references = [
     ...trip.legs.flatMap((leg) => [leg.fromStopId, leg.toStopId]),
     ...trip.planItems.map((item) => item.stopId),

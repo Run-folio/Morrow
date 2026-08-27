@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDays, Castle, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Route, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDays, Castle, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -35,6 +35,7 @@ import { initialMapCameraMode, mapWorkspaceHref, parseMapWorkspaceTarget } from 
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
+import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import styles from "@/app/journey/journey.module.css";
 import mobileNav from "@/app/journey/plan-mobile-nav.module.css";
@@ -310,6 +311,9 @@ export type JourneyMapPlannerWorkspaceProps = {
     selectedPlannerPinId?: string;
     expandedMap?: boolean;
     destinationExpanded?: boolean;
+    shapeDayTab?: "plan" | "stay" | "eat" | "see";
+    localPlaces?: JourneyLocalPlace[];
+    selectedLocalPlaceId?: string;
   };
 };
 
@@ -356,7 +360,7 @@ export function JourneyMapPlannerWorkspace({
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState<{ restaurant: JourneyRestaurant; meal?: RestaurantMeal }>();
   const [localFinderKind, setLocalFinderKind] = useState<"restaurant" | "stay">(initialMapTarget?.mode === "stay" ? "stay" : "restaurant");
-  const [shapeDayTab, setShapeDayTab] = useState<ShapeDayTab>(initialMapTarget?.mode ?? "plan");
+  const [shapeDayTab, setShapeDayTab] = useState<ShapeDayTab>(storyState?.shapeDayTab ?? initialMapTarget?.mode ?? "plan");
   const [customBrief, setCustomBrief] = useState<CustomBrief | null>(() => providedTrip ? customBriefFromEasyT(providedTrip) : null);
   const [customTrip, setCustomTrip] = useState<EasyTTrip | null>(providedTrip);
   const [planHydrated, setPlanHydrated] = useState(Boolean(providedTrip) || !isPlanningPreview);
@@ -390,8 +394,8 @@ export function JourneyMapPlannerWorkspace({
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [mobileShapeDayOpen, setMobileShapeDayOpen] = useState(() => Boolean(initialMapTarget && initialMapTarget.mode !== "plan"));
-  const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>([]);
-  const [selectedLocalPlaceId, setSelectedLocalPlaceId] = useState<string | null>(null);
+  const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
+  const [selectedLocalPlaceId, setSelectedLocalPlaceId] = useState<string | null>(storyState?.selectedLocalPlaceId ?? null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
   const [undoMessage, setUndoMessage] = useState("");
@@ -449,9 +453,22 @@ export function JourneyMapPlannerWorkspace({
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
   const selectedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
+  const selectedCanonicalTravel = customTrip && selectedLeg ? {
+    mode: (selectedLeg.mode === "train" ? "rail" : selectedLeg.mode === "walk" ? "road" : selectedLeg.mode) as JourneyLeg["mode"],
+    from: routeEndpointForLeg(customTrip, selectedLeg, "from")?.name,
+    detail: selectedLeg.provider ?? "Timing needs confirmation",
+    duration: formatMapDuration(selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes),
+    classificationLabel: language === "es"
+      ? ({ arrival: "Viaje de llegada", international: "Traslado internacional", intercity: "Traslado interurbano", local: "Traslado local", departure: "Viaje de salida" }[selectedLeg.classification ?? "intercity"])
+      : tripLegClassificationLabel(selectedLeg.classification),
+  } : undefined;
   const selectedStay = customTrip && selectedTripStop ? stayBookingForStop(customTrip, selectedTripStop) : null;
-  const mappedDistanceKm = customTrip?.legs.reduce((total, leg) => total + (leg.distanceKm ?? 0), 0) ?? 0;
-  const mappedTravelMinutes = customTrip?.legs.reduce((total, leg) => total + (leg.durationMinutes ?? 0), 0) ?? 0;
+  const mappedDistanceKm = customTrip && customTrip.legs.every((leg) => leg.distanceKm !== null)
+    ? customTrip.legs.reduce((total, leg) => total + (leg.distanceKm ?? 0), 0)
+    : null;
+  const mappedTravelMinutes = customTrip && customTrip.legs.every((leg) => (leg.doorToDoorMinutes ?? leg.durationMinutes) !== null)
+    ? customTrip.legs.reduce((total, leg) => total + (leg.doorToDoorMinutes ?? leg.durationMinutes ?? 0), 0)
+    : null;
   const selectedStayDates = customTrip && selectedTripStop ? stableStopDateRange(selectedTripStop, customTrip) : null;
   const transportAlternatives = useMemo(() => {
     if (!customTrip || !selectedLeg) return [];
@@ -469,7 +486,17 @@ export function JourneyMapPlannerWorkspace({
       constraints,
     );
   }, [customTrip, selectedLeg]);
-  const selectedActivities = selectedPlanItem?.notes ?? selectedDay.items;
+  const selectedActivities = (selectedPlanItem?.notes ?? selectedDay.items).map((item) => {
+    if (!selectedLeg || !/^(?:Estimated door-to-door: about|Morrovia planning estimate:)/i.test(item)) return item;
+    const minutes = selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes;
+    if (minutes === null) return language === "es"
+      ? "El tiempo del traslado está por confirmar; comprueba los horarios actuales."
+      : "Transfer timing is still to confirm; check current schedules.";
+    const duration = `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    return language === "es"
+      ? `Estimación de planificación de Morrovia: unas ${duration} de puerta a puerta; comprueba los horarios actuales.`
+      : `Morrovia planning estimate: about ${duration} door to door; check current schedules.`;
+  });
   const selectedDayNotes = selectedPlanItem ? customTrip?.brief.dayNotes?.[selectedPlanItem.dayNumber] ?? [] : [];
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -544,10 +571,10 @@ export function JourneyMapPlannerWorkspace({
   const selectedScheduleSignals = useMemo(() => {
     const signals: string[] = [];
     if (selectedActivities.length >= 4) signals.push(`${selectedActivities.length} activities: keep travel tight.`);
-    const hours = Number.parseInt(selectedDay.travel?.duration ?? "", 10);
+    const hours = selectedLeg ? Math.floor((selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes ?? 0) / 60) : 0;
     if (Number.isFinite(hours) && hours >= 4) signals.push(`Long transfer: allow at least ${hours + 1} hours door to door.`);
     return signals;
-  }, [selectedActivities.length, selectedDay.travel?.duration]);
+  }, [selectedActivities.length, selectedLeg]);
   const healthSummary = useMemo(() => customTrip ? tripHealthSummary(customTrip) : null, [customTrip]);
   const health = healthSummary?.health ?? null;
   const accommodation = useMemo(() => customTrip ? accommodationProgress(customTrip) : null, [customTrip]);
@@ -556,7 +583,13 @@ export function JourneyMapPlannerWorkspace({
   const priorityRecommendations = displayRecommendations.slice(0, 3);
   const remainingRecommendations = displayRecommendations.slice(3);
   const tripIssueCount = healthSummary?.issueCount ?? 0;
-  const canonicalStripStops = useMemo(() => customTrip?.stops.map((stop) => {
+  const canonicalStripStops = useMemo(() => customTrip ? [{
+    id: tripOriginEndpointId(customTrip.id),
+    name: customTrip.brief.origin,
+    dayLabel: "Journey origin",
+    active: false,
+    kind: "origin" as const,
+  }, ...customTrip.stops.map((stop) => {
     const items = customTrip.planItems.filter((item) => item.stopId === stop.id).sort((a, b) => a.dayNumber - b.dayNumber);
     const first = items[0];
     const last = items[items.length - 1];
@@ -567,11 +600,25 @@ export function JourneyMapPlannerWorkspace({
       dayLabel: first ? first.dayNumber === last?.dayNumber ? `Day ${first.dayNumber}` : `Day ${first.dayNumber}–${last?.dayNumber}` : formatTripNights(stop.nights),
       image: (imageKey ? placeMedia[imageKey]?.image : undefined) ?? first?.image ?? undefined,
       active: mapMode === "detail" && stop.id === selectedPlanItem?.stopId,
+      kind: "stop" as const,
     };
-  }) ?? [], [customTrip, mapMode, placeMedia, selectedPlanItem?.stopId]);
+  })] : [], [customTrip, mapMode, placeMedia, selectedPlanItem?.stopId]);
   const canonicalMapStops = useMemo(() => {
     if (!customTrip) return journey.stops;
-    return [...customTrip.stops]
+    const origin = originEndpointForTrip(customTrip);
+    const originStop: JourneyStop = {
+      id: origin.id,
+      city: origin.name,
+      country: origin.country ?? "Journey origin",
+      date: "From",
+      coordinates: origin.coordinates,
+      theme: "transit",
+      marker: "plane",
+      description: `The canonical journey origin. Nights are allocated only to the destinations that follow.`,
+      highlights: ["Journey origin"],
+      aiPrompt: `Explain the arrival journey from ${origin.name}.`,
+    };
+    return [originStop, ...[...customTrip.stops]
       .sort((left, right) => left.order - right.order)
       .map((stop) => {
         const firstItem = customTrip.planItems
@@ -595,7 +642,7 @@ export function JourneyMapPlannerWorkspace({
               highlights: [],
               aiPrompt: `What should I prioritise in ${stop.name}?`,
             };
-      });
+      })];
   }, [customTrip, journey.stops]);
   const canonicalMapLegs = useMemo(() => customTrip ? mapRouteLegsFromTrip(customTrip) : [], [customTrip]);
   const canonicalDestinationCards = useMemo(() => customTrip?.stops.map((stop) => {
@@ -1581,6 +1628,9 @@ export function JourneyMapPlannerWorkspace({
     }
     if (storyState.expandedMap !== undefined) setIsExpandedMap(storyState.expandedMap);
     if (storyState.destinationExpanded !== undefined) setDestinationExpanded(storyState.destinationExpanded);
+    if (storyState.shapeDayTab !== undefined) setShapeDayTab(storyState.shapeDayTab);
+    if (storyState.localPlaces !== undefined) setLocalMapPlaces(storyState.localPlaces);
+    if (storyState.selectedLocalPlaceId !== undefined) setSelectedLocalPlaceId(storyState.selectedLocalPlaceId);
   }, [customTrip, planHydrated, storyState]);
 
   useEffect(() => {
@@ -1821,9 +1871,15 @@ export function JourneyMapPlannerWorkspace({
         fullTripHref={isShellPresentation ? undefined : mapWorkspaceHref(customTrip.id)}
         fullTripLabel={isShellPresentation ? isExpandedMap ? "Exit fullscreen" : "Fullscreen map" : "Return to trip map"}
         fullTripExpanded={isExpandedMap}
+        wholeRouteActive={mapMode === "overview"}
+        onWholeRoute={resetWholeRoute}
         onFullTrip={isShellPresentation ? toggleExpandedMap : undefined}
         presentation={isShellPresentation ? "integrated" : "focused"}
         onSelectStop={(stopId) => {
+          if (stopId === tripOriginEndpointId(customTrip.id)) {
+            resetWholeRoute();
+            return;
+          }
           const firstItem = customTrip.planItems.filter((item) => item.stopId === stopId).sort((a, b) => a.dayNumber - b.dayNumber)[0];
           setIsPlaying(false);
           setMobileShapeDayOpen(false);
@@ -1922,7 +1978,7 @@ export function JourneyMapPlannerWorkspace({
                 <div><dt>Nights</dt><dd>{selectedTripStop.nights ?? "To confirm"}</dd></div>
                 <div><dt>Check out</dt><dd>{formatIsoDate(selectedTripStop.departureDate, "en", { month: "short", day: "numeric" }) ?? "To confirm"}</dd></div>
               </dl> : null}
-              {isPlanningPreview && selectedDay.travel ? <div className={styles.destinationTransfer}><small>{selectedDay.travel.mode === "flight" ? planCopy.travelConnection : planCopy.localTransfer}</small><strong>{selectedDay.travel.from ? `${selectedDay.travel.from} → ${selectedDay.city}` : selectedDay.travel.detail}</strong><span>{selectedDay.travel.duration} · {selectedDay.travel.detail}</span></div> : null}
+              {isPlanningPreview && selectedLeg && customTrip ? <div className={styles.destinationTransfer}><small>{tripLegClassificationLabel(selectedLeg.classification)}</small><strong>{routeEndpointForLeg(customTrip, selectedLeg, "from")?.name ?? "Previous endpoint"} → {routeEndpointForLeg(customTrip, selectedLeg, "to")?.name ?? selectedDay.city}</strong><span>{formatMapDuration(selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes)} · {selectedLeg.provider ?? "Timing needs confirmation"}</span></div> : null}
               {!isCustomJourney ? <div className={styles.highlights}>
                 {selected.highlights.map((highlight, index) => <span key={highlight}><b>0{index + 1}</b>{highlight}</span>)}
               </div> : null}
@@ -1965,6 +2021,7 @@ export function JourneyMapPlannerWorkspace({
           </div> : selectedRouteLeg ? <div className={styles.mapLegDetail}>
             <p className={styles.mapContextCopy}>Approximate planning connection. This line is not a live or navigable route.</p>
             <dl className={styles.mapContextFacts}>
+              <div><dt>Journey</dt><dd>{tripLegClassificationLabel(selectedRouteLeg.classification)}</dd></div>
               <div><dt>Mode</dt><dd>{selectedRouteLeg.modeLabel}</dd></div>
               <div><dt>Distance</dt><dd>{selectedRouteLeg.distanceKm !== null ? `${Math.round(selectedRouteLeg.distanceKm).toLocaleString()} km` : "To confirm"}</dd></div>
               <div><dt>Headline</dt><dd>{selectedRouteLeg.headlineMinutes !== null ? formatMapDuration(selectedRouteLeg.headlineMinutes) : "Not separately known"}</dd></div>
@@ -1972,14 +2029,15 @@ export function JourneyMapPlannerWorkspace({
             </dl>
             <p className={styles.mapProvenance}><strong>{selectedRouteLeg.provenanceLabel}</strong>{selectedRouteLeg.confidence ? ` · ${selectedRouteLeg.confidence.state} · ${selectedRouteLeg.confidence.level} confidence` : " · confidence not supplied"}</p>
             {selectedRouteLeg.planningNote ? <p className={styles.mapLegNote}>{selectedRouteLeg.planningNote}</p> : null}
+            {selectedRouteLeg.warnings.map((warning) => <p key={warning} className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> {warning}</p>)}
             {selectedRouteLeg.scheduleNeedsChecking ? <p className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> Exact schedules and current operating details still need checking.</p> : null}
           </div> : mapMode === "overview" ? <>
             <p className={styles.mapContextCopy}>The complete route is fitted to the map. Select a transport marker or stop for spatial detail.</p>
             <dl className={styles.mapContextFacts}>
               <div><dt>Trip</dt><dd>{journey.calendar.length} days</dd></div>
               <div><dt>Transfers</dt><dd>{customTrip.legs.length}</dd></div>
-              <div><dt>Mapped distance</dt><dd>{mappedDistanceKm ? `${Math.round(mappedDistanceKm).toLocaleString()} km` : "To confirm"}</dd></div>
-              <div><dt>Travel time</dt><dd>{mappedTravelMinutes ? `${Math.floor(mappedTravelMinutes / 60)}h ${mappedTravelMinutes % 60}m` : "To confirm"}</dd></div>
+              <div><dt>Mapped distance</dt><dd>{mappedDistanceKm !== null ? `${Math.round(mappedDistanceKm).toLocaleString()} km` : "To confirm"}</dd></div>
+              <div><dt>Travel time</dt><dd>{mappedTravelMinutes !== null ? `${Math.floor(mappedTravelMinutes / 60)}h ${mappedTravelMinutes % 60}m` : "To confirm"}</dd></div>
             </dl>
             <p className={styles.mapPlanningKey}><span aria-hidden="true" /> Dashed lines are approximate planning connections.</p>
           </> : <>
@@ -2077,7 +2135,7 @@ export function JourneyMapPlannerWorkspace({
           {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} tabIndex={shapeDayTab === tab ? 0 : -1} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => selectShapeDayTab(tab)} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
         </div>{customTrip ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
         {shapeDayTab === "plan" ? <PlanWorkspace
-          context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedDay.travel, savedRestaurant: selectedRestaurant }}
+          context={{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey.calendar.length, planItem: selectedPlanItem, transfer: selectedCanonicalTravel, savedRestaurant: selectedRestaurant }}
           schedule={{ signals: selectedScheduleSignals, warning: plannerWarning }}
           activity={{
             items: selectedActivities,
@@ -2109,11 +2167,6 @@ export function JourneyMapPlannerWorkspace({
       </aside> : null}
 
       {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} scope={copilotScope} contextLabel={copilotContextLabel} tripId={customTrip?.ownerId ? customTrip.id : undefined} stopId={copilotScope === "selected-stop" || copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedTripStop?.id : undefined} dayNumber={copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedPlanItem?.dayNumber : undefined} legId={copilotScope === "selected-transfer" ? selectedRouteLeg?.id : undefined} canApplyChanges={!hasUnsavedChanges && !cloudConflictTrip && !recoveryBlockedByExisting && !cloudAuthInterrupted} onTripApplied={(trip) => { cacheCanonicalTrip(trip); setCustomTrip(trip); setCustomBrief(customBriefFromEasyT(trip)); setCloudConflictTrip(null); setCloudAuthInterrupted(false); setCloudSaveError(""); setCloudSaveState("saved"); setHasUnsavedChanges(false); }} onOpenChange={(open) => { setCopilotOpen(open); if (open) setMobileShapeDayOpen(false); }} /></aside> : null}
-      {hasCanonicalPlanner && mapMode === "detail" ? <div className={styles.mapFocusControl}>
-        <button type="button" data-map-route-reset onClick={resetWholeRoute} aria-label={language === "es" ? "Ajustar mapa a la ruta completa" : "Fit map to whole route"} title={language === "es" ? "Ajustar mapa a la ruta completa" : "Fit map to whole route"}>
-          <Route aria-hidden="true" /><span>{language === "es" ? "Ruta completa" : "Whole route"}</span>
-        </button>
-      </div> : null}
       {isPlanningPreview && lastPlannerTrip ? <div className={styles.undoToast} role="status"><span>{undoMessage} · {language === "es" ? "Guardado en este dispositivo" : "Saved on this device"}</span><button type="button" onClick={undoPlannerEdit}>{planCopy.undo}</button></div> : null}
       {isPlanningPreview && cloudSaveState !== "error" && (hasUnsavedChanges || cloudSaveState === "saving" || cloudSaveState === "saved") ? <div className={styles.mapSaveStatus}>
         <MorroviaSaveStatus

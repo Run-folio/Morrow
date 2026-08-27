@@ -185,7 +185,7 @@ function sourceExcerpt(prompt: string, name: string) {
 
 function explicitGateway(prompt: string, kind: "start" | "end") {
   const pattern = kind === "start"
-    ? /(?:start|begin)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+)/i
+    ? /(?:start|begin)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+?)(?=\s+(?:and\s+)?(?:then\s+)?(?:travel|go|continue|head|fly|take)\b|[,.;\n]|$)/i
     : /(?:finish|end)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+)/i;
   return pattern.exec(prompt)?.[1]?.trim();
 }
@@ -295,7 +295,6 @@ function destinationFromMention(
   startText?: string,
   endText?: string,
 ): TripBriefDestination | undefined {
-  if (mention.status === "ambiguous" || mention.status === "unresolved") return undefined;
   // Exclusions remain first-class place mentions and hard constraints, but
   // are not positive destinations for routing or builder hydration.
   if (mention.role === "excluded") return undefined;
@@ -384,7 +383,8 @@ export function extractStructuredTripBrief(
   const transportPreferences: StructuredTripBrief["transportPreferences"] = [];
   const avoidsFlights = noFlying || /\b(?:instead of|rather than|avoid)\s+(?:taking\s+)?flights?\b/i.test(rawPrompt);
   (parsed.transportModes ?? []).filter((mode) => (!noDriving || mode !== "drive") && (!avoidsFlights || mode !== "flight")).forEach((mode) => transportPreferences.push({ value: mode, provenance: promptInferred(sourceExcerpt(rawPrompt, mode)) }));
-  if (/\bground transport\b/i.test(rawPrompt)) transportPreferences.push({ value: "ground", provenance: promptInferred("ground transport") });
+  const overlandPreference = /\b(?:prefer(?:red|ring)?\s+(?:to\s+travel\s+)?overland|travel\s+overland|overland\s+(?:where|when)\s+(?:practical|possible|sensible)|by\s+(?:public\s+)?ground\s+transport|ground transport|public transport|road trip)\b/i.exec(rawPrompt)?.[0];
+  if (overlandPreference) transportPreferences.push({ value: "ground", provenance: promptInferred(overlandPreference) });
   if (/\b(prefer|rather|instead of).{0,28}train|trains?.{0,28}(when practical|where sensible|if practical)/i.test(rawPrompt)) {
     transportPreferences.push({ value: "train", provenance: promptInferred("train preference") });
   }

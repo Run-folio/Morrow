@@ -49,6 +49,33 @@ export type PromptCaptureRegressionFixture = {
  */
 export const PROMPT_CAPTURE_REGRESSION_CASES: PromptCaptureRegressionFixture[] = [
   {
+    id: "p0-central-america-overland-coverage",
+    rawPrompt: "Start in London and travel to Cancún, Tulum, Mexico City, Antigua, Lake Atitlán, Tikal and Belize. We would prefer to travel overland where practical.",
+    requiredHardFacts: {
+      canonicalPlaceIds: ["london", "cancun", "tulum", "mexico-city", "antigua-guatemala", "lake-atitlan", "tikal", "belize"],
+      routablePlaceIds: ["london", "cancun", "tulum", "mexico-city", "antigua-guatemala"],
+      softPreferences: ["transport:ground"],
+      originCanonicalPlaceId: "london",
+      datesMustRemainUnknown: true,
+    },
+    acceptableVariations: ["Antigua may remain a useful ambiguity only when surrounding Guatemala context is absent."],
+    prohibitedOutcomes: ["Overland becoming a place", "Guatemala City being inserted", "Any requested destination disappearing"],
+    expectedAmbiguityWarnings: ["region_requires_base"],
+    failureBoundary: "capture/parser",
+    semanticExpectation: {
+      originSourceText: "London",
+      duration: null,
+      destinationSourceTexts: ["Cancún", "Tulum", "Mexico City", "Antigua", "Lake Atitlán", "Belize"],
+      destinationRoles: { "Lake Atitlán": "planning-area", Belize: "planning-area" },
+      pointsOfInterest: [{ sourceText: "Tikal", interpretedText: null, likelyDestinationSourceText: null }],
+      departureMode: null,
+      interStopModes: ["ground"],
+      interStopSourceText: "overland where practical",
+      explicitDateTexts: [],
+      forbiddenDestinationTerms: ["overland"],
+    },
+  },
+  {
     id: "real-homepage-europe-typos-and-pois",
     rawPrompt: "paris, porto, rome, colusseum, pathanon, athen for 3 wks, flying from london",
     requiredHardFacts: {

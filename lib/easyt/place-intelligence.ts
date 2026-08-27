@@ -166,6 +166,11 @@ export type PlaceResolutionContext = {
   selectedPlaces?: Array<Pick<PlaceResolutionCandidate, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "routability">>;
 };
 
+export type ExplicitPlaceMention = {
+  sourceText: string;
+  role: PlaceMentionRole;
+};
+
 export type PlaceProviderCandidate = {
   providerId: string;
   canonicalName: string;
@@ -224,6 +229,7 @@ const NON_PLACE_PHRASES = new Set([
   "spring", "summer", "autumn", "fall", "winter", "wet season", "dry season", "high season", "low season", "shoulder season",
   "culture", "cities", "beach", "beaches", "hiking", "mountains", "history", "architecture", "wildlife", "wine", "nightlife",
   "slow", "balanced", "packed", "flexible", "important", "must", "please", "ideally", "maybe",
+  "overland", "public", "transport", "practical", "possible", "sensible", "road trip",
 ]);
 
 export function normalizePlacePhrase(value: string) {
@@ -494,6 +500,15 @@ function contextChoice(entries: PlaceCatalogEntry[], promptIds: Set<string>, con
     if (spanish.length === 1) return spanish[0];
     return spanish.find((entry) => entry.placeType === "city");
   }
+  if (entries.some((entry) => entry.canonicalPlaceId === "antigua-guatemala")
+    && (contextIds.has("guatemala") || contextIds.has("lake-atitlan") || contextIds.has("tikal")
+      || countries.has("guatemala"))) {
+    return entries.find((entry) => entry.canonicalPlaceId === "antigua-guatemala");
+  }
+  if (entries.some((entry) => entry.canonicalPlaceId === "antigua-island")
+    && (contextIds.has("antigua-and-barbuda") || countries.has("antigua and barbuda"))) {
+    return entries.find((entry) => entry.canonicalPlaceId === "antigua-island");
+  }
   return undefined;
 }
 
@@ -584,6 +599,12 @@ const REGION_ROUTE_KEYS: Record<string, string[]> = {
   balkans: ["balkans-overland"],
 };
 
+const REVIEWED_BASE_IDS: Record<string, string[]> = {
+  "lake-atitlan": ["panajachel", "san-pedro-la-laguna"],
+  tikal: ["flores-guatemala", "el-remate"],
+  belize: ["san-ignacio-belize", "caye-caulker", "belize-city"],
+};
+
 function routeFamiliesForRegion(canonicalPlaceId: string) {
   return (REGION_ROUTE_KEYS[canonicalPlaceId] ?? [])
     .map((key) => routeFamilyByKey[key])
@@ -597,7 +618,30 @@ export function regionalBaseSuggestions(
   if (!canonicalPlaceId) return [];
   const mentionId = typeof place === "string" ? undefined : place.mentionId;
   const seen = new Set<string>();
-  return routeFamiliesForRegion(canonicalPlaceId).flatMap((route) => route.stops.flatMap((stop) => {
+  const reviewed = (REVIEWED_BASE_IDS[canonicalPlaceId] ?? []).flatMap((baseId): RegionalBaseSuggestion[] => {
+    const entry = findCatalogPlaceById(baseId);
+    const coordinates = entry?.coordinates;
+    const country = entry?.parentCountries[0];
+    if (!entry || !coordinates || !country) return [];
+    return [{
+      mentionId,
+      regionCanonicalPlaceId: canonicalPlaceId,
+      canonicalPlaceId: entry.canonicalPlaceId,
+      name: entry.canonicalName,
+      country,
+      placeType: entry.placeType,
+      coordinates: [...coordinates] as [number, number],
+      reason: `A reviewed overnight base for ${findCatalogPlaceById(canonicalPlaceId)?.canonicalName ?? canonicalPlaceId}.`,
+      provenance: [{
+        id: `morrovia-place-catalog:${entry.canonicalPlaceId}`,
+        label: "Morrovia reviewed clarification base",
+        kind: "canonical",
+        supports: `${entry.canonicalName} is a real reviewed base candidate; the traveller still chooses whether to use it.`,
+        reviewedAt: "2026-08-27",
+      }],
+    }];
+  });
+  const routeSuggestions = routeFamiliesForRegion(canonicalPlaceId).flatMap((route) => route.stops.flatMap((stop) => {
     const key = `${normalizePlacePhrase(stop.name)}|${normalizePlacePhrase(stop.country)}`;
     if (seen.has(key)) return [];
     seen.add(key);
@@ -620,6 +664,7 @@ export function regionalBaseSuggestions(
       }],
     }];
   }));
+  return unique([...reviewed, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
 }
 
 function issueOptionsForMention(mention: ResolvedPlaceMention): PlaceIssueOption[] {
@@ -665,11 +710,18 @@ function issuesForMentions(mentions: ResolvedPlaceMention[]) {
         message: `Confirm ${mention.sourceText} before Morrovia uses it in the route.`, severity: blocksRoute ? "error" : "warning", blocksRoute,
         options: [], provenance: mention.provenance, confidence: mention.confidence,
       });
-    } else if (mention.requiresBaseSelection && mention.role !== "excluded") {
+    } else if ((mention.requiresBaseSelection || (mention.routability === "anchor_or_poi"
+      && !mentions.some((candidate) => candidate !== mention
+        && candidate.routability === "direct_destination"
+        && candidate.canonicalPlaceId === mention.parentRegionId))) && mention.role !== "excluded") {
       issues.push({
         code: "region_requires_base", mentionId: mention.mentionId, canonicalPlaceId: mention.canonicalPlaceId, sourceText: mention.sourceText,
         reason: "This is valid planning geography, but no overnight base or route endpoint has been selected.",
-        message: mention.placeType === "country" ? `Add a base in ${mention.sourceText}.` : `Choose a base for ${mention.sourceText}.`,
+        message: mention.placeType === "country"
+          ? `Which part of ${mention.sourceText} should Morrovia plan around?`
+          : mention.routability === "anchor_or_poi"
+            ? `Keep ${mention.sourceText} as the trip anchor and choose a nearby base.`
+            : `Where would you like to stay around ${mention.sourceText}?`,
         severity: blocksRoute ? "error" : "warning", blocksRoute, options: issueOptionsForMention(mention),
         provenance: mention.provenance, confidence: mention.confidence,
       });
@@ -832,6 +884,67 @@ export function resolvePlaceMentions(prompt: string, context: PlaceResolutionCon
   };
 }
 
+function unresolvedExplicitMention(input: ExplicitPlaceMention, order: number): ResolvedPlaceMention {
+  const provenance: PlaceProvenance[] = [{
+    id: `unresolved:${slug(input.sourceText)}`,
+    label: "Traveller phrase",
+    kind: "unresolved",
+    supports: "The exact semantic place mention was retained without claiming a geographic identity.",
+  }];
+  return {
+    mentionId: `place-unresolved-${slug(input.sourceText)}-${order}`,
+    sourceText: input.sourceText,
+    sourceTexts: [input.sourceText],
+    normalizedPhrase: normalizePlacePhrase(input.sourceText),
+    canonicalName: input.sourceText,
+    aliases: [],
+    placeType: "unknown",
+    status: "unresolved",
+    confidence: unknownPlanningConfidence("Morrovia retained this semantic place mention but could not resolve it."),
+    provenance,
+    parentCountries: [],
+    routability: "non_routable_reference",
+    directlyRoutable: false,
+    requiresBaseSelection: false,
+    isAnchor: false,
+    role: input.role,
+    order,
+    candidates: [],
+  };
+}
+
+/** Resolve only phrases already classified as geography by semantic extraction. */
+export function resolveExplicitPlaceMentions(
+  inputs: ExplicitPlaceMention[],
+  context: PlaceResolutionContext = {},
+): PlaceIntelligenceResult {
+  const synthetic = inputs.map((input) => input.sourceText.replace(/^\p{Ll}/u, (letter) => letter.toLocaleUpperCase())).join(", ");
+  const deterministic = resolvePlaceMentions(synthetic, context);
+  const available = [...deterministic.mentions];
+  const mentions = inputs.map((input, order) => {
+    const normalized = normalizePlacePhrase(input.sourceText);
+    const index = available.findIndex((mention) => mention.normalizedPhrase === normalized
+      || normalizePlacePhrase(mention.canonicalName) === normalized
+      || mention.aliases.some((alias) => normalizePlacePhrase(alias) === normalized));
+    const matched = index >= 0 ? available.splice(index, 1)[0] : undefined;
+    if (!matched) return unresolvedExplicitMention(input, order);
+    return {
+      ...matched,
+      sourceText: input.sourceText,
+      sourceTexts: [input.sourceText],
+      normalizedPhrase: normalized,
+      role: input.role,
+      order,
+    };
+  });
+  return {
+    ...deterministic,
+    sequenceKind: "ordered",
+    mentions,
+    issues: resultIssuesForMentions(mentions),
+  };
+}
+
 function providerCandidate(candidate: PlaceProviderCandidate, provider: PlaceIntelligenceProvider): PlaceResolutionCandidate {
   const source: PlaceProvenance = {
     id: `${provider.id}:${candidate.providerId}`,
@@ -972,6 +1085,33 @@ export async function resolvePlaceMentionsWithProvider(
     });
   }));
   if (!unresolved.length) return deterministic;
+  const mentions = deduplicateProviderMentions(enriched);
+  return { ...deterministic, mentions, issues: resultIssuesForMentions(mentions) };
+}
+
+export async function resolveExplicitPlaceMentionsWithProvider(
+  inputs: ExplicitPlaceMention[],
+  provider: PlaceIntelligenceProvider,
+  context: PlaceResolutionContext = {},
+): Promise<PlaceIntelligenceResult> {
+  const deterministic = resolveExplicitPlaceMentions(inputs, context);
+  const cache = new Map<string, Promise<PlaceProviderCandidate[]>>();
+  const enriched = await Promise.all(deterministic.mentions.map(async (mention) => {
+    if (mention.status !== "unresolved") return mention;
+    const key = mention.normalizedPhrase;
+    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, mention.sourceText, context));
+    const candidates = (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
+    if (!candidates.length) return mention;
+    if (candidates.length > 1) return { ...mention, status: "ambiguous" as const, candidates };
+    return candidateToMention(candidates[0], {
+      sourceText: mention.sourceText,
+      sourceTexts: mention.sourceTexts,
+      order: mention.order,
+      role: mention.role,
+      mentionId: mention.mentionId,
+      status: candidates[0].routability === "direct_destination" ? "resolved" : "partially_resolved",
+    });
+  }));
   const mentions = deduplicateProviderMentions(enriched);
   return { ...deterministic, mentions, issues: resultIssuesForMentions(mentions) };
 }

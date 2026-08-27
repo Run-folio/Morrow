@@ -40,7 +40,7 @@ test("private-beta prompt regression cards keep deterministic capture facts and 
     const hardConstraints = first.structuredBrief.hardConstraints.map((constraint) => constraint.type);
     const softPreferences = first.structuredBrief.softPreferences.map((preference) => `${preference.type}:${preference.value}`);
     const issueCodes = first.structuredBrief.placeIssues?.map((issue) => issue.code) ?? [];
-    const origin = first.mentions.find((mention) => mention.role === "origin");
+    const origin = first.mentions.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
     const unresolvedTexts = first.mentions.filter((mention) => mention.status === "unresolved").map((mention) => mention.sourceText);
 
     assert.equal(first.rawBrief, fixture.rawPrompt, `${fixture.id} changed the raw brief`);

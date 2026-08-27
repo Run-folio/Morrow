@@ -10,6 +10,10 @@ const mapSource = readFileSync(
   new URL("../components/journey-planner-map.tsx", import.meta.url),
   "utf8",
 );
+const plannerStripSource = readFileSync(
+  new URL("../components/journey-planner-strip.tsx", import.meta.url),
+  "utf8",
+);
 const tripShellSource = readFileSync(
   new URL("../components/easyt/trip-shell-client.tsx", import.meta.url),
   "utf8",
@@ -27,7 +31,9 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /initialMapCameraMode\(customTrip, searchParams\)/);
   assert.match(mapWorkspaceSource, /overviewMode=\{mapMode === "overview"\}/);
   assert.match(mapWorkspaceSource, /setMapMode\("overview"\)/);
-  assert.match(mapWorkspaceSource, /Fit map to whole route/);
+  assert.match(plannerStripSource, /Fit map to whole route/);
+  assert.match(plannerStripSource, /data-map-route-reset/);
+  assert.match(mapWorkspaceSource, /onWholeRoute=\{resetWholeRoute\}/);
   assert.match(mapSource, /showCompass: false/);
   assert.match(mapSource, /map\.fitBounds\(/);
   assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\}/);
@@ -89,6 +95,10 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /styles\.fullscreenDestination/);
   assert.match(mapStylesSource, /\.shellPlannerExpanded \.fullscreenDestination/);
   assert.match(mapStylesSource, /:has\(\.fullscreenDestination\) \.finderDock/);
+  assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.finderDock/);
+  assert.match(mapStylesSource, /right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
+  assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.mapDestinationContext/);
+  assert.match(mapStylesSource, /left:18px!important;[\s\S]*width:clamp\(330px,23vw,380px\)!important/);
 });
 
 test("Add pin restores the original progressive workflow on the canonical trip document", () => {

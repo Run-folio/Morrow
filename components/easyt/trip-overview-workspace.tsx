@@ -33,6 +33,7 @@ import {
   shouldShowFirstTripOrientation,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
+import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 type OverviewAction = {
   title: string;
@@ -217,7 +218,7 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
   return (
     <section className={styles.overview} aria-label="Trip overview">
       {showOrientation ? <aside className={styles.orientation} aria-labelledby="workspace-orientation-title">
-        <header><div><p>Your trip is ready</p><h2 id="workspace-orientation-title">Choose what to refine next.</h2></div><button type="button" onClick={() => setShowOrientation(false)} aria-label="Dismiss workspace orientation"><X aria-hidden="true" /></button></header>
+        <header><div><p>{health.isReady ? "Your trip is ready" : "Your trip is taking shape"}</p><h2 id="workspace-orientation-title">Choose what to refine next.</h2></div><button type="button" onClick={() => setShowOrientation(false)} aria-label="Dismiss workspace orientation"><X aria-hidden="true" /></button></header>
         <ul>
           <li><strong>Overview</strong><span>See the next action and anything that needs attention.</span></li>
           <li><strong>Map</strong><span>Explore stays, food and places around each stop.</span></li>
@@ -276,6 +277,17 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
             </div>
           </div>
           {orderedStops.length ? <ol className={styles.routeList}>
+            <li>
+              <article>
+                <div className={styles.stopNumber}>From</div>
+                <div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>
+                <div><h3>{trip.brief.origin}</h3><span>Journey origin · no nights allocated</span></div>
+              </article>
+              {(() => {
+                const arrival = trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin");
+                return <div className={styles.transfer}><Route aria-hidden="true" /><span>{tripLegClassificationLabel(arrival?.classification)} · {arrival ? formatTripDuration(arrival.doorToDoorMinutes ?? arrival.durationMinutes) : "Timing to confirm"}</span><ChevronRight aria-hidden="true" /></div>;
+              })()}
+            </li>
             {orderedStops.map((stop, index) => {
               const image = stopImage(trip, stop, index);
               const itineraryDay = firstItineraryDayForStop(trip, stop.id);
@@ -291,11 +303,11 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
                   />
                   <div><h3>{stop.name}</h3><span>{formatTripNights(stop.nights)}</span></div>
                 </article></Link>
-                {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? formatTripDuration(leg.durationMinutes) : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
+                {next ? <div className={styles.transfer}><Route aria-hidden="true" /><span>{leg ? `${tripLegClassificationLabel(leg.classification)} · ${formatTripDuration(leg.doorToDoorMinutes ?? leg.durationMinutes)}` : "Transfer to confirm"}</span><ChevronRight aria-hidden="true" /></div> : null}
               </li>;
             })}
           </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
-          {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p>Why this order</p><h3 id="overview-route-rationale-title">{routeRationale.summary}</h3>{routeRationale.reasons.length ? <ul>{routeRationale.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}{routeRationale.tradeoffs[0] ? <span><strong>Main trade-off:</strong> {routeRationale.tradeoffs[0]}</span> : null}</div></aside> : null}
+          {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p>Why this order</p><h3 id="overview-route-rationale-title">{health.isReady ? routeRationale.summary : "The stop order is coherent; transfer checks remain."}</h3>{routeRationale.reasons.length ? <ul>{routeRationale.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}{routeRationale.tradeoffs[0] ? <span><strong>Main trade-off:</strong> {routeRationale.tradeoffs[0]}</span> : null}</div></aside> : null}
         </section>
       </div>
     </section>

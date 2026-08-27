@@ -1,16 +1,17 @@
 {
-  "total": 196,
-  "maxTotal": 210,
+  "total": 210,
+  "maxTotal": 224,
   "dimensions": {
-    "intent": 26,
-    "constraints": 26,
-    "route": 26,
-    "time-realism": 30,
-    "state-preservation": 30,
-    "uncertainty": 28,
-    "explanation": 30
+    "intent": 28,
+    "constraints": 28,
+    "route": 28,
+    "time-realism": 32,
+    "state-preservation": 32,
+    "uncertainty": 30,
+    "explanation": 32
   },
   "cases": [
+    { "id": "p0-central-america-overland-coverage", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
     { "id": "japan-explicit-constraints", "score": 10, "dimensions": { "intent": 2, "constraints": 0, "route": 0, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["hard constraint changed", "route state is not appropriate for the captured intent"] },
     { "id": "patagonia-regions-unknown-bases", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
     { "id": "unknown-place-remains-unknown", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },

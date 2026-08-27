@@ -1,8 +1,9 @@
-import { assessRouteIntelligence, estimateLegForConstraints, routeIntelligenceForPersistence, type RoutePlanningConstraints } from "./planner.ts";
+import { assessRouteIntelligence, routeIntelligenceForPersistence, type RoutePlanningConstraints } from "./planner.ts";
 import { cascadeTripSchedule } from "./cascade.ts";
 import { routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief } from "./structured-trip-brief.ts";
-import type { EasyTTrip, PlanItem, TripLeg, TripStop } from "./trip.ts";
-import { curatedConnectionFor, reconcileCuratedRouteKnowledge } from "./curated-route-knowledge.ts";
+import type { EasyTTrip, PlanItem, TripStop } from "./trip.ts";
+import { reconcileCuratedRouteKnowledge } from "./curated-route-knowledge.ts";
+import { buildCanonicalTripLegs } from "./trip-legs.ts";
 
 export type DayOrderReplan =
   | { state: "recalculated"; trip: EasyTTrip; stopIds: string[] }
@@ -12,26 +13,18 @@ const totalDaysFor = (trip: EasyTTrip) => Math.max(1, Math.round(
   (+new Date(`${trip.endDate}T00:00:00`) - +new Date(`${trip.startDate}T00:00:00`)) / 86400000,
 ) + 1);
 
-const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlanningConstraints): TripLeg[] => stops.slice(1).map((stop, index) => {
-  const from = stops[index];
-  const curated = curatedConnectionFor(trip.brief.curatedRoute, from.id, stop.id);
-  const estimate = estimateLegForConstraints(
-    { name: from.name, country: from.country, canonicalPlaceId: from.canonicalPlaceId, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : undefined },
-    { id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined },
-    constraints,
-  );
-  return {
-    id: `${trip.id}-leg-${index + 1}`,
-    fromStopId: from.id,
-    toStopId: stop.id,
-    mode: curated?.mode ?? estimate.mode,
-    distanceKm: estimate.distanceKm,
-    durationMinutes: curated?.planningMinutes ?? estimate.durationMinutes,
-    provider: curated?.note ?? estimate.note,
-    routeMetadata: curated
-      ? { planningEstimate: true, source: "curated-route", curatedRouteTransfer: curated, label: estimate.label, routingConfidence: curated.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence }
-      : { planningEstimate: true, label: estimate.label, routingConfidence: estimate.confidence, transferImpact: estimate.transferImpact, planningConfidence: estimate.planningConfidence },
-  };
+const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlanningConstraints) => buildCanonicalTripLegs({
+  tripId: trip.id,
+  origin: {
+    name: trip.brief.origin,
+    country: trip.brief.originCountry,
+    canonicalPlaceId: trip.brief.originCanonicalPlaceId,
+    providerId: trip.brief.originProviderId,
+    coordinates: trip.brief.originCoordinates ?? null,
+  },
+  stops,
+  constraints,
+  curatedRoute: trip.brief.curatedRoute,
 });
 
 /**

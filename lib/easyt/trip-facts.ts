@@ -111,7 +111,8 @@ export function incomingLegForPlanItem(
 ): TripLeg | null {
   const ordered = orderedTripPlanItems(trip);
   const index = ordered.findIndex((candidate) => candidate.id === item.id);
-  if (index <= 0) return null;
+  if (index === 0) return trip.legs.find((leg) => leg.toStopId === item.stopId && (leg.classification === "arrival" || leg.fromEndpoint?.kind === "origin")) ?? null;
+  if (index < 0) return null;
   const previous = ordered[index - 1];
   if (previous.stopId === item.stopId) return null;
   return legForTransition(trip, previous.stopId, item.stopId);

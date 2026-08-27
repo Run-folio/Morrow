@@ -6,6 +6,8 @@ import {
   canonicalPlaceSuggestionsForQuery,
   placeMentionsNeedingReview,
   regionalBaseSuggestions,
+  resolveExplicitPlaceMentions,
+  resolveExplicitPlaceMentionsWithProvider,
   resolvePlaceMentions,
   resolvePlaceMentionsWithProvider,
   selectPlaceCandidate,
@@ -259,4 +261,59 @@ test("candidate selection records builder provenance and recomputes issues witho
   assert.equal(selected.mentions[0].confidence.state, "structured");
   assert.equal(selected.issues.some((issue) => issue.code === "ambiguous_place"), false);
   assert.equal(selected.issues.some((issue) => issue.code === "region_requires_base"), true);
+});
+
+test("Antigua uses itinerary context without collapsing Antigua and Barbuda", () => {
+  const centralAmerica = resolvePlaceMentions("Tikal, Lake Atitlán and Antigua");
+  assert.equal(centralAmerica.mentions.find((mention) => mention.sourceText === "Antigua")?.canonicalPlaceId, "antigua-guatemala");
+  assert.equal(centralAmerica.mentions.find((mention) => mention.sourceText === "Antigua")?.status, "resolved");
+
+  const islandCountry = resolvePlaceMentions("Visit Antigua and Barbuda");
+  assert.deepEqual(islandCountry.mentions.map((mention) => mention.canonicalPlaceId), ["antigua-and-barbuda"]);
+
+  const isolated = resolvePlaceMentions("Antigua");
+  assert.equal(isolated.mentions[0]?.status, "ambiguous");
+  assert.deepEqual(isolated.mentions[0]?.candidates.map((candidate) => candidate.canonicalPlaceId), ["antigua-guatemala", "antigua-island"]);
+});
+
+test("explicit semantic mentions preserve lower-case small towns and provider failures", async () => {
+  const inputs = [
+    { sourceText: "London", role: "origin" as const },
+    { sourceText: "albarracín", role: "preferred" as const },
+  ];
+  const deterministic = resolveExplicitPlaceMentions(inputs);
+  assert.deepEqual(deterministic.mentions.map((mention) => mention.sourceText), ["London", "albarracín"]);
+  assert.equal(deterministic.mentions[1]?.status, "unresolved");
+
+  const enriched = await resolveExplicitPlaceMentionsWithProvider(inputs, {
+    id: "global-fixture",
+    label: "Global fixture",
+    lookup: async (phrase) => phrase === "albarracín" ? [{
+      providerId: "town-1",
+      canonicalName: "Albarracín",
+      placeType: "town",
+      parentCountries: ["Spain"],
+      coordinates: [-1.444, 40.407],
+      routability: "direct_destination",
+    }] : [],
+  });
+  assert.equal(enriched.mentions[1]?.canonicalPlaceId, "global-fixture:town-1");
+  assert.equal(enriched.mentions[1]?.status, "resolved");
+
+  const unavailable = await resolveExplicitPlaceMentionsWithProvider(inputs, {
+    id: "offline-fixture",
+    label: "Offline fixture",
+    lookup: async () => { throw new Error("offline"); },
+  });
+  assert.equal(unavailable.mentions[1]?.sourceText, "albarracín");
+  assert.equal(unavailable.mentions[1]?.status, "unresolved");
+});
+
+test("reviewed anchor bases are contextual and keep the original anchor", () => {
+  assert.deepEqual(regionalBaseSuggestions("lake-atitlan").map((suggestion) => suggestion.name), ["Panajachel", "San Pedro La Laguna"]);
+  assert.deepEqual(regionalBaseSuggestions("tikal").map((suggestion) => suggestion.name), ["Flores", "El Remate"]);
+  assert.deepEqual(regionalBaseSuggestions("belize").map((suggestion) => suggestion.name), ["San Ignacio", "Caye Caulker", "Belize City"]);
+  const result = resolvePlaceMentions("Lake Atitlán, Tikal and Belize");
+  assert.deepEqual(result.mentions.map((mention) => mention.canonicalPlaceId), ["lake-atitlan", "tikal", "belize"]);
+  assert.deepEqual(result.issues.filter((issue) => issue.code === "region_requires_base").map((issue) => issue.sourceText), ["Lake Atitlán", "Tikal", "Belize"]);
 });

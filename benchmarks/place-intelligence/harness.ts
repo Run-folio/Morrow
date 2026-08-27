@@ -169,19 +169,30 @@ function projectionFindings(
       : "Resolved direct destinations project into the canonical destination list.",
   ));
 
-  const unsafe = fixture.expectedMentions.filter((expected) =>
-    expected.statuses.includes("unresolved")
-    || expected.statuses.includes("ambiguous")
-    || expected.roles.includes("excluded"),
-  ).filter((expected) => brief.destinations.some((destination) =>
+  const excluded = fixture.expectedMentions.filter((expected) => expected.roles.includes("excluded"))
+    .filter((expected) => brief.destinations.some((destination) =>
     (expected.canonicalPlaceId && (destination as ProjectedDestination).canonicalPlaceId === expected.canonicalPlaceId)
     || normalizeText(destination.name) === normalizeText(expected.canonicalName ?? expected.sourceText),
   ));
-  if (unsafe.length) findings.push(finding(
-    "unsafe-destinations-not-projected",
+  if (excluded.length) findings.push(finding(
+    "excluded-destinations-not-projected",
     "structured-brief-projection",
     "fail",
-    `Unsafe or excluded mentions became destinations: ${unsafe.map((item) => item.sourceText).join(", ")}.`,
+    `Excluded mentions became destinations: ${excluded.map((item) => item.sourceText).join(", ")}.`,
+  ));
+
+  const unresolvedMadeOperational = fixture.expectedMentions.filter((expected) =>
+    expected.statuses.includes("unresolved") || expected.statuses.includes("ambiguous"),
+  ).filter((expected) => brief.destinations.some((destination) => (
+    ((expected.canonicalPlaceId && (destination as ProjectedDestination).canonicalPlaceId === expected.canonicalPlaceId)
+      || normalizeText(destination.name) === normalizeText(expected.canonicalName ?? expected.sourceText))
+    && (Boolean(destination.id) || destination.resolutionStatus === "resolved")
+  )));
+  if (unresolvedMadeOperational.length) findings.push(finding(
+    "unresolved-destinations-remain-non-operational",
+    "structured-brief-projection",
+    "fail",
+    `Unresolved mentions became operational route stops: ${unresolvedMadeOperational.map((item) => item.sourceText).join(", ")}.`,
   ));
 
   return findings;

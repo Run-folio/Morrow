@@ -11,13 +11,13 @@ export function itineraryNotesForDisplay(
   trip: Pick<EasyTTrip, "stops">,
 ) {
   if (!leg) return day.notes;
-  const from = trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
-  const to = trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
+  const from = leg.fromEndpoint?.name ?? trip.stops.find((stop) => stop.id === leg.fromStopId)?.name;
+  const to = leg.toEndpoint?.name ?? trip.stops.find((stop) => stop.id === leg.toStopId)?.name;
   const route = from && to ? normalized(`${from} → ${to}`) : null;
   return day.notes.filter((note) => {
     const value = normalized(note);
     if (route && value === route) return false;
-    if (leg.durationMinutes !== null && value.startsWith("estimated door-to-door:")) return false;
+    if (value.startsWith("estimated door-to-door:") || value.startsWith("morrovia planning estimate:")) return false;
     return true;
   });
 }

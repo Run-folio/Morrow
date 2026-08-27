@@ -22,7 +22,7 @@ function statusLabel(status: TripStatus) {
 }
 
 export default function TripShell({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
-  const routeLabel = trip.stops.map((stop) => stop.name).join(" → ") || "Route to confirm";
+  const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
   const image = trip.planItems.find((item) => Boolean(item.image))?.image ?? null;
   const duration = tripShellDuration(trip.startDate, trip.endDate);
   const editHref = `/journey/new?trip=${encodeURIComponent(trip.id)}`;

@@ -7,9 +7,9 @@ import type { EasyTTrip } from "../lib/easyt/trip.ts";
 function trip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
   return {
     schemaVersion: 1, id: "readiness-summary", ownerId: "owner-a", title: "Readiness", status: "planned", startDate: "2026-10-01", endDate: "2026-10-03", travellers: 2, currency: "GBP",
-    brief: { origin: "London", mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: {}, checklist: [{ id: "documents", label: "Check documents", complete: false }] },
+    brief: { origin: "London", originCountry: "United Kingdom", originCoordinates: [-0.1276, 51.5072], mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: {}, checklist: [{ id: "documents", label: "Check documents", complete: false }] },
     stops: [{ id: "paris", order: 0, name: "Paris", country: "France", latitude: 48.85, longitude: 2.35, arrivalDate: "2026-10-01", departureDate: "2026-10-04", nights: 2 }],
-    legs: [], planItems: [], recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
+    legs: [{ id: "arrival", fromStopId: "readiness-summary-origin", toStopId: "paris", fromEndpoint: { kind: "origin", id: "readiness-summary-origin", name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] }, toEndpoint: { kind: "stop", id: "paris", name: "Paris", country: "France", coordinates: [2.35, 48.85] }, classification: "arrival", mode: "train", distanceKm: 344, durationMinutes: 270, provider: "Verified fixture", provenance: "provider", confidence: "high", scheduleNeedsChecking: false, warnings: [], routeMetadata: { planningEstimate: false, decisionOption: "fixture" } }], planItems: [], recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
     ...overrides,
   };
 }

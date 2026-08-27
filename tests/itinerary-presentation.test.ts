@@ -21,3 +21,15 @@ test("ordinary itinerary notes remain untouched without an incoming leg", () => 
   const notes = ["Keep the afternoon flexible"];
   assert.deepEqual(itineraryNotesForDisplay({ notes }, null, { stops: [] }), notes);
 });
+
+test("an unknown canonical leg suppresses a stale generated duration note", () => {
+  const leg = {
+    fromStopId: "flores",
+    toStopId: "san-ignacio",
+    durationMinutes: null,
+    fromEndpoint: { name: "Flores" },
+    toEndpoint: { name: "San Ignacio" },
+  } as TripLeg;
+  const notes = ["Flores → San Ignacio", "Estimated door-to-door: about 4h 15m", "Check current border details"];
+  assert.deepEqual(itineraryNotesForDisplay({ notes }, leg, { stops: [] }), ["Check current border details"]);
+});

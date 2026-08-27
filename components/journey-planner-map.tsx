@@ -11,6 +11,7 @@ import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
 import { formatMapDuration, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
   stopId: string;
@@ -227,6 +228,8 @@ export function JourneyPlannerMap({
         provenanceLabel: "Saved route guidance",
         scheduleNeedsChecking: true,
         planningNote: leg.detail || null,
+        classification: index === 0 ? "arrival" : "intercity",
+        warnings: [],
       }];
     });
   }, [legs, stops]);
@@ -512,7 +515,7 @@ export function JourneyPlannerMap({
             <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{formatMapDuration(leg.headlineMinutes ?? leg.doorToDoorMinutes)}</em></span>
             <b>{leg.fromName} → {leg.toName}</b>
             <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance to confirm"} · Door-to-door {formatMapDuration(leg.doorToDoorMinutes)}</span>
-            <small>{leg.provenanceLabel} · planning connection</small>
+            <small>{tripLegClassificationLabel(leg.classification)} · {leg.provenanceLabel}</small>
           </span>
         </>);
         element.addEventListener("click", (event) => { event.stopPropagation(); onLegSelectRef.current?.(leg); });
@@ -544,15 +547,16 @@ export function JourneyPlannerMap({
       stopMarkersRef.current.forEach((marker) => marker.remove());
       const cards = new Map(destinationCards.map((card) => [card.stopId, card]));
       stopMarkersRef.current = stops.filter((stop) => stop.coordinates).map((stop, index) => {
+        const isOrigin = index === 0 && stop.theme === "transit";
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__stop ${stop.id === selectedId ? "is-active" : ""} ${stop.id === featuredStopId ? "is-featured" : ""} ${index === 0 ? "is-origin" : ""} ${index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "is-destination" : ""}`;
+        element.className = `planner-map__stop ${stop.id === selectedId ? "is-active" : ""} ${stop.id === featuredStopId ? "is-featured" : ""} ${isOrigin ? "is-origin" : ""} ${index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "is-destination" : ""}`;
         element.dataset.mapStopId = stop.id;
-        const relationship = index === 0 ? "trip origin" : index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "final destination" : `stop ${index + 1}`;
+        const relationship = isOrigin ? "trip origin" : index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "final destination" : `overnight stop ${isOrigin ? index + 1 : index}`;
         element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
         const number = document.createElement("span");
         number.className = "planner-map__stop-number";
-        number.textContent = String(index + 1).padStart(2, "0");
+        number.textContent = isOrigin ? "FROM" : String(stops[0]?.theme === "transit" ? index : index + 1).padStart(2, "0");
         element.append(number);
         const card = cards.get(stop.id);
         if (card) {

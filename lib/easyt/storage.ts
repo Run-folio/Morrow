@@ -456,8 +456,22 @@ function stableJsonValue(value: unknown): unknown {
   );
 }
 
+function sortedById<T extends { id: string }>(items: T[] | undefined) {
+  return items ? [...items].sort((left, right) => left.id.localeCompare(right.id)) : undefined;
+}
+
+/**
+ * The recovery boundary protects deliberate traveller decisions, not every
+ * field returned by planners and providers. Keep this projection explicit so
+ * adding transient metadata to EasyTTrip cannot silently create conflicts.
+ *
+ * Itinerary edits participate through dayNotes/customActivities; planItems are
+ * generated from the route and those authored values and are intentionally
+ * excluded as a second source of truth.
+ */
 function travellerAuthoredTripDocument(trip: EasyTTrip) {
-  const { routeAssessment: _routeAssessment, cascadeStatus: _cascadeStatus, ...brief } = trip.brief;
+  const brief = trip.brief;
+  const originIdentity = `${brief.origin.trim().toLocaleLowerCase()}|${(brief.originCountry ?? "").trim().toLocaleLowerCase()}`;
   return {
     schemaVersion: trip.schemaVersion,
     id: trip.id,
@@ -469,16 +483,30 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
     endDate: trip.endDate,
     travellers: trip.travellers,
     currency: trip.currency,
-    brief,
-    stops: trip.stops.map((stop) => ({
+    brief: {
+      originIdentity,
+      mustDo: brief.mustDo,
+      pace: brief.pace,
+      hotelChanges: brief.hotelChanges,
+      budgetBand: brief.budgetBand,
+      selectedPlaces: brief.selectedPlaces,
+      dayAllocations: brief.dayAllocations,
+      nightAllocations: brief.nightAllocations,
+      dayNotes: brief.dayNotes,
+      customActivities: brief.customActivities,
+      mapPins: sortedById(brief.mapPins),
+      bookings: sortedById(brief.bookings),
+      checklist: sortedById(brief.checklist),
+      intent: brief.intent,
+      scheduleLocks: brief.scheduleLocks,
+      decisionSelections: brief.decisionSelections,
+    },
+    stops: [...trip.stops].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((stop) => ({
       id: stop.id,
-      identity: stop.canonicalPlaceId ?? stop.providerId ?? `${stop.name.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`,
-      name: stop.canonicalPlaceId || stop.providerId ? undefined : stop.name,
-      country: stop.canonicalPlaceId || stop.providerId ? undefined : stop.country,
+      identity: `${stop.name.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`,
       order: stop.order,
       nights: stop.nights,
     })),
-    createdAt: trip.createdAt,
   };
 }
 
@@ -495,8 +523,9 @@ export function tripDocumentsCanonicalEquivalent(
 ) {
   if (!ownerId || localTrip.id !== canonicalTrip.id) return false;
   const normalizedLocal = canonicalTripForOwner(ownerId, localTrip, canonicalTrip.updatedAt);
+  const normalizedCanonical = canonicalTripForOwner(ownerId, canonicalTrip, canonicalTrip.updatedAt);
   return JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedLocal)))
-    === JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(canonicalTrip)));
+    === JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedCanonical)));
 }
 
 /**
@@ -592,7 +621,7 @@ export function saveTripRecoveryToStorage(
   return writeTripRecoveryToStorage(storage, trip, options);
 }
 
-export function cacheCanonicalTripToStorage(
+function writeCanonicalTripCacheToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
   now = new Date().toISOString(),
@@ -610,20 +639,41 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
   resolvedRecovery?: TripRecoveryHandle,
+  now = new Date().toISOString(),
 ) {
-  const stored = cacheCanonicalTripToStorage(storage, trip);
+  const previousCanonical = loadCachedTripFromStorage(storage, trip.id, trip.ownerId);
+  const stored = writeCanonicalTripCacheToStorage(storage, trip, now);
   const recoveryRecord = resolvedRecovery ? recoveryRecordForHandle(storage, resolvedRecovery) : null;
-  const recoveryMatchesCanonical = Boolean(resolvedRecovery
+  const acknowledgedRecovery = Boolean(resolvedRecovery
     && recoveryRecord
     && recoveryRecord.writeId === resolvedRecovery.writeId
     && trip.id === resolvedRecovery.tripId
     && (resolvedRecovery.ownerId === null
       ? recoveryRecord.trip.ownerId === null
       : trip.ownerId === resolvedRecovery.ownerId));
-  const recoveryResolved = stored && resolvedRecovery && recoveryMatchesCanonical
-    ? resolveTripRecoveryInStorage(storage, resolvedRecovery)
+  const currentRecovery = acknowledgedRecovery
+    ? recoveryRecord
+    : loadTripRecoveryFromStorage(storage, trip.id, trip.ownerId);
+  // A canonical response may legitimately move A -> B (for example Luna Apply
+  // or another cloud writer). A device snapshot equal to the previously cached
+  // A contains no unique work, so it is safe to retire after B is durable.
+  // A snapshot that differs from both A and B remains untouched.
+  const redundantRecovery = Boolean(currentRecovery && (
+    tripRecoveryMatchesCanonical(currentRecovery, trip)
+      || (previousCanonical && tripRecoveryMatchesCanonical(currentRecovery, previousCanonical))
+  ));
+  const recoveryResolved = stored && currentRecovery && (acknowledgedRecovery || redundantRecovery)
+    ? resolveTripRecoveryInStorage(storage, currentRecovery)
     : false;
   return { stored, recoveryResolved };
+}
+
+export function cacheCanonicalTripToStorage(
+  storage: EasyTBrowserStorage,
+  trip: EasyTTrip,
+  now = new Date().toISOString(),
+) {
+  return cacheCanonicalTripWithRecoveryToStorage(storage, trip, undefined, now).stored;
 }
 
 /** Resolve a stranded recovery only after proving it is the canonical document. */
@@ -681,8 +731,9 @@ export function reconcileTripCloudMutationInStorage(
   }
   const shouldCacheCanonical = Boolean(loadCachedTripFromStorage(storage, tripId, ownerId) || recovery);
   const cacheUpdated = shouldCacheCanonical ? cacheCanonicalTripToStorage(storage, canonicalTrip) : false;
-  if (recovery) markTripRecoveryStateInStorage(storage, recovery, "conflict", "cloud-changed");
-  return { cacheUpdated, recoveryQuarantined: Boolean(recovery) };
+  const remainingRecovery = recovery ? loadTripRecoveryFromStorage(storage, tripId, ownerId) : null;
+  if (remainingRecovery) markTripRecoveryStateInStorage(storage, remainingRecovery, "conflict", "cloud-changed");
+  return { cacheUpdated, recoveryQuarantined: Boolean(remainingRecovery) };
 }
 
 /** Remove only the recovery version acknowledged by a successful cloud save. */
@@ -951,10 +1002,13 @@ export function reconcileTripCloudMutation(ownerId: string, tripId: string, muta
 export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecoveryHandle) {
   const storage = browserStorage();
   if (!storage) return { stored: false, recoveryResolved: false };
+  const recoveryBeforeCache = resolvedRecovery
+    ?? loadTripRecoveryFromStorage(storage, trip.id, trip.ownerId)
+    ?? undefined;
   const { stored, recoveryResolved } = cacheCanonicalTripWithRecoveryToStorage(storage, trip, resolvedRecovery);
   if (stored) dispatchTripStorageChange({ kind: "cache", ownerId: trip.ownerId, tripId: trip.id });
-  if (recoveryResolved && resolvedRecovery) {
-    dispatchTripStorageChange({ kind: "resolved", ownerId: resolvedRecovery.ownerId, tripId: resolvedRecovery.tripId });
+  if (recoveryResolved && recoveryBeforeCache) {
+    dispatchTripStorageChange({ kind: "resolved", ownerId: recoveryBeforeCache.ownerId, tripId: recoveryBeforeCache.tripId });
   }
   return { stored, recoveryResolved };
 }
@@ -1110,7 +1164,12 @@ async function loadTripFromEasyTResult(tripId: string): Promise<TripCloudLoadRes
 export async function loadTripFromEasyT(tripId: string): Promise<EasyTTrip | null> {
   const result = await loadTripFromEasyTResult(tripId);
   if (result.kind === "unavailable") throw new Error("Morrovia cloud load failed.");
-  return result.kind === "found" ? result.trip : null;
+  if (result.kind !== "found") return null;
+  // Every authoritative cloud load crosses the same reconciliation boundary.
+  // This retires an equivalent/stale baseline snapshot before a workspace can
+  // mistake it for unsynced work, while unique local edits remain preserved.
+  cacheCanonicalTrip(result.trip);
+  return result.trip;
 }
 
 /**

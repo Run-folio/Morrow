@@ -1,6 +1,7 @@
 import type { EasyTTrip, TripLeg } from "./trip.ts";
 import type { PlanningConfidence } from "./planning-confidence.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
+import { routeEndpointForLeg } from "./trip-legs.ts";
 
 export type MapTransportMode = TripLeg["mode"];
 
@@ -21,6 +22,8 @@ export type MapRouteLeg = {
   provenanceLabel: string;
   scheduleNeedsChecking: boolean;
   planningNote: string | null;
+  classification: NonNullable<TripLeg["classification"]>;
+  warnings: string[];
 };
 
 export type MapCopilotScope =
@@ -59,21 +62,26 @@ function knownPlanningMinutes(value: TransferImpact["headline"] | TransferImpact
  * No route geometry, transport mode or timing is inferred here: missing facts
  * stay missing, and the UI labels each straight connection as approximate.
  */
-export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs">): MapRouteLeg[] {
-  const stops = new Map(trip.stops.map((stop) => [stop.id, stop]));
+export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & Partial<Pick<EasyTTrip, "id" | "brief">>): MapRouteLeg[] {
+  const legacyStops = new Map(trip.stops.map((stop) => [stop.id, stop]));
   return trip.legs.flatMap((leg) => {
-    const from = stops.get(leg.fromStopId);
-    const to = stops.get(leg.toStopId);
-    if (!from || !to || from.longitude === null || from.latitude === null || to.longitude === null || to.latitude === null) return [];
+    const canResolveOrigin = Boolean(trip.id && trip.brief);
+    const from = canResolveOrigin
+      ? routeEndpointForLeg(trip as Pick<EasyTTrip, "id" | "brief" | "stops">, leg, "from")
+      : leg.fromEndpoint ?? (() => { const stop = legacyStops.get(leg.fromStopId); return stop && stop.longitude !== null && stop.latitude !== null ? { kind: "stop" as const, id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId, coordinates: [stop.longitude, stop.latitude] as [number, number] } : null; })();
+    const to = canResolveOrigin
+      ? routeEndpointForLeg(trip as Pick<EasyTTrip, "id" | "brief" | "stops">, leg, "to")
+      : leg.toEndpoint ?? (() => { const stop = legacyStops.get(leg.toStopId); return stop && stop.longitude !== null && stop.latitude !== null ? { kind: "stop" as const, id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, providerId: stop.providerId, coordinates: [stop.longitude, stop.latitude] as [number, number] } : null; })();
+    if (!from?.coordinates || !to?.coordinates) return [];
     const metadata = routeMetadata(leg);
     const impact = metadata.transferImpact;
     const confidence = metadata.planningConfidence?.overall
       ?? impact?.claimConfidence?.doorToDoor
       ?? null;
     const scheduleConfidence = metadata.planningConfidence?.schedule;
-    const scheduleNeedsChecking = leg.mode === "unknown"
+    const scheduleNeedsChecking = leg.scheduleNeedsChecking ?? (leg.mode === "unknown"
       || scheduleConfidence?.confirmation.needed !== false
-      || metadata.planningEstimate !== false;
+      || metadata.planningEstimate !== false);
     const curated = Boolean(metadata.curatedRouteTransfer);
     return [{
       id: leg.id,
@@ -81,13 +89,13 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs">): M
       toStopId: leg.toStopId,
       fromName: from.name,
       toName: to.name,
-      fromCoordinates: [from.longitude, from.latitude],
-      toCoordinates: [to.longitude, to.latitude],
+      fromCoordinates: from.coordinates,
+      toCoordinates: to.coordinates,
       mode: leg.mode,
       modeLabel: mapTransportModeLabel(leg.mode),
-      distanceKm: leg.distanceKm,
-      headlineMinutes: knownPlanningMinutes(impact?.headline),
-      doorToDoorMinutes: knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,
+      distanceKm: leg.straightLineDistanceKm ?? leg.distanceKm,
+      headlineMinutes: leg.headlineMinutes ?? knownPlanningMinutes(impact?.headline),
+      doorToDoorMinutes: leg.doorToDoorMinutes ?? knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,
       confidence,
       provenanceLabel: curated
         ? "Curated route guidance"
@@ -96,6 +104,8 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs">): M
           : leg.provider?.trim() || "Saved transfer",
       scheduleNeedsChecking,
       planningNote: leg.provider?.trim() || metadata.curatedRouteTransfer?.note?.trim() || null,
+      classification: leg.classification ?? (from.kind === "origin" ? "arrival" : "intercity"),
+      warnings: leg.warnings ?? [],
     }];
   });
 }

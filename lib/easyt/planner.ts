@@ -729,7 +729,7 @@ export function buildCredibleItinerary(input: {
           type: "arrival",
           title: stopIndex === 0 ? `Arrive in ${stop.name}` : `Travel to ${stop.name}`,
           reason: "A protected arrival day gives the route room for the transfer, check-in and a first feel for the place.",
-          items: [arrivalLeg.label, arrivalImpactMinutes ? `Estimated door-to-door: about ${Math.floor(arrivalImpactMinutes / 60)}h ${arrivalImpactMinutes % 60}m` : arrivalLeg.note, "Check in, walk one nearby area and keep dinner easy"],
+          items: [arrivalLeg.label, arrivalImpactMinutes ? `Morrovia planning estimate: about ${Math.floor(arrivalImpactMinutes / 60)}h ${arrivalImpactMinutes % 60}m door to door; check current schedules.` : arrivalLeg.note, "Check in, walk one nearby area and keep dinner easy"],
           coordinates: stop.coordinates,
           travel: arrivalLeg,
         });

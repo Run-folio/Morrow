@@ -25,13 +25,36 @@ const baseTrip = (): EasyTTrip => ({
 
 const readyTrip = (): EasyTTrip => {
   const trip = baseTrip();
+  trip.brief.originCoordinates = [-0.1276, 51.5072];
+  trip.brief.originCountry = "United Kingdom";
   trip.brief.pace = "full";
   trip.brief.intent = {
     ...trip.brief.intent!,
     hardConstraints: { ...trip.brief.intent!.hardConstraints, mustSeeStopIds: ["a"] },
   };
   trip.stops = [{ ...trip.stops[0], departureDate: "2026-09-06", nights: 4 }];
-  trip.legs = [];
+  trip.legs = [{
+    id: "health-leg-1",
+    fromStopId: "health-origin",
+    toStopId: "a",
+    fromEndpoint: { kind: "origin", id: "health-origin", name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
+    toEndpoint: { kind: "stop", id: "a", name: "A", country: "Test", coordinates: [0, 0] },
+    classification: "arrival",
+    mode: "flight",
+    distanceKm: 5_728,
+    straightLineDistanceKm: 5_728,
+    routedDistanceKm: null,
+    durationMinutes: 600,
+    headlineMinutes: 480,
+    doorToDoorMinutes: 600,
+    usableDayLoss: 1,
+    provider: "Verified fixture schedule",
+    provenance: "provider",
+    confidence: "high",
+    scheduleNeedsChecking: false,
+    warnings: [],
+    routeMetadata: { planningEstimate: false, decisionOption: "fixture", routingConfidence: "high" },
+  }];
   trip.planItems = Array.from({ length: 5 }, (_, index) => ({
     id: `ready-${index + 1}`,
     stopId: "a",
@@ -194,7 +217,8 @@ test("Trip Health surfaces structured place issues with deterministic recommenda
 });
 
 test("Trip Health readiness follows place issue route blocking without blocking optional unresolved intent", () => {
-  assert.equal(tripHealth(readyTrip()).isReady, true);
+  const ready = tripHealth(readyTrip());
+  assert.equal(ready.isReady, true, JSON.stringify(ready.issues.map((issue) => ({ rule: issue.rule, severity: issue.severity, message: issue.message }))));
 
   for (const code of ["unresolved_place", "ambiguous_place", "region_requires_base"] as const) {
     const blocking = retainPlaceIssues(readyTrip(), [placeIssue({

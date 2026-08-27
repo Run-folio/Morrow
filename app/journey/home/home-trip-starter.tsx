@@ -10,6 +10,8 @@ import { isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile"
 import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { appendVoiceTranscript, VoiceTripBrief } from "@/components/easyt/voice-trip-brief";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
+import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
+import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
 import type { JourneyCaptureResult } from "@/lib/easyt/journey-capture";
 import { createHomeTripDraft, HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
 import styles from "./home.module.css";
@@ -123,11 +125,28 @@ export default function HomeTripStarter() {
             <button type="button" aria-expanded={attributePanel === "travellers"} onClick={() => setAttributePanel((current) => current === "travellers" ? null : "travellers")}><UsersRound aria-hidden="true" /> {travellers} {text.travellers.toLowerCase()}</button>
             <button type="button" aria-expanded={attributePanel === "interests"} onClick={() => setAttributePanel((current) => current === "interests" ? null : "interests")}><Heart aria-hidden="true" /> {interests.length ? `${interests.length} ${text.interests.toLowerCase()}` : text.interests}</button>
           </div>
-          {attributePanel === "dates" ? <div className={fidelity.attributePanel}>
-            <label><span>{text.startDate}</span><input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setDatesExplicit(true); }} /></label>
-            <label><span>{text.endDate}</span><input type="date" min={startDate} value={endDate} onChange={(event) => { setEndDate(event.target.value); setDatesExplicit(true); }} /></label>
-          </div> : null}
-          {attributePanel === "travellers" ? <label className={fidelity.travellerField}><span>{text.travellers}</span><input type="number" min="1" max="12" value={travellers} onChange={(event) => { setTravellers(Math.max(1, Math.min(12, Number(event.target.value) || 1))); setTravellersExplicit(true); }} /></label> : null}
+          {attributePanel === "dates" ? <MorroviaDatePicker
+            className={fidelity.attributeDatePicker}
+            mode="range"
+            locale={language}
+            startLabel={text.startDate}
+            endLabel={text.endDate}
+            startValue={startDate}
+            endValue={endDate}
+            onChange={(range) => { setStartDate(range.start); setEndDate(range.end); setDatesExplicit(true); }}
+          /> : null}
+          {attributePanel === "travellers" ? <MorroviaQuantitySelector
+            className={fidelity.travellerField}
+            compact
+            label={text.travellers}
+            locale={language}
+            noun={language === "es" ? "viajero" : "traveller"}
+            nounPlural={language === "es" ? "viajeros" : "travellers"}
+            value={travellers}
+            min={1}
+            max={12}
+            onChange={(value) => { setTravellers(value); setTravellersExplicit(true); }}
+          /> : null}
           {attributePanel === "interests" ? <div className={fidelity.interestPanel} aria-label={text.interestLabel}>
             <span>{text.interestLabel}</span><div>{(["food", "culture", "nature", "cities", "beach", "hiking"] as const).map((interest) => <button type="button" key={interest} aria-pressed={interests.includes(interest)} onClick={() => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])}>{text[interest]}</button>)}</div>
           </div> : null}

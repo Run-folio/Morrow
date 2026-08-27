@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./journey-planner-strip.module.css";
 
@@ -11,6 +11,7 @@ export type JourneyPlannerStripStop = {
   dayLabel: string;
   image?: string;
   active: boolean;
+  kind?: "origin" | "stop";
 };
 
 export function JourneyPlannerStrip({
@@ -20,6 +21,8 @@ export function JourneyPlannerStrip({
   fullTripHref,
   fullTripLabel = "View full trip",
   fullTripExpanded = false,
+  wholeRouteActive = false,
+  onWholeRoute,
   onFullTrip,
   onSelectStop,
   overflow,
@@ -31,6 +34,8 @@ export function JourneyPlannerStrip({
   fullTripHref?: string;
   fullTripLabel?: string;
   fullTripExpanded?: boolean;
+  wholeRouteActive?: boolean;
+  onWholeRoute?: () => void;
   onFullTrip?: () => void;
   onSelectStop: (id: string) => void;
   overflow: ReactNode;
@@ -56,7 +61,7 @@ export function JourneyPlannerStrip({
               aria-current={stop.active ? "step" : undefined}
               onClick={() => onSelectStop(stop.id)}
             >
-              {stop.image ? <img src={stop.image} alt="" /> : <span className={styles.stopIndex}>{index + 1}</span>}
+              {stop.image ? <img src={stop.image} alt="" /> : <span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>}
               <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
             </button>
             {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
@@ -66,6 +71,7 @@ export function JourneyPlannerStrip({
       </nav>
 
       <div className={styles.actions}>
+        {onWholeRoute ? <button data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</button> : null}
         {onFullTrip ? <button data-map-expand-control type="button" className={styles.fullTrip} onClick={onFullTrip} aria-pressed={fullTripExpanded} title={fullTripLabel}>{fullTripExpanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}{fullTripLabel}</button> : fullTripHref ? <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link> : null}
         <details className={styles.overflow}>
           <summary aria-label="Trip actions"><MoreHorizontal aria-hidden="true" /></summary>

@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 import { PROMPT_ENGINE_CASES, PROMPT_ENGINE_DIMENSIONS } from "../benchmarks/prompt-engine/fixtures.ts";
 import { comparablePromptEngineSnapshot, runPromptEngineHarness } from "../benchmarks/prompt-engine/harness.ts";
 
-test("prompt engine gauntlet has 15 complete, reviewable cases", () => {
-  assert.equal(PROMPT_ENGINE_CASES.length, 15);
-  assert.equal(new Set(PROMPT_ENGINE_CASES.map((scenario) => scenario.id)).size, 15);
+test("prompt engine gauntlet has 16 complete, reviewable cases", () => {
+  assert.equal(PROMPT_ENGINE_CASES.length, 16);
+  assert.equal(new Set(PROMPT_ENGINE_CASES.map((scenario) => scenario.id)).size, 16);
   for (const scenario of PROMPT_ENGINE_CASES) {
     assert.ok(scenario.rawPrompt.trim());
     assert.ok(scenario.acceptableVariations.length >= 1);

@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import TripShell from "./trip-shell";
 import TripMapWorkspace from "./trip-map-workspace";
 import { JourneyMapPlannerWorkspace, type JourneyMapPlannerWorkspaceProps } from "@/components/journey-map-planner-workspace";
+import type { JourneyLocalPlace } from "@/components/journey-local-finder";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
@@ -94,6 +95,46 @@ const indiaPlaceMedia = {
   },
 };
 
+const providerPlaces = {
+  hotel: {
+    id: "booking-haveli-delhi",
+    name: "Haveli Dharampura",
+    address: "2293 Gali Guliyan, Old Delhi, Delhi, India",
+    category: "hotel",
+    coordinates: [77.2327, 28.6559],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Haveli%20Dharampura%20Delhi",
+    distanceKm: 1.2,
+    operational: true,
+    availability: "available",
+    provider: "booking-demand",
+    rating: 8.6,
+    price: { total: 164, currency: "USD" },
+  },
+  restaurant: {
+    id: "google-karims-delhi",
+    name: "Karim's",
+    address: "16 Gali Kababian, Jama Masjid, Old Delhi, India",
+    category: "restaurant",
+    coordinates: [77.2335, 28.6496],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Karims%20Old%20Delhi",
+    distanceKm: .8,
+    operational: true,
+    provider: "google-places",
+    rating: 4.1,
+    priceLevel: "moderate",
+  },
+  mapped: {
+    id: "osm-national-crafts-museum",
+    name: "National Crafts Museum",
+    address: "Pragati Maidan, New Delhi, India",
+    category: "museum",
+    coordinates: [77.242, 28.6136],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=National%20Crafts%20Museum%20Delhi",
+    distanceKm: 3.4,
+    provider: "openstreetmap",
+  },
+} satisfies Record<string, JourneyLocalPlace>;
+
 let goldenTrianglePlaceFixtureInstalled = false;
 
 function installGoldenTrianglePlaceFixture() {
@@ -111,6 +152,14 @@ function installGoldenTrianglePlaceFixture() {
       const action = { action: "change_stop_nights", stopId: "agra", nights: 3 };
       const option = (previewId: string, summary: string, changes: Array<{ label: string; before: string; after: string }>) => ({ previewId, canApply: true, expiresAt: "2026-08-27T13:00:00.000Z", action, summary, changes, impacts, warnings: [] });
       return new Response(JSON.stringify({ answer: "There is more than one safe way to make that change. Choose the outcome you want to review.", scope: "stop", proposedChange: { type: "change_stop_nights", summary: "Choose how Morrovia should make this change" }, mutationPreview: { action, summary: "Choose how Morrovia should make this change", canApply: false, preview: null, alternatives: [option("11111111-1111-4111-8111-111111111111", "Add one day to the trip", [{ label: "Agra", before: "2 nights", after: "3 nights" }, { label: "Trip end", before: "5 Sep", after: "6 Sep" }]), option("22222222-2222-4222-8222-222222222222", "Move one night from Jaipur to Agra", [{ label: "Agra", before: "2 nights", after: "3 nights" }, { label: "Jaipur", before: "4 nights", after: "3 nights" }])], warnings: ["Choose one outcome before applying."] } }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/api/journey-local-search") {
+      const kind = url.searchParams.get("kind");
+      const places = kind === "stay" ? [providerPlaces.hotel] : [providerPlaces.restaurant, providerPlaces.mapped];
+      return new Response(JSON.stringify({ places }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/api/journey-accommodation-search") {
+      return new Response(JSON.stringify({ properties: [providerPlaces.hotel], configured: true, source: "Booking.com Demand API" }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     if (url.pathname !== "/api/journey-place") return fetchFromStory(input, init);
     const title = url.searchParams.get("title") as keyof typeof indiaPlaceMedia | null;
@@ -171,6 +220,23 @@ const goldenTriangleWithPin: EasyTTrip = {
     ...goldenTriangleTrip.brief,
     mapPins: [{ id: "saved-red-fort", title: "Red Fort sunrise", category: "activity", dayNumber: 2, longitude: 77.241, latitude: 28.6562 }],
   },
+};
+
+const goldenTriangleLongDay: EasyTTrip = {
+  ...goldenTriangleTrip,
+  planItems: goldenTriangleTrip.planItems.map((item) => item.dayNumber === 1 ? {
+    ...item,
+    notes: [
+      "Arrive and leave room for delays",
+      "Check in before committing to the afternoon",
+      "Walk the lanes around Jama Masjid",
+      "Pause for tea near Chandni Chowk",
+      "Visit one nearby historic courtyard",
+      "Keep the late afternoon flexible",
+      "Choose dinner within walking distance",
+      "Confirm tomorrow's rail departure",
+    ],
+  } : item),
 };
 
 function TripMapStory({ storyTrip, presentation = "shell", storyState }: { storyTrip: EasyTTrip; presentation?: "shell" | "focused"; storyState?: JourneyMapPlannerWorkspaceProps["storyState"] }) {
@@ -331,3 +397,53 @@ export const Mobile390RichFullscreen: Story = {
   ...RichDestinationFullscreen,
   parameters: { ...RichDestinationFullscreen.parameters, viewport: { defaultViewport: "morrovia390" } },
 };
+
+/* Composition refinement acceptance matrix. Provider-backed hotel and
+   restaurant records intentionally omit imagery because the current local and
+   accommodation contracts do not return a licensed photo field. */
+export const CompositionRouteOverview: Story = InitialBrandedOverview;
+
+export const CompositionDestinationSelected: Story = DetailedBasemap;
+
+export const CompositionHotelSelectedNoProviderImage: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.hotel], selectedLocalPlaceId: providerPlaces.hotel.id } },
+};
+
+export const CompositionRestaurantSelectedNoProviderImage: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.restaurant], selectedLocalPlaceId: providerPlaces.restaurant.id } },
+};
+
+export const CompositionProviderPlaceNoImageFallback: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.mapped], selectedLocalPlaceId: providerPlaces.mapped.id } },
+};
+
+export const CompositionStayResults: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay" } },
+};
+
+export const CompositionShortShapeDay: Story = DetailedBasemap;
+
+export const CompositionLongShapeDay: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleLongDay, storyState: { mapMode: "detail" } },
+};
+
+export const CompositionKeyboardFocus: Story = {
+  ...DetailedBasemap,
+  play: async ({ canvasElement }) => {
+    (canvasElement.querySelector("[data-map-route-reset]") as HTMLButtonElement | null)?.focus();
+  },
+};
+
+export const CompositionFullscreen: Story = RichDestinationFullscreen;
+
+export const CompositionTablet768: Story = {
+  ...DetailedBasemap,
+  parameters: { ...DetailedBasemap.parameters, viewport: { defaultViewport: "morrovia768" } },
+};
+
+export const CompositionMobile390: Story = Mobile390Restoration;

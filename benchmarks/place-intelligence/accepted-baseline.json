@@ -738,7 +738,9 @@
             "order": 1
           }
         ],
-        "issueCodes": [],
+        "issueCodes": [
+          "region_requires_base"
+        ],
         "projectedDestinationIds": [
           "cusco",
           "machu-picchu"
@@ -752,7 +754,9 @@
           "cusco",
           "machu-picchu"
         ],
-        "projectedIssueCodes": []
+        "projectedIssueCodes": [
+          "region_requires_base"
+        ]
       },
       "findings": [
         {
@@ -873,6 +877,7 @@
           }
         ],
         "issueCodes": [
+          "region_requires_base",
           "region_requires_base"
         ],
         "projectedDestinationIds": [
@@ -892,6 +897,7 @@
           "vietnam"
         ],
         "projectedIssueCodes": [
+          "region_requires_base",
           "region_requires_base"
         ]
       },
@@ -4608,7 +4614,9 @@
           "missing_routable_destination"
         ],
         "projectedDestinationIds": [],
-        "projectedDestinationNames": [],
+        "projectedDestinationNames": [
+          "Georgia"
+        ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [],
         "projectedIssueCodes": [
@@ -4817,7 +4825,9 @@
           "missing_routable_destination"
         ],
         "projectedDestinationIds": [],
-        "projectedDestinationNames": [],
+        "projectedDestinationNames": [
+          "the Highlands"
+        ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [],
         "projectedIssueCodes": [
@@ -5746,7 +5756,8 @@
           "tokyo"
         ],
         "projectedDestinationNames": [
-          "Tokyo"
+          "Tokyo",
+          "Atlantis"
         ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [
@@ -5863,7 +5874,8 @@
           "venice"
         ],
         "projectedDestinationNames": [
-          "Venice"
+          "Venice",
+          "the Moonlit Fjords"
         ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [
@@ -6090,7 +6102,8 @@
           "rapa-nui"
         ],
         "projectedDestinationNames": [
-          "Rapa Nui"
+          "Rapa Nui",
+          "Qqqqzz"
         ],
         "projectedRegionNames": [
           "Rapa Nui"
@@ -6218,7 +6231,8 @@
           "dolomites"
         ],
         "projectedDestinationNames": [
-          "Dolomites"
+          "Dolomites",
+          "Mystery Coast"
         ],
         "projectedRegionNames": [
           "Dolomites"

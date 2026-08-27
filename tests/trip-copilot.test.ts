@@ -24,10 +24,14 @@ test("the co-pilot projection is compact, derived and free of private trip inter
     from: "Tokyo",
     to: "Kyoto",
     mode: "train",
+    classification: null,
     distanceKm: 450,
     headlineMinutes: null,
     doorToDoorMinutes: 210,
     usableDayLoss: "unknown",
+    provenance: "unknown",
+    confidence: "unknown",
+    warnings: [],
     scheduleNeedsChecking: true,
     selected: true,
   });
@@ -55,8 +59,8 @@ test("unknown nights and transport facts remain explicitly unknown", () => {
   const projection = buildTripCopilotProjection(trip, { stopId: "kyoto" });
   assert.equal(projection.trip.route.stops[1]?.nights, null);
   assert.deepEqual(projection.trip.route.transfers[0], {
-    order: 1, from: "Tokyo", to: "Kyoto", mode: "unknown", distanceKm: null,
-    headlineMinutes: null, doorToDoorMinutes: null, usableDayLoss: "unknown", scheduleNeedsChecking: true, selected: false,
+    order: 1, from: "Tokyo", to: "Kyoto", mode: "unknown", classification: null, distanceKm: null,
+    headlineMinutes: null, doorToDoorMinutes: null, usableDayLoss: "unknown", provenance: "unknown", confidence: "unknown", warnings: [], scheduleNeedsChecking: true, selected: false,
   });
 });
 

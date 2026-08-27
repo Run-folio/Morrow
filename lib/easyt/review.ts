@@ -7,6 +7,7 @@ import { routeConstraintsFromStructuredTripBrief } from "./structured-trip-brief
 import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfer-impact.ts";
 import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, orderedTripPlanItems, transferSeverity } from "./trip-facts.ts";
 import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
+import { canonicalLegIntegrityIssues, routeEndpointForLeg } from "./trip-legs.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -80,7 +81,12 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   let validationConstraints: RoutePlanningConstraints = {};
   const persistedLegEstimator: PlanLegEstimator = (from, to) => {
     const fromStopId = "id" in from ? from.id : undefined;
-    const persisted = fromStopId ? trip.legs.find((leg) => leg.fromStopId === fromStopId && leg.toStopId === to.id) : undefined;
+    const persisted = trip.legs.find((leg) => {
+      if (leg.toStopId !== to.id) return false;
+      if (fromStopId) return leg.fromStopId === fromStopId;
+      const endpoint = routeEndpointForLeg(trip, leg, "from");
+      return endpoint?.kind === "origin" && endpoint.name.trim().toLowerCase() === from.name.trim().toLowerCase();
+    });
     if (!persisted || persisted.mode === "walk") return {
       mode: "unknown",
       distanceKm: null,
@@ -108,6 +114,23 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     };
   };
   const intent = trip.brief.intent;
+  const legIntegrity = canonicalLegIntegrityIssues(trip);
+  if (legIntegrity.length) {
+    const blocking = legIntegrity.some((issue) => /origin is missing|origin needs|canonical route must contain|no longer matches/.test(issue.message));
+    results.push(recommendation(trip, {
+      rule: "route-integrity",
+      severity: blocking ? "critical" : "warning",
+      message: blocking
+        ? "The saved route does not yet represent the complete journey from its origin."
+        : `${legIntegrity.length} ${legIntegrity.length === 1 ? "transfer needs" : "transfers need"} checking before Morrovia can assess the full route.`,
+      evidence: legIntegrity.slice(0, 4).map((issue) => issue.message).join(" "),
+      affectedDays: [...new Set(legIntegrity.flatMap((issue) => issue.legId
+        ? trip.planItems.filter((item) => item.stopId === trip.legs.find((leg) => leg.id === issue.legId)?.toStopId).map((item) => item.dayNumber)
+        : []))],
+      confidence: "high",
+      proposedChange: null,
+    }, results.length));
+  }
   const structuredConstraints: RoutePlanningConstraints = trip.brief.structuredBrief
     ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief)
     : {};
@@ -178,7 +201,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   if (hasUnknownNights) {
     results.push(recommendation(trip, {
       rule: "stay-duration-confidence",
-      severity: "info",
+      severity: "warning",
       message: "At least one stop still needs a confirmed number of nights.",
       evidence: "Missing stay duration remains unknown and is not treated as a zero-night stop.",
       affectedDays: trip.planItems.filter((item) => trip.stops.some((stop) => stop.id === item.stopId && stop.nights === null)).map((item) => item.dayNumber),
@@ -272,7 +295,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     const destination = trip.stops.find((stop) => stop.id === dayDominatingLeg.leg.toStopId)?.name ?? "the next stop";
     results.push(recommendation(trip, {
       rule: "travel-day-impact",
-      severity: transferSeverity(dayDominatingLeg.minutes) === "critical" ? "critical" : "warning",
+      severity: "warning",
       message: `The transfer into ${destination} consumes ${transferSeverity(dayDominatingLeg.minutes) === "critical" ? "a full travel day or more" : "most of the travel day"}.`,
       evidence: `${Math.floor(dayDominatingLeg.minutes / 60)}h ${dayDominatingLeg.minutes % 60}m realistic door-to-door planning impact; verify the actual service and access time before booking.`,
       affectedDays: trip.planItems.filter((item) => item.stopId === dayDominatingLeg.leg.toStopId).map((item) => item.dayNumber),
@@ -298,7 +321,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   if (unestimatedLeg) {
     results.push(recommendation(trip, {
       rule: "missing-logistics",
-      severity: "info",
+      severity: (unestimatedLeg.distanceKm ?? 0) >= 150 || unestimatedLeg.classification === "arrival" || unestimatedLeg.classification === "international" ? "warning" : "info",
       message: "At least one connection still needs a confirmed route estimate before the plan is travel-ready.",
       evidence: unestimatedLeg.provider ?? "No distance or duration is stored for this leg.",
       affectedDays: trip.planItems.filter((item) => item.stopId === unestimatedLeg.toStopId).map((item) => item.dayNumber),
@@ -330,7 +353,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     const destination = trip.stops.find((stop) => stop.id === unknownLeg.toStopId)?.name ?? "the next stop";
     results.push(recommendation(trip, {
       rule: "connection-confidence",
-      severity: "info",
+      severity: unknownLeg.classification === "arrival" || unknownLeg.classification === "international" || (unknownLeg.distanceKm ?? 0) >= 150 ? "warning" : "info",
       message: `The connection into ${destination} still needs a travel mode before Morrovia can judge the day realistically.`,
       evidence: "No rail, road, ferry or flight mode has been confirmed for this leg.",
       affectedDays: trip.planItems.filter((item) => item.stopId === unknownLeg.toStopId).map((item) => item.dayNumber),
@@ -546,7 +569,7 @@ export function tripHealth(trip: EasyTTrip): TripHealth {
   const openIssues = current.filter((item) => item.status === "open");
   const blockingCount = openIssues.filter((item) => item.severity === "critical").length;
   const cautionCount = openIssues.filter((item) => item.severity === "warning").length;
-  const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
+  const hasUnresolvedTransport = openIssues.some((item) => item.rule === "destination-identity" || item.rule === "route-integrity" || item.rule === "missing-transport-decision" || item.rule === "missing-logistics" || item.rule === "connection-confidence");
   const hasUnknownStayDuration = openIssues.some((item) => item.rule === "stay-duration-confidence");
   const hasUnresolvedPlaceIntent = (trip.brief.structuredBrief?.placeIssues ?? []).some((issue) => issue.blocksRoute);
   const hasCompleteItinerary = deriveItineraryCoverage(trip).state === "complete";

@@ -1,4 +1,5 @@
 import { accommodationProgress, stayBookingForStop } from "./accommodation.ts";
+import { routeEndpointForLeg } from "./trip-legs.ts";
 import { MORROVIA_OPENAI_MODEL } from "./openai-config.ts";
 import { tripHealth } from "./review.ts";
 import { tripReadinessSummary } from "./trip-readiness-summary.ts";
@@ -52,10 +53,14 @@ export type TripCopilotProjection = {
         from: string;
         to: string;
         mode: TripLeg["mode"];
+        classification: TripLeg["classification"] | null;
         distanceKm: number | null;
         headlineMinutes: number | null;
         doorToDoorMinutes: number | null;
         usableDayLoss: "light" | "substantial" | "most-of-day" | "full-day-or-more" | "unknown";
+        provenance: NonNullable<TripLeg["provenance"]>;
+        confidence: NonNullable<TripLeg["confidence"]>;
+        warnings: string[];
         scheduleNeedsChecking: boolean;
         selected: boolean;
       }>;
@@ -196,7 +201,7 @@ export function buildTripCopilotProjection(
   const selectedLeg = selection.legId ? trip.legs.find((leg) => leg.id === selection.legId) : undefined;
   const scope = requestedScope(selection);
   const selectedLabel = selectedLeg
-    ? `${stopById.get(selectedLeg.fromStopId)?.name ?? "Unknown stop"} → ${stopById.get(selectedLeg.toStopId)?.name ?? "Unknown stop"}`
+    ? `${routeEndpointForLeg(trip, selectedLeg, "from")?.name ?? "Unknown endpoint"} → ${routeEndpointForLeg(trip, selectedLeg, "to")?.name ?? "Unknown endpoint"}`
     : selectedDay
       ? `Day ${selectedDay.dayNumber} · ${stopById.get(selectedDay.stopId)?.name ?? "Unknown stop"}`
       : selectedStop?.name ?? (scope === "trip" ? cleanText(trip.title) : null);
@@ -228,16 +233,22 @@ export function buildTripCopilotProjection(
         })),
         transfers: trip.legs.slice(0, 24).map((leg, index) => {
           const impact = transferImpactFromMetadata(leg.routeMetadata.transferImpact);
+          const from = routeEndpointForLeg(trip, leg, "from");
+          const to = routeEndpointForLeg(trip, leg, "to");
           return {
             order: index + 1,
-            from: cleanText(stopById.get(leg.fromStopId)?.name ?? "Unknown stop"),
-            to: cleanText(stopById.get(leg.toStopId)?.name ?? "Unknown stop"),
+            from: cleanText(from?.name ?? "Unknown endpoint"),
+            to: cleanText(to?.name ?? "Unknown endpoint"),
             mode: leg.mode,
+            classification: leg.classification ?? null,
             distanceKm: finiteOrNull(leg.distanceKm),
-            headlineMinutes: transferHeadlineMinutes(impact),
-            doorToDoorMinutes: transferDoorToDoorMinutes(impact, finiteOrNull(leg.durationMinutes)),
-            usableDayLoss: impact?.usableDayLoss.classification ?? "unknown",
-            scheduleNeedsChecking: leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null || (leg.routeMetadata as { planningEstimate?: unknown }).planningEstimate !== false,
+            headlineMinutes: finiteOrNull(leg.headlineMinutes ?? null) ?? transferHeadlineMinutes(impact),
+            doorToDoorMinutes: finiteOrNull(leg.doorToDoorMinutes ?? null) ?? transferDoorToDoorMinutes(impact, finiteOrNull(leg.durationMinutes)),
+            usableDayLoss: leg.usableDayLoss === null ? "unknown" : impact?.usableDayLoss.classification ?? "unknown",
+            provenance: leg.provenance ?? "unknown",
+            confidence: leg.confidence ?? "unknown",
+            warnings: (leg.warnings ?? []).slice(0, 4).map(cleanText),
+            scheduleNeedsChecking: leg.scheduleNeedsChecking ?? (leg.mode === "unknown" || leg.durationMinutes === null || leg.distanceKm === null || (leg.routeMetadata as { planningEstimate?: unknown }).planningEstimate !== false),
             selected: leg.id === selectedLeg?.id,
           };
         }),
