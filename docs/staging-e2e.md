@@ -2,7 +2,7 @@
 
 This environment is solely for Morrovia launch QA. It must never use the
 production hostname, a production Neon branch/database/role, a production
-Better Auth secret, or a live provider credential.
+Better Auth secret, or a production provider credential.
 
 ## One-time platform setup
 
@@ -26,6 +26,8 @@ Better Auth secret, or a live provider credential.
 4. Add the values from `.env.staging.example` to the staging deploy only.
    Generate a new `BETTER_AUTH_SECRET`; leave Google, Neon Auth, email,
    admin, affiliate, research, mapping, and analytics provider secrets unset.
+   Set `MORROVIA_STAGING_PROVIDER_MODE=openai-only` and configure the
+   server-only `OPENAI_API_KEY` for the Luna co-pilot acceptance scenarios.
    Set `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=preview`.
 5. Deploy, then run the preflight from a shell with the same staging values:
 
@@ -35,8 +37,8 @@ Better Auth secret, or a live provider credential.
 
    The command fails closed unless the URL is non-production, all auth URLs
    agree, the database is named `morrovia_staging*`, the database itself says
-   `app.morrovia_environment=staging`, required tables exist, and providers are
-   disabled.
+   `app.morrovia_environment=staging`, required tables exist, and the configured
+   provider policy is either fully disabled or explicitly OpenAI-only.
 
 ## Disposable test data
 
@@ -74,7 +76,8 @@ the following to the persistence browser matrix and Smoke/Core gate tickets:
 - Account A: `test-user-a@morrovia-staging.test` (password from staging secret manager)
 - Account B: `test-user-b@morrovia-staging.test` (password from staging secret manager)
 - Evidence: saved preflight and seed JSON, including the staging host and
-  database name—never a connection string or password.
+   database name and explicit `openai-only` provider policy—never a connection
+   string, API key, or password.
 - Reset command: the three-command sequence above.
 
 Do not start destructive browser tests if preflight cannot prove the staging

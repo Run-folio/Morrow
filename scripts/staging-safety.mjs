@@ -8,6 +8,7 @@ export const TEST_ACCOUNTS = [
 export const REQUIRED_STAGING_SCHEMA_COLUMNS = {
   easyt_users: ["id", "email", "preferences"],
   easyt_trips: ["id", "owner_id", "document", "deleted_at"],
+  easyt_copilot_previews: ["id", "owner_id", "trip_id", "action", "status", "expires_at"],
   easyt_country_stamps: ["owner_id", "country_id"],
   easyt_country_memories: ["owner_id", "country_id"],
 };
@@ -24,7 +25,7 @@ export function missingStagingSchemaColumns(rows) {
   );
 }
 
-const DISABLED_PROVIDER_KEYS = [
+const STAGING_PROVIDER_KEYS = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
   "NEON_AUTH_BASE_URL",
@@ -59,13 +60,27 @@ function sameOrigin(left, right) {
   return new URL(left).origin === new URL(right).origin;
 }
 
+/** @param {Record<string, string | undefined>} environment */
+export function validateStagingProviderPolicy(environment = process.env) {
+  const providerMode = environment.MORROVIA_STAGING_PROVIDER_MODE?.trim();
+  if (providerMode !== "disabled" && providerMode !== "openai-only") {
+    throw new Error("Refusing to run: staging provider mode must be disabled or openai-only.");
+  }
+  if (providerMode === "openai-only" && !environment.OPENAI_API_KEY?.trim()) {
+    throw new Error("OPENAI_API_KEY is required in staging openai-only mode.");
+  }
+  for (const key of STAGING_PROVIDER_KEYS) {
+    if (providerMode === "openai-only" && key === "OPENAI_API_KEY") continue;
+    if (environment[key]?.trim()) throw new Error(`${key} must be unset in staging ${providerMode} mode.`);
+  }
+  return providerMode;
+}
+
 export function loadStagingConfig() {
   if (process.env.MORROVIA_ENVIRONMENT !== "staging") {
     throw new Error("Refusing to run: MORROVIA_ENVIRONMENT must be exactly staging.");
   }
-  if (process.env.MORROVIA_STAGING_PROVIDER_MODE !== "disabled") {
-    throw new Error("Refusing to run: staging provider mode must be disabled.");
-  }
+  const providerMode = validateStagingProviderPolicy();
 
   const stagingUrl = required("MORROVIA_STAGING_URL");
   const publicUrl = required("NEXT_PUBLIC_APP_URL");
@@ -95,11 +110,7 @@ export function loadStagingConfig() {
   if (!required("BETTER_AUTH_SECRET") || required("BETTER_AUTH_SECRET").length < 32) {
     throw new Error("Use a new staging-only BETTER_AUTH_SECRET of at least 32 characters.");
   }
-  for (const key of DISABLED_PROVIDER_KEYS) {
-    if (process.env[key]?.trim()) throw new Error(`${key} must be unset in staging provider-disabled mode.`);
-  }
-
-  return { databaseUrl, expectedDbName, expectedDbHost, stagingUrl: new URL(stagingUrl).origin };
+  return { databaseUrl, expectedDbName, expectedDbHost, stagingUrl: new URL(stagingUrl).origin, providerMode };
 }
 
 export async function verifyStagingDatabase(config) {
@@ -112,6 +123,7 @@ export async function verifyStagingDatabase(config) {
         current_setting('app.morrovia_environment', true) as environment,
         to_regclass('public.easyt_users') is not null as has_users,
         to_regclass('public.easyt_trips') is not null as has_trips,
+        to_regclass('public.easyt_copilot_previews') is not null as has_copilot_previews,
         to_regclass('public.easyt_country_stamps') is not null as has_country_stamps,
         to_regclass('public.easyt_country_memories') is not null as has_country_memories
     `);
@@ -122,7 +134,7 @@ export async function verifyStagingDatabase(config) {
     if (row.environment !== "staging") {
       throw new Error("Database is missing app.morrovia_environment=staging.");
     }
-    if (!row.has_users || !row.has_trips || !row.has_country_stamps || !row.has_country_memories) {
+    if (!row.has_users || !row.has_trips || !row.has_copilot_previews || !row.has_country_stamps || !row.has_country_memories) {
       throw new Error("Staging migrations have not created the required persistence tables.");
     }
     const schemaResult = await client.query(`

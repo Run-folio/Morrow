@@ -460,6 +460,26 @@ function sortedById<T extends { id: string }>(items: T[] | undefined) {
   return items ? [...items].sort((left, right) => left.id.localeCompare(right.id)) : undefined;
 }
 
+function nonEmptyArray<T>(items: T[] | null | undefined) {
+  return items?.length ? items : undefined;
+}
+
+function nonEmptyRecord<T>(record: Record<string | number, T> | null | undefined) {
+  if (!record) return undefined;
+  const entries = Object.entries(record).filter(([, value]) => !Array.isArray(value) || value.length > 0);
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
+function nonEmptyScheduleLocks(locks: TripRecoveryRecord["trip"]["brief"]["scheduleLocks"]) {
+  if (!locks?.stopIds.length && !Object.keys(locks?.arrivalDates ?? {}).length) return undefined;
+  return locks;
+}
+
+function nonEmptyDecisionSelections(selections: TripRecoveryRecord["trip"]["brief"]["decisionSelections"]) {
+  if (!selections?.routeOrder && !Object.keys(selections?.transportByLeg ?? {}).length) return undefined;
+  return selections;
+}
+
 /**
  * The recovery boundary protects deliberate traveller decisions, not every
  * field returned by planners and providers. Keep this projection explicit so
@@ -489,17 +509,17 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       pace: brief.pace,
       hotelChanges: brief.hotelChanges,
       budgetBand: brief.budgetBand,
-      selectedPlaces: brief.selectedPlaces,
-      dayAllocations: brief.dayAllocations,
-      nightAllocations: brief.nightAllocations,
-      dayNotes: brief.dayNotes,
-      customActivities: brief.customActivities,
-      mapPins: sortedById(brief.mapPins),
-      bookings: sortedById(brief.bookings),
-      checklist: sortedById(brief.checklist),
+      selectedPlaces: nonEmptyRecord(brief.selectedPlaces) ?? {},
+      dayAllocations: nonEmptyRecord(brief.dayAllocations),
+      nightAllocations: nonEmptyRecord(brief.nightAllocations),
+      dayNotes: nonEmptyRecord(brief.dayNotes),
+      customActivities: nonEmptyRecord(brief.customActivities),
+      mapPins: sortedById(nonEmptyArray(brief.mapPins)),
+      bookings: sortedById(nonEmptyArray(brief.bookings)),
+      checklist: sortedById(nonEmptyArray(brief.checklist)),
       intent: brief.intent,
-      scheduleLocks: brief.scheduleLocks,
-      decisionSelections: brief.decisionSelections,
+      scheduleLocks: nonEmptyScheduleLocks(brief.scheduleLocks),
+      decisionSelections: nonEmptyDecisionSelections(brief.decisionSelections),
     },
     stops: [...trip.stops].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id)).map((stop) => ({
       id: stop.id,

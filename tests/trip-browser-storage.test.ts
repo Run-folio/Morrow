@@ -428,10 +428,56 @@ test("semantic comparison ignores canonical/provider metadata but protects every
     { ...base, brief: { ...base.brief, dayNotes: { 1: ["Changed note"] } } },
     { ...base, brief: { ...base.brief, customActivities: { 2: ["Changed activity"] } } },
     { ...base, brief: { ...base.brief, mapPins: [] } },
+    { ...base, brief: { ...base.brief, mapPins: [{ ...base.brief.mapPins![0], longitude: 3 }] } },
     { ...base, brief: { ...base.brief, bookings: [] } },
     { ...base, brief: { ...base.brief, checklist: [] } },
   ];
   meaningfulVariants.forEach((variant) => assert.equal(tripDocumentsCanonicalEquivalent(variant, base), false));
+});
+
+test("semantic comparison treats absent and empty optional authored collections as equivalent", () => {
+  const absent = browserTrip({ id: "trip-semantic-empty-defaults" });
+  const empty = {
+    ...absent,
+    brief: {
+      ...absent.brief,
+      selectedPlaces: { unused: [] },
+      dayAllocations: {},
+      nightAllocations: {},
+      dayNotes: { 1: [] },
+      customActivities: {},
+      mapPins: [],
+      bookings: [],
+      checklist: [],
+      scheduleLocks: { stopIds: [], arrivalDates: {} },
+      decisionSelections: { transportByLeg: {} },
+    },
+  };
+
+  assert.equal(tripDocumentsCanonicalEquivalent(absent, empty), true);
+  assert.equal(tripDocumentsCanonicalEquivalent({ ...absent, brief: { ...absent.brief, mapPins: undefined } }, absent), true);
+  assert.equal(
+    tripDocumentsCanonicalEquivalent(
+      { ...absent, brief: { ...absent.brief, mapPins: null } } as unknown as EasyTTrip,
+      absent,
+    ),
+    true,
+  );
+
+  const orderedStops = [
+    { id: "paris", order: 0, name: "Paris", country: "France", latitude: 48.86, longitude: 2.35, arrivalDate: null, departureDate: null, nights: 2 },
+    { id: "rome", order: 1, name: "Rome", country: "Italy", latitude: 41.9, longitude: 12.5, arrivalDate: null, departureDate: null, nights: 3 },
+  ];
+  const route = { ...absent, stops: orderedStops };
+  const reordered = { ...route, stops: [{ ...orderedStops[1], order: 0 }, { ...orderedStops[0], order: 1 }] };
+  const allocated = { ...route, brief: { ...route.brief, dayAllocations: { paris: 2, rome: 3 } } };
+  const reallocated = { ...allocated, brief: { ...allocated.brief, dayAllocations: { paris: 3, rome: 2 } } };
+  const orderedNotes = { ...route, brief: { ...route.brief, dayNotes: { 1: ["Museum", "Dinner"] } } };
+  const reorderedNotes = { ...orderedNotes, brief: { ...orderedNotes.brief, dayNotes: { 1: ["Dinner", "Museum"] } } };
+
+  assert.equal(tripDocumentsCanonicalEquivalent(route, reordered), false);
+  assert.equal(tripDocumentsCanonicalEquivalent(allocated, reallocated), false);
+  assert.equal(tripDocumentsCanonicalEquivalent(orderedNotes, reorderedNotes), false);
 });
 
 test("the Nikko save, Map reopen and reload sequence converges while a later traveller edit remains protected", () => {

@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { missingStagingSchemaColumns } from "../scripts/staging-safety.mjs";
+import { missingStagingSchemaColumns, validateStagingProviderPolicy } from "../scripts/staging-safety.mjs";
+
+test("staging provider policy makes Luna-only access explicit", () => {
+  assert.equal(validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "disabled" }), "disabled");
+  assert.throws(
+    () => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "disabled", OPENAI_API_KEY: "configured" }),
+    /OPENAI_API_KEY must be unset/,
+  );
+  assert.throws(
+    () => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "openai-only" }),
+    /OPENAI_API_KEY is required/,
+  );
+  assert.equal(
+    validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "openai-only", OPENAI_API_KEY: "configured" }),
+    "openai-only",
+  );
+  assert.throws(
+    () => validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "openai-only", OPENAI_API_KEY: "configured", GROQ_API_KEY: "configured" }),
+    /GROQ_API_KEY must be unset/,
+  );
+});
 
 test("staging preflight rejects an old persistence schema even when its tables exist", () => {
   const missing = missingStagingSchemaColumns([
@@ -17,6 +37,12 @@ test("staging preflight rejects an old persistence schema even when its tables e
     "easyt_trips.owner_id",
     "easyt_trips.document",
     "easyt_trips.deleted_at",
+    "easyt_copilot_previews.id",
+    "easyt_copilot_previews.owner_id",
+    "easyt_copilot_previews.trip_id",
+    "easyt_copilot_previews.action",
+    "easyt_copilot_previews.status",
+    "easyt_copilot_previews.expires_at",
     "easyt_country_stamps.country_id",
     "easyt_country_memories.country_id",
   ]);
@@ -26,6 +52,8 @@ test("staging preflight accepts the current persistence schema contract", () => 
   const rows = [
     ["easyt_users", "id"], ["easyt_users", "email"], ["easyt_users", "preferences"],
     ["easyt_trips", "id"], ["easyt_trips", "owner_id"], ["easyt_trips", "document"], ["easyt_trips", "deleted_at"],
+    ["easyt_copilot_previews", "id"], ["easyt_copilot_previews", "owner_id"], ["easyt_copilot_previews", "trip_id"],
+    ["easyt_copilot_previews", "action"], ["easyt_copilot_previews", "status"], ["easyt_copilot_previews", "expires_at"],
     ["easyt_country_stamps", "owner_id"], ["easyt_country_stamps", "country_id"],
     ["easyt_country_memories", "owner_id"], ["easyt_country_memories", "country_id"],
   ].map(([table_name, column_name]) => ({ table_name, column_name }));
