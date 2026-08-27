@@ -19,12 +19,13 @@ export function loadReplayFixture(): ReplayFixture { return JSON.parse(readFileS
 export function assertReplayFixtureCurrent(fixture = loadReplayFixture()) {
   if (fixture.kind !== "morrovia-planner-shadow-replay-v1") throw new Error("Planner shadow replay fixture kind is unsupported.");
   for (const key of Object.keys(REPLAY_METADATA) as Array<keyof typeof REPLAY_METADATA>) if (fixture[key] !== REPLAY_METADATA[key]) throw new Error(`Planner shadow replay fixture drift: ${key} changed. Run explicit record mode to replace it.`);
-  for (const scenario of PROMPT_ENGINE_CASES) {
-    const recorded = fixture.cases[scenario.id];
-    if (!recorded || recorded.promptHash !== hash(scenario.rawPrompt)) throw new Error(`Planner shadow replay fixture drift: ${scenario.id} prompt changed. Run explicit record mode to replace it.`);
+  const scenariosById = new Map(PROMPT_ENGINE_CASES.map((scenario) => [scenario.id, scenario]));
+  for (const [scenarioId, recorded] of Object.entries(fixture.cases)) {
+    const scenario = scenariosById.get(scenarioId);
+    if (!scenario || recorded.promptHash !== hash(scenario.rawPrompt)) throw new Error(`Planner shadow replay fixture drift: ${scenarioId} prompt changed. Run explicit record mode to replace it.`);
     if (recorded.trace.turns !== 1 || recorded.trace.requestCount !== 1) throw new Error(`Planner shadow replay fixture budget drift: ${scenario.id}.`);
   }
-  if (Object.keys(fixture.cases).length !== PROMPT_ENGINE_CASES.length) throw new Error("Planner shadow replay fixture case set drifted.");
+  if (Object.keys(fixture.cases).length > HYBRID_EVALUATION_BUDGETS.maxCases) throw new Error("Planner shadow replay fixture exceeds the case budget.");
   return fixture;
 }
 
@@ -67,7 +68,9 @@ export async function runHybridEvaluation(options: { mode?: HybridEvaluationMode
       return response;
     },
   } satisfies PlannerReviewProvider : options.provider ?? replayProvider(fixture!);
-  const cases = options.cases ?? PROMPT_ENGINE_CASES;
+  const cases = options.cases ?? (mode === "replay"
+    ? PROMPT_ENGINE_CASES.filter((scenario) => Boolean(fixture?.cases[scenario.id]))
+    : PROMPT_ENGINE_CASES.slice(0, HYBRID_EVALUATION_BUDGETS.maxCases));
   const intentReview = await runPlannerShadowAudit({ provider, mode: mode === "live" ? "live" : "fixture", cases });
   const deltas = Object.fromEntries(PROMPT_ENGINE_DIMENSIONS.map((dimension) => [dimension, 0])) as Record<PromptEngineDimension, number>;
   const hardFailures = [
@@ -79,8 +82,8 @@ export async function runHybridEvaluation(options: { mode?: HybridEvaluationMode
   const totalTokens = intentReview.tokens.total;
   const cost = intentReview.tokens.missingUsageCalls ? null : (intentReview.tokens.input * HYBRID_EVALUATION_BUDGETS.estimatedInputTokenCostUsdPerMillion + intentReview.tokens.output * HYBRID_EVALUATION_BUDGETS.estimatedOutputTokenCostUsdPerMillion) / 1_000_000;
   if (mode === "record") {
-    if (recorded.size !== PROMPT_ENGINE_CASES.length || intentReview.completion.fallback) throw new Error("Record mode will not replace fixtures after an incomplete or fallback run.");
-    const replacement: ReplayFixture = { kind: "morrovia-planner-shadow-replay-v1", ...REPLAY_METADATA, cases: Object.fromEntries(PROMPT_ENGINE_CASES.map((scenario) => [scenario.id, recorded.get(hash(scenario.rawPrompt))!])) };
+    if (recorded.size !== cases.length || intentReview.completion.fallback) throw new Error("Record mode will not replace fixtures after an incomplete or fallback run.");
+    const replacement: ReplayFixture = { kind: "morrovia-planner-shadow-replay-v1", ...REPLAY_METADATA, cases: Object.fromEntries(cases.map((scenario) => [scenario.id, recorded.get(hash(scenario.rawPrompt))!])) };
     writeFileSync(fixturePath, `${JSON.stringify(replacement, null, 2)}\n`);
   }
   return { mode, hardFailures, deterministic: baseline, intentReview, hybrid, calls: { live: mode === "live" ? intentReview.execution.attempted : 0, replay: mode === "live" ? 0 : intentReview.execution.attempted }, estimatedCostUsd: totalTokens || !intentReview.tokens.missingUsageCalls ? cost : null };

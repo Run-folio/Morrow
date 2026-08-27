@@ -19,7 +19,7 @@ export const PLANNER_SHADOW_AUDIT_LIMITS = {
 /** Conservative defaults below Groq's documented free-plan 30 RPM / 8K TPM. */
 export const PLANNER_SHADOW_LIVE_PACING_DEFAULTS = {
   requestsPerMinute: 15,
-  tokensPerMinute: 5_000,
+  tokensPerMinute: 6_000,
   windowMs: 60_000,
 } as const;
 

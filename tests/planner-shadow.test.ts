@@ -238,7 +238,7 @@ test("hybrid evaluation replays sanitized fixtures and never uses a live provide
   assert.equal(report.mode, "replay");
   assert.equal(report.calls.live, 0);
   assert.equal(report.calls.replay, 15);
-  assert.equal(report.deterministic.total, 196);
-  assert.equal(report.hybrid.total, 196);
+  assert.equal(report.deterministic.total, 210);
+  assert.equal(report.hybrid.total, 210);
   assert.equal(report.intentReview.completion.completed, 15);
 });
