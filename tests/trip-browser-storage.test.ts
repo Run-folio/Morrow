@@ -35,12 +35,14 @@ import {
   tripRecoveryStorageKey,
   tripForRecoveryScope,
   tripRecoveryMatchesCanonical,
+  tripDocumentsCanonicalEquivalent,
   tripStorageEventMatches,
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
 import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
 
 function browserTrip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
   return {
@@ -299,6 +301,65 @@ test("hydration preserves a same-ID recovery with meaningful traveller edits", (
   );
   assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId)?.trip.title, "My newer route");
   assert.equal(loadCachedTripFromStorage(storage, local.id, ownerId), null);
+});
+
+test("derived planner rebuilds do not create a false cloud/device conflict", () => {
+  const local = browserTrip({
+    ownerId: null,
+    brief: { ...browserTrip().brief, routeAssessment: undefined, cascadeStatus: { conflicts: [], affectedBookingIds: [], affectedPlanItemCount: 0 } },
+    legs: [{ id: "local-leg", fromStopId: "a", toStopId: "b", mode: "unknown", distanceKm: null, durationMinutes: null, provider: null, routeMetadata: { planningEstimate: true } }],
+    planItems: [],
+    recommendations: [],
+  });
+  const canonical = canonicalTripForOwner("owner-a", {
+    ...local,
+    brief: { ...local.brief, routeAssessment: { route: { state: "insufficient-data", currentStopIds: [], recommendedStopIds: [], currentTransferMinutes: null, recommendedTransferMinutes: null, improvementMinutes: null, reasons: [], tradeoffs: [], summary: "Generated later" }, durations: {}, comfortableDays: 0, shortfallDays: 0 } },
+    legs: [],
+    planItems: [{ id: "generated", stopId: "unassigned", dayNumber: 1, date: local.startDate, type: "open", title: "Generated", reason: "Derived", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null }],
+    recommendations: [{ id: "generated", rule: "derived", severity: "warning", message: "Generated", evidence: "Derived", affectedDays: [], confidence: "medium", checkedAt: local.updatedAt, proposedChange: null, status: "open" }],
+  }, "2026-08-23T12:00:00.000Z");
+
+  assert.equal(tripDocumentsCanonicalEquivalent(local, canonical), true);
+  assert.equal(tripDocumentsCanonicalEquivalent({ ...local, brief: { ...local.brief, mustDo: "A real traveller edit" } }, canonical), false);
+});
+
+test("the Nikko save, Map reopen and reload sequence converges while a later traveller edit remains protected", () => {
+  const ownerId = "owner-a";
+  const local = browserTrip({
+    id: "trip-nikko-reconciliation",
+    ownerId: null,
+    status: "planned",
+    stops: NIKKO_ROUTE_FIXTURE.map((stop, order) => ({
+      id: stop.id,
+      name: stop.name,
+      country: stop.country,
+      canonicalPlaceId: "canonicalPlaceId" in stop ? stop.canonicalPlaceId : undefined,
+      longitude: stop.coordinates[0],
+      latitude: stop.coordinates[1],
+      order,
+      arrivalDate: `2026-12-${String(order + 1).padStart(2, "0")}`,
+      departureDate: `2026-12-${String(order + 2).padStart(2, "0")}`,
+      nights: 1,
+    })),
+  });
+  const storage = new MemoryBrowserStorage();
+  const write = saveTripRecoveryToStorage(storage, local, { ownerId, writeId: "nikko-build" });
+  const canonical = canonicalTripForOwner(ownerId, { ...local, legs: [], recommendations: [] }, "2026-08-23T12:00:00.000Z");
+  const recovery = loadTripRecoveryFromStorage(storage, local.id, ownerId)!;
+
+  assert.equal(tripRecoveryMatchesCanonical(recovery, canonical), true);
+  assert.deepEqual(resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, recovery), { equivalent: true, stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId), null);
+  assert.equal(loadCachedTripFromStorage(storage, local.id, ownerId)?.stops.at(-1)?.canonicalPlaceId, "nikko");
+
+  const genuineEdit = { ...canonical, brief: { ...canonical.brief, mustDo: "Spend an extra quiet morning in Nikko" } };
+  const editWrite = saveTripRecoveryToStorage(storage, genuineEdit, { ownerId, writeId: "nikko-real-edit" });
+  assert.equal(write.stored, true);
+  assert.equal(editWrite.stored, true);
+  const dirty = loadTripRecoveryFromStorage(storage, local.id, ownerId)!;
+  assert.equal(tripRecoveryMatchesCanonical(dirty, canonical), false);
+  assert.deepEqual(resolveCanonicalEquivalentTripRecoveryInStorage(storage, canonical, dirty), { equivalent: false, stored: false, recoveryResolved: false });
+  assert.equal(loadTripRecoveryFromStorage(storage, local.id, ownerId)?.trip.brief.mustDo, "Spend an extra quiet morning in Nikko");
 });
 
 test("an owner-scoped unclaimed recovery survives A to B to A switching without becoming accessible to B", () => {

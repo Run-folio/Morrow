@@ -172,6 +172,10 @@ test("commercial click reporting maps either established event to one stable KPI
     category: "accommodation", provider: "trip.com", trip_id: "trip-123", stop_id: "stop-456",
     placement: "trip_prep_accommodation", workspace_view: "prep",
   });
+  const mapTripCom = normalizeCommercialOutboundClick("affiliate_click", {
+    category: "accommodation", provider: "trip.com", trip_id: "trip-123", stop_id: "stop-456",
+    placement: "map_stay_finder", workspace_view: "map",
+  });
   assert.deepEqual(booking, {
     canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "booking_com",
     placement: "itinerary_accommodation", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "itinerary",
@@ -184,8 +188,29 @@ test("commercial click reporting maps either established event to one stable KPI
     canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "trip_com",
     placement: "trip_prep_accommodation", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "prep",
   });
-  assert.equal([booking, omio, tripCom].filter(Boolean).length, 3, "each source click becomes one KPI record, never one per property");
+  assert.deepEqual(mapTripCom, {
+    canonical_event: "commercial_outbound_click", source_event: "affiliate_click", partner: "trip_com",
+    placement: "map_stay_finder", category: "accommodation", trip_id: "trip-123", stop_id: "stop-456", workspace_view: "map",
+  });
+  assert.equal([booking, omio, tripCom, mapTripCom].filter(Boolean).length, 4, "each source click becomes one KPI record, never one per property");
   assert.equal(JSON.stringify(omio).includes("stop-1"), false, "origin/destination stop IDs are not part of the reporting contract");
+});
+
+test("Trip.com category handoffs retain their canonical commercial categories", () => {
+  const categories = ["car_rental", "activities", "airport_transfer"] as const;
+  for (const category of categories) {
+    const click = normalizeCommercialOutboundClick("affiliate_click", {
+      category,
+      provider: "trip.com",
+      trip_id: "trip-123",
+      placement: "trip_prep_booking_readiness",
+      workspace_view: "prep",
+    });
+    assert.equal(click?.partner, "trip_com");
+    assert.equal(click?.category, category);
+    assert.equal(click?.placement, "booking_readiness");
+    assert.equal(JSON.stringify(click).includes("trip-123"), true);
+  }
 });
 
 test("commercial clicks remain consent-gated", () => {

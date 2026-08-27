@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
+import { affiliatePartners, buildBookingReadiness, getAccommodationBookingUrl, getBookingAction, omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -47,6 +47,25 @@ test("the generic Trip.com URL is never enriched with trip context", () => {
   assert.equal(stay?.href, affiliatePartners.tripCom.accommodationUrl);
 });
 
+test("central Trip.com category actions use exact generated URLs and reject unsupported generic handoffs", () => {
+  const source = trip();
+  const input = { trip: source, stop: source.stops[0], dates: { checkIn: "2026-10-01", checkOut: "2026-10-04" } };
+  const expected = {
+    accommodation: affiliatePartners.tripCom.accommodationUrl,
+    car_rental: affiliatePartners.tripCom.carRentalUrl,
+    activities: affiliatePartners.tripCom.activitiesUrl,
+    airport_transfer: affiliatePartners.tripCom.airportTransferUrl,
+  } as const;
+  for (const [category, href] of Object.entries(expected)) {
+    const action = getBookingAction({ category: category as keyof typeof expected, ...input });
+    assert.equal(action?.href, href);
+    assert.equal(new URL(action?.href ?? "").search, "");
+  }
+  assert.equal(getBookingAction({ category: "flight", ...input }), undefined);
+  assert.equal(getBookingAction({ category: "train", ...input }), undefined);
+  assert.equal(getBookingAction({ category: "car_rental", ...input }, { provider: "trip.com" }), undefined);
+});
+
 test("uses the approved Viator general activities URL without adding trip parameters", () => {
   const action = buildBookingReadiness(trip(), {
     activitiesUrl: affiliatePartners.viator.activitiesUrl,
@@ -57,6 +76,45 @@ test("uses the approved Viator general activities URL without adding trip parame
   assert.equal(action?.provider, "viator");
   assert.equal(action?.cta, "Find activities on Viator");
   assert.equal(action?.affiliate, true);
+});
+
+test("uses Trip.com tours only as the activities fallback when Viator is unavailable", () => {
+  const action = buildBookingReadiness(trip()).find((candidate) => candidate.id === "activity-paris");
+  assert.equal(action?.href, affiliatePartners.tripCom.activitiesUrl);
+  assert.equal(action?.provider, "trip.com");
+  assert.equal(action?.cta, "Find tours on Trip.com");
+  assert.equal(action?.affiliateCategory, "activities");
+});
+
+test("uses Trip.com car rental only when a driving route actually calls for a car", () => {
+  const source = trip();
+  source.legs[0] = { ...source.legs[0]!, mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
+  const carRental = buildBookingReadiness(source).find((action) => action.id === "car-leg");
+  assert.deepEqual({ href: carRental?.href, provider: carRental?.provider, cta: carRental?.cta, affiliate: carRental?.affiliate }, {
+    href: affiliatePartners.tripCom.carRentalUrl, provider: "trip.com", cta: "Find a rental car on Trip.com", affiliate: true,
+  });
+
+  source.brief.intent = {
+    version: 1, travellers: 2, timing: { flexibility: "fixed", durationDays: 6 },
+    hardConstraints: { originRequired: true, mustSeeStopIds: ["paris", "rome"], optionalStopIds: [], fixedCommitments: [], avoidDriving: true },
+    preferences: { budgetSensitivity: "mid", transportModes: ["train", "flight"], pace: "balanced", interests: [], dislikes: [] },
+  };
+  assert.equal(buildBookingReadiness(source).some((action) => action.category === "car-rental"), false);
+});
+
+test("keeps an existing configured car-hire partner ahead of the Trip.com fallback", () => {
+  const source = trip();
+  source.legs[0] = { ...source.legs[0]!, mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
+  const action = buildBookingReadiness(source, { carHireUrl: "https://partner.example/car" }).find((candidate) => candidate.id === "car-leg");
+  assert.equal(action?.provider, "car-hire-partner");
+  assert.match(action?.href ?? "", /^https:\/\/partner\.example\/car\?/);
+  assert.notEqual(action?.href, affiliatePartners.tripCom.carRentalUrl);
+});
+
+test("does not create an airport-transfer action without an existing airport context", () => {
+  assert.equal(buildBookingReadiness(trip()).some((action) => action.category === "ground-transport"), false);
 });
 
 test("keeps existing Omio and Viator partner destinations unchanged", () => {

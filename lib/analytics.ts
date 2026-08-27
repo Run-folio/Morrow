@@ -12,7 +12,7 @@ type StampStatusSource = "map" | "explorer" | "country_card";
 
 export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
 export type CommercialOutboundPlacement = "home_footer" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "overview_next_action" | "map_stay_finder" | "unknown_legacy";
-export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activity" | "car_rental" | "flight" | "other";
+export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activities" | "car_rental" | "airport_transfer" | "flight" | "other";
 export type CommercialOutboundClick = {
   canonical_event: "commercial_outbound_click";
   source_event: "affiliate_click" | "affiliate_link_clicked";
@@ -137,15 +137,16 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
                   : "unknown_legacy";
   const sourceCategory = String(properties.category ?? "").trim().toLocaleLowerCase();
   const category: CommercialOutboundCategory = partner === "omio" ? "transport"
-    : partner === "viator" ? "activity"
+    : partner === "viator" ? "activities"
       : partner === "saily" ? "connectivity"
         : sourceCategory === "accommodation" ? "accommodation"
           : sourceCategory === "connectivity" ? "connectivity"
             : sourceCategory === "transport" ? "transport"
               : sourceCategory === "ground-transport" ? "ground_transport"
-                : sourceCategory === "activity" ? "activity"
-                  : sourceCategory === "car-rental" ? "car_rental"
-                    : sourceCategory === "flight" ? "flight" : "other";
+                : sourceCategory === "activity" || sourceCategory === "activities" ? "activities"
+                  : sourceCategory === "car-rental" || sourceCategory === "car_rental" ? "car_rental"
+                    : sourceCategory === "airport-transfer" || sourceCategory === "airport_transfer" ? "airport_transfer"
+                      : sourceCategory === "flight" ? "flight" : "other";
   const stringProperty = (snake: string, camel: string) => {
     const value = properties[snake] ?? properties[camel];
     return typeof value === "string" && value ? value : undefined;

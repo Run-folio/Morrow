@@ -3,6 +3,7 @@ import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport";
+export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer";
 export type BookingReadinessAction = {
   id: string;
   category: BookingCategory;
@@ -17,6 +18,7 @@ export type BookingReadinessAction = {
   originStopId?: string;
   destinationStopId?: string;
   affiliate: boolean;
+  affiliateCategory?: AffiliateAnalyticsCategory;
   livePrice: boolean;
 };
 
@@ -36,6 +38,9 @@ export const affiliatePartners = {
   tripCom: {
     provider: "trip.com",
     accommodationUrl: "https://www.trip.com/t/pdAWQqi56W2",
+    carRentalUrl: "https://www.trip.com/t/L8vutCrA6W2",
+    activitiesUrl: "https://www.trip.com/t/zw8E7otA6W2",
+    airportTransferUrl: "https://www.trip.com/t/vI8gNMzA6W2",
   },
   viator: {
     provider: "viator",
@@ -53,12 +58,66 @@ export type AccommodationBookingUrlInput = {
   travellers: number;
 };
 
+export type TripComAffiliatePartner = {
+  provider: string;
+  accommodationUrl?: string;
+  carRentalUrl?: string;
+  activitiesUrl?: string;
+  airportTransferUrl?: string;
+};
+
+export type AccommodationAffiliatePartner = Pick<TripComAffiliatePartner, "provider" | "accommodationUrl">;
+export type TripComBookingCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer";
+export type BookingActionRequestCategory = TripComBookingCategory | "flight" | "train";
+export type BookingActionRequest = {
+  category: BookingActionRequestCategory;
+  trip?: Pick<EasyTTrip, "id" | "travellers">;
+  stop?: Pick<TripStop, "id" | "name" | "country">;
+  dates?: { checkIn: string; checkOut: string };
+};
+export type ResolvedBookingAction = {
+  provider: string;
+  category: TripComBookingCategory;
+  href: string;
+  cta: string;
+  affiliate: true;
+};
+
 /**
- * Trip.com currently approves this generic affiliate URL only. Contextual
- * Trip.com links or API support can be added here later without changing UI callers.
+ * Trip.com currently approves generic category links only. Contextual links or
+ * API support can be added here later without changing UI callers.
  */
-export function getAccommodationBookingUrl(_input: AccommodationBookingUrlInput) {
-  return affiliatePartners.tripCom.accommodationUrl;
+export function getBookingAction(
+  request: BookingActionRequest,
+  partner: TripComAffiliatePartner = affiliatePartners.tripCom,
+): ResolvedBookingAction | undefined {
+  const category = request.category;
+  if (category === "flight" || category === "train") return undefined;
+  const definition = category === "accommodation"
+    ? { href: partner.accommodationUrl, cta: "Find accommodation on Trip.com" }
+    : category === "car_rental"
+      ? { href: partner.carRentalUrl, cta: "Find a rental car on Trip.com" }
+      : category === "activities"
+        ? { href: partner.activitiesUrl, cta: "Find tours on Trip.com" }
+        : category === "airport_transfer"
+          ? { href: partner.airportTransferUrl, cta: "Find an airport transfer on Trip.com" }
+          : undefined;
+  if (!definition?.href || definition.href !== definition.href.trim()) return undefined;
+  try {
+    const url = new URL(definition.href);
+    return url.protocol === "https:"
+      ? { provider: partner.provider, category, href: definition.href, cta: definition.cta, affiliate: true }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function getAccommodationBookingUrl(
+  input: AccommodationBookingUrlInput,
+  partner: AccommodationAffiliatePartner = affiliatePartners.tripCom,
+) {
+  return getBookingAction({ category: "accommodation", ...input }, partner)?.href;
 }
 
 const withParams = (base: string, params: Record<string, string | undefined>) => {
@@ -146,20 +205,22 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
   stableStops.forEach((stop) => {
     const dates = stableStopDateRange(stop, trip);
     if (!dates) return;
-    actions.push({
+    const accommodationUrl = getAccommodationBookingUrl({ stop, dates, travellers: trip.travellers });
+    if (accommodationUrl) actions.push({
       id: `stay-${stop.id}`, category: "accommodation", provider: affiliatePartners.tripCom.provider, title: `Find a stay in ${stop.name}`,
       detail: `${dates.checkIn} to ${dates.checkOut} · ${trip.travellers} traveller${trip.travellers === 1 ? "" : "s"}. Availability and prices are confirmed by Trip.com.`,
-      cta: "Find accommodation on Trip.com", href: getAccommodationBookingUrl({ stop, dates, travellers: trip.travellers }),
-      tripId: trip.id, stopId: stop.id, affiliate: true, livePrice: false,
+      cta: "Find accommodation on Trip.com", href: accommodationUrl,
+      tripId: trip.id, stopId: stop.id, affiliate: true, affiliateCategory: "accommodation", livePrice: false,
     });
     const selectedActivities = trip.brief.selectedPlaces[stop.id] ?? [];
     if ((stop.nights ?? 0) >= 2 && selectedActivities.length) {
+      const tripComActivity = getBookingAction({ category: "activities", trip, stop, dates });
       const activityBase = config.activitiesUrl || "https://www.google.com/search";
       actions.push({
-        id: `activity-${stop.id}`, category: "activity", provider: config.activitiesProvider ?? (config.activitiesUrl ? "activities-partner" : "google"), title: `Check major activities in ${stop.name}`,
+        id: `activity-${stop.id}`, category: "activity", provider: config.activitiesProvider ?? (config.activitiesUrl ? "activities-partner" : tripComActivity?.provider ?? "google"), title: `Check major activities in ${stop.name}`,
         detail: `${selectedActivities.slice(0, 2).join(" · ")}${selectedActivities.length > 2 ? ` · +${selectedActivities.length - 2} more` : ""}. Check dates, opening days and cancellation terms before booking.`,
-        cta: config.activitiesProvider === "viator" ? "Find activities on Viator" : "Check options", href: config.activitiesUrl ?? withParams(activityBase, { q: `${selectedActivities[0]} ${stop.name} official tickets` }),
-        tripId: trip.id, stopId: stop.id, affiliate: Boolean(config.activitiesUrl), livePrice: false,
+        cta: config.activitiesProvider === "viator" ? "Find activities on Viator" : tripComActivity?.cta ?? "Check options", href: config.activitiesUrl ?? tripComActivity?.href ?? withParams(activityBase, { q: `${selectedActivities[0]} ${stop.name} official tickets` }),
+        tripId: trip.id, stopId: stop.id, affiliate: Boolean(config.activitiesUrl || tripComActivity), affiliateCategory: tripComActivity?.category, livePrice: false,
       });
     }
   });
@@ -181,12 +242,13 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
   if (roadLeg && routeCallsForCar && !trip.brief.intent?.hardConstraints.avoidDriving) {
     const from = trip.stops.find((stop) => stop.id === roadLeg.fromStopId);
     const to = trip.stops.find((stop) => stop.id === roadLeg.toStopId);
+    const tripComCarRental = getBookingAction({ category: "car_rental", trip, stop: from });
     const carBase = config.carHireUrl || "https://www.google.com/search";
     actions.push({
-      id: `car-${roadLeg.id}`, category: "car-rental", provider: config.carHireUrl ? "car-hire-partner" : "google", title: `Compare car hire${from ? ` from ${from.name}` : ""}`,
+      id: `car-${roadLeg.id}`, category: "car-rental", provider: config.carHireUrl ? "car-hire-partner" : tripComCarRental?.provider ?? "google", title: `Compare car hire${from ? ` from ${from.name}` : ""}`,
       detail: `${from?.name ?? "Pickup"} → ${to?.name ?? "drop-off"}. Check one-way fees, cross-border permission, insurance and licence rules.`,
-      cta: "Compare car hire", href: withParams(carBase, config.carHireUrl ? { pickup: from?.name, dropoff: to?.name, pickup_date: from?.departureDate ?? undefined, dropoff_date: to?.arrivalDate ?? undefined } : { q: `car hire ${from?.name ?? ""} to ${to?.name ?? ""}` }),
-      tripId: trip.id, stopId: from?.id, affiliate: Boolean(config.carHireUrl), livePrice: false,
+      cta: config.carHireUrl ? "Compare car hire" : tripComCarRental?.cta ?? "Compare car hire", href: config.carHireUrl ? withParams(carBase, { pickup: from?.name, dropoff: to?.name, pickup_date: from?.departureDate ?? undefined, dropoff_date: to?.arrivalDate ?? undefined }) : tripComCarRental?.href ?? withParams(carBase, { q: `car hire ${from?.name ?? ""} to ${to?.name ?? ""}` }),
+      tripId: trip.id, stopId: from?.id, affiliate: Boolean(config.carHireUrl || tripComCarRental), affiliateCategory: "car_rental", livePrice: false,
     });
   }
 

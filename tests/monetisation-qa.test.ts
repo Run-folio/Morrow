@@ -31,9 +31,11 @@ test("accommodation fallbacks are not reported as commercial clicks", () => {
   assert.match(itinerary, /if \(action\.affiliate\) trackEvent\("affiliate_click"/);
 });
 
-test("non-affiliate stay fallbacks are not marked sponsored", () => {
+test("map stay handoffs are attributable Trip.com links with a disclosure", () => {
   const source = readFileSync("components/journey-local-finder.tsx", "utf8");
-  assert.match(source, /rel=\{chosen\.provider === "booking-demand" \? "sponsored noopener noreferrer" : "noopener noreferrer"\}/);
+  assert.match(source, /rel="sponsored noopener noreferrer"/);
+  assert.match(source, /provider: affiliatePartners\.tripCom\.provider, placement: "map_stay_finder"/);
+  assert.match(source, /Partner link · Morrovia may earn a commission at no extra cost to you/);
 });
 
 test("stay ranking does not reference affiliate or commission inputs", () => {

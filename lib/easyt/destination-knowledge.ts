@@ -83,6 +83,7 @@ export type DestinationKnowledge = {
 };
 
 export type DestinationIdentityInput = {
+  canonicalPlaceId?: string;
   id?: string;
   providerId?: string;
   name: string;
@@ -425,7 +426,7 @@ export function createDestinationKnowledgeStore(options: {
   }
 
   const resolveId = (input: DestinationIdentityInput) => {
-    for (const identity of [input.id, input.providerId]) {
+    for (const identity of [input.canonicalPlaceId, input.id, input.providerId]) {
       const resolved = identity ? aliasToId.get(normalise(identity)) : undefined;
       if (resolved) return resolved;
     }

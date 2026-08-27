@@ -1,12 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  canonicalPlaceFactsMatch,
+  canonicalPlaceSuggestionFor,
   regionalBaseSuggestions,
   resolvePlaceMentions,
   resolvePlaceMentionsWithProvider,
   selectPlaceCandidate,
   type PlaceIntelligenceProvider,
 } from "../lib/easyt/place-intelligence.ts";
+import { NIKKO_CANONICAL_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
+
+test("Nikko suggestions and prompt capture converge on one canonical identity", () => {
+  const suggestion = canonicalPlaceSuggestionFor("Nikko", ["Japan"]);
+  const mention = resolvePlaceMentions("Tokyo and Nikko").mentions.find((item) => item.canonicalPlaceId === "nikko");
+
+  assert.ok(suggestion);
+  assert.equal(suggestion.label, "Nikko · Tochigi, Japan");
+  assert.deepEqual({
+    canonicalPlaceId: suggestion.canonicalPlaceId,
+    name: suggestion.name,
+    country: suggestion.country,
+    region: suggestion.region,
+    coordinates: suggestion.coordinates,
+  }, NIKKO_CANONICAL_FIXTURE);
+  assert.equal(mention?.canonicalPlaceId, suggestion.canonicalPlaceId);
+  assert.equal(canonicalPlaceFactsMatch("nikko", { country: "Japan", coordinates: NIKKO_CANONICAL_FIXTURE.coordinates }), true);
+  assert.equal(canonicalPlaceFactsMatch("nikko", { country: "Japan", coordinates: [-66.1568, -16.2902] }), false);
+});
 
 test("deterministic resolution preserves stable identity, order and exact source wording", () => {
   const prompt = "The French Alps and Lake Annecy, then Venice";

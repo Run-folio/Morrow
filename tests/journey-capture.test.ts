@@ -5,8 +5,34 @@ import {
   captureJourneyBriefWithProvider,
 } from "../lib/easyt/journey-capture.ts";
 import type { PlaceIntelligenceProvider } from "../lib/easyt/place-intelligence.ts";
+import { createHomeTripDraft, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
+import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtures/prebeta-place-trip-state.ts";
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
+
+test("homepage capture preserves mixed direct, planning-area, anchor and base-selection geography", () => {
+  const capture = captureJourneyBrief(MIXED_CENTRAL_AMERICA_PROMPT);
+  const draft = createHomeTripDraft({
+    capture,
+    handoffId: "mixed-central-america",
+    datesExplicit: false,
+    startDate: "",
+    endDate: "",
+    travellers: 2,
+    travellersExplicit: true,
+    interests: ["culture", "nature", "hiking"],
+  });
+
+  assert.equal(capture.durationDays, 22);
+  assert.deepEqual(capture.mentions.map(({ canonicalPlaceId, placeType, routability }) => ({ canonicalPlaceId, placeType, routability })), EXPECTED_MIXED_GEOGRAPHY);
+  assert.deepEqual(routableHandoffMentions(capture.mentions).map((mention) => mention.canonicalPlaceId), ["tulum", "antigua-guatemala"]);
+  assert.deepEqual(capture.regions, ["Belize", "Lake Atitlán"]);
+  assert.deepEqual(capture.structuredBrief.interests.map((interest) => interest.value), ["nature", "culture", "hiking"]);
+  assert.equal(capture.structuredBrief.destinations.find((item) => item.canonicalPlaceId === "tikal")?.role, "trip-anchor");
+  assert.equal(draft.brief, MIXED_CENTRAL_AMERICA_PROMPT);
+  assert.deepEqual(draft.interests, ["culture", "nature", "hiking"]);
+  assert.deepEqual(draft.locationMentions, capture.mentions);
+});
 
 test("central Patagonia capture preserves all geography and constraints without creating route-stop identities", () => {
   const capture = captureJourneyBrief(CENTRAL_PROMPT);

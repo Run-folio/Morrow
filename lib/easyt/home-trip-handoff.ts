@@ -11,8 +11,8 @@ export type HomeTripDraft = {
   curatedRoute?: CuratedRouteKnowledge;
   origin?: string;
   originCoordinates?: [number, number];
-  destination?: { id: string; name: string; country: string; coordinates?: [number, number] };
-  destinations?: Array<{ id: string; name: string; country: string; coordinates?: [number, number] }>;
+  destination?: { id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] };
+  destinations?: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] }>;
   locationMentions?: ResolvedPlaceMention[];
   routeHints?: string[];
   regions?: string[];

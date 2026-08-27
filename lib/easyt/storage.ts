@@ -456,12 +456,53 @@ function stableJsonValue(value: unknown): unknown {
   );
 }
 
+function travellerAuthoredTripDocument(trip: EasyTTrip) {
+  const { routeAssessment: _routeAssessment, cascadeStatus: _cascadeStatus, ...brief } = trip.brief;
+  return {
+    schemaVersion: trip.schemaVersion,
+    id: trip.id,
+    ownerId: trip.ownerId,
+    title: trip.title,
+    status: trip.status,
+    archivedFromStatus: trip.archivedFromStatus,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    travellers: trip.travellers,
+    currency: trip.currency,
+    brief,
+    stops: trip.stops.map((stop) => ({
+      id: stop.id,
+      identity: stop.canonicalPlaceId ?? stop.providerId ?? `${stop.name.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`,
+      name: stop.canonicalPlaceId || stop.providerId ? undefined : stop.name,
+      country: stop.canonicalPlaceId || stop.providerId ? undefined : stop.country,
+      order: stop.order,
+      nights: stop.nights,
+    })),
+    createdAt: trip.createdAt,
+  };
+}
+
 /**
- * A recovery is redundant only when the canonical server normalization of its
- * entire durable trip document matches the cloud document. Traveller content,
- * status and createdAt remain significant; owner assignment, updatedAt and
- * stop-reference namespacing are normalized through the repository's own
- * canonicalization function rather than ignored field by field.
+ * Compare the traveller-authored trip state after applying the repository's
+ * canonical owner/ID normalization. Generated legs, itinerary rows, route
+ * assessments and recommendations can be rebuilt from that state and must not
+ * manufacture a second device edit immediately after a successful save.
+ */
+export function tripDocumentsCanonicalEquivalent(
+  localTrip: EasyTTrip,
+  canonicalTrip: EasyTTrip,
+  ownerId = canonicalTrip.ownerId,
+) {
+  if (!ownerId || localTrip.id !== canonicalTrip.id) return false;
+  const normalizedLocal = canonicalTripForOwner(ownerId, localTrip, canonicalTrip.updatedAt);
+  return JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(normalizedLocal)))
+    === JSON.stringify(stableJsonValue(travellerAuthoredTripDocument(canonicalTrip)));
+}
+
+/**
+ * A recovery is redundant only when its traveller-authored state matches the
+ * canonical cloud document. Owner assignment and stop-reference namespacing
+ * are normalized through the repository's own canonicalization function.
  */
 export function tripRecoveryMatchesCanonical(
   recovery: Pick<TripRecoveryRecord, "ownerId" | "tripId" | "trip">,
@@ -472,13 +513,7 @@ export function tripRecoveryMatchesCanonical(
     || recovery.tripId !== canonicalTrip.id
     || recovery.trip.id !== canonicalTrip.id
     || (recovery.trip.ownerId !== null && recovery.trip.ownerId !== canonicalTrip.ownerId)) return false;
-  const normalizedRecovery = canonicalTripForOwner(
-    canonicalTrip.ownerId,
-    recovery.trip,
-    canonicalTrip.updatedAt,
-  );
-  return JSON.stringify(stableJsonValue(normalizedRecovery))
-    === JSON.stringify(stableJsonValue(canonicalTrip));
+  return tripDocumentsCanonicalEquivalent(recovery.trip, canonicalTrip);
 }
 
 function writeTripRecoveryToStorage(

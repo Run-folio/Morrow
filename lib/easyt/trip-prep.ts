@@ -23,6 +23,7 @@ export type TripPrepTask = {
     affiliate?: boolean;
     provider?: string;
     bookingCategory?: BookingReadinessAction["category"];
+    affiliateCategory?: BookingReadinessAction["affiliateCategory"];
     stopId?: string;
     transferId?: string;
     originStopId?: string;
@@ -97,6 +98,7 @@ function bookingTask(action: BookingReadinessAction, status: TripPrepTaskStatus)
       affiliate: action.affiliate,
       provider: action.provider,
       bookingCategory: action.category,
+      affiliateCategory: action.affiliateCategory,
       stopId: action.stopId,
       transferId: action.transferId,
       originStopId: action.originStopId,

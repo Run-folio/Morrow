@@ -6,6 +6,7 @@ test("Trip.com accommodation CTAs preserve sponsored new-tab protections and aff
   const readiness = readFileSync("components/journey-booking-readiness.tsx", "utf8");
   const prep = readFileSync("components/journey-trip-prep-accommodation.tsx", "utf8");
   const itinerary = readFileSync("components/journey-itinerary-accommodation.tsx", "utf8");
+  const mapStayFinder = readFileSync("components/journey-local-finder.tsx", "utf8");
 
   for (const source of [readiness, prep, itinerary]) {
     assert.match(source, /target="_blank" rel=\{action\.affiliate \? "sponsored noopener noreferrer" : "noopener noreferrer"\}/);
@@ -14,4 +15,7 @@ test("Trip.com accommodation CTAs preserve sponsored new-tab protections and aff
   assert.match(itinerary, /trackEvent\("affiliate_click", \{ category: "accommodation", provider: action\.provider, trip_id: trip\.id, stop_id: stop\.id, placement: "itinerary_accommodation", workspace_view: "itinerary" \}\)/);
   assert.match(prep, /\}>\{action\.cta\} <ArrowUpRight/);
   assert.match(itinerary, /\}>\{action\.cta\} <ArrowUpRight/);
+  assert.match(mapStayFinder, /getAccommodationBookingUrl\(/);
+  assert.match(mapStayFinder, /target="_blank" rel="sponsored noopener noreferrer"/);
+  assert.match(mapStayFinder, /provider: affiliatePartners\.tripCom\.provider, placement: "map_stay_finder"/);
 });

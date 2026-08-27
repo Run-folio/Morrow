@@ -50,7 +50,7 @@ function referenceHeavyTrip(): EasyTTrip {
       },
     },
     stops: [
-      { id: "alpha", order: 0, name: "Alpha", country: "A", latitude: 1, longitude: 1, arrivalDate: "2026-10-01", departureDate: "2026-10-03", nights: 2 },
+      { id: "alpha", order: 0, name: "Alpha", country: "A", canonicalPlaceId: "place-alpha", latitude: 1, longitude: 1, arrivalDate: "2026-10-01", departureDate: "2026-10-03", nights: 2 },
       { id: "beta", order: 1, name: "Beta", country: "B", latitude: 2, longitude: 2, arrivalDate: "2026-10-03", departureDate: "2026-10-06", nights: 3 },
     ],
     legs: [{ id: "leg", fromStopId: "alpha", toStopId: "beta", mode: "train", distanceKm: 100, durationMinutes: 120, provider: null, routeMetadata: { stopId: "beta", stopIds: ["alpha", "beta"] } }],
@@ -67,6 +67,7 @@ test("promotion remaps every durable nested stop reference and remains JSON-idem
   const beta = "trip-remap-stop-beta";
   assert.deepEqual(tripStopReferenceInvariantIssues(canonical), []);
   assert.deepEqual(canonical.brief.nightAllocations, { [alpha]: 2, [beta]: 3 });
+  assert.equal(canonical.stops[0]?.canonicalPlaceId, "place-alpha");
   assert.equal(canonical.brief.nightAllocation?.stops[0]?.stopId, alpha);
   assert.deepEqual(canonical.brief.scheduleLocks, { stopIds: [alpha], arrivalDates: { [beta]: "2026-10-04" } });
   assert.deepEqual(canonical.brief.intent?.hardConstraints.mustSeeStopIds, [alpha]);
@@ -93,7 +94,7 @@ test("builder edit round-trip preserves canonical nights, locks, intent and rout
   const rebuilt = tripFromBuilder({
     id: canonical.id,
     origin: canonical.brief.origin,
-    stops: canonical.stops.map((stop) => ({ id: stop.id, name: stop.name, country: stop.country, coordinates: [stop.longitude ?? 0, stop.latitude ?? 0] })),
+    stops: canonical.stops.map((stop) => ({ id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, coordinates: [stop.longitude ?? 0, stop.latitude ?? 0] })),
     startDate: canonical.startDate,
     endDate: canonical.endDate,
     picks: canonical.brief.selectedPlaces,
@@ -113,5 +114,6 @@ test("builder edit round-trip preserves canonical nights, locks, intent and rout
   assert.deepEqual(rebuilt.brief.scheduleLocks, canonical.brief.scheduleLocks);
   assert.deepEqual(rebuilt.brief.intent, canonical.brief.intent);
   assert.deepEqual(rebuilt.brief.routeAssessment, canonical.brief.routeAssessment);
+  assert.equal(rebuilt.stops[0]?.canonicalPlaceId, "place-alpha");
   assert.deepEqual(tripStopReferenceInvariantIssues(rebuilt), []);
 });

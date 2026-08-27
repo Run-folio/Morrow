@@ -15,7 +15,6 @@ type LocalPlace = {
   category: string;
   coordinates: [number, number];
   mapsUrl: string;
-  bookingUrl: string | undefined;
   distanceKm: number;
   operational: boolean;
   availability: "available" | "check";
@@ -91,7 +90,6 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
         mapsUrl: china
           ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
           : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
-        bookingUrl: kind === "stay" ? `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}` : undefined,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
         operational: true as boolean,
         availability: "check" as "check",
@@ -139,7 +137,6 @@ async function googleOperationalStays(country: string, latitude: number, longitu
         category: "lodging",
         coordinates: [lon!, lat!] as [number, number],
         mapsUrl: place.googleMapsUri ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
-        bookingUrl: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}`,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
         operational: true,
         availability: "check" as const,
@@ -211,7 +208,6 @@ export async function GET(request: NextRequest) {
           mapsUrl: china
             ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
             : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
-          bookingUrl: kind === "stay" ? `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(searchQuery)}` : undefined,
           distanceKm: distanceKm(latitude, longitude, lat!, lon!),
           operational: true as boolean,
           availability: "check" as "check",

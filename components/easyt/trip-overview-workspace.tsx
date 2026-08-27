@@ -21,7 +21,7 @@ import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommoda
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth, tripHealthSummary } from "@/lib/easyt/review";
 import { deriveItineraryCoverage, formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
-import { omioBookingActionForLeg } from "@/lib/easyt/booking-readiness";
+import { getBookingAction, omioBookingActionForLeg } from "@/lib/easyt/booking-readiness";
 import { trackEvent } from "@/lib/analytics";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
@@ -46,6 +46,8 @@ type OverviewAction = {
   transferId?: string;
   originStopId?: string;
   destinationStopId?: string;
+  provider?: string;
+  affiliateCategory?: string;
 };
 
 type OverviewIssue = {
@@ -81,6 +83,7 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
   const itineraryComplete = coverage.state === "complete";
   const accommodation = accommodationProgress(trip);
   const missingStay = accommodation.stops.find((stop) => !stayBookingForStop(trip, stop));
+  const missingStayAction = missingStay ? getBookingAction({ category: "accommodation", trip, stop: missingStay }) : undefined;
   const issues = openHealthIssues(trip).filter((issue) => issue.severity !== "info");
   const critical = issues.find((issue) => issue.severity === "critical");
   const prep = trip.brief.checklist ?? [];
@@ -99,6 +102,18 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     label: "Continue itinerary",
     href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
     kind: "itinerary",
+  };
+  if (missingStay && missingStayAction) return {
+    title: `Find accommodation in ${missingStay.name}`,
+    detail: `${accommodation.stops.length - accommodation.sortedCount} of ${accommodation.stops.length} overnight ${accommodation.stops.length === 1 ? "stop needs" : "stops need"} accommodation.`,
+    label: missingStayAction.cta,
+    href: missingStayAction.href,
+    kind: "stay",
+    stopId: missingStay.id,
+    external: true,
+    affiliate: true,
+    provider: missingStayAction.provider,
+    affiliateCategory: missingStayAction.category,
   };
   if (missingStay) return {
     title: `Find a stay in ${missingStay.name}`,
@@ -133,6 +148,8 @@ export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
     kind: "transport",
     external: true,
     affiliate: true,
+    provider: omioAction.provider,
+    affiliateCategory: "transport",
     transferId: omioAction.transferId,
     originStopId: omioAction.originStopId,
     destinationStopId: omioAction.destinationStopId,
@@ -215,7 +232,7 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
             <span className={styles.actionIcon}><ActionIcon aria-hidden="true" /></span>
             <h2>{action.title}</h2>
             <span>{action.detail}</span>
-            {action.external ? <a href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${action.label}, opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId })}>{action.label}<ExternalLink aria-hidden="true" /></a> : <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>}
+            {action.external ? <a href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={action.provider === "omio" ? `${action.label}, opens Omio in a new tab` : action.provider === "trip.com" ? `${action.label}, opens Trip.com in a new tab` : undefined} onClick={() => { if (action.provider === "omio") trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId }); else if (action.affiliate && action.provider && action.affiliateCategory) trackEvent("affiliate_click", { category: action.affiliateCategory, provider: action.provider, trip_id: trip.id, stop_id: action.stopId, placement: "overview_next_action", workspace_view: "overview" }); }}>{action.label}<ExternalLink aria-hidden="true" /></a> : <Link href={action.href}>{action.label}<ChevronRight aria-hidden="true" /></Link>}
             {action.affiliate ? <small className={styles.affiliateDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
           </div>
           <ResilientImage

@@ -184,6 +184,17 @@ export type RegionalBaseSuggestion = {
   provenance: PlaceProvenance[];
 };
 
+export type CanonicalPlaceSuggestion = {
+  canonicalPlaceId: string;
+  name: string;
+  label: string;
+  country: string;
+  region?: string;
+  placeType: PlaceType;
+  coordinates?: [number, number];
+  provenance: PlaceProvenance[];
+};
+
 type RawCatalogMatch = { entry: PlaceCatalogEntry; alias: string; start: number; end: number; sourceText: string };
 
 const ORDER_LANGUAGE = /(?:→|->|\bthen\b|\bnext\b|\bvia\b|\bthrough\b|\bto\b|\bfly(?:ing)? into\b|\bfrom\b.+\bto\b|\bstart(?:ing)?\b.+\b(?:finish|end)(?:ing)?\b)/i;
@@ -279,6 +290,71 @@ function catalogCandidate(entry: PlaceCatalogEntry, source: PlaceProvenance, con
       : structuredConfidence(source, "The phrase matches Morrovia's curated canonical place data."),
     provenance: [source],
   };
+}
+
+function displayRegion(parentRegionId?: string) {
+  return parentRegionId
+    ?.split("-")
+    .map((part) => part ? `${part[0]?.toLocaleUpperCase()}${part.slice(1)}` : part)
+    .join(" ");
+}
+
+/**
+ * Morrovia-authored suggestions are identities, not search strings. Ambiguous
+ * or non-routable phrases stay out of the suggestion rail until the existing
+ * Place Intelligence boundary can identify one canonical destination.
+ */
+export function canonicalPlaceSuggestionFor(
+  phrase: string,
+  contextCountries: string[] = [],
+): CanonicalPlaceSuggestion | null {
+  const direct = findCatalogPlacesByPhrase(phrase).filter((entry) =>
+    entry.routability === "direct_destination" && entry.parentCountries.length === 1);
+  const context = new Set(contextCountries.map(normalizePlacePhrase));
+  const contextual = direct.filter((entry) => entry.parentCountries.some((country) => context.has(normalizePlacePhrase(country))));
+  const entry = contextual.length === 1 ? contextual[0] : direct.length === 1 ? direct[0] : undefined;
+  if (!entry) return null;
+  const alias = [entry.canonicalName, ...entry.aliases]
+    .find((candidate) => normalizePlacePhrase(candidate) === normalizePlacePhrase(phrase))
+    ?? entry.canonicalName;
+  const source = sourceFromCatalog(entry, alias);
+  const country = entry.parentCountries[0];
+  const region = displayRegion(entry.parentRegionId);
+  return {
+    canonicalPlaceId: entry.canonicalPlaceId,
+    name: entry.canonicalName,
+    label: `${entry.canonicalName}${region ? ` · ${region}` : ""}, ${country}`,
+    country,
+    region,
+    placeType: entry.placeType,
+    coordinates: entry.coordinates ? [...entry.coordinates] as [number, number] : undefined,
+    provenance: [source],
+  };
+}
+
+function coordinateDistanceKm(left: [number, number], right: [number, number]) {
+  const radians = Math.PI / 180;
+  const [leftLon, leftLat] = left;
+  const [rightLon, rightLat] = right;
+  const deltaLat = (rightLat - leftLat) * radians;
+  const deltaLon = (rightLon - leftLon) * radians;
+  const area = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(leftLat * radians) * Math.cos(rightLat * radians) * Math.sin(deltaLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(area), Math.sqrt(1 - area));
+}
+
+/** Reject provider enrichment that contradicts an already canonical identity. */
+export function canonicalPlaceFactsMatch(
+  canonicalPlaceId: string,
+  facts: { country?: string; coordinates?: [number, number] },
+) {
+  const entry = findCatalogPlaceById(canonicalPlaceId);
+  if (!entry) return true;
+  if (facts.country && entry.parentCountries.length
+    && !entry.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(facts.country ?? ""))) return false;
+  if (entry.coordinates && facts.coordinates
+    && coordinateDistanceKm([...entry.coordinates] as [number, number], facts.coordinates) > 200) return false;
+  return true;
 }
 
 function candidateToMention(

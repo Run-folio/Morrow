@@ -210,7 +210,8 @@ function extractedInterests(prompt: string) {
     ["food", /\b(food|eating|meals|restaurants|cuisine)\b/],
     ["nature", /\b(nature|outdoors|wildlife)\b/],
     ["culture", /\b(culture|museums?|heritage|history)\b/],
-    ["mountains", /\b(mountains?|alps|hiking|trekking)\b/],
+    ["mountains", /\b(mountains?|alps)\b/],
+    ["hiking", /\b(hiking|trekking)\b/],
     ["coast", /\b(coasts?|beaches?|seaside|ocean)\b/],
   ].flatMap(([value, pattern]) => (pattern as RegExp).test(text) ? [value as string] : []);
 }

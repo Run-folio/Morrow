@@ -16,8 +16,8 @@ const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlan
   const from = stops[index];
   const curated = curatedConnectionFor(trip.brief.curatedRoute, from.id, stop.id);
   const estimate = estimateLegForConstraints(
-    { name: from.name, country: from.country, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : undefined },
-    { id: stop.id, name: stop.name, country: stop.country, coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined },
+    { name: from.name, country: from.country, canonicalPlaceId: from.canonicalPlaceId, coordinates: from.longitude !== null && from.latitude !== null ? [from.longitude, from.latitude] : undefined },
+    { id: stop.id, name: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId, coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined },
     constraints,
   );
   return {
@@ -73,6 +73,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
       id: stop.id,
       name: stop.name,
       country: stop.country,
+      canonicalPlaceId: stop.canonicalPlaceId,
       coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [number, number] : undefined,
     })),
     picks: trip.brief.selectedPlaces,

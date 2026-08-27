@@ -76,7 +76,7 @@ source_event    = affiliate_click | affiliate_link_clicked
 partner         = canonical partner taxonomy
 placement       = canonical placement taxonomy
 category        = accommodation | connectivity | transport | ground_transport |
-                  activity | car_rental | flight | other
+                  activities | car_rental | airport_transfer | flight | other
 trip_id?        = opaque product ID
 stop_id?        = opaque product ID
 transfer_id?    = opaque product ID

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { bookingDemandHandoffUrl } from "@/lib/easyt/accommodation";
 
 type BookingSearchResult = {
   id?: number | string;
-  url?: string;
-  deep_link_url?: string;
   currency?: { accommodation?: string; booker?: string } | string;
   price?: { total?: number; display?: { accommodation_currency?: number; booker_currency?: number; value?: number }; base?: number };
   products?: Array<{ policies?: { cancellation?: { type?: string; free_cancellation_until?: string | null } } }>;
@@ -13,7 +10,6 @@ type BookingSearchResult = {
 type BookingDetailsResult = {
   id?: number | string;
   name?: Record<string, string>;
-  url?: string | { web?: string; app?: string };
   location?: { address?: Record<string, string>; coordinates?: { latitude?: number; longitude?: number } };
   rating?: { review_score?: number | null; stars?: number | null };
 };
@@ -90,15 +86,9 @@ export async function GET(request: NextRequest) {
       const detail = details.get(String(result.id));
       const name = localized(detail?.name);
       const coordinates = detail?.location?.coordinates;
-      const bookingUrl = bookingDemandHandoffUrl({
-        deepLinkUrl: result.deep_link_url,
-        searchUrl: result.url,
-        detailWebUrl: typeof detail?.url === "object" ? detail.url.web : undefined,
-        detailUrl: typeof detail?.url === "string" ? detail.url : undefined,
-      });
       const propertyLatitude = coordinates?.latitude;
       const propertyLongitude = coordinates?.longitude;
-      if (!name || !bookingUrl || !Number.isFinite(propertyLatitude) || !Number.isFinite(propertyLongitude)) return [];
+      if (!name || !Number.isFinite(propertyLatitude) || !Number.isFinite(propertyLongitude)) return [];
       const product = result.products?.[0];
       const displayPrice = result.price?.display?.booker_currency ?? result.price?.display?.accommodation_currency ?? result.price?.total ?? result.price?.base;
       const resultCurrency = typeof result.currency === "string" ? result.currency : result.currency?.booker || result.currency?.accommodation || currency;
@@ -106,11 +96,10 @@ export async function GET(request: NextRequest) {
         id: `booking-${result.id}`,
         bookingAccommodationId: String(result.id),
         name,
-        address: localized(detail?.location?.address) || "Address available on Booking.com",
+        address: localized(detail?.location?.address) || "Address provided by accommodation search",
         category: "available stay",
         coordinates: [propertyLongitude!, propertyLatitude!] as [number, number],
         mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name}, ${localized(detail?.location?.address) || ""}`)}`,
-        bookingUrl,
         availability: "available" as const,
         provider: "booking-demand" as const,
         rating: detail?.rating?.review_score ?? undefined,

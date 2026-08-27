@@ -62,6 +62,7 @@ export type NightAllocationStopInput = {
   id: string;
   name: string;
   country?: string;
+  canonicalPlaceId?: string;
   providerId?: string;
   intent?: "place" | "landmark";
   required?: boolean;

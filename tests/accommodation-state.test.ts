@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accommodationDatesReady, accommodationProgress, bookingDemandHandoffUrl, stayBookingForStop } from "../lib/easyt/accommodation.ts";
+import { accommodationDatesReady, accommodationProgress, stayBookingForStop } from "../lib/easyt/accommodation.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -38,17 +38,4 @@ test("positive-night stops with missing or invalid dates remain in readiness", (
   assert.equal(progress.complete, false);
   assert.equal(accommodationDatesReady(source.stops[0]), false);
   assert.equal(accommodationDatesReady(source.stops[1]), false);
-});
-
-test("Booking.com Demand handoffs prefer attributable deep links and reject unsafe URLs", () => {
-  assert.equal(bookingDemandHandoffUrl({
-    deepLinkUrl: "https://booking.example/affiliate-property?aid=123",
-    searchUrl: "https://booking.example/search-property",
-    detailWebUrl: "https://booking.example/generic-property",
-  }), "https://booking.example/affiliate-property?aid=123");
-  assert.equal(bookingDemandHandoffUrl({
-    deepLinkUrl: "javascript:alert(1)",
-    detailWebUrl: "https://booking.example/safe-property",
-  }), "https://booking.example/safe-property");
-  assert.equal(bookingDemandHandoffUrl({ deepLinkUrl: "not a URL", detailUrl: "data:text/html,unsafe" }), undefined);
 });

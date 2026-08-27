@@ -31,6 +31,7 @@ import {
   type RouteCandidateSelection,
   type RouteScoringPreferences,
 } from "./route-scoring.ts";
+import { canonicalPlaceFactsMatch } from "./place-intelligence.ts";
 
 export type PlannerPlace = {
   title: string;
@@ -48,6 +49,7 @@ export type PlannerStop = {
   id: string;
   name: string;
   country: string;
+  canonicalPlaceId?: string;
   countryCode?: string;
   region?: string;
   providerId?: string;
@@ -75,6 +77,7 @@ export type DestinationIntegrityIssue = {
   neighbouringStopId: string;
   distanceKm: number;
   country: string;
+  reason: "canonical-mismatch" | "domestic-outlier";
 };
 
 export type DecisionAlternative = {
@@ -172,14 +175,27 @@ export function haversineKm(a?: [number, number], b?: [number, number]) {
  * always a bad geocode, not a normal domestic flight. This deliberately does
  * not judge international legs, preserving valid long-haul trips.
  */
-export function findDestinationIntegrityIssues(stops: Array<Pick<PlannerStop, "id" | "country" | "coordinates">>) {
+export function findDestinationIntegrityIssues(stops: Array<Pick<PlannerStop, "id" | "country" | "coordinates" | "canonicalPlaceId">>) {
   const issues: DestinationIntegrityIssue[] = [];
+  stops.forEach((stop, index) => {
+    if (!stop.canonicalPlaceId || canonicalPlaceFactsMatch(stop.canonicalPlaceId, stop)) return;
+    const neighbour = stops[index > 0 ? index - 1 : index + 1] ?? stop;
+    issues.push({
+      stopId: stop.id,
+      neighbouringStopId: neighbour.id,
+      distanceKm: haversineKm(stop.coordinates, neighbour.coordinates) ?? 0,
+      country: stop.country,
+      reason: "canonical-mismatch",
+    });
+  });
   for (let index = 1; index < stops.length; index += 1) {
     const previous = stops[index - 1];
     const current = stops[index];
     const distanceKm = haversineKm(previous.coordinates, current.coordinates);
     if (!distanceKm || previous.country.trim().toLocaleLowerCase() !== current.country.trim().toLocaleLowerCase() || distanceKm < 3000) continue;
-    issues.push({ stopId: current.id, neighbouringStopId: previous.id, distanceKm, country: current.country });
+    if (!issues.some((issue) => issue.stopId === current.id)) {
+      issues.push({ stopId: current.id, neighbouringStopId: previous.id, distanceKm, country: current.country, reason: "domestic-outlier" });
+    }
   }
   return issues;
 }
@@ -227,6 +243,15 @@ export function estimateLeg(
   const sameCountry = "country" in from && from.country.toLowerCase() === to.country.toLowerCase();
   const international = "country" in from ? !sameCountry : null;
   const known = knowledge.findTransfer(from, to);
+  const canonicalMismatch = !canonicalPlaceFactsMatch(to.canonicalPlaceId ?? "", to)
+    || ("canonicalPlaceId" in from && !canonicalPlaceFactsMatch(from.canonicalPlaceId ?? "", from));
+  if (canonicalMismatch) {
+    return withLegPlanningConfidence({
+      mode: "unknown", distanceKm, durationMinutes: null, label: `${from.name} → ${to.name}`,
+      note: `Check the saved place identity before trusting this route. Its country or coordinates contradict Morrovia's canonical place facts.`,
+      confidence: "unconfirmed",
+    });
+  }
   const suspiciousIdentity = sameCountry && distanceKm !== null && distanceKm >= 3000;
   if (suspiciousIdentity) {
     return withLegPlanningConfidence({

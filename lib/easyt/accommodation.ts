@@ -2,28 +2,6 @@ import type { EasyTTrip, TripBooking, TripStop } from "./trip";
 import { stableStopDateRange } from "./trip-facts.ts";
 import { parseIsoDate } from "./trip-lifecycle.ts";
 
-function safeExternalUrl(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** Prefer the search response's attributable handoff and never expose an unsafe provider URL. */
-export function bookingDemandHandoffUrl(input: {
-  deepLinkUrl?: string;
-  searchUrl?: string;
-  detailWebUrl?: string;
-  detailUrl?: string;
-}): string | undefined {
-  return [input.deepLinkUrl, input.searchUrl, input.detailWebUrl, input.detailUrl]
-    .map(safeExternalUrl)
-    .find(Boolean);
-}
-
 /**
  * Shared derived accommodation state. A saved stay remains a booking already
  * held on the canonical trip document; UI surfaces must not maintain a second

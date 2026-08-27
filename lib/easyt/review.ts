@@ -70,6 +70,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     id: stop.id,
     name: stop.name,
     country: stop.country,
+    canonicalPlaceId: stop.canonicalPlaceId,
     countryCode: stop.countryCode,
     region: stop.region,
     providerId: stop.providerId,
@@ -208,6 +209,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   const destinationIntegrityIssues = findDestinationIntegrityIssues(trip.stops.map((stop) => ({
     id: stop.id,
     country: stop.country,
+    canonicalPlaceId: stop.canonicalPlaceId,
     coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [number, number] : undefined,
   })));
   destinationIntegrityIssues.forEach((issue) => {
@@ -217,7 +219,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       rule: "destination-identity",
       severity: "critical",
       message: `Check ${stop?.name ?? "this destination"} before trusting the route.`,
-      evidence: `${stop?.name ?? "This stop"} and ${neighbour?.name ?? "the previous stop"} are both set in ${issue.country}, but their saved coordinates are ${issue.distanceKm.toLocaleString()} km apart. Confirm the intended place before using travel estimates.`,
+      evidence: issue.reason === "canonical-mismatch"
+        ? `${stop?.name ?? "This stop"} has saved country or coordinate facts that contradict its canonical place identity. Confirm the intended place before using travel estimates.`
+        : `${stop?.name ?? "This stop"} and ${neighbour?.name ?? "the previous stop"} are both set in ${issue.country}, but their saved coordinates are ${issue.distanceKm.toLocaleString()} km apart. Confirm the intended place before using travel estimates.`,
       affectedDays: trip.planItems.filter((item) => item.stopId === issue.stopId).map((item) => item.dayNumber),
       confidence: "medium",
       proposedChange: null,
@@ -511,7 +515,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     .forEach((issue) => {
       const canonicalPlaceId = issue.canonicalPlaceId;
       const affectedStopIds = canonicalPlaceId
-        ? new Set(trip.stops.filter((stop) => stop.id === canonicalPlaceId || stop.providerId === canonicalPlaceId).map((stop) => stop.id))
+        ? new Set(trip.stops.filter((stop) => stop.id === canonicalPlaceId || stop.canonicalPlaceId === canonicalPlaceId || stop.providerId === canonicalPlaceId).map((stop) => stop.id))
         : new Set<string>();
       const codeToken = stablePlaceIssueToken(issue.code) || "place-issue";
       const mentionToken = stablePlaceIssueToken(issue.mentionId) || "mention";

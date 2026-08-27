@@ -70,6 +70,13 @@ test("homepage handoff presents a concise interpreted review without changing di
     "the global footer containing Back should stay out of homepage Step 1");
   assert.match(builder, /builder-route-watercolor\.png" width=\{1881\} height=\{836\} sizes=/,
     "the lower route illustration should remain decorative");
+  assert.ok(builder.indexOf("className={styles.handoffIllustration}") > builder.indexOf("className={styles.handoffActions}"),
+    "the decorative illustration should follow the Step 1 action area");
+  const page = readFileSync(new URL("../app/journey/new/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /<MorroviaFooter \/>/,
+    "the builder should end with the normal Morrovia footer");
+  assert.match(builder, /className=\{styles\.handoffContext\}><AlertTriangle/,
+    "blocking context should have a visible icon rather than relying on red text");
 
   assert.match(styles, /\.homepageHandoff \.handoffOrigin/);
   assert.match(styles, /\.homepageHandoff \.routeCheck/);

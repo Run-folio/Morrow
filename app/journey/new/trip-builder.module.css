@@ -1152,3 +1152,71 @@
   .timingWarningContent { padding-inline: 10px; }
   .wizardFoot .footRight { gap: 8px; }
 }
+
+/* Step 1 ends as a compact review workspace. The action row completes the
+   task; the landscape is a short page-ending vignette rather than another
+   planning card. */
+.homepageHandoff .pane { padding: 24px 48px 0; }
+.homepageHandoff .stack,
+.homepageHandoff .tripUnderstood { gap: 10px; }
+.homepageHandoff .stepHero { margin-bottom: 6px; }
+.homepageHandoff .placesSection { gap: 9px; padding: 13px 18px; }
+.homepageHandoff .handoffOrigin { min-height: 62px; }
+.homepageHandoff .tripUnderstood .detailsToggle { min-height: 64px; padding: 12px 18px; }
+.homepageHandoff .routeCheck { min-height: 70px; padding: 12px 18px; }
+.homepageHandoff .pickedPreferences { margin-block: 1px; }
+.homepageHandoff .handoffActions {
+  min-height: 74px;
+  justify-content: space-between;
+  margin-inline: -48px;
+  padding: 11px 32px;
+}
+.handoffActionRight { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 14px; }
+.handoffContext {
+  display: inline-flex;
+  max-width: 310px;
+  align-items: center;
+  gap: 7px;
+  color: var(--morrovia-ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: right;
+}
+.handoffContext svg { width: 16px; height: 16px; flex: none; color: var(--morrovia-signal); }
+.homepageHandoff .handoffIllustration {
+  width: 100%;
+  height: 112px;
+  margin: 0;
+  border-top: 1px solid var(--line);
+  object-fit: cover;
+  object-position: center 67%;
+  opacity: .76;
+}
+
+@media(max-width:1024px){
+  .homepageHandoff .pane { padding-inline: 32px; }
+  .homepageHandoff .handoffActions { margin-inline: -32px; padding-inline: 24px; }
+}
+
+@media(max-width:840px){
+  .homepageHandoff .pane { padding: 24px 24px 0; }
+  .homepageHandoff .handoffActions { margin-inline: -24px; }
+}
+
+@media(max-width:700px){
+  .homepageHandoff .handoffActions { align-items: stretch; flex-direction: column; gap: 10px; }
+  .homepageHandoff .handoffActionRight { width: 100%; }
+  .homepageHandoff .handoffContext { margin-right: auto; text-align: left; }
+  .homepageHandoff .handoffIllustration { height: 92px; }
+}
+
+@media(max-width:520px){
+  .homepageHandoff .pane { padding: 20px 16px 0; }
+  .homepageHandoff .placesSection { padding: 12px 14px; }
+  .homepageHandoff .tripUnderstood .detailsToggle { min-height: 60px; padding-inline: 14px; }
+  .homepageHandoff .handoffActions { margin-inline: -16px; padding: 14px 16px; }
+  .homepageHandoff .handoffActionRight { align-items: stretch; flex-direction: column; }
+  .homepageHandoff .handoffContext { max-width: none; }
+  .homepageHandoff .handoffIllustration { height: 78px; }
+}

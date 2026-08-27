@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isWithinDestinationRadius, needsDestinationConfirmation } from "../lib/easyt/destination-resolution.ts";
 import { estimateLeg, findDestinationIntegrityIssues } from "../lib/easyt/planner.ts";
+import { NIKKO_CANONICAL_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
 
 const tokyo = { id: "tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895] as [number, number] };
 const kanazawa = { id: "kanazawa", name: "Kanazawa", country: "Japan", coordinates: [136.6562, 36.5613] as [number, number] };
-const nikko = { id: "nikko", name: "Nikko", country: "Japan", coordinates: [139.6982, 36.7581] as [number, number] };
+const nikko = { id: "nikko-stop", ...NIKKO_CANONICAL_FIXTURE };
 
 test("Tokyo to Nikko remains a domestic, usable routing estimate", () => {
   const leg = estimateLeg(tokyo, nikko);
@@ -37,11 +38,21 @@ test("a valid long international transfer remains supported", () => {
 });
 
 test("a same-country cross-continent outlier is unconfirmed instead of routed normally", () => {
-  const incorrectNikko = { id: "nikko", name: "Nikko", country: "Japan", coordinates: [-66.1568, -16.2902] as [number, number] };
+  const incorrectNikko = { id: "nikko-stop", canonicalPlaceId: "nikko", name: "Nikko", country: "Japan", coordinates: [-66.1568, -16.2902] as [number, number] };
   const issues = findDestinationIntegrityIssues([tokyo, incorrectNikko]);
   assert.equal(issues.length, 1);
-  assert.equal(issues[0]?.stopId, "nikko");
+  assert.equal(issues[0]?.stopId, "nikko-stop");
+  assert.equal(issues[0]?.reason, "canonical-mismatch");
   const leg = estimateLeg(tokyo, incorrectNikko);
   assert.equal(leg.durationMinutes, null);
   assert.equal(leg.confidence, "unconfirmed");
+  assert.equal(leg.mode, "unknown");
+});
+
+test("canonical identity contradictions fail closed even when the saved country also changed", () => {
+  const corrupted = { id: "nikko-stop", canonicalPlaceId: "nikko", name: "Nikko", country: "Argentina", coordinates: [-68.303, -54.8019] as [number, number] };
+  const leg = estimateLeg(tokyo, corrupted);
+  assert.equal(leg.durationMinutes, null);
+  assert.equal(leg.confidence, "unconfirmed");
+  assert.equal(leg.mode, "unknown");
 });

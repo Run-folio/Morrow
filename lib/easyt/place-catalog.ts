@@ -59,6 +59,7 @@ export type PlaceCatalogMatch = {
 type EntryOptions = {
   parentRegionId?: string;
   ambiguityGroup?: string;
+  coordinates?: readonly [number, number];
 };
 
 const REVIEWED_AT = "2026-08-23";
@@ -152,6 +153,8 @@ const countries: PlaceCatalogEntry[] = [
   country("zimbabwe", "Zimbabwe"),
   country("canada", "Canada"),
   country("mexico", "Mexico", ["México"]),
+  country("guatemala", "Guatemala"),
+  country("belize", "Belize"),
   country("australia", "Australia"),
   country("singapore", "Singapore"),
 ];
@@ -159,6 +162,7 @@ const countries: PlaceCatalogEntry[] = [
 const legacyPlaces: PlaceCatalogEntry[] = [
   city("london", "London", "United Kingdom", ["Londres", "LHR", "LGW"]),
   city("tokyo", "Tokyo", "Japan", ["Tokio", "HND", "NRT"]),
+  city("nikko", "Nikko", "Japan", ["Nikkō", "Nikko, Tochigi"], { parentRegionId: "tochigi", coordinates: [139.6982, 36.7581] }),
   city("seoul", "Seoul", "South Korea", ["Seúl", "SEL", "ICN"]),
   city("busan", "Busan", "South Korea", ["Pusan"]),
   city("kyoto", "Kyoto", "Japan", ["Kioto"]),
@@ -243,6 +247,7 @@ const planningAreas: PlaceCatalogEntry[] = [
   place("faroe-islands", "Faroe Islands", ["Faroes", "Føroyar"], "archipelago", "needs_base_selection", ["Denmark"]),
   place("tuscany", "Tuscany", ["Toscana"], "region", "needs_base_selection", ["Italy"]),
   place("lake-annecy", "Lake Annecy", ["Lac d'Annecy", "Lac de Annecy"], "natural_area", "anchor_or_poi", ["France"], { parentRegionId: "french-alps" }),
+  place("lake-atitlan", "Lake Atitlán", ["Lake Atitlan", "Lago de Atitlán", "Lago de Atitlan"], "natural_area", "needs_base_selection", ["Guatemala"], { parentRegionId: "solola", coordinates: [-91.186, 14.69] }),
   place("southeast-asia", "Southeast Asia", ["South East Asia", "Asia Sudoriental", "Sudeste Asiático", "Sudeste Asiatico"], "macro_region", "planning_area", ["Brunei", "Cambodia", "Indonesia", "Laos", "Malaysia", "Myanmar", "Philippines", "Singapore", "Thailand", "Timor-Leste", "Vietnam"]),
 ];
 
@@ -318,6 +323,9 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   city("montreal", "Montreal", "Canada", ["Montréal"]),
   city("quebec-city", "Quebec City", "Canada", ["Québec City", "Québec"]),
   city("mexico-city", "Mexico City", "Mexico", ["Ciudad de México", "CDMX"]),
+  city("tulum", "Tulum", "Mexico", [], { parentRegionId: "quintana-roo", coordinates: [-87.4654, 20.2114] }),
+  city("antigua-guatemala", "Antigua Guatemala", "Guatemala", ["Antigua, Guatemala"], { parentRegionId: "sacatepequez", coordinates: [-90.7339, 14.5586] }),
+  place("tikal", "Tikal", [], "landmark", "anchor_or_poi", ["Guatemala"], { parentRegionId: "peten", coordinates: [-89.6237, 17.222] }),
   city("cancun", "Cancún", "Mexico", ["Cancun"]),
   city("dubrovnik", "Dubrovnik", "Croatia"),
   town("shkoder", "Shkodër", "Albania", ["Shkoder"]),

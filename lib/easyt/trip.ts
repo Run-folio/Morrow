@@ -102,6 +102,8 @@ export type TripStop = {
   order: number;
   name: string;
   country: string;
+  /** Stable geographic identity; route-stop `id` remains operational only. */
+  canonicalPlaceId?: string;
   countryCode?: string;
   region?: string;
   providerId?: string;
@@ -229,6 +231,8 @@ export type TripCapturedIntent = {
   mentions: Array<{
     sourceText: string;
     canonicalName: string;
+    canonicalPlaceId?: string;
+    placeType?: import("./place-intelligence.ts").PlaceType;
     role: "origin" | "stop";
     order: number;
     status: "resolved" | "unresolved";
@@ -302,7 +306,7 @@ export type BuilderTripInput = {
   sourceRouteKey?: string;
   curatedRoute?: CuratedRouteKnowledge;
   origin: string;
-  stops: Array<{ id: string; name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
+  stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
   picks: Record<string, string[]>;
@@ -357,6 +361,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       id: stop.id,
       name: stop.name,
       country: stop.country,
+      canonicalPlaceId: stop.canonicalPlaceId,
       countryCode: stop.countryCode,
       region: stop.region,
       providerId: stop.providerId,

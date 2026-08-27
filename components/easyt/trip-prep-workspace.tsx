@@ -146,7 +146,7 @@ function TaskAction({ task, tripId, onOpenDetails, compact = false }: {
       stopId: action.stopId,
     });
     else if (action.affiliate && action.bookingCategory && action.provider) trackEvent("affiliate_click", {
-      category: action.bookingCategory,
+      category: action.affiliateCategory ?? action.bookingCategory,
       provider: action.provider,
       trip_id: tripId,
       stop_id: action.stopId,
