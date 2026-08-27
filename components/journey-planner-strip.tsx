@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import styles from "./journey-planner-strip.module.css";
 
@@ -19,6 +19,8 @@ export function JourneyPlannerStrip({
   addStopHref,
   fullTripHref,
   fullTripLabel = "View full trip",
+  fullTripExpanded = false,
+  onFullTrip,
   onSelectStop,
   overflow,
   presentation = "focused",
@@ -26,8 +28,10 @@ export function JourneyPlannerStrip({
   summary: string;
   stops: JourneyPlannerStripStop[];
   addStopHref: string;
-  fullTripHref: string;
+  fullTripHref?: string;
   fullTripLabel?: string;
+  fullTripExpanded?: boolean;
+  onFullTrip?: () => void;
   onSelectStop: (id: string) => void;
   overflow: ReactNode;
   presentation?: "focused" | "integrated";
@@ -62,7 +66,7 @@ export function JourneyPlannerStrip({
       </nav>
 
       <div className={styles.actions}>
-        <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link>
+        {onFullTrip ? <button data-map-expand-control type="button" className={styles.fullTrip} onClick={onFullTrip} aria-pressed={fullTripExpanded} title={fullTripLabel}>{fullTripExpanded ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}{fullTripLabel}</button> : fullTripHref ? <Link className={styles.fullTrip} href={fullTripHref}>{fullTripLabel}</Link> : null}
         <details className={styles.overflow}>
           <summary aria-label="Trip actions"><MoreHorizontal aria-hidden="true" /></summary>
           <div>{overflow}</div>

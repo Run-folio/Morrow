@@ -60,7 +60,7 @@ type OverviewIssue = {
 const WORKSPACE_ORIENTATION_KEY = "morrovia-workspace-orientation-seen-v1";
 
 function routeIssueHref(tripId: string) {
-  return `/journey/plan?trip=${encodeURIComponent(tripId)}`;
+  return mapWorkspaceHref(tripId);
 }
 
 function recommendationHref(trip: EasyTTrip, recommendation: TripRecommendation) {
@@ -220,8 +220,8 @@ export default function TripOverviewWorkspace({ trip, firstArrival = false }: { 
         <header><div><p>Your trip is ready</p><h2 id="workspace-orientation-title">Choose what to refine next.</h2></div><button type="button" onClick={() => setShowOrientation(false)} aria-label="Dismiss workspace orientation"><X aria-hidden="true" /></button></header>
         <ul>
           <li><strong>Overview</strong><span>See the next action and anything that needs attention.</span></li>
-          <li><strong>Itinerary</strong><span>Shape the trip day by day.</span></li>
           <li><strong>Map</strong><span>Explore stays, food and places around each stop.</span></li>
+          <li><strong>Itinerary</strong><span>Shape the trip day by day.</span></li>
           <li><strong>Prep</strong><span>Keep practical tasks separate from the itinerary.</span></li>
         </ul>
       </aside> : null}

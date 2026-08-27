@@ -8,6 +8,7 @@ import { accommodationDatesReady, accommodationProgress, stayBookingForStop } fr
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
+import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import styles from "./journey-trip-prep-accommodation.module.css";
 
 function accommodationDateLabel(stop: TripStop) {
@@ -38,7 +39,7 @@ export function JourneyTripPrepAccommodation({ trip }: { trip: EasyTTrip }) {
       const action = actions.find((item) => item.stopId === stop.id);
       const sorted = Boolean(booking);
       const datesReady = accommodationDatesReady(stop);
-      const plannerHref = `/journey/plan?trip=${encodeURIComponent(trip.id)}&stay=${encodeURIComponent(stop.id)}`;
+      const plannerHref = mapWorkspaceHref(trip.id, stop.id, "stay");
       return <article key={stop.id} className={sorted ? styles.sortedStay : styles.needsStay}>
         <div className={styles.stayHeading}><div><h3>{stop.name}</h3><p>{accommodationDateLabel(stop)} · {stop.nights} {stop.nights === 1 ? "night" : "nights"} · {trip.travellers} {trip.travellers === 1 ? "traveller" : "travellers"}</p></div><strong>{sorted ? "Stay sorted" : "Needs a stay"}</strong></div>
         {sorted ? <p className={styles.savedName}>{booking?.title || "Accommodation saved"}</p> : null}

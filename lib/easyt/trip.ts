@@ -167,6 +167,9 @@ export type TripChange = {
 export type TripBrief = {
   origin: string;
   originCoordinates?: [number, number];
+  originCanonicalPlaceId?: string;
+  originCountry?: string;
+  originProviderId?: string;
   /** Public editorial route used as the starting point, when one exists. */
   sourceRouteKey?: string;
   /** Reviewed route evidence retained from Route Detail into the editable trip. */
@@ -306,6 +309,9 @@ export type BuilderTripInput = {
   sourceRouteKey?: string;
   curatedRoute?: CuratedRouteKnowledge;
   origin: string;
+  originCanonicalPlaceId?: string;
+  originCountry?: string;
+  originProviderId?: string;
   stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
@@ -413,6 +419,9 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     brief: {
       origin: input.origin,
       originCoordinates: input.originCoordinates,
+      originCanonicalPlaceId: input.originCanonicalPlaceId,
+      originCountry: input.originCountry,
+      originProviderId: input.originProviderId,
       sourceRouteKey: input.sourceRouteKey,
       curatedRoute,
       mustDo: input.mustDo,

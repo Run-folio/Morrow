@@ -60,12 +60,12 @@ test("homepage handoff presents a concise interpreted review without changing di
 
   assert.match(builder, /Your route flows well\./,
     "the valid-route state should use the approved compact status");
-  assert.match(builder, /!isHomepagePromptHandoff && <div className=\{styles\.placesSummaryNext\}/,
-    "the redundant sidebar Next card should not render in the homepage handoff");
-  assert.match(builder, /isHomepagePromptHandoff \? \(language === "es" \? "Fechas después" : "Dates next"\)/,
-    "the homepage handoff should keep the rail date summary concise");
-  assert.match(builder, /!isHomepagePromptHandoff && stop\.country/,
-    "the homepage handoff should keep the route rail to compact city labels");
+  assert.equal(builder.match(/function BuilderSummaryRail/g)?.length, 1,
+    "both steps should render one shared summary rail component");
+  assert.match(builder, /<BuilderSummaryRail step=\{step\}/,
+    "the builder shell should keep the summary rail mounted from shared step state");
+  assert.match(builder, /step === 0 \? \(language === "es" \? "Fechas después" : "Dates next"\)/,
+    "the Places rail should announce that dates come next");
   assert.match(builder, /!\(isHomepagePromptHandoff && step === 0\)/,
     "the global footer containing Back should stay out of homepage Step 1");
   assert.match(builder, /builder-route-watercolor\.png" width=\{1881\} height=\{836\} sizes=/,
@@ -129,8 +129,8 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
   assert.match(builder, /of \$\{totalNights\} nights planned/);
   assert.doesNotMatch(timeStep, /<Image/,
     "the Time step should not include decorative illustration");
-  const timeRail = builder.slice(builder.indexOf('className={`${styles.rail} ${styles.timeSummaryRail}`'), builder.indexOf("</aside>}", builder.indexOf('className={`${styles.rail} ${styles.timeSummaryRail}`')));
-  assert.doesNotMatch(timeRail, /specificTimingWarning/,
+  const summaryRail = builder.slice(builder.indexOf("function BuilderSummaryRail"), builder.indexOf("/* ------------------------------------------------------------- main */"));
+  assert.doesNotMatch(summaryRail, /specificTimingWarning/,
     "the warning should not be duplicated in the right rail");
 
   assert.match(styles, /@media\(max-width:700px\)[\s\S]*\.nightsControl button \{ width: 44px; height: 44px;/,

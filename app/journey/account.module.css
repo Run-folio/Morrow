@@ -1708,3 +1708,10 @@
   background: var(--morrovia-lilac-strong);
   color: var(--morrovia-ink);
 }
+
+/* Preserve the existing auth layout while using shared semantic roles. */
+.page { background: var(--morrovia-paper); color: var(--morrovia-ink); }
+.authGrid { border-color: var(--morrovia-line); }
+.authPanel .eyebrow { color: var(--morrovia-signal); font-family: var(--morrovia-meta); }
+.authPanel h2 { color: var(--morrovia-ink); font-family: var(--morrovia-display); }
+.muted { color: var(--morrovia-ink-soft); }

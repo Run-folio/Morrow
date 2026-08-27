@@ -171,7 +171,6 @@ export default function PassportDestinationClient() {
         <button type="submit" disabled={resultState.status === "loading"} aria-busy={resultState.status === "loading"}>{resultState.status === "loading" ? <LoaderCircle className={styles.spinner} aria-hidden="true" /> : null}{resultState.status === "loading" ? t.checking : t.check}<ArrowRight aria-hidden="true" /></button>
       </form>
       <p className={styles.privacy}><ShieldCheck aria-hidden="true" />{t.private}</p>
-      <p className={styles.asyncStatus} aria-live="polite">{resultState.status === "loading" ? t.checking : ""}</p>
       {resultState.status === "failed" ? <p ref={errorRef} tabIndex={-1} role="alert" className={styles.error}><AlertCircle aria-hidden="true" />{t.failed}</p> : null}
     </section>
 

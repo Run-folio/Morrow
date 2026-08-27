@@ -23,6 +23,7 @@ import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import {
   cacheCanonicalTrip,
@@ -109,6 +110,9 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [working, setWorking] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [failedAction, setFailedAction] = useState<{ id: string; action: "archive" | "restore" | "duplicate" } | null>(null);
+  const [actionNotice, setActionNotice] = useState<{ title: string; detail: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<EasyTTrip | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [gifting, setGifting] = useState<EasyTTrip | null>(null);
   const [giftEmail, setGiftEmail] = useState("");
   const [giftNote, setGiftNote] = useState("");
@@ -319,9 +323,17 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       }
       const response = result.value;
       if (response.ok) {
-        if (action === "archive" || action === "restore") {
-          const payload = await response.json() as { trip?: EasyTTrip };
-          if (payload.trip) reconcileTripCloudMutation(ownerId, id, action, payload.trip);
+        const payload = await response.json() as { trip?: EasyTTrip };
+        if ((action === "archive" || action === "restore") && payload.trip) {
+          reconcileTripCloudMutation(ownerId, id, action, payload.trip);
+        }
+        if (action === "duplicate" && payload.trip) {
+          setActionNotice({
+            title: language === "es" ? "Viaje duplicado" : "Trip duplicated",
+            detail: language === "es"
+              ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes activos.`
+              : `“${tripDisplayTitle(payload.trip)}” is now in Active trips.`,
+          });
         }
         router.refresh();
       }
@@ -337,19 +349,19 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     }
   };
 
-  const remove = async (id: string) => {
-    if (!window.confirm(language === "es" ? "¿Eliminar este viaje guardado?" : "Remove this saved trip?")) return;
-    setWorking(id);
-    setActionError("");
+  const remove = async (trip: EasyTTrip) => {
+    setWorking(trip.id);
+    setDeleteError("");
     try {
-      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const response = await fetch(`/api/easyt/trips/${encodeURIComponent(trip.id)}`, { method: "DELETE" });
       if (response.ok) {
-        reconcileTripCloudMutation(ownerId, id, "delete");
+        reconcileTripCloudMutation(ownerId, trip.id, "delete");
+        setPendingDelete(null);
         router.refresh();
       }
-      else setActionError(response.status === 401 ? "Your session ended. Sign in again before removing this trip." : "This trip could not be removed. Please try again.");
+      else setDeleteError(response.status === 401 ? "Your session ended. Sign in again before deleting this trip." : "This trip could not be deleted. Please try again.");
     } catch {
-      setActionError("This trip could not be removed. Check your connection and try again.");
+      setDeleteError("This trip could not be deleted. Check your connection and try again.");
     } finally {
       setWorking(null);
     }
@@ -401,6 +413,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
 
   return (
     <>
+      {actionNotice ? <div className={styles.actionNotice}><MorroviaBriefNotice title={actionNotice.title} detail={actionNotice.detail} autoDismissMs={6500} onDismiss={() => setActionNotice(null)} /></div> : null}
       {actionError ? <aside className={styles.syncNotice} role="alert"><AlertTriangle aria-hidden="true" /><span>{actionError}</span>{actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}</aside> : null}
       {syncIssue ? <aside className={styles.syncNotice} role="alert">
         <AlertTriangle aria-hidden="true" />
@@ -515,7 +528,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               working={working === trip.id}
               onAction={runAction}
               onGift={openGift}
-              onRemove={remove}
+              onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }}
             />
           ))}
           {!visibleTrips.length ? (
@@ -554,6 +567,20 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           </section>
         </div>
       ) : null}
+      <MorroviaConfirmationDialog
+        open={Boolean(pendingDelete)}
+        title={pendingDelete ? `${isSpanish ? "¿Eliminar" : "Delete"} “${tripDisplayTitle(pendingDelete)}”?` : "Delete trip?"}
+        detail={isSpanish ? "Este viaje se eliminará de tu cuenta." : "This trip will be removed from your account."}
+        consequences={isSpanish
+          ? ["El plan, las notas y los datos guardados de este viaje dejarán de estar disponibles.", "Esta acción no se puede deshacer desde Morrovia."]
+          : ["The plan, notes and saved trip data will no longer be available.", "This action cannot be undone in Morrovia."]}
+        cancelLabel={isSpanish ? "Conservar viaje" : "Keep trip"}
+        confirmLabel={isSpanish ? "Eliminar viaje" : "Delete trip"}
+        confirming={Boolean(pendingDelete && working === pendingDelete.id)}
+        error={deleteError || undefined}
+        onCancel={() => { if (!working) { setPendingDelete(null); setDeleteError(""); } }}
+        onConfirm={() => { if (pendingDelete) void remove(pendingDelete); }}
+      />
       <EasyTFeedback />
     </>
   );
@@ -574,7 +601,7 @@ export function TripCard({ trip, language, copy, working, onAction, onGift, onRe
   working: boolean;
   onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
   onGift: (trip: EasyTTrip) => void;
-  onRemove: (id: string) => void;
+  onRemove: (trip: EasyTTrip) => void;
 }) {
   const readiness = tripReadinessSummary(trip);
   const readinessLabels = language === "es"
@@ -608,7 +635,7 @@ export function TripCard({ trip, language, copy, working, onAction, onGift, onRe
           {trip.status === "archived" ? <button type="button" onClick={() => onAction(trip.id, "restore")}><RotateCcw aria-hidden="true" />{copy.restore}</button> : <button type="button" onClick={() => onAction(trip.id, "archive")}><Archive aria-hidden="true" />{copy.archive}</button>}
           <button type="button" onClick={() => onAction(trip.id, "duplicate")}><Copy aria-hidden="true" />{copy.duplicate}</button>
           <button type="button" onClick={() => onGift(trip)}><Gift aria-hidden="true" />{copy.gift}</button>
-          <button type="button" className={styles.deleteAction} onClick={() => onRemove(trip.id)}><Trash2 aria-hidden="true" />{copy.delete}</button>
+          <button type="button" className={styles.deleteAction} onClick={() => onRemove(trip)}><Trash2 aria-hidden="true" />{copy.delete}</button>
         </div>
       </details>
     </div>

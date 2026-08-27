@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Check, CircleDot, Map, SlidersHorizontal, Stamp } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "../account.module.css";
 
@@ -36,7 +37,7 @@ export default function FirstTripGuide({ trips }: { trips: EasyTTrip[] }) {
     ? [
       { icon: Check, title: text.start, detail: text.startDetail, done: true, href: `/journey/new?trip=${encodeURIComponent(firstTrip.id)}` },
       { icon: SlidersHorizontal, title: text.shape, detail: text.shapeDetail, done: false, href: `/journey/new?trip=${encodeURIComponent(firstTrip.id)}` },
-      { icon: Map, title: text.map, detail: text.mapDetail, done: false, href: `/journey/plan?trip=${encodeURIComponent(firstTrip.id)}` },
+      { icon: Map, title: text.map, detail: text.mapDetail, done: false, href: mapWorkspaceHref(firstTrip.id) },
       { icon: Stamp, title: text.stamps, detail: text.stampsDetail, done: false, href: "/journey/stamped" },
     ]
     : [

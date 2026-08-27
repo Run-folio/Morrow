@@ -5,6 +5,8 @@
 .createTripLink{justify-self:end;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;color:#fff;background:#000;border:1px solid #000;border-radius:999px;font:500 14px var(--font-geist-sans,Geist,Inter,sans-serif);letter-spacing:-.01em;text-decoration:none;text-transform:none;font-variant-caps:normal;transition:background .18s,border-color .18s,transform .18s}.createTripLink svg{width:14px;height:14px}.createTripLink:hover{color:#fff;background:var(--signal);border-color:var(--signal);transform:translateY(-1px)}
 .headerActions{justify-self:end;display:flex;align-items:center;gap:7px}.myTripsLink{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid #d8d8dc;border-radius:999px;background:#fff;color:#111;text-decoration:none;font:500 14px var(--font-geist-sans,Geist,Inter,sans-serif);letter-spacing:-.01em;text-transform:none;font-variant-caps:normal;transition:border-color .18s,color .18s,background .18s}.myTripsLink:hover{border-color:var(--signal);color:var(--signal);background:#fff7fa}
 .savePlanLink{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid #d8d8dc;border-radius:999px;background:#fff;color:#111;font:500 14px var(--font-geist-sans,Geist,Inter,sans-serif);letter-spacing:-.01em;cursor:pointer;transition:border-color .18s,color .18s,background .18s}.savePlanLink:hover:not(:disabled){border-color:var(--signal);color:var(--signal);background:#fff7fa}.savePlanLink:disabled{opacity:.62;cursor:wait}.savePlanError{position:absolute;z-index:12;bottom:78px;left:50%;margin:0;padding:9px 13px;color:#8a1748;background:#fff5f8;border:1px solid rgba(255,61,139,.35);border-radius:999px;font:600 11px var(--font-geist-mono,monospace);transform:translateX(-50%)}.savePlanError button{margin-left:8px;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.mapSaveStatus{position:absolute;z-index:13;bottom:78px;left:50%;padding:4px 12px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:rgba(255,255,255,.96);box-shadow:0 9px 22px rgba(23,16,111,.12);transform:translateX(-50%);backdrop-filter:blur(10px)}
+.mapRecoveryFeedback{position:absolute;z-index:25;right:16px;bottom:78px;width:min(520px,calc(100% - 32px))}.mapRecoveryFeedback button{min-height:40px;padding:0 13px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);color:var(--morrovia-ink);background:#fff;font:700 12px var(--morrovia-ui);cursor:pointer}
 .saveState{color:rgba(31,29,61,.54);font:700 7px var(--font-geist-mono,monospace);letter-spacing:.04em;white-space:nowrap}.saveStateError{color:#a62461}
 .exportPlanLink{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid #d8d8dc;border-radius:999px;background:#fff;color:#111;font:500 14px var(--font-geist-sans,Geist,Inter,sans-serif);letter-spacing:-.01em;text-decoration:none;cursor:pointer;transition:border-color .18s,color .18s,background .18s}.exportPlanLink:hover:not(:disabled){color:var(--signal);background:#fff7fa;border-color:var(--signal)}.exportPlanLink:disabled{opacity:.6;cursor:progress}
 
@@ -835,6 +837,8 @@
   .mapAssistant{position:fixed;z-index:13;right:12px;bottom:calc(50svh + var(--morrovia-mobile-dock-offset,82px) + 10px);left:auto}
   .mapFocusControl{top:211px;left:calc(50% - 22px);z-index:12}
   .undoToast{z-index:25;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px);max-width:calc(100vw - 24px)}
+  .mapSaveStatus{position:fixed;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px);max-width:calc(100vw - 24px)}
+  .mapRecoveryFeedback{position:fixed;right:12px;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px);width:calc(100vw - 24px)}
 }
 
 @media(min-width:681px) and (max-width:980px){
@@ -871,7 +875,9 @@
 .shellPlanner .mapAssistant,
 .shellPlanner .mapCoach,
 .shellPlanner .undoToast,
-.shellPlanner .savePlanError{position:absolute!important}
+.shellPlanner .savePlanError,
+.shellPlanner .mapSaveStatus,
+.shellPlanner .mapRecoveryFeedback{position:absolute!important}
 .shellPlanner .finderDock{top:78px!important;right:auto!important;bottom:14px!important;left:14px!important;width:clamp(360px,23vw,390px)!important;height:auto!important;max-height:none!important;transform:none!important}
 .shellPlanner .canonicalPlannerStatus{top:78px!important;right:14px!important;bottom:auto!important;left:auto!important;width:clamp(260px,16vw,280px)!important;max-width:280px!important;max-height:calc(100% - 92px)!important}
 .shellPlanner .pinDock{top:236px!important;right:310px!important;bottom:auto!important;left:auto!important;transform:none!important}
@@ -901,4 +907,243 @@
   .shellPlanner .finderDock{height:min(50%,410px)!important}
   .shellPlanner .pinDock,
   .shellPlanner .mapAssistant{bottom:calc(min(50%,410px) + var(--morrovia-mobile-dock-offset,82px) + 8px)!important}
+}
+
+/* P1 Map workspace: route-first camera, contextual panel and one contained
+   expansion state. These overrides intentionally keep the planner document,
+   MapLibre instance and editing callbacks unchanged. */
+.shellPlannerExpanded,
+.shellPlannerExpanded:fullscreen{
+  position:fixed!important;
+  inset:0!important;
+  z-index:var(--morrovia-layer-modal,200)!important;
+  width:100vw!important;
+  height:100svh!important;
+  min-height:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:var(--paper)!important;
+}
+.shellPlannerExpanded:fullscreen{width:100%!important}
+.shellPlannerExpanded .fullscreenDestination{
+  position:absolute!important;
+  z-index:14!important;
+  top:78px!important;
+  right:auto!important;
+  bottom:14px!important;
+  left:420px!important;
+  display:block!important;
+  width:clamp(440px,38vw,560px)!important;
+  max-width:calc(100% - 448px)!important;
+  max-height:none!important;
+  padding:22px!important;
+  overflow-y:auto!important;
+  border:1px solid var(--hairline)!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:var(--workspace-shadow)!important;
+  backdrop-filter:blur(16px)!important;
+}
+.shellPlannerExpanded .fullscreenDestination .destinationToggle{position:absolute;top:12px;right:12px;z-index:3}
+.shellPlannerExpanded .fullscreenDestination.destinationCompact{
+  bottom:auto!important;
+  width:84px!important;
+  max-width:84px!important;
+  max-height:150px!important;
+  padding:8px!important;
+  overflow:hidden!important;
+  border-radius:13px!important;
+}
+.shellPlannerExpanded:has(.fullscreenDestination) .pinDock{display:none!important}
+.mapContextPanel{display:grid;gap:10px;color:var(--accent);font-family:var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif))}
+.mapContextEyebrow{margin:0;color:var(--signal);font:800 8px/1.2 var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.12em;text-transform:uppercase}
+.mapContextPanel h2{margin:0;font:600 22px/1.03 var(--morrovia-display,Georgia,serif);letter-spacing:-.035em}
+.mapContextCopy{margin:0;color:var(--morrovia-muted,#7673a4);font-size:10px;line-height:1.45}
+.mapContextFacts{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:2px 0 0;border-top:1px solid var(--hairline)}
+.mapContextFacts div{display:grid;gap:3px;padding:10px 4px 9px 0;border-bottom:1px solid var(--hairline)}
+.mapContextFacts div:nth-child(even){padding-left:8px;border-left:1px solid var(--hairline)}
+.mapContextFacts dt{color:var(--morrovia-muted,#7673a4);font:700 7px var(--morrovia-meta,var(--font-geist-mono,monospace));letter-spacing:.08em;text-transform:uppercase}
+.mapContextFacts dd{margin:0;overflow-wrap:anywhere;font-size:10px;font-weight:700;line-height:1.35}
+.mapContextActions{display:grid;gap:6px;margin-top:2px}
+.mapContextActions button{display:flex;min-height:44px;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--hairline);border-radius:8px;color:var(--accent);background:#fff;font:700 10px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));text-align:left;cursor:pointer}
+.mapContextActions button:hover{border-color:var(--signal);color:var(--signal);background:var(--mist)}
+.mapContextActions button:focus-visible,.mapFocusControl button:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+.mapContextActions svg{width:16px;height:16px;color:var(--signal)}
+.shellPlanner .mapFocusControl{top:78px!important;left:50%!important;transform:translateX(-50%)}
+.mapFocusControl button{display:flex;width:auto;height:40px;min-width:40px;align-items:center;gap:7px;padding:0 12px;font:700 9px var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));white-space:nowrap}
+.mapFocusControl button span{display:inline}
+.journey :global(.planner-map__stop){width:44px;height:44px}
+.journey :global(.planner-map__pin){width:44px;height:44px}
+.journey :global(.planner-map__stop:focus-visible),.journey :global(.planner-map__pin:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}
+.journey :global(.planner-map__local-place){min-height:44px}
+.shellPlanner :global(.planner-map .maplibregl-ctrl-group button){width:40px;height:40px}
+
+@media(max-width:980px){
+  .shellPlannerExpanded .fullscreenDestination{
+    position:absolute!important;
+    z-index:24!important;
+    top:84px!important;
+    right:12px!important;
+    bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px)!important;
+    left:12px!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:none!important;
+    padding:18px!important;
+  }
+  .shellPlannerExpanded .fullscreenDestination.destinationCompact{
+    right:auto!important;
+    left:12px!important;
+    width:84px!important;
+    max-width:84px!important;
+  }
+  .shellPlannerExpanded:has(.fullscreenDestination) .finderDock,
+  .shellPlannerExpanded:has(.fullscreenDestination) .canonicalPlannerStatus{display:none!important}
+  .shellPlanner .canonicalPlannerStatus{display:block!important;top:166px!important;right:12px!important;width:min(190px,calc(100% - 88px))!important;max-width:190px!important;padding:10px 11px!important;border:1px solid var(--hairline)!important;border-radius:11px!important;background:rgba(255,255,255,.96)!important;box-shadow:0 7px 18px rgba(23,16,111,.13)!important;backdrop-filter:blur(12px)}
+  .shellPlanner .mapContextPanel{gap:4px}
+  .shellPlanner .mapContextPanel h2{font:700 12px/1.25 var(--morrovia-ui,var(--font-geist-sans,Geist,Inter,sans-serif));letter-spacing:0}
+  .shellPlanner .mapContextCopy,.shellPlanner .mapContextFacts{display:none}
+  .shellPlanner .mapContextActions{display:grid;grid-template-columns:repeat(3,44px);justify-content:end;gap:4px;margin-top:4px}
+  .shellPlanner .mapContextActions button{width:44px;min-width:44px;padding:0;justify-content:center;font-size:0}
+  .shellPlanner .mapContextActions svg{width:18px;height:18px}
+  .shellPlanner .mapFocusControl{top:86px!important;left:12px!important;transform:none}
+  .shellPlanner .mapFocusControl button{height:44px;padding:0 10px}
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:68px!important;right:12px!important}
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-group button){width:44px;height:44px}
+}
+
+@media(max-width:430px){
+  .shellPlanner .canonicalPlannerStatus{top:164px!important;right:8px!important;max-width:168px!important}
+  .shellPlanner .mapFocusControl{top:84px!important;left:8px!important}
+  .shellPlanner .mapFocusControl button span{display:none}
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:66px!important;right:8px!important}
+}
+
+/* Spatial intelligence restored on the single canonical MapLibre surface. */
+.journey :global(.planner-map__stop){position:absolute;overflow:visible}
+.journey :global(.planner-map__stop.is-origin)::after,.journey :global(.planner-map__stop.is-destination)::after{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:var(--accent);content:""}
+.journey :global(.planner-map__stop.is-destination)::after{background:var(--signal)}
+.journey :global(.planner-map__stop-number){display:grid;place-items:center}
+.journey :global(.planner-map__destination-card){position:absolute;bottom:52px;left:50%;display:none;width:170px;overflow:hidden;grid-template-columns:68px minmax(0,1fr);align-items:stretch;border:1px solid var(--hairline);border-radius:10px;background:rgba(255,255,255,.98);box-shadow:0 14px 32px rgba(23,16,111,.18);color:var(--accent);font-family:var(--morrovia-ui);text-align:left;transform:translateX(-50%);pointer-events:none}
+.journey :global(.planner-map__destination-card img){width:68px;height:54px;object-fit:cover}
+.journey :global(.planner-map__destination-card>span){display:grid;align-content:center;gap:3px;min-width:0;padding:8px 9px}
+.journey :global(.planner-map__destination-card strong){overflow:hidden;font-size:10px;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+.journey :global(.planner-map__destination-card small){color:var(--morrovia-muted);font:700 7px/1.2 var(--morrovia-meta);letter-spacing:.04em}
+.journey :global(.planner-map__stop.is-featured:not(.is-preview-suppressed) .planner-map__destination-card),.journey :global(.planner-map__stop.is-previewed .planner-map__destination-card),.journey :global(.planner-map__stop:focus-visible .planner-map__destination-card){display:grid}
+
+.journey :global(.planner-map__leg){position:absolute;display:grid;width:44px;height:44px;place-items:center;padding:0;border:3px solid #fff;border-radius:50%;background:var(--signal);box-shadow:0 8px 20px rgba(23,16,111,.2);color:#fff;cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s}
+.journey :global(.planner-map__leg:hover),.journey :global(.planner-map__leg:focus-visible),.journey :global(.planner-map__leg.is-active){z-index:3;background:var(--accent);transform:scale(1.1)}
+.journey :global(.planner-map__leg:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}
+.journey :global(.planner-map__leg.is-unknown){border-style:dashed;background:#77748f}
+.journey :global(.planner-map__leg-icon){font:850 17px/1 var(--morrovia-ui)}
+.journey :global(.planner-map__leg-label){position:absolute;bottom:50px;left:50%;display:none;width:max-content;max-width:220px;padding:7px 9px;border:1px solid var(--hairline);border-radius:8px;background:rgba(23,16,111,.96);box-shadow:0 10px 24px rgba(23,16,111,.2);color:#fff;font:700 8px/1.3 var(--morrovia-ui);transform:translateX(-50%);pointer-events:none}
+.journey :global(.planner-map__leg:hover .planner-map__leg-label),.journey :global(.planner-map__leg:focus-visible .planner-map__leg-label){display:block}
+
+.mapContextHidden{display:none!important}
+.mapContextHeading{display:flex;align-items:flex-start;gap:8px}
+.mapContextHeading h2{flex:1}
+.mapContextHeading>button{display:grid;flex:0 0 44px;width:44px;height:44px;margin:-9px -9px 0 0;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--accent);cursor:pointer}
+.mapContextHeading>button:hover{background:var(--mist);color:var(--signal)}
+.mapContextHeading>button:focus-visible,.mapExternalActions a:focus-visible,.mapSourceLabel:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+.mapContextHeading svg{width:16px;height:16px}
+.mapDestinationImage{width:100%;height:108px;object-fit:cover;border-radius:9px;background:var(--mist)}
+.mapDestinationDescription,.mapPlaceDetail>p,.mapLegNote{margin:0;color:var(--morrovia-muted);font-size:10px;line-height:1.48}
+.mapProvenance{margin:0;color:var(--morrovia-muted);font:650 8px/1.45 var(--morrovia-meta)}
+.mapProvenance strong{color:var(--accent)}
+.mapScheduleCheck{display:flex;align-items:flex-start;gap:6px;margin:0;padding:9px;border-radius:8px;background:var(--mist);color:var(--accent);font-size:9px;font-weight:650;line-height:1.4}
+.mapScheduleCheck svg{flex:0 0 14px;width:14px;height:14px;color:var(--signal)}
+.mapLegDetail,.mapPlaceDetail{display:grid;gap:9px}
+.mapPlanningKey{display:flex;align-items:center;gap:7px;margin:0;color:var(--morrovia-muted);font-size:8px;line-height:1.4}
+.mapPlanningKey span{width:25px;border-top:3px dashed var(--signal)}
+.mapExternalActions{display:flex;flex-wrap:wrap;gap:6px}
+.mapExternalActions a{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:5px;padding:0 9px;border:1px solid var(--hairline);border-radius:8px;background:#fff;color:var(--accent);font-size:8px;font-weight:750;text-decoration:none}
+.mapExternalActions a:hover{border-color:var(--signal);color:var(--signal);background:var(--mist)}
+.mapExternalActions svg{width:13px;height:13px}
+.mapSourceLabel{margin:-3px 0 0;color:var(--morrovia-muted);font:650 7px/1.35 var(--morrovia-meta);text-decoration:none}
+.shellPlanner .mapAssistant{right:310px!important;bottom:14px!important}
+
+@media(max-width:720px){
+  .shellPlanner .mapAssistant{right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px)!important}
+  .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail),.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription){top:auto!important;right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 68px)!important;left:12px!important;width:auto!important;max-width:none!important;max-height:min(52%,390px)!important;padding:15px!important;overflow-y:auto!important;border-radius:15px!important;box-shadow:var(--workspace-shadow)!important}
+  .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextPanel{gap:9px}
+  .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextPanel h2{font:600 21px/1.05 var(--morrovia-display);letter-spacing:-.035em}
+  .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextFacts{display:grid}
+  .mapDestinationImage{height:92px}
+  .journey :global(.planner-map__destination-card){bottom:50px;width:150px;grid-template-columns:58px minmax(0,1fr)}
+  .journey :global(.planner-map__destination-card img){width:58px;height:50px}
+}
+
+/* Map restoration: keep the planning workspace persistent and make route
+   context live on the route before it falls back to a responsive sheet. */
+.mapContextEmpty{display:none!important}
+.mapDayControl,.mobileShapeDayClose{display:none}
+.journey :global(.planner-map__stop.is-context-hidden .planner-map__destination-card){display:none!important}
+.shellPlanner:has(.pinDockExpanded) :global(.planner-map__destination-card),
+.shellPlanner:has(.pinDockExpanded) :global(.planner-map__leg-card){display:none!important}
+.journey :global(.planner-map__destination-card){bottom:28px;left:30px;width:196px;grid-template-columns:82px minmax(0,1fr);border-radius:3px;transform:none;box-shadow:0 15px 32px rgba(23,16,111,.2)}
+.journey :global(.planner-map__destination-card.is-card-left){right:30px;left:auto}
+.journey :global(.planner-map__destination-card:not(:has(img))){grid-template-columns:1fr;width:132px}
+.journey :global(.planner-map__destination-card img){width:82px;height:64px}
+.journey :global(.planner-map__destination-card>span){padding:9px 10px}
+.journey :global(.planner-map__destination-card strong){font:750 12px/1.15 var(--morrovia-ui)}
+.journey :global(.planner-map__destination-card small){font-size:8px}
+
+.journey :global(.planner-map__leg){width:50px;height:50px;border-width:3px;background:var(--signal);box-shadow:0 0 0 6px color-mix(in srgb,var(--signal) 12%,transparent),0 9px 22px rgba(23,16,111,.22)}
+.journey :global(.planner-map__leg:hover),.journey :global(.planner-map__leg:focus-visible),.journey :global(.planner-map__leg.is-active){z-index:5;background:var(--accent);box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 14%,transparent),0 10px 24px rgba(23,16,111,.28);transform:scale(1.06)}
+.journey :global(.planner-map__leg-icon){display:grid;place-items:center}
+.journey :global(.planner-map__leg-icon svg){width:24px;height:24px;stroke-width:1.9}
+.journey :global(.planner-map__leg-card){position:absolute;bottom:62px;left:50%;display:none;width:260px;gap:7px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--signal) 58%,#fff);border-radius:3px;background:rgba(23,16,111,.97);box-shadow:0 16px 34px rgba(23,16,111,.26);color:#fff;font-family:var(--morrovia-ui);text-align:left;transform:translateX(-50%);pointer-events:none}
+.journey :global(.planner-map__leg.is-card-below .planner-map__leg-card){top:62px;bottom:auto}
+.journey :global(.planner-map__leg-meta){display:flex;align-items:center;justify-content:space-between;gap:12px}
+.journey :global(.planner-map__leg-meta strong){color:var(--signal);font:800 8px/1 var(--morrovia-meta);letter-spacing:.13em}
+.journey :global(.planner-map__leg-meta em){color:rgba(255,255,255,.72);font:700 9px/1 var(--morrovia-meta);font-style:normal}
+.journey :global(.planner-map__leg-card>b){font:720 14px/1.25 var(--morrovia-ui)}
+.journey :global(.planner-map__leg-card>span:not(.planner-map__leg-meta)){color:rgba(255,255,255,.75);font:600 9px/1.35 var(--morrovia-meta)}
+.journey :global(.planner-map__leg-card>small){padding-top:7px;border-top:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.58);font:650 7px/1.35 var(--morrovia-meta);letter-spacing:.02em}
+.journey :global(.planner-map__leg:hover .planner-map__leg-card),.journey :global(.planner-map__leg:focus-visible .planner-map__leg-card),.journey :global(.planner-map__leg.is-active .planner-map__leg-card){display:grid}
+.journey :global(.planner-map__leg.is-context-hidden .planner-map__leg-card){display:none!important}
+.journey :global(.planner-map:has(.planner-map__leg.is-active) .planner-map__leg:not(.is-active) .planner-map__leg-card){display:none}
+
+@media(min-width:981px){
+  .shellPlanner .mapTransferContext{display:none!important}
+  .shellPlanner .mapDestinationContext{top:auto!important;right:auto!important;bottom:18px!important;left:calc(clamp(360px,23vw,390px) + 32px)!important;width:min(610px,calc(100% - clamp(360px,23vw,390px) - 64px))!important;max-width:610px!important;max-height:calc(100% - 116px)!important;padding:18px!important;overflow:auto;border-radius:3px!important}
+  .shellPlanner .mapDestinationContext .mapContextPanel{grid-template-columns:180px minmax(0,1fr);column-gap:18px;row-gap:8px}
+  .shellPlanner .mapDestinationContext .mapContextEyebrow,.shellPlanner .mapDestinationContext .mapContextHeading,.shellPlanner .mapDestinationContext .mapContextCopy,.shellPlanner .mapDestinationContext .mapDestinationDescription,.shellPlanner .mapDestinationContext .mapContextFacts,.shellPlanner .mapDestinationContext .mapExternalActions,.shellPlanner .mapDestinationContext .mapSourceLabel,.shellPlanner .mapDestinationContext .mapContextActions,.shellPlanner .mapDestinationContext .mapScheduleCheck{grid-column:2}
+  .shellPlanner .mapDestinationContext .mapContextEyebrow{align-self:end}
+  .shellPlanner .mapDestinationContext .mapDestinationImage{grid-row:1/span 9;grid-column:1;width:180px;height:100%;min-height:190px;border-radius:0}
+  .shellPlanner .mapDestinationContext .mapContextHeading h2{font-size:30px}
+  .shellPlanner .mapDestinationContext .mapDestinationDescription{font-size:12px;line-height:1.52}
+  .shellPlanner .mapDestinationContext .mapContextFacts div{padding-block:8px}
+  .shellPlanner .mapDestinationContext .mapContextActions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .shellPlanner .mapDestinationContext .mapContextActions button{justify-content:center;min-height:40px}
+  .shellPlanner .mapPlaceContext{top:auto!important;right:18px!important;bottom:18px!important;left:auto!important;width:330px!important;max-width:330px!important;padding:17px!important;border-radius:3px!important}
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){right:18px!important}
+  .shellPlanner .mapAssistant{right:18px!important;bottom:18px!important}
+}
+
+@media(max-width:980px){
+  .shellPlanner .finderDock.mobileShapeDayClosed{display:none!important}
+  .shellPlanner .finderDock.mobileShapeDayOpen{display:flex!important}
+  .mapDayControl{position:absolute;z-index:18;right:auto;bottom:14px;left:12px;display:flex;min-height:48px;align-items:center;gap:9px;padding:6px 12px 6px 10px;border:1px solid var(--hairline);border-radius:12px;background:rgba(255,255,255,.97);box-shadow:0 9px 24px rgba(23,16,111,.18);color:var(--accent);font-family:var(--morrovia-ui);text-align:left;cursor:pointer;backdrop-filter:blur(14px)}
+  .mapDayControl>svg{width:19px;height:19px;color:var(--signal)}
+  .mapDayControl>span{display:grid;gap:2px}
+  .mapDayControl small{color:var(--signal);font:750 7px/1 var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}
+  .mapDayControl strong{font-size:11px;line-height:1.15}
+  .mapDayControl:focus-visible,.mobileShapeDayClose:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+  .mobileShapeDayClose{position:absolute;z-index:2;top:11px;right:2px;display:grid;width:44px;height:44px;place-items:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--accent);cursor:pointer}
+  .mobileShapeDayClose svg{width:18px;height:18px}
+  .shapeDayHeader>span{padding-right:44px}
+  .shellPlanner .mapTransferContext{display:block!important}
+}
+
+@media(max-width:720px){
+  .journey :global(.planner-map__leg){width:46px;height:46px}
+  .journey :global(.planner-map__leg-icon svg){width:21px;height:21px}
+  .journey :global(.planner-map__leg-card){display:none!important}
+  .journey :global(.planner-map__destination-card){display:none!important}
+  .journey :global(.planner-map__destination-card){bottom:28px;left:26px;width:154px;grid-template-columns:62px minmax(0,1fr)}
+  .journey :global(.planner-map__destination-card.is-card-left){right:26px;left:auto}
+  .journey :global(.planner-map__destination-card img){width:62px;height:54px}
+  .journey :global(.planner-map__destination-card strong){font-size:10px}
+  .mapDayControl{bottom:10px;left:8px;max-width:calc(100% - 88px)}
 }

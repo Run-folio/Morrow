@@ -69,6 +69,18 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
   return { stopId, mode };
 }
 
+/**
+ * A normal Map visit is route-first. Only a valid, explicit stop target is
+ * allowed to open the local camera; the selected day used by the planner is
+ * otherwise presentation context, not persisted camera state.
+ */
+export function initialMapCameraMode(trip: Pick<WorkspaceTrip, "stops">, query: QueryReader) {
+  const requestedStop = query.get("stop");
+  return requestedStop && orderedStops(trip).some((stop) => stop.id === requestedStop)
+    ? "detail" as const
+    : "overview" as const;
+}
+
 export function parseItineraryWorkspaceTarget(trip: Pick<WorkspaceTrip, "planItems">, query: QueryReader) {
   const days = orderedDays(trip);
   const rawDay = query.get("day") ?? "";

@@ -22,3 +22,16 @@ test("Plan this route carries identity, order, duration, nights and structured i
   assert.deepEqual(storedPayload.nightAllocations, payload.nightAllocations);
   assert.deepEqual(storedPayload.decisionSelections, payload.decisionSelections);
 });
+
+test("the reviewed Morocco route reaches Builder with canonical stops and no false Chefchaouen review", () => {
+  const detail = publicRouteDetailFor("morocco-rail");
+  assert.ok(detail);
+  const payload = routePlannerPayload(detail.planDraft, new Date(2026, 7, 27, 12));
+  assert.deepEqual(payload.destinations.map((stop) => stop.canonicalPlaceId), ["marrakech", "fes", "chefchaouen"]);
+  assert.equal(payload.originCanonicalPlaceId, "marrakech");
+  assert.equal(payload.structuredBrief.placeMentions?.find((mention) => mention.canonicalPlaceId === "chefchaouen")?.status, "resolved");
+  assert.equal(payload.structuredBrief.placeIssues?.some((issue) => issue.sourceText.toLocaleLowerCase().includes("chefchaouen")), false);
+
+  const stored = JSON.parse(JSON.stringify(payload)) as typeof payload;
+  assert.deepEqual(stored.destinations.map((stop) => stop.canonicalPlaceId), payload.destinations.map((stop) => stop.canonicalPlaceId));
+});

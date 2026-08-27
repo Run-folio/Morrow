@@ -22,6 +22,7 @@ import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/li
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
+import { MorroviaConfirmationDialog } from "./morrovia-feedback";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
@@ -36,6 +37,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   const [activeTrip, setActiveTrip] = useState(trip);
   const [deviceRecovery, setDeviceRecovery] = useState<TripRecoveryRecord | null>(null);
   const [discardFailed, setDiscardFailed] = useState(false);
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
   const conflictActions = tripConflictResolutionActions(trip.id);
   const visibleActiveTrip = !cacheTrip
@@ -133,14 +135,11 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
 
   const discardDeviceCopy = () => {
     if (!visibleDeviceRecovery) return;
-    const confirmed = window.confirm(
-      `Discard the unsynced device copy of “${trip.title}”? The cloud copy will remain, but these device-only edits cannot be recovered.`,
-    );
-    if (!confirmed) return;
     const discarded = discardTripRecovery(visibleDeviceRecovery, true);
     if (discarded) {
       setDeviceRecovery(loadTripRecovery(trip.id, trip.ownerId));
       setDiscardFailed(false);
+      setDiscardDialogOpen(false);
       return;
     }
     const remaining = loadTripRecovery(trip.id, trip.ownerId);
@@ -171,10 +170,24 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
               ? "Morrovia couldn’t discard this device copy because browser storage is unavailable. Your edits remain intact."
               : "You’re viewing the cloud copy. Unsynced edits on this device remain separate until you resume or discard them."}</span>
             <EasyTLinkButton size="small" href={conflictActions.deviceHref}>{conflictActions.openDeviceLabel}</EasyTLinkButton>
-            <EasyTButton size="small" variant="danger" onClick={discardDeviceCopy}>{conflictActions.discardDeviceLabel}</EasyTButton>
+            <EasyTButton size="small" variant="danger" onClick={() => setDiscardDialogOpen(true)}>{conflictActions.discardDeviceLabel}</EasyTButton>
           </aside>
         </div>
       ) : null}
+      <MorroviaConfirmationDialog
+        open={discardDialogOpen && Boolean(visibleDeviceRecovery)}
+        title={`Discard device edits for “${trip.title}”?`}
+        detail="You are viewing the account copy. This removes only the separate recovery copy stored in this browser."
+        consequences={[
+          "Device-only edits in this recovery copy cannot be restored.",
+          "The trip saved to your account will remain unchanged.",
+        ]}
+        cancelLabel="Keep device edits"
+        confirmLabel="Discard device edits"
+        error={discardFailed ? "Morrovia could not remove the device copy because browser storage is unavailable. The edits remain intact." : undefined}
+        onCancel={() => { setDiscardDialogOpen(false); setDiscardFailed(false); }}
+        onConfirm={discardDeviceCopy}
+      />
       <TripShellTripContext.Provider value={visibleActiveTrip}>{children}</TripShellTripContext.Provider>
     </>
   );
@@ -188,8 +201,8 @@ export function useTripShellTrip() {
 
 const views = [
   { id: "overview", label: "Overview", icon: House, suffix: "" },
-  { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "map", label: "Map", icon: Map, suffix: "/map" },
+  { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "prep", label: "Prep", icon: Luggage, suffix: "/prep" },
 ] as const;
 

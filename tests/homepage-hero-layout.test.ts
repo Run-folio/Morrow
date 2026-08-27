@@ -25,3 +25,17 @@ test("the homepage hero keeps its prompt and illustrated route together", () => 
   assert.match(styles, /@media\(max-width:560px\)[\s\S]*\.heroRouteStrip\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
     "the four-stop summary should remain readable on phones");
 });
+
+test("homepage process-card artwork keeps the square triptych panels intact", () => {
+  const proof = readFileSync(new URL("../app/journey/home/home-proof.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/journey/home/home.module.css", import.meta.url), "utf8");
+  const fidelity = readFileSync(new URL("../app/journey/home/home-fidelity.module.css", import.meta.url), "utf8");
+
+  assert.match(proof, /styles\.proofArtwork/);
+  assert.match(styles, /decision-triptych\.png/);
+  assert.match(fidelity, /width: min\(100%, 362px\) !important/);
+  assert.match(fidelity, /aspect-ratio: 1 !important/);
+  assert.match(fidelity, /height: auto !important/);
+  assert.match(fidelity, /background-size: 300% auto !important/);
+  assert.doesNotMatch(fidelity, /background-size: 300% 100% !important/);
+});

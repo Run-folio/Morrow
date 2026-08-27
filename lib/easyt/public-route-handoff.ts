@@ -19,6 +19,8 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     curatedRoute: draft.curatedRoute,
     origin: draft.origin,
     originCoordinates: draft.originCoordinates,
+    originCanonicalPlaceId: draft.originCanonicalPlaceId,
+    originCountry: draft.originCountry,
     destinations: draft.destinations,
     routeHints: draft.routeHints,
     regions: [] as string[],

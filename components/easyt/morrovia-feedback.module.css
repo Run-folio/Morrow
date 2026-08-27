@@ -1,0 +1,126 @@
+.saveStatus {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  color: var(--morrovia-ink-soft);
+  font: 700 11px/1.35 var(--morrovia-ui);
+  white-space: nowrap;
+}
+
+.saveStatus svg { width: 15px; height: 15px; flex: none; }
+.saveStatus[data-state="saving"] svg { animation: feedbackSpin 850ms linear infinite; }
+.saveStatus[data-state="saved"] { color: color-mix(in srgb, var(--morrovia-success) 78%, var(--morrovia-ink)); }
+.saveStatus[data-state="device"] { color: var(--morrovia-action); }
+.saveStatus[data-state="error"] { color: var(--morrovia-danger); }
+
+.briefNotice,
+.recovery {
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.briefNotice {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 11px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-success) 20%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(23, 16, 111, .1);
+}
+
+.briefNotice > svg { width: 19px; color: color-mix(in srgb, var(--morrovia-success) 76%, var(--morrovia-ink)); }
+.briefNotice > div { display: grid; gap: 2px; min-width: 0; }
+.briefNotice strong { font-size: 13px; }
+.briefNotice span { color: var(--morrovia-ink-soft); font-size: 11px; line-height: 1.4; }
+.briefNotice > a,
+.briefNotice > button:not(.dismiss) { color: var(--morrovia-action); font-size: 11px; font-weight: 750; }
+.briefNotice > a:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring); }
+
+.dismiss {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--morrovia-ink-soft);
+  cursor: pointer;
+}
+
+.dismiss:hover { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
+.dismiss:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring); }
+.dismiss svg { width: 16px; height: 16px; }
+
+.recovery {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 15px 16px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-danger-soft);
+}
+
+.recovery > svg { width: 20px; height: 20px; color: var(--morrovia-danger); }
+.recovery > div { display: grid; gap: 3px; }
+.recovery strong { font-size: 13px; }
+.recovery span,
+.recovery p { color: var(--morrovia-ink-soft); font-size: 12px; line-height: 1.45; }
+.recovery p { margin: 1px 0 0; font-weight: 700; }
+.recoveryActions { display: flex !important; flex-wrap: wrap; justify-content: flex-end; gap: 8px !important; }
+
+.dialog {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(720px, calc(100svh - 32px));
+  overflow: auto;
+  padding: 30px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: #fff;
+  color: var(--morrovia-ink);
+  box-shadow: var(--morrovia-shadow-overlay);
+  font-family: var(--morrovia-ui);
+}
+
+.dialog::backdrop { background: var(--morrovia-overlay); backdrop-filter: blur(3px); }
+.dialogMark { display: grid; width: 44px; height: 44px; place-items: center; margin-bottom: 19px; border-radius: 50%; background: var(--morrovia-danger-soft); color: var(--morrovia-danger); }
+.dialogMark svg { width: 21px; height: 21px; }
+.eyebrow { margin: 0 0 8px; color: var(--morrovia-danger); font: 800 9px/1.2 var(--morrovia-meta); letter-spacing: .13em; }
+.dialog h2 { margin: 0; font: 600 34px/1.02 var(--morrovia-display); letter-spacing: -.045em; }
+.dialogDetail { margin: 13px 0 0; color: var(--morrovia-ink-soft); font-size: 14px; line-height: 1.55; }
+.dialog ul { display: grid; gap: 9px; margin: 20px 0 0; padding: 17px 17px 17px 34px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink-soft); font-size: 12px; line-height: 1.45; }
+.dialog li::marker { color: var(--morrovia-danger); }
+.dialogError { margin: 14px 0 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); border-radius: var(--morrovia-control-radius); background: var(--morrovia-danger-soft); color: var(--morrovia-danger); font-size: 12px; font-weight: 700; line-height: 1.45; }
+.dialogActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+@keyframes feedbackSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  .saveStatus { white-space: normal; }
+  .briefNotice { grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; }
+  .briefNotice > a,
+  .briefNotice > button:not(.dismiss) { grid-column: 2 / -1; justify-self: start; }
+  .recovery { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .recovery > button,
+  .recoveryActions { grid-column: 1 / -1; width: 100%; }
+  .recoveryActions button { width: 100%; }
+  .dialog { padding: 22px 20px; }
+  .dialog h2 { font-size: 29px; }
+  .dialogActions { flex-direction: column; }
+  .dialogActions button { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saveStatus[data-state="saving"] svg { animation: none; }
+}

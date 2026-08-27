@@ -2,17 +2,32 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
-import { BedDouble } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { BedDouble, CarFront, CircleHelp, Footprints, Plane, Ship, TrainFront, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { feature } from "topojson-client";
+import worldTopology from "world-atlas/countries-50m.json";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
+import { formatMapDuration, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+
+export type JourneyMapDestinationCard = {
+  stopId: string;
+  name: string;
+  dayLabel: string;
+  image?: string;
+  imageAlt?: string;
+};
 
 type JourneyPlannerMapProps = {
   stops: JourneyStop[];
-  legs: JourneyLeg[];
+  legs: MapRouteLeg[] | JourneyLeg[];
   selectedId: string;
+  featuredStopId?: string;
+  destinationCards?: JourneyMapDestinationCard[];
+  selectedLegId?: string | null;
+  contextCardsHidden?: boolean;
   plannerPins: PlannerMapPin[];
   localPlaces?: JourneyLocalPlace[];
   selectedLocalPlaceId?: string | null;
@@ -23,9 +38,11 @@ type JourneyPlannerMapProps = {
   pinPlacementMode: boolean;
   /** Show the whole route on first load rather than opening at the selected city. */
   overviewMode?: boolean;
+  overviewPadding?: { top: number; right: number; bottom: number; left: number };
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
   onLocalPlaceSelect?: (place: JourneyLocalPlace) => void;
+  onLegSelect?: (leg: MapRouteLeg) => void;
   onSelect: (id: string) => void;
 };
 
@@ -37,11 +54,68 @@ const pinSymbols: Record<PlannerMapPin["category"], string> = {
   custom: "+",
 };
 
+const transportIcons: Record<MapRouteLeg["mode"], LucideIcon> = {
+  flight: Plane,
+  train: TrainFront,
+  road: CarFront,
+  ferry: Ship,
+  walk: Footprints,
+  unknown: CircleHelp,
+};
+
+function legMidpoint(leg: MapRouteLeg): [number, number] {
+  let [fromLongitude, fromLatitude] = leg.fromCoordinates;
+  let [toLongitude, toLatitude] = leg.toCoordinates;
+  if (Math.abs(toLongitude - fromLongitude) > 180) {
+    if (toLongitude < fromLongitude) toLongitude += 360;
+    else fromLongitude += 360;
+  }
+  const longitude = ((fromLongitude + toLongitude) / 2 + 540) % 360 - 180;
+  return [longitude, (fromLatitude + toLatitude) / 2];
+}
+
+function isMapRouteLeg(leg: MapRouteLeg | JourneyLeg): leg is MapRouteLeg {
+  return "fromStopId" in leg;
+}
+
+function effectiveOverviewPadding(
+  map: maplibregl.Map,
+  requested?: { top: number; right: number; bottom: number; left: number },
+) {
+  const compactViewport = window.innerWidth <= 980;
+  const base = compactViewport
+    ? { top: 72, right: 48, bottom: 72, left: 48 }
+    : requested ?? { top: 64, right: 330, bottom: 72, left: 80 };
+  const width = map.getContainer().clientWidth;
+  const height = map.getContainer().clientHeight;
+  const horizontalScale = width > 0 ? Math.min(1, Math.max(0, width - 160) / Math.max(1, base.left + base.right)) : 0;
+  const verticalScale = height > 0 ? Math.min(1, Math.max(0, height - 160) / Math.max(1, base.top + base.bottom)) : 0;
+  return {
+    top: Math.round(base.top * verticalScale),
+    right: Math.round(base.right * horizontalScale),
+    bottom: Math.round(base.bottom * verticalScale),
+    left: Math.round(base.left * horizontalScale),
+  };
+}
+
+const overviewFitOffset = (): [number, number] => window.innerWidth <= 980 ? [0, -32] : [0, -72];
+const overviewMaxZoom = 5.2;
+
+const topology = worldTopology as unknown as { objects: { countries: object } };
+const morroviaCountries = feature(
+  topology as never,
+  topology.objects.countries as never,
+) as unknown as GeoJSON.FeatureCollection;
+
 // CARTO raster tiles are deliberately used instead of their remote GL style:
 // the latter can load controls but fail to load map layers in some browsers.
 const mapStyle: StyleSpecification = {
   version: 8,
   sources: {
+    "morrovia-countries": {
+      type: "geojson",
+      data: morroviaCountries,
+    },
     carto: {
       type: "raster",
       tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
@@ -50,23 +124,53 @@ const mapStyle: StyleSpecification = {
       attribution: "© CARTO, © OpenStreetMap contributors",
     },
   },
-  layers: [{
-    id: "carto-light",
-    type: "raster",
-    source: "carto",
-    paint: {
-      "raster-saturation": -0.22,
-      "raster-contrast": -0.06,
-      "raster-brightness-max": 0.98,
-      "raster-opacity": 0.94,
+  layers: [
+    {
+      id: "morrovia-ocean",
+      type: "background",
+      paint: { "background-color": "#f2f4f6" },
     },
-  }],
+    {
+      id: "carto-light",
+      type: "raster",
+      source: "carto",
+      paint: {
+        "raster-saturation": -0.22,
+        "raster-contrast": -0.06,
+        "raster-brightness-max": 0.98,
+        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0, 7.1, 0.24, 8.35, 0.94],
+      },
+    },
+    {
+      id: "morrovia-land",
+      type: "fill",
+      source: "morrovia-countries",
+      paint: {
+        "fill-color": "#fffefe",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 1, 7.2, 0.72, 8.35, 0],
+      },
+    },
+    {
+      id: "morrovia-borders",
+      type: "line",
+      source: "morrovia-countries",
+      paint: {
+        "line-color": "#c9cae2",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.75, 6, 1.15, 8.35, 0.4],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0.92, 7.2, 0.58, 8.35, 0],
+      },
+    },
+  ],
 };
 
 export function JourneyPlannerMap({
   stops,
   legs,
   selectedId,
+  featuredStopId,
+  destinationCards = [],
+  selectedLegId,
+  contextCardsHidden = false,
   plannerPins,
   localPlaces = [],
   selectedLocalPlaceId,
@@ -76,22 +180,60 @@ export function JourneyPlannerMap({
   draftPinCoordinates,
   pinPlacementMode,
   overviewMode = false,
+  overviewPadding,
   onMapPinDrop,
   onPlannerPinSelect,
   onLocalPlaceSelect,
+  onLegSelect,
   onSelect,
 }: JourneyPlannerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const legMarkersRef = useRef<maplibregl.Marker[]>([]);
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
   const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
-  const localPlaceMarkerRootsRef = useRef<Root[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
   const hasInitialisedViewRef = useRef(false);
+  const onLegSelectRef = useRef(onLegSelect);
+  const onSelectRef = useRef(onSelect);
+  const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
+  const onLocalPlaceSelectRef = useRef(onLocalPlaceSelect);
+  onLegSelectRef.current = onLegSelect;
+  onSelectRef.current = onSelect;
+  onPlannerPinSelectRef.current = onPlannerPinSelect;
+  onLocalPlaceSelectRef.current = onLocalPlaceSelect;
+  const spatialLegs = useMemo<MapRouteLeg[]>(() => {
+    const stopById = new Map(stops.map((stop) => [stop.id, stop]));
+    return legs.flatMap((leg, index) => {
+      if (isMapRouteLeg(leg)) return [leg];
+      const from = stopById.get(leg.from);
+      const to = stopById.get(leg.to);
+      if (!from?.coordinates || !to?.coordinates) return [];
+      return [{
+        id: `${leg.from}-${leg.to}-${index}`,
+        fromStopId: leg.from,
+        toStopId: leg.to,
+        fromName: from.city,
+        toName: to.city,
+        fromCoordinates: from.coordinates,
+        toCoordinates: to.coordinates,
+        mode: leg.mode === "rail" ? "train" : leg.mode,
+        modeLabel: leg.mode === "rail" ? "Train" : leg.mode === "flight" ? "Flight" : leg.mode === "road" ? "Road" : leg.mode === "ferry" ? "Ferry" : "Unknown transport",
+        distanceKm: null,
+        headlineMinutes: null,
+        doorToDoorMinutes: null,
+        confidence: null,
+        provenanceLabel: "Saved route guidance",
+        scheduleNeedsChecking: true,
+        planningNote: leg.detail || null,
+      }];
+    });
+  }, [legs, stops]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
     const firstStop = stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
       ?? stops.find((stop) => stop.coordinates)?.coordinates
       ?? [-90.5069, 14.6349];
@@ -101,34 +243,53 @@ export function JourneyPlannerMap({
       center: firstStop,
       zoom: 9,
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    // North-up is fixed in this workspace, so a compass beside the route-fit
+    // control duplicated intent and looked like an unexplained third zoom
+    // button. Keep the familiar MapLibre zoom controls only.
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
     return () => {
       stopMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current.forEach((marker) => marker.remove());
       pinMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
       draftPinRef.current?.remove();
       map.remove();
       mapRef.current = null;
     };
-  }, [stops]);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === "undefined") return;
+    const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
     let frame = 0;
     const observer = new ResizeObserver(() => {
       window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => mapRef.current?.resize());
+      frame = window.requestAnimationFrame(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        map.resize();
+        if (!overviewMode || mappedStops.length < 2) return;
+        const bounds = mappedStops.slice(1).reduce(
+          (result, stop) => result.extend(stop.coordinates),
+          new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+        );
+        map.fitBounds(bounds, {
+          padding: effectiveOverviewPadding(map, overviewPadding),
+          offset: overviewFitOffset(),
+          maxZoom: overviewMaxZoom,
+          duration: 0,
+        });
+      });
     });
     observer.observe(container);
     return () => {
       window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, []);
+  }, [overviewMode, overviewPadding, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -139,18 +300,112 @@ export function JourneyPlannerMap({
       properties: {},
       geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
     };
+    const routeLegs = {
+      type: "FeatureCollection" as const,
+      features: spatialLegs.map((leg) => ({
+        type: "Feature" as const,
+        properties: { id: leg.id, mode: leg.mode },
+        geometry: { type: "LineString" as const, coordinates: [leg.fromCoordinates, leg.toCoordinates] },
+      })),
+    };
+
+    const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
+      const id = event.features?.[0]?.properties?.id;
+      const leg = spatialLegs.find((candidate) => candidate.id === id);
+      if (leg) onLegSelectRef.current?.(leg);
+    };
+    const hoverRoute = (event: maplibregl.MapLayerMouseEvent) => {
+      map.getCanvas().style.cursor = "pointer";
+      const id = event.features?.[0]?.properties?.id;
+      map.setFilter("trip-route-hover", ["==", ["get", "id"], typeof id === "string" ? id : ""]);
+    };
+    const leaveRoute = () => {
+      map.getCanvas().style.cursor = pinPlacementMode ? "crosshair" : "";
+      map.setFilter("trip-route-hover", ["==", ["get", "id"], ""]);
+    };
 
     const drawRoute = () => {
       const source = map.getSource("trip-route") as GeoJSONSource | undefined;
       if (source) source.setData(route);
       else {
         map.addSource("trip-route", { type: "geojson", data: route });
+      }
+      const legSource = map.getSource("trip-route-legs") as GeoJSONSource | undefined;
+      if (legSource) legSource.setData(routeLegs);
+      else {
+        map.addSource("trip-route-legs", { type: "geojson", data: routeLegs });
+      }
+      if (!map.getLayer("trip-route-casing")) {
+        map.addLayer({
+          id: "trip-route-casing",
+          type: "line",
+          source: "trip-route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "rgba(255,255,255,.98)", "line-width": 10, "line-opacity": 0.98 },
+        });
+      }
+      if (!map.getLayer("trip-route-line")) {
         map.addLayer({
           id: "trip-route-line",
           type: "line",
           source: "trip-route",
-          paint: { "line-color": "#ff3d8b", "line-width": 4, "line-opacity": 0.88 },
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": "#f42b7a",
+            "line-width": 6,
+            "line-opacity": 0.94,
+          },
         });
+      }
+      if (!map.getLayer("trip-route-planning")) {
+        map.addLayer({
+          id: "trip-route-planning",
+          type: "line",
+          source: "trip-route",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": "rgba(255,255,255,.94)",
+            "line-width": 1.8,
+            "line-opacity": 0.9,
+            "line-dasharray": [0.7, 1.35],
+          },
+        });
+      }
+      if (!map.getLayer("trip-route-hover")) {
+        map.addLayer({
+          id: "trip-route-hover",
+          type: "line",
+          source: "trip-route-legs",
+          filter: ["==", ["get", "id"], ""],
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#17106f", "line-width": 12, "line-opacity": 0.2 },
+        });
+      }
+      if (!map.getLayer("trip-route-selected")) {
+        map.addLayer({
+          id: "trip-route-selected",
+          type: "line",
+          source: "trip-route-legs",
+          filter: ["==", ["get", "id"], ""],
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#17106f", "line-width": 14, "line-opacity": 0.28 },
+        });
+      }
+      if (!map.getLayer("trip-route-hit")) {
+        map.addLayer({
+          id: "trip-route-hit",
+          type: "line",
+          source: "trip-route-legs",
+          paint: { "line-color": "rgba(0,0,0,0)", "line-width": 22 },
+        });
+      }
+      if (map.getLayer("trip-route-selected")) {
+        map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegId ?? ""]);
+      }
+      if (map.getLayer("trip-route-hit")) {
+        map.on("click", "trip-route-hit", selectRoute);
+        map.on("mousemove", "trip-route-hit", hoverRoute);
+        map.on("mouseleave", "trip-route-hit", leaveRoute);
       }
 
       if (!hasInitialisedViewRef.current && mappedStops.length) {
@@ -164,7 +419,12 @@ export function JourneyPlannerMap({
             (result, stop) => result.extend(stop.coordinates),
             new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
           );
-          map.fitBounds(bounds, { padding: { top: 90, right: 110, bottom: 150, left: 110 }, maxZoom: 7, duration: 0 });
+          map.fitBounds(bounds, {
+            padding: effectiveOverviewPadding(map, overviewPadding),
+            offset: overviewFitOffset(),
+            maxZoom: overviewMaxZoom,
+            duration: 0,
+          });
         } else {
           const compactViewport = window.innerWidth <= 980;
           const offset: [number, number] = !compactViewport && focusZoom !== undefined ? focusOffset ?? [0, 0] : [0, 0];
@@ -178,30 +438,171 @@ export function JourneyPlannerMap({
       }
     };
 
-    if (map.isStyleLoaded()) drawRoute();
-    else map.once("load", drawRoute);
-    return () => { map.off("load", drawRoute); };
-  }, [focusCoordinates, focusOffset, focusZoom, legs, overviewMode, selectedId, stops]);
+    let refitFrame = 0;
+    let routeRetry = 0;
+    let disposed = false;
+    const ensureRoute = () => {
+      if (disposed) return;
+      if (map.loaded()) {
+        drawRoute();
+        return;
+      }
+      routeRetry = window.setTimeout(ensureRoute, 80);
+    };
+    ensureRoute();
+    if (overviewMode && mappedStops.length > 1) {
+      refitFrame = window.requestAnimationFrame(() => {
+        map.resize();
+        const bounds = mappedStops.slice(1).reduce(
+          (result, stop) => result.extend(stop.coordinates),
+          new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+        );
+        map.fitBounds(bounds, { padding: effectiveOverviewPadding(map, overviewPadding), offset: overviewFitOffset(), maxZoom: overviewMaxZoom, duration: 0 });
+      });
+    }
+    return () => {
+      disposed = true;
+      window.clearTimeout(routeRetry);
+      window.cancelAnimationFrame(refitFrame);
+      if (map.getLayer("trip-route-hit")) {
+        map.off("click", "trip-route-hit", selectRoute);
+        map.off("mousemove", "trip-route-hit", hoverRoute);
+        map.off("mouseleave", "trip-route-hit", leaveRoute);
+      }
+    };
+  }, [focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, selectedId, selectedLegId, spatialLegs, stops]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getLayer("trip-route-selected")) return;
+    map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegId ?? ""]);
+  }, [selectedLegId]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
+    if (!map || !overviewMode || !hasInitialisedViewRef.current || mappedStops.length < 2) return;
+    const bounds = mappedStops.slice(1).reduce(
+      (result, stop) => result.extend(stop.coordinates),
+      new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+    );
+    map.fitBounds(bounds, {
+      padding: effectiveOverviewPadding(map, overviewPadding),
+      offset: overviewFitOffset(),
+      maxZoom: overviewMaxZoom,
+      duration: 550,
+    });
+  }, [overviewMode, overviewPadding, stops]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const drawLegMarkers = () => {
+      legMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current = spatialLegs.map((leg, index) => {
+        const element = document.createElement("button");
+        element.type = "button";
+        element.className = `planner-map__leg is-${leg.mode} ${index % 2 ? "is-card-below" : ""} ${leg.id === selectedLegId ? "is-active" : ""} ${contextCardsHidden ? "is-context-hidden" : ""}`;
+        element.dataset.routeLegId = leg.id;
+        element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`);
+        const MarkerIcon = transportIcons[leg.mode];
+        element.innerHTML = renderToStaticMarkup(<>
+          <span className="planner-map__leg-icon" aria-hidden="true"><MarkerIcon /></span>
+          <span className="planner-map__leg-card" aria-hidden="true">
+            <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{formatMapDuration(leg.headlineMinutes ?? leg.doorToDoorMinutes)}</em></span>
+            <b>{leg.fromName} → {leg.toName}</b>
+            <span>{leg.distanceKm !== null ? `${Math.round(leg.distanceKm).toLocaleString()} km` : "Distance to confirm"} · Door-to-door {formatMapDuration(leg.doorToDoorMinutes)}</span>
+            <small>{leg.provenanceLabel} · planning connection</small>
+          </span>
+        </>);
+        element.addEventListener("click", (event) => { event.stopPropagation(); onLegSelectRef.current?.(leg); });
+        element.addEventListener("focus", () => onLegSelectRef.current?.(leg));
+        element.addEventListener("mouseenter", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], leg.id]); });
+        element.addEventListener("mouseleave", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], ""]); });
+        return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(legMidpoint(leg)).addTo(map);
+      });
+    };
+    drawLegMarkers();
+    return () => {
+      legMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current = [];
+    };
+  }, [contextCardsHidden, spatialLegs]);
+
+  useEffect(() => {
+    legMarkersRef.current.forEach((marker) => {
+      const element = marker.getElement();
+      element.classList.toggle("is-active", element.dataset.routeLegId === selectedLegId);
+      element.classList.toggle("is-context-hidden", contextCardsHidden);
+    });
+  }, [contextCardsHidden, selectedLegId]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const drawMarkers = () => {
       stopMarkersRef.current.forEach((marker) => marker.remove());
+      const cards = new Map(destinationCards.map((card) => [card.stopId, card]));
       stopMarkersRef.current = stops.filter((stop) => stop.coordinates).map((stop, index) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__stop ${stop.id === selectedId ? "is-active" : ""}`;
-        element.setAttribute("aria-label", `Show ${stop.city}`);
-        element.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span>`;
-        element.addEventListener("click", () => onSelect(stop.id));
+        element.className = `planner-map__stop ${stop.id === selectedId ? "is-active" : ""} ${stop.id === featuredStopId ? "is-featured" : ""} ${index === 0 ? "is-origin" : ""} ${index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "is-destination" : ""}`;
+        element.dataset.mapStopId = stop.id;
+        const relationship = index === 0 ? "trip origin" : index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "final destination" : `stop ${index + 1}`;
+        element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
+        const number = document.createElement("span");
+        number.className = "planner-map__stop-number";
+        number.textContent = String(index + 1).padStart(2, "0");
+        element.append(number);
+        const card = cards.get(stop.id);
+        if (card) {
+          const preview = document.createElement("span");
+          preview.className = "planner-map__destination-card";
+          preview.classList.add(index === 0 ? "is-card-right" : index === stops.length - 1 ? "is-card-left" : "is-card-right");
+          preview.setAttribute("aria-hidden", "true");
+          if (card.image) {
+            const image = document.createElement("img");
+            image.src = card.image;
+            image.alt = "";
+            image.draggable = false;
+            preview.append(image);
+          }
+          const copy = document.createElement("span");
+          const name = document.createElement("strong");
+          name.textContent = card.name;
+          const day = document.createElement("small");
+          day.textContent = card.dayLabel;
+          copy.append(name, day);
+          preview.append(copy);
+          element.append(preview);
+        }
+        const previewStop = (id: string | undefined) => stopMarkersRef.current.forEach((marker) => {
+          const markerElement = marker.getElement();
+          markerElement.classList.toggle("is-previewed", markerElement.dataset.mapStopId === id);
+          markerElement.classList.toggle("is-preview-suppressed", Boolean(id) && markerElement.dataset.mapStopId !== id);
+        });
+        element.addEventListener("click", (event) => { event.stopPropagation(); onSelectRef.current(stop.id); });
+        element.addEventListener("mouseenter", () => previewStop(stop.id));
+        element.addEventListener("mouseleave", () => previewStop(undefined));
+        element.addEventListener("focus", () => previewStop(stop.id));
+        element.addEventListener("blur", () => previewStop(undefined));
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(stop.coordinates!).addTo(map);
       });
     };
     if (map.isStyleLoaded()) drawMarkers();
     else map.once("load", drawMarkers);
     return () => { map.off("load", drawMarkers); };
-  }, [onSelect, selectedId, stops]);
+  }, [destinationCards, stops]);
+
+  useEffect(() => {
+    const mappedStops = stops.filter((stop) => stop.coordinates);
+    stopMarkersRef.current.forEach((marker, index) => {
+      const element = marker.getElement();
+      element.classList.toggle("is-active", mappedStops[index]?.id === selectedId);
+      element.classList.toggle("is-featured", mappedStops[index]?.id === featuredStopId);
+      element.classList.toggle("is-context-hidden", contextCardsHidden);
+    });
+  }, [contextCardsHidden, featuredStopId, selectedId, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -212,33 +613,33 @@ export function JourneyPlannerMap({
         const element = document.createElement("button");
         element.type = "button";
         element.className = `planner-map__pin is-${pin.category}`;
+        element.dataset.plannerPinId = pin.id;
         element.setAttribute("aria-label", `Show ${pin.title}`);
+        element.title = `Show ${pin.title}`;
         element.innerHTML = `<span>${pinSymbols[pin.category]}</span>`;
-        element.addEventListener("click", () => onPlannerPinSelect(pin));
+        element.addEventListener("click", (event) => { event.stopPropagation(); onPlannerPinSelectRef.current(pin); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([pin.longitude, pin.latitude]).addTo(map);
       });
     };
     if (map.isStyleLoaded()) drawPins();
     else map.once("load", drawPins);
     return () => { map.off("load", drawPins); };
-  }, [onPlannerPinSelect, plannerPins]);
+  }, [plannerPins]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const drawLocalPlaces = () => {
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
-      localPlaceMarkerRootsRef.current = [];
       localPlaceMarkersRef.current = localPlaces.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
         element.className = `planner-map__local-place ${place.id === selectedLocalPlaceId ? "is-active" : ""}`;
+        element.dataset.localPlaceId = place.id;
         element.setAttribute("aria-label", `Show ${place.name}`);
-        const root = createRoot(element);
-        localPlaceMarkerRootsRef.current.push(root);
-        root.render(<><BedDouble aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay"}</span></>);
-        element.addEventListener("click", () => onLocalPlaceSelect?.(place));
+        element.title = `Show ${place.name}`;
+        element.innerHTML = renderToStaticMarkup(<><BedDouble aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay"}</span></>);
+        element.addEventListener("click", (event) => { event.stopPropagation(); onLocalPlaceSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
     };
@@ -249,10 +650,12 @@ export function JourneyPlannerMap({
     return () => {
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current = [];
-      localPlaceMarkerRootsRef.current.forEach((root) => root.unmount());
-      localPlaceMarkerRootsRef.current = [];
     };
-  }, [localPlaces, onLocalPlaceSelect, selectedLocalPlaceId]);
+  }, [localPlaces]);
+
+  useEffect(() => {
+    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.localPlaceId === selectedLocalPlaceId));
+  }, [selectedLocalPlaceId]);
 
   useEffect(() => {
     const map = mapRef.current;

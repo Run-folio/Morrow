@@ -147,6 +147,20 @@ export type PlaceIntelligenceResult = {
   issues: PlaceResolutionIssue[];
 };
 
+export function placeMentionsNeedingReview(
+  mentions: readonly ResolvedPlaceMention[],
+  issues: readonly PlaceResolutionIssue[],
+) {
+  return mentions.filter((mention) => {
+    const issue = issues.find((item) => item.mentionId === mention.mentionId
+      && item.code !== "missing_routable_destination" && item.code !== "duplicate_alias");
+    return Boolean(issue)
+      || mention.status === "ambiguous"
+      || mention.status === "unresolved"
+      || mention.routability !== "direct_destination";
+  });
+}
+
 export type PlaceResolutionContext = {
   countryNames?: string[];
   selectedPlaces?: Array<Pick<PlaceResolutionCandidate, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "routability">>;
@@ -330,6 +344,53 @@ export function canonicalPlaceSuggestionFor(
     coordinates: entry.coordinates ? [...entry.coordinates] as [number, number] : undefined,
     provenance: [source],
   };
+}
+
+/**
+ * Canonical autocomplete uses the same catalog and normalization boundary as
+ * prompt capture. Results are route-ready identities, never display strings
+ * that need to be interpreted again after selection.
+ */
+export function canonicalPlaceSuggestionsForQuery(
+  query: string,
+  contextCountries: string[] = [],
+  limit = 8,
+): CanonicalPlaceSuggestion[] {
+  const normalizedQuery = normalizePlacePhrase(query);
+  if (normalizedQuery.length < 2) return [];
+  const context = new Set(contextCountries.map(normalizePlacePhrase));
+  const ranked: Array<{ score: number; suggestion: CanonicalPlaceSuggestion }> = [];
+  for (const entry of PLACE_CATALOG) {
+      if (entry.routability !== "direct_destination" || entry.parentCountries.length !== 1) continue;
+      const labels = [entry.canonicalName, ...entry.aliases].map((label) => ({ label, normalized: normalizePlacePhrase(label) }));
+      const exact = labels.some(({ normalized }) => normalized === normalizedQuery);
+      const prefix = labels.some(({ normalized }) => normalized.startsWith(normalizedQuery));
+      const wordPrefix = labels.some(({ normalized }) => normalized.split(" ").some((word) => word.startsWith(normalizedQuery)));
+      const contains = labels.some(({ normalized }) => normalized.includes(normalizedQuery));
+      if (!contains && !wordPrefix) continue;
+      const contextual = entry.parentCountries.some((country) => context.has(normalizePlacePhrase(country)));
+      const score = (exact ? 0 : prefix ? 10 : wordPrefix ? 20 : 30) - (contextual ? 3 : 0);
+      const source = sourceFromCatalog(entry, labels.find(({ normalized }) => normalized === normalizedQuery)?.label ?? entry.canonicalName);
+      const country = entry.parentCountries[0]!;
+      const region = displayRegion(entry.parentRegionId);
+      ranked.push({
+        score,
+        suggestion: {
+          canonicalPlaceId: entry.canonicalPlaceId,
+          name: entry.canonicalName,
+          label: `${entry.canonicalName}${region ? ` · ${region}` : ""}, ${country}`,
+          country,
+          region,
+          placeType: entry.placeType,
+          coordinates: entry.coordinates ? [...entry.coordinates] as [number, number] : undefined,
+          provenance: [source],
+        } satisfies CanonicalPlaceSuggestion,
+      });
+  }
+  return ranked
+    .sort((left, right) => left.score - right.score || left.suggestion.name.localeCompare(right.suggestion.name))
+    .slice(0, Math.max(1, limit))
+    .map(({ suggestion }) => suggestion);
 }
 
 function coordinateDistanceKm(left: [number, number], right: [number, number]) {

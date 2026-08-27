@@ -11,6 +11,7 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalT
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import JourneyLoading from "../loading";
 import styles from "./trip-prep.module.css";
@@ -52,7 +53,7 @@ export default function TripPrepClient() {
       || hydratedDocumentIdentity !== documentIdentity));
   if (sessionPending || !tripResolved || documentScopeMismatch) return <JourneyLoading />;
   if (!trip) return <main className={`${styles.page} ${editorial.surface} ${editorial.prep} morrovia-editorial-page`}><EasyTNavigation current="home" /><section className={styles.empty}><p>TRIP PREP</p><h1>Choose a trip first.</h1><span>Once you have a route, its practical preparation will live here.</span><Link href="/journey/dashboard">See your trips <ArrowRight /></Link></section></main>;
-  const mapHref = `/journey/plan?trip=${encodeURIComponent(trip.id)}`;
+  const mapHref = mapWorkspaceHref(trip.id);
   const builderHref = `/journey/new?trip=${encodeURIComponent(trip.id)}&view=itinerary`;
   return <main className={`${styles.page} ${editorial.surface} ${editorial.prep} morrovia-editorial-page`}>
     <EasyTNavigation current="home" />

@@ -152,9 +152,13 @@
 }
 
 .proofArtwork {
-  width: 100% !important;
-  height: 208px !important;
-  background-size: 300% 100% !important;
+  /* Each panel in the 2172 × 724 triptych is a 724px square. Keeping a
+     square viewport preserves the illustration rather than stretching it. */
+  width: min(100%, 362px) !important;
+  max-width: 362px !important;
+  aspect-ratio: 1 !important;
+  height: auto !important;
+  background-size: 300% auto !important;
   background-position-y: center !important;
   background-repeat: no-repeat !important;
 }
@@ -177,7 +181,7 @@
   .promptExamples > div { display: grid; grid-template-columns: 1fr; }
   .attributePanel { grid-template-columns: 1fr; }
   .routeImage { height: 218px !important; }
-  .proofArtwork { height: 184px !important; }
+  .proofArtwork { height: auto !important; }
   .footerCta { min-height: 0 !important; padding-bottom: 34px !important; }
   .footerCtaCopy { padding-bottom: 26px !important; }
 }

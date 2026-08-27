@@ -4,6 +4,10 @@
   transform: translateX(-50%);
 }
 
+.wideMap:has(:global(.morrovia-map-expanded)) {
+  transform: none;
+}
+
 @media (max-width: 980px) {
   .wideMap {
     width: 100%;

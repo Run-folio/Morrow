@@ -1,3 +1,90 @@
+# Remaining legacy Map capabilities restoration QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Desktop/Screenshot 2026-08-27 at 11.10.45 AM.png` for the branded wide-map composition, `/Users/shaun/Desktop/Screenshot 2026-08-27 at 11.17.23 AM.png` for the complete Add pin composer, and `/Users/shaun/Desktop/Screenshot 2026-08-27 at 11.17.10 AM.png` for the rich destination treatment.
+- **Implementation:** deterministic restoration stories under `Components/Trip map workspace`, led by `InitialBrandedOverview`, `AddPinNameLocation`, and `RichDestinationFullscreen`, served from `http://localhost:6010`.
+- **Browser-rendered evidence:** `artifacts/map-capability-restoration/01-branded-overview.png`, `02-detailed-basemap.png`, `03-add-pin-composer.png`, `04-rich-fullscreen.png`, `05-mobile-overview.png`, `06-mobile-pin-composer.png`, and `07-mobile-rich-fullscreen.png`.
+- **Combined comparison evidence:** `http://localhost:6010/qa/overview.html`, `http://localhost:6010/qa/pin.html`, and `http://localhost:6010/qa/rich.html` place the supplied references and browser-rendered implementation together for the final visual judgment.
+- **Viewport and normalization:** desktop evidence used a 1707 × 960 CSS viewport at density 1. Mobile was reviewed at 390 × 844 CSS px; the Browser output is 693 × 1500 device pixels because of its approximately 1.777 capture density. Mobile judgments use the reported CSS layout and same-state render rather than treating device-pixel density as a visual mismatch.
+
+## Required fidelity surfaces
+
+- **Map language and transition:** at route overview zoom the single MapLibre canvas now renders white land, light-grey water and fine lavender country outlines with the canonical pink route, transport markers and destination image card. CARTO street detail fades in progressively between regional and local zooms; there is no second map or lifecycle handoff.
+- **Layout and hierarchy:** the current TripShell, stop strip, Shape the day, Trip Health, route inspection and Luna co-pilot remain intact. Fullscreen uses the recovered destination editorial panel beside Shape the day, while the closed state deliberately contracts to the current compact context card.
+- **Add pin workflow:** the compact entry point is always reachable in the planning Map. Choose location, map click, draft marker, category selection, naming, save, selected-pin context, rename and delete all reuse the original hierarchy and copy. Competing destination and leg cards are suppressed only while the composer is active.
+- **Typography and tokens:** current Morrovia display, UI and metadata roles remain unchanged. Spacing, borders, focus treatment, indigo/pink states, shadows and surface colours use the existing semantic tokens rather than reintroducing historical EasyT styling.
+- **Images and copy:** the rich destination panel uses the trip's real provider-backed destination image, attribution, concise description, facts and transfer context. The missing-description story verifies the panel remains useful without fabricated fallback prose.
+- **Responsive behaviour:** the branded overview, detailed map, pin composer and rich destination states were checked at 390px. The rich fullscreen panel becomes one intentional modal sheet, and the active composer removes collisions with map previews and contextual cards.
+
+## Interaction, persistence and accessibility evidence
+
+- Map controls, destinations, transfer markers, pins and compact launchers remain keyboard-reachable native controls with meaningful labels and visible focus treatment.
+- A saved pin is written to `trip.brief.mapPins` through the existing trip update path, participates in device recovery and cloud-save feedback, survives the deterministic reload story, and can be renamed or deleted without altering the canonical route.
+- The single MapLibre instance retains the canonical route/order, transport inspection, current stop selection and zoom/camera behaviour. Detail-to-overview reset collapses fullscreen destination context without replacing the map.
+- The focused presentation suite covers the one-instance invariant, branded layers and zoom interpolation, original pin add/update/remove persistence calls, fullscreen destination states, escape/focus cleanup, responsive rules and preserved spatial context.
+- A clean final story navigation produced no new browser error. The only current console entry is the existing Storybook warning that Next.js runtime config is deprecated; it is unrelated to this restoration.
+
+## Comparison history
+
+1. Pass 1 found a P2 overview-framing mismatch: the restored regional camera was too tight. The overview cap was tested at 4.6 and settled at 5.2, balancing legacy continental context with leg and marker separation for geographically close routes.
+2. Pass 1 found a P2 composer collision: a destination preview could remain visible behind Add pin. Destination, transfer and right-context previews are now suppressed while pin placement or naming is active.
+3. Pass 2 compared the same three capability states together with their references. No actionable P0, P1 or P2 visual, interaction, accessibility or responsive mismatch remains.
+
+## Findings
+
+- All three requested legacy capabilities are restored inside the current TripShell and current design system.
+- Accepted difference: the Golden Triangle fixture uses route-aware regional framing rather than reproducing the Taiwan source geography; this preserves the source capability while keeping the canonical route legible.
+- Story-only state inputs exist solely to make acceptance renders deterministic. Production state continues to come from the live trip, MapLibre interactions and the existing persistence pipeline.
+
+**final result: passed**
+
+---
+
+# Map spatial-intelligence restoration QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Desktop/Screenshot 2026-08-27 at 8.10.03 AM.png` for the persistent Shape-the-day + Map hierarchy and `/Users/shaun/Desktop/Screenshot 2026-08-27 at 8.12.40 AM.png` for the route-attached transport and destination-card treatment.
+- **Implementation:** static acceptance story `Components/Trip map workspace/GoldenTriangle` at `http://localhost:6010/iframe.html?id=components-trip-map-workspace--golden-triangle&viewMode=story`.
+- **Browser-rendered evidence:** `artifacts/map-restoration/whole-route-desktop.jpg`, `transport-selected.jpg`, `destination-highlighted.jpg`, `destination-detail.jpg`, `copilot-open.jpg`, `mobile-390.jpg`, `mobile-390-transport.jpg`, and `mobile-390-shape-day.jpg`.
+- **Combined comparison evidence:** `artifacts/map-restoration/comparison-whole-route.jpg` and `comparison-transport.jpg`. Each sheet places the supplied old screenshot and the browser-rendered implementation in the same visual input.
+- **Viewport and normalization:** the desktop pass used a 1600 × 1000 effective CSS viewport and the mobile pass used 390 × 844 CSS px. The in-app Browser returned a host-scaled canvas with the populated workspace in the top-left portion; final evidence crops that visible workspace and resamples it to the declared CSS comparison size without changing product content. Raw captures remain beside the final evidence.
+
+## Required fidelity surfaces
+
+- **Layout and hierarchy:** the default desktop state retains the canonical TripShell, stop strip, persistent left Shape-the-day workspace, central spatial route and compact co-pilot entry. The cleaned architecture intentionally omits the old permanent Trip Health column.
+- **Route and state colour:** every mapped canonical stop is joined by the same pink route with a white casing and dashed planning overlay. Indigo hover/selection halos preserve route context while distinguishing the active leg.
+- **Transport and icons:** train markers sit on the corresponding route midpoints; the selected state opens a dark-indigo spatial card with canonical mode, headline time, route, distance, door-to-door time and planning provenance. Production icons come from Lucide; no custom or substitute SVG art is used.
+- **Imagery and content:** only the featured, focused or selected stop exposes its destination card. The explicit Jaipur detail state uses the real trip image plus provider-backed concise copy, Wikipedia description attribution, Wikimedia image attribution, Google Maps and valid Learn More actions.
+- **Typography and surfaces:** existing Morrovia display/UI/meta roles, semantic indigo/pink tokens, borders and shadows remain the source of truth. The spatial cards use tighter corners and elevation than generic inspector panels, matching the old Map's information hierarchy without restoring its older styling wholesale.
+- **Responsive behavior:** at 390px, the route, stop sequence and transport markers remain readable; destination preview cards are suppressed to avoid control collisions. Transfer facts move to one intentional sheet and Shape the day opens from a compact day control.
+
+## Interaction and accessibility evidence
+
+- Route-leg and stop markers are native buttons with meaningful labels; click/tap, focus and hover expose equivalent spatial states.
+- Focus on Jaipur exposed the correctly associated image card without opening rich detail; click then opened the Jaipur-specific detail state.
+- Selected transfer, selected destination/place and co-pilot states suppress competing contextual cards; Escape cleanup and focus restoration remain covered in the Map presentation tests.
+- The mobile transfer sheet retained canonical facts and the mobile Shape-the-day trigger exposed `aria-expanded`, its controlled sheet, tabs and canonical Day 1 content.
+- No visible auth alert, duplicate compass, permanent Add Pin control, duplicate Trip Health panel or overlapping destination card remained in the acceptance story.
+
+## Comparison history
+
+1. The first reopened render exposed a genuine runtime failure: MapLibre controls loaded, but the GeoJSON route did not because the default worker URL returned 404. A public MapLibre worker bundle and explicit worker URL restored the vector layers.
+2. With the route visible, MapLibre marker DOM was offset from the vector canvas because later CSS changed marker buttons to relative positioning. Restoring absolute marker positioning aligned stops and transport markers with the route.
+3. The first exact-390 pass exposed the desktop destination preview beneath mobile zoom controls. Mobile now hides that progressive preview and keeps the route/transport hierarchy clean; the explicit destination state remains available by tap.
+4. The final combined comparison confirms the restored implementation matches the old experience in function and hierarchy: trip-planning workspace, spatially connected route, route-attached transport, destination imagery and directly inspectable context.
+
+## Findings
+
+- No actionable P0, P1 or P2 visual, interaction, accessibility or responsive mismatch remains in the reviewed states.
+- P3 accepted difference: the Golden Triangle route is framed more tightly than the old Europe-wide reference because all three canonical stops are geographically close; this materially improves sequence legibility while preserving route-first camera behavior.
+- The static provider fixture exists only to make the provider-backed detail state deterministic in Storybook. Production continues to use `/api/journey-place` and its independent image/summary provider fallbacks.
+
+**final result: passed**
+
+---
+
 # Stamps reliability and country-marking QA
 
 ## Comparison target
@@ -448,6 +535,74 @@ No actionable P0, P1, or P2 differences remain.
 - P3: the implementation omits mock-only editing controls until an existing production behavior can be reused safely.
 
 final result: passed
+
+---
+
+# Product-wide visual design-system drift audit — 2026-08-27
+
+## Scope and baseline
+
+Checked the current coded Morrovia foundation in `app/journey/journey-design.css`, the foundations and controls Storybook stories, and the production-facing Homepage, Tour, Trips dashboard, Overview, Itinerary, Map, Prep, Passport, Stamps, and Profile/auth surfaces. The baseline is: display (`--morrovia-display` + `--morrovia-ink`), UI/body (`--morrovia-ui`), muted (`--morrovia-muted`/`--morrovia-ink-soft`), meta (`--morrovia-meta` + `--morrovia-signal`), paper/lilac surfaces, line dividers, and the shared action/control tokens.
+
+## Evidence and findings
+
+- Homepage and route collection: the final visible layer mixed direct near-match ink/pink/muted values and direct Georgia declarations with the semantic values used by the hero and shared controls.
+- Trips dashboard: card, divider, metadata, display-heading, and muted-text roles used undefined local aliases with fallback values rather than the corresponding shared tokens.
+- Profile/auth and Prep: the established layouts had legacy final overrides for paper, rail, heading, meta, and border roles. The relevant visible auth/Prep roles could be normalized without moving markup or changing controls.
+- Tour, Passport, Stamps, Overview, Itinerary, and Map: the current production components already resolve display/UI/meta typography, paper/card/rail surfaces, dividers, statuses, and CTA variants through the shared Morrovia layer. No low-risk code change was needed.
+- The local authenticated trip workspace remained on its `Opening your trip…` loading state during a 5.5-second direct-URL check, so the existing static/component audit was used for Overview/Itinerary/Map role coverage and the runtime loading state is recorded separately below. This is not treated as a visual-token pass.
+
+## Low-risk fixes applied
+
+- Homepage route collection now maps eyebrow/meta, display headings, secondary copy, action links, card borders, and image fallback surfaces to existing Morrovia semantic tokens.
+- Dashboard now maps border/divider, strong-border, muted body, display, and meta roles to the existing Morrovia semantic tokens; intentional white card surfaces remain unchanged.
+- Profile/auth and Prep now map their visible paper, display, meta, muted, border, panel, and action roles to the existing Morrovia tokens without structural changes.
+- Builder Step 1 and Step 2 continue to share the same `stepHero` and `BuilderSummaryRail` semantic token layer: display ink, UI/muted text, signal meta labels, paper/lilac surfaces, line dividers, and shared controls. No per-step matching rule remains.
+
+## Deferred design work
+
+- Define an explicit shared white-card/surface token before removing the dashboard's intentional `#fff` panel fallbacks. Reusing paper there would visibly alter the elevation hierarchy, and introducing a new token is outside this low-risk pass.
+- Give dark rails an explicit on-ink text token and audit the Prep rail's inherited heading contrast as a focused accessibility/design task. No existing on-ink semantic token is available, so this pass did not invent one.
+- Consolidate the long legacy CSS layers in Homepage, Account, and Prep after a component-level visual regression pass; the visible final roles are normalized, but broad cleanup would be structural work.
+- Investigate the authenticated workspace's persistent production `Opening your trip…` state before taking a final visual capture of Overview, Itinerary, and Map. The audit did not change that state or its loading logic.
+
+## Result
+
+No redesign was introduced. Equivalent visible roles now use the same existing Morrovia typography, colour, border, and action tokens where a safe direct substitution existed; broader token-model and rail-contrast work is explicitly deferred.
+
+---
+
+## Builder identity and visual-system QA — 2026-08-27
+
+### Scope and references
+
+- Builder Step 1 reference: `artifacts/builder-qa/reference-step1.png`
+- Builder Step 2 reference: `artifacts/builder-qa/reference-step2.png`
+- Step 1 comparison: `artifacts/builder-qa/step1-reference-after-comparison.png`
+- Step 2 comparison: `artifacts/builder-qa/step2-reference-after-comparison.png`
+- Responsive captures: `builder-step1-390-after.png`, `builder-step2-390-after.png`
+
+### Iteration 1
+
+1. **P1 · content/trust · Step 1 geography review duplicated confirmed stops.** The reference showed Marrakech and Fes as both confirmed route stops and review cards, while Chefchaouen was incorrectly unresolved despite reviewed route coordinates. Root cause: public-route handoff passed operational stop strings and coordinates without the canonical IDs used by Place Intelligence, then rendered every captured mention in the review section. Fix: canonical Morocco identities now travel through public-route handoff and review is derived only from attention states.
+2. **P1 · layout/system · Step 1 and Step 2 used separate summary-rail markup and typography overrides.** Fix: both steps now render one `BuilderSummaryRail`, and the shared step hero uses the Morrovia display/meta/UI tokens.
+3. **P1 · behavior/accessibility · Starting point and Stops accepted raw strings without an inspectable canonical choice.** Fix: both fields now use one catalog-backed combobox with contextual labels, listbox semantics, visible focus, Arrow Up/Down, Enter and Escape handling, loading/no-result states, duplicate rejection, and 44px-plus mobile result rows.
+4. **P2 · responsiveness · a stop suggestion menu could become unusable if clipped by the review card at narrow widths.** Fix: the menu is anchored to the field with an overlay layer, bounded viewport height, and scroll. At 320px its measured bounds were left `45.7`, right `274.3`, bottom `491.6` within a `320 × 800` viewport.
+
+### Iteration 2 verification
+
+- Step 1 and Step 2 were compared side by side against the supplied references at desktop size after the shared hierarchy and canonical-state fixes.
+- Browser geometry at 320, 390, 768, 1024 and 1440 CSS pixels reported document width equal to viewport width, with no horizontal scrolling.
+- The Morocco route now renders Marrakech, Fes and Chefchaouen as confident canonical stops; the geography-review section disappears without leaving an empty band.
+- Faro origin selection and Lisbon stop selection were exercised in the rendered combobox; keyboard selection and Escape closure behaved as labelled.
+- Step 1 and Step 2 retain the same shell, rail order, copy roles and bottom action layout; the rail hides at the established tablet breakpoint.
+- Focused Builder, Place Intelligence, curated/public route and persistence suites passed. Typecheck, production build, Storybook build and `git diff --check` passed.
+
+### Findings
+
+No actionable P0, P1 or P2 visual, identity or interaction mismatch remains in the tested states.
+
+**final result: passed**
 
 ---
 

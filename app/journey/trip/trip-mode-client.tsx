@@ -25,6 +25,7 @@ import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "
 import { formatIsoDate, isoDateKey, tripLifecycle } from "@/lib/easyt/trip-lifecycle";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import type { EasyTTrip, TripBooking, TripChecklistItem } from "@/lib/easyt/trip";
+import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { authClient } from "@/lib/auth-client";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import styles from "./trip-mode.module.css";
@@ -273,7 +274,7 @@ export default function TripModeClient() {
   const bookings = trip?.brief.bookings ?? [];
   const dayNotes = tripDay && trip ? trip.brief.dayNotes?.[tripDay.dayNumber] ?? [] : [];
   const pins = tripDay && trip ? trip.brief.mapPins?.filter((pin) => pin.dayNumber === tripDay.dayNumber) ?? [] : [];
-  const tripHref = trip ? `/journey/plan?trip=${encodeURIComponent(trip.id)}` : "/journey/new";
+  const tripHref = trip ? mapWorkspaceHref(trip.id) : "/journey/new";
   const syncAction = tripEditorSyncAction({
     hasCloudConflict: Boolean(syncConflict),
     hasDeviceRecoveryIssue: localWriteIssue === "existing-recovery" || localWriteIssue === "preserved-recovery",

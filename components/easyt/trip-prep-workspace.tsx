@@ -48,6 +48,7 @@ import {
 } from "@/lib/easyt/travel-readiness";
 import styles from "./trip-prep-workspace.module.css";
 import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
+import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 
 type Props = {
   trip: EasyTTrip;
@@ -215,6 +216,7 @@ export default function TripPrepWorkspace({
   const [actionsStatus, setActionsStatus] = useState<ProviderStatus>(initialProviderStatus ?? (initialActions !== undefined ? "available" : "loading"));
   const [readinessStatus, setReadinessStatus] = useState<ProviderStatus>(initialProviderStatus ?? (initialReadinessCards !== undefined || !trip.stops.length ? "available" : "loading"));
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [providerRetryVersion, setProviderRetryVersion] = useState(0);
 
   useEffect(() => {
     if (initialProfile) return;
@@ -252,7 +254,7 @@ export default function TripPrepWorkspace({
       setActionsStatus("unavailable");
     });
     return () => { active = false; };
-  }, [initialActions, initialProviderStatus, presentation, trip]);
+  }, [initialActions, initialProviderStatus, presentation, providerRetryVersion, trip]);
 
   useEffect(() => {
     if (presentation === "legacy" || initialReadinessCards !== undefined || initialProviderStatus !== undefined) return;
@@ -283,7 +285,7 @@ export default function TripPrepWorkspace({
       setReadinessStatus("unavailable");
     });
     return () => { active = false; };
-  }, [avoidDriving, initialProviderStatus, initialReadinessCards, language, presentation, profile, trip.startDate, trip.stops]);
+  }, [avoidDriving, initialProviderStatus, initialReadinessCards, language, presentation, profile, providerRetryVersion, trip.startDate, trip.stops]);
 
   if (presentation === "legacy") return <DetailedPrep trip={trip} language={language} />;
 
@@ -348,15 +350,15 @@ export default function TripPrepWorkspace({
 
       <TaskSection id="must" title="Must do" icon={Sparkles} tasks={grouped.must} tripId={trip.id} onOpenDetails={openDetails} />
 
-      <aside className={`${styles.nextCard} ${nextTask?.status === "urgent" ? styles.nextUrgent : ""}`}>
+      {nextTask || !providersAvailable ? <aside className={`${styles.nextCard} ${nextTask?.status === "urgent" ? styles.nextUrgent : ""}`}>
         <header><p>NEXT IMPORTANT TASK</p>{nextTask?.status === "urgent" ? <CircleAlert aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</header>
         {nextTask ? <>
           <div><span className={styles.nextIcon}>{(() => { const Icon = iconByKind[nextTask.kind]; return <Icon aria-hidden="true" />; })()}</span><div><h3>{nextTask.title}</h3><p>{taskSummary(nextTask)}</p></div></div>
           <TaskAction task={nextTask} tripId={trip.id} onOpenDetails={openDetails} compact />
-        </> : providersAvailable
-          ? <div className={styles.readyMessage}><Check aria-hidden="true" /><div><h3>Prep tasks complete.</h3><p>Every currently tracked Prep task is complete.</p></div></div>
-          : <div className={styles.readyMessage}><CircleAlert aria-hidden="true" /><div><h3>{providerUnavailable ? "Some Prep checks are unavailable." : "Prep checks are still loading."}</h3><p>{providerMessage}</p></div></div>}
-      </aside>
+        </> : providerUnavailable
+          ? <MorroviaSectionStatus state="error" title="Some Prep checks are unavailable" detail="Your saved trip is unchanged. Retry these provider-backed checks before treating the task list as final." onRetry={() => setProviderRetryVersion((current) => current + 1)} />
+          : <MorroviaSectionStatus title="Checking Prep tasks" detail="Keeping your saved checklist visible while provider-backed checks load." />}
+      </aside> : null}
 
       <TaskSection id="good" title="Good to do" icon={HeartPulse} tasks={grouped.good} tripId={trip.id} onOpenDetails={openDetails} compact />
       <TaskSection id="nice" title="Nice to have" icon={Sparkles} tasks={grouped.nice} tripId={trip.id} onOpenDetails={openDetails} compact />

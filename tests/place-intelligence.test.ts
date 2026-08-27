@@ -3,12 +3,15 @@ import test from "node:test";
 import {
   canonicalPlaceFactsMatch,
   canonicalPlaceSuggestionFor,
+  canonicalPlaceSuggestionsForQuery,
+  placeMentionsNeedingReview,
   regionalBaseSuggestions,
   resolvePlaceMentions,
   resolvePlaceMentionsWithProvider,
   selectPlaceCandidate,
   type PlaceIntelligenceProvider,
 } from "../lib/easyt/place-intelligence.ts";
+import { isDuplicatePlaceIdentity, placeAutocompleteKeyAction } from "../lib/easyt/place-autocomplete.ts";
 import { NIKKO_CANONICAL_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
 
 test("Nikko suggestions and prompt capture converge on one canonical identity", () => {
@@ -27,6 +30,33 @@ test("Nikko suggestions and prompt capture converge on one canonical identity", 
   assert.equal(mention?.canonicalPlaceId, suggestion.canonicalPlaceId);
   assert.equal(canonicalPlaceFactsMatch("nikko", { country: "Japan", coordinates: NIKKO_CANONICAL_FIXTURE.coordinates }), true);
   assert.equal(canonicalPlaceFactsMatch("nikko", { country: "Japan", coordinates: [-66.1568, -16.2902] }), false);
+});
+
+test("canonical autocomplete returns contextual route identities and supports keyboard selection", () => {
+  const morocco = canonicalPlaceSuggestionsForQuery("chef", ["Morocco"]);
+  assert.deepEqual(morocco.map(({ canonicalPlaceId, name, country }) => ({ canonicalPlaceId, name, country })), [
+    { canonicalPlaceId: "chefchaouen", name: "Chefchaouen", country: "Morocco" },
+  ]);
+  assert.deepEqual(placeAutocompleteKeyAction("ArrowDown", -1, 3), { activeIndex: 0, choose: false, close: false });
+  assert.deepEqual(placeAutocompleteKeyAction("ArrowUp", 0, 3), { activeIndex: 2, choose: false, close: false });
+  assert.deepEqual(placeAutocompleteKeyAction("Enter", -1, 3), { activeIndex: 0, choose: true, close: true });
+  assert.deepEqual(placeAutocompleteKeyAction("Escape", 1, 3), { activeIndex: -1, choose: false, close: true });
+  assert.equal(isDuplicatePlaceIdentity(
+    [{ name: "Chefchaouen", canonicalPlaceId: "chefchaouen" }],
+    { name: "Chaouen", canonicalPlaceId: "chefchaouen" },
+  ), true);
+  assert.equal(isDuplicatePlaceIdentity([{ name: "Fes" }], { name: " fes " }), true);
+  assert.equal(isDuplicatePlaceIdentity([{ name: "Fes" }], { name: "Faro", canonicalPlaceId: "faro" }), false);
+});
+
+test("geography review omits confident route destinations and retains only attention states", () => {
+  const known = resolvePlaceMentions("Marrakech, Fes and Chefchaouen");
+  assert.deepEqual(placeMentionsNeedingReview(known.mentions, known.issues), []);
+
+  const mixed = resolvePlaceMentions("Marrakech and Totallyunknownville");
+  const review = placeMentionsNeedingReview(mixed.mentions, mixed.issues);
+  assert.equal(review.some((mention) => mention.canonicalPlaceId === "marrakech"), false);
+  assert.equal(review.some((mention) => mention.status === "unresolved"), true);
 });
 
 test("deterministic resolution preserves stable identity, order and exact source wording", () => {

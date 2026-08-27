@@ -8,6 +8,7 @@ import {
   isFirstTripWorkspaceArrival,
   itineraryDayForRecommendation,
   itineraryWorkspaceHref,
+  initialMapCameraMode,
   mapWorkspaceHref,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
@@ -79,6 +80,12 @@ test("invalid Map and Itinerary deep links fall back to the first canonical cont
   assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=missing&mode=hotel")), { stopId: "cusco", mode: "plan" });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=3junk")), { dayNumber: 1 });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=99")), { dayNumber: 1 });
+});
+
+test("Map camera opens route-first unless the traveller explicitly targets a valid stop", () => {
+  assert.equal(initialMapCameraMode(trip, new URLSearchParams()), "overview");
+  assert.equal(initialMapCameraMode(trip, new URLSearchParams("stop=missing")), "overview");
+  assert.equal(initialMapCameraMode(trip, new URLSearchParams("stop=sacred-valley")), "detail");
 });
 
 test("Trip Health and route cards use deterministic itinerary days", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ArrowUpRight, GripVertical, Plane, Plus, StickyNote, Trash2, Utensils } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, CarFront, CircleHelp, GripVertical, Plane, Plus, Ship, StickyNote, TrainFront, Trash2, Utensils } from "lucide-react";
 import { useState, type DragEvent } from "react";
 import type { JourneyCalendarDay, JourneyRestaurant, JourneyStop, RestaurantMeal } from "@/lib/journey";
 import type { PlanItem } from "@/lib/easyt/trip";
@@ -95,6 +95,7 @@ export interface PlanWorkspaceProps {
 
 export function PlanWorkspace({ context, schedule, activity, notes, navigation, copy }: PlanWorkspaceProps) {
   const { selectedDay, selectedStop, selectedDayIndex, totalDays, planItem, transfer, savedRestaurant } = context;
+  const TransferIcon = transfer?.mode === "flight" ? Plane : transfer?.mode === "rail" ? TrainFront : transfer?.mode === "road" ? CarFront : transfer?.mode === "ferry" ? Ship : CircleHelp;
   const [openTool, setOpenTool] = useState<"activity" | "notes" | null>(null);
 
   const closeTool = () => setOpenTool(null);
@@ -102,7 +103,7 @@ export function PlanWorkspace({ context, schedule, activity, notes, navigation, 
   return (
     <section className={styles.shapeDayPlan} aria-label="Selected day plan">
       <p className={styles.shapeDayContext}>{selectedDay.date} · {selectedStop.city}</p>
-      {transfer ? <div className={styles.dayTravel}><Plane /><div><small>{transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration}</span>{transfer.from && transfer.detail ? <details><summary>Transfer details</summary><p>{transfer.detail}</p></details> : null}</div></div> : null}
+      {transfer ? <div className={styles.dayTravel}><TransferIcon /><div><small>{transfer.mode === "flight" ? copy.travelConnection : copy.localTransfer}</small><strong>{transfer.from ? `${transfer.from} → ${selectedDay.city}` : transfer.detail}</strong><span>{transfer.duration}</span>{transfer.from && transfer.detail ? <details><summary>Transfer details</summary><p>{transfer.detail}</p></details> : null}</div></div> : null}
       {planItem ? <>
         {schedule.warning ? <p className={styles.plannerWarning}>{schedule.warning}</p> : null}
         {schedule.signals.length ? <section className={styles.scheduleHealth} aria-label={copy.scheduleHealth}>

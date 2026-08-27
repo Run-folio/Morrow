@@ -18,6 +18,8 @@ function buildRouteTrip(routeKey: (typeof betaRoutes)[number]) {
     sourceRouteKey: payload.sourceRouteKey,
     curatedRoute: payload.curatedRoute,
     origin: payload.origin,
+    originCanonicalPlaceId: payload.originCanonicalPlaceId,
+    originCountry: payload.originCountry,
     originCoordinates: payload.originCoordinates,
     stops: payload.destinations,
     startDate: payload.startDate,
@@ -41,6 +43,7 @@ for (const routeKey of betaRoutes) {
     assert.equal(trip.legs.every((leg) => leg.routeMetadata.source === "curated-route"), true);
     const reloaded = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-a", trip)));
     assert.equal(reloaded.brief.curatedRoute.coverage.state, "fully-supported");
+    assert.equal(reloaded.brief.originCanonicalPlaceId, trip.brief.originCanonicalPlaceId);
     assert.deepEqual(reloaded.brief.curatedRoute.canonicalStopIds, reloaded.stops.map((stop: { id: string }) => stop.id));
     assert.equal(reloaded.legs.every((leg: { routeMetadata: { source?: string } }) => leg.routeMetadata.source === "curated-route"), true);
   });

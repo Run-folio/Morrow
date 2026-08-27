@@ -6,5 +6,41 @@
 /* Illustrated route cards for the public landing page. */
 .routeImage{height:200px;background-image:url('/journey/illustrations/route-card-triptych.png')!important;background-size:300% auto!important;background-repeat:no-repeat!important;background-color:#faf9ff!important;filter:none!important}.artLeft{background-position:left center}.artCenter{background-position:center center}.artRight{background-position:right center}.routeCard>div:last-child{padding:20px 19px 18px}.routeCard strong{font-family:Georgia,'Times New Roman',serif!important;font-size:23px!important;color:#17106e!important}.routeBases{display:block;margin-top:8px;color:#7775a4;font-size:12px}.routeStats{display:flex;align-items:center;gap:5px;margin-top:12px;color:#68669d;font-size:11px}.routeStats svg{width:13px;color:#f62880}.routeStats svg+svg{margin-left:9px}.routeCard p{min-height:40px;margin:16px 0!important;color:#706d99!important;font-size:12px!important;line-height:1.5!important}.routeCard i{color:#251dc0!important;font-style:normal!important;font-weight:750!important}@media(max-width:760px){.routeImage{height:190px}.routeCard strong{font-size:21px!important}}
 
+/* Shared semantic roles for the public route collection. Layout and card
+   composition remain deliberately unchanged. */
+.eyebrow,
+.featuredCopy > p,
+.routeCard small,
+.routeStats svg,
+.routeFooter svg {
+  color: var(--morrovia-signal);
+  font-family: var(--morrovia-meta);
+}
+
+.explorerHead h2,
+.featuredCopy h3,
+.routeCard strong {
+  color: var(--morrovia-ink) !important;
+  font-family: var(--morrovia-display) !important;
+}
+
+.explorerHead > p,
+.featuredCopy > span,
+.routeCard p,
+.routeBases,
+.routeStats,
+.routeFooter {
+  color: var(--morrovia-muted) !important;
+}
+
+.browseLink,
+.routeCard i,
+.routeFooter a {
+  color: var(--morrovia-action) !important;
+}
+
+.routeCard { border-color: var(--morrovia-line); }
+.routeImage { background-color: var(--morrovia-paper) !important; }
+
 /* Route-specific Unsplash photography replaces the temporary illustration triptych. */
-.routeImage{height:238px!important;overflow:hidden;background-image:var(--route-photo)!important;background-color:#efedf5!important;background-size:cover!important;background-position:center!important;filter:none!important}.routeImage:after{background:linear-gradient(180deg,transparent 34%,rgba(18,17,55,.42))!important}.routeImage small{position:absolute;z-index:1;right:12px;bottom:10px;left:auto;color:#fff;font:700 8px/1 var(--font-geist-mono,monospace);letter-spacing:.06em;text-shadow:0 1px 5px rgba(0,0,0,.45)}.routeImageLoading{background-image:linear-gradient(120deg,#eeedf7 0%,#faf9ff 45%,#e7e5f5 100%)!important;background-size:200% 100%!important;animation:routePhotoPulse 1.6s ease-in-out infinite}@keyframes routePhotoPulse{50%{background-position:100% 0}}.explorer{padding:8px 0 104px}.explorerHead{margin-bottom:30px}.routeGrid{gap:22px}.routeCard{min-height:484px}.routeCard>div:last-child{display:flex;flex-direction:column;min-height:246px;padding:22px 20px 19px}.routeCard strong{font-size:26px!important}.routeCard p{margin-top:15px!important}.routeCard i{margin-top:auto!important}@media(max-width:760px){.explorer{padding:26px 0 68px}.routeImage{height:218px!important}.routeCard{min-height:0}.routeCard>div:last-child{min-height:0}.routeImage small{font-size:7px}}
+.routeImage{height:238px!important;overflow:hidden;background-image:var(--route-photo)!important;background-color:var(--morrovia-paper)!important;background-size:cover!important;background-position:center!important;filter:none!important}.routeImage:after{background:linear-gradient(180deg,transparent 34%,rgba(18,17,55,.42))!important}.routeImage small{position:absolute;z-index:1;right:12px;bottom:10px;left:auto;color:#fff;font:700 8px/1 var(--morrovia-meta);letter-spacing:.06em;text-shadow:0 1px 5px rgba(0,0,0,.45)}.routeImageLoading{background-image:linear-gradient(120deg,#eeedf7 0%,#faf9ff 45%,#e7e5f5 100%)!important;background-size:200% 100%!important;animation:routePhotoPulse 1.6s ease-in-out infinite}@keyframes routePhotoPulse{50%{background-position:100% 0}}.explorer{padding:8px 0 104px}.explorerHead{margin-bottom:30px}.routeGrid{gap:22px}.routeCard{min-height:484px}.routeCard>div:last-child{display:flex;flex-direction:column;min-height:246px;padding:22px 20px 19px}.routeCard strong{font-size:26px!important}.routeCard p{margin-top:15px!important}.routeCard i{margin-top:auto!important}@media(max-width:760px){.explorer{padding:26px 0 68px}.routeImage{height:218px!important}.routeCard{min-height:0}.routeCard>div:last-child{min-height:0}.routeImage small{font-size:7px}}

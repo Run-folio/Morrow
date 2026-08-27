@@ -121,10 +121,13 @@ export type PublicRoutePlanDraft = {
   routeTitle: string;
   origin: string;
   originCoordinates: [number, number];
+  originCanonicalPlaceId?: string;
+  originCountry?: string;
   destinations: Array<{
     id: string;
     name: string;
     country: string;
+    canonicalPlaceId?: string;
     coordinates: [number, number];
   }>;
   durationDays: number;
@@ -220,6 +223,8 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
     ? `${detail.durationDays} days. Start in ${first.name}, continue through ${middle.join(", ")}, and finish in ${last.name}.`
     : `${detail.durationDays} days. Start in ${first.name} and finish in ${last.name}.`;
   const captured = captureJourneyBrief(prompt);
+  const originName = seed?.origin ?? first.name;
+  const canonicalOrigin = matchCatalogPlace(originName);
   const destinations = route.stops.map((stop, index) => {
     const canonical = matchCatalogPlace(stop.name);
     const mention = captured.mentions.find((item) => (Boolean(canonical?.canonicalPlaceId) && item.canonicalPlaceId === canonical?.canonicalPlaceId)
@@ -266,12 +271,15 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
   return {
     routeKey: route.key,
     routeTitle: route.title,
-    origin: seed?.origin ?? first.name,
+    origin: originName,
     originCoordinates: [...(seed?.originCoordinates ?? first.coordinates)] as [number, number],
+    originCanonicalPlaceId: canonicalOrigin?.canonicalPlaceId,
+    originCountry: canonicalOrigin?.parentCountries[0] ?? first.country,
     destinations: route.stops.map((stop, index) => ({
       id: seed?.stops[index]?.id ?? `route-${route.key}-${index}`,
       name: stop.name,
       country: stop.country,
+      canonicalPlaceId: destinations[index]?.canonicalPlaceId,
       coordinates: [...stop.coordinates] as [number, number],
     })),
     durationDays: detail.durationDays,

@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
       description: isInCountry(summary, country) ? summary?.extract : undefined,
       sourceUrl: unsplash?.sourceUrl ?? summary?.content_urls?.desktop?.page,
       sourceLabel: unsplash?.sourceLabel,
+      learnMoreUrl: isInCountry(summary, country) ? summary?.content_urls?.desktop?.page : undefined,
+      descriptionSourceLabel: isInCountry(summary, country) ? "Wikipedia" : undefined,
     } });
   } catch {
     return NextResponse.json({ place: null });
