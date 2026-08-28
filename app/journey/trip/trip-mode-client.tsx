@@ -22,6 +22,7 @@ import {
   type TripRecoveryHandle,
 } from "@/lib/easyt/storage";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { formatIsoDate, isoDateKey, tripLifecycle } from "@/lib/easyt/trip-lifecycle";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import type { EasyTTrip, TripBooking, TripChecklistItem } from "@/lib/easyt/trip";
@@ -208,8 +209,8 @@ export default function TripModeClient() {
       })
       .catch((error) => {
         const conflict = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError;
-        const authInterrupted = error instanceof EasyTTripAuthError;
-        markTripRecoveryState(recovery.handle, authInterrupted ? "auth" : conflict ? "conflict" : "network");
+        const authInterrupted = error instanceof EasyTTripAuthError || isTripPersistenceAuthenticationError(error);
+        markTripRecoveryState(recovery.handle, tripRecoveryStateForPersistenceError(error));
         if (!sameRecoveryHandle(recoveryHandleRef.current, recovery.handle)
           || visibleOwnerIdRef.current !== sessionOwnerId
           || hydratedOwnerScopeRef.current !== sessionOwnerId) return;

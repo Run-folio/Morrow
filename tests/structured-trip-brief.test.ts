@@ -267,6 +267,49 @@ test("builder base selection wins operationally while preserving broad prompt ge
   assert.equal(merged.placeMentions?.some((mention) => mention.canonicalPlaceId === "patagonia"), true);
 });
 
+test("a locality selected as its own base collapses to the direct canonical stop", () => {
+  const captured = extractStructuredTripBrief("Paris");
+  const locality = captured.placeMentions?.[0];
+  assert.ok(locality?.canonicalPlaceId);
+  const stale = {
+    ...captured,
+    placeMentions: captured.placeMentions?.map((mention) => mention.mentionId === locality.mentionId ? {
+      ...mention,
+      placeType: "region" as const,
+      status: "partially_resolved" as const,
+      routability: "planning_area" as const,
+      directlyRoutable: false,
+      requiresBaseSelection: true,
+      isAnchor: true,
+    } : mention),
+  };
+  const merged = mergeStructuredTripBrief(stale, {
+    destinations: [{
+      id: "stop-paris",
+      name: "Paris",
+      canonicalPlaceId: locality.canonicalPlaceId,
+      placeMentionId: locality.mentionId,
+      placeType: "city",
+      resolutionStatus: "resolved",
+      routability: "direct_destination",
+    }],
+    placeSelections: [{
+      mentionId: locality.mentionId,
+      kind: "base",
+      selectedCanonicalPlaceId: locality.canonicalPlaceId,
+      selectedName: "Paris",
+      selectedPlaceType: "city",
+      routeStopId: "stop-paris",
+      provenance: locality.provenance[0],
+    }],
+  });
+
+  assert.deepEqual(merged.placeSelections, []);
+  assert.equal(merged.placeMentions?.[0]?.routability, "direct_destination");
+  assert.equal(merged.placeMentions?.[0]?.requiresBaseSelection, false);
+  assert.equal(merged.destinations.filter((destination) => destination.canonicalPlaceId === locality.canonicalPlaceId).length, 1);
+});
+
 test("place removals are explicit and do not erase the captured mention", () => {
   const base = extractStructuredTripBrief("The French Alps and Lake Annecy.");
   const alps = base.placeMentions?.find((mention) => mention.canonicalPlaceId === "french-alps");

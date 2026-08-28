@@ -17,6 +17,8 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
+import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
@@ -288,7 +290,7 @@ function CanonicalPlaceAutocomplete({
                   : /attraction|historic|monument|museum|archaeological/.test(kind) ? "landmark" as const
                     : /state|province|region|county|administrative/.test(kind) ? "region" as const
                       : "unknown" as const;
-          const canonicalPlaceId = candidate.providerId ? `provider:${candidate.providerId}` : `provider:${candidate.country}:${candidate.name}`;
+          const canonicalPlaceId = candidate.canonicalPlaceId ?? (candidate.providerId ? `nominatim:${candidate.providerId}` : `provider:${candidate.country}:${candidate.name}`);
           return {
             canonicalPlaceId,
             name: candidate.name,
@@ -799,7 +801,7 @@ function TripBuilderDocument() {
                   // must not rename the canonical intent captured from the prompt.
                   setOrigin(mention.canonicalName);
                   setOriginCoordinates(chosen.coordinates);
-                  setOriginCanonicalPlaceId(mention.canonicalPlaceId ?? (chosen.providerId ? `provider:${chosen.providerId}` : undefined));
+                  setOriginCanonicalPlaceId(mention.canonicalPlaceId ?? chosen.canonicalPlaceId ?? (chosen.providerId ? `nominatim:${chosen.providerId}` : undefined));
                   setOriginCountry(chosen.country);
                   setOriginProviderId(chosen.providerId);
                 }
@@ -1435,7 +1437,7 @@ function TripBuilderDocument() {
       } : null;
       const resolved = canonicalResolved ?? await (async () => {
         const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(canonicalSuggestion?.name ?? value)}${routeCountry ? `&country=${encodeURIComponent(routeCountry)}` : ""}${nearby ? `&nearLat=${nearby[1]}&nearLon=${nearby[0]}` : ""}`);
-        const payload = await response.json() as { result?: { name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
+        const payload = await response.json() as { result?: { canonicalPlaceId?: string; name?: string; country?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; kind?: string; locality?: string } | null };
         return payload.result;
       })();
       if (!resolved?.coordinates || !resolved.country) return setStopError(language === "es" ? `No pudimos verificar “${value}”. Prueba una ciudad, región o lugar con su país.` : `We couldn't verify “${value}”. Try a city, region or landmark with its country.`);
@@ -1452,7 +1454,7 @@ function TripBuilderDocument() {
         id,
         name: resolvedName,
         country: resolvedCountry,
-        canonicalPlaceId: selectedCanonicalPlaceId ?? (resolved.providerId ? `provider:${resolved.providerId}` : undefined),
+        canonicalPlaceId: selectedCanonicalPlaceId ?? resolved.canonicalPlaceId ?? (resolved.providerId ? `nominatim:${resolved.providerId}` : undefined),
         countryCode: resolved.countryCode,
         region: canonicalSuggestion?.region ?? resolved.region,
         providerId: resolved.providerId,
@@ -1466,7 +1468,7 @@ function TripBuilderDocument() {
         setPlaceSelections((current) => [{
           mentionId: targetMentionId,
           kind: selectionDraft?.kind ?? (targetMention?.status === "ambiguous" ? "ambiguity" : "base"),
-          selectedCanonicalPlaceId: selectionDraft?.selectedCanonicalPlaceId ?? (resolved.providerId ? `provider:${resolved.providerId}` : `builder-base:${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
+          selectedCanonicalPlaceId: selectionDraft?.selectedCanonicalPlaceId ?? resolved.canonicalPlaceId ?? (resolved.providerId ? `nominatim:${resolved.providerId}` : `builder-base:${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`),
           selectedName: selectionDraft?.selectedName ?? resolvedName,
           selectedPlaceType: selectionDraft?.selectedPlaceType ?? (/city/.test(resolved.kind ?? "") ? "city" : "town"),
           selectedParentCountries: selectionDraft?.selectedParentCountries ?? [resolvedCountry],
@@ -1742,7 +1744,7 @@ function TripBuilderDocument() {
       setOriginCoordinates(payload.result.coordinates);
       setOriginCountry(payload.result.country);
       setOriginProviderId(payload.result.providerId);
-      setOriginCanonicalPlaceId(payload.result.providerId ? `provider:${payload.result.providerId}` : undefined);
+      setOriginCanonicalPlaceId(payload.result.canonicalPlaceId ?? (payload.result.providerId ? `nominatim:${payload.result.providerId}` : undefined));
       setOriginError("");
       return true;
     } catch {
@@ -2106,6 +2108,14 @@ function TripBuilderDocument() {
         setSaveState("error");
         return null;
       }
+      if (!tripBuildDocumentsCanonicalEquivalent(requestTrip, saved, requestOwnerId)) {
+        throw new EasyTTripPersistenceError({
+          message: "The saved trip did not match the trip you reviewed.",
+          category: "validation",
+          status: 200,
+          operation: requestTrip.ownerId ? "update" : "promotion",
+        });
+      }
       const cached = cacheCanonicalTrip(saved, recovery.handle);
       const remainingRecovery = loadTripRecovery(saved.id, recovery.handle.ownerId);
       if (!cached.stored || remainingRecovery) {
@@ -2139,8 +2149,8 @@ function TripBuilderDocument() {
       const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
         ? error.canonicalTrip
         : null;
-      const authInterrupted = error instanceof EasyTTripAuthError;
-      if (recovery.stored) markTripRecoveryState(recovery.handle, authInterrupted ? "auth" : conflictTrip ? "conflict" : "network");
+      const authInterrupted = error instanceof EasyTTripAuthError || isTripPersistenceAuthenticationError(error);
+      if (recovery.stored) markTripRecoveryState(recovery.handle, tripRecoveryStateForPersistenceError(error));
       const responseOwnerId = recovery.handle.ownerId;
       const currentHandle = recoveryHandleRef.current;
       if (activeBrowserOwnerIdRef.current !== responseOwnerId
@@ -2149,11 +2159,18 @@ function TripBuilderDocument() {
         || currentHandle.tripId !== recovery.handle.tripId) return null;
       if (conflictTrip) setCloudConflictTrip(conflictTrip);
       setCloudAuthInterrupted(authInterrupted);
+      const persistenceCategory = error instanceof EasyTTripPersistenceError ? error.category : null;
       setCloudSaveError(authInterrupted
         ? "Your session expired. This trip is still saved on this device; sign in again to sync it."
         : conflictTrip
         ? "This trip changed on another device. Your edits remain on this device until you open the cloud copy."
-        : "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
+        : persistenceCategory === "validation"
+          ? "Morrovia could not validate the exact trip you reviewed. It remains saved on this device; try again before building."
+          : persistenceCategory === "repository"
+            ? "Morrovia could not save this trip to your account. It remains saved on this device; try again shortly."
+            : error instanceof TypeError
+              ? "Morrovia could not reach your account. This trip remains saved on this device; check your connection and try again."
+              : "Morrovia could not confirm this account save. The exact trip remains saved on this device; try again before building.");
       setSaveState("error");
       trackEvent("trip_save_failed", {
         trip_source: analyticsTripSource,
@@ -2172,7 +2189,7 @@ function TripBuilderDocument() {
     // recovery document has already been written before cloud persistence.
     setOpeningTrip(false);
     setSaveState("error");
-    setCloudSaveError((current) => current || "Couldn’t sync this trip. It is still saved on this device; try again when your connection recovers.");
+    setCloudSaveError((current) => current || "Morrovia could not confirm this account save. The exact trip remains saved on this device; try again before building.");
   };
 
   const openBuiltTrip = () => {
@@ -2828,7 +2845,7 @@ function TripBuilderDocument() {
         <div className={styles.footRight}>
           <span className={styles.saveState}><MorroviaSaveStatus state={visibleSaveState} label={visibleSaveLabel} /></span>
           {gate && <small className={styles.gate}>{gate}</small>}
-          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip || Boolean(cloudConflictTrip)} aria-busy={openingTrip || undefined}
+          <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate) return;
               if (step === 0) {

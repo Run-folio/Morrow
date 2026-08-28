@@ -116,11 +116,13 @@ function semanticPlaceMentions(
     // Semantic certainty describes confidence in the interpretation, not
     // whether the traveller considers an explicitly listed stop optional.
     role: "preferred",
+    travelIntent: destination.role,
     ...(destination.interpretedText ? { lookupText: destination.interpretedText } : {}),
   });
   for (const point of intent.pointsOfInterest) inputs.push({
     sourceText: geographySourceSpan(point.sourceText, rawBrief),
     role: "anchor",
+    travelIntent: "anchor",
     ...(point.interpretedText ? { lookupText: point.interpretedText } : {}),
   });
   for (const ambiguity of intent.ambiguities) {
@@ -142,9 +144,14 @@ function semanticPlaceMentions(
       if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
       if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
       if (["required", "optional"].includes(mention.role)) existing.role = mention.role;
+      if (!existing.travelIntent) existing.travelIntent = mention.role === "anchor" ? "anchor" : "route-stop";
       continue;
     }
-    if (normalized) inputs.push({ sourceText: mention.sourceText, role: mention.role });
+    if (normalized) inputs.push({
+      sourceText: mention.sourceText,
+      role: mention.role,
+      travelIntent: mention.role === "anchor" ? "anchor" : "route-stop",
+    });
   }
   return inputs
     .filter((input, index, all) => all.findIndex((candidate) => candidate.sourceText.toLocaleLowerCase() === input.sourceText.toLocaleLowerCase()) === index)
@@ -180,6 +187,8 @@ export function developmentJourneyCaptureDiagnostics(
         sourceText: input.sourceText,
         lunaExtracted: Boolean(semanticItem),
         semanticRole: semanticItem?.role ?? "deterministic-recovery",
+        lunaLikelyEntityType: semanticItem?.role ?? null,
+        deterministicInferredType: deterministic.mentions.find((item) => item.normalizedPhrase === normalized)?.placeType ?? "unknown",
         normalizedPhrase: normalized,
         mentionCoverage: { expected: true, resolution: Boolean(mention), structuredBrief: Boolean(structured) },
         resolverRequest: input.lookupText ?? input.sourceText,
@@ -188,6 +197,9 @@ export function developmentJourneyCaptureDiagnostics(
           parentCountries: candidate.parentCountries,
           placeType: candidate.placeType,
           routability: candidate.routability,
+          matchQuality: (candidate as typeof candidate & { matchQuality?: string }).matchQuality,
+          rankScore: (candidate as typeof candidate & { rankScore?: number }).rankScore,
+          normalization: candidate.provenance.find((source) => source.kind === "provider")?.supports,
         })) ?? [],
         selectedCandidate: mention?.canonicalPlaceId ? {
           canonicalName: mention.canonicalName,

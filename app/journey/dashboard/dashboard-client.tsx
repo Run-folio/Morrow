@@ -43,6 +43,7 @@ import {
 } from "@/lib/easyt/storage";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { journeyReauthenticationPath } from "@/lib/easyt/trip-continuity";
+import { isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { runClientMutation } from "@/lib/easyt/client-mutation";
 import { conflictHasCloudCopy, tripConflictResolutionActions, tripSyncRecoveryPath, type TripSaveConflictReason } from "@/lib/easyt/trip-continuity";
 import type { TripPromotionConflictReason } from "@/lib/easyt/trip-promotion";
@@ -261,11 +262,11 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       if (!trips.some((trip) => trip.id === result.trip.id)) router.refresh();
     } catch (error) {
       const conflict = error instanceof EasyTTripPromotionConflictError || error instanceof EasyTTripSaveConflictError;
-      const authInterrupted = error instanceof EasyTTripAuthError;
+      const authInterrupted = error instanceof EasyTTripAuthError || isTripPersistenceAuthenticationError(error);
       const conflictReason = conflict ? error.reason : undefined;
       if (conflict && conflictReason === "cloud-deleted") reconcileTripCloudMutation(ownerId, localTrip.id, "delete");
       else if (conflict) cacheCanonicalTrip(error.canonicalTrip);
-      markTripRecoveryState(recovery, authInterrupted ? "auth" : conflict ? "conflict" : "network", conflictReason);
+      markTripRecoveryState(recovery, tripRecoveryStateForPersistenceError(error), conflictReason);
       setSyncIssue({
         kind: authInterrupted ? "auth" : conflict ? "conflict" : "failed",
         tripId: localTrip.id,

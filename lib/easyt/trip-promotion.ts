@@ -209,6 +209,42 @@ export function canonicalTripForOwner(
   return { ...remapTripStopReferences({ ...trip, ownerId }, stopIds), updatedAt };
 }
 
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([, child]) => child !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, stableJsonValue(child)]),
+  );
+}
+
+/**
+ * Prove that the complete reviewed Builder document is the document returned
+ * by persistence. Repository-owned normalization (owner, stop IDs and the CAS
+ * revision) is allowed; semantic intent, selected bases, order, dates, nights,
+ * canonical endpoints and legs must all remain byte-equivalent after that.
+ */
+export function tripBuildDocumentsCanonicalEquivalent(
+  reviewedTrip: EasyTTrip,
+  canonicalTrip: EasyTTrip,
+  ownerId = canonicalTrip.ownerId,
+) {
+  if (!ownerId || reviewedTrip.id !== canonicalTrip.id) return false;
+  const { updatedAt: _reviewedRevision, ...reviewed } = canonicalTripForOwner(
+    ownerId,
+    reviewedTrip,
+    canonicalTrip.updatedAt,
+  );
+  const { updatedAt: _canonicalRevision, ...canonical } = canonicalTripForOwner(
+    ownerId,
+    canonicalTrip,
+    canonicalTrip.updatedAt,
+  );
+  return JSON.stringify(stableJsonValue(reviewed)) === JSON.stringify(stableJsonValue(canonical));
+}
+
 /** Build a fresh ownerless draft copy before the existing promotion boundary claims it. */
 export function duplicateTripDocument(
   source: EasyTTrip,

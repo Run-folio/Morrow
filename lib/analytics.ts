@@ -164,6 +164,14 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
 
 export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" | "conflict" | "repository" | "unknown" {
   if (error instanceof TypeError) return "network";
+  if (error instanceof Error && error.name === "EasyTTripPersistenceError") {
+    const category = (error as Error & { category?: string }).category;
+    if (category === "authentication") return "auth";
+    if (category === "conflict") return "conflict";
+    if (category === "repository" || category === "validation") return "repository";
+    if (category === "network") return "network";
+    return "unknown";
+  }
   if (error instanceof Error && error.name === "EasyTTripAuthError") return "auth";
   if (error instanceof Error && (error.name === "EasyTTripPromotionConflictError" || error.name === "EasyTTripSaveConflictError")) return "conflict";
   const message = error instanceof Error ? error.message.toLocaleLowerCase() : "";

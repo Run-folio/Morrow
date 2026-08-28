@@ -34,6 +34,7 @@ export type HomeTripDraft = {
 };
 
 export type HandoffLocationChoice = {
+  canonicalPlaceId?: string;
   name: string;
   country: string;
   countryCode?: string;

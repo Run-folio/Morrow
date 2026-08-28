@@ -20,8 +20,11 @@ import {
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
+import { tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promotion.ts";
+import { EasyTTripPersistenceError } from "../lib/easyt/trip-persistence-error.ts";
 import { firstTripWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
-import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 
 class MemoryStorage implements EasyTBrowserStorage {
   private values = new Map<string, string>();
@@ -291,6 +294,85 @@ test("a failed first Build retry reuses its promoted ID and retries the planned 
   assert.equal(saved.id, built.id);
   assert.equal(saved.ownerId, "owner-a");
   assert.equal(saved.status, "planned");
+});
+
+test("a retry after the planned write committed acknowledges that exact canonical document", async () => {
+  const built = trip({ ownerId: null, status: "planned", title: "Committed before response loss" });
+  const recovery = saveTripRecoveryToStorage(new MemoryStorage(), built, {
+    ownerId: "owner-a",
+    writeId: "after-write-loss",
+  });
+  const promoted = canonicalTripForOwner("owner-a", { ...built, status: "draft" });
+  const planned = canonicalTripForOwner("owner-a", { ...promoted, status: "planned" }, "2026-08-20T12:00:00.000Z");
+  let requestNumber = 0;
+  const request: typeof fetch = async (input) => {
+    requestNumber += 1;
+    if (requestNumber === 1) return response({ trip: promoted, outcome: "promoted" }, 201);
+    if (requestNumber === 2) throw new TypeError("response lost after commit");
+    assert.match(String(input), /\/promote$/);
+    return response({ trip: planned, outcome: "conflict", conflictReason: "cloud-newer", error: "already planned" }, 409);
+  };
+
+  await assert.rejects(() => saveTripRecoveryToEasyT(built, recovery.handle, request), /response lost/i);
+  const acknowledged = await saveTripRecoveryToEasyT(built, recovery.handle, request);
+  assert.deepEqual(acknowledged, planned);
+  assert.equal(requestNumber, 3, "the exact committed document needs no duplicate PUT");
+});
+
+test("a concurrent exact planned save conflict is an idempotent Build acknowledgement", async () => {
+  const built = trip({ ownerId: null, status: "planned", title: "Double click" });
+  const recovery = saveTripRecoveryToStorage(new MemoryStorage(), built, { ownerId: "owner-a", writeId: "double-build" });
+  const promoted = canonicalTripForOwner("owner-a", { ...built, status: "draft" });
+  const planned = canonicalTripForOwner("owner-a", { ...promoted, status: "planned" }, "2026-08-20T12:00:00.000Z");
+  let requestNumber = 0;
+  const acknowledged = await saveTripRecoveryToEasyT(built, recovery.handle, async () => {
+    requestNumber += 1;
+    return requestNumber === 1
+      ? response({ trip: promoted, outcome: "already-canonical" })
+      : response({ trip: planned, conflictReason: "cloud-changed", error: "changed" }, 409);
+  });
+  assert.deepEqual(acknowledged, planned);
+  assert.equal(requestNumber, 2);
+});
+
+test("an existing account draft acknowledges an exact save that committed before its response was lost", async () => {
+  const pending = trip({ ownerId: "owner-a", status: "planned", title: "Existing Builder edit" });
+  const recovery = saveTripRecoveryToStorage(new MemoryStorage(), pending, { writeId: "owned-after-write" });
+  const canonical = canonicalTripForOwner("owner-a", pending, "2026-08-20T12:00:00.000Z");
+  const acknowledged = await saveTripRecoveryToEasyT(pending, recovery.handle, async () => response({
+    trip: canonical,
+    conflictReason: "cloud-changed",
+    error: "changed",
+  }, 409));
+  assert.deepEqual(acknowledged, canonical);
+});
+
+test("Build equivalence covers semantic selections and canonical legs", () => {
+  const structured = extractStructuredTripBrief("Belize and Tikal for nature.");
+  const reviewed = trip({
+    ownerId: null,
+    status: "planned",
+    brief: {
+      ...trip().brief,
+      intent: { ...defaultTripIntent({ travellers: 2 }), preferences: { ...defaultTripIntent({ travellers: 2 }).preferences, interests: ["nature"] } },
+      structuredBrief: mergeStructuredTripBrief(structured, { placeSelections: [{ mentionId: "belize", kind: "base", selectedCanonicalPlaceId: "caye-caulker", selectedName: "Caye Caulker", routeStopId: "caye", provenance: { id: "test", label: "Test selection", kind: "builder", supports: "Traveller selected the base." } }] }),
+    },
+    stops: [{ id: "caye", order: 0, name: "Caye Caulker", country: "Belize", latitude: 17.74, longitude: -88.02, arrivalDate: "2026-11-01", departureDate: "2026-11-08", nights: 7 }],
+    legs: [{ id: "arrival", fromStopId: "trip-dashboard-reconcile-origin", toStopId: "caye", fromEndpoint: { kind: "origin", id: "trip-dashboard-reconcile-origin", name: "London", coordinates: [-0.1276, 51.5072] }, toEndpoint: { kind: "stop", id: "caye", name: "Caye Caulker", country: "Belize", coordinates: [-88.02, 17.74] }, classification: "arrival", mode: "flight", distanceKm: 8300, durationMinutes: 900, provider: null, routeMetadata: {}, warnings: [] }],
+  });
+  const canonical = canonicalTripForOwner("owner-a", reviewed, "2026-08-20T12:00:00.000Z");
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, canonical, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, { ...canonical, legs: [] }, "owner-a"), false);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, { ...canonical, brief: { ...canonical.brief, structuredBrief: undefined } }, "owner-a"), false);
+});
+
+test("HTTP save failures retain safe category, status and operation", async () => {
+  const owned = trip();
+  await assert.rejects(
+    () => saveTripToEasyT(owned, async () => response({ error: "Morrovia could not save this trip right now.", category: "repository" }, 500)),
+    (error: unknown) => error instanceof EasyTTripPersistenceError
+      && error.category === "repository" && error.status === 500 && error.operation === "update",
+  );
 });
 
 test("an owned 404 never falls through to insert-only promotion", async () => {

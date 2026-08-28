@@ -8,8 +8,14 @@ import {
 import {
   canonicalTripForOwner,
   requestTripPromotion,
+  tripBuildDocumentsCanonicalEquivalent,
   type TripPromotionConflictReason,
 } from "./trip-promotion.ts";
+import {
+  EasyTTripPersistenceError,
+  tripPersistenceFailureCategory,
+  type TripPersistenceOperation,
+} from "./trip-persistence-error.ts";
 
 export { EasyTTripSaveConflictError } from "./trip-continuity.ts";
 export { EasyTTripAuthError } from "./trip-continuity.ts";
@@ -29,7 +35,7 @@ export const EASYT_CURRENT_TRIP_PREFIX = "easyt:current-trip:v2:";
 export const EASYT_LAST_OWNER_KEY = "easyt:last-owner:v1";
 const LEGACY_JOURNEY_PLAN_KEY = "journey:planned-trip";
 
-export type TripRecoveryState = "pending" | "network" | "auth" | "conflict";
+export type TripRecoveryState = "pending" | "network" | "auth" | "conflict" | "validation" | "repository" | "unknown";
 export type TripRecoveryConflictReason = TripSaveConflictReason | TripPromotionConflictReason;
 
 export type EasyTBrowserStorage = Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
@@ -283,7 +289,8 @@ function isTripRecoveryRecord(value: unknown): value is TripRecoveryRecord {
     && typeof record.tripId === "string"
     && typeof record.writeId === "string"
     && typeof record.savedAt === "string"
-    && (record.state === "pending" || record.state === "network" || record.state === "auth" || record.state === "conflict")
+    && (record.state === "pending" || record.state === "network" || record.state === "auth" || record.state === "conflict"
+      || record.state === "validation" || record.state === "repository" || record.state === "unknown")
     && (record.conflictReason === undefined
       || record.conflictReason === "cloud-changed"
       || record.conflictReason === "cloud-newer"
@@ -1067,6 +1074,19 @@ export function tripForRecoveryScope(trip: EasyTTrip, recovery: TripRecoveryHand
   return trip.ownerId === recovery.ownerId ? trip : { ...trip, ownerId: recovery.ownerId };
 }
 
+function cloudPersistenceError(
+  response: Response,
+  payload: { error?: string; category?: unknown } | null,
+  operation: TripPersistenceOperation,
+) {
+  return new EasyTTripPersistenceError({
+    message: payload?.error || "Morrovia could not save this trip.",
+    category: tripPersistenceFailureCategory(response.status, payload?.category),
+    status: response.status,
+    operation,
+  });
+}
+
 export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = fetch): Promise<EasyTTrip> {
   if (!trip.ownerId) return (await promoteTripToEasyT(trip, request)).trip;
   const response = await requestTripUpdate(trip, request);
@@ -1074,6 +1094,7 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
     trip?: unknown;
     conflictReason?: TripSaveConflictReason;
     error?: string;
+    category?: unknown;
   } | null;
   const authError = tripSyncAuthError(response.status, payload?.error);
   if (authError) throw authError;
@@ -1085,9 +1106,16 @@ export async function saveTripToEasyT(trip: EasyTTrip, request: typeof fetch = f
     );
   }
   if (!response.ok) {
-    throw new Error(payload?.error || "Morrovia cloud save failed.");
+    throw cloudPersistenceError(response, payload, "update");
   }
-  if (!payload || !isEasyTTrip(payload.trip)) throw new Error("Morrovia cloud returned an invalid trip.");
+  if (!payload || !isEasyTTrip(payload.trip)) {
+    throw new EasyTTripPersistenceError({
+      message: "Morrovia returned an invalid saved trip.",
+      category: "validation",
+      status: response.status,
+      operation: "update",
+    });
+  }
   return payload.trip;
 }
 
@@ -1107,12 +1135,45 @@ export async function saveTripRecoveryToEasyT(
     if (trip.status !== "draft" && trip.status !== "planned") {
       throw new Error("Only an ownerless draft or newly built trip can be promoted.");
     }
-    const promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, request)).trip;
-    return trip.status === "draft"
-      ? promoted
-      : saveTripToEasyT({ ...promoted, status: trip.status }, request);
+    let promoted: EasyTTrip;
+    try {
+      promoted = (await promoteTripToEasyT({ ...trip, status: "draft" }, request)).trip;
+    } catch (error) {
+      // The planned CAS may have committed even when its response was lost.
+      // A retry of that exact reviewed document must acknowledge the existing
+      // canonical row rather than manufacture a false promotion conflict.
+      if (trip.status === "planned"
+        && error instanceof EasyTTripPromotionConflictError
+        && tripBuildDocumentsCanonicalEquivalent(trip, error.canonicalTrip, recovery.ownerId)) {
+        return error.canonicalTrip;
+      }
+      throw error;
+    }
+    if (trip.status === "draft") return promoted;
+    try {
+      return await saveTripToEasyT({ ...promoted, status: trip.status }, request);
+    } catch (error) {
+      // Concurrent double-clicks share one trip ID and one CAS baseline. If
+      // another request saved the exact reviewed planned state first, its
+      // conflict document is a successful idempotent acknowledgement.
+      if (error instanceof EasyTTripSaveConflictError
+        && tripBuildDocumentsCanonicalEquivalent(trip, error.canonicalTrip, recovery.ownerId)) {
+        return error.canonicalTrip;
+      }
+      throw error;
+    }
   }
-  return saveTripToEasyT(scopedTrip, request);
+  try {
+    return await saveTripToEasyT(scopedTrip, request);
+  } catch (error) {
+    // The same lost-response rule applies when Builder is editing an existing
+    // account draft: an exact canonical conflict proves the write committed.
+    if (error instanceof EasyTTripSaveConflictError
+      && tripBuildDocumentsCanonicalEquivalent(scopedTrip, error.canonicalTrip, recovery.ownerId)) {
+      return error.canonicalTrip;
+    }
+    throw error;
+  }
 }
 
 export type EasyTTripPromotion = {
@@ -1143,6 +1204,7 @@ export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch 
     outcome?: "promoted" | "already-canonical" | "conflict";
     conflictReason?: TripPromotionConflictReason;
     error?: string;
+    category?: unknown;
   } | null;
 
   const authError = tripSyncAuthError(response.status, payload?.error);
@@ -1155,9 +1217,17 @@ export async function promoteTripToEasyT(trip: EasyTTrip, request: typeof fetch 
       payload.conflictReason,
     );
   }
-  if (!response.ok || !payload || !isEasyTTrip(payload.trip)
+  if (!response.ok) {
+    throw cloudPersistenceError(response, payload, "promotion");
+  }
+  if (!payload || !isEasyTTrip(payload.trip)
     || (payload.outcome !== "promoted" && payload.outcome !== "already-canonical")) {
-    throw new Error(payload?.error || "Morrovia cloud sync failed. Your trip is still saved on this device.");
+    throw new EasyTTripPersistenceError({
+      message: "Morrovia returned an invalid promoted trip.",
+      category: "validation",
+      status: response.status,
+      operation: "promotion",
+    });
   }
   return { trip: payload.trip, outcome: payload.outcome };
 }

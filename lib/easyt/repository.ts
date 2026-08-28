@@ -15,6 +15,7 @@ import {
   nextTripUpdatedAt,
 } from "./trip-continuity";
 import { EasyTTrip, isEasyTTrip } from "./trip";
+import { normalizedLegEndpoints } from "./trip-persistence";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
@@ -375,20 +376,27 @@ export async function saveTripForOwner(
       `,
     ),
     ...document.legs.map(
-      (leg) => tx`
+      (leg) => {
+        const endpoint = normalizedLegEndpoints(document.id, leg);
+        return tx`
         insert into easyt_legs (
-          id, trip_id, from_stop_id, to_stop_id, mode, distance_km,
+          id, trip_id, from_stop_id, to_stop_id,
+          from_endpoint_id, to_endpoint_id, from_endpoint_kind, to_endpoint_kind,
+          mode, distance_km,
           duration_minutes, provider, route_metadata
         )
         select
-          ${leg.id}, ${document.id}, ${leg.fromStopId}, ${leg.toStopId}, ${leg.mode},
+          ${leg.id}, ${document.id}, ${endpoint.fromStopId}, ${endpoint.toStopId},
+          ${endpoint.fromEndpointId}, ${endpoint.toEndpointId}, ${endpoint.fromEndpointKind}, ${endpoint.toEndpointKind},
+          ${leg.mode},
           ${leg.distanceKm}, ${leg.durationMinutes}, ${leg.provider}, ${JSON.stringify(leg.routeMetadata)}
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
             and deleted_at is null and document = current_setting('morrovia.save_document')::jsonb
         )
-      `,
+        `;
+      },
     ),
     ...document.planItems.map(
       (item) => tx`
@@ -541,20 +549,27 @@ export async function promoteTripForOwner(
       `,
     ),
     ...document.legs.map(
-      (leg) => tx`
+      (leg) => {
+        const endpoint = normalizedLegEndpoints(document.id, leg);
+        return tx`
         insert into easyt_legs (
-          id, trip_id, from_stop_id, to_stop_id, mode, distance_km,
+          id, trip_id, from_stop_id, to_stop_id,
+          from_endpoint_id, to_endpoint_id, from_endpoint_kind, to_endpoint_kind,
+          mode, distance_km,
           duration_minutes, provider, route_metadata
         )
         select
-          ${leg.id}, ${document.id}, ${leg.fromStopId}, ${leg.toStopId}, ${leg.mode},
+          ${leg.id}, ${document.id}, ${endpoint.fromStopId}, ${endpoint.toStopId},
+          ${endpoint.fromEndpointId}, ${endpoint.toEndpointId}, ${endpoint.fromEndpointKind}, ${endpoint.toEndpointKind},
+          ${leg.mode},
           ${leg.distanceKm}, ${leg.durationMinutes}, ${leg.provider}, ${JSON.stringify(leg.routeMetadata)}
         where exists (
           select 1 from easyt_trips
           where id = ${document.id} and owner_id = ${ownerId}
             and deleted_at is null and document = current_setting('morrovia.promotion_document')::jsonb
         )
-      `,
+        `;
+      },
     ),
     ...document.planItems.map(
       (item) => tx`

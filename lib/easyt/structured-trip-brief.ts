@@ -1,6 +1,7 @@
 import { parseTripBrief } from "./trip-brief.ts";
 import {
   resolvePlaceMentions,
+  reconcileSelfBasePlaceState,
   type PlaceIntelligenceResult,
   type PlaceIssue,
   type PlaceRoutability,
@@ -457,9 +458,11 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   const removedMentions = (base.placeMentions ?? []).filter((mention) => removedMentionIdSet.has(mention.mentionId));
   const removedNames = new Set(removedMentions.flatMap((mention) => [mention.canonicalName, mention.sourceText, ...mention.sourceTexts].map(normalize)));
   const priorSelections = base.placeSelections ?? [];
-  const placeSelections = (input.placeSelections
+  const proposedPlaceSelections = (input.placeSelections
     ? unique([...input.placeSelections, ...priorSelections], (selection) => selection.mentionId)
     : priorSelections).filter((selection) => !removedMentionIdSet.has(selection.mentionId));
+  const selfBaseState = reconcileSelfBasePlaceState(base.placeMentions ?? [], proposedPlaceSelections);
+  const placeSelections = selfBaseState.selections;
   const selectedDestinations = input.destinations?.map((destination): TripBriefDestination => {
     const prior = base.destinations.find((item) => (destination.canonicalPlaceId && item.canonicalPlaceId === destination.canonicalPlaceId)
       || normalize(item.name) === normalize(destination.name))
@@ -560,9 +563,10 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     budget,
     hardConstraints,
     softPreferences,
-    placeMentions: base.placeMentions,
+    placeMentions: selfBaseState.mentions.length ? selfBaseState.mentions : base.placeMentions,
     placeIssues: (base.placeIssues ?? []).filter((issue) => {
       if (removedMentionIdSet.has(issue.mentionId)) return false;
+      if (selfBaseState.collapsedMentionIds.has(issue.mentionId) && issue.code === "region_requires_base") return false;
       if (issue.code === "missing_routable_destination" && destinations.some((destination) => Boolean(destination.id))) return false;
       const selection = placeSelections.find((item) => item.mentionId === issue.mentionId);
       if (!selection) return true;

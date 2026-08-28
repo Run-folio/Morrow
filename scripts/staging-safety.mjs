@@ -8,6 +8,7 @@ export const TEST_ACCOUNTS = [
 export const REQUIRED_STAGING_SCHEMA_COLUMNS = {
   easyt_users: ["id", "email", "preferences"],
   easyt_trips: ["id", "owner_id", "document", "deleted_at"],
+  easyt_legs: ["id", "trip_id", "from_stop_id", "to_stop_id", "from_endpoint_id", "to_endpoint_id", "from_endpoint_kind", "to_endpoint_kind"],
   easyt_copilot_previews: ["id", "owner_id", "trip_id", "action", "status", "expires_at"],
   easyt_country_stamps: ["owner_id", "country_id"],
   easyt_country_memories: ["owner_id", "country_id"],

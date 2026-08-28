@@ -180,7 +180,7 @@ const legacyPlaces: PlaceCatalogEntry[] = [
   city("hanoi", "Hanoi", "Vietnam", ["HAN"]),
   town("hoi-an", "Hoi An", "Vietnam", ["Hội An"]),
   city("ho-chi-minh-city", "Ho Chi Minh City", "Vietnam", ["Ho Chi Minh", "Saigon", "SGN"]),
-  city("siem-reap", "Siem Reap", "Cambodia"),
+  city("siem-reap", "Siem Reap", "Cambodia", [], { coordinates: [103.8552, 13.3633] }),
   city("bangkok", "Bangkok", "Thailand", ["BKK"]),
   city("chiang-mai", "Chiang Mai", "Thailand"),
   town("krabi", "Krabi", "Thailand"),

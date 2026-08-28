@@ -313,6 +313,7 @@ test("reviewed anchor bases are contextual and keep the original anchor", () => 
   assert.deepEqual(regionalBaseSuggestions("lake-atitlan").map((suggestion) => suggestion.name), ["Panajachel", "San Pedro La Laguna"]);
   assert.deepEqual(regionalBaseSuggestions("tikal").map((suggestion) => suggestion.name), ["Flores", "El Remate"]);
   assert.deepEqual(regionalBaseSuggestions("belize").map((suggestion) => suggestion.name), ["San Ignacio", "Caye Caulker", "Belize City"]);
+  assert.deepEqual(regionalBaseSuggestions("angkor-wat").map((suggestion) => suggestion.name), ["Siem Reap"]);
   const result = resolvePlaceMentions("Lake Atitlán, Tikal and Belize");
   assert.deepEqual(result.mentions.map((mention) => mention.canonicalPlaceId), ["lake-atitlan", "tikal", "belize"]);
   assert.deepEqual(result.issues.filter((issue) => issue.code === "region_requires_base").map((issue) => issue.sourceText), ["Lake Atitlán", "Tikal", "Belize"]);
