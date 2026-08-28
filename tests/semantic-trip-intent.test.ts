@@ -215,7 +215,7 @@ test("validated Luna candidates project through deterministic geography with com
   assert.equal(destinations.some((mention) => mention.normalizedPhrase === "overland"), false);
   assert.equal(capture.structuredBrief.transportPreferences.some((preference) => preference.value === "ground"), true);
   assert.equal(capture.mentionCoverage.complete, true);
-  assert.deepEqual(capture.semanticExtraction, { model: "gpt-5.6-luna", status: "completed", fallbackUsed: false });
+  assert.deepEqual(capture.semanticExtraction, { model: "gpt-5.6-luna", status: "completed", fallbackUsed: false, recoveredPlaceMentions: 0 });
 });
 
 test("malformed output, schema failure, timeout, and provider failure are bounded failure states", async () => {

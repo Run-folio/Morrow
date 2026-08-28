@@ -163,12 +163,15 @@ export function placeMentionsNeedingReview(
 
 export type PlaceResolutionContext = {
   countryNames?: string[];
-  selectedPlaces?: Array<Pick<PlaceResolutionCandidate, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "routability">>;
+  selectedPlaces?: Array<Pick<PlaceResolutionCandidate, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "routability" | "coordinates">>;
 };
 
 export type ExplicitPlaceMention = {
   sourceText: string;
   role: PlaceMentionRole;
+  /** Optional semantic interpretation used only as a provider lookup phrase.
+   * The provider must still establish the canonical geographic identity. */
+  lookupText?: string;
 };
 
 export type PlaceProviderCandidate = {
@@ -470,6 +473,7 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly home from$|return(?:ing)? from$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)? (?:in|at)$/.test(before)) return "fixed_start";
   if (/(?:leaving from|departing from|depart from|fly(?:ing)? out of|from|desde|saliendo de)$/.test(before)) return "origin";
+  if (!before && /^(?:to|through|via)\b[^.!?]*(?:,|\band\b)/.test(after)) return "origin";
   if (/(?:fly|flying) into$|(?:arrive|arriving) (?:in|at)$/.test(before)) return "gateway";
   if (/^(?:is )?(?:essential|required|a must|non negotiable|the priority|definitely)/.test(after)
     || /(?:must visit|cannot miss|cant miss|essential|non negotiable|definitely)[^,.]{0,24}$/.test(before)
@@ -967,6 +971,43 @@ function providerCandidate(candidate: PlaceProviderCandidate, provider: PlaceInt
   };
 }
 
+function decisiveProviderCandidate(
+  candidates: PlaceResolutionCandidate[],
+  phrase: string,
+  context: PlaceResolutionContext,
+) {
+  if (candidates.length === 1) return candidates[0];
+  const normalized = normalizePlacePhrase(phrase);
+  const exact = candidates.filter((candidate) => [candidate.canonicalName, ...candidate.aliases]
+    .some((label) => normalizePlacePhrase(label) === normalized));
+  const exactRoutable = exact.filter((candidate) => candidate.routability === "direct_destination");
+  if (exactRoutable.length === 1) return exactRoutable[0];
+  if (exact.length === 1) return exact[0];
+
+  // Context can break a genuine same-name tie, but never filters the candidate
+  // set or overrides a unique exact-name match.
+  const contextCountries = new Set((context.countryNames ?? []).map(normalizePlacePhrase));
+  const contextual = candidates.filter((candidate) => candidate.parentCountries
+    .some((country) => contextCountries.has(normalizePlacePhrase(country))));
+  if (contextual.length === 1) return contextual[0];
+
+  const anchors = (context.selectedPlaces ?? []).flatMap((place) => place.coordinates ? [place.coordinates] : []);
+  if (!anchors.length) return undefined;
+  const ranked = candidates
+    .filter((candidate) => candidate.coordinates && candidate.routability === "direct_destination")
+    .map((candidate) => ({
+      candidate,
+      distance: Math.min(...anchors.map((anchor) => coordinateDistanceKm(anchor, candidate.coordinates!))),
+    }))
+    .sort((left, right) => left.distance - right.distance);
+  const best = ranked[0];
+  const next = ranked[1];
+  if (best && best.distance <= 3_500 && (!next || next.distance - best.distance >= 1_200 || next.distance >= best.distance * 1.75)) {
+    return best.candidate;
+  }
+  return undefined;
+}
+
 const PROVIDER_PLACE_TYPES = new Set<PlaceType>([
   "country", "macro_region", "region", "sub_region", "island", "archipelago", "city", "town", "natural_area", "coast",
   "mountain_range", "valley", "travel_corridor", "landmark", "transport_gateway", "unknown",
@@ -1074,15 +1115,16 @@ export async function resolvePlaceMentionsWithProvider(
     if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, mention.sourceText, context));
     const candidates = (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
     if (!candidates.length) return mention;
-    if (candidates.length > 1) return { ...mention, status: "ambiguous" as const, candidates };
-    return candidateToMention(candidates[0], {
+    const selected = decisiveProviderCandidate(candidates, mention.sourceText, context);
+    if (!selected) return { ...mention, status: "ambiguous" as const, candidates };
+    return { ...candidateToMention(selected, {
       sourceText: mention.sourceText,
       sourceTexts: mention.sourceTexts,
       order: mention.order,
       role: mention.role,
       mentionId: mention.mentionId,
-      status: candidates[0].routability === "direct_destination" ? "resolved" : "partially_resolved",
-    });
+      status: selected.routability === "direct_destination" ? "resolved" : "partially_resolved",
+    }), candidates };
   }));
   if (!unresolved.length) return deterministic;
   const mentions = deduplicateProviderMentions(enriched);
@@ -1095,22 +1137,49 @@ export async function resolveExplicitPlaceMentionsWithProvider(
   context: PlaceResolutionContext = {},
 ): Promise<PlaceIntelligenceResult> {
   const deterministic = resolveExplicitPlaceMentions(inputs, context);
+  const routeContextMentions = deterministic.mentions.filter((mention) => mention.canonicalPlaceId
+    && mention.status === "resolved"
+    && mention.role !== "excluded"
+    && !["origin", "fixed_start"].includes(mention.role));
+  const fallbackContextMentions = routeContextMentions.length
+    ? routeContextMentions
+    : deterministic.mentions.filter((mention) => mention.canonicalPlaceId && mention.status === "resolved" && mention.role !== "excluded");
+  const providerContext: PlaceResolutionContext = {
+    ...context,
+    countryNames: unique([
+      ...(context.countryNames ?? []),
+      ...fallbackContextMentions.flatMap((mention) => mention.parentCountries),
+    ], normalizePlacePhrase),
+    selectedPlaces: unique([
+      ...(context.selectedPlaces ?? []),
+      ...fallbackContextMentions.flatMap((mention) => mention.canonicalPlaceId ? [{
+        canonicalPlaceId: mention.canonicalPlaceId,
+        canonicalName: mention.canonicalName,
+        placeType: mention.placeType,
+        parentCountries: mention.parentCountries,
+        routability: mention.routability,
+        coordinates: mention.coordinates,
+      }] : []),
+    ], (place) => place.canonicalPlaceId),
+  };
   const cache = new Map<string, Promise<PlaceProviderCandidate[]>>();
   const enriched = await Promise.all(deterministic.mentions.map(async (mention) => {
     if (mention.status !== "unresolved") return mention;
-    const key = mention.normalizedPhrase;
-    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, mention.sourceText, context));
+    const lookupText = inputs[mention.order]?.lookupText?.trim() || mention.sourceText;
+    const key = normalizePlacePhrase(lookupText);
+    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, lookupText, providerContext));
     const candidates = (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
     if (!candidates.length) return mention;
-    if (candidates.length > 1) return { ...mention, status: "ambiguous" as const, candidates };
-    return candidateToMention(candidates[0], {
+    const selected = decisiveProviderCandidate(candidates, lookupText, providerContext);
+    if (!selected) return { ...mention, status: "ambiguous" as const, candidates };
+    return { ...candidateToMention(selected, {
       sourceText: mention.sourceText,
       sourceTexts: mention.sourceTexts,
       order: mention.order,
       role: mention.role,
       mentionId: mention.mentionId,
-      status: candidates[0].routability === "direct_destination" ? "resolved" : "partially_resolved",
-    });
+      status: selected.routability === "direct_destination" ? "resolved" : "partially_resolved",
+    }), candidates };
   }));
   const mentions = deduplicateProviderMentions(enriched);
   return { ...deterministic, mentions, issues: resultIssuesForMentions(mentions) };

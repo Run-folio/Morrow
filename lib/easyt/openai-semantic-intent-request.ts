@@ -9,7 +9,7 @@ export const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 
 export const SEMANTIC_INTENT_EXTRACTION_POLICY = `You extract semantic traveller intent from exactly one raw trip prompt.
 
-Return only the supplied strict schema. Preserve source wording in every sourceText field, including spelling mistakes. interpretedText may give a cautious human-readable interpretation of a misspelling, but it is never verified or canonical geography.
+Return only the supplied strict schema. Preserve source wording in every sourceText field, including spelling mistakes. interpretedText should give a cautious human-readable interpretation when the traveller uses a misspelling, common geographic shorthand, or omits a conventional article (for example a shortened city name). It is never verified or canonical geography, and must remain null when the intended place is genuinely unclear.
 
 For origin, destinationCandidates and pointsOfInterest, sourceText is only the geographic name span copied from the prompt: use "London" from "Start in London", not "Start in London". Transport and constraint sourceText may include the surrounding phrase that carries their meaning.
 

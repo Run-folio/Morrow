@@ -33,6 +33,33 @@ export type HomeTripDraft = {
   decisionSelections?: EasyTTrip["brief"]["decisionSelections"];
 };
 
+export type HandoffLocationChoice = {
+  name: string;
+  country: string;
+  countryCode?: string;
+  region?: string;
+  providerId?: string;
+  coordinates: [number, number];
+  kind?: string;
+  locality?: string;
+};
+
+/** Keep an already resolved capture identity authoritative during Builder
+ * enrichment. A second provider lookup may return a lower-ranked namesake. */
+export function preferredHandoffLocationChoice(
+  mention: ResolvedPlaceMention,
+  choices: HandoffLocationChoice[],
+): HandoffLocationChoice | undefined {
+  if (mention.coordinates && mention.parentCountries.length === 1) {
+    return {
+      name: mention.canonicalName,
+      country: mention.parentCountries[0],
+      coordinates: mention.coordinates,
+    };
+  }
+  return choices[0];
+}
+
 export function createHomeTripDraft(input: {
   capture: JourneyCaptureResult;
   handoffId: string;

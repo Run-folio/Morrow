@@ -3,6 +3,7 @@ import {
   captureJourneyBrief,
   captureJourneyBriefFallback,
   captureJourneyBriefFromSemanticIntent,
+  developmentJourneyCaptureDiagnostics,
 } from "@/lib/easyt/journey-capture";
 import {
   runConfiguredOpenAISemanticIntentExtraction,
@@ -81,6 +82,9 @@ export async function POST(request: NextRequest) {
         {},
         { model: semanticConfig.primary.model, status: extraction.status },
       );
+      if (process.env.NODE_ENV !== "production" && process.env.MORROVIA_CAPTURE_DIAGNOSTICS === "1") {
+        console.info("[journey-capture-diagnostic]", JSON.stringify(developmentJourneyCaptureDiagnostics(extraction.intent, capture)));
+      }
       if (capture.mentionCoverage.complete) return NextResponse.json(capture);
     }
     return NextResponse.json(captureJourneyBriefFallback(brief, { model: semanticConfig.primary.model, status: extraction.status }));

@@ -1,4 +1,5 @@
 import {
+  normalizePlacePhrase,
   resolvePlaceMentions,
   resolveExplicitPlaceMentions,
   resolveExplicitPlaceMentionsWithProvider,
@@ -35,6 +36,7 @@ export type JourneyCaptureResult = {
     model: string;
     status: SemanticIntentStatus;
     fallbackUsed: boolean;
+    recoveredPlaceMentions?: number;
   };
 };
 
@@ -94,31 +96,125 @@ function captureFromResolution(
   return result;
 }
 
-function semanticPlaceMentions(intent: SemanticTripIntent, rawBrief: string): ExplicitPlaceMention[] {
+function geographySourceSpan(sourceText: string, rawBrief: string) {
+  const stripped = sourceText
+    .replace(/^(?:start(?:ing)?|begin(?:ning)?|depart(?:ing)?|leav(?:e|ing)|finish(?:ing)?|travel(?:ling|ing)?|visit(?:ing)?)\s+(?:in|from|at|to)\s+/i, "")
+    .replace(/^(?:then|and)\s+/i, "")
+    .trim();
+  return stripped && rawBrief.toLocaleLowerCase().includes(stripped.toLocaleLowerCase()) ? stripped : sourceText;
+}
+
+function semanticPlaceMentions(
+  intent: SemanticTripIntent,
+  rawBrief: string,
+  deterministicMentions: ResolvedPlaceMention[],
+): ExplicitPlaceMention[] {
   const inputs: ExplicitPlaceMention[] = [];
-  const geographySpan = (sourceText: string) => {
-    const stripped = sourceText
-      .replace(/^(?:start(?:ing)?|begin(?:ning)?|depart(?:ing)?|leav(?:e|ing)|finish(?:ing)?|travel(?:ling|ing)?|visit(?:ing)?)\s+(?:in|from|at|to)\s+/i, "")
-      .replace(/^(?:then|and)\s+/i, "")
-      .trim();
-    return stripped && rawBrief.toLocaleLowerCase().includes(stripped.toLocaleLowerCase()) ? stripped : sourceText;
-  };
-  if (intent.origin.sourceText) inputs.push({ sourceText: geographySpan(intent.origin.sourceText), role: "origin" });
+  if (intent.origin.sourceText) inputs.push({ sourceText: geographySourceSpan(intent.origin.sourceText, rawBrief), role: "origin" });
   for (const destination of intent.destinationCandidates) inputs.push({
-    sourceText: geographySpan(destination.sourceText),
-    role: destination.certainty === "likely" ? "optional" : "preferred",
+    sourceText: geographySourceSpan(destination.sourceText, rawBrief),
+    // Semantic certainty describes confidence in the interpretation, not
+    // whether the traveller considers an explicitly listed stop optional.
+    role: "preferred",
+    ...(destination.interpretedText ? { lookupText: destination.interpretedText } : {}),
   });
-  for (const point of intent.pointsOfInterest) inputs.push({ sourceText: geographySpan(point.sourceText), role: "anchor" });
+  for (const point of intent.pointsOfInterest) inputs.push({
+    sourceText: geographySourceSpan(point.sourceText, rawBrief),
+    role: "anchor",
+    ...(point.interpretedText ? { lookupText: point.interpretedText } : {}),
+  });
   for (const ambiguity of intent.ambiguities) {
     if (!['destination', 'poi'].includes(ambiguity.kind)) continue;
-    const sourceText = geographySpan(ambiguity.sourceText);
+    const sourceText = geographySourceSpan(ambiguity.sourceText, rawBrief);
     if (!inputs.some((input) => input.sourceText.toLocaleLowerCase() === sourceText.toLocaleLowerCase())) {
       inputs.push({ sourceText, role: ambiguity.kind === "poi" ? "anchor" : "preferred" });
     }
   }
+  // Luna supplies semantic classification, but it is not authoritative for
+  // mention inventory. Recover any deterministic geographic mention it omitted
+  // before resolution so a valid-but-incomplete model response cannot silently
+  // reduce the traveller's route.
+  for (const mention of deterministicMentions) {
+    const normalized = mention.normalizedPhrase;
+    const existing = inputs.find((input) => input.sourceText.toLocaleLowerCase() === mention.sourceText.toLocaleLowerCase()
+      || input.lookupText?.toLocaleLowerCase() === mention.sourceText.toLocaleLowerCase());
+    if (existing) {
+      if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
+      if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
+      if (["required", "optional"].includes(mention.role)) existing.role = mention.role;
+      continue;
+    }
+    if (normalized) inputs.push({ sourceText: mention.sourceText, role: mention.role });
+  }
   return inputs
     .filter((input, index, all) => all.findIndex((candidate) => candidate.sourceText.toLocaleLowerCase() === input.sourceText.toLocaleLowerCase()) === index)
     .sort((left, right) => rawBrief.toLocaleLowerCase().indexOf(left.sourceText.toLocaleLowerCase()) - rawBrief.toLocaleLowerCase().indexOf(right.sourceText.toLocaleLowerCase()));
+}
+
+/** Development-only, prompt-safe trace. It records geographic source spans and
+ * pipeline outcomes without returning the full traveller prompt or secrets. */
+export function developmentJourneyCaptureDiagnostics(
+  intent: SemanticTripIntent,
+  capture: JourneyCaptureResult,
+) {
+  const deterministic = resolvePlaceMentions(capture.rawBrief);
+  const expected = semanticPlaceMentions(intent, capture.rawBrief, deterministic.mentions);
+  const semantic = [
+    ...(intent.origin.sourceText ? [{ sourceText: geographySourceSpan(intent.origin.sourceText, capture.rawBrief), role: "origin", interpretedText: null }] : []),
+    ...intent.destinationCandidates.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief), role: item.role, interpretedText: item.interpretedText })),
+    ...intent.pointsOfInterest.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief), role: "poi", interpretedText: item.interpretedText })),
+  ];
+  const structuredByMention = new Map(capture.structuredBrief.destinations
+    .flatMap((destination) => destination.placeMentionId ? [[destination.placeMentionId, destination] as const] : []));
+  return {
+    kind: "journey-capture-geography-diagnostic-v1",
+    semanticOutput: semantic,
+    coverage: capture.mentionCoverage,
+    mentions: expected.map((input) => {
+      const normalized = normalizePlacePhrase(input.sourceText);
+      const semanticItem = semantic.find((item) => normalizePlacePhrase(item.sourceText) === normalized);
+      const mention = capture.mentions.find((item) => item.normalizedPhrase === normalized);
+      const structured = mention ? structuredByMention.get(mention.mentionId) : undefined;
+      const origin = mention && ["origin", "fixed_start"].includes(mention.role);
+      return {
+        sourceText: input.sourceText,
+        lunaExtracted: Boolean(semanticItem),
+        semanticRole: semanticItem?.role ?? "deterministic-recovery",
+        normalizedPhrase: normalized,
+        mentionCoverage: { expected: true, resolution: Boolean(mention), structuredBrief: Boolean(structured) },
+        resolverRequest: input.lookupText ?? input.sourceText,
+        resolverCandidates: mention?.candidates.map((candidate) => ({
+          canonicalName: candidate.canonicalName,
+          parentCountries: candidate.parentCountries,
+          placeType: candidate.placeType,
+          routability: candidate.routability,
+        })) ?? [],
+        selectedCandidate: mention?.canonicalPlaceId ? {
+          canonicalName: mention.canonicalName,
+          parentCountries: mention.parentCountries,
+          placeType: mention.placeType,
+          routability: mention.routability,
+        } : null,
+        confidence: mention ? { state: mention.confidence.state, level: mention.confidence.level } : null,
+        providerStatus: mention?.provenance.some((source) => source.kind === "provider")
+          ? "selected"
+          : mention?.candidates.some((candidate) => candidate.provenance.some((source) => source.kind === "provider"))
+            ? "candidates"
+            : mention?.status === "unresolved" ? "no-result" : "not-required",
+        catalogueStatus: mention?.provenance.some((source) => source.kind === "canonical" || source.kind === "curated_alias") ? "selected" : "no-match",
+        structuredBrief: structured ? { name: structured.name, role: structured.role, resolutionStatus: structured.resolutionStatus } : null,
+        builder: !mention
+          ? { representation: "missing", label: input.sourceText }
+          : origin
+            ? { representation: "origin", label: mention.canonicalName }
+            : mention.role === "excluded"
+              ? { representation: "excluded", label: mention.canonicalName }
+              : mention.status === "resolved" && mention.routability === "direct_destination"
+                ? { representation: "resolved-destination", label: mention.canonicalName }
+                : { representation: "to-confirm", label: mention.canonicalName },
+      };
+    }),
+  };
 }
 
 /** One deterministic interpretation shared by homepage and builder capture. */
@@ -152,11 +248,15 @@ export async function captureJourneyBriefFromSemanticIntent(
   context: PlaceResolutionContext = {},
   extraction?: { model: string; status: SemanticIntentStatus },
 ): Promise<JourneyCaptureResult> {
-  const expected = semanticPlaceMentions(intent, brief);
+  const deterministic = resolvePlaceMentions(brief, context);
+  const semanticOnly = semanticPlaceMentions(intent, brief, []);
+  const expected = semanticPlaceMentions(intent, brief, deterministic.mentions);
+  const semanticSources = new Set(semanticOnly.map((mention) => mention.sourceText.toLocaleLowerCase()));
+  const recoveredPlaceMentions = expected.filter((mention) => !semanticSources.has(mention.sourceText.toLocaleLowerCase())).length;
   const resolution = provider
     ? await resolveExplicitPlaceMentionsWithProvider(expected, provider, context)
     : resolveExplicitPlaceMentions(expected, context);
-  return captureFromResolution(brief, resolution, expected, extraction ? { ...extraction, fallbackUsed: false } : undefined);
+  return captureFromResolution(brief, resolution, expected, extraction ? { ...extraction, fallbackUsed: false, recoveredPlaceMentions } : undefined);
 }
 
 export function captureJourneyBriefFallback(

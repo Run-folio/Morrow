@@ -35,7 +35,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { captureJourneyBrief } from "@/lib/easyt/journey-capture";
-import { HOME_TRIP_DRAFT_KEY, homeTripDraftTimingFlexibility, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homeTripDraftTimingFlexibility, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
 import { canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -59,7 +59,7 @@ export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
 type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; removedPlaceMentionIds: string[]; summary: string };
 type CapturedLocation = ResolvedPlaceMention;
-type LocationChoice = { name: string; country: string; countryCode?: string; region?: string; providerId?: string; coordinates: [number, number]; kind?: string; locality?: string };
+type LocationChoice = HandoffLocationChoice;
 type PlaceSelectionDraft = Omit<PlaceSelection, "mentionId" | "routeStopId">;
 const routeHandoffNightKnowledge = createDestinationKnowledgeStore({ destinations: [], transfers: [] });
 
@@ -792,7 +792,7 @@ function TripBuilderDocument() {
               const uncertainKeys = new Set(uncertain.map(({ mention }) => mention.mentionId));
               const automatic = selections.filter(({ mention }) => !uncertainKeys.has(mention.mentionId));
               for (const { mention, choices } of automatic) {
-                const chosen = choices[0] ?? (mention.coordinates && mention.parentCountries.length === 1 ? { name: mention.canonicalName, country: mention.parentCountries[0], coordinates: mention.coordinates } : undefined);
+                const chosen = preferredHandoffLocationChoice(mention, choices);
                 if (!chosen) continue;
                 if (isOriginMention(mention)) {
                   // Provider enrichment supplies coordinates and locality, but
