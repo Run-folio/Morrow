@@ -20,7 +20,7 @@ import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-state
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
 import { getCountryIntelligence } from "@/lib/country-intelligence";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
-import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
@@ -372,6 +372,7 @@ export function JourneyMapPlannerWorkspace({
   const [cloudConflictTrip, setCloudConflictTrip] = useState<EasyTTrip | null>(null);
   const [cloudAuthInterrupted, setCloudAuthInterrupted] = useState(false);
   const [recoveryBlockedByExisting, setRecoveryBlockedByExisting] = useState(false);
+  const [cloudCopyHasPreservedRecovery, setCloudCopyHasPreservedRecovery] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [exportState, setExportState] = useState<"idle" | "saving" | "error">("idle");
   const [exportError, setExportError] = useState("");
@@ -799,6 +800,7 @@ export function JourneyMapPlannerWorkspace({
   const savePlannerRecovery = useCallback((trip: EasyTTrip, ownerId: string | null) => {
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)) {
       setRecoveryBlockedByExisting(true);
+      setCloudCopyHasPreservedRecovery(false);
       setCloudSaveError("This trip belongs to a different browser account scope. Reopen it from the current account before editing.");
       setCloudSaveState("error");
       return {
@@ -820,9 +822,11 @@ export function JourneyMapPlannerWorkspace({
     if (recovery.stored) {
       recoveryHandleRef.current = recovery.handle;
       setRecoveryBlockedByExisting(false);
+      setCloudCopyHasPreservedRecovery(false);
       return recovery;
     }
     setRecoveryBlockedByExisting(recovery.blockedByExistingRecovery);
+    setCloudCopyHasPreservedRecovery(false);
     setCloudSaveError(recovery.blockedByExistingRecovery
       ? "This device already has a different unsynced copy of this trip. Open the device copy to resolve it before saving this version. This latest change is only in this tab."
       : "Browser storage is blocked. This latest change is only in this tab; keep it open and try again after storage is available.");
@@ -847,6 +851,7 @@ export function JourneyMapPlannerWorkspace({
       // clean cache, but require the newer device document to be opened.
       recoveryHandleRef.current = null;
       setRecoveryBlockedByExisting(true);
+      setCloudCopyHasPreservedRecovery(false);
       setCloudSaveError("A newer device edit was preserved while this version finished syncing. Open the device copy before continuing.");
       setCloudSaveState("error");
     }
@@ -1357,6 +1362,7 @@ export function JourneyMapPlannerWorkspace({
     if (!cloudConflictTrip) return;
     recoveryHandleRef.current = null;
     setRecoveryBlockedByExisting(true);
+    setCloudCopyHasPreservedRecovery(true);
     cacheCanonicalTrip(cloudConflictTrip);
     setCustomTrip(cloudConflictTrip);
     setCustomBrief(customBriefFromEasyT(cloudConflictTrip));
@@ -1415,6 +1421,7 @@ export function JourneyMapPlannerWorkspace({
       setHasUnsavedChanges(false);
       setPlanHydrated(false);
       setRecoveryBlockedByExisting(false);
+      setCloudCopyHasPreservedRecovery(false);
       setExplicitTripIssue(null);
       if (documentIdentityChanged && !storyState) {
         // These values can contain traveller-entered text or a full prior trip.
@@ -1514,6 +1521,7 @@ export function JourneyMapPlannerWorkspace({
           const preservedRecovery = loadTripRecovery(tripId, storageOwnerId);
           if (preservedRecovery) {
             setRecoveryBlockedByExisting(true);
+            setCloudCopyHasPreservedRecovery(true);
             setCloudSaveError("The cloud copy is open. Your separate device edits remain preserved until you open or explicitly discard them.");
             setCloudSaveState("error");
           }
@@ -2166,7 +2174,7 @@ export function JourneyMapPlannerWorkspace({
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
-      {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} scope={copilotScope} contextLabel={copilotContextLabel} tripId={customTrip?.ownerId ? customTrip.id : undefined} stopId={copilotScope === "selected-stop" || copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedTripStop?.id : undefined} dayNumber={copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedPlanItem?.dayNumber : undefined} legId={copilotScope === "selected-transfer" ? selectedRouteLeg?.id : undefined} canApplyChanges={!hasUnsavedChanges && !cloudConflictTrip && !recoveryBlockedByExisting && !cloudAuthInterrupted} onTripApplied={(trip) => { cacheCanonicalTrip(trip); setCustomTrip(trip); setCustomBrief(customBriefFromEasyT(trip)); setCloudConflictTrip(null); setCloudAuthInterrupted(false); setCloudSaveError(""); setCloudSaveState("saved"); setHasUnsavedChanges(false); }} onOpenChange={(open) => { setCopilotOpen(open); if (open) setMobileShapeDayOpen(false); }} /></aside> : null}
+      {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} scope={copilotScope} contextLabel={copilotContextLabel} tripId={customTrip?.ownerId ? customTrip.id : undefined} stopId={copilotScope === "selected-stop" || copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedTripStop?.id : undefined} dayNumber={copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedPlanItem?.dayNumber : undefined} legId={copilotScope === "selected-transfer" ? selectedRouteLeg?.id : undefined} canApplyChanges={canApplyCanonicalCopilotChange({ hasUnsavedChanges, hasCloudConflict: Boolean(cloudConflictTrip), hasDeviceRecoveryIssue: recoveryBlockedByExisting, cloudCopyHasPreservedRecovery, authInterrupted: cloudAuthInterrupted })} onTripApplied={(trip) => { cacheCanonicalTrip(trip); setCustomTrip(trip); setCustomBrief(customBriefFromEasyT(trip)); setCloudConflictTrip(null); setCloudAuthInterrupted(false); if (cloudCopyHasPreservedRecovery) { setRecoveryBlockedByExisting(true); setCloudSaveError("The cloud copy was updated. Your separate device edits remain preserved until you open or explicitly discard them."); setCloudSaveState("error"); } else { setCloudSaveError(""); setCloudSaveState("saved"); } setHasUnsavedChanges(false); }} onOpenChange={(open) => { setCopilotOpen(open); if (open) setMobileShapeDayOpen(false); }} /></aside> : null}
       {isPlanningPreview && lastPlannerTrip ? <div className={styles.undoToast} role="status"><span>{undoMessage} · {language === "es" ? "Guardado en este dispositivo" : "Saved on this device"}</span><button type="button" onClick={undoPlannerEdit}>{planCopy.undo}</button></div> : null}
       {isPlanningPreview && cloudSaveState !== "error" && (hasUnsavedChanges || cloudSaveState === "saving" || cloudSaveState === "saved") ? <div className={styles.mapSaveStatus}>
         <MorroviaSaveStatus
@@ -2183,7 +2191,9 @@ export function JourneyMapPlannerWorkspace({
           : cloudAuthInterrupted
             ? (language === "es" ? "Inicia sesión para terminar de guardar" : "Sign in to finish saving")
             : recoveryBlockedByExisting
-              ? (language === "es" ? "Abre la copia del dispositivo antes de continuar" : "Open the device copy before continuing")
+              ? cloudCopyHasPreservedRecovery
+                ? (language === "es" ? "Tus cambios del dispositivo están guardados por separado" : "Your device edits are preserved separately")
+                : (language === "es" ? "Abre la copia del dispositivo antes de continuar" : "Open the device copy before continuing")
               : (language === "es" ? "No se pudo guardar en tu cuenta" : "Couldn't save to your account")}
         detail={cloudSaveError || (language === "es" ? "No se pudo guardar este viaje ahora." : "This trip could not be saved just now.")}
         safety={language === "es" ? "Tus cambios del dispositivo siguen conservados y no sustituyeron la copia de la cuenta." : "Your device edits remain preserved and did not replace the account copy."}

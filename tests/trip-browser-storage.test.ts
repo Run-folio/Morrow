@@ -39,7 +39,7 @@ import {
   tripStorageEventMatches,
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
-import { tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
+import { canApplyCanonicalCopilotChange, tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
 import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
@@ -338,6 +338,21 @@ test("canonical refresh retires an aligned or stale baseline snapshot without re
   assert.deepEqual(refreshed, { stored: true, recoveryResolved: true });
   assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
   assert.deepEqual(loadCachedTripFromStorage(storage, cloudA.id, "owner-a"), cloudB);
+});
+
+test("canonical Luna Apply is available only when a recovery is a separate preserved device document", () => {
+  const base = {
+    hasUnsavedChanges: false,
+    hasCloudConflict: false,
+    hasDeviceRecoveryIssue: true,
+    cloudCopyHasPreservedRecovery: true,
+    authInterrupted: false,
+  };
+  assert.equal(canApplyCanonicalCopilotChange(base), true);
+  assert.equal(canApplyCanonicalCopilotChange({ ...base, cloudCopyHasPreservedRecovery: false }), false);
+  assert.equal(canApplyCanonicalCopilotChange({ ...base, hasUnsavedChanges: true }), false);
+  assert.equal(canApplyCanonicalCopilotChange({ ...base, hasCloudConflict: true }), false);
+  assert.equal(canApplyCanonicalCopilotChange({ ...base, authInterrupted: true }), false);
 });
 
 test("successful Add pin save acknowledges the canonical map pin and refresh stays conflict-free", () => {

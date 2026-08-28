@@ -65,6 +65,31 @@ export function tripConflictResolutionActions(tripId: string) {
 
 export type TripEditorSyncAction = "reload-cloud" | "open-device" | "sign-in" | "retry";
 
+/**
+ * A separately preserved recovery is not part of the authoritative cloud
+ * document and therefore cannot make a cloud-bound co-pilot preview stale.
+ * Active editor changes, conflicts and interrupted authentication still block
+ * Apply before the server's revision/hash checks run.
+ */
+export function canApplyCanonicalCopilotChange({
+  hasUnsavedChanges,
+  hasCloudConflict,
+  hasDeviceRecoveryIssue,
+  cloudCopyHasPreservedRecovery,
+  authInterrupted,
+}: {
+  hasUnsavedChanges: boolean;
+  hasCloudConflict: boolean;
+  hasDeviceRecoveryIssue: boolean;
+  cloudCopyHasPreservedRecovery: boolean;
+  authInterrupted: boolean;
+}) {
+  return !hasUnsavedChanges
+    && !hasCloudConflict
+    && !authInterrupted
+    && (!hasDeviceRecoveryIssue || cloudCopyHasPreservedRecovery);
+}
+
 /** An unresolved cloud conflict remains the primary resolution after local edits. */
 export function tripEditorSyncAction({
   hasCloudConflict,
