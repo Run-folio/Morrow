@@ -128,7 +128,14 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "the Review route fallback should return to the shared Places step with state intact");
 
   assert.match(builder, /Your trip at a glance/);
-  assert.match(builder, /of \$\{totalNights\} nights planned/);
+  assert.match(builder, /All \$\{totalNights\} nights allocated/,
+    "allocation completeness should not be described as overall trip readiness");
+  assert.match(timeStep, /NIGHTS ALLOCATED/);
+  assert.match(builder, /const highlyCompressedTrip = stops\.length >= 4/,
+    "very short multi-stop trips should receive a deterministic strong caution");
+  assert.match(builder, /\$\{stops\.length\} stops in \$\{totalDays\} days is very fast-paced\./);
+  assert.match(timeStep, /Mode and timing still need checking/,
+    "unknown canonical transfers should remain calm and explicit");
   assert.doesNotMatch(timeStep, /<Image/,
     "the Time step should not include decorative illustration");
   const summaryRail = builder.slice(builder.indexOf("function BuilderSummaryRail"), builder.indexOf("/* ------------------------------------------------------------- main */"));
@@ -141,4 +148,24 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "mobile rows should stack without horizontal overflow");
   assert.match(builder, /if \(step === 0\)[\s\S]*setStep\(1\)[\s\S]*buildTrip\(\);/,
     "the existing Continue and Build trip handoff should remain authoritative");
+});
+
+test("clarification presentation separates action-required geography from confirmed stay bases", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+
+  assert.match(builder, /pendingReviewPlaceMentions = useMemo/);
+  assert.match(builder, /resolvedPlaceMentions = useMemo/);
+  assert.match(builder, /pendingReviewPlaceMentions\.length > 0/,
+    "Geography to review must disappear when no item still needs action");
+  assert.match(builder, /STAY BASES CONFIRMED/);
+  assert.match(builder, /staying in \$\{selection\.selectedName\}/,
+    "confirmed anchors should explain where the traveller will stay");
+  assert.match(builder, /placeDisplayName\(mention\)/,
+    "presentation should use canonical names without mutating source text");
+  assert.match(builder, /aria-label=\{`\$\{placeDisplayName\(mention\)\},/,
+    "resolved relationships should have a complete screen-reader label");
+  assert.match(styles, /\.resolvedPlaces article > button:focus-visible/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.resolvedPlaces > div \{ grid-template-columns: 1fr;/,
+    "confirmed base cards should stack at narrow widths");
 });

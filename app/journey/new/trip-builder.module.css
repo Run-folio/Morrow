@@ -1259,3 +1259,40 @@
   .homepageHandoff .handoffContext { max-width: none; }
   .homepageHandoff .handoffIllustration { height: 78px; }
 }
+/* Builder clarification and readiness polish. Resolved anchors stay linked to
+   their canonical overnight bases without retaining an error-state treatment. */
+.placeResolutionOptions button:focus-visible,
+.placeResolutionManual:focus-visible,
+.placeResolutionRemove:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+.resolvedPlaces { display: grid; gap: 10px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: #fff; }
+.resolvedPlaces > header { display: flex; align-items: flex-start; gap: 8px; }
+.resolvedPlaces > header > svg { flex: none; width: 17px; height: 17px; color: var(--morrovia-success); }
+.resolvedPlaces > header > span { display: grid; gap: 2px; }
+.resolvedPlaces > header strong { color: var(--morrovia-success); font: 800 10px var(--morrovia-meta); letter-spacing: .11em; }
+.resolvedPlaces > header small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.resolvedPlaces > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.resolvedPlaces article { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-width: 0; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--morrovia-lilac) 34%, #fff); }
+.resolvedPlaces article > svg { width: 16px; height: 16px; color: var(--morrovia-success); }
+.resolvedPlaces article > p { display: flex; flex-wrap: wrap; gap: 3px 6px; min-width: 0; margin: 0; font-size: 12px; line-height: 1.35; }
+.resolvedPlaces article strong { color: var(--ink); }
+.resolvedPlaces article span { color: var(--muted); }
+.resolvedPlaces article > button { min-height: 30px; padding: 0 7px; border: 0; background: transparent; color: var(--morrovia-action); font: 700 10px var(--morrovia-ui); text-decoration: underline; cursor: pointer; }
+.resolvedPlaces article > button:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 1px; }
+.homepageHandoff .handoffRouteStatus .routeCheckReason { display: block; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.timeAllocationState { display: grid; align-items: initial; gap: 4px; }
+.timeAllocationState > p { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin: 0; }
+.allocationLabel { color: var(--muted); font: 800 9px var(--morrovia-meta); letter-spacing: .1em; }
+.timeAllocationState svg { color: var(--morrovia-success); }
+.timingWarningStrong { border-width: 2px; border-color: var(--morrovia-warning); background: color-mix(in srgb, var(--morrovia-warning-soft) 72%, #fff); }
+.disclosureHead:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
+
+@media (max-width: 840px) {
+  .resolvedPlaces { padding-inline: 20px; }
+}
+
+@media (max-width: 520px) {
+  .resolvedPlaces { padding: 15px 16px; }
+  .resolvedPlaces > div { grid-template-columns: 1fr; }
+  .resolvedPlaces article { grid-template-columns: 20px minmax(0, 1fr); align-items: start; }
+  .resolvedPlaces article > button { grid-column: 2; justify-self: start; padding: 0; }
+}

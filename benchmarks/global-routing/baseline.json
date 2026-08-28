@@ -1,0 +1,2133 @@
+{
+  "version": "global-routing/v1",
+  "fixtureCount": 51,
+  "outcomes": {
+    "PASS": 2,
+    "PASS WITH EXPECTED UNCERTAINTY": 49,
+    "WARNING": 0,
+    "HARD FAILURE": 0
+  },
+  "scores": {
+    "semantic-understanding": {
+      "earned": 205,
+      "possible": 205,
+      "percent": 100
+    },
+    "geographic-resolution": {
+      "earned": 153,
+      "possible": 153,
+      "percent": 100
+    },
+    "route-integrity": {
+      "earned": 157,
+      "possible": 157,
+      "percent": 100
+    },
+    "transfer-integrity": {
+      "earned": 256,
+      "possible": 256,
+      "percent": 100
+    },
+    "product-truthfulness": {
+      "earned": 102,
+      "possible": 102,
+      "percent": 100
+    }
+  },
+  "p0RegressionFailures": [],
+  "unknownTransferCount": 56,
+  "unresolvedPlaceCount": 58,
+  "results": [
+    {
+      "id": "p0-london-mexico-guatemala-belize",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 6,
+          "possible": 6,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 3,
+      "routeEndpoints": [
+        "London",
+        "Cancún",
+        "Tulum",
+        "Mexico City",
+        "Antigua Guatemala"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "mexico-guatemala-highlands",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Oaxaca",
+        "San Cristóbal de las Casas",
+        "Antigua Guatemala",
+        "Quetzaltenango"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "costa-rica-nicaragua-ambiguity",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "panama-country-city",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Panama City",
+        "Bocas del Toro"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "belize-islands",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Guatemala City",
+        "Caye Caulker"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "peru-anchors",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "London",
+        "Lima",
+        "Cusco"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "patagonia-open-origin",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "galapagos-mainland",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Quito",
+        "Cuenca"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "colombia-small-towns",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Bogotá",
+        "Villa de Leyva",
+        "Medellín",
+        "Salento"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "chile-santiago-atacama",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "rockies-parks",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Calgary",
+        "Banff",
+        "Lake Louise",
+        "Jasper"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "washington-ambiguity",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "canada-atlantic",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Montréal",
+        "Québec City",
+        "Halifax"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "us-southwest-parks",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 3,
+      "routeEndpoints": [
+        "Las Vegas",
+        "Phoenix"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "iberia-overland",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 4,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Paris",
+        "San Sebastián",
+        "Madrid",
+        "Seville",
+        "Lisbon"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "italy-como-dolomites",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Milan",
+        "Como",
+        "Venice"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "low-countries-rail",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Amsterdam",
+        "Ghent",
+        "Bruges",
+        "Luxembourg City"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "greek-island-ferries",
+      "outcome": "PASS",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Athens",
+        "Naxos",
+        "Amorgos",
+        "Santorini"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "balkans-small-towns",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Ljubljana",
+        "Rovinj",
+        "Mostar"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "adriatic-cross-border",
+      "outcome": "PASS",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Dubrovnik",
+        "Kotor",
+        "Mostar",
+        "Sarajevo"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "scandinavia-capitals",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 3,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Copenhagen",
+        "Stockholm",
+        "Helsinki",
+        "Tallinn"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "norway-fjords",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Oslo",
+        "Bergen",
+        "Flåm",
+        "Ålesund"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "britain-lakes-highlands",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "London",
+        "York",
+        "Edinburgh"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "uk-newcastle-cambridge",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "London",
+        "Cambridge",
+        "York",
+        "Newcastle upon Tyne",
+        "Edinburgh"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "morocco-overland",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Casablanca",
+        "Rabat",
+        "Fes",
+        "Chefchaouen"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "egypt-nile",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Cairo",
+        "Luxor",
+        "Aswan"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "namibia-road-trip",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 3,
+      "routeEndpoints": [
+        "Windhoek",
+        "Swakopmund"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "south-africa-garden-route",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Cape Town",
+        "Knysna",
+        "Gqeberha",
+        "Johannesburg"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "serengeti-anchor",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Arusha",
+        "Zanzibar"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "kenya-tanzania-cross-border",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Nairobi",
+        "Arusha"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "jordan-anchors",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Amman",
+        "Aqaba"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "oman-road",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Muscat",
+        "Nizwa",
+        "Sur",
+        "Muscat"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "uzbekistan-silk-road",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 3,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Tashkent",
+        "Samarkand",
+        "Bukhara",
+        "Khiva"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "caucasus-georgia-context",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Tbilisi",
+        "Yerevan",
+        "Dilijan"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "kyrgyz-kazakh-mountains",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Almaty",
+        "Bishkek",
+        "Karakol"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "rajasthan-origin-stop",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 3,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Delhi",
+        "Delhi",
+        "Jaipur",
+        "Jodhpur",
+        "Udaipur"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "kerala-coast",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Kochi",
+        "Munnar",
+        "Varkala"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "nepal-mountain-region",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Kathmandu",
+        "Pokhara",
+        "Chitwan"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "angkor-base",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 3,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Bangkok",
+        "Siem Reap",
+        "Phnom Penh",
+        "Ho Chi Minh City"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "thailand-island-relaxation",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "vietnam-rail",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Hanoi",
+        "Ninh Bình",
+        "Huế",
+        "Hội An",
+        "Ho Chi Minh City"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "philippines-archipelago",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 3,
+      "routeEndpoints": [],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "indonesia-islands",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Jakarta",
+        "Yogyakarta",
+        "Bali",
+        "Nusa Penida",
+        "Lombok"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "china-classic-rail",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Beijing",
+        "Xi'an",
+        "Chengdu",
+        "Guilin",
+        "Shanghai"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "china-nature-anchors",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Shanghai",
+        "Zhangjiajie",
+        "Fenghuang",
+        "Chengdu"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "japan-naoshima-koyasan",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 1,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Osaka",
+        "Koyasan",
+        "Naoshima",
+        "Takamatsu",
+        "Hiroshima"
+      ],
+      "crossSurfaceConsistent": true
+    },
+    {
+      "id": "japan-airport-origin",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Tokyo",
+        "Tokyo",
+        "Kanazawa",
+        "Kyoto",
+        "Fukuoka"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "korea-rail",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 0,
+      "routeEndpoints": [
+        "Seoul",
+        "Gyeongju",
+        "Busan",
+        "Jeju"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "australia-victoria",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 3,
+      "routeEndpoints": [
+        "Melbourne",
+        "Sydney"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "new-zealand-south-island",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 2,
+      "unresolvedPlaceCount": 1,
+      "routeEndpoints": [
+        "Christchurch",
+        "Lake Tekapo",
+        "Queenstown",
+        "Wanaka"
+      ],
+      "crossSurfaceConsistent": null
+    },
+    {
+      "id": "fiji-island-groups",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "scores": {
+        "semantic-understanding": {
+          "earned": 4,
+          "possible": 4,
+          "percent": 100
+        },
+        "geographic-resolution": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "route-integrity": {
+          "earned": 3,
+          "possible": 3,
+          "percent": 100
+        },
+        "transfer-integrity": {
+          "earned": 5,
+          "possible": 5,
+          "percent": 100
+        },
+        "product-truthfulness": {
+          "earned": 2,
+          "possible": 2,
+          "percent": 100
+        }
+      },
+      "hardFailures": [],
+      "warnings": [],
+      "unknownTransferCount": 0,
+      "unresolvedPlaceCount": 2,
+      "routeEndpoints": [
+        "Nadi",
+        "Suva"
+      ],
+      "crossSurfaceConsistent": null
+    }
+  ]
+}

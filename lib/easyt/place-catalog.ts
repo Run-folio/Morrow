@@ -336,6 +336,7 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   town("el-remate", "El Remate", "Guatemala", [], { parentRegionId: "peten", coordinates: [-89.6874, 16.9917] }),
   town("san-ignacio-belize", "San Ignacio", "Belize", ["San Ignacio, Belize"], { coordinates: [-89.079, 17.1561] }),
   town("caye-caulker", "Caye Caulker", "Belize", [], { coordinates: [-88.0246, 17.7425] }),
+  town("san-pedro-belize", "San Pedro, Belize", "Belize", ["San Pedro"], { coordinates: [-87.9611, 17.9214], ambiguityGroup: "san-pedro" }),
   city("belize-city", "Belize City", "Belize", [], { coordinates: [-88.1962, 17.5046] }),
   city("cancun", "Cancún", "Mexico", ["Cancun"]),
   city("dubrovnik", "Dubrovnik", "Croatia"),
