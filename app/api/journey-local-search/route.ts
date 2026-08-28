@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
+import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 
 type OverpassElement = {
   id: number;
@@ -11,12 +13,13 @@ type OverpassElement = {
 type LocalPlace = {
   id: string;
   name: string;
+  nativeName?: string;
   address: string;
   category: string;
   coordinates: [number, number];
   mapsUrl: string;
   distanceKm: number;
-  operational: boolean;
+  operational?: true;
   availability: "available" | "check";
   provider: "google-places" | "openstreetmap";
   rating?: number;
@@ -64,9 +67,9 @@ function distanceKm(latitude: number, longitude: number, targetLatitude: number,
   return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 }
 
-async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number) {
+async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
   const term = kind === "stay" ? "hotel" : "restaurant";
-  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "8" })}`, {
+  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "8", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
     signal: AbortSignal.timeout(5000),
   });
@@ -76,14 +79,16 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   for (const place of data.features ?? []) {
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
-      const name = properties.name?.trim();
-      if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const displayName = resolvePlaceDisplayName({ defaultName: properties.name }, locale);
+      if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const { name, nativeName } = displayName;
       const address = [properties.housenumber, properties.street, properties.locality || properties.city, properties.postcode, properties.country || country].filter(Boolean).join(", ") || `${city}, ${country}`;
       const searchQuery = `${name}, ${address}`;
       const china = /china/i.test(country);
       places.push({
         id: `photon-${properties.osm_id ?? `${lat}-${lon}`}`,
         name,
+        ...(nativeName ? { nativeName } : {}),
         address,
         category: properties.osm_value || properties.type || kind,
         coordinates: [lon, lat] as [number, number],
@@ -91,7 +96,6 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
           ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
           : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-        operational: true as boolean,
         availability: "check" as "check",
         provider: "openstreetmap" as "openstreetmap",
       });
@@ -99,7 +103,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   return places;
 }
 
-async function googleOperationalStays(country: string, latitude: number, longitude: number) {
+async function googleOperationalStays(country: string, latitude: number, longitude: number, locale: string) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return null;
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
@@ -114,6 +118,7 @@ async function googleOperationalStays(country: string, latitude: number, longitu
       maxResultCount: 12,
       rankPreference: "DISTANCE",
       locationRestriction: { circle: { center: { latitude, longitude }, radius: 7000 } },
+      languageCode: locale,
     }),
     next: { revalidate: 60 * 15 },
     signal: AbortSignal.timeout(7000),
@@ -122,10 +127,11 @@ async function googleOperationalStays(country: string, latitude: number, longitu
   const seen = new Set<string>();
   return ((await response.json() as { places?: GooglePlace[] }).places ?? [])
     .flatMap((place) => {
-      const name = place.displayName?.text?.trim();
+      const displayName = resolvePlaceDisplayName({ defaultName: place.displayName?.text }, locale);
       const lat = place.location?.latitude;
       const lon = place.location?.longitude;
-      if (!name || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
+      if (!displayName || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
+      const { name, nativeName } = displayName;
       const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
       if (seen.has(key)) return [];
       seen.add(key);
@@ -133,12 +139,13 @@ async function googleOperationalStays(country: string, latitude: number, longitu
       return [{
         id: `google-${place.id}`,
         name,
+        ...(nativeName ? { nativeName } : {}),
         address: place.formattedAddress ?? country,
         category: "lodging",
         coordinates: [lon!, lat!] as [number, number],
         mapsUrl: place.googleMapsUri ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-        operational: true,
+        operational: operationalPlaceStatus({ provider: "google-places", businessStatus: place.businessStatus }),
         availability: "check" as const,
         provider: "google-places" as const,
         rating: place.rating,
@@ -153,13 +160,15 @@ export async function GET(request: NextRequest) {
   const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
   const latitude = Number(request.nextUrl.searchParams.get("lat"));
   const longitude = Number(request.nextUrl.searchParams.get("lon"));
+  const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim().toLocaleLowerCase() || "en";
+  const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(requestedLocale) ? requestedLocale : "en";
   if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
     return NextResponse.json({ places: [] }, { status: 400 });
   }
 
   if (kind === "stay") {
     try {
-      const places = await googleOperationalStays(country ?? "", latitude, longitude);
+      const places = await googleOperationalStays(country ?? "", latitude, longitude, locale);
       if (places) return NextResponse.json({ places, source: "Google Places", inventory: false });
     } catch {
       // Keep the map-data fallback available, but never represent it as a live
@@ -194,14 +203,16 @@ export async function GET(request: NextRequest) {
         const tags = place.tags ?? {};
         const lat = place.lat ?? place.center?.lat;
         const lon = place.lon ?? place.center?.lon;
-        const name = tags.name?.trim();
-        if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const displayName = resolveOsmPlaceDisplayName(tags, locale);
+        if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        const { name, nativeName } = displayName;
         const address = addressFor(tags, country ? `${city}, ${country}` : city);
         const searchQuery = `${name}, ${address}`;
         const china = /china/i.test(country ?? "");
         places.push({
           id: `${place.id}`,
           name,
+          ...(nativeName ? { nativeName } : {}),
           address,
           category: tags.cuisine || tags.tourism || tags.amenity || kind,
           coordinates: [lon!, lat!] as [number, number],
@@ -209,7 +220,6 @@ export async function GET(request: NextRequest) {
             ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
             : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
           distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-          operational: true as boolean,
           availability: "check" as "check",
           provider: "openstreetmap" as "openstreetmap",
         });
@@ -227,7 +237,7 @@ export async function GET(request: NextRequest) {
     // Overpass mirrors can be busy. Photon is a dependable OpenStreetMap-backed
     // fallback that still returns named, mapped venues.
     try {
-      const places = await photonFallback(kind, city, country ?? "", latitude, longitude);
+      const places = await photonFallback(kind, city, country ?? "", latitude, longitude, locale);
       return NextResponse.json({ places, source: "OpenStreetMap" });
     } catch {
       // Keep the response shape stable so the client can show its map fallback

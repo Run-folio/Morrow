@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 
 type BookingSearchResult = {
   id?: number | string;
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
   const rooms = Math.min(adults, Math.max(1, Number(params.get("rooms")) || 1));
   const currency = (params.get("currency") || "USD").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3) || "USD";
   const bookerCountry = (params.get("bookerCountry") || process.env.BOOKING_DEMAND_BOOKER_COUNTRY || "gb").toLowerCase();
+  const requestedLocale = params.get("locale")?.trim().toLocaleLowerCase() || "en-gb";
+  const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(requestedLocale) ? requestedLocale : "en-gb";
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180 || !isIsoDate(checkIn) || !isIsoDate(checkOut) || checkOut! <= checkIn! || !/^[a-z]{2}$/.test(bookerCountry)) {
     return NextResponse.json({ properties: [], configured: Boolean(apiKey && affiliateId), error: "invalid_search" }, { status: 400 });
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
     const detailsResponse = await fetch(`${apiBase()}/accommodations/details`, {
       method: "POST",
       headers: bookingHeaders(),
-      body: JSON.stringify({ accommodations: searchResults.map((result) => Number(result.id)), languages: ["en-gb"] }),
+      body: JSON.stringify({ accommodations: searchResults.map((result) => Number(result.id)), languages: [...new Set([locale, "en-gb"])] }),
       cache: "no-store",
       signal: AbortSignal.timeout(8000),
     });
@@ -84,11 +87,16 @@ export async function GET(request: NextRequest) {
 
     const properties = searchResults.flatMap((result) => {
       const detail = details.get(String(result.id));
-      const name = localized(detail?.name);
+      const displayName = resolvePlaceDisplayName({
+        defaultName: localized(detail?.name),
+        localizedNames: detail?.name,
+        nativeNames: Object.values(detail?.name ?? {}),
+      }, locale);
       const coordinates = detail?.location?.coordinates;
       const propertyLatitude = coordinates?.latitude;
       const propertyLongitude = coordinates?.longitude;
-      if (!name || !Number.isFinite(propertyLatitude) || !Number.isFinite(propertyLongitude)) return [];
+      if (!displayName || !Number.isFinite(propertyLatitude) || !Number.isFinite(propertyLongitude)) return [];
+      const { name, nativeName } = displayName;
       const product = result.products?.[0];
       const displayPrice = result.price?.display?.booker_currency ?? result.price?.display?.accommodation_currency ?? result.price?.total ?? result.price?.base;
       const resultCurrency = typeof result.currency === "string" ? result.currency : result.currency?.booker || result.currency?.accommodation || currency;
@@ -96,6 +104,7 @@ export async function GET(request: NextRequest) {
         id: `booking-${result.id}`,
         bookingAccommodationId: String(result.id),
         name,
+        ...(nativeName ? { nativeName } : {}),
         address: localized(detail?.location?.address) || "Address provided by accommodation search",
         category: "available stay",
         coordinates: [propertyLongitude!, propertyLatitude!] as [number, number],

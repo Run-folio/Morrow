@@ -21,6 +21,8 @@ import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march20
 import { getCountryIntelligence } from "@/lib/country-intelligence";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
+import { createTripMutationPersistenceQueue } from "@/lib/easyt/trip-mutation-persistence";
+import { addMappedPlaceToTrip, removeMappedPlaceFromTrip, type MappedItineraryPlace } from "@/lib/easyt/map-place-itinerary";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
@@ -410,6 +412,7 @@ export function JourneyMapPlannerWorkspace({
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
+  const plannerMutationQueueRef = useRef(createTripMutationPersistenceQueue(saveTripRecoveryToEasyT));
   const hydratedOwnerScopeRef = useRef<string | null | undefined>(providedTrip ? providedTrip.ownerId : undefined);
   const hydratedDocumentIdentityRef = useRef<string | undefined>(providedTrip ? plannerDocumentIdentity : undefined);
   const previousDocumentIdentityRef = useRef(plannerDocumentIdentity);
@@ -858,6 +861,42 @@ export function JourneyMapPlannerWorkspace({
     return { ...cached, isCurrentRecovery: safeCanonicalResult };
   }, []);
 
+  const persistPlannerMutation = useCallback((trip: EasyTTrip, recovery: TripRecoveryHandle) => {
+    if (!session?.user || cloudConflictTrip) return;
+    setCloudSaveState("saving");
+    setCloudSaveError("");
+    setCloudAuthInterrupted(false);
+    void plannerMutationQueueRef.current.enqueue(trip, recovery)
+      .then((saved) => {
+        const cached = cacheSavedTrip(saved, recovery);
+        if (!cached.isCurrentRecovery) return;
+        setCustomTrip(saved);
+        setCustomBrief(customBriefFromEasyT(saved));
+        setCloudConflictTrip(null);
+        setCloudAuthInterrupted(false);
+        setCloudSaveState("saved");
+        setHasUnsavedChanges(false);
+      })
+      .catch((error) => {
+        const conflictTrip = error instanceof EasyTTripSaveConflictError || error instanceof EasyTTripPromotionConflictError
+          ? error.canonicalTrip
+          : null;
+        const authInterrupted = error instanceof EasyTTripAuthError;
+        markTripRecoveryState(recovery, authInterrupted ? "auth" : conflictTrip ? "conflict" : "network");
+        if (recoveryHandleRef.current?.writeId !== recovery.writeId
+          || hydratedOwnerScopeRef.current !== recovery.ownerId
+          || activeBrowserOwnerIdRef.current !== recovery.ownerId) return;
+        setCloudConflictTrip(conflictTrip);
+        setCloudAuthInterrupted(authInterrupted);
+        setCloudSaveState("error");
+        setCloudSaveError(authInterrupted
+          ? "Your session expired. Your edits are still safe on this device; sign in again to sync them."
+          : conflictTrip
+            ? "This trip changed on another device. Your edits are still on this device; reload the cloud copy before editing again."
+            : "Couldn’t save this trip just now. Your plan is still safe on this device.");
+      });
+  }, [cacheSavedTrip, cloudConflictTrip, session?.user]);
+
   useEffect(() => {
     const preserveBeforeNewTrip = (event: Event) => {
       if (!customTrip || !hasUnsavedChanges) return;
@@ -894,7 +933,8 @@ export function JourneyMapPlannerWorkspace({
     }
     if (!cloudConflictTrip) setCloudAuthInterrupted(false);
     setHasUnsavedChanges(true);
-  }, [activeBrowserOwnerId, cloudConflictTrip, customTrip, savePlannerRecovery]);
+    if (recovery.stored) persistPlannerMutation(next, recovery.handle);
+  }, [activeBrowserOwnerId, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery]);
 
   useEffect(() => {
     if (!lastPlannerTrip) return;
@@ -1151,40 +1191,20 @@ export function JourneyMapPlannerWorkspace({
     setSelectedPlannerPin(nextPin);
   };
 
-  const saveLocalVenue = useCallback((venue: { name: string; coordinates: [number, number] }, category: "restaurant" | "stay") => {
+  const saveLocalVenue = useCallback((venue: MappedItineraryPlace, category: "restaurant" | "stay") => {
     if (!customTrip || !selectedPlanItem) return;
-    const id = `venue-${selectedPlanItem.dayNumber}-${category}-${venue.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-    const stop = customTrip.stops.find((item) => item.id === selectedPlanItem.stopId);
-    const stayBookingId = stop ? `stay-${stop.id}` : undefined;
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: {
-        ...trip.brief,
-        customActivities: { ...(trip.brief.customActivities ?? {}), [selectedPlanItem.dayNumber]: (trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []).includes(venue.name) ? (trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []) : [...(trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []), venue.name] },
-        mapPins: (trip.brief.mapPins ?? []).some((pin) => pin.id === id) ? (trip.brief.mapPins ?? []) : [...(trip.brief.mapPins ?? []), { id, title: venue.name, category, dayNumber: selectedPlanItem.dayNumber, longitude: venue.coordinates[0], latitude: venue.coordinates[1] }],
-        bookings: category === "stay" && stop && stayBookingId ? [
-          ...(trip.brief.bookings ?? []).filter((booking) => booking.id !== stayBookingId),
-          { id: stayBookingId, type: "stay", title: venue.name, date: stop.arrivalDate, confirmation: null, url: null },
-        ] : trip.brief.bookings,
-      },
-      planItems: trip.planItems.map((item) => item.dayNumber === selectedPlanItem.dayNumber ? { ...item, notes: item.notes.includes(venue.name) ? item.notes : [...item.notes, venue.name] } : item),
-    }), `${category === "restaurant" ? "Restaurant" : "Stay"} added to the day`);
+    updatePlannerTrip(
+      (trip) => addMappedPlaceToTrip(trip, venue, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId),
+      `${category === "restaurant" ? "Restaurant" : "Stay"} added to the day`,
+    );
   }, [customTrip, selectedPlanItem, updatePlannerTrip]);
 
-  const removeLocalVenue = useCallback((venue: { name: string; coordinates: [number, number] }, category: "restaurant" | "stay") => {
+  const removeLocalVenue = useCallback((venue: MappedItineraryPlace, category: "restaurant" | "stay") => {
     if (!customTrip || !selectedPlanItem) return;
-    const id = `venue-${selectedPlanItem.dayNumber}-${category}-${venue.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-    const stop = customTrip.stops.find((item) => item.id === selectedPlanItem.stopId);
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: {
-        ...trip.brief,
-        customActivities: { ...(trip.brief.customActivities ?? {}), [selectedPlanItem.dayNumber]: (trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []).filter((item) => item !== venue.name) },
-        mapPins: (trip.brief.mapPins ?? []).filter((pin) => pin.id !== id),
-        bookings: category === "stay" && stop ? (trip.brief.bookings ?? []).filter((booking) => booking.id !== `stay-${stop.id}`) : trip.brief.bookings,
-      },
-      planItems: trip.planItems.map((item) => item.dayNumber === selectedPlanItem.dayNumber ? { ...item, notes: item.notes.filter((note) => note !== venue.name) } : item),
-    }), `${category === "restaurant" ? "Restaurant" : "Stay"} removed from the day`);
+    updatePlannerTrip(
+      (trip) => removeMappedPlaceFromTrip(trip, venue, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId),
+      `${category === "restaurant" ? "Restaurant" : "Stay"} removed from the day`,
+    );
   }, [customTrip, selectedPlanItem, updatePlannerTrip]);
 
   const changeRecommendation = useCallback((recommendationId: string, action: "apply" | "undo") => {
@@ -1415,6 +1435,7 @@ export function JourneyMapPlannerWorkspace({
       hydratedOwnerScopeRef.current = undefined;
       hydratedDocumentIdentityRef.current = undefined;
       recoveryHandleRef.current = null;
+      plannerMutationQueueRef.current.reset(providedTrip);
       setAutoSaveRequested(false);
       setCustomTrip(null);
       setCustomBrief(null);
@@ -2015,12 +2036,13 @@ export function JourneyMapPlannerWorkspace({
           </div>
 
           {selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
+            {selectedLocalPlace.nativeName ? <p>{selectedLocalPlace.nativeName}</p> : null}
             <p>{selectedLocalPlace.address || `${selectedLocalPlace.category} near ${selected.city}`}</p>
             <dl className={styles.mapContextFacts}>
               <div><dt>Type</dt><dd>{selectedLocalPlace.category.replace(/_/g, " ")}</dd></div>
               <div><dt>Distance</dt><dd>{selectedLocalPlace.distanceKm !== undefined ? `${selectedLocalPlace.distanceKm.toFixed(1)} km` : "Nearby"}</dd></div>
               <div><dt>Source</dt><dd>{selectedLocalPlace.provider === "google-places" ? "Google Places" : selectedLocalPlace.provider === "booking-demand" ? "Booking provider" : "OpenStreetMap"}</dd></div>
-              <div><dt>Status</dt><dd>{selectedLocalPlace.operational === true ? "Operational" : "Check current details"}</dd></div>
+              {selectedLocalPlace.operational === true ? <div><dt>Status</dt><dd>Operational</dd></div> : null}
             </dl>
             <div className={styles.mapExternalActions}><a href={selectedLocalPlace.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a></div>
           </div> : selectedPlannerPin ? <div className={styles.mapPlaceDetail}>
@@ -2171,7 +2193,7 @@ export function JourneyMapPlannerWorkspace({
           copy={planCopy}
         /> : null}
         {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={selected.city} country={selected.country} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={selected.city} country={selected.country} locale={language} dayId={selectedDay.id} coordinates={selected.coordinates} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
       {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} scope={copilotScope} contextLabel={copilotContextLabel} tripId={customTrip?.ownerId ? customTrip.id : undefined} stopId={copilotScope === "selected-stop" || copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedTripStop?.id : undefined} dayNumber={copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedPlanItem?.dayNumber : undefined} legId={copilotScope === "selected-transfer" ? selectedRouteLeg?.id : undefined} canApplyChanges={canApplyCanonicalCopilotChange({ hasUnsavedChanges, hasCloudConflict: Boolean(cloudConflictTrip), hasDeviceRecoveryIssue: recoveryBlockedByExisting, cloudCopyHasPreservedRecovery, authInterrupted: cloudAuthInterrupted })} onTripApplied={(trip) => { cacheCanonicalTrip(trip); setCustomTrip(trip); setCustomBrief(customBriefFromEasyT(trip)); setCloudConflictTrip(null); setCloudAuthInterrupted(false); if (cloudCopyHasPreservedRecovery) { setRecoveryBlockedByExisting(true); setCloudSaveError("The cloud copy was updated. Your separate device edits remain preserved until you open or explicitly discard them."); setCloudSaveState("error"); } else { setCloudSaveError(""); setCloudSaveState("saved"); } setHasUnsavedChanges(false); }} onOpenChange={(open) => { setCopilotOpen(open); if (open) setMobileShapeDayOpen(false); }} /></aside> : null}

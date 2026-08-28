@@ -112,6 +112,13 @@ test("Add pin restores the original progressive workflow on the canonical trip d
   assert.match(mapWorkspaceSource, /Map pin updated/);
   assert.match(mapWorkspaceSource, /Map pin removed/);
   assert.match(mapWorkspaceSource, /savePlannerRecovery\(next/);
+  assert.match(mapWorkspaceSource, /persistPlannerMutation\(next, recovery\.handle\)/);
+});
+
+test("authenticated Map mutations use the account persistence queue", () => {
+  assert.match(mapWorkspaceSource, /createTripMutationPersistenceQueue\(saveTripRecoveryToEasyT\)/);
+  assert.match(mapWorkspaceSource, /plannerMutationQueueRef\.current\.enqueue\(trip, recovery\)/);
+  assert.match(mapWorkspaceSource, /setHasUnsavedChanges\(false\)/);
 });
 
 test("map overlays expose keyboard-equivalent controls and predictable Escape cleanup", () => {
