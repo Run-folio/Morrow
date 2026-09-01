@@ -43,10 +43,11 @@ export function isCanonicalTripWorkspaceHref(href: string) {
   return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|prep))?(?:[?#].*)?$/.test(href);
 }
 
-export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan") {
+export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan", dayNumber?: number | null) {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);
   if (mode !== "plan") query.set("mode", mode);
+  if (dayNumber) query.set("day", String(dayNumber));
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
 }
@@ -66,7 +67,12 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
   const mode = requestedMode && mapModes.has(requestedMode as MapWorkspaceMode)
     ? requestedMode as MapWorkspaceMode
     : "plan";
-  return { stopId, mode };
+  const rawDay = query.get("day") ?? "";
+  const requestedDayNumber = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : Number.NaN;
+  const requestedDay = Number.isInteger(requestedDayNumber)
+    ? orderedDays(trip).find((day) => day.dayNumber === requestedDayNumber && day.stopId === stopId)
+    : undefined;
+  return { stopId, mode, dayNumber: requestedDay?.dayNumber ?? null };
 }
 
 /**
@@ -104,7 +110,7 @@ export function itineraryDayForRecommendation(
     .find((dayNumber) => canonicalDays.has(dayNumber)) ?? null;
 }
 
-export type TripWorkspaceView = "overview" | "itinerary" | "map" | "prep";
+export type TripWorkspaceView = "overview" | "itinerary" | "map";
 
 export function workspaceVisitKey(href: string) {
   return href.split(/[?#]/, 1)[0];
@@ -115,6 +121,5 @@ export function workspaceViewFromPathname(pathname: string, tripId: string): Tri
   const remainder = decodedPathname.slice(`/journey/${tripId}`.length);
   if (remainder.startsWith("/itinerary")) return "itinerary";
   if (remainder.startsWith("/map")) return "map";
-  if (remainder.startsWith("/prep")) return "prep";
   return "overview";
 }

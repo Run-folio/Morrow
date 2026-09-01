@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { BedDouble, Coffee, Footprints, Gem, Landmark, Luggage, Sparkles, Sun, Trees, Wallet, Zap } from "lucide-react";
+import { BedDouble, Building2, Coffee, Footprints, Gem, Landmark, Luggage, Mountain, Sparkles, Sun, Trees, Wallet, Waves, Zap, type LucideIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import {
   EasyTButton,
@@ -15,18 +15,21 @@ import { type TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { ownerBoundaryState, travelProfileStorageKey, travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import { EASYT_LAST_OWNER_KEY, loadRememberedOwner } from "@/lib/easyt/storage";
 import { journeyReauthenticationPath } from "@/lib/easyt/trip-continuity";
+import { tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 
 const paceOptions = [
   { value: "slow", label: "Slow", detail: "One good thing at a time", icon: Sun },
   { value: "balanced", label: "Balanced", detail: "Plan, then leave room", icon: Footprints },
   { value: "full", label: "Full", detail: "Make the most of each day", icon: Zap },
 ] as const;
-const priorityOptions = [
-  { value: "food", label: "Food", icon: Coffee },
-  { value: "nature", label: "Nature", icon: Trees },
-  { value: "culture", label: "Culture", icon: Landmark },
-  { value: "mix", label: "A mix", icon: Sparkles },
-] as const;
+const interestIcons: Record<TripInterest, LucideIcon> = {
+  food: Coffee,
+  culture: Landmark,
+  nature: Trees,
+  cities: Building2,
+  beach: Waves,
+  hiking: Mountain,
+};
 const moveOptions = [
   { value: "few", label: "Stay put", detail: "Fewer hotel moves", icon: BedDouble },
   { value: "some", label: "A few", detail: "Change bases when it helps", icon: Luggage },
@@ -84,6 +87,9 @@ export default function ProfileForm({
         travelEyebrow: "Tu perfil de viaje",
         travelTitle: "¿Qué hace que un viaje se sienta bien?",
         travelDetail: "Morrovia las usa como punto de partida. Puedes cambiarlas en cualquier viaje.",
+        interestsTitle: "Intereses habituales",
+        interestsDetail: "Preselecciónalos en viajes nuevos",
+        interestsSelected: "seleccionados",
         beforeEyebrow: "Antes de salir",
         beforeTitle: "Haz que las comprobaciones prácticas sean más útiles.",
         beforeDetail: "Usamos estos datos solo para orientar recordatorios de entrada, visado y conectividad.",
@@ -101,6 +107,9 @@ export default function ProfileForm({
         travelEyebrow: "Your travel profile",
         travelTitle: "What makes a trip feel good?",
         travelDetail: "Morrovia uses these as a starting point. You can override them on any trip.",
+        interestsTitle: "Usual interests",
+        interestsDetail: "Preselect on new trips",
+        interestsSelected: "selected",
         beforeEyebrow: "Before you go",
         beforeTitle: "Make practical trip checks more useful.",
         beforeDetail: "We use this only to shape entry, visa and connectivity reminders.",
@@ -232,8 +241,8 @@ export default function ProfileForm({
             <input className={styles.preferenceRange} style={rangeProgress(paceOptions.findIndex((option) => option.value === travelProfile.pace))} type="range" min="0" max="2" step="1" value={paceOptions.findIndex((option) => option.value === travelProfile.pace)} onChange={(event) => setTravelProfile((current) => ({ ...current, pace: paceOptions[Number(event.target.value)].value }))} aria-label="Trip pace" aria-valuetext={paceOptions.find((option) => option.value === travelProfile.pace)?.label} />
           </section>
           <section className={styles.preferenceChoices}>
-            <div className={styles.preferenceHead}><h3>What pulls you in</h3><b>Choose the lead</b></div>
-            <div role="group" aria-label="Travel interest options">{priorityOptions.map((option) => { const Icon = option.icon; const active = travelProfile.priority === option.value; return <button type="button" key={option.value} aria-pressed={active} className={active ? styles.choiceActive : ""} onClick={() => setTravelProfile((current) => ({ ...current, priority: option.value }))}><Icon aria-hidden="true" /><span>{option.label}</span></button>; })}</div>
+            <div className={styles.preferenceHead}><h3>{profileCopy.interestsTitle}</h3><b>{travelProfile.usualInterests.length ? `${travelProfile.usualInterests.length} ${profileCopy.interestsSelected}` : profileCopy.interestsDetail}</b></div>
+            <div role="group" aria-label={profileCopy.interestsTitle}>{tripInterestIds.map((interest) => { const Icon = interestIcons[interest]; const active = travelProfile.usualInterests.includes(interest); return <button type="button" key={interest} aria-pressed={active} className={active ? styles.choiceActive : ""} onClick={() => setTravelProfile((current) => ({ ...current, usualInterests: active ? current.usualInterests.filter((item) => item !== interest) : [...current.usualInterests, interest] }))}><Icon aria-hidden="true" /><span>{tripInterestLabels[language][interest]}</span></button>; })}</div>
           </section>
           <section className={styles.preferenceMoves}>
             <div className={styles.preferenceHead}><h3>Hotel moves</h3><b>{moveOptions.find((option) => option.value === travelProfile.hotelMoves)?.label}</b></div>

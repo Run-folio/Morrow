@@ -133,9 +133,9 @@
 
   .plan :global([class*="mobileTripStatus"]) { display:block; }
   .plan :global([class*="mobileTripStatus"]) { position:static;justify-self:start;z-index:1; }
-  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--font-geist-mono,monospace); }
+  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--morrovia-meta); }
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
-  .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--font-geist-mono,monospace); }
+  .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--morrovia-meta); }
   .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:12px;left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
   .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="pinDock"]) { display:none; }
 
@@ -170,7 +170,7 @@
   .plan :global([class*="finderDock"]) > header strong { font-size:17px;line-height:1; }
   .plan :global([class*="finderDock"]) > header em { font-size:8px;white-space:nowrap; }
   .plan :global([class*="finderTabs"]) { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;margin-top:5px; }
-  .plan :global([class*="finderTabs"]) button { min-width:0;min-height:44px;padding:0 4px;border-radius:8px;font:700 10px var(--font-geist-sans,Geist,Inter,sans-serif);white-space:nowrap; }
+  .plan :global([class*="finderTabs"]) button { min-width:0;min-height:44px;padding:0 4px;border-radius:8px;font:700 10px var(--morrovia-ui);white-space:nowrap; }
   .plan :global([class*="mobileTripStatus"]) { margin-top:1px; }
   .plan :global([class*="shapeDayPlan"]) { padding-top:0; }
   .plan :global([class*="shapeDayContext"]) { margin:8px 0;font-size:8px; }

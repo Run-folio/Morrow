@@ -114,6 +114,44 @@ Before making changes:
 9. Run the relevant lint, typecheck, tests or build checks before completing a task.
 10. Summarise meaningful changes and call out unresolved risks or assumptions.
 
+## UI and design-system contract
+
+This section applies to every task that creates, edits or restyles UI. A UI task
+is not complete merely because the changed page looks correct in isolation; it
+must remain consistent with the rest of Morrovia.
+
+Before implementation:
+
+1. Read this file and `docs/design-system.md`.
+2. Search shared production components, then Storybook stories, then semantic
+   tokens, then the closest equivalent production surface.
+3. State which existing components and patterns will be reused.
+
+Reuse before creation. Do not create another button, input, textarea, select,
+card, panel, chip, badge, callout, status treatment, page or section header,
+empty state, progress pattern, dialog, toolbar, mobile action or responsive
+pattern until the existing system has been checked. When a canonical component
+almost fits, prefer composition, a safe extension or a semantically appropriate
+variant over a parallel implementation. Do not add variants solely to absorb
+unrelated visual differences.
+
+Storybook is the canonical reusable visual and interaction reference. Recurring
+new UI requires one shared implementation, representative Storybook coverage
+and existing design tokens. Unique page-specific interactions are allowed when
+the job is genuinely unique; explicitly distinguish a new interaction from
+another implementation of an existing interaction.
+
+Do not casually introduce fonts, type sizes or weights, colours, shadows,
+radii, borders, spacing, breakpoints, icon sizes or interaction states. Check
+the current Morrovia system first. During implementation, avoid page-local
+primitives, preserve accessibility and established responsive behaviour, and
+promote a pattern only when its semantics genuinely recur.
+
+Before completion, compare the result with the relevant Storybook and live
+patterns, verify responsive behaviour, run applicable UI compliance checks,
+and build Storybook when shared UI changed. Report reused, extended and new
+shared components, Storybook changes, and any intentional exceptions.
+
 ## Implementation context routing
 
 Read only the context relevant to the current task. Do not load unrelated project documentation unnecessarily.
@@ -122,7 +160,7 @@ Read only the context relevant to the current task. Do not load unrelated projec
   - For current Morrovia UI work, treat `app/journey/journey-design.css`, the current Journey homepage, shared navigation and current live components as the visual source of truth.
   - Historical QA files such as `easyt-design-qa.md` may provide context but must not override the current Morrovia visual system.
   - Reuse existing components and tokens where they represent the current Morrovia system; inspect nearby live surfaces before visual decisions; do not reintroduce older EasyT/portfolio styling simply because it exists in legacy components.
-- **Design-system routing:** before creating or styling UI, inspect the relevant Storybook examples in `components/**/*.stories.tsx`, the shared controls in `components/easyt/`, and the closest live Morrovia pattern. Reuse production components and `--morrovia-*` semantic tokens where appropriate; do not hard-code an equivalent visual value. Preserve established desktop and mobile behaviour, and visually verify new states against current Morrovia references. Do not create a shared primitive for one page: extend shared components only when semantics genuinely recur, and keep product-specific UI local when abstraction would make the system worse. Historical EasyT/portfolio styling must not override the current Morrovia system.
+- **Design-system routing:** follow the UI contract above and use `docs/design-system.md` as the durable map to canonical tokens, components, stories, page archetypes, exceptions and checks. Historical EasyT/portfolio styling must not override the current Morrovia system.
 - **Trip model and persistence:** inspect `lib/easyt/trip.ts`, `lib/easyt/repository.ts`, and `db/migrations/`.
 - **Builder and route logic:** inspect `app/journey/new/trip-builder.tsx`, `lib/easyt/planner.ts`, `lib/easyt/cascade.ts`, and relevant tests.
 - **Map, trip health and repair behaviour:** inspect `app/journey/plan-next/`, `lib/easyt/review.ts`, `lib/easyt/trip-replan.ts`, and relevant map components/tests.

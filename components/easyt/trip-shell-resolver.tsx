@@ -19,6 +19,8 @@ import { trackEvent } from "@/lib/analytics";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import { tripSaveSignInHref } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
+import { MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import TripShell from "./trip-shell";
 import styles from "./trip-shell.module.css";
 
@@ -120,27 +122,22 @@ export default function TripShellResolver({
   }, [resolveAndPromote]);
 
   if (resolution.identity !== resolutionIdentity || resolution.status === "loading") {
-    return <section className={styles.resolving} aria-live="polite">Opening your trip…</section>;
+    return <section className={styles.resolving}>
+      <MorroviaSectionStatus title="Opening your route" detail="Loading the trip saved on this device before its workspace opens." />
+    </section>;
   }
   if (resolution.status === "missing") notFound();
 
   return <div className={styles.resolverStack}>
-    {!ownerId ? <aside className={`${styles.syncNotice} ${styles.guestSaveNotice}`}>
-      <strong>Saved on this device</strong>
-      <span>Keep this trip and continue planning on another device.</span>
-      <EasyTLinkButton size="small" href={tripSaveSignInHref(tripId)}>Save this trip</EasyTLinkButton>
-    </aside> : null}
-    {syncComplete ? <aside className={`${styles.syncNotice} ${styles.syncComplete}`} role="status">
-      <strong>Trip saved to your account</strong>
-      <span>You can continue this same trip on another device.</span>
-    </aside> : null}
-    {syncIssue ? <aside className={styles.syncNotice} role="alert">
-      <strong>{syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Cloud copy kept safe" : "Trip not synced yet"}</strong>
-      <span>{syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}</span>
-      {syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : null}
-      {syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : null}
-      {syncIssue === "conflict" ? <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId)}>Open device copy</EasyTLinkButton> : null}
-    </aside> : null}
+    {!ownerId ? <MorroviaStatusBanner className={styles.resolverNotice} title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTLinkButton size="small" href={tripSaveSignInHref(tripId)}>Save this trip</EasyTLinkButton>} /> : null}
+    {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Trip saved to your account" detail="You can continue this same trip on another device." /> : null}
+    {syncIssue ? <MorroviaStatusBanner
+      className={styles.resolverNotice}
+      tone={syncIssue === "failed" ? "warning" : syncIssue === "conflict" ? "warning" : "danger"}
+      title={syncIssue === "auth" ? "Sign in to finish syncing" : syncIssue === "conflict" ? "Cloud copy kept safe" : "Trip not synced yet"}
+      detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}
+      actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId)}>Open device copy</EasyTLinkButton>}
+    /> : null}
     <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict}>{children}</TripShell>
   </div>;
 }

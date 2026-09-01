@@ -34,16 +34,17 @@ test("calendar month grids retain every valid date exactly once", () => {
 test("major planning surfaces use the canonical date and quantity controls", () => {
   const homepage = read("app/journey/home/home-trip-starter.tsx");
   const builder = read("app/journey/new/trip-builder.tsx");
+  const capture = read("components/easyt/morrovia-trip-capture.tsx");
   const tripMode = read("app/journey/trip/trip-mode-client.tsx");
 
-  for (const [surface, source] of [["Homepage", homepage], ["Builder", builder], ["Trip mode", tripMode]] as const) {
+  for (const [surface, source] of [["Shared trip capture", capture], ["Trip mode", tripMode]] as const) {
     assert.doesNotMatch(source, /type="date"/, `${surface} must not expose browser-native date chrome`);
     assert.match(source, /MorroviaDatePicker/, `${surface} should use the canonical date picker`);
   }
-  assert.doesNotMatch(homepage, /type="number"/, "Homepage travellers must not use a number spinner");
-  assert.doesNotMatch(builder, /type="number"/, "Builder quantity fields must not use number spinners");
-  assert.match(homepage, /MorroviaQuantitySelector/);
-  assert.match(builder, /MorroviaQuantitySelector/);
+  assert.match(homepage, /MorroviaTripCapture/);
+  assert.match(builder, /MorroviaTripCapture/);
+  assert.doesNotMatch(capture, /type="number"/, "Shared trip-capture travellers must not use a number spinner");
+  assert.match(capture, /MorroviaQuantitySelector/);
 
   const picker = read("components/easyt/morrovia-date-picker.tsx");
   assert.match(picker, /aria-modal="true"/);
@@ -64,4 +65,25 @@ test("canonical control stories cover date, traveller, field, select, button and
     "InputAndSelectStates",
     "ButtonStates",
   ]) assert.match(stories, new RegExp(`export const ${story}`));
+});
+
+test("simple production controls compose the canonical controls without replacing composite widgets", () => {
+  const controls = read("components/easyt/easyt-controls.tsx");
+  assert.match(controls, /fieldClassName/);
+  assert.match(controls, /labelClassName/);
+  assert.match(controls, /aria-controls=\{option\.controls\}/);
+
+  const passport = read("app/journey/passport/passport-destination-client.tsx");
+  assert.match(passport, /EasyTSelect/);
+  assert.match(passport, /EasyTButton type="submit"/);
+  assert.doesNotMatch(passport, /<(?:button|select)\b/);
+
+  const discover = read("app/journey/discover/discovery-browser.tsx");
+  assert.match(discover, /EasyTSegmentedControl<DiscoveryRegion>/);
+  assert.match(discover, /fieldClassName=\{styles\.compactSelect\}/);
+
+  const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
+  assert.match(dashboard, /EasyTSegmentedControl<TripStatus>/);
+  assert.match(dashboard, /EasyTTextArea fieldClassName=\{accountStyles\.field\}/);
+  assert.match(dashboard, /controls: "dashboard-trip-grid"/);
 });

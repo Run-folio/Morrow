@@ -8,7 +8,7 @@ import {
   deriveTripDateFacts,
   orderedTripPlanItems,
 } from "./trip-facts.ts";
-import type { EasyTTrip, TripLeg } from "./trip.ts";
+import { tripIntentForTrip, type EasyTTrip, type TripLeg } from "./trip.ts";
 import {
   transferDoorToDoorMinutes,
   transferHeadlineMinutes,
@@ -154,10 +154,11 @@ function hardConstraintLabels(trip: EasyTTrip) {
 
 function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["preferences"] {
   const structured = trip.brief.structuredBrief;
+  const canonicalInterests = tripIntentForTrip(trip).preferences.interests;
   if (structured) return {
     pace: structured.pace?.value ?? null,
     budget: structured.budget?.value ?? null,
-    interests: structured.interests.map((item) => cleanText(item.value)).slice(0, 20),
+    interests: canonicalInterests,
     transport: structured.transportPreferences.map((item) => item.value).slice(0, 10),
     accommodation: structured.accommodationPreferences.map((item) => cleanText(item.value)).slice(0, 10),
     hardConstraints: hardConstraintLabels(trip),
@@ -165,7 +166,7 @@ function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["p
   return {
     pace: trip.brief.intent?.preferences.pace ?? (trip.brief.pace === "slow" ? "relaxed" : "packed"),
     budget: trip.brief.intent?.preferences.budgetSensitivity ?? trip.brief.budgetBand,
-    interests: (trip.brief.intent?.preferences.interests ?? []).map((item) => cleanText(item)).slice(0, 20),
+    interests: canonicalInterests,
     transport: (trip.brief.intent?.preferences.transportModes ?? []).slice(0, 10),
     accommodation: trip.brief.hotelChanges === "few" ? ["fewer hotel changes"] : [],
     hardConstraints: hardConstraintLabels(trip),

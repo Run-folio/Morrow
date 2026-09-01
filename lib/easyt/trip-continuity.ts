@@ -41,11 +41,35 @@ export function tripSyncSignInPath(tripId: string) {
 }
 
 export function safeJourneyReturnTarget(target: string | null | undefined) {
-  return target?.startsWith("/journey/") ? target : "/journey/dashboard";
+  if (!target
+    || !target.startsWith("/")
+    || target.startsWith("//")
+    || target.includes("\\")
+    || /[\u0000-\u001f\u007f]/.test(target)) {
+    return "/journey/dashboard";
+  }
+  try {
+    const resolved = new URL(target, "https://morrovia.invalid");
+    if (resolved.origin !== "https://morrovia.invalid"
+      || (resolved.pathname !== "/journey" && !resolved.pathname.startsWith("/journey/"))) {
+      return "/journey/dashboard";
+    }
+    return target;
+  } catch {
+    return "/journey/dashboard";
+  }
 }
 
 export function journeyReauthenticationPath(target: string | null | undefined) {
   return `/journey/login?next=${encodeURIComponent(safeJourneyReturnTarget(target))}`;
+}
+
+export function googleSignInErrorPath(target: string | null | undefined) {
+  const search = new URLSearchParams({
+    next: safeJourneyReturnTarget(target),
+    oauth: "google",
+  });
+  return `/journey/login?${search.toString()}`;
 }
 
 export function conflictHasCloudCopy(reason: TripSaveConflictReason | "cloud-newer" | "cloud-different" | undefined) {
@@ -135,6 +159,26 @@ export function nextTripUpdatedAt(previousUpdatedAt: string, now = new Date()): 
   const previous = Date.parse(previousUpdatedAt);
   const current = now.getTime();
   return new Date(Number.isFinite(previous) && previous >= current ? previous + 1 : current).toISOString();
+}
+
+/**
+ * Clean-cache replacement is deliberately narrower than repository CAS.
+ * Canonical revisions emitted by Morrovia are monotonic ISO timestamps; an
+ * equal revision is an idempotent refresh, a later one may advance the cache,
+ * and an older or non-orderable different token fails closed. Repository
+ * updates still treat the token as opaque and require exact equality.
+ */
+export function canonicalTripRevisionCanReplace(
+  current: Pick<EasyTTrip, "id" | "ownerId" | "updatedAt">,
+  incoming: Pick<EasyTTrip, "id" | "ownerId" | "updatedAt">,
+) {
+  if (current.id !== incoming.id || current.ownerId !== incoming.ownerId) return false;
+  if (current.updatedAt === incoming.updatedAt) return true;
+  const currentRevision = Date.parse(current.updatedAt);
+  const incomingRevision = Date.parse(incoming.updatedAt);
+  return Number.isFinite(currentRevision)
+    && Number.isFinite(incomingRevision)
+    && incomingRevision > currentRevision;
 }
 
 export function requestTripUpdate(

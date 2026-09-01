@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { EasyTButton } from "./easyt-controls";
 
 const colors = [
   ["Primary ink", "--morrovia-ink"],
@@ -15,7 +16,7 @@ const colors = [
 ] as const;
 
 const meta = {
-  title: "Foundations/Color and type",
+  title: "Morrovia/01 Foundations/Token baseline",
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 } satisfies Meta;
@@ -44,7 +45,7 @@ export const MorroviaBaseline: Story = {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
           <span style={{ padding: "10px 14px", border: "1px solid var(--morrovia-line)", borderRadius: "var(--morrovia-control-radius)", font: "700 12px var(--morrovia-ui)" }}>Control radius</span>
           <span style={{ padding: "14px 18px", border: "1px solid var(--morrovia-line)", borderRadius: "var(--morrovia-radius)", font: "700 12px var(--morrovia-ui)" }}>Editorial card radius</span>
-          <button type="button" style={{ border: 0, borderRadius: "var(--morrovia-control-radius)", background: "var(--morrovia-action)", color: "#fff", padding: "10px 14px", boxShadow: "0 0 0 3px var(--morrovia-focus-ring)" }}>Focus treatment</button>
+          <EasyTButton style={{ boxShadow: "0 0 0 3px var(--morrovia-focus-ring)" }}>Focus treatment</EasyTButton>
         </div>
       </section>
     </div>

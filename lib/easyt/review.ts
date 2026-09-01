@@ -489,9 +489,10 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const finalStop = [...trip.stops].sort((a, b) => a.order - b.order).at(-1);
-  const expectedDeparture = dateFacts.end ? new Date(dateFacts.end) : null;
-  expectedDeparture?.setDate(expectedDeparture.getDate() + 1);
-  const expectedDepartureKey = expectedDeparture ? isoDateKey(expectedDeparture) : "";
+  // Trip end is the traveller's departure/check-out day. Builder night totals
+  // are `durationDays - 1`, so adding another day here creates a false warning
+  // on every otherwise coherent canonical calendar.
+  const expectedDepartureKey = dateFacts.end ? isoDateKey(dateFacts.end) : "";
   if (dateFacts.state === "valid" && finalStop?.departureDate && parseIsoDate(finalStop.departureDate) && finalStop.departureDate !== expectedDepartureKey) {
     results.push(recommendation(trip, {
       rule: "trip-end-mismatch",

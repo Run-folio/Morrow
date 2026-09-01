@@ -82,7 +82,8 @@ test("homepage serialization preserves the exact authoritative capture payload",
   assert.equal(persisted.structuredBrief?.source.rawPrompt, raw);
   assert.equal(persisted.structuredBrief?.placeMentions?.find((mention) => mention.role === "origin")?.canonicalName, "London");
   assert.equal(persisted.durationDays, 21);
-  assert.deepEqual(persisted.structuredBrief?.placeMentions?.filter((mention) => mention.status === "unresolved").map((mention) => mention.sourceText), ["colusseum", "pathanon"]);
+  assert.deepEqual(persisted.structuredBrief?.placeMentions?.filter((mention) => mention.status === "unresolved").map((mention) => mention.sourceText), ["pathanon"]);
+  assert.equal(persisted.structuredBrief?.placeMentions?.some((mention) => mention.sourceText === "colusseum" && mention.canonicalPlaceId === "colosseum" && mention.routability === "anchor_or_poi"), true);
   const routable = routableHandoffMentions(persisted.structuredBrief?.placeMentions ?? []);
   assert.deepEqual(routable.filter((mention) => mention.role === "origin").map((mention) => mention.canonicalName), ["London"]);
   assert.deepEqual(routable.filter((mention) => mention.role !== "origin").map((mention) => mention.canonicalName), ["Paris", "Porto", "Rome", "Athens"]);

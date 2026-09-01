@@ -5,6 +5,8 @@ import TripMapWorkspace from "./trip-map-workspace";
 import { JourneyMapPlannerWorkspace, type JourneyMapPlannerWorkspaceProps } from "@/components/journey-map-planner-workspace";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
+import { affiliatePartners, getActivityBookingAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { tourTripFixture } from "./storybook/tour-trip.fixture";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
 
@@ -239,19 +241,19 @@ const goldenTriangleLongDay: EasyTTrip = {
   } : item),
 };
 
-function TripMapStory({ storyTrip, presentation = "shell", storyState }: { storyTrip: EasyTTrip; presentation?: "shell" | "focused"; storyState?: JourneyMapPlannerWorkspaceProps["storyState"] }) {
-  if (presentation === "focused") return <JourneyMapPlannerWorkspace trip={storyTrip} presentation="focused" storyState={storyState} />;
-  return <TripShell trip={storyTrip}><TripMapWorkspace trip={storyTrip} storyState={storyState} /></TripShell>;
+function TripMapStory({ storyTrip, presentation = "shell", storyState, activityAction }: { storyTrip: EasyTTrip; presentation?: "shell" | "focused"; storyState?: JourneyMapPlannerWorkspaceProps["storyState"]; activityAction?: ResolvedAffiliateAction | null }) {
+  if (presentation === "focused") return <JourneyMapPlannerWorkspace trip={storyTrip} presentation="focused" storyState={storyState} activityAction={activityAction} />;
+  return <TripShell trip={storyTrip}><TripMapWorkspace trip={storyTrip} storyState={storyState} activityAction={activityAction} /></TripShell>;
 }
 
 const meta = {
-  title: "Components/Trip map workspace",
+  title: "Morrovia/05 Product Patterns/Trip workspace/Map",
   component: TripMapStory,
   parameters: {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map" } },
   },
-  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></main>],
+  decorators: [(Story) => <div className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></div>],
   args: { storyTrip: trip },
 } satisfies Meta<typeof TripMapStory>;
 
@@ -259,6 +261,41 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ActivePlanning: Story = {};
+
+export const TourCapture: Story = {
+  args: { storyTrip: tourTripFixture, presentation: "focused", storyState: { mapMode: "overview", expandedMap: false, destinationExpanded: true } },
+};
+
+const attractionHandoffParameters = {
+  nextjs: {
+    appDirectory: true,
+    navigation: {
+      pathname: "/journey/cusco-sacred-valley-arequipa/map",
+      query: { stop: "cusco", mode: "see", day: "1" },
+    },
+  },
+};
+
+export const AttractionHandoff: Story = {
+  args: { storyState: { mapMode: "detail", shapeDayTab: "see" } },
+  parameters: attractionHandoffParameters,
+};
+export const AttractionHandoffTripComFallback: Story = {
+  args: {
+    storyState: { mapMode: "detail", shapeDayTab: "see" },
+    activityAction: getActivityBookingAction({ category: "activities" }, { viator: null, tripCom: affiliatePartners.tripCom }),
+  },
+  parameters: attractionHandoffParameters,
+};
+export const AttractionHandoffUnavailable: Story = {
+  args: { storyState: { mapMode: "detail", shapeDayTab: "see" }, activityAction: null },
+  parameters: attractionHandoffParameters,
+};
+export const AttractionHandoffMobile390: Story = {
+  args: { storyState: { mapMode: "detail", shapeDayTab: "see" } },
+  parameters: attractionHandoffParameters,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
 
 export const GoldenTriangle: Story = {
   args: { storyTrip: goldenTriangleTrip },
@@ -313,10 +350,12 @@ export const UnknownTransport: Story = {
   },
 };
 
-export const Mobile320: Story = { parameters: { viewport: { defaultViewport: "morrovia320" } } };
-export const Mobile390: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } } };
-export const Mobile430: Story = { parameters: { viewport: { defaultViewport: "morrovia430" } } };
-export const Tablet768: Story = { parameters: { viewport: { defaultViewport: "morrovia768" } } };
+export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 
 /* Restoration acceptance matrix: each state is independently reachable and
    safe to render in the static Storybook build. */
@@ -380,22 +419,26 @@ export const MissingDestinationDescription: Story = {
 
 export const Mobile390Restoration: Story = {
   ...DetailedBasemap,
-  parameters: { ...DetailedBasemap.parameters, viewport: { defaultViewport: "morrovia390" } },
+  parameters: { ...DetailedBasemap.parameters },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const Mobile390Overview: Story = {
   ...GoldenTriangle,
-  parameters: { ...GoldenTriangle.parameters, viewport: { defaultViewport: "morrovia390" } },
+  parameters: { ...GoldenTriangle.parameters },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const Mobile390PinComposer: Story = {
   ...AddPinNameLocation,
-  parameters: { ...AddPinNameLocation.parameters, viewport: { defaultViewport: "morrovia390" } },
+  parameters: { ...AddPinNameLocation.parameters },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const Mobile390RichFullscreen: Story = {
   ...RichDestinationFullscreen,
-  parameters: { ...RichDestinationFullscreen.parameters, viewport: { defaultViewport: "morrovia390" } },
+  parameters: { ...RichDestinationFullscreen.parameters },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 /* Composition refinement acceptance matrix. Provider-backed hotel and
@@ -443,7 +486,8 @@ export const CompositionFullscreen: Story = RichDestinationFullscreen;
 
 export const CompositionTablet768: Story = {
   ...DetailedBasemap,
-  parameters: { ...DetailedBasemap.parameters, viewport: { defaultViewport: "morrovia768" } },
+  parameters: { ...DetailedBasemap.parameters },
+  globals: { viewport: { value: "morrovia768", isRotated: false } },
 };
 
 export const CompositionMobile390: Story = Mobile390Restoration;

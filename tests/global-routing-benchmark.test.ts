@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { GLOBAL_ROUTING_FIXTURES } from "../benchmarks/global-routing/fixtures.ts";
 import {
   comparableGlobalRoutingSnapshot,
+  runRawPromptCaptureGate,
   runGlobalRoutingBenchmark,
   type ComparableGlobalRoutingSnapshot,
 } from "../benchmarks/global-routing/harness.ts";
@@ -17,6 +18,10 @@ const requiredRegions = [
 ];
 
 const normalized = (value: string) => value.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+test("raw product prompts pass a ten-run retention gate before routing", () => {
+  assert.deepEqual(runRawPromptCaptureGate(), { repetitions: 10, cases: 3, failures: [], complete: true });
+});
 
 test("the benchmark contains 51 distinct full-trip fixtures across every required region", () => {
   assert.equal(GLOBAL_ROUTING_FIXTURES.length, 51);

@@ -149,7 +149,7 @@ export default function MapPlanNext() {
     <header className={styles.header}>
       <Link href={currentHref} className={styles.switch}>← Current map planner</Link>
       <div><strong>{trip.title}</strong><small>{formatDate(trip.startDate)} – {formatDate(trip.endDate)} · {trip.travellers} travellers</small></div>
-      <Link href={`/journey/prep?trip=${encodeURIComponent(trip.id)}`} className={styles.prep}>Trip prep</Link>
+      <Link href={`/journey/${encodeURIComponent(trip.id)}#before-you-go`} className={styles.prep}>Before you go</Link>
     </header>
 
     <section className={styles.timeline} aria-label="Route stops">

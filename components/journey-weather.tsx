@@ -25,6 +25,7 @@ type WeatherView = {
 };
 
 const weatherCache = new Map<string, WeatherResponse>();
+const WEATHER_TIMEOUT_MS = 6_000;
 
 function getTripDate(dateLabel: string) {
   const day = dateLabel.match(/\d+/)?.[0];
@@ -49,12 +50,17 @@ export function JourneyWeather({ city, coordinates, date }: { city: string; coor
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      controller.abort(new DOMException("Weather request timed out", "TimeoutError"));
+    }, WEATHER_TIMEOUT_MS);
     setFailed(false);
 
     const cached = weatherCache.get(cacheKey);
     if (cached) {
+      window.clearTimeout(timeout);
       setWeather(cached);
-      return () => { active = false; };
+      return () => { active = false; controller.abort(); };
     }
 
     setWeather(undefined);
@@ -67,7 +73,7 @@ export function JourneyWeather({ city, coordinates, date }: { city: string; coor
       timezone: "auto",
     });
 
-    fetch(`https://api.open-meteo.com/v1/forecast?${query}`)
+    fetch(`https://api.open-meteo.com/v1/forecast?${query}`, { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error("Weather request failed");
         return response.json() as Promise<WeatherResponse>;
@@ -76,9 +82,14 @@ export function JourneyWeather({ city, coordinates, date }: { city: string; coor
         weatherCache.set(cacheKey, data);
         if (active) setWeather(data);
       })
-      .catch(() => { if (active) setFailed(true); });
+      .catch(() => { if (active) setFailed(true); })
+      .finally(() => window.clearTimeout(timeout));
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, [cacheKey, latitude, longitude]);
 
   const view = useMemo<WeatherView | undefined>(() => {

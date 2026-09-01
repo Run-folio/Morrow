@@ -1,0 +1,416 @@
+.planner {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.header,
+.sectionHeading,
+.periodHeading,
+.unslottedHeading,
+.unslottedHeading > div,
+.tonight {
+  display: flex;
+  align-items: center;
+}
+
+.header {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header p,
+.sectionHeading,
+.periodHeading,
+.unslottedHeading,
+.travelDay,
+.transfer > span {
+  font-family: var(--morrovia-meta);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.header p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 5px;
+  color: var(--morrovia-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.header p svg,
+.sectionHeading svg,
+.unslottedHeading svg,
+.tonight > svg,
+.travelDay svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.header h2 {
+  margin: 0;
+  font-family: var(--morrovia-display);
+  font-size: clamp(1.55rem, 3vw, 2.2rem);
+  line-height: 1.05;
+}
+
+.travelDay {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  padding: 8px 10px;
+  background: var(--morrovia-lilac);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.travel,
+.unslotted,
+.tonight {
+  min-width: 0;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-paper);
+}
+
+.travel {
+  padding: 16px;
+}
+
+.sectionHeading,
+.unslottedHeading {
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--morrovia-ink-soft);
+}
+
+.sectionHeading {
+  justify-content: flex-start;
+}
+
+.sectionHeading h3,
+.periodHeading h3,
+.unslottedHeading h3,
+.tonight h3 {
+  margin: 0;
+  font-family: var(--morrovia-meta);
+  font-size: .72rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.transferList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.transfer {
+  min-width: 0;
+  border-left: 3px solid var(--morrovia-action);
+  padding: 11px 12px;
+  background: var(--morrovia-lilac);
+}
+
+.transfer > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--morrovia-muted);
+  font-size: .65rem;
+  font-weight: 800;
+}
+
+.transfer strong,
+.activity strong,
+.tonight strong {
+  overflow-wrap: anywhere;
+}
+
+.transfer p,
+.transfer small,
+.freePeriod p,
+.tonight p {
+  margin: 4px 0 0;
+  color: var(--morrovia-muted);
+  line-height: 1.45;
+}
+
+.transfer p {
+  font-size: .82rem;
+}
+
+.transfer small {
+  display: block;
+  font-size: .72rem;
+}
+
+.periodGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.period {
+  min-width: 0;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  overflow: hidden;
+  background: var(--morrovia-paper);
+}
+
+.periodHeading {
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--morrovia-line);
+  padding: 11px 13px;
+  background: var(--morrovia-lilac);
+}
+
+.periodHeading span,
+.unslottedHeading > span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac-strong);
+  color: var(--morrovia-ink-soft);
+  font-size: .68rem;
+  font-weight: 800;
+}
+
+.activityList,
+.unslottedList {
+  display: grid;
+  min-width: 0;
+}
+
+.activity {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px 9px;
+  align-items: start;
+  padding: 12px 13px;
+}
+
+.activity + .activity {
+  border-top: 1px solid var(--morrovia-line);
+}
+
+.activity > svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--morrovia-action);
+}
+
+.activity strong {
+  min-width: 0;
+  font-size: .88rem;
+  line-height: 1.35;
+}
+
+.activityTitle {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activityTitle > span {
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-success) 28%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-success) 8%, var(--morrovia-paper));
+  color: var(--morrovia-success);
+  font: 800 .62rem/1 var(--morrovia-meta);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.dayPartField {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.activityMoveActions {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.activityMoveActions button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.dayPartField > span:first-child {
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dayPartField select {
+  min-height: 40px;
+  font-size: .8rem;
+}
+
+.freePeriod {
+  display: flex;
+  min-height: 68px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 13px;
+}
+
+.addHere {
+  border-top: 1px dashed var(--morrovia-line);
+  padding: 7px 9px;
+}
+
+.addHere > button,
+.addHere > a {
+  min-height: 36px;
+  color: var(--morrovia-muted);
+}
+
+.addHere form {
+  display: grid;
+  gap: 9px;
+  padding: 4px;
+}
+
+.addHere form > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.freePeriod strong {
+  color: var(--morrovia-ink-soft);
+}
+
+.freePeriod p {
+  margin-bottom: 9px;
+  font-size: .78rem;
+}
+
+.unslotted {
+  overflow: hidden;
+}
+
+.unslottedHeading {
+  padding: 11px 13px;
+  background: var(--morrovia-lilac);
+}
+
+.unslottedHeading > div {
+  gap: 8px;
+}
+
+.unslottedList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.unslottedList .activity:nth-child(even) {
+  border-left: 1px solid var(--morrovia-line);
+}
+
+.tonight {
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 16px;
+  background: var(--morrovia-lilac);
+}
+
+.tonight > svg {
+  margin-top: 1px;
+  color: var(--morrovia-action);
+}
+
+.tonight > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.tonight h3 {
+  margin-bottom: 5px;
+  color: var(--morrovia-ink-soft);
+}
+
+.tonight p {
+  font-size: .8rem;
+}
+
+.tonight > small {
+  flex: 0 0 auto;
+  color: var(--morrovia-muted);
+  font-size: .7rem;
+}
+
+@media (max-width: 680px) {
+  .periodGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .freePeriod {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .planner {
+    gap: 14px;
+  }
+
+  .header {
+    align-items: flex-start;
+  }
+
+  .travelDay {
+    padding: 7px 8px;
+  }
+
+  .unslottedList {
+    grid-template-columns: 1fr;
+  }
+
+  .unslottedList .activity:nth-child(even) {
+    border-left: 0;
+  }
+
+  .tonight {
+    flex-wrap: wrap;
+  }
+
+  .tonight > small {
+    width: 100%;
+    padding-left: 27px;
+  }
+
+  .activityMoveActions button,
+  .addHere > button,
+  .addHere > a,
+  .addHere form button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

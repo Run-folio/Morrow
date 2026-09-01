@@ -20,6 +20,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { PublicRouteConnection, PublicRouteDetail } from "@/lib/easyt/public-route";
+import { affiliateProviderLabel, getCurrentPartnerAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
+import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import RouteAttractionImage from "./route-attraction-image";
 import RouteHeroImage from "./route-hero-image";
 import RouteLiveMap from "./route-live-map";
@@ -40,9 +42,10 @@ function nightLabel(nights: number) {
   return `${nights} ${nights === 1 ? "night" : "nights"}`;
 }
 
-export default function RouteDetailView({ detail }: { detail: PublicRouteDetail }) {
+export default function RouteDetailView({ detail, activityAction }: { detail: PublicRouteDetail; activityAction?: ResolvedAffiliateAction | null }) {
   const firstStop = detail.stops[0];
   const lastStop = detail.stops.at(-1);
+  const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
   return <>
     <section className={styles.hero} aria-labelledby="route-title">
       <div className={styles.heroCopy}>
@@ -164,6 +167,19 @@ export default function RouteDetailView({ detail }: { detail: PublicRouteDetail 
         </article>)}
       </div>
     </section>}
+
+    {experienceAction ? <section className={styles.experiencesSection} aria-labelledby="route-experiences-heading">
+      <div>
+        <p className={styles.eyebrow}>Experiences along this route</p>
+        <h2 id="route-experiences-heading">Find more ways to explore</h2>
+        <p>Browse tours, activities and tickets around the places on this journey. Availability and details remain with the provider.</p>
+      </div>
+      <div>
+        <span>Booking options from {affiliateProviderLabel(experienceAction.provider)}</span>
+        <MorroviaAffiliateLink className={styles.experienceAction} action={experienceAction} context={{ placement: "route_detail_experiences", destinationCount: detail.stops.length }} />
+        <small>{affiliateDisclosure}</small>
+      </div>
+    </section> : null}
 
     <section className={styles.notesSection} aria-labelledby="route-notes-heading">
       <header className={styles.compactHeading}>

@@ -54,7 +54,7 @@ const trip: EasyTTrip = {
 };
 
 const meta = {
-  title: "Components/Trip shell",
+  title: "Morrovia/04 Structure/Trip shell",
   component: TripShell,
   parameters: {
     layout: "fullscreen",
@@ -117,21 +117,6 @@ export const MapWorkspace: Story = {
   },
 };
 
-export const Prep: Story = {
-  args: {
-    trip,
-    children: (
-      <TripWorkspacePlaceholder
-        title="Prep"
-        description="Temporary foundation placeholder for the future prep body."
-      />
-    ),
-  },
-  parameters: {
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/prep" } },
-  },
-};
-
 export const LongTitleAndMissingImage: Story = {
   args: {
     trip: {
@@ -152,8 +137,24 @@ export const LongTitleAndMissingImage: Story = {
 
 export const Mobile320: Story = {
   ...Overview,
-  parameters: {
-    ...meta.parameters,
-    viewport: { defaultViewport: "morrovia320" },
-  },
+  parameters: { ...meta.parameters },
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
+
+export const Tablet768: Story = {
+  ...Overview,
+  parameters: { ...Overview.parameters },
+  globals: { viewport: { value: "morrovia768", isRotated: false } },
+};
+
+export const Desktop1024: Story = {
+  ...Overview,
+  parameters: { ...Overview.parameters },
+  globals: { viewport: { value: "morrovia1024", isRotated: false } },
+};
+
+export const Desktop1440: Story = {
+  ...Overview,
+  parameters: { ...Overview.parameters },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
 };

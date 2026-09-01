@@ -8,6 +8,7 @@ import {
   type PlanningConfidence,
 } from "./planning-confidence.ts";
 import { transferDoorToDoorMinutes, transferHeadlineMinutes } from "./transfer-impact.ts";
+import { matchingTripInterests, type TripInterest } from "./trip-interest.ts";
 
 export type RouteScoringPace = "relaxed" | "balanced" | "fast" | "packed";
 
@@ -16,6 +17,8 @@ export type RouteScoringPreferences = {
   preferredModes?: EstimatedLeg["mode"][];
   /** A strong soft preference. It can reduce a score, but never prunes a route. */
   avoidFlights?: boolean;
+  /** Canonical trip interests are a final, modest soft signal only. */
+  interests?: TripInterest[];
 };
 
 export type RouteScoreComponentId =
@@ -122,6 +125,8 @@ export type RouteScoringConfig = {
     stayTransferMinimumMinutes: number;
     stayTransferMinutesPerDay: number;
     minimumRecommendationScoreAdvantage: number;
+    maximumBacktrackingTradeoffMinutes: number;
+    maximumBacktrackingTradeoffRatio: number;
   };
 };
 
@@ -130,7 +135,7 @@ export type RouteScoringConfig = {
  * current route boundary has no dependable fare data.
  */
 export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
-  version: "route-scoring-v2-confidence",
+  version: "route-scoring-v3-backtracking-severity",
   weights: {
     "travel-efficiency": 0.45,
     pacing: 0.15,
@@ -156,6 +161,8 @@ export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
     stayTransferMinimumMinutes: 360,
     stayTransferMinutesPerDay: 300,
     minimumRecommendationScoreAdvantage: 4,
+    maximumBacktrackingTradeoffMinutes: 60,
+    maximumBacktrackingTradeoffRatio: 0.05,
   },
 };
 
@@ -186,6 +193,8 @@ export type ScoreRouteCandidatesInput = {
   /** Explicit calendar-day allocations only. Scoring never infers per-stop stays. */
   allocations?: Record<string, number>;
   picks?: Record<string, string[]>;
+  /** Only known destination evidence belongs here; absent entries are neutral. */
+  interestTagsByStopId?: Record<string, readonly string[]>;
   requiredStopIds?: string[];
   fixedStartStopId?: string;
   fixedEndStopId?: string;
@@ -376,6 +385,24 @@ function destinationFit(
   ]);
   const penalties: RouteScorePenalty[] = [];
   let score = 100;
+  const selectedInterests = input.preferences?.interests ?? [];
+  const evidencedStops = facts.candidate.stops.flatMap((stop) => {
+    const tags = input.interestTagsByStopId?.[stop.id];
+    return tags ? [{ stop, tags }] : [];
+  });
+  const interestMatches = evidencedStops.filter(({ tags }) => matchingTripInterests(selectedInterests, tags).length > 0);
+  const interestReasons: string[] = [];
+  if (selectedInterests.length && evidencedStops.length) {
+    // Destination interest contributes at most 2.5 points to the total route
+    // score (25 component points at the existing 10% destination-fit weight).
+    // It therefore cannot erase the scorer's four-point recommendation guard.
+    score -= 25 * (1 - interestMatches.length / evidencedStops.length);
+    interestReasons.push(interestMatches.length
+      ? `${interestMatches.length} of ${evidencedStops.length} destinations with curated experience evidence match a selected trip interest.`
+      : "Curated destination evidence does not currently match a selected trip interest, so interest fit remains a small negative signal.");
+  } else if (selectedInterests.length) {
+    interestReasons.push("No curated destination-interest evidence is available, so interest fit is neutral.");
+  }
   if (input.allocations) {
     facts.candidate.stops.forEach((stop) => {
       const days = input.allocations?.[stop.id];
@@ -411,6 +438,7 @@ function destinationFit(
         ? `${anchorIds.size} required or major destination${anchorIds.size === 1 ? " is" : "s are"} preserved in this viable order.`
         : "No required anchor needs additional scoring treatment.",
       ...(!input.allocations ? ["No explicit per-stop allocation was supplied, so stay-length penalties were not inferred."] : []),
+      ...interestReasons,
     ]),
     penalties,
   };
@@ -500,9 +528,14 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
       const excessKm = item.metrics.distanceKm - bestDistance;
       const ratio = bestDistance > 0 ? item.metrics.distanceKm / bestDistance - 1 : 0;
       if (excessKm >= config.thresholds.backtrackingMinimumKm && ratio >= config.thresholds.backtrackingRatio) {
+        const severityMultiplier = clamp(
+          ratio / config.thresholds.backtrackingRatio,
+          1,
+          3,
+        );
         penalties.push({
           code: "unnecessary-backtracking",
-          points: config.penalties["unnecessary-backtracking"],
+          points: Math.round(config.penalties["unnecessary-backtracking"] * severityMultiplier),
           reason: `This order adds ${Math.round(excessKm)} km of estimated movement versus the most direct viable geography.`,
           stopIds: item.candidate.stops.map((stop) => stop.id),
           legIndexes: item.legs.map(({ index }) => index),

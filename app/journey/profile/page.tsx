@@ -7,6 +7,7 @@ import {
 } from "@/lib/easyt/repository";
 import EasyTNavigation from "../easyt-navigation";
 import ProfileForm from "./profile-form";
+import ImportedBookings from "@/components/easyt/imported-bookings";
 import styles from "../account.module.css";
 import { isEasyTAuthConfigured } from "@/lib/easyt/auth-environment";
 import { easytCopy } from "@/lib/easyt/i18n";
@@ -49,6 +50,7 @@ export default async function EasyTProfilePage() {
           initialTravelProfile={preferences.travelProfile}
           initialTravelReadinessProfile={preferences.travelReadinessProfile}
         />
+        <ImportedBookings language={preferences.language} />
       </section>
     </main>
   );

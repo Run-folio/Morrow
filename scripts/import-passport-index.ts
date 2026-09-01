@@ -9,6 +9,7 @@
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+import { countryFor } from "../lib/easyt/country-registry.ts";
 import { entrySourcesByCountry } from "../lib/easyt/travel-readiness.ts";
 
 type SourceRule = { status: string; days?: number };
@@ -23,7 +24,6 @@ type Output = {
   rules: Record<string, Record<string, SourceRule>>;
 };
 
-const aliases: Record<string, string> = { Turkey: "Türkiye" };
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 const countriesFromMatrix = (matrix: SourceMatrix): Country[] => Object.keys(matrix)
@@ -36,16 +36,15 @@ if (!sourcePath) throw new Error("Pass the extracted passport-index.json file pa
 
 const matrix = JSON.parse(readFileSync(resolve(sourcePath), "utf8")) as SourceMatrix;
 const passportCountries = countriesFromMatrix(matrix);
-const codes = new Map(passportCountries.map(({ name, code }) => [name, code]));
-const codeFor = (name: string) => codes.get(aliases[name] ?? name);
 const destinations = Object.keys(entrySourcesByCountry);
 const rules: Output["rules"] = {};
 
 for (const { name: passport, code: passportCode } of passportCountries) {
   rules[passport] = {};
   for (const destination of destinations) {
-    const destinationCode = codeFor(destination);
-    const rule = destinationCode ? matrix[passportCode][destinationCode] : undefined;
+    const destinationCode = countryFor(destination)?.code;
+    if (!destinationCode) throw new Error(`Entry-source country "${destination}" is not mapped to the canonical registry.`);
+    const rule = matrix[passportCode][destinationCode];
     if (rule) rules[passport][destination] = rule;
   }
 }
@@ -58,7 +57,7 @@ const output: Output = {
   countryCodes: Object.fromEntries([
     ...passportCountries.map(({ name, code }) => [name, code]),
     ...destinations.flatMap((name) => {
-      const code = codeFor(name);
+      const code = countryFor(name)?.code;
       return code ? [[name, code]] : [];
     }),
   ]),

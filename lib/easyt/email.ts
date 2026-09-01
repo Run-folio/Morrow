@@ -4,6 +4,7 @@ import { createEasyTEmailEvent } from "./repository";
 
 export type EasyTEmailTemplate = "verification" | "password_reset" | "trip_gift" | "trip_share" | "trip_saved";
 type EasyTEmail = { to: string; subject: string; text: string; html?: string; template?: EasyTEmailTemplate };
+const EMAIL_PROVIDER_TIMEOUT_MS = 8_000;
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
 
@@ -36,11 +37,22 @@ export async function sendEasyTEmail(email: EasyTEmail) {
     await createEasyTEmailEvent({ recipientEmail: email.to, subject: email.subject, template, status: "failed", errorMessage: "Missing RESEND_API_KEY or EMAIL_FROM" }).catch(() => undefined);
     throw new Error("Transactional email is not configured. Add RESEND_API_KEY and EMAIL_FROM.");
   }
-  const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: email.to, subject: email.subject, text: email.text, html: email.html ?? email.text.replace(/\n/g, "<br>") }) });
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: email.to, subject: email.subject, text: email.text, html: email.html ?? email.text.replace(/\n/g, "<br>") }),
+      signal: AbortSignal.timeout(EMAIL_PROVIDER_TIMEOUT_MS),
+    });
+  } catch {
+    await createEasyTEmailEvent({ recipientEmail: email.to, subject: email.subject, template, status: "failed", errorMessage: "Email provider unavailable or timed out" }).catch(() => undefined);
+    throw new Error("Email delivery is temporarily unavailable. Try again.");
+  }
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     await createEasyTEmailEvent({ recipientEmail: email.to, subject: email.subject, template, status: "failed", errorMessage: detail.slice(0, 500) }).catch(() => undefined);
-    throw new Error(`Email delivery failed (${response.status})${detail ? `: ${detail}` : ""}`);
+    throw new Error("Email delivery is temporarily unavailable. Try again.");
   }
   const payload = await response.json().catch(() => ({})) as { id?: string };
   await createEasyTEmailEvent({ providerId: payload.id, recipientEmail: email.to, subject: email.subject, template, status: "sent" }).catch(() => undefined);

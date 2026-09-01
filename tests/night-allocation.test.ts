@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
+import { knownKnowledgeFact, unknownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
 import {
   allocateTripNights,
   calendarDayAllocationsFromNights,
+  rebalanceTripNights,
   tripNightsBetween,
 } from "../lib/easyt/night-allocation.ts";
 import { cascadeTripSchedule } from "../lib/easyt/cascade.ts";
@@ -74,6 +75,40 @@ test("anchors and must-visits receive higher allocation priority", () => {
   assert.ok((result.allocations?.anchor ?? 0) > (result.allocations?.c ?? 0));
   assert.ok((result.allocations?.anchor ?? 0) >= 2);
   assert.equal(result.stops.find((item) => item.stopId === "anchor")?.reasons.some((reason) => reason.code === "anchor-priority"), true);
+});
+
+test("required stops avoid one-night churn when the budget comfortably supports two nights each", () => {
+  const result = allocateTripNights({
+    totalNights: 10,
+    pace: "relaxed",
+    stops: [
+      stop("anchor-a", { anchor: true, required: true, fallbackIdealNights: 5 }),
+      stop("anchor-b", { anchor: true, required: true, fallbackIdealNights: 5 }),
+      stop("anchor-c", { anchor: true, required: true, fallbackIdealNights: 5 }),
+      stop("required", { required: true, fallbackIdealNights: 3 }),
+    ],
+  });
+
+  assert.equal(result.state, "allocated");
+  assert.equal(result.totalAllocatedNights, 10);
+  assert.equal(result.stops.every((item) => item.nights >= 2), true);
+});
+
+test("semantic destination depth produces a defensible uneven multi-city split", () => {
+  const result = allocateTripNights({
+    totalNights: 12,
+    stops: [
+      stop("tokyo", { name: "Tokyo", country: "Japan", anchor: true, required: true }),
+      stop("hakone", { intent: "landmark", required: true, fallbackMinimumNights: 1, fallbackIdealNights: 1 }),
+      stop("kyoto", { name: "Kyoto", country: "Japan", anchor: true, required: true }),
+      stop("nara", { intent: "landmark", required: true, fallbackMinimumNights: 1, fallbackIdealNights: 1 }),
+      stop("osaka", { required: true, fallbackMinimumNights: 1, fallbackIdealNights: 2 }),
+    ],
+  });
+
+  assert.deepEqual(result.allocations, { tokyo: 4, hakone: 1, kyoto: 4, nara: 1, osaka: 2 });
+  assert.equal(result.stops.find((item) => item.stopId === "tokyo")?.depth, "deep");
+  assert.equal(result.stops.find((item) => item.stopId === "hakone")?.depth, "single-purpose");
 });
 
 test("relaxed and fast pace produce predictable different splits", () => {
@@ -192,6 +227,33 @@ test("a transfer that consumes most of a day raises the destination target", () 
   assert.equal(result.stops.find((item) => item.stopId === "travel-heavy")?.reasons.some((reason) => reason.code === "transfer-recovery"), true);
 });
 
+test("one internal transfer is apportioned across departure and arrival without double counting", () => {
+  const source = {
+    id: "provider:transfer-tax-test",
+    label: "Transfer-tax fixture",
+    kind: "provider" as const,
+    supports: "Known duration for weighted transfer-tax coverage.",
+  };
+  const impact = estimateTransferImpact({
+    mode: "train",
+    headlineMinutes: knownKnowledgeFact(360, "verified", source),
+  });
+  const result = allocateTripNights({
+    totalNights: 4,
+    stops: [
+      stop("departure", { departureImpact: impact }),
+      stop("arrival", { arrivalImpact: impact }),
+    ],
+  });
+  assert.notEqual(result.state, "conflict");
+  const departureLoss = result.stops.find((item) => item.stopId === "departure")?.transferDayLoss ?? 0;
+  const arrivalLoss = result.stops.find((item) => item.stopId === "arrival")?.transferDayLoss ?? 0;
+  const expectedLoss = impact.usableDayLoss.estimatedDayFraction;
+  assert.notEqual(expectedLoss, null);
+  assert.ok(Math.abs((departureLoss + arrivalLoss) - (expectedLoss ?? 0)) < 0.0001);
+  assert.ok(arrivalLoss > departureLoss);
+});
+
 test("unknown ideal nights use the explicit fallback instead of invented knowledge", () => {
   const result = allocateTripNights({
     totalNights: 4,
@@ -212,4 +274,215 @@ test("deterministic ties use stable input order", () => {
   assert.notEqual(first.state, "conflict");
   assert.equal(first.allocations?.first, 2);
   assert.equal(first.allocations?.second, 1);
+});
+
+test("a freed night moves only to one clearly strongest unlocked recipient", () => {
+  const result = rebalanceTripNights({
+    totalNights: 8,
+    stops: [
+      stop("edited", { anchor: true }),
+      stop("recipient", { anchor: true, fallbackIdealNights: 5 }),
+      stop("single-purpose", { intent: "landmark", fallbackIdealNights: 1 }),
+    ],
+    currentAllocations: { edited: 2, recipient: 3, "single-purpose": 2 },
+    manualStopIds: ["edited"],
+  });
+
+  assert.deepEqual(result.nightAllocation.allocations, { edited: 2, recipient: 4, "single-purpose": 2 });
+  assert.equal(result.balanceDelta, 0);
+  assert.deepEqual(result.automaticChanges.map((change) => [change.stopId, change.direction]), [["recipient", "added"]]);
+});
+
+test("a freed night remains explicit when unlocked recipients are materially tied", () => {
+  const result = rebalanceTripNights({
+    totalNights: 6,
+    stops: [stop("edited"), stop("a"), stop("b")],
+    currentAllocations: { edited: 1, a: 2, b: 2 },
+    manualStopIds: ["edited"],
+  });
+
+  assert.equal(result.balanceDelta, 1);
+  assert.deepEqual(result.automaticChanges, []);
+  assert.equal(result.nightAllocation.conflicts.some((conflict) => conflict.code === "unallocated-nights"), true);
+});
+
+test("an added manual night comes from one clearly lowest-value safe donor", () => {
+  const result = rebalanceTripNights({
+    totalNights: 7,
+    stops: [
+      stop("edited", { anchor: true }),
+      stop("donor", { intent: "landmark", fallbackIdealNights: 1 }),
+      stop("other", { anchor: true }),
+    ],
+    currentAllocations: { edited: 4, donor: 2, other: 2 },
+    manualStopIds: ["edited"],
+  });
+
+  assert.deepEqual(result.nightAllocation.allocations, { edited: 4, donor: 1, other: 2 });
+  assert.deepEqual(result.automaticChanges.map((change) => [change.stopId, change.direction]), [["donor", "removed"]]);
+});
+
+test("over-allocation stays visible when every possible donor is protected or tied", () => {
+  const protectedResult = rebalanceTripNights({
+    totalNights: 6,
+    stops: [stop("edited"), stop("manual"), stop("booked", { fixedNights: 2 })],
+    currentAllocations: { edited: 3, manual: 2, booked: 2 },
+    manualStopIds: ["edited", "manual"],
+  });
+
+  assert.equal(protectedResult.balanceDelta, -1);
+  assert.deepEqual(protectedResult.nightAllocation.allocations, { edited: 3, manual: 2, booked: 2 });
+  assert.equal(protectedResult.nightAllocation.conflicts.some((conflict) => conflict.code === "overallocated-nights"), true);
+
+  const tied = rebalanceTripNights({
+    totalNights: 6,
+    stops: [stop("edited"), stop("a"), stop("b")],
+    currentAllocations: { edited: 3, a: 2, b: 2 },
+    manualStopIds: ["edited"],
+  });
+  assert.equal(tied.balanceDelta, -1);
+  assert.deepEqual(tied.automaticChanges, []);
+});
+
+test("manual, booking and gateway protections are never silently rewritten", () => {
+  const result = rebalanceTripNights({
+    totalNights: 9,
+    stops: [
+      stop("edited", { manualNights: 2 }),
+      stop("second-manual", { manualNights: 2 }),
+      stop("booked", { fixedNights: 2 }),
+      stop("gateway", { gateway: true, fixedNights: 1 }),
+      stop("recipient", { anchor: true, fallbackIdealNights: 5 }),
+    ],
+    currentAllocations: { edited: 2, "second-manual": 2, booked: 2, gateway: 1, recipient: 1 },
+    manualStopIds: ["edited", "second-manual"],
+  });
+
+  assert.deepEqual(result.nightAllocation.allocations, { edited: 2, "second-manual": 2, booked: 2, gateway: 1, recipient: 2 });
+  assert.equal(result.nightAllocation.allocations?.booked, 2);
+  assert.equal(result.nightAllocation.allocations?.gateway, 1);
+});
+
+test("automatic removal never violates a required minimum", () => {
+  const result = rebalanceTripNights({
+    totalNights: 6,
+    stops: [
+      stop("edited", { anchor: true }),
+      stop("minimum", { required: true, fallbackMinimumNights: 2, fallbackIdealNights: 2 }),
+      stop("donor", { intent: "landmark", fallbackMinimumNights: 1, fallbackIdealNights: 1 }),
+    ],
+    currentAllocations: { edited: 3, minimum: 2, donor: 2 },
+    manualStopIds: ["edited"],
+  });
+
+  assert.equal(result.nightAllocation.allocations?.minimum, 2);
+  assert.equal(result.nightAllocation.allocations?.donor, 1);
+});
+
+test("removed stops and duration deltas use the same deterministic rebalance rules", () => {
+  const stops = [stop("manual"), stop("deep", { anchor: true, fallbackIdealNights: 5 }), stop("small", { intent: "landmark", fallbackIdealNights: 1 })];
+  const removed = rebalanceTripNights({
+    totalNights: 7,
+    stops,
+    currentAllocations: { manual: 2, deep: 3, small: 1, removed: 1 },
+    manualStopIds: ["manual"],
+  });
+  assert.equal(removed.balanceDelta, 0);
+  assert.equal(removed.nightAllocation.allocations?.manual, 2);
+  assert.equal(removed.nightAllocation.allocations?.deep, 4);
+
+  const extended = rebalanceTripNights({
+    totalNights: 7,
+    stops,
+    currentAllocations: { manual: 2, deep: 3, small: 1 },
+    manualStopIds: ["manual"],
+  });
+  assert.deepEqual(extended.nightAllocation.allocations, { manual: 2, deep: 4, small: 1 });
+  assert.equal(extended.balanceDelta, 0);
+});
+
+test("route reorder preserves manual intent by stable stop identity", () => {
+  const currentAllocations = { manual: 2, deep: 4, small: 1 };
+  const result = rebalanceTripNights({
+    totalNights: 7,
+    stops: [stop("small", { intent: "landmark" }), stop("manual"), stop("deep", { anchor: true })],
+    currentAllocations,
+    manualStopIds: ["manual"],
+  });
+
+  assert.equal(result.nightAllocation.allocations?.manual, currentAllocations.manual);
+  assert.equal(result.nightAllocation.stops.find((item) => item.stopId === "manual")?.isManual, true);
+});
+
+test("interest evidence can move unlocked nights without overwriting a manual count", () => {
+  const source = {
+    id: "curated:interest-night-test",
+    label: "Night allocation interest fixture",
+    kind: "curated" as const,
+    supports: "Equal stay guidance with different evidenced experience tags.",
+  };
+  const knowledge = {
+    forNightAllocation: (input: { id?: string; name: string }) => ({
+      canonicalId: input.id ?? null,
+      minimumNights: knownKnowledgeFact(1, "static", source),
+      idealNights: knownKnowledgeFact(3, "estimated", source),
+      roles: knownKnowledgeFact([] as const, "static", source),
+      experienceTags: knownKnowledgeFact(input.id === "beach" ? ["coast", "food"] : ["culture"], "static", source),
+      connectivity: unknownKnowledgeFact("Connectivity is deliberately neutral in this fixture."),
+    }),
+  };
+  const stops = [stop("manual"), stop("culture"), stop("beach")];
+  const currentAllocations = { manual: 1, culture: 3, beach: 2 };
+  const neutral = rebalanceTripNights({ totalNights: 6, stops, knowledge, currentAllocations, manualStopIds: ["manual"] }).nightAllocation;
+  const beach = rebalanceTripNights({ totalNights: 6, stops, knowledge, interests: ["beach", "food"], currentAllocations, manualStopIds: ["manual"] }).nightAllocation;
+
+  assert.equal(neutral.allocations?.manual, 1);
+  assert.equal(beach.allocations?.manual, 1);
+  assert.ok((beach.allocations?.beach ?? 0) > (neutral.allocations?.beach ?? 0));
+  assert.equal(beach.stops.find((item) => item.stopId === "beach")?.matchedInterests?.includes("beach"), true);
+});
+
+test("an exact-budget interest rebalance stays put when the best receiver pairs are tied", () => {
+  const source = {
+    id: "curated:interest-tie-test",
+    label: "Night allocation interest tie fixture",
+    kind: "curated" as const,
+    supports: "Equal stay guidance and equal evidenced experience tags.",
+  };
+  const knowledge = {
+    forNightAllocation: (input: { id?: string; name: string }) => ({
+      canonicalId: input.id ?? null,
+      minimumNights: knownKnowledgeFact(1, "static", source),
+      idealNights: knownKnowledgeFact(1, "static", source),
+      roles: knownKnowledgeFact([] as const, "static", source),
+      experienceTags: knownKnowledgeFact(input.id === "receiver-a" || input.id === "receiver-b" ? ["food"] : ["culture"], "static", source),
+      connectivity: unknownKnowledgeFact("Connectivity is deliberately neutral in this fixture."),
+    }),
+  };
+  const currentAllocations = { manual: 1, donor: 4, "receiver-a": 1, "receiver-b": 1 };
+  const result = rebalanceTripNights({
+    totalNights: 7,
+    stops: [stop("manual"), stop("donor"), stop("receiver-a"), stop("receiver-b")],
+    knowledge,
+    interests: ["food"],
+    currentAllocations,
+    manualStopIds: ["manual"],
+  });
+
+  assert.equal(result.balanceDelta, 0);
+  assert.deepEqual(result.nightAllocation.allocations, currentAllocations);
+  assert.deepEqual(result.automaticChanges, []);
+});
+
+test("sparse destination evidence stays neutral and does not manufacture a rebalance winner", () => {
+  const result = rebalanceTripNights({
+    totalNights: 6,
+    stops: [stop("manual"), stop("unknown-a"), stop("unknown-b")],
+    currentAllocations: { manual: 1, "unknown-a": 2, "unknown-b": 2 },
+    manualStopIds: ["manual"],
+  });
+
+  assert.equal(result.balanceDelta, 1);
+  assert.deepEqual(result.automaticChanges, []);
+  assert.equal(result.nightAllocation.stops.find((item) => item.stopId === "unknown-a")?.depth, "ordinary");
 });

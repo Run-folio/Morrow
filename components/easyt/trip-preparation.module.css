@@ -1,0 +1,49 @@
+.taskSection { min-width: 0; }
+.taskSection > header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.taskSection > header svg { width: 18px; height: 18px; color: var(--morrovia-signal); }
+.taskSection > header h2 { margin: 0; font: 600 20px/1.1 var(--morrovia-display); }
+.taskList { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+
+.taskRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+.taskIcon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--morrovia-control-radius); color: var(--morrovia-action); background: var(--morrovia-lilac); }
+.taskIcon svg { width: 19px; height: 19px; }
+.taskCopy { display: grid; min-width: 0; gap: 2px; }
+.taskCopy h3 { margin: 0; overflow-wrap: anywhere; font: 650 12px/1.2 var(--morrovia-ui); }
+.taskCopy p { display: -webkit-box; margin: 0; overflow: hidden; color: var(--morrovia-ink-soft); font-size: 10px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.statusChip { justify-self: start; margin-top: 3px; padding: 3px 7px; border-radius: var(--morrovia-control-radius); color: var(--morrovia-action); background: var(--morrovia-lilac); font-size: 8px; font-weight: 760; }
+.status-complete .statusChip { color: var(--morrovia-success); background: color-mix(in srgb, var(--morrovia-success) 10%, var(--morrovia-paper)); }
+.status-in-progress .statusChip { color: var(--morrovia-warning); background: var(--morrovia-warning-soft); }
+.status-urgent { border-color: color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); background: var(--morrovia-danger-soft); }
+.status-urgent .statusChip { color: var(--morrovia-danger); background: var(--morrovia-paper); }
+.taskAction { --control-height: 40px; align-self: center; }
+.affiliateDisclosure { grid-column: 1 / -1; margin-top: -3px; padding-left: 44px; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+
+.travellerEditor { display: grid; gap: 16px; margin-top: 16px; padding: 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-lilac); }
+.travellerEditor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.travellerEditor > header > div { display: grid; gap: 4px; }
+.travellerEditor header p { margin: 0; color: var(--morrovia-signal); font: 750 8px/1.2 var(--morrovia-meta); letter-spacing: .13em; text-transform: uppercase; }
+.travellerEditor h3 { margin: 0; font: 600 19px/1.1 var(--morrovia-display); }
+.travellerEditor header span { max-width: 680px; color: var(--morrovia-ink-soft); font-size: 11px; line-height: 1.45; }
+.travellerEditor header svg { width: 20px; height: 20px; color: var(--morrovia-signal); }
+.travellerFields { display: grid; grid-template-columns: 1.1fr 1.1fr .8fr; gap: 10px; }
+.travellerActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.travellerActions > span { color: var(--morrovia-ink-soft); font-size: 11px; }
+.travellerActions > span[role="alert"] { color: var(--morrovia-danger); }
+
+@media (max-width: 760px) {
+  .taskRow { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 76px; }
+  .taskAction { --control-height: 44px; width: 44px; height: 44px; }
+  .travellerFields { grid-template-columns: minmax(0, 1fr); }
+  .travellerActions { align-items: stretch; flex-direction: column; }
+  .travellerActions > button { width: 100%; }
+}

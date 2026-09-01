@@ -68,16 +68,22 @@ test("login return links accept canonical trip workspaces but not account surfac
   assert.equal(isCanonicalTripWorkspaceHref("https://example.com/journey/trip-123"), false);
 });
 
-test("Overview and Prep stay actions target the stable Map stop in Stay mode", () => {
+test("Overview preparation stay actions target the stable Map stop in Stay mode", () => {
   assert.equal(mapWorkspaceHref(trip.id, "sacred-valley", "stay"), "/journey/trip-real/map?stop=sacred-valley&mode=stay");
   assert.deepEqual(
     parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&mode=stay")),
-    { stopId: "sacred-valley", mode: "stay" },
+    { stopId: "sacred-valley", mode: "stay", dayNumber: null },
+  );
+  assert.equal(mapWorkspaceHref(trip.id, "sacred-valley", "see", 3), "/journey/trip-real/map?stop=sacred-valley&mode=see&day=3");
+  assert.deepEqual(
+    parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&mode=see&day=3")),
+    { stopId: "sacred-valley", mode: "see", dayNumber: 3 },
   );
 });
 
 test("invalid Map and Itinerary deep links fall back to the first canonical context", () => {
-  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=missing&mode=hotel")), { stopId: "cusco", mode: "plan" });
+  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=missing&mode=hotel")), { stopId: "cusco", mode: "plan", dayNumber: null });
+  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&day=2")), { stopId: "sacred-valley", mode: "plan", dayNumber: null });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=3junk")), { dayNumber: 1 });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=99")), { dayNumber: 1 });
 });
@@ -100,5 +106,5 @@ test("query-only deep-link changes retain one workspace analytics visit key", ()
   const second = "/journey/trip-real/map?stop=sacred-valley&mode=stay";
   assert.equal(workspaceVisitKey(first), workspaceVisitKey(second));
   assert.equal(workspaceViewFromPathname(first, trip.id), "map");
-  assert.equal(workspaceViewFromPathname("/journey/trip-real/prep", trip.id), "prep");
+  assert.equal(workspaceViewFromPathname("/journey/trip-real/prep", trip.id), "overview");
 });

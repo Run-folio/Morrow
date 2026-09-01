@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accommodationDatesReady, accommodationProgress, stayBookingForStop } from "../lib/easyt/accommodation.ts";
+import { accommodationDatesReady, accommodationProgress, removeStayBooking, stayBookingForStop, upsertStayBooking } from "../lib/easyt/accommodation.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -38,4 +38,28 @@ test("positive-night stops with missing or invalid dates remain in readiness", (
   assert.equal(progress.complete, false);
   assert.equal(accommodationDatesReady(source.stops[0]), false);
   assert.equal(accommodationDatesReady(source.stops[1]), false);
+});
+
+test("itinerary add, edit and remove use the canonical stay booking and immediately sync derived state", () => {
+  const source = trip();
+  const added = upsertStayBooking(source, "rome", { title: " Hotel Artemide ", url: "https://hotel.example/booking" });
+  assert.equal(stayBookingForStop(added, added.stops[1])?.title, "Hotel Artemide");
+  assert.equal(stayBookingForStop(added, added.stops[1])?.confirmation, null);
+  assert.equal(accommodationProgress(added).sortedCount, 1);
+
+  const edited = upsertStayBooking(added, "rome", { title: "Hotel Artemide Roma", confirmation: "OPTIONAL-REF" });
+  assert.equal(stayBookingForStop(edited, edited.stops[1])?.title, "Hotel Artemide Roma");
+  assert.equal(stayBookingForStop(edited, edited.stops[1])?.date, "2026-10-03");
+  assert.equal(edited.brief.bookings?.filter((booking) => booking.id === "stay-rome").length, 1);
+
+  const removed = removeStayBooking(edited, "rome");
+  assert.equal(stayBookingForStop(removed, removed.stops[1]), undefined);
+  assert.equal(accommodationProgress(removed).sortedCount, 0);
+});
+
+test("invalid or missing stop accommodation writes fail closed", () => {
+  const source = trip();
+  assert.equal(upsertStayBooking(source, "missing", { title: "Hotel" }), source);
+  assert.equal(upsertStayBooking(source, "rome", { title: "  " }), source);
+  assert.equal(removeStayBooking(source, "rome"), source);
 });

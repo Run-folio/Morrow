@@ -212,7 +212,7 @@
   min-width: 0;
   min-height: 690px;
   overflow: hidden;
-  background: radial-gradient(circle at 48% 42%, #fff 0, #fbfaff 54%, var(--morrovia-lilac) 100%);
+  background: radial-gradient(circle at 48% 42%, #fff 0, var(--morrovia-paper) 54%, var(--morrovia-lilac) 100%);
 }
 
 .mapViewport {
@@ -395,7 +395,7 @@
   line-height: 1;
 }
 
-.countryIdentity h3 {
+.countryIdentity h2 {
   min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
@@ -543,7 +543,7 @@
 .notice button:focus-visible {
   outline: 2px solid var(--morrovia-signal);
   outline-offset: 2px;
-  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+  box-shadow: var(--morrovia-focus-shadow);
 }
 
 .editorMeta {
@@ -651,7 +651,7 @@
 
 .searchBox:focus-within {
   border-color: var(--morrovia-signal);
-  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+  box-shadow: var(--morrovia-focus-shadow);
 }
 
 .searchBox svg {
@@ -1014,7 +1014,7 @@
   .mapViewport { min-height: 340px; }
   .map { min-height: 330px; max-height: 380px; padding: 20px 0 12px; }
   .mapControls { top: 14px; left: 14px; gap: 5px; }
-  .mapControl { width: 38px !important; min-width: 38px !important; height: 38px !important; min-height: 38px !important; }
+  .mapControl { width: 44px !important; min-width: 44px !important; height: 44px !important; min-height: 44px !important; }
   .mapLegend { gap: 18px; font-size: 9px; }
   .emptyCard { bottom: 18px; width: calc(100% - 32px); padding: 17px; }
   .emptyCard h2 { font-size: 22px; }

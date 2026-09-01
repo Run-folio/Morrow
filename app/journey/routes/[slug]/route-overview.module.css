@@ -12,6 +12,7 @@
 .sequenceSection,
 .itinerarySection,
 .attractionsSection,
+.experiencesSection,
 .notesSection,
 .finalCta {
   width: min(1320px, calc(100% - 48px));
@@ -39,7 +40,7 @@
 .eyebrow {
   margin: 0 0 10px;
   color: var(--morrovia-signal);
-  font: 700 10px/1.3 var(--morrovia-meta);
+  font: var(--morrovia-type-eyebrow);
   letter-spacing: .13em;
   text-transform: uppercase;
 }
@@ -59,8 +60,7 @@
   max-width: 520px;
   margin: 15px 0 17px;
   color: var(--morrovia-muted);
-  font-size: 14px;
-  line-height: 1.5;
+  font: var(--morrovia-type-body);
 }
 
 .heroFacts {
@@ -111,19 +111,16 @@
 }
 
 .heroFacts strong {
-  overflow: hidden;
   color: var(--morrovia-ink);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: var(--morrovia-type-control);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .heroFacts span {
-  overflow: hidden;
   color: var(--morrovia-muted);
-  font-size: 9px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: var(--morrovia-type-fine-print);
+  overflow-wrap: anywhere;
 }
 
 .heroActions {
@@ -136,8 +133,7 @@
 .finalCta > div:last-child > span {
   max-width: 180px;
   color: var(--morrovia-muted);
-  font-size: 10px;
-  line-height: 1.45;
+  font: var(--morrovia-type-fine-print);
 }
 
 .planButton {
@@ -180,7 +176,7 @@
   border-radius: 999px;
   color: var(--morrovia-paper);
   background: color-mix(in srgb, var(--morrovia-ink) 78%, transparent);
-  font: 700 8px/1.35 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   letter-spacing: .09em;
   text-transform: uppercase;
 }
@@ -207,7 +203,7 @@
   border-radius: 6px;
   color: var(--morrovia-paper);
   background: color-mix(in srgb, var(--morrovia-ink) 76%, transparent);
-  font: 600 8px/1.25 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -217,6 +213,7 @@
 .sequenceSection,
 .itinerarySection,
 .attractionsSection,
+.experiencesSection,
 .notesSection {
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
@@ -269,7 +266,7 @@
   padding: 28px;
   color: var(--morrovia-muted);
   background: var(--morrovia-lilac-strong);
-  font-size: 10px;
+  font: var(--morrovia-type-supporting-body);
   text-align: center;
 }
 
@@ -295,7 +292,7 @@
 }
 
 .liveRouteMap :global(.maplibregl-ctrl-attrib) {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .liveRouteMap :global(.route-overview-map__marker) {
@@ -306,7 +303,7 @@
   border: 0;
   color: var(--morrovia-ink);
   background: none;
-  font: 700 10px/1 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -334,8 +331,7 @@
 .mapNote {
   margin: 10px 0 0;
   color: var(--morrovia-muted);
-  font-size: 9px;
-  line-height: 1.45;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .mapRouteList {
@@ -362,8 +358,7 @@
   background: color-mix(in srgb, var(--morrovia-paper) 94%, transparent);
   box-shadow: 0 3px 10px rgba(23, 16, 111, .08);
   color: var(--morrovia-ink);
-  font-size: 9px;
-  font-weight: 700;
+  font: var(--morrovia-type-metadata);
 }
 
 .mapRouteList span {
@@ -374,7 +369,7 @@
   border-radius: 50%;
   color: var(--morrovia-paper);
   background: var(--morrovia-ink);
-  font: 700 8px/1 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
 }
 
 .glance {
@@ -404,8 +399,7 @@
   align-items: center;
   gap: 8px;
   color: var(--morrovia-ink);
-  font-size: 10px;
-  font-weight: 750;
+  font: var(--morrovia-type-metadata);
 }
 
 .glanceList dt svg {
@@ -416,8 +410,7 @@
 
 .glanceList dd {
   color: var(--morrovia-ink-soft);
-  font-size: 10px;
-  line-height: 1.45;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .whyPanel,
@@ -465,8 +458,7 @@
   display: flex;
   gap: 7px;
   color: var(--morrovia-ink-soft);
-  font-size: 9px;
-  line-height: 1.45;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .whyPanel li svg {
@@ -478,13 +470,13 @@
 
 .warningPanel li {
   color: var(--morrovia-warning);
-  font-size: 9px;
-  line-height: 1.45;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .sequenceSection,
 .itinerarySection,
 .attractionsSection,
+.experiencesSection,
 .notesSection {
   margin-top: 14px;
   padding: 20px;
@@ -516,8 +508,7 @@
   max-width: 440px;
   margin: 0;
   color: var(--morrovia-muted);
-  font-size: 10px;
-  line-height: 1.5;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .stopSequence {
@@ -558,7 +549,7 @@
   border-radius: 50%;
   color: var(--morrovia-paper);
   background: var(--morrovia-ink);
-  font: 700 9px/1 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
 }
 
 .stopTitle h3 {
@@ -575,7 +566,7 @@
   border-radius: 999px;
   color: var(--morrovia-ink-soft);
   background: var(--morrovia-lilac);
-  font-size: 8px;
+  font: var(--morrovia-type-metadata);
 }
 
 .stopImage {
@@ -602,7 +593,7 @@
   border-radius: 4px;
   color: var(--morrovia-paper);
   background: color-mix(in srgb, var(--morrovia-ink) 78%, transparent);
-  font: 600 7px/1.2 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -616,15 +607,14 @@
   min-height: 43px;
   margin: 0;
   color: var(--morrovia-muted);
-  font-size: 10px;
-  line-height: 1.42;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .stopCopy small {
   display: block;
   margin-top: 8px;
   color: var(--morrovia-ink-soft);
-  font: 700 8px/1.35 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
 }
 
 .transfer {
@@ -663,7 +653,7 @@
   padding: 3px 5px;
   border: 1px solid var(--morrovia-line);
   border-radius: 5px;
-  font: 700 7px/1.2 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
 }
 
 .transfer svg {
@@ -676,7 +666,8 @@
 
 .transfer strong {
   padding: 2px 4px;
-  font-size: 8px;
+  font: var(--morrovia-type-fine-print);
+  font-weight: 700;
 }
 
 .transferUnknown span,
@@ -715,25 +706,25 @@
 .itineraryPlace strong,
 .itineraryStay strong {
   color: var(--morrovia-ink);
-  font-size: 10px;
+  font: var(--morrovia-type-supporting-body);
+  font-weight: 700;
 }
 
 .itineraryPlace span,
 .itineraryStay span {
   color: var(--morrovia-muted);
-  font-size: 8px;
+  font: var(--morrovia-type-fine-print);
 }
 
 .itineraryDays {
   color: var(--morrovia-ink-soft);
-  font: 700 9px/1.4 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
 }
 
 .itineraryList li > p {
   margin: 0;
   color: var(--morrovia-muted);
-  font-size: 9px;
-  line-height: 1.4;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .itineraryStay {
@@ -783,7 +774,42 @@
 .attractionCopy p {
   margin: 5px 0 0;
   color: var(--morrovia-muted);
-  font: 700 8px/1.3 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
+}
+
+.experiencesSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .42fr);
+  align-items: center;
+  gap: 24px;
+}
+
+.experiencesSection h2 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-display);
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1;
+}
+
+.experiencesSection p:not(.eyebrow) {
+  max-width: 680px;
+  margin: 9px 0 0;
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-supporting-body);
+}
+
+.experiencesSection > div:last-child {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+}
+
+.experiencesSection > div:last-child > span,
+.experiencesSection small {
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+  overflow-wrap: anywhere;
 }
 
 .notesSection {
@@ -818,14 +844,15 @@
 .notesGrid h3 {
   margin: 0 0 4px;
   color: var(--morrovia-ink);
-  font-size: 12px;
+  font: var(--morrovia-type-body);
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .notesGrid p {
   margin: 0;
   color: var(--morrovia-muted);
-  font-size: 9px;
-  line-height: 1.48;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .provenance {
@@ -843,7 +870,7 @@
   align-items: center;
   gap: 7px;
   color: var(--morrovia-muted);
-  font-size: 8px;
+  font: var(--morrovia-type-fine-print);
 }
 
 .provenance > div:first-child svg {
@@ -868,8 +895,8 @@
   border-radius: 7px;
   color: var(--morrovia-ink);
   background: var(--morrovia-paper);
-  font-size: 8px;
-  font-weight: 700;
+  font: var(--morrovia-type-control);
+  line-height: 1.25;
   text-decoration: none;
 }
 
@@ -886,7 +913,7 @@
 .sourceLinks small {
   grid-column: 1 / -1;
   color: var(--morrovia-muted);
-  font-size: 7px;
+  font: var(--morrovia-type-fine-print);
 }
 
 .finalCta {
@@ -939,8 +966,7 @@
   display: flex;
   gap: 7px;
   color: var(--morrovia-ink-soft);
-  font-size: 9px;
-  line-height: 1.35;
+  font: var(--morrovia-type-supporting-body);
 }
 
 .finalCta > ul svg {
@@ -974,6 +1000,7 @@
 .overviewSection a:focus-visible,
 .sequenceSection a:focus-visible,
 .attractionsSection a:focus-visible,
+.experiencesSection a:focus-visible,
 .notesSection a:focus-visible,
 .finalCta a:focus-visible,
 .liveRouteMap :global(button:focus-visible) {
@@ -1129,6 +1156,7 @@
   .sequenceSection,
   .itinerarySection,
   .attractionsSection,
+  .experiencesSection,
   .notesSection,
   .finalCta {
     width: min(100% - 28px, 540px);
@@ -1149,7 +1177,6 @@
 
   .heroSummary {
     margin: 17px 0 18px;
-    font-size: 14px;
   }
 
   .heroFacts {
@@ -1187,6 +1214,7 @@
   .sequenceSection,
   .itinerarySection,
   .attractionsSection,
+  .experiencesSection,
   .notesSection {
     padding: 15px;
   }
@@ -1229,6 +1257,15 @@
   .attractionGrid,
   .notesGrid {
     grid-template-columns: 1fr;
+  }
+
+  .experiencesSection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .experienceAction {
+    width: 100%;
   }
 
   .stopImage {

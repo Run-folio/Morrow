@@ -6,7 +6,7 @@ const singleStopReferenceKeys = new Set([
 ]);
 const manyStopReferenceKeys = new Set([
   "stopIds", "mustSeeStopIds", "optionalStopIds", "currentStopIds",
-  "recommendedStopIds", "requiredStopIds", "excludedStopIds", "canonicalStopIds",
+  "recommendedStopIds", "requiredStopIds", "excludedStopIds", "canonicalStopIds", "manualNightStopIds",
 ]);
 const stopReferenceRecordKeys = new Set([
   "selectedPlaces", "dayAllocations", "nightAllocations", "arrivalDates",
@@ -258,10 +258,21 @@ export function duplicateTripDocument(
     title: input.title ?? `${source.title} copy`,
     status: "draft",
   }, stopIds);
+  const legs = remapped.legs.map((leg) => ({ ...leg, id: `${input.id}-leg-${input.nextId()}` }));
+  const planItemIds = new Map(remapped.planItems.map((item) => [item.id, `${input.id}-item-${input.nextId()}`]));
+  const itineraryIdeas = remapped.brief.itineraryIdeas?.map((idea) => {
+    if (!idea.dayId) return { ...idea };
+    const dayId = planItemIds.get(idea.dayId);
+    return dayId ? { ...idea, dayId } : { ...idea, dayId: undefined, dayPart: undefined };
+  });
   return {
     ...remapped,
-    legs: remapped.legs.map((leg) => ({ ...leg, id: `${input.id}-leg-${input.nextId()}` })),
-    planItems: remapped.planItems.map((item) => ({ ...item, id: `${input.id}-item-${input.nextId()}` })),
+    brief: {
+      ...remapped.brief,
+      ...(itineraryIdeas ? { itineraryIdeas } : {}),
+    },
+    legs,
+    planItems: remapped.planItems.map((item) => ({ ...item, id: planItemIds.get(item.id)! })),
     recommendations: remapped.recommendations.map((recommendation) => ({ ...recommendation, id: `${input.id}-recommendation-${input.nextId()}`, status: "open" })),
     createdAt: input.now,
     updatedAt: input.now,

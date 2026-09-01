@@ -11,23 +11,23 @@ test("the homepage Saily handoff is attributable, disclosed and privacy-safe", (
   assert.doesNotMatch(source, /tripId|trip_id|stopId|stop_id|traveller/i);
 });
 
-test("trip-readiness Saily links retain sponsored semantics and placement attribution", () => {
-  const source = readFileSync("components/journey-trip-readiness.tsx", "utf8");
+test("Overview practical links retain sponsored semantics and placement attribution", () => {
+  const source = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
   assert.match(source, /"sponsored noopener noreferrer"/);
-  assert.match(source, /provider: card\.partner, placement: "trip_readiness", workspace_view: "prep"/);
+  assert.match(source, /placement: "overview_before_you_go"/);
 });
 
-test("Prep affiliate clicks carry stable placement without raw destination data", () => {
-  const source = readFileSync("components/easyt/trip-prep-workspace.tsx", "utf8");
-  assert.match(source, /placement: "trip_prep_booking_readiness"/);
-  assert.match(source, /workspace_view: "prep"/);
+test("Overview affiliate clicks carry stable placement without raw destination data", () => {
+  const source = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
+  assert.match(source, /placement: "overview_before_you_go"/);
+  assert.doesNotMatch(source, /workspace_view: "prep"/);
   assert.doesNotMatch(source, /trackEvent\("affiliate_click",\s*\{[^}]*\b(?:city|country|traveller|raw_prompt):/);
 });
 
 test("accommodation fallbacks are not reported as commercial clicks", () => {
-  const prep = readFileSync("components/journey-trip-prep-accommodation.tsx", "utf8");
+  const prep = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
   const itinerary = readFileSync("components/journey-itinerary-accommodation.tsx", "utf8");
-  assert.match(prep, /if \(action\.affiliate\) trackEvent\("affiliate_click"/);
+  assert.match(prep, /else if \(action\.affiliate && action\.bookingCategory && action\.provider\)/);
   assert.match(itinerary, /if \(action\.affiliate\) trackEvent\("affiliate_click"/);
 });
 

@@ -7,6 +7,7 @@ import worldTopology from "world-atlas/countries-50m.json";
 import { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, WheelEvent, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { JourneyImage, JourneyLeg, JourneyRestaurant, JourneyStop, RestaurantMeal } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
+import ResilientImage from "@/components/easyt/resilient-image";
 
 const width = 1440;
 const height = 760;
@@ -548,7 +549,7 @@ export function JourneyGlobe({ stops, legs, selectedId, selectedDayId, activeIte
     </div>
     <div ref={zoomReadoutRef} className="journey-map__zoom-readout">{Math.round(targetView.scale * 10) / 10}×</div>
     {selectedPlace ? <aside className={`journey-map__place-detail ${selectedPlace.image ? "" : "is-text-only"}`} aria-live="polite">
-      {selectedPlace.image ? <img src={selectedPlace.image.src} alt={selectedPlace.image.alt} /> : null}
+      {selectedPlace.image ? <ResilientImage src={selectedPlace.image.src} alt={selectedPlace.image.alt} fallback={<div className="journey-map__place-image-fallback" role="img" aria-label={`Image unavailable for ${selectedPlace.name}`}><MapPin aria-hidden="true" /></div>} /> : null}
       <div><small>On this day</small><h3>{selectedPlace.name}</h3><address><MapPin />{selectedPlaceAddress}</address><p>{selectedPlace.summary ?? `A planned stop in ${selected.city}.`}</p><div className="journey-map__place-links"><a href={selectedPlaceMapUrl} target="_blank" rel="noreferrer">Open in {selectedPlaceMapProvider} <ExternalLink /></a>{selectedPlace.image ? <a href={selectedPlace.image.sourceUrl} target="_blank" rel="noreferrer">Learn more <ExternalLink /></a> : null}</div></div>
       <button type="button" aria-label={`Close ${selectedPlace.name} details`} onClick={() => setSelectedPlace(null)}><X /></button>
     </aside> : null}

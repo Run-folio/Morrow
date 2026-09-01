@@ -24,6 +24,7 @@ test("propagates dates from nights rather than treating stops independently", ()
   assert.equal(result.stops[0].arrivalDate, "2026-09-01");
   assert.equal(result.stops[1].arrivalDate, "2026-09-04");
   assert.equal(result.planItems[2].date, "2026-09-04");
+  assert.equal(result.planItems[2].dayNumber, 4);
 });
 
 test("keeps an explicitly locked arrival and reports the resulting conflict", () => {

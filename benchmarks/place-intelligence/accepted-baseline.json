@@ -2,7 +2,7 @@
   "generatedBy": "current-deterministic-place-intelligence",
   "fixtureCount": 53,
   "totals": {
-    "pass": 629,
+    "pass": 630,
     "warning": 0,
     "fail": 0
   },
@@ -28,7 +28,7 @@
       "fail": 0
     },
     "role-negation-accuracy": {
-      "pass": 10,
+      "pass": 11,
       "warning": 0,
       "fail": 0
     },
@@ -3096,7 +3096,7 @@
             "placeType": "city",
             "status": "resolved",
             "routability": "direct_destination",
-            "role": "preferred",
+            "role": "origin",
             "parentCountries": [
               "Vietnam"
             ],
@@ -3164,6 +3164,11 @@
         {
           "id": "expected-routability",
           "dimension": "unsupported-claim-avoidance",
+          "status": "pass"
+        },
+        {
+          "id": "expected-place-roles",
+          "dimension": "role-negation-accuracy",
           "status": "pass"
         },
         {

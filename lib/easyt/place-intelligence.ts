@@ -61,6 +61,9 @@ export type PlaceResolutionCandidate = {
   placeType: PlaceType;
   parentCountries: string[];
   parentRegionId?: string;
+  /** Provider-backed locality or access place for an attraction. This is
+   * routing context only; it never replaces the attraction's identity. */
+  accessPlaceName?: string;
   bounds?: GeographicBounds;
   coordinates?: [number, number];
   routability: PlaceRoutability;
@@ -82,6 +85,8 @@ export type ResolvedPlaceMention = {
   provenance: PlaceProvenance[];
   parentCountries: string[];
   parentRegionId?: string;
+  /** Locality/access context retained separately from the named attraction. */
+  accessPlaceName?: string;
   bounds?: GeographicBounds;
   coordinates?: [number, number];
   routability: PlaceRoutability;
@@ -108,6 +113,7 @@ export type PlaceIssueOption = {
   canonicalPlaceId: string;
   label: string;
   country?: string;
+  region?: string;
   placeType: PlaceType;
   coordinates?: [number, number];
   provenance: PlaceProvenance[];
@@ -130,13 +136,34 @@ export type PlaceIssue = PlaceResolutionIssue;
 
 export type PlaceSelection = {
   mentionId: string;
-  kind: "ambiguity" | "base";
+  kind: "ambiguity" | "base" | "visit";
   selectedCanonicalPlaceId: string;
   selectedName: string;
   selectedPlaceType?: PlaceType;
   selectedParentCountries?: string[];
   routeStopId?: string;
   provenance: PlaceProvenance;
+  /** A visit relationship preserves the attraction while binding its visit to
+   * an existing overnight stop. It does not turn the attraction into a stop. */
+  relationshipType?: "within-stop" | "visit-from-base" | "access-via";
+  confidence?: PlanningConfidence;
+};
+
+export type AttractionVisitTarget = {
+  routeStopId: string;
+  name: string;
+  canonicalPlaceId?: string;
+  country?: string;
+  coordinates?: [number, number];
+};
+
+export type AttractionVisitCandidate = {
+  mentionId: string;
+  target: AttractionVisitTarget;
+  relationshipType: "within-stop" | "visit-from-base" | "access-via";
+  confidence: PlanningConfidence;
+  score: number;
+  reason: string;
 };
 
 /** A city cannot be selected as the base for that same canonical city. This
@@ -148,16 +175,23 @@ export function reconcileSelfBasePlaceState(
 ) {
   const collapsedMentionIds = new Set<string>();
   for (const selection of selections) {
+    if (selection.kind === "visit") continue;
     const mention = mentions.find((item) => item.mentionId === selection.mentionId);
-    if (!mention?.canonicalPlaceId || mention.canonicalPlaceId !== selection.selectedCanonicalPlaceId) continue;
+    if (!mention) continue;
     const directType = ["city", "town", "transport_gateway"].includes(selection.selectedPlaceType ?? mention.placeType);
-    if (directType) collapsedMentionIds.add(mention.mentionId);
+    const sameIdentity = Boolean(mention.canonicalPlaceId && mention.canonicalPlaceId === selection.selectedCanonicalPlaceId)
+      || normalizePlacePhrase(mention.canonicalName) === normalizePlacePhrase(selection.selectedName)
+      || normalizePlacePhrase(mention.sourceText) === normalizePlacePhrase(selection.selectedName);
+    if (directType && sameIdentity) collapsedMentionIds.add(mention.mentionId);
   }
   return {
     collapsedMentionIds,
     selections: selections.filter((selection) => !collapsedMentionIds.has(selection.mentionId)),
     mentions: mentions.map((mention): ResolvedPlaceMention => collapsedMentionIds.has(mention.mentionId) ? {
       ...mention,
+      canonicalPlaceId: selections.find((selection) => selection.mentionId === mention.mentionId)?.selectedCanonicalPlaceId ?? mention.canonicalPlaceId,
+      canonicalName: selections.find((selection) => selection.mentionId === mention.mentionId)?.selectedName ?? mention.canonicalName,
+      parentCountries: selections.find((selection) => selection.mentionId === mention.mentionId)?.selectedParentCountries ?? mention.parentCountries,
       placeType: selections.find((selection) => selection.mentionId === mention.mentionId)?.selectedPlaceType ?? mention.placeType,
       status: "resolved",
       routability: "direct_destination",
@@ -192,6 +226,11 @@ export function placeMentionsNeedingReview(
 
 export type PlaceResolutionContext = {
   countryNames?: string[];
+  /** Country constraints stated by the traveller or an explicit UI choice.
+   * Route-derived countryNames remain useful context, but must not outweigh a
+   * bare exact canonical country/first-order geography. */
+  explicitCountryNames?: string[];
+  explicitPlaceTypes?: PlaceType[];
   selectedPlaces?: Array<Pick<PlaceResolutionCandidate, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "routability" | "coordinates">>;
   /** Semantic intent for this individual lookup. It lets a gazetteer keep a
    * country/region broad when requested while preferring its locality identity
@@ -210,11 +249,14 @@ export type ExplicitPlaceMention = {
 
 export type PlaceProviderCandidate = {
   providerId: string;
+  providerSourceId?: string;
+  providerSourceLabel?: string;
   canonicalName: string;
   aliases?: string[];
   placeType: PlaceType;
   parentCountries?: string[];
   parentRegionId?: string;
+  accessPlaceName?: string;
   bounds?: GeographicBounds;
   coordinates?: [number, number];
   routability?: PlaceRoutability;
@@ -222,8 +264,92 @@ export type PlaceProviderCandidate = {
    * cross the boundary. */
   matchQuality?: "exact" | "alias" | "partial";
   rankScore?: number;
+  /** Provider-normalized evidence that an exact result is a recognised
+   * sovereign or first-order geography, rather than merely any admin record. */
+  geographicSignificance?: number;
+  providerImportance?: number;
+  providerRank?: number;
+  administrativeLevel?: number;
   normalizationReason?: string;
 };
+
+export type PlanningParentConstraint = {
+  canonicalPlaceId?: string;
+  canonicalName: string;
+  placeType: PlaceType;
+  parentCountries: string[];
+  parentRegionId?: string;
+  bounds?: GeographicBounds;
+};
+
+/** Base selection is stricter than ordinary place ranking. Once a traveller
+ * has chosen a planning geography, a candidate must be canonically contained
+ * by it; an in-country or nearby ranking boost is not sufficient. */
+export function placeCandidateWithinPlanningParent(
+  candidate: Pick<PlaceProviderCandidate, "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates">,
+  parent: PlanningParentConstraint,
+) {
+  if (candidate.placeType !== "city" && candidate.placeType !== "town" && candidate.placeType !== "transport_gateway") return false;
+  const candidateCountries = (candidate.parentCountries ?? []).map(normalizePlacePhrase);
+  const parentCountries = parent.parentCountries.map(normalizePlacePhrase);
+  const parentName = normalizePlacePhrase(parent.canonicalName);
+  const countryContained = parentCountries.length === 0
+    || candidateCountries.some((country) => parentCountries.includes(country));
+  if (!countryContained) return false;
+
+  if (parent.placeType === "country") {
+    return candidateCountries.includes(parentName) || parentCountries.includes(parentName);
+  }
+
+  const candidateRegion = normalizePlacePhrase(candidate.parentRegionId ?? "");
+  const namedAdministrativeParent = Boolean(candidateRegion && (
+    candidateRegion === parentName
+    || candidateRegion === normalizePlacePhrase(parent.parentRegionId ?? "")
+  ));
+  if (namedAdministrativeParent) return true;
+  if (!candidate.coordinates || !parent.bounds) return false;
+  return coordinatesWithinBounds(candidate.coordinates, parent.bounds);
+}
+
+/** Convert already-available provider hierarchy/rank facts into one bounded,
+ * destination-agnostic signal. This deliberately excludes lower-order admin
+ * records unless the provider itself ranks them as a major geography. */
+export function recognizedHigherOrderGeographySignificance(evidence: {
+  placeType: PlaceType;
+  matchQuality?: PlaceProviderCandidate["matchQuality"];
+  providerImportance?: number;
+  providerRank?: number;
+  administrativeLevel?: number;
+}) {
+  if (evidence.matchQuality !== "exact") return 0;
+  const importance = typeof evidence.providerImportance === "number"
+    ? Math.max(0, Math.min(1, evidence.providerImportance))
+    : undefined;
+  const providerRank = evidence.providerRank;
+  if (evidence.placeType === "country") return Math.max(0.9, importance ?? 0);
+  if (evidence.placeType !== "region" && evidence.placeType !== "sub_region") return 0;
+
+  const firstOrder = typeof evidence.administrativeLevel === "number" && evidence.administrativeLevel <= 4;
+  const providerLeadingFirstOrder = firstOrder && typeof providerRank === "number" && providerRank <= 1;
+  const independentlyImportant = typeof importance === "number" && importance >= 0.72;
+  if (!providerLeadingFirstOrder && !independentlyImportant) return 0;
+  return Math.max(0.72, importance ?? 0, providerLeadingFirstOrder ? 0.9 : 0);
+}
+
+/** A comma-qualified entity type is explicit traveller context, not part of
+ * the provider place name. Keep the vocabulary generic and compact. */
+export function providerLookupRequest(phrase: string, context: PlaceResolutionContext) {
+  const qualifier = phrase.match(/^(.*?),\s*(country|state|province|region)\s*$/i);
+  if (!qualifier?.[1] || !qualifier[2]) return { phrase, context };
+  const placeType: PlaceType = qualifier[2].toLocaleLowerCase() === "country" ? "country" : "region";
+  return {
+    phrase: qualifier[1].trim(),
+    context: {
+      ...context,
+      explicitPlaceTypes: [...new Set([...(context.explicitPlaceTypes ?? []), placeType])],
+    },
+  };
+}
 
 export type PlaceIntelligenceProvider = {
   id: string;
@@ -253,8 +379,21 @@ export type CanonicalPlaceSuggestion = {
   region?: string;
   placeType: PlaceType;
   coordinates?: [number, number];
+  bounds?: GeographicBounds;
+  routability?: PlaceRoutability;
   provenance: PlaceProvenance[];
 };
+
+const planningAreaPlaceTypes = new Set<PlaceType>([
+  "country", "macro_region", "region", "sub_region", "island", "archipelago",
+  "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
+]);
+
+export function placeSuggestionRequiresBaseSelection(suggestion: CanonicalPlaceSuggestion) {
+  if (suggestion.routability === "planning_area" || suggestion.routability === "needs_base_selection" || suggestion.routability === "anchor_or_poi") return true;
+  if (suggestion.routability === "direct_destination" || suggestion.routability === "non_routable_reference") return false;
+  return planningAreaPlaceTypes.has(suggestion.placeType);
+}
 
 type RawCatalogMatch = { entry: PlaceCatalogEntry; alias: string; start: number; end: number; sourceText: string };
 
@@ -262,11 +401,12 @@ const ORDER_LANGUAGE = /(?:→|->|\bthen\b|\bnext\b|\bvia\b|\bthrough\b|\bto\b|\
 const UNKNOWN_CANDIDATE = /\b(?:the\s+)?[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*(?:\s+(?:de|del|la|las|los|of|the|[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*)){0,3}/gu;
 const LOWERCASE_TYPO_CANDIDATE = /\b[\p{Ll}][\p{L}'’.-]{3,}\b/gu;
 const DELIMITED_UNKNOWN_CANDIDATE = /(?:^|[,;])\s*([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})\s*(?=,|;|$)/gu;
-const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*(?:out of|from)\s+([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})/giu;
+const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*(?:out of|from)\s+([\p{L}'’.-]+(?:\s+(?!(?:to|through|via|then|and|drive|fly|take|travel|go)\b)[\p{L}'’.-]+){0,3})/giu;
+const BROAD_PLANNING_CANDIDATE = /\b(?:the\s+)?(?:fjords?|alps|highlands|coast|wine\s+country|islands?|desert|patagonia|riviera|lake\s+district)\b/giu;
 const NON_PLACE_PHRASES = new Set([
-  "a", "about", "add", "avoid", "days", "do", "easter", "five", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "i", "is", "it",
+  "a", "about", "add", "avoid", "avoiding", "begin", "by", "days", "do", "drive", "easter", "five", "flight", "flights", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "home", "i", "is", "it",
   "keep", "keep the", "nature", "no", "one", "prefer", "relaxed", "road", "route", "skip", "start", "starting", "the", "three", "trip",
-  "ten", "two", "we", "week", "weeks", "with", "without",
+  "luxury", "take", "ten", "travel", "two", "we", "week", "weeks", "with", "without",
   "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
   "spring", "summer", "autumn", "fall", "winter", "wet season", "dry season", "high season", "low season", "shoulder season",
   "culture", "cities", "beach", "beaches", "hiking", "mountains", "history", "architecture", "wildlife", "wine", "nightlife",
@@ -283,6 +423,45 @@ export function normalizePlacePhrase(value: string) {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
+}
+
+type BroadPlanningIntent = { placeType: PlaceType; routability: "needs_base_selection" };
+
+/** These phrases describe geographic scope or an experience, not an overnight
+ * endpoint. Qualified canonical entities are resolved by the catalogue first;
+ * this guard applies only when the traveller's surviving phrase is generic. */
+function broadPlanningIntentForPhrase(value: string): BroadPlanningIntent | undefined {
+  const phrase = normalizePlacePhrase(value).replace(/^the\s+/, "");
+  const placeType = ({
+    fjord: "natural_area",
+    fjords: "natural_area",
+    alps: "mountain_range",
+    highlands: "region",
+    coast: "coast",
+    "wine country": "region",
+    island: "archipelago",
+    islands: "archipelago",
+    desert: "natural_area",
+    patagonia: "region",
+    riviera: "coast",
+    "lake district": "natural_area",
+  } satisfies Partial<Record<string, PlaceType>>)[phrase];
+  return placeType ? { placeType, routability: "needs_base_selection" } : undefined;
+}
+
+function broadIntentShape(sourceText: string) {
+  const broad = broadPlanningIntentForPhrase(sourceText);
+  return broad ? {
+    placeType: broad.placeType,
+    routability: broad.routability,
+    requiresBaseSelection: true,
+    isAnchor: true,
+  } : {
+    placeType: "unknown" as const,
+    routability: "non_routable_reference" as const,
+    requiresBaseSelection: false,
+    isAnchor: false,
+  };
 }
 
 function slug(value: string) {
@@ -452,6 +631,162 @@ function coordinateDistanceKm(left: [number, number], right: [number, number]) {
   return 6371 * 2 * Math.atan2(Math.sqrt(area), Math.sqrt(1 - area));
 }
 
+function sameCountryForVisit(mention: ResolvedPlaceMention, target: AttractionVisitTarget) {
+  if (!target.country || !mention.parentCountries.length) return true;
+  return mention.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(target.country ?? ""));
+}
+
+function attractionVisitCandidate(
+  mention: ResolvedPlaceMention,
+  target: AttractionVisitTarget,
+): AttractionVisitCandidate | undefined {
+  if (!sameCountryForVisit(mention, target)) return undefined;
+  const targetCatalog = target.canonicalPlaceId ? findCatalogPlaceById(target.canonicalPlaceId) : undefined;
+  const anchorParent = normalizePlacePhrase(mention.parentRegionId ?? "");
+  const accessPlace = normalizePlacePhrase(mention.accessPlaceName ?? "");
+  const targetIdentity = normalizePlacePhrase(target.canonicalPlaceId ?? "");
+  const targetName = normalizePlacePhrase(target.name);
+  const targetParent = normalizePlacePhrase(targetCatalog?.parentRegionId ?? "");
+  let score = 0;
+  let relationshipType: AttractionVisitCandidate["relationshipType"] = "visit-from-base";
+  let reason = "";
+
+  if (anchorParent && (anchorParent === targetIdentity || anchorParent === targetName)) {
+    score = 125;
+    relationshipType = "within-stop";
+    reason = "The attraction's canonical parent is already an overnight stop.";
+  } else if (accessPlace && accessPlace === targetName) {
+    score = 120;
+    relationshipType = "within-stop";
+    reason = "Provider-backed locality evidence places the attraction at this existing stop.";
+  } else if (anchorParent && targetParent && anchorParent === targetParent) {
+    score = 110;
+    relationshipType = "visit-from-base";
+    reason = "The attraction and overnight stop share reviewed canonical containment.";
+  } else if (mention.coordinates && target.coordinates) {
+    const distance = coordinateDistanceKm(mention.coordinates, target.coordinates);
+    if (distance <= 12) {
+      score = 105;
+      relationshipType = "within-stop";
+      reason = "Validated coordinates place the attraction within the existing destination context.";
+    } else if (distance <= 90) {
+      score = Math.max(65, 96 - Math.round(distance / 3));
+      relationshipType = "access-via";
+      reason = "Validated coordinates make this an access candidate, but the relationship still needs confirmation.";
+    }
+  }
+  if (!score) return undefined;
+  const source: PlanningConfidenceSource = {
+    id: `attraction-visit:${mention.mentionId}:${target.routeStopId}`,
+    label: "Morrovia attraction relationship",
+    kind: "curated",
+    supports: reason,
+  };
+  return {
+    mentionId: mention.mentionId,
+    target,
+    relationshipType,
+    score,
+    reason,
+    confidence: createPlanningConfidence({
+      state: "inferred",
+      level: score >= 100 ? "high" : "medium",
+      freshness: "current",
+      scope: "general-route",
+      sources: [source],
+      reason,
+      ...(score < 100 ? { confirmationReason: "Confirm the proposed attraction access base before relying on it." } : {}),
+    }),
+  };
+}
+
+/** Rank existing overnight stops for a named attraction without inventing a
+ * second place identity. Canonical containment/locality evidence wins;
+ * proximity alone remains a proposal rather than an automatic relationship. */
+export function rankAttractionVisitTargets(
+  mention: ResolvedPlaceMention,
+  targets: readonly AttractionVisitTarget[],
+) {
+  if (mention.status !== "resolved" || mention.routability !== "anchor_or_poi" || mention.placeType !== "landmark") return [];
+  return targets
+    .flatMap((target) => attractionVisitCandidate(mention, target) ?? [])
+    .sort((left, right) => right.score - left.score || left.target.name.localeCompare(right.target.name));
+}
+
+/** Preserve explicit choices, discard only relationships whose stop no longer
+ * exists, and auto-bind attractions only when one high-confidence target is
+ * materially stronger than every alternative. */
+export function inferAttractionVisitSelections(
+  mentions: readonly ResolvedPlaceMention[],
+  targets: readonly AttractionVisitTarget[],
+  selections: readonly PlaceSelection[] = [],
+) {
+  const targetIds = new Set(targets.map((target) => target.routeStopId));
+  const retained = selections.filter((selection) => selection.kind !== "visit"
+    || !selection.routeStopId
+    || targetIds.has(selection.routeStopId));
+  const byMention = new Map(retained.map((selection) => [selection.mentionId, selection]));
+  for (const mention of mentions) {
+    if (mention.status !== "resolved" || mention.routability !== "anchor_or_poi" || mention.placeType !== "landmark") continue;
+    const existing = byMention.get(mention.mentionId);
+    if (existing?.routeStopId && targetIds.has(existing.routeStopId)) {
+      if (existing.kind === "base") {
+        const target = targets.find((item) => item.routeStopId === existing.routeStopId)!;
+        const ranked = attractionVisitCandidate(mention, target);
+        const upgraded: PlaceSelection = {
+          ...existing,
+          kind: "visit",
+          relationshipType: ranked?.relationshipType ?? "visit-from-base",
+          confidence: ranked?.confidence ?? existing.confidence,
+        };
+        byMention.set(mention.mentionId, upgraded);
+      }
+      continue;
+    }
+    const ranked = rankAttractionVisitTargets(mention, targets);
+    const best = ranked[0];
+    const next = ranked[1];
+    if (!best || best.score < 100 || (next && best.score - next.score < 15)) continue;
+    const targetCatalog = best.target.canonicalPlaceId ? findCatalogPlaceById(best.target.canonicalPlaceId) : undefined;
+    const provenance: PlaceProvenance = {
+      id: `attraction-visit:${mention.mentionId}:${best.target.routeStopId}`,
+      label: "Morrovia attraction relationship",
+      kind: "context",
+      supports: `${best.reason} ${mention.canonicalName} remains a named visit; ${best.target.name} remains the overnight stop.`,
+    };
+    byMention.set(mention.mentionId, {
+      mentionId: mention.mentionId,
+      kind: "visit",
+      selectedCanonicalPlaceId: best.target.canonicalPlaceId ?? `route-stop:${best.target.routeStopId}`,
+      selectedName: best.target.name,
+      selectedPlaceType: targetCatalog?.placeType ?? "town",
+      selectedParentCountries: best.target.country ? [best.target.country] : undefined,
+      routeStopId: best.target.routeStopId,
+      provenance,
+      relationshipType: best.relationshipType,
+      confidence: best.confidence,
+    });
+  }
+  return [...byMention.values()];
+}
+
+export function validPlaceCoordinates(value: unknown): value is [number, number] {
+  return Array.isArray(value)
+    && value.length === 2
+    && value.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate))
+    && value[0] >= -180 && value[0] <= 180
+    && value[1] >= -90 && value[1] <= 90;
+}
+
+function coordinatesWithinBounds(coordinates: [number, number], bounds: GeographicBounds | undefined) {
+  if (!bounds) return true;
+  const [longitude, latitude] = coordinates;
+  const longitudeInside = bounds.west <= bounds.east
+    ? longitude >= bounds.west && longitude <= bounds.east
+    : longitude >= bounds.west || longitude <= bounds.east;
+  return latitude >= bounds.south && latitude <= bounds.north && longitudeInside;
+}
+
 /** Reject provider enrichment that contradicts an already canonical identity. */
 export function canonicalPlaceFactsMatch(
   canonicalPlaceId: string,
@@ -484,6 +819,7 @@ function candidateToMention(
     provenance: [...candidate.provenance],
     parentCountries: [...candidate.parentCountries],
     parentRegionId: candidate.parentRegionId,
+    accessPlaceName: candidate.accessPlaceName,
     bounds: candidate.bounds,
     coordinates: candidate.coordinates,
     routability: candidate.routability,
@@ -512,7 +848,7 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly home from$|return(?:ing)? from$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)? (?:in|at)$/.test(before)) return "fixed_start";
   if (/(?:leaving from|departing from|depart from|fly(?:ing)? out of|from|desde|saliendo de)$/.test(before)) return "origin";
-  if (!before && /^(?:to|through|via)\b[^.!?]*(?:,|\band\b)/.test(after)) return "origin";
+  if (!before && /^(?:to|through|via)\b/.test(after)) return "origin";
   if (/(?:fly|flying) into$|(?:arrive|arriving) (?:in|at)$/.test(before)) return "gateway";
   if (/^(?:is )?(?:essential|required|a must|non negotiable|the priority|definitely)/.test(after)
     || /(?:must visit|cannot miss|cant miss|essential|non negotiable|definitely)[^,.]{0,24}$/.test(before)
@@ -582,6 +918,21 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     });
     return fuzzyEntries.length === 1 ? fuzzyEntries[0] : undefined;
   };
+  // Lower-case collective geography is easy for capitalisation-led extraction
+  // to miss. Retain only this small class of known broad intent phrases; they
+  // still require provider-backed clarification or a traveller-selected base.
+  for (const match of prompt.matchAll(BROAD_PLANNING_CANDIDATE)) {
+    const sourceText = match[0].trim();
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const prefix = prompt.slice(0, start);
+    const introducedAsStandalonePhrase = /^the\s+/i.test(sourceText)
+      || !prefix.trim()
+      || /(?:[,;]|\b(?:and|then|through|around|in|to|visit|visiting))\s*$/i.test(prefix);
+    if (!introducedAsStandalonePhrase) continue;
+    if (intersectsKnownRange(start, end)) continue;
+    candidates.push({ sourceText, start, end, reviewOnly: true, forcedRole: "preferred" });
+  }
   for (const match of prompt.matchAll(EXPLICIT_ORIGIN_CANDIDATE)) {
     const captured = match[1];
     const relativeStart = match[0].lastIndexOf(captured);
@@ -598,10 +949,11 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
   for (const match of prompt.matchAll(UNKNOWN_CANDIDATE)) {
     const sourceText = match[0].trim();
     const start = match.index ?? 0;
-    const end = start + match[0].length;
+    const end = start + sourceText.length;
     if (intersectsKnownRange(start, end)) continue;
     const normalized = normalizePlacePhrase(sourceText).replace(/^the /, "");
-    if (!normalized || NON_PLACE_PHRASES.has(normalized) || [...NON_PLACE_PHRASES].some((word) => normalized === `${word} trip`)) continue;
+    if (!normalized || NON_PLACE_PHRASES.has(normalized) || ["begin", "by", "drive", "take", "travel"].includes(normalized.split(" ")[0] ?? "")
+      || [...NON_PLACE_PHRASES].some((word) => normalized === `${word} trip`)) continue;
     if (/^\d|\b(?:day|days|week|weeks|night|nights|traveller|travellers)\b/.test(normalized)) continue;
     candidates.push({ sourceText, start, end, fuzzy: fuzzyMatchFor(normalized) });
   }
@@ -630,7 +982,7 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     const words = normalized.split(" ");
     if (!normalized || words.some((word) => NON_PLACE_PHRASES.has(word))) continue;
     if (/\b(?:day|days|week|weeks|wks?|night|nights|traveller|travellers|cheap|budget|affordable|museum|museums|somewhere|warm|cold|train|trains)\b/.test(normalized)) continue;
-    candidates.push({ sourceText, start, end, reviewOnly: true });
+    candidates.push({ sourceText, start, end, reviewOnly: true, forcedRole: "preferred" });
   }
   return candidates;
 }
@@ -661,7 +1013,9 @@ export function regionalBaseSuggestions(
   if (!canonicalPlaceId) return [];
   const mentionId = typeof place === "string" ? undefined : place.mentionId;
   const seen = new Set<string>();
-  const reviewed = (REVIEWED_BASE_IDS[canonicalPlaceId] ?? []).flatMap((baseId): RegionalBaseSuggestion[] => {
+  const anchor = findCatalogPlaceById(canonicalPlaceId);
+  const relatedPlanningIds = unique([canonicalPlaceId, ...(anchor?.parentRegionId ? [anchor.parentRegionId] : [])], (value) => value);
+  const reviewed = relatedPlanningIds.flatMap((planningId) => REVIEWED_BASE_IDS[planningId] ?? []).flatMap((baseId): RegionalBaseSuggestion[] => {
     const entry = findCatalogPlaceById(baseId);
     const coordinates = entry?.coordinates;
     const country = entry?.parentCountries[0];
@@ -684,7 +1038,6 @@ export function regionalBaseSuggestions(
       }],
     }];
   });
-  const anchor = findCatalogPlaceById(canonicalPlaceId);
   const linkedLocality = anchor?.parentRegionId ? findCatalogPlaceById(anchor.parentRegionId) : undefined;
   const linkedBase = linkedLocality?.coordinates
     && linkedLocality.parentCountries[0]
@@ -707,7 +1060,7 @@ export function regionalBaseSuggestions(
       }],
     }]
     : [];
-  const routeSuggestions = routeFamiliesForRegion(canonicalPlaceId).flatMap((route) => route.stops.flatMap((stop) => {
+  const routeSuggestions = relatedPlanningIds.flatMap(routeFamiliesForRegion).flatMap((route) => route.stops.flatMap((stop) => {
     const key = `${normalizePlacePhrase(stop.name)}|${normalizePlacePhrase(stop.country)}`;
     if (seen.has(key)) return [];
     seen.add(key);
@@ -739,6 +1092,7 @@ function issueOptionsForMention(mention: ResolvedPlaceMention): PlaceIssueOption
     canonicalPlaceId: candidate.canonicalPlaceId,
     label: candidate.canonicalName,
     country: candidate.parentCountries.length === 1 ? candidate.parentCountries[0] : undefined,
+    region: candidate.parentRegionId,
     placeType: candidate.placeType,
     coordinates: candidate.coordinates,
     provenance: candidate.provenance,
@@ -779,7 +1133,8 @@ function issuesForMentions(mentions: ResolvedPlaceMention[]) {
     } else if ((mention.requiresBaseSelection || (mention.routability === "anchor_or_poi"
       && !mentions.some((candidate) => candidate !== mention
         && candidate.routability === "direct_destination"
-        && candidate.canonicalPlaceId === mention.parentRegionId))) && mention.role !== "excluded") {
+        && (candidate.canonicalPlaceId === mention.parentRegionId
+          || (mention.accessPlaceName && normalizePlacePhrase(candidate.canonicalName) === normalizePlacePhrase(mention.accessPlaceName)))))) && mention.role !== "excluded") {
       issues.push({
         code: "region_requires_base", mentionId: mention.mentionId, canonicalPlaceId: mention.canonicalPlaceId, sourceText: mention.sourceText,
         reason: "This is valid planning geography, but no overnight base or route endpoint has been selected.",
@@ -826,6 +1181,65 @@ function resultIssuesForMentions(mentions: ResolvedPlaceMention[]) {
     });
   }
   return unique(issues, (issue) => `${issue.code}|${issue.mentionId}`);
+}
+
+/** Re-evaluate canonical place issues after a durable relationship is removed.
+ * This uses the preserved mention inventory; it does not reinterpret prose. */
+export function placeResolutionIssuesForMentions(mentions: readonly ResolvedPlaceMention[]) {
+  return resultIssuesForMentions([...mentions]);
+}
+
+/**
+ * Promote an explicit Builder identity choice into the same planning-area
+ * mention and issue model used by natural-language capture. This records a
+ * valid requested geography; it deliberately does not invent a route stop.
+ */
+export function appendSelectedPlanningAreaMention(
+  result: PlaceIntelligenceResult,
+  suggestion: CanonicalPlaceSuggestion,
+  role: PlaceMentionRole = "preferred",
+) {
+  const existing = result.mentions.find((mention) => mention.canonicalPlaceId === suggestion.canonicalPlaceId
+    && mention.role === role);
+  if (existing) return { result, mention: existing };
+  const builderSource: PlaceProvenance = {
+    id: `builder:planning-area:${suggestion.canonicalPlaceId}`,
+    label: "Traveller builder selection",
+    kind: "builder",
+    supports: "The traveller explicitly selected this planning geography in the Builder.",
+  };
+  const routability = suggestion.routability === "needs_base_selection" || suggestion.routability === "anchor_or_poi"
+    ? suggestion.routability
+    : "planning_area";
+  const mention = candidateToMention({
+    canonicalPlaceId: suggestion.canonicalPlaceId,
+    canonicalName: suggestion.name,
+    aliases: [],
+    placeType: suggestion.placeType,
+    parentCountries: suggestion.country ? [suggestion.country] : [],
+    parentRegionId: suggestion.region,
+    bounds: suggestion.bounds,
+    coordinates: suggestion.coordinates,
+    routability,
+    confidence: createPlanningConfidence({
+      state: "structured",
+      level: "high",
+      freshness: "current",
+      scope: "traveller-intent",
+      sources: [{ id: builderSource.id, label: builderSource.label, kind: "traveller", supports: builderSource.supports }],
+      reason: "The traveller explicitly selected this geographic identity.",
+    }),
+    provenance: [builderSource, ...suggestion.provenance],
+  }, {
+    sourceText: suggestion.name,
+    order: result.mentions.length,
+    role,
+  });
+  const mentions = [...result.mentions, mention];
+  return {
+    result: { ...result, mentions, issues: resultIssuesForMentions(mentions) },
+    mention,
+  };
 }
 
 function buildDeterministicMentions(prompt: string, context: PlaceResolutionContext) {
@@ -904,13 +1318,14 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
       resolved.push({ ...mention, _start: candidate.start, _end: candidate.end, _roles: [role] });
     } else {
       const provenance: PlaceProvenance[] = [{ id: `unresolved:${slug(candidate.sourceText)}`, label: "Traveller phrase", kind: "unresolved", supports: "The exact phrase was retained without claiming a geographic identity." }];
+      const broad = broadIntentShape(candidate.sourceText);
       resolved.push({
         mentionId: `place-unresolved-${slug(candidate.sourceText)}-${candidate.start}`,
         sourceText: candidate.sourceText, sourceTexts: [candidate.sourceText], normalizedPhrase: normalizePlacePhrase(candidate.sourceText),
-        canonicalName: candidate.sourceText, aliases: [], placeType: "unknown", status: "unresolved",
+        canonicalName: candidate.sourceText, aliases: [], placeType: broad.placeType, status: "unresolved",
         confidence: unknownPlanningConfidence("Morrovia retained this possible place phrase but could not resolve it."), provenance,
-        parentCountries: [], routability: "non_routable_reference", directlyRoutable: false, requiresBaseSelection: false,
-        isAnchor: false, role, order: 0, candidates: [], _start: candidate.start, _end: candidate.end, _roles: [role],
+        parentCountries: [], routability: broad.routability, directlyRoutable: false, requiresBaseSelection: broad.requiresBaseSelection,
+        isAnchor: broad.isAnchor, role, order: 0, candidates: [], _start: candidate.start, _end: candidate.end, _roles: [role],
       });
     }
   }
@@ -957,6 +1372,7 @@ function unresolvedExplicitMention(input: ExplicitPlaceMention, order: number): 
     kind: "unresolved",
     supports: "The exact semantic place mention was retained without claiming a geographic identity.",
   }];
+  const broad = broadIntentShape(input.sourceText);
   return {
     mentionId: `place-unresolved-${slug(input.sourceText)}-${order}`,
     sourceText: input.sourceText,
@@ -964,15 +1380,15 @@ function unresolvedExplicitMention(input: ExplicitPlaceMention, order: number): 
     normalizedPhrase: normalizePlacePhrase(input.sourceText),
     canonicalName: input.sourceText,
     aliases: [],
-    placeType: "unknown",
+    placeType: broad.placeType,
     status: "unresolved",
     confidence: unknownPlanningConfidence("Morrovia retained this semantic place mention but could not resolve it."),
     provenance,
     parentCountries: [],
-    routability: "non_routable_reference",
+    routability: broad.routability,
     directlyRoutable: false,
-    requiresBaseSelection: false,
-    isAnchor: false,
+    requiresBaseSelection: broad.requiresBaseSelection,
+    isAnchor: broad.isAnchor,
     role: input.role,
     order,
     candidates: [],
@@ -1014,10 +1430,10 @@ export function resolveExplicitPlaceMentions(
 function providerCandidate(
   candidate: PlaceProviderCandidate,
   provider: PlaceIntelligenceProvider,
-): PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore"> {
+): PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore" | "geographicSignificance"> {
   const source: PlaceProvenance = {
-    id: `${provider.id}:${candidate.providerId}`,
-    label: provider.label,
+    id: candidate.providerSourceId ? candidate.providerId : `${provider.id}:${candidate.providerId}`,
+    label: candidate.providerSourceLabel ?? provider.label,
     kind: "provider",
     supports: candidate.normalizationReason
       ? `Provider result normalized as a Morrovia travel entity: ${candidate.normalizationReason}`
@@ -1030,13 +1446,103 @@ function providerCandidate(
     placeType: candidate.placeType,
     parentCountries: [...(candidate.parentCountries ?? [])],
     parentRegionId: candidate.parentRegionId,
+    accessPlaceName: candidate.accessPlaceName,
     bounds: candidate.bounds,
-    coordinates: candidate.coordinates,
+    coordinates: validPlaceCoordinates(candidate.coordinates) ? [...candidate.coordinates] as [number, number] : undefined,
     routability: candidate.routability ?? (candidate.placeType === "city" || candidate.placeType === "town" ? "direct_destination" : "planning_area"),
     confidence: inferredConfidence(source, "A provider supplied a typed candidate for an otherwise unresolved phrase."),
     provenance: [source],
     ...(candidate.matchQuality ? { matchQuality: candidate.matchQuality } : {}),
     ...(candidate.rankScore !== undefined ? { rankScore: candidate.rankScore } : {}),
+    ...(candidate.geographicSignificance !== undefined ? { geographicSignificance: candidate.geographicSignificance } : {}),
+  };
+}
+
+function compatibleCoordinatePlaceType(canonical: PlaceType, provider: PlaceType) {
+  if (canonical === provider) return true;
+  return (canonical === "city" || canonical === "town") && (provider === "city" || provider === "town");
+}
+
+function providerCoordinatesMatchCanonicalIdentity(
+  mention: ResolvedPlaceMention,
+  candidate: PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore">,
+) {
+  if (!candidate.coordinates || !validPlaceCoordinates(candidate.coordinates) || !coordinatesWithinBounds(candidate.coordinates, mention.bounds)) return false;
+  if (!compatibleCoordinatePlaceType(mention.placeType, candidate.placeType)) return false;
+  const canonicalLabels = new Set([mention.canonicalName, ...mention.aliases, ...mention.sourceTexts].map(normalizePlacePhrase));
+  const providerLabels = [candidate.canonicalName, ...candidate.aliases].map(normalizePlacePhrase);
+  if (!providerLabels.some((label) => canonicalLabels.has(label))) return false;
+  if (mention.parentCountries.length) {
+    const countries = new Set(mention.parentCountries.map(normalizePlacePhrase));
+    if (!candidate.parentCountries.some((country) => countries.has(normalizePlacePhrase(country)))) return false;
+  }
+  return canonicalPlaceFactsMatch(mention.canonicalPlaceId ?? "", {
+    country: candidate.parentCountries[0],
+    coordinates: candidate.coordinates,
+  });
+}
+
+/** Add coordinates to an already trusted identity without accepting provider
+ * names, types, containment or routability as replacements for canonical data. */
+function enrichCanonicalMentionCoordinates(
+  mention: ResolvedPlaceMention,
+  candidates: Array<PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore">>,
+) {
+  if (mention.coordinates || mention.status !== "resolved" || !mention.canonicalPlaceId) return mention;
+  const compatible = candidates.filter((candidate) => providerCoordinatesMatchCanonicalIdentity(mention, candidate));
+  if (!compatible.length) return mention;
+  if (compatible.some((candidate, index) => compatible.slice(index + 1)
+    .some((other) => coordinateDistanceKm(candidate.coordinates!, other.coordinates!) > 50))) return mention;
+  const selected = [...compatible].sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0))[0];
+  if (!selected?.coordinates) return mention;
+  const coordinateSources = compatible.flatMap((candidate) => candidate.provenance.map((source): PlaceProvenance => ({
+    ...source,
+    id: `${source.id}:coordinates:${mention.canonicalPlaceId}`,
+    supports: `Validated coordinates for the existing ${mention.canonicalName} identity; canonical name, type and containment remain unchanged.`,
+  })));
+  return {
+    ...mention,
+    coordinates: [...selected.coordinates] as [number, number],
+    provenance: unique([...mention.provenance, ...coordinateSources], (source) => source.id),
+  };
+}
+
+function sharedCandidateCountries(candidates: PlaceResolutionCandidate[]) {
+  if (!candidates.length || candidates.some((candidate) => candidate.parentCountries.length === 0)) return [];
+  const first = candidates[0]!.parentCountries;
+  return first.filter((country) => candidates.every((candidate) => candidate.parentCountries
+    .some((other) => normalizePlacePhrase(other) === normalizePlacePhrase(country))));
+}
+
+/** Provider results may clarify the scope or supply real bases for a generic
+ * regional phrase, but cannot replace that phrase with one concrete stop. */
+function retainBroadPlanningIntent(
+  mention: ResolvedPlaceMention,
+  candidates: PlaceResolutionCandidate[],
+) {
+  const broad = !mention.canonicalPlaceId ? broadPlanningIntentForPhrase(mention.sourceText) : undefined;
+  if (!broad) return undefined;
+  if (!candidates.length) return mention;
+  const countries = sharedCandidateCountries(candidates);
+  const guard: PlaceProvenance = {
+    id: `broad-intent:${slug(mention.sourceText)}`,
+    label: "Morrovia broad-place guard",
+    kind: "context",
+    supports: "Provider results are clarification candidates only; the traveller's regional wording has not been replaced by a city or base.",
+  };
+  return {
+    ...mention,
+    canonicalName: mention.sourceText,
+    placeType: broad.placeType,
+    status: "ambiguous" as const,
+    confidence: unknownPlanningConfidence("This broad geographic intent needs a specific area or overnight base before routing."),
+    provenance: unique([...mention.provenance, guard], (source) => source.id),
+    parentCountries: countries,
+    routability: broad.routability,
+    directlyRoutable: false,
+    requiresBaseSelection: true,
+    isAnchor: true,
+    candidates,
   };
 }
 
@@ -1052,10 +1558,94 @@ function decisiveProviderCandidate(
   });
   if (ranked.length === 1) return ranked[0];
   const normalized = normalizePlacePhrase(phrase);
-  const exact = ranked.filter((candidate) => [candidate.canonicalName, ...candidate.aliases]
-    .some((label) => normalizePlacePhrase(label) === normalized));
-  const exactRoutable = exact.filter((candidate) => candidate.routability === "direct_destination");
-  if (exactRoutable.length === 1) return exactRoutable[0];
+  const exact = ranked.filter((candidate) => {
+    const quality = (candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality;
+    return quality === "exact" || (!quality && [candidate.canonicalName, ...candidate.aliases]
+      .some((label) => normalizePlacePhrase(label) === normalized));
+  });
+  const intentCompatible = (candidate: PlaceResolutionCandidate) => context.travelIntent === "route-stop"
+    ? candidate.routability === "direct_destination"
+    : context.travelIntent === "anchor"
+      ? candidate.routability === "anchor_or_poi" || candidate.routability === "needs_base_selection"
+      : context.travelIntent === "planning-area"
+        ? candidate.routability === "planning_area" || candidate.routability === "needs_base_selection"
+        : true;
+  const exactForIntent = exact.filter(intentCompatible);
+  const exactRouteDestinations = ranked.filter((candidate) => candidate.routability === "direct_destination"
+    && (exact.includes(candidate) || normalizePlacePhrase(candidate.canonicalName).startsWith(`${normalized} `)));
+  const exactSameNameRoutes = exactRouteDestinations.filter((candidate) => normalizePlacePhrase(candidate.canonicalName) === normalized);
+  const exactBroadGeographies = exact.filter((candidate) => (candidate.routability === "planning_area" || candidate.routability === "needs_base_selection")
+    && ["country", "region", "sub_region", "island", "coast", "natural_area"].includes(candidate.placeType));
+  const contextCountries = new Set((context.countryNames ?? []).map(normalizePlacePhrase));
+  const exactContextualForIntent = exactForIntent.filter((candidate) => candidate.parentCountries
+    .some((country) => contextCountries.has(normalizePlacePhrase(country))));
+  const rankedExactContext = [...exactContextualForIntent].sort((left, right) => ((right as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+    - ((left as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0));
+  const contextualScoreLead = rankedExactContext.length > 1
+    ? ((rankedExactContext[0] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+      - ((rankedExactContext[1] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+    : undefined;
+  const hasDecisiveExactContext = rankedExactContext.length === 1 || (typeof contextualScoreLead === "number" && contextualScoreLead >= 12);
+  const explicitCountries = new Set((context.explicitCountryNames ?? []).map(normalizePlacePhrase));
+  const explicitPlaceTypes = new Set(context.explicitPlaceTypes ?? []);
+  const rankedExplicitType = exact.filter((candidate) => explicitPlaceTypes.has(candidate.placeType))
+    .sort((left, right) => ((right as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+      - ((left as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0));
+  const rankedExplicitContext = exact.filter((candidate) => candidate.parentCountries
+    .some((country) => explicitCountries.has(normalizePlacePhrase(country))))
+    .sort((left, right) => ((right as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+      - ((left as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0));
+  const coextensiveExactScope = exactRouteDestinations.length === 1 && exactBroadGeographies.length > 0
+    && exactBroadGeographies.every((candidate) => {
+    const routeCandidate = exactRouteDestinations[0];
+    return Boolean(routeCandidate.coordinates && candidate.coordinates
+      && routeCandidate.parentCountries.some((country) => candidate.parentCountries
+        .some((candidateCountry) => normalizePlacePhrase(candidateCountry) === normalizePlacePhrase(country)))
+      && coordinateDistanceKm(routeCandidate.coordinates, candidate.coordinates) <= 12);
+  });
+  const hasDistinctExactGeographicScope = exactRouteDestinations.length > 0 && exactBroadGeographies.length > 0 && !coextensiveExactScope;
+  if (rankedExplicitType.length === 1
+    || (rankedExplicitType.length > 1
+      && (((rankedExplicitType[0] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+        - ((rankedExplicitType[1] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)) >= 12)) {
+    return rankedExplicitType[0];
+  }
+  if (rankedExplicitContext.length === 1
+    || (rankedExplicitContext.length > 1
+      && (((rankedExplicitContext[0] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)
+        - ((rankedExplicitContext[1] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)) >= 12)) {
+    return rankedExplicitContext[0];
+  }
+  const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "country"
+    || ((candidate as PlaceResolutionCandidate & { geographicSignificance?: number }).geographicSignificance ?? 0) >= 0.72);
+  // Entity identity precedes route-node suitability. A single provider-backed
+  // major geography wins a bare exact name, while coextensive city-states keep
+  // their direct endpoint and multiple major geographies still fail closed.
+  if (!coextensiveExactScope && recognizedExactGeographies.length === 1) return recognizedExactGeographies[0];
+  // Explicit anchor intent is meaningful disambiguating evidence: an exact
+  // natural feature or POI should not lose to an exact same-name settlement.
+  if (exactForIntent.length === 1 && (context.travelIntent === "anchor" || !hasDistinctExactGeographicScope)) return exactForIntent[0];
+
+  // Trusted route coordinates are stronger evidence than a modest raw
+  // provider-score advantage between exact same-name localities. Apply that
+  // evidence before the score shortcut so a large/distant namesake cannot win
+  // merely because the provider regards it as more globally important.
+  const anchors = (context.selectedPlaces ?? []).flatMap((place) => place.coordinates ? [place.coordinates] : []);
+  const contextualRoutePool = exactForIntent.filter((candidate) => intentCompatible(candidate)
+    && candidate.coordinates
+    && candidate.routability === "direct_destination");
+  const proximityRanked = anchors.length ? contextualRoutePool
+    .map((candidate) => ({
+      candidate,
+      distance: Math.min(...anchors.map((anchor) => coordinateDistanceKm(anchor, candidate.coordinates!))),
+    }))
+    .sort((left, right) => left.distance - right.distance) : [];
+  const best = proximityRanked[0];
+  const proximityNext = proximityRanked[1];
+  if (best && best.distance <= 3_500
+    && (!proximityNext || proximityNext.distance - best.distance >= 1_200 || proximityNext.distance >= best.distance * 1.75)) {
+    return best.candidate;
+  }
 
   // The adapter's bounded score may settle an alias-versus-admin lookalike
   // only when the direct locality has a clear lead.
@@ -1071,30 +1661,52 @@ function decisiveProviderCandidate(
     && (top.matchQuality === "exact" || top.matchQuality === "alias")
     && typeof top.score === "number"
     && (!next || typeof next.score !== "number" || top.score - next.score >= 12)) return top.candidate;
-  if (exact.length === 1) return exact[0];
 
-  // Context can break a genuine same-name tie, but never filters the candidate
-  // set or overrides a unique exact-name match.
-  const contextCountries = new Set((context.countryNames ?? []).map(normalizePlacePhrase));
-  const contextual = ranked.filter((candidate) => candidate.parentCountries
+  // A route-stop-shaped sentence is not evidence that an exact city/state,
+  // city/country, or city/region namesake means the city. Likewise, proximity
+  // alone cannot settle two genuinely distinct exact same-name localities.
+  // A provider-owned score may still settle a locality versus a weak admin or
+  // business result above, after equivalent records have been deduplicated.
+  if ((hasDistinctExactGeographicScope && !hasDecisiveExactContext)
+    || (context.travelIntent !== "route-stop" && exactSameNameRoutes.length > 1)) return undefined;
+
+  // Fuzzy retrieval intentionally has broad recall. Only alternatives within
+  // the resolver's confidence margin may participate in contextual tie-breaks;
+  // a nearby hotel or similarly named hamlet must not manufacture ambiguity
+  // against a substantially stronger destination result.
+  const plausible = typeof top?.score === "number"
+    ? scored.filter((item) => typeof item.score !== "number" || top.score! - item.score <= 12).map((item) => item.candidate)
+    : ranked;
+
+  // Context may settle genuinely distinct same-name candidates after provider
+  // duplicates have collapsed. It cannot turn a weak entity type into the
+  // requested route-stop/anchor/planning-area kind.
+  const compatible = plausible.filter(intentCompatible);
+  const contextualPool = compatible.length ? compatible : plausible;
+  const contextual = contextualPool.filter((candidate) => candidate.parentCountries
     .some((country) => contextCountries.has(normalizePlacePhrase(country))));
   if (contextual.length === 1) return contextual[0];
 
-  const anchors = (context.selectedPlaces ?? []).flatMap((place) => place.coordinates ? [place.coordinates] : []);
-  if (!anchors.length) return undefined;
-  const proximityRanked = ranked
+  const contextualProximityRanked = contextualPool
     .filter((candidate) => candidate.coordinates && candidate.routability === "direct_destination")
     .map((candidate) => ({
       candidate,
       distance: Math.min(...anchors.map((anchor) => coordinateDistanceKm(anchor, candidate.coordinates!))),
     }))
     .sort((left, right) => left.distance - right.distance);
-  const best = proximityRanked[0];
-  const proximityNext = proximityRanked[1];
-  if (best && best.distance <= 3_500 && (!proximityNext || proximityNext.distance - best.distance >= 1_200 || proximityNext.distance >= best.distance * 1.75)) {
-    return best.candidate;
+  const contextualBest = contextualProximityRanked[0];
+  const contextualNext = contextualProximityRanked[1];
+  if (anchors.length && contextualBest && contextualBest.distance <= 3_500
+    && (!contextualNext || contextualNext.distance - contextualBest.distance >= 1_200 || contextualNext.distance >= contextualBest.distance * 1.75)) {
+    return contextualBest.candidate;
   }
   return undefined;
+}
+
+function materialClarificationCandidates(candidates: RankedProviderCandidate[]) {
+  const recognizedGeographies = candidates.filter((candidate) => candidate.matchQuality === "exact"
+    && (candidate.placeType === "country" || (candidate.geographicSignificance ?? 0) >= 0.72));
+  return recognizedGeographies.length > 1 ? recognizedGeographies : candidates;
 }
 
 const PROVIDER_PLACE_TYPES = new Set<PlaceType>([
@@ -1119,10 +1731,8 @@ function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[]
     const aliases = Array.isArray(record.aliases) ? record.aliases.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
     const parentCountries = Array.isArray(record.parentCountries) ? record.parentCountries.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).map((value) => value.trim()) : undefined;
     const rawCoordinates = record.coordinates;
-    if (rawCoordinates !== undefined && (!Array.isArray(rawCoordinates) || rawCoordinates.length !== 2 || !rawCoordinates.every((value) => typeof value === "number" && Number.isFinite(value)))) return [];
-    const coordinates = Array.isArray(rawCoordinates)
-      ? [rawCoordinates[0], rawCoordinates[1]] as [number, number]
-      : undefined;
+    if (rawCoordinates !== undefined && !validPlaceCoordinates(rawCoordinates)) return [];
+    const coordinates = validPlaceCoordinates(rawCoordinates) ? [...rawCoordinates] as [number, number] : undefined;
     const routability = typeof record.routability === "string" && PROVIDER_ROUTABILITY.has(record.routability as PlaceRoutability)
       ? record.routability as PlaceRoutability
       : undefined;
@@ -1133,10 +1743,25 @@ function providerCandidatesFromUnknown(value: unknown): PlaceProviderCandidate[]
       ...(aliases ? { aliases } : {}),
       ...(parentCountries ? { parentCountries } : {}),
       ...(typeof record.parentRegionId === "string" && record.parentRegionId.trim() ? { parentRegionId: record.parentRegionId.trim() } : {}),
+      ...(typeof record.accessPlaceName === "string" && record.accessPlaceName.trim() ? { accessPlaceName: record.accessPlaceName.trim().slice(0, 160) } : {}),
+      ...(typeof record.providerSourceId === "string" && record.providerSourceId.trim() ? { providerSourceId: record.providerSourceId.trim().slice(0, 80) } : {}),
+      ...(typeof record.providerSourceLabel === "string" && record.providerSourceLabel.trim() ? { providerSourceLabel: record.providerSourceLabel.trim().slice(0, 120) } : {}),
       ...(coordinates ? { coordinates } : {}),
       ...(routability ? { routability } : {}),
       ...(record.matchQuality === "exact" || record.matchQuality === "alias" || record.matchQuality === "partial" ? { matchQuality: record.matchQuality } : {}),
       ...(typeof record.rankScore === "number" && Number.isFinite(record.rankScore) ? { rankScore: record.rankScore } : {}),
+      ...(typeof record.geographicSignificance === "number" && Number.isFinite(record.geographicSignificance)
+        ? { geographicSignificance: Math.max(0, Math.min(1, record.geographicSignificance)) }
+        : {}),
+      ...(typeof record.providerImportance === "number" && Number.isFinite(record.providerImportance)
+        ? { providerImportance: Math.max(0, Math.min(1, record.providerImportance)) }
+        : {}),
+      ...(typeof record.providerRank === "number" && Number.isFinite(record.providerRank) && record.providerRank >= 0
+        ? { providerRank: Math.floor(record.providerRank) }
+        : {}),
+      ...(typeof record.administrativeLevel === "number" && Number.isFinite(record.administrativeLevel) && record.administrativeLevel >= 0
+        ? { administrativeLevel: Math.floor(record.administrativeLevel) }
+        : {}),
       ...(typeof record.normalizationReason === "string" && record.normalizationReason.trim() ? { normalizationReason: record.normalizationReason.trim().slice(0, 240) } : {}),
     }];
   });
@@ -1162,6 +1787,48 @@ function boundedProviderLookup(
       .then((candidates) => finish(providerCandidatesFromUnknown(candidates)))
       .catch(() => finish([]));
   });
+}
+
+function providerLookupCacheKey(phrase: string, context: PlaceResolutionContext) {
+  return JSON.stringify({
+    phrase: normalizePlacePhrase(phrase),
+    intent: context.travelIntent ?? "unknown",
+    countries: [...(context.countryNames ?? [])].map(normalizePlacePhrase).sort(),
+    explicitCountries: [...(context.explicitCountryNames ?? [])].map(normalizePlacePhrase).sort(),
+    explicitPlaceTypes: [...(context.explicitPlaceTypes ?? [])].sort(),
+    selected: [...(context.selectedPlaces ?? [])].map((place) => place.canonicalPlaceId).sort(),
+  });
+}
+
+function providerContextFromMentions(
+  context: PlaceResolutionContext,
+  mentions: readonly ResolvedPlaceMention[],
+) {
+  const routeMentions = mentions.filter((mention) => mention.canonicalPlaceId
+    && mention.status === "resolved"
+    && mention.role !== "excluded"
+    && !["origin", "fixed_start"].includes(mention.role));
+  const contextualMentions = routeMentions.length
+    ? routeMentions
+    : mentions.filter((mention) => mention.canonicalPlaceId && mention.status === "resolved" && mention.role !== "excluded");
+  return {
+    ...context,
+    countryNames: unique([
+      ...(context.countryNames ?? []),
+      ...contextualMentions.flatMap((mention) => mention.parentCountries),
+    ], normalizePlacePhrase),
+    selectedPlaces: unique([
+      ...(context.selectedPlaces ?? []),
+      ...contextualMentions.flatMap((mention) => mention.canonicalPlaceId ? [{
+        canonicalPlaceId: mention.canonicalPlaceId,
+        canonicalName: mention.canonicalName,
+        placeType: mention.placeType,
+        parentCountries: mention.parentCountries,
+        routability: mention.routability,
+        coordinates: mention.coordinates,
+      }] : []),
+    ], (place) => place.canonicalPlaceId),
+  } satisfies PlaceResolutionContext;
 }
 
 function deduplicateProviderMentions(mentions: ResolvedPlaceMention[]) {
@@ -1193,36 +1860,125 @@ function deduplicateProviderMentions(mentions: ResolvedPlaceMention[]) {
   return deduplicated.map((mention, order) => ({ ...mention, order }));
 }
 
-export async function resolvePlaceMentionsWithProvider(
-  prompt: string,
-  provider: PlaceIntelligenceProvider,
-  context: PlaceResolutionContext = {},
-): Promise<PlaceIntelligenceResult> {
-  const deterministic = resolvePlaceMentions(prompt, context);
-  const cache = new Map<string, Promise<PlaceProviderCandidate[]>>();
-  const unresolved = deterministic.mentions.filter((mention) => mention.status === "unresolved");
-  const enriched = await Promise.all(deterministic.mentions.map(async (mention) => {
-    if (mention.status !== "unresolved") return mention;
-    const key = mention.normalizedPhrase;
-    const lookupContext: PlaceResolutionContext = {
-      ...context,
-      travelIntent: mention.role === "anchor" ? "anchor" : context.travelIntent ?? "route-stop",
-    };
-    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, mention.sourceText, lookupContext));
-    const candidates = (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
-    if (!candidates.length) return mention;
-    const selected = decisiveProviderCandidate(candidates, mention.sourceText, lookupContext);
-    if (!selected) return { ...mention, status: "ambiguous" as const, candidates };
-    return { ...candidateToMention(selected, {
+type RankedProviderCandidate = PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore" | "geographicSignificance">;
+type ProviderMentionSpec = {
+  lookupText: string;
+  fallbackLookupText?: string;
+  lookupIntent: PlaceResolutionContext["travelIntent"];
+  normalizeBroadRouteStop: boolean;
+};
+
+function applyProviderCandidatesToMention(
+  mention: ResolvedPlaceMention,
+  candidates: RankedProviderCandidate[],
+  lookupContext: PlaceResolutionContext,
+  spec: ProviderMentionSpec,
+) {
+  if (!candidates.length) return mention;
+  const retainedBroadIntent = retainBroadPlanningIntent(mention, candidates);
+  if (retainedBroadIntent) return retainedBroadIntent;
+  const selected = decisiveProviderCandidate(candidates, spec.lookupText, lookupContext);
+  const clarificationCandidates = materialClarificationCandidates(candidates);
+  if (!selected) return mention.status === "unresolved"
+    ? { ...mention, status: "ambiguous" as const, candidates: clarificationCandidates }
+    : { ...mention, candidates: clarificationCandidates };
+  if (spec.normalizeBroadRouteStop && selected.routability !== "direct_destination") {
+    const sameExistingScope = normalizePlacePhrase(selected.canonicalName) === normalizePlacePhrase(mention.canonicalName)
+      && selected.parentCountries.some((country) => mention.parentCountries
+        .some((existingCountry) => normalizePlacePhrase(existingCountry) === normalizePlacePhrase(country)));
+    if (sameExistingScope) return mention;
+  }
+  return {
+    ...candidateToMention(selected, {
       sourceText: mention.sourceText,
       sourceTexts: mention.sourceTexts,
       order: mention.order,
       role: mention.role,
       mentionId: mention.mentionId,
       status: selected.routability === "direct_destination" ? "resolved" : "partially_resolved",
-    }), candidates };
+    }),
+    candidates,
+  };
+}
+
+/** Resolve intrinsically clear provider facts first, then rerank the remaining
+ * uncertainty after those results have become trusted route context. This is
+ * deliberately bounded to two passes: it lets one unambiguous open-world stop
+ * clarify a namesake without turning tentative candidates into recursive facts. */
+async function resolveProviderMentionsInTwoPass(
+  mentions: ResolvedPlaceMention[],
+  context: PlaceResolutionContext,
+  lookup: (phrase: string, context: PlaceResolutionContext) => Promise<RankedProviderCandidate[]>,
+  specForMention: (mention: ResolvedPlaceMention) => ProviderMentionSpec,
+) {
+  const runPass = async (current: ResolvedPlaceMention[], passContext: PlaceResolutionContext, pendingOnly: boolean) => Promise.all(current.map(async (mention) => {
+    const spec = specForMention(mention);
+    const eligible = mention.status === "unresolved" || mention.status === "ambiguous" || spec.normalizeBroadRouteStop;
+    if (!eligible || (pendingOnly && mention.status !== "unresolved" && mention.status !== "ambiguous")) return mention;
+    const lookupContext: PlaceResolutionContext = {
+      ...passContext,
+      countryNames: unique([...(passContext.countryNames ?? []), ...mention.parentCountries], normalizePlacePhrase),
+      travelIntent: spec.lookupIntent,
+    };
+    const primaryRequest = providerLookupRequest(spec.lookupText, lookupContext);
+    const primaryCandidates = await lookup(primaryRequest.phrase, primaryRequest.context);
+    const normalizedLookup = normalizePlacePhrase(primaryRequest.phrase);
+    const sourceNameMatches = primaryCandidates.filter((candidate) => candidate.matchQuality === "exact"
+      || candidate.matchQuality === "alias"
+      || [candidate.canonicalName, ...candidate.aliases].some((label) => normalizePlacePhrase(label) === normalizedLookup));
+    const recognizedSourceGeographies = sourceNameMatches.filter((candidate) => candidate.placeType === "country"
+      || (candidate.geographicSignificance ?? 0) >= 0.72);
+    const sourceIsDecisive = recognizedSourceGeographies.length === 1
+      || (primaryCandidates.length === 1 && sourceNameMatches.length === 1);
+    const fallbackRequest = spec.fallbackLookupText ? providerLookupRequest(spec.fallbackLookupText, primaryRequest.context) : undefined;
+    const fallbackCandidates = !sourceIsDecisive && fallbackRequest
+      ? await lookup(fallbackRequest.phrase, fallbackRequest.context)
+      : [];
+    const appliedContext = sourceIsDecisive || !fallbackCandidates.length ? primaryRequest.context : fallbackRequest?.context ?? primaryRequest.context;
+    return applyProviderCandidatesToMention(mention, sourceIsDecisive || !fallbackCandidates.length ? primaryCandidates : fallbackCandidates, appliedContext, spec);
   }));
-  if (!unresolved.length) return deterministic;
+
+  const initialContext = providerContextFromMentions(context, mentions);
+  const firstPass = await runPass(mentions, initialContext, false);
+  const enrichedContext = providerContextFromMentions(context, firstPass);
+  return runPass(firstPass, enrichedContext, true);
+}
+
+export async function resolvePlaceMentionsWithProvider(
+  prompt: string,
+  provider: PlaceIntelligenceProvider,
+  context: PlaceResolutionContext = {},
+): Promise<PlaceIntelligenceResult> {
+  const resolutionContext: PlaceResolutionContext = {
+    ...context,
+    explicitCountryNames: context.explicitCountryNames ?? context.countryNames ?? [],
+  };
+  const deterministic = resolvePlaceMentions(prompt, resolutionContext);
+  const cache = new Map<string, Promise<PlaceProviderCandidate[]>>();
+  const lookup = async (phrase: string, lookupContext: PlaceResolutionContext) => {
+    const key = providerLookupCacheKey(phrase, lookupContext);
+    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, phrase, lookupContext));
+    return (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
+  };
+  const initialContext = providerContextFromMentions(resolutionContext, deterministic.mentions);
+  const coordinateEnriched = await Promise.all(deterministic.mentions.map(async (mention) => {
+    if (mention.status !== "resolved" || !mention.canonicalPlaceId || mention.coordinates) return mention;
+    const lookupContext: PlaceResolutionContext = {
+      ...initialContext,
+      countryNames: unique([...(initialContext.countryNames ?? []), ...mention.parentCountries], normalizePlacePhrase),
+      travelIntent: mention.role === "anchor" ? "anchor" : "route-stop",
+    };
+    const candidates = await lookup(mention.canonicalName, lookupContext);
+    return enrichCanonicalMentionCoordinates(mention, candidates);
+  }));
+  const enriched = await resolveProviderMentionsInTwoPass(coordinateEnriched, resolutionContext, lookup, (mention) => {
+    const broadIntent = !mention.canonicalPlaceId ? broadPlanningIntentForPhrase(mention.sourceText) : undefined;
+    return {
+      lookupText: mention.sourceText,
+      lookupIntent: broadIntent ? "planning-area" : mention.role === "anchor" ? "anchor" : resolutionContext.travelIntent ?? "route-stop",
+      normalizeBroadRouteStop: false,
+    };
+  });
   const mentions = deduplicateProviderMentions(enriched);
   return { ...deterministic, mentions, issues: resultIssuesForMentions(mentions) };
 }
@@ -1232,62 +1988,51 @@ export async function resolveExplicitPlaceMentionsWithProvider(
   provider: PlaceIntelligenceProvider,
   context: PlaceResolutionContext = {},
 ): Promise<PlaceIntelligenceResult> {
-  const deterministic = resolveExplicitPlaceMentions(inputs, context);
-  const routeContextMentions = deterministic.mentions.filter((mention) => mention.canonicalPlaceId
-    && mention.status === "resolved"
-    && mention.role !== "excluded"
-    && !["origin", "fixed_start"].includes(mention.role));
-  const fallbackContextMentions = routeContextMentions.length
-    ? routeContextMentions
-    : deterministic.mentions.filter((mention) => mention.canonicalPlaceId && mention.status === "resolved" && mention.role !== "excluded");
-  const providerContext: PlaceResolutionContext = {
+  const resolutionContext: PlaceResolutionContext = {
     ...context,
-    countryNames: unique([
-      ...(context.countryNames ?? []),
-      ...fallbackContextMentions.flatMap((mention) => mention.parentCountries),
-    ], normalizePlacePhrase),
-    selectedPlaces: unique([
-      ...(context.selectedPlaces ?? []),
-      ...fallbackContextMentions.flatMap((mention) => mention.canonicalPlaceId ? [{
-        canonicalPlaceId: mention.canonicalPlaceId,
-        canonicalName: mention.canonicalName,
-        placeType: mention.placeType,
-        parentCountries: mention.parentCountries,
-        routability: mention.routability,
-        coordinates: mention.coordinates,
-      }] : []),
-    ], (place) => place.canonicalPlaceId),
+    explicitCountryNames: context.explicitCountryNames ?? context.countryNames ?? [],
   };
+  const deterministic = resolveExplicitPlaceMentions(inputs, resolutionContext);
   const cache = new Map<string, Promise<PlaceProviderCandidate[]>>();
-  const enriched = await Promise.all(deterministic.mentions.map(async (mention) => {
+  const lookup = async (phrase: string, lookupContext: PlaceResolutionContext) => {
+    const key = providerLookupCacheKey(phrase, lookupContext);
+    if (!cache.has(key)) cache.set(key, boundedProviderLookup(provider, phrase, lookupContext));
+    return (await cache.get(key)!).map((candidate) => providerCandidate(candidate, provider));
+  };
+  const initialContext = providerContextFromMentions(resolutionContext, deterministic.mentions);
+  const coordinateEnriched = await Promise.all(deterministic.mentions.map(async (mention) => {
     const input = inputs[mention.order];
-    const lookupIntent = input?.travelIntent ?? (mention.role === "anchor" ? "anchor" : "route-stop");
+    const broadIntent = !mention.canonicalPlaceId ? broadPlanningIntentForPhrase(mention.sourceText) : undefined;
+    const lookupIntent = broadIntent ? "planning-area" : input?.travelIntent ?? (mention.role === "anchor" ? "anchor" : "route-stop");
     const normalizeBroadRouteStop = lookupIntent === "route-stop"
       && mention.routability === "planning_area"
       && (mention.placeType === "country" || mention.placeType === "region" || mention.placeType === "sub_region");
-    if (mention.status !== "unresolved" && !normalizeBroadRouteStop) return mention;
-    const lookupText = inputs[mention.order]?.lookupText?.trim() || mention.sourceText;
-    const key = normalizePlacePhrase(lookupText);
+    if (normalizeBroadRouteStop || mention.status !== "resolved" || !mention.canonicalPlaceId || mention.coordinates) return mention;
     const lookupContext: PlaceResolutionContext = {
-      ...providerContext,
+      ...initialContext,
+      countryNames: unique([...(initialContext.countryNames ?? []), ...mention.parentCountries], normalizePlacePhrase),
       travelIntent: lookupIntent,
     };
-    const cacheKey = `${key}|${lookupContext.travelIntent}`;
-    if (!cache.has(cacheKey)) cache.set(cacheKey, boundedProviderLookup(provider, lookupText, lookupContext));
-    const candidates = (await cache.get(cacheKey)!).map((candidate) => providerCandidate(candidate, provider));
-    if (!candidates.length) return mention;
-    const selected = decisiveProviderCandidate(candidates, lookupText, lookupContext);
-    if (!selected) return mention.status === "unresolved" ? { ...mention, status: "ambiguous" as const, candidates } : mention;
-    if (normalizeBroadRouteStop && selected.routability !== "direct_destination") return mention;
-    return { ...candidateToMention(selected, {
-      sourceText: mention.sourceText,
-      sourceTexts: mention.sourceTexts,
-      order: mention.order,
-      role: mention.role,
-      mentionId: mention.mentionId,
-      status: selected.routability === "direct_destination" ? "resolved" : "partially_resolved",
-    }), candidates };
+    const candidates = await lookup(mention.canonicalName, lookupContext);
+    return enrichCanonicalMentionCoordinates(mention, candidates);
   }));
+  const enriched = await resolveProviderMentionsInTwoPass(coordinateEnriched, resolutionContext, lookup, (mention) => {
+    const input = inputs[mention.order];
+    const broadIntent = !mention.canonicalPlaceId ? broadPlanningIntentForPhrase(mention.sourceText) : undefined;
+    const lookupIntent = broadIntent ? "planning-area" : input?.travelIntent ?? (mention.role === "anchor" ? "anchor" : "route-stop");
+    const normalizeBroadRouteStop = lookupIntent === "route-stop"
+      && mention.routability === "planning_area"
+      && (mention.placeType === "country" || mention.placeType === "region" || mention.placeType === "sub_region");
+    return {
+      lookupText: mention.sourceText,
+      ...(inputs[mention.order]?.lookupText?.trim()
+        && normalizePlacePhrase(inputs[mention.order]!.lookupText!) !== normalizePlacePhrase(mention.sourceText)
+        ? { fallbackLookupText: inputs[mention.order]!.lookupText!.trim() }
+        : {}),
+      lookupIntent,
+      normalizeBroadRouteStop,
+    };
+  });
   const mentions = deduplicateProviderMentions(enriched);
   return { ...deterministic, mentions, issues: resultIssuesForMentions(mentions) };
 }

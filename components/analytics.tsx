@@ -4,32 +4,26 @@ import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { initializeAnalytics, pageView, trackEvent } from "@/lib/analytics";
+import { hasAnalyticsConsent, PRIVACY_CONSENT_CHANGE_EVENT } from "@/lib/privacy-consent";
 
 // Keep analytics opt-in per deployment. This prevents local/staging traffic from
 // polluting production reporting and makes the launch configuration explicit.
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-const CLARITY_PROJECT_ID = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 const POSTHOG_CONFIGURED = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY && process.env.NEXT_PUBLIC_POSTHOG_HOST);
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const SCROLL_DEPTHS = [50, 75, 90] as const;
-const ANALYTICS_CONSENT_KEY = "easyt-analytics-consent";
-
-function readAnalyticsConsent() {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(ANALYTICS_CONSENT_KEY) === "granted";
-}
 
 export function Analytics() {
   const [hasConsent, setHasConsent] = useState(false);
 
   useEffect(() => {
-    const updateConsent = () => setHasConsent(readAnalyticsConsent());
+    const updateConsent = () => setHasConsent(hasAnalyticsConsent());
     updateConsent();
-    window.addEventListener("easyt-analytics-consent-change", updateConsent);
-    return () => window.removeEventListener("easyt-analytics-consent-change", updateConsent);
+    window.addEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
+    return () => window.removeEventListener(PRIVACY_CONSENT_CHANGE_EVENT, updateConsent);
   }, []);
 
-  const configuredForThisEnvironment = POSTHOG_CONFIGURED || (IS_PRODUCTION && Boolean(GA_MEASUREMENT_ID || CLARITY_PROJECT_ID));
+  const configuredForThisEnvironment = POSTHOG_CONFIGURED || (IS_PRODUCTION && Boolean(GA_MEASUREMENT_ID));
   if (!configuredForThisEnvironment || !hasConsent) {
     return null;
   }
@@ -43,6 +37,7 @@ export function Analytics() {
               window.dataLayer = window.dataLayer || [];
               function gtag(){window.dataLayer.push(arguments);}
               window.gtag = gtag;
+              gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied' });
               gtag('js', new Date());
               gtag('config', '${GA_MEASUREMENT_ID}', { send_page_view: false });
             `}
@@ -52,18 +47,6 @@ export function Analytics() {
             strategy="afterInteractive"
           />
         </>
-      ) : null}
-
-      {IS_PRODUCTION && CLARITY_PROJECT_ID ? (
-        <Script id="microsoft-clarity" strategy="afterInteractive">
-          {`
-            (function(c,l,a,r,i,t,y){
-              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
-          `}
-        </Script>
       ) : null}
 
       <RouteAnalytics />

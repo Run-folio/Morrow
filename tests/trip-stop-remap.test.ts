@@ -30,6 +30,7 @@ function referenceHeavyTrip(): EasyTTrip {
       selectedPlaces: { alpha: ["Old town"], beta: ["Harbour"] },
       dayAllocations: { alpha: 3, beta: 3 },
       nightAllocations: { alpha: 2, beta: 3 },
+      manualNightStopIds: ["alpha"],
       nightAllocation: {
         version: 1, configVersion: "test", state: "allocated", totalAvailableNights: 5, totalAllocatedNights: 5,
         allocations: { alpha: 2, beta: 3 },
@@ -67,6 +68,7 @@ test("promotion remaps every durable nested stop reference and remains JSON-idem
   const beta = "trip-remap-stop-beta";
   assert.deepEqual(tripStopReferenceInvariantIssues(canonical), []);
   assert.deepEqual(canonical.brief.nightAllocations, { [alpha]: 2, [beta]: 3 });
+  assert.deepEqual(canonical.brief.manualNightStopIds, [alpha]);
   assert.equal(canonical.stops[0]?.canonicalPlaceId, "place-alpha");
   assert.equal(canonical.brief.nightAllocation?.stops[0]?.stopId, alpha);
   assert.deepEqual(canonical.brief.scheduleLocks, { stopIds: [alpha], arrivalDates: { [beta]: "2026-10-04" } });
@@ -103,6 +105,7 @@ test("builder edit round-trip preserves canonical nights, locks, intent and rout
     hotels: canonical.brief.hotelChanges,
     budget: canonical.brief.budgetBand,
     nightAllocations: canonical.brief.nightAllocations,
+    manualNightStopIds: canonical.brief.manualNightStopIds,
     nightAllocation: canonical.brief.nightAllocation,
     scheduleLocks: canonical.brief.scheduleLocks,
     intent: canonical.brief.intent,
@@ -111,6 +114,7 @@ test("builder edit round-trip preserves canonical nights, locks, intent and rout
     draft: canonical.planItems.map((item) => ({ number: String(item.dayNumber), date: item.date, destination: canonical.stops.find((stop) => stop.id === item.stopId)?.name ?? "", title: item.title, reason: item.reason, items: item.notes })),
   });
   assert.deepEqual(rebuilt.brief.nightAllocations, canonical.brief.nightAllocations);
+  assert.deepEqual(rebuilt.brief.manualNightStopIds, canonical.brief.manualNightStopIds);
   assert.deepEqual(rebuilt.brief.scheduleLocks, canonical.brief.scheduleLocks);
   assert.deepEqual(rebuilt.brief.intent, canonical.brief.intent);
   assert.deepEqual(rebuilt.brief.routeAssessment, canonical.brief.routeAssessment);

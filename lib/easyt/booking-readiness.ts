@@ -1,6 +1,7 @@
 import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
+import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer";
@@ -44,11 +45,15 @@ export const affiliatePartners = {
   },
   viator: {
     provider: "viator",
-    activitiesUrl: "https://www.viator.com/?pid=P00315646&mcid=42383&medium=link&campaign=morrovia-general-activities",
+    activitiesUrl: "https://vi.me/IiuWB",
   },
   omio: {
     provider: "omio",
     transportUrl: "https://omio.sjv.io/2RBeqD",
+  },
+  saily: {
+    provider: "saily",
+    connectivityUrl: "https://go.saily.site/aff_c?offer_id=101&aff_id=16085",
   },
 } as const;
 
@@ -82,6 +87,87 @@ export type ResolvedBookingAction = {
   cta: string;
   affiliate: true;
 };
+
+export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "connectivity";
+export type ResolvedAffiliateAction = {
+  provider: string;
+  category: CurrentPartnerCategory;
+  href: string;
+  cta: string;
+  affiliate: true;
+};
+
+type ActivityAffiliatePartner = { provider: string; activitiesUrl?: string };
+export type ActivityAffiliatePartners = {
+  viator?: ActivityAffiliatePartner | null;
+  tripCom?: TripComAffiliatePartner | null;
+};
+
+function validApprovedAffiliateAction(action: ResolvedAffiliateAction | undefined) {
+  if (!action?.href || action.href !== action.href.trim()) return undefined;
+  try {
+    return new URL(action.href).protocol === "https:" ? action : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Provider-neutral activity handoff. The approved Viator destination wins when
+ * valid; the existing Trip.com activities action is the sole fallback.
+ */
+export function getActivityBookingAction(
+  _request: BookingActionRequest = { category: "activities" },
+  partners: ActivityAffiliatePartners = {},
+): ResolvedAffiliateAction | undefined {
+  const viator = partners.viator === undefined ? affiliatePartners.viator : partners.viator;
+  const tripCom = partners.tripCom === undefined ? affiliatePartners.tripCom : partners.tripCom;
+  const viatorAction = viator?.activitiesUrl ? validApprovedAffiliateAction({
+    provider: viator.provider,
+    category: "activities",
+    href: viator.activitiesUrl,
+    cta: "Browse tours and activities",
+    affiliate: true,
+  }) : undefined;
+  if (viatorAction) return viatorAction;
+  if (!tripCom) return undefined;
+  const fallback = getBookingAction({ category: "activities" }, tripCom);
+  return fallback ? { ...fallback, category: "activities", cta: "Browse experiences" } : undefined;
+}
+
+/** Current approved generic handoffs for surfaces without provider inventory. */
+export function getCurrentPartnerAction(
+  category: CurrentPartnerCategory,
+  activityPartners?: ActivityAffiliatePartners,
+): ResolvedAffiliateAction | undefined {
+  if (category === "activities") return getActivityBookingAction({ category: "activities" }, activityPartners);
+  if (category === "accommodation") {
+    const action = getBookingAction({ category: "accommodation" });
+    return action ? { ...action, category, cta: "Browse stays" } : undefined;
+  }
+  if (category === "transport") return validApprovedAffiliateAction({
+    provider: affiliatePartners.omio.provider,
+    category,
+    href: affiliatePartners.omio.transportUrl,
+    cta: "Explore transport",
+    affiliate: true,
+  });
+  return validApprovedAffiliateAction({
+    provider: affiliatePartners.saily.provider,
+    category,
+    href: affiliatePartners.saily.connectivityUrl,
+    cta: "Get an eSIM",
+    affiliate: true,
+  });
+}
+
+export function affiliateProviderLabel(provider: string) {
+  if (provider === "trip.com") return "Trip.com";
+  if (provider === "viator") return "Viator";
+  if (provider === "omio") return "Omio";
+  if (provider === "saily") return "Saily";
+  return provider;
+}
 
 /**
  * Trip.com currently approves generic category links only. Contextual links or
@@ -135,15 +221,26 @@ const selectedDecision = (trip: EasyTTrip, leg: TripLeg) => trip.brief.decisionS
 
 const normalise = (value: string) => value.trim().toLocaleLowerCase();
 
-function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from: TripStop, to: TripStop) {
-  const fromName = normalise(from.name);
-  const toName = normalise(to.name);
+export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: TripStop, to?: TripStop) {
+  const fromName = normalise(from?.name ?? "");
+  const toName = normalise(to?.name ?? "");
   return (trip.brief.bookings ?? []).find((booking) => {
     if (booking.type !== "transport") return false;
     if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
     const title = normalise(booking.title);
     return Boolean(fromName && toName && title.includes(fromName) && title.includes(toName));
   });
+}
+
+/** Truthful transport completion derived only from saved canonical bookings. */
+export function transportBookingProgress(trip: EasyTTrip) {
+  const total = trip.legs.length;
+  const sortedCount = trip.legs.filter((leg) => {
+    const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
+    const to = trip.stops.find((stop) => stop.id === leg.toStopId);
+    return Boolean(transportBookingForLeg(trip, leg, from, to));
+  }).length;
+  return { total, sortedCount, complete: total === 0 || sortedCount === total };
 }
 
 function describesCoachOrBus(leg: TripLeg) {
@@ -197,6 +294,12 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
  */
 export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfiguration = {}, now = new Date()): BookingReadinessAction[] {
   const actions: BookingReadinessAction[] = [];
+  // Keep this public boundary safe for non-route callers as well as the
+  // environment resolver used by production API routes.
+  const activitiesUrl = validateOptionalAffiliateUrl(config.activitiesUrl);
+  const carHireUrl = validateOptionalAffiliateUrl(config.carHireUrl);
+  const sailyUrl = validateOptionalAffiliateUrl(config.sailyUrl);
+  const groundTransportUrl = validateOptionalAffiliateUrl(config.groundTransportUrl);
   const health = tripHealth(trip);
   const dateFacts = deriveTripDateFacts(trip, now);
   if (dateFacts.lifecycle.state === "ended") return actions;
@@ -214,13 +317,17 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     });
     const selectedActivities = trip.brief.selectedPlaces[stop.id] ?? [];
     if ((stop.nights ?? 0) >= 2 && selectedActivities.length) {
-      const tripComActivity = getBookingAction({ category: "activities", trip, stop, dates });
-      const activityBase = config.activitiesUrl || "https://www.google.com/search";
-      actions.push({
-        id: `activity-${stop.id}`, category: "activity", provider: config.activitiesProvider ?? (config.activitiesUrl ? "activities-partner" : tripComActivity?.provider ?? "google"), title: `Check major activities in ${stop.name}`,
+      const activityAction = getActivityBookingAction(
+        { category: "activities", trip, stop, dates },
+        config.activitiesUrl === undefined
+          ? undefined
+          : { viator: activitiesUrl ? { provider: config.activitiesProvider ?? "activities-partner", activitiesUrl } : null },
+      );
+      if (activityAction) actions.push({
+        id: `activity-${stop.id}`, category: "activity", provider: activityAction.provider, title: `Check major activities in ${stop.name}`,
         detail: `${selectedActivities.slice(0, 2).join(" · ")}${selectedActivities.length > 2 ? ` · +${selectedActivities.length - 2} more` : ""}. Check dates, opening days and cancellation terms before booking.`,
-        cta: config.activitiesProvider === "viator" ? "Find activities on Viator" : tripComActivity?.cta ?? "Check options", href: config.activitiesUrl ?? tripComActivity?.href ?? withParams(activityBase, { q: `${selectedActivities[0]} ${stop.name} official tickets` }),
-        tripId: trip.id, stopId: stop.id, affiliate: Boolean(config.activitiesUrl || tripComActivity), affiliateCategory: tripComActivity?.category, livePrice: false,
+        cta: activityAction.cta, href: activityAction.href,
+        tripId: trip.id, stopId: stop.id, affiliate: true, affiliateCategory: "activities", livePrice: false,
       });
     }
   });
@@ -243,25 +350,25 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     const from = trip.stops.find((stop) => stop.id === roadLeg.fromStopId);
     const to = trip.stops.find((stop) => stop.id === roadLeg.toStopId);
     const tripComCarRental = getBookingAction({ category: "car_rental", trip, stop: from });
-    const carBase = config.carHireUrl || "https://www.google.com/search";
+    const carBase = carHireUrl || "https://www.google.com/search";
     actions.push({
-      id: `car-${roadLeg.id}`, category: "car-rental", provider: config.carHireUrl ? "car-hire-partner" : tripComCarRental?.provider ?? "google", title: `Compare car hire${from ? ` from ${from.name}` : ""}`,
+      id: `car-${roadLeg.id}`, category: "car-rental", provider: carHireUrl ? "car-hire-partner" : tripComCarRental?.provider ?? "google", title: `Compare car hire${from ? ` from ${from.name}` : ""}`,
       detail: `${from?.name ?? "Pickup"} → ${to?.name ?? "drop-off"}. Check one-way fees, cross-border permission, insurance and licence rules.`,
-      cta: config.carHireUrl ? "Compare car hire" : tripComCarRental?.cta ?? "Compare car hire", href: config.carHireUrl ? withParams(carBase, { pickup: from?.name, dropoff: to?.name, pickup_date: from?.departureDate ?? undefined, dropoff_date: to?.arrivalDate ?? undefined }) : tripComCarRental?.href ?? withParams(carBase, { q: `car hire ${from?.name ?? ""} to ${to?.name ?? ""}` }),
-      tripId: trip.id, stopId: from?.id, affiliate: Boolean(config.carHireUrl || tripComCarRental), affiliateCategory: "car_rental", livePrice: false,
+      cta: carHireUrl ? "Compare car hire" : tripComCarRental?.cta ?? "Compare car hire", href: carHireUrl ? withParams(carBase, { pickup: from?.name, dropoff: to?.name, pickup_date: from?.departureDate ?? undefined, dropoff_date: to?.arrivalDate ?? undefined }) : tripComCarRental?.href ?? withParams(carBase, { q: `car hire ${from?.name ?? ""} to ${to?.name ?? ""}` }),
+      tripId: trip.id, stopId: from?.id, affiliate: Boolean(carHireUrl || tripComCarRental), affiliateCategory: "car_rental", livePrice: false,
     });
   }
 
   const omioActions = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg, now)).filter((action): action is BookingReadinessAction => Boolean(action));
   actions.push(...omioActions);
 
-  if (config.groundTransportUrl) trip.legs.filter((leg) => !omioActions.some((action) => action.transferId === leg.id) && ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
+  if (groundTransportUrl) trip.legs.filter((leg) => !omioActions.some((action) => action.transferId === leg.id) && ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
     const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
     const to = trip.stops.find((stop) => stop.id === leg.toStopId);
     if (!from || !to) return;
-    const groundBase = config.groundTransportUrl!;
+    const groundBase = groundTransportUrl;
     actions.push({
-      id: `ground-${leg.id}`, category: "ground-transport", provider: config.groundTransportUrl ? "ground-transport-partner" : "google", title: `Check ${from.name} → ${to.name}`,
+      id: `ground-${leg.id}`, category: "ground-transport", provider: "ground-transport-partner", title: `Check ${from.name} → ${to.name}`,
       detail: `${leg.mode} selected · ${leg.durationMinutes ? `about ${Math.floor(leg.durationMinutes / 60)}h ${leg.durationMinutes % 60}m planning time` : "duration to verify"}. Confirm the actual service before booking stays around it.`,
       cta: "Check connections", href: withParams(groundBase, { from: from.name, to: to.name, date: from.departureDate ?? undefined }),
       tripId: trip.id, stopId: to.id, affiliate: true, livePrice: false,
@@ -270,11 +377,11 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
 
   const countries = [...new Set(trip.stops.map((stop) => stop.country).filter(Boolean))];
   if (countries.length > 1 || (countries[0] && !trip.brief.origin.toLowerCase().includes(countries[0].toLowerCase()))) {
-    const sailyBase = config.sailyUrl || "https://saily.com/";
+    const sailyBase = sailyUrl || "https://saily.com/";
     actions.push({
       id: "trip-connectivity", category: "connectivity", provider: "saily", title: "Set up trip connectivity",
       detail: `Coverage for ${countries.join(" · ")}. Compare data amounts and validity on Saily before purchasing.`, cta: "Check eSIM coverage",
-      href: withParams(sailyBase, { destination: countries.join(",") }), tripId: trip.id, affiliate: Boolean(config.sailyUrl), livePrice: false,
+      href: withParams(sailyBase, { destination: countries.join(",") }), tripId: trip.id, affiliate: Boolean(sailyUrl), livePrice: false,
     });
   }
 

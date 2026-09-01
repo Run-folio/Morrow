@@ -6,7 +6,7 @@
   .menu summary::-webkit-details-marker { display:none; }
   .menu summary svg { width:18px; height:18px; }
   .menu > div { position:absolute; top:46px; right:0; z-index:40; display:grid; gap:7px; width:min(236px,calc(100vw - 28px)); padding:10px; border:1px solid rgba(31,29,61,.15); border-radius:20px; background:#fff; box-shadow:0 16px 36px rgba(31,29,61,.16); }
-  .menu a,.menu button { min-height:40px; padding:0 14px; border:1px solid #dddade; border-radius:999px; background:#fff; color:#1f1d3d; font:600 13px var(--font-geist-sans,Geist,sans-serif); text-align:left; text-decoration:none; cursor:pointer; }
-  .menu a:hover,.menu button:hover:not(:disabled) { border-color:#ff3d8b; color:#ff3d8b; background:#fff7fa; }
+  .menu a,.menu button { min-height:40px; padding:0 14px; border:1px solid #dddade; border-radius:999px; background:#fff; color:#1f1d3d; font:600 13px var(--morrovia-ui); text-align:left; text-decoration:none; cursor:pointer; }
+  .menu a:hover,.menu button:hover:not(:disabled) { border-color:var(--morrovia-signal); color:var(--morrovia-signal); background:#fff7fa; }
   .menu button:last-child { background:#1f1d3d; border-color:#1f1d3d; color:#fff; }
 }

@@ -2,12 +2,12 @@
   display: grid;
   gap: 7px;
   min-width: 0;
-  color: var(--morrovia-ink, #17106f);
+  color: var(--morrovia-ink);
   font-family: var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
 }
 
 .label {
-  color: var(--morrovia-action, #3025ce);
+  color: var(--morrovia-action);
   font-size: 11px;
   font-weight: 650;
   line-height: 1.2;
@@ -19,7 +19,7 @@
   align-items: stretch;
   min-height: 52px;
   overflow: hidden;
-  border: 1px solid var(--morrovia-line, #d9d8ee);
+  border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-control-radius, 10px);
   background: #fff;
 }
@@ -32,17 +32,17 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--morrovia-action, #3025ce);
+  color: var(--morrovia-action);
   cursor: pointer;
   transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
 
-.stepper button:first-child { border-right: 1px solid var(--morrovia-line, #d9d8ee); }
-.stepper button:last-child { border-left: 1px solid var(--morrovia-line, #d9d8ee); }
-.stepper button:hover:not(:disabled) { background: var(--morrovia-lilac, #f2f0ff); color: var(--morrovia-signal, #f42b7a); }
-.stepper button:active:not(:disabled) { background: var(--morrovia-lilac-strong, #e8e5ff); }
-.stepper button:focus-visible { position: relative; z-index: 1; outline: none; box-shadow: inset 0 0 0 3px var(--morrovia-focus-ring, rgba(244, 43, 122, .24)); }
-.stepper button:disabled { background: var(--morrovia-disabled, #efedf5); color: color-mix(in srgb, var(--morrovia-muted, #7673a4) 55%, white); cursor: not-allowed; }
+.stepper button:first-child { border-right: 1px solid var(--morrovia-line); }
+.stepper button:last-child { border-left: 1px solid var(--morrovia-line); }
+.stepper button:hover:not(:disabled) { background: var(--morrovia-lilac); color: var(--morrovia-signal); }
+.stepper button:active:not(:disabled) { background: var(--morrovia-lilac-strong); }
+.stepper button:focus-visible { position: relative; z-index: 1; outline: none; box-shadow: inset 0 0 0 3px var(--morrovia-focus-ring); }
+.stepper button:disabled { background: var(--morrovia-disabled); color: color-mix(in srgb, var(--morrovia-muted) 55%, white); cursor: not-allowed; }
 .stepper svg { width: 17px; height: 17px; }
 
 .value {
@@ -52,11 +52,11 @@
   justify-content: center;
   gap: 7px;
   padding: 0 10px;
-  color: var(--morrovia-ink, #17106f);
+  color: var(--morrovia-ink);
   white-space: nowrap;
 }
 
-.value svg { flex: none; width: 18px; height: 18px; color: var(--morrovia-signal, #f42b7a); }
+.value svg { flex: none; width: 18px; height: 18px; color: var(--morrovia-signal); }
 .value strong { font-size: 16px; }
 .value span { overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; }
 

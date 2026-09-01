@@ -16,7 +16,7 @@ import {
 } from "./trip-continuity";
 import { EasyTTrip, isEasyTTrip } from "./trip";
 import { normalizedLegEndpoints } from "./trip-persistence";
-import { defaultTravelProfile, isTravelProfile, type TravelProfile } from "./travel-profile";
+import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
 type TripDocumentRow = { document: unknown };
@@ -123,9 +123,10 @@ export async function getEasyTUserPreferences(
   const rows = (await sql`
     select preferences from easyt_users where id = ${ownerId} limit 1
   `) as Array<{ preferences: Record<string, unknown> }>;
+  const travelProfile = travelProfileFromUnknown(rows[0]?.preferences?.travelProfile);
   return {
     language: rows[0]?.preferences?.language === "es" ? "es" : "en",
-    travelProfile: isTravelProfile(rows[0]?.preferences?.travelProfile) ? rows[0].preferences.travelProfile : defaultTravelProfile,
+    travelProfile: travelProfile ?? defaultTravelProfile,
     travelReadinessProfile: isTravelReadinessProfile(rows[0]?.preferences?.travelReadinessProfile) ? rows[0].preferences.travelReadinessProfile : defaultTravelReadinessProfile,
   };
 }

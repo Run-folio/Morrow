@@ -32,7 +32,7 @@ const readyTrip = (): EasyTTrip => {
     ...trip.brief.intent!,
     hardConstraints: { ...trip.brief.intent!.hardConstraints, mustSeeStopIds: ["a"] },
   };
-  trip.stops = [{ ...trip.stops[0], departureDate: "2026-09-06", nights: 4 }];
+  trip.stops = [{ ...trip.stops[0], departureDate: "2026-09-05", nights: 4 }];
   trip.legs = [{
     id: "health-leg-1",
     fromStopId: "health-origin",
@@ -156,6 +156,17 @@ test("Trip Health preserves a structured fixed commitment without the legacy int
 
 test("does not call a trip ready while a major transport decision is still a planning estimate", () => {
   assert.equal(tripHealth(baseTrip()).isReady, false);
+});
+
+test("does not warn when the final stay ends on the canonical trip end date", () => {
+  const trip = readyTrip();
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "trip-end-mismatch"), false);
+});
+
+test("warns when the final stay actually ends before the canonical trip end date", () => {
+  const trip = readyTrip();
+  trip.stops[0].departureDate = "2026-09-04";
+  assert.equal(reviewTrip(trip).some((item) => item.rule === "trip-end-mismatch"), true);
 });
 
 test("treats a persisted transport alternative as a decision while retaining the planning estimate", () => {

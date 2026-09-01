@@ -110,6 +110,10 @@ export type DestinationStayGuidance = {
   minimumNights: KnowledgeFact<number>;
   idealNights: KnowledgeFact<number>;
   roles: KnowledgeFact<readonly DestinationRole[]>;
+  /** Existing evidenced experience breadth; unknown remains neutral. */
+  experienceTags: KnowledgeFact<readonly string[]>;
+  /** Existing connectivity evidence used to distinguish bases/hubs from transit-only stops. */
+  connectivity: KnowledgeFact<readonly DestinationConnectivity[]>;
 };
 
 export type DestinationScoringKnowledge = {
@@ -461,6 +465,8 @@ export function createDestinationKnowledgeStore(options: {
         minimumNights: destination?.minimumNights ?? unknownFor("Minimum nights", input),
         idealNights: destination?.idealNights ?? unknownFor("Ideal nights", input),
         roles: destination?.roles ?? unknownFor("Destination role", input),
+        experienceTags: destination?.experienceTags ?? unknownFor("Experience tags", input),
+        connectivity: destination?.connectivity ?? unknownFor("Transport connectivity", input),
       };
     },
     forRouteScoring: (input) => {

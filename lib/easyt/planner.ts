@@ -478,6 +478,10 @@ export function assessRouteOrder(input: {
   // presentation, which would otherwise hide the hard conflict from generation.
   const generation = generateRouteCandidates({ ...input, estimateLeg });
   const legacyPreferredModes = input.constraints?.transportModes?.map((mode) => mode === "drive" ? "road" as const : mode);
+  const interestTagsByStopId = Object.fromEntries(input.stops.flatMap((stop) => {
+    const fact = destinationKnowledge.forRouteScoring(stop).experienceTags;
+    return fact.status === "known" ? [[stop.id, fact.value] as const] : [];
+  }));
   const scoring = scoreRouteCandidates({
     origin: input.origin,
     candidates: generation.candidates,
@@ -489,6 +493,7 @@ export function assessRouteOrder(input: {
     availableDays: input.availableDays,
     allocations: input.allocations,
     picks: input.picks,
+    interestTagsByStopId,
     requiredStopIds: input.constraints?.requiredStopIds,
     fixedStartStopId: input.constraints?.fixedStartStopId,
     fixedEndStopId: input.constraints?.fixedEndStopId,
@@ -544,8 +549,16 @@ export function assessRouteOrder(input: {
   const scoreAdvantage = originalScore?.state === "scored" ? winner!.totalScore - originalScore.totalScore : Number.POSITIVE_INFINITY;
   const legacyMeaningful = improvementMinutes !== null && current.minutes !== null
     && improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
+  const timeTradeoffMinutes = current.minutes !== null && best.minutes !== null ? Math.max(0, best.minutes - current.minutes) : null;
+  const replacesBacktracking = originalScore?.state === "scored"
+    && originalScore.penalties.some((penalty) => penalty.code === "unnecessary-backtracking")
+    && !winner!.penalties.some((penalty) => penalty.code === "unnecessary-backtracking");
+  const acceptableBacktrackingTradeoff = timeTradeoffMinutes !== null && current.minutes !== null
+    && replacesBacktracking
+    && timeTradeoffMinutes <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffMinutes
+    && timeTradeoffMinutes / Math.max(1, current.minutes) <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffRatio;
   const scoreMeaningful = scoreAdvantage >= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.minimumRecommendationScoreAdvantage
-    && (current.minutes === null || best.minutes <= current.minutes);
+    && (current.minutes === null || best.minutes <= current.minutes || acceptableBacktrackingTradeoff);
   const winnerMatchesCurrent = best.stops.every((stop, index) => stop.id === input.stops[index]?.id);
   if ((originalViable && !legacyMeaningful && !scoreMeaningful) || winnerMatchesCurrent) {
     return {
@@ -566,6 +579,8 @@ export function assessRouteOrder(input: {
     ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."]
       : improvementMinutes !== null && improvementMinutes > 0
         ? [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]
+        : acceptableBacktrackingTradeoff && timeTradeoffMinutes !== null
+          ? [`It removes material geographic backtracking for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
         : [scoring.explanation]),
     ...(bestLongLegs < currentLongLegs ? ["It also reduces the number of travel-heavy days."] : ["It keeps the route moving in one direction instead of doubling back."]),
   ];

@@ -1,3 +1,177 @@
+# Morrovia Help page QA
+
+## 2026-08-29 content-composition implementation
+
+### Comparison target and evidence
+
+- **Source visual truth:** `/Users/shaun/Downloads/ChatGPT Image Aug 29, 2026, 06_32_55 PM.png` (1122 × 1402 px). Per the implementation brief, it is authoritative for content hierarchy, search/topics/questions/support grouping and relative whitespace only; it is not visual authority for the shell, controls, panels, typography, colour, spacing or responsive chrome.
+- **Browser-rendered implementation:** `artifacts/help-page/help-production-1024-top.jpg`, `artifacts/help-page/help-production-1024-support.jpg`, `artifacts/help-page/help-production-390-top.jpg`, `artifacts/help-page/help-production-390-expanded.jpg`, `artifacts/help-page/help-390-search-result.jpg` and `artifacts/help-page/help-390-no-results.jpg`.
+- **Viewport, dimensions and density normalization:** desktop evidence is 1024 × 900 CSS px and raster px; mobile evidence is 390 × 844 CSS px and raster px. The approved 1122 × 1402 source combines desktop and mobile compositions in one image, so comparison uses its corresponding composition regions rather than treating the combined raster as a single browser viewport. Browser geometry separately verified 320, 390, 430, 768, 1024, 1440 and 1680 CSS px with document width equal to viewport width.
+- **State:** public `/journey/help` route with the production Morrovia navigation and footer; default, expanded topic, filtered search and empty-result states; signed-out shell.
+
+### Full-view and focused comparison evidence
+
+- **Full hierarchy:** the final page preserves the approved sequence: functional hero and search, scannable topic grid/rows, popular-question disclosures, then the grouped support and travel-information panel. The 1024 top/support and 390 top/expanded captures together cover every major region at readable scale.
+- **Focused interactions:** the 390 expanded capture verifies compact rows and natural disclosure expansion. Search-result and no-result captures verify immediate filtering, clear state and the understandable empty result. Browser interaction checks also passed Escape clearing, Enter/Space disclosure activation and live result status.
+- **Responsive geometry:** zero page-level horizontal overflow at every required width. Topic layout resolves to one column at 320/390/430, two at 768 and three at 1024/1440/1680. Mobile topic actions are 64px high; the support block stacks and the canonical mobile dock remains unobstructed.
+- **Accessibility and runtime:** semantic h1/h2/h3/h4 hierarchy, labelled search, `aria-expanded`/`aria-controls`, visible canonical focus treatment, decorative image/icon hiding and descriptive destinations are present. The final production-browser pass reported no console errors or warnings.
+
+### Comparison history
+
+1. The initial implementation used native `details`/`summary` disclosures. Browser accessibility inspection exposed a P2 state-contract gap, and keyboard activation was inconsistent in the test surface. The final implementation composes the canonical `EasyTButton`, adds explicit `aria-expanded`/`aria-controls` and handles Enter and Space directly; the production-browser retest passed both keys.
+2. The first local visual capture was blocked by a stale service-worker cache on port 3000, which served old/empty development CSS. Verification moved to a fresh origin, and the final evidence was recaptured from the clean production build on port 3002 with no browser errors.
+3. Final comparison found no actionable P0, P1 or P2 issue. The remaining differences from the source are intentional design-system decisions required by the brief.
+
+### Conceptual reuse and deliberate differences
+
+- **Reused conceptually from the mockup:** Help-centre eyebrow/title/lede, prominent real search, topic-grid concept, compact mobile topic rows, popular-question disclosures, and the grouped Still stuck?/travel-information ending.
+- **Production/Storybook implementations used instead:** `EasyTNavigation`, the layout-owned `MorroviaFooter`, `EasyTField`, `EasyTButton`, `EasyTLinkButton`, current Lucide icon treatment, `--morrovia-*` tokens, canonical public width/focus/mobile dock and the existing `global-route-confirm.png` illustration.
+- **Deliberate visual differences:** the live header, logo, auth/language controls, compact menu, mobile dock and footer replace the mock shell; Morrovia field/button/panel typography, colours, radii and borders replace screenshot styling; the support surface uses the existing lilac token; invented footer columns, social links, newsletter, support address and “See all” destination are omitted.
+- **New components:** no new shared UI family or Storybook-only copy was created. `HelpCenter`, `TopicDisclosure` and `QuestionDisclosure` are Help-page-specific composition components because Storybook contains no canonical Help/accordion owner; all actionable controls compose the existing canonical controls.
+
+### Verification
+
+- Focused Help/About shell tests: passed (7/7).
+- `npm run typecheck`: passed.
+- `npm run build`: passed; `/journey/help` prerendered successfully.
+- `npm run build-storybook`: passed with Help default, 390px, expanded, search-result and no-result stories.
+- `npm run audit:ui`: passed with no new design-system debt or local exception.
+- `git diff --check`: passed.
+
+**final result: passed**
+
+---
+
+# Morrovia About page QA
+
+## 2026-08-29 approved-mockup implementation
+
+### Comparison target
+
+- **Approved source:** `/Users/shaun/Downloads/ChatGPT Image Aug 29, 2026, 06_14_19 PM.png` (1122 × 1402 px), with `/Users/shaun/Downloads/ChatGPT Image Aug 29, 2026, 05_55_00 PM.png` used as secondary composition context.
+- **Browser-rendered implementation:** `artifacts/about-page/about-1440-final-2.jpg`, `artifacts/about-page/about-390-final.jpg`, and `artifacts/about-page/about-320-final.jpg`.
+- **Focused evidence:** `artifacts/about-page/about-1440-sections.jpg` and `artifacts/about-page/about-1440-lower.jpg` cover the middle and lower editorial regions at readable scale.
+- **Viewport and density:** desktop was exercised at 1440 × 1000 CSS px, mobile at 390 × 844 and 320 × 720 CSS px. The in-app Browser returned host-scaled rasters of 1600 × 1111, 433 × 938, and 356 × 800 respectively; judgments use the measured CSS geometry rather than treating host capture density as product drift.
+- **State:** public About route with the canonical landing navigation, current Overview workspace screenshot, reusable Morrovia illustration assets, primary trip-planning CTA, and canonical global footer.
+
+### Required fidelity surfaces
+
+- **Composition and hierarchy:** the approved editorial sequence is retained: promise and product proof, why Morrovia exists, four core capabilities, real-travel principles, four-step process, and scenic closing CTA. The copy leads the product screenshot on mobile.
+- **Typography:** existing Morrovia Georgia display, Geist UI, and Geist Mono metadata roles remain authoritative. The desktop promise resolves to the approved two-line rhythm; smaller viewports wrap naturally without clipping.
+- **Spacing and color:** section rhythm, grids, borders, actions, pink signals, indigo text, lilac surfaces, and focus treatment use existing `--morrovia-*` tokens and shared primitives.
+- **Images and product truth:** the page reuses the current Morrovia decision, preparation, and scenic illustration assets. Product proof uses the current Overview / Map / Itinerary workspace with before-you-go work consolidated into Overview; the obsolete Prep tab shown in the concept was not reproduced.
+- **Content and actions:** approved About copy is preserved. About is current in desktop and compact navigation, the footer About destination is real, and the primary CTA uses the canonical `EasyTLinkButton` to start a trip.
+- **Responsive behavior:** browser geometry at 320, 390, 430, 768, 1024, 1440, and 1680 CSS px reported document width equal to viewport width. Four- and three-column regions collapse cleanly, and mobile actions retain at least the canonical 44px target.
+
+### Findings and comparison history
+
+1. The first desktop comparison found a P2 hierarchy mismatch: the hero promise wrapped to four lines and visually overpowered the product proof. The text column, display size, and deliberate line grouping were refined so the final 1440px render matches the approved two-line hierarchy.
+2. The final full-view and focused comparisons found no actionable P0, P1, or P2 visual, responsive, interaction, accessibility, or content-integrity issue.
+3. Intentional differences are production decisions: the live Morrovia header/footer and existing scenic art replace unsupported mock-only links, social icons, and invented imagery; the product screenshot reflects the current three-tab workspace rather than restoring obsolete Prep navigation.
+
+**final result: passed**
+
+---
+
+# Storybook visual-system catalogue QA
+
+## 2026-08-29 audit and documentation pass
+
+- **Scope:** Storybook and audit documentation only. No production component, page layout, product logic, Map/Itinerary behavior or persistence path was redesigned or migrated.
+- **Information architecture:** all stories now live under the explicitly sorted `Morrovia / 01 Foundations` through `06 Audit` hierarchy. Empty placeholder categories were not added.
+- **Evidence model:** the catalogue represents 27 recurring semantic families through 38 audited implementation records: 20 canonical, 6 duplicate/migration candidates, 8 intentional exceptions and 4 undecided. Page-bound patterns that cannot be isolated safely are documented instead of recreated.
+- **Generated foundations:** repository-local deterministic inventory covers 755 grouped raw colours, 76 observed spacing values, 56 grouped raw radii, 182 grouped raw shadows, 6 font-family groups and 41 breakpoint values, alongside canonical Morrovia tokens.
+- **Responsive evidence:** Storybook 10 viewport globals now apply actual 320, 390, 768, 1024 and 1440 widths. Current-run browser probes at each width rendered the representative Itinerary/TripShell stories without page-level horizontal overflow; the 390 story iframe measured exactly 390px.
+- **Current-run screenshots:** `artifacts/storybook-visual-system-audit/08-audit-summary-desktop.jpg` and `artifacts/storybook-visual-system-audit/11-itinerary-390-verified.jpg`. The desktop evidence shows the ordered hierarchy and audit totals; the mobile evidence shows Storybook's real 390px viewport, not a fake device frame.
+- **Highest-value review areas:** page-local action controls; raw colour/radius/shadow concentration in `journey.module.css`, Homepage, Builder and account styling; page-owned heading scale; status-chip taxonomy; and card radius/elevation differences.
+- **Accessibility review support:** stories expose focus, disabled, loading, selected, status and semantic control states through the existing Storybook accessibility addon. No new accessibility dependency was introduced.
+
+**audit result: passed; migration deliberately not started**
+
+---
+
+# Overview Prep consolidation QA
+
+## 2026-08-29 cleanup and regression pass
+
+- **Canonical ownership:** preparation status, tasks, actions and grouping are derived in `lib/easyt/trip-prep.ts`; provider/profile lifecycle lives in `components/easyt/use-trip-prep-readiness.ts`; the shared task/editor presentation lives in `components/easyt/trip-preparation.tsx`; Overview composes progress and information hierarchy in `components/easyt/trip-overview-workspace.tsx`.
+- **Standalone Prep removal:** the old page client, workspace, duplicate preparation/readiness cards, stories and page-local styles were removed. Both legacy Prep routes are redirect-only and the trip shell exposes exactly Overview, Map and Itinerary.
+- **State evidence:** deterministic stories cover incomplete/complete and partial readiness, missing optional data, provider failure, minimal/long trips, today/future departure and zero/multiple health findings. Focused tests cover the same derivation boundaries.
+- **Responsive evidence:** current-run browser geometry at 320, 390, 768, 1024, 1440 and 1680 CSS px reported no page-level horizontal overflow. Mobile action targets are at least 44px; the progress strip, preparation tasks and route content remain readable.
+- **Regression evidence:** the canonical Map story retained one MapLibre canvas and its existing route behavior; the Itinerary story retained direct timeline editing and contextual rail behavior. Browser evidence is in `artifacts/overview-prep-cleanup/`.
+
+**cleanup result: passed**
+
+## Comparison target
+
+- **Approved Option A reference:** `/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/TemporaryItems/NSIRD_screencaptureui_lhHSZb/Screenshot 2026-08-29 at 11.21.43 AM.png` (1562 × 1592 px).
+- **Browser-rendered implementation:** `artifacts/overview-prep-consolidation/desktop-1440.png` and `artifacts/overview-prep-consolidation/mobile-390.png`.
+- **Combined comparison inputs:** `artifacts/overview-prep-consolidation/comparison-full.png` and `artifacts/overview-prep-consolidation/comparison-focus.png` place the reference and implementation side by side.
+- **Preview:** `http://localhost:6006/?path=/story/components-trip-overview-workspace--active-planning`.
+- **State:** deterministic Cusco, Sacred Valley and Arequipa fixture using canonical trip, booking-readiness, traveller-profile and saved-checklist data. Provider-unavailable behavior has a separate Storybook fixture.
+
+## Required fidelity surfaces
+
+- **Preserved areas:** the current trip identity header, Next Step / Trip Health section and Your Route retain their existing component structure and visual treatment. The shell now exposes exactly Overview, Map and Itinerary.
+- **Planning Progress:** the existing progress strip now projects seven truthful categories—itinerary, accommodation, transport, passport and traveller details, insurance, connectivity and saved checklist—from existing domain logic. Incomplete categories expose their established action only when one exists.
+- **Before You Go:** the compact Must do / Good to do layout reuses the canonical Prep task cards, details disclosure, provider actions, local confirmation and error handling. Completed tasks are omitted from the compact summary but remain available through detailed preparation guidance.
+- **Typography and tokens:** current Morrovia display, UI and metadata roles, semantic surfaces, borders, status colors, radii and focus rings remain authoritative. No parallel card, button, chip or status primitive was introduced.
+- **Responsive behavior:** the seven-category strip resolves to 7 / 4 / 2 / 1 columns across wide desktop, tablet and mobile; Before You Go resolves from two groups to one stacked column. The page has no horizontal overflow at 320, 390, 768, 1024, 1440 or 1680px.
+
+## Interaction and accessibility evidence
+
+- The legacy per-trip `/prep` route performs a server redirect to the trip Overview; primary navigation and account navigation no longer advertise Prep.
+- Internal Prep handoffs now target `#before-you-go`; useful Prep derivation, provider actions and detailed guidance remain reusable.
+- Provider actions remain real links with external-destination labels; local tasks retain canonical completion behavior. Loading and provider failures stay scoped to readiness content.
+- Native links, buttons and details controls remain keyboard reachable with visible focus. The browser check confirmed three shell tabs, local details expansion, no page-level overflow and no route-changing side effect from the guidance disclosure.
+
+## Comparison history
+
+1. The first comparison confirmed the approved information architecture but showed the compact Prep cards denser than Option A.
+2. The final refinement retained the two Must do / Good to do groups while presenting one scannable full-width task row per group, matching the reference hierarchy without copying unsupported task data.
+3. Final side-by-side inspection found no actionable P0, P1 or P2 visual, responsive, interaction, accessibility or content-integrity issue. Trip names, health findings and completion states differ intentionally because the implementation uses its deterministic canonical fixture rather than the reference screenshot's sample data.
+
+**final result: passed**
+
+---
+
+# Trip Itinerary interactive-workspace redesign QA
+
+## Comparison target
+
+- **Approved reference:** `/Users/shaun/Downloads/ChatGPT Image Aug 29, 2026, 10_54_31 AM.png` (1672 × 941 px).
+- **Browser-rendered implementation:** `artifacts/itinerary-workspace/itinerary-desktop-1440.png` (1440 × 1166 px) and `artifacts/itinerary-workspace/itinerary-mobile-390.png` (390 × 844 px).
+- **Combined comparison input:** `artifacts/itinerary-workspace/reference-vs-implementation.png` places the approved reference and final browser render side by side.
+- **Preview:** `http://localhost:6007/iframe.html?id=components-trip-itinerary-workspace--default&viewMode=story`.
+- **State:** canonical seven-day Cusco, Sacred Valley and Arequipa fixture with real trip dates, stops, legs, authored activities, booking, note, recommendation and saved place. The local map correctly shows its existing missing-key fallback rather than fabricated tiles.
+
+## Required fidelity surfaces
+
+- **Shell and composition:** the existing global navigation, TripShell identity, metadata and Overview / Map / Itinerary / Prep tabs are reused unchanged. Only the area below the tab bar becomes the requested day rail, selected-day timeline and context rail.
+- **Typography and tokens:** current Morrovia display, UI and metadata roles remain intact. The selected-day hierarchy, active pink marker, indigo actions, lilac surfaces, borders, radii and focus treatment use existing semantic tokens and shared controls.
+- **Content integrity:** dates, locations, transfers, door-to-door timings, plan items, bookings, notes, recommendations and saved ideas come from the trip model. Unsupported weather, progress, reservation states and travel facts from the concept were deliberately omitted.
+- **Actions and map:** Ask Morrovia reuses the existing trip co-pilot. Add note, Find ideas, Shape day and insertion points deep-link into the canonical Map workspace with the selected stop and exact day. The compact map uses the existing `JourneyPlannerMap` in explicit preview mode; the primary Map default remains unchanged.
+- **Responsive behavior:** 320 and 390 use a horizontally scrollable day strip, stacked timeline and accordion context sections. 768 stacks to one column, 1024 uses a two-column workspace with the context below, and 1440 / 1680 retain all three regions.
+
+## Interaction and verification evidence
+
+- Browser geometry at 320, 390, 768, 1024, 1440 and 1680 reported document width equal to viewport width with no page-level horizontal overflow.
+- All seven day tabs were selected in turn and exposed their canonical date, location, plan summary and full day content. Day 4 exposed the real Cusco → Sacred Valley transfer and three exact-day Map links.
+- Mobile Day map details collapsed and reopened through the native summary control. The empty-itinerary story retained the complete TripShell and rendered the existing no-days state without overflow.
+- The canonical Golden Triangle Map story still rendered one interactive map, three interactive stop controls and zero preview markers, with no console error.
+- No browser console errors were produced. The only browser diagnostic was the existing Storybook warning about deprecated Next.js runtime config.
+- Focused presentation tests, Map presentation tests, affiliate-link tests, TypeScript, strict UI convergence audit, Storybook production build and the Next.js production build all passed.
+
+## Comparison history
+
+1. Pass 1 established the requested three-region workspace using canonical trip content and existing Map/co-pilot/control primitives. Unsupported concept facts were removed rather than simulated.
+2. Pass 2 strengthened selected-day contrast, tightened timeline spacing and density, clarified context grouping, increased mobile accordion targets and deduplicated saved ideas by normalized title.
+3. The final source-to-implementation comparison found no actionable P0, P1 or P2 visual, responsive, interaction, accessibility or content-integrity issue. Remaining differences are intentional canonical-data differences: this trip has fewer backed bookings and recommendations than the concept, and the local map has no configured tile key.
+
+**final result: passed**
+
+---
+
 # Map workspace composition refinement QA
 
 ## Comparison target
@@ -577,6 +751,392 @@ No actionable P0, P1, or P2 differences remain.
 
 - P3: production image subject and crop will vary with the traveller's saved itinerary; this is expected and preferable to hard-coding the mock's Cusco photograph.
 - P3: the implementation omits mock-only editing controls until an existing production behavior can be reused safely.
+
+final result: passed
+
+---
+
+# Product Tour landscape-proof QA
+
+## 2026-08-31 focused presentation repair
+
+### Comparison target
+
+- **Problem evidence:** the five supplied Tour screenshots from `/Users/shaun/Desktop/Screenshot 2026-08-31 at 12.32.17 PM.png` through `/Users/shaun/Desktop/Screenshot 2026-08-31 at 12.32.38 PM.png` show portrait phone frames, weak screenshot scale, large unused areas and inconsistent product proof.
+- **Browser-rendered implementation:** `artifacts/product-tour-landscape/desktop-slide-01.png` through `desktop-slide-05.png`, plus `mobile-slide-04.png`.
+- **Combined comparison input:** `/private/tmp/tour-before-after-comparison.png` placed every supplied desktop state and all five final deterministic Storybook states into one visual review.
+- **Viewports and state:** all five slides were inspected at 1440 × 1000, 1024 × 900 and responsive mobile size. The in-app Browser separately measured the mobile document width equal to its inner width. The fixture is one privacy-safe eight-day Peru trip for two: Lima arrival, Cusco (3 nights), Sacred Valley (2), Arequipa (2), food and culture interests, three stays, route legs, practical tasks and a populated Cusco day.
+
+### Required fidelity surfaces
+
+- **Layout:** desktop and tablet use the existing Tour dialog as a restrained landscape split, with the product proof occupying the larger track. Mobile retains the established stacked dialog and uses dedicated 3:4 crops inside the existing compact frame.
+- **Typography and tokens:** the current Morrovia display, UI and metadata roles, paper/lilac/ink/signal/action tokens, canonical border, radius, shadow and focus treatments remain authoritative.
+- **Product truth:** Trip Capture, current route review, Overview, Map and Itinerary are sourced from deterministic Storybook states. Overview uses current Overview/Map/Itinerary IA; Map is map-dominant; Itinerary is a populated Morning/Midday/Afternoon/Evening day with activities and day navigation. No Prep-era UI, auth recovery banner, placeholder text or private account data appears in the final assets.
+- **Copy:** all five English slide labels, titles and bodies match the approved concise wording. Back, Next, Done, Skip, close, progress and five-step order remain unchanged.
+- **Asset dimensions:** desktop assets are exactly 1600 × 1000 (16:10); mobile assets are exactly 750 × 1000 (3:4). Each is an intentional feature crop rather than a shrunken full-page screenshot.
+
+### Interaction, accessibility and responsive evidence
+
+- The existing dialog role, labelling, focus entry/return, Tab trap, Escape close, overlay close and Back/Next/Done/Skip behavior remain present and covered by focused tests.
+- Deterministic Storybook slide stories expose all five final states without changing production defaults. Desktop 1440 and 1024 comparison montages retain the landscape media/copy hierarchy on every slide.
+- Mobile media stacks before copy; the mobile grid and content tracks have explicit zero-min-width constraints. Browser geometry reported document `scrollWidth` equal to `innerWidth`, and the normalized mobile evidence shows both action buttons fully contained.
+- Final static Tour images contain no browser banners, Storybook error panels, loading states or runtime error copy. The isolated Storybook runtime continues to emit the repository-wide Next.js `next/config` deprecation warning only.
+
+### Comparison history
+
+1. The supplied state used a desktop phone bezel and tall page captures, making useful UI small and leaving most of the frame empty. The final desktop state removes that metaphor and uses a 16:10 editorial product-proof surface.
+2. The first coherent fixture exposed an invalid canonical origin endpoint and unstable Itinerary map pins. The endpoint was corrected through the canonical trip model, and the unnecessary preview pins were removed; the populated production Itinerary then rendered cleanly.
+3. The first narrow Chrome artifact clipped the dialog because of Chrome's minimum headless layout width. Browser geometry confirmed no page overflow; the mobile grid was still hardened with explicit zero-min-width sizing, and the final evidence was normalized from an unclipped responsive render.
+4. The final source-to-implementation comparison found no actionable P0, P1 or P2 visual, responsive, interaction, accessibility or content-integrity issue.
+
+final result: passed
+
+---
+
+# AI and speech transparency refinement QA
+
+- Source visual hierarchy: `/Users/shaun/Documents/Morrovia/artifacts/design-system-audit/16-homepage-tokenized.png`
+- Refined default capture: `/Users/shaun/Documents/Morrovia/artifacts/ai-speech-transparency/after-1440.png`
+- Mobile disclosure evidence: `/Users/shaun/Documents/Morrovia/artifacts/ai-speech-transparency/speech-first-use-390.png`, `/Users/shaun/Documents/Morrovia/artifacts/ai-speech-transparency/ai-disclosure-390.png`
+- Verified Storybook surface: `http://127.0.0.1:6006/?path=/story/morrovia-05-product-patterns-trip-capture--compact-default-hierarchy`
+- Responsive widths checked: 320, 390, 768, 1024 and 1440 CSS px.
+
+## Findings
+
+The established Homepage capture and the refined Storybook implementation were reviewed together. The default composition again reads as prompt, Speak, trip attributes and primary action. The added speech-info icon and `AI-assisted` trigger are quiet, contextual, and do not compete with `Plan my trip`. No persistent explanatory paragraph remains in the normal card flow.
+
+The first mobile comparison exposed a clipped speech panel above the 390 px viewport. The shared disclosure now becomes a fixed compact bottom panel below 520 px. Final 320/390 checks show no horizontal overflow; the speech and AI panels stay fully within the viewport. Desktop remains an anchored popover without layout reflow.
+
+Interaction checks verified first-use opening, Privacy links, explicit `Start speaking`, Escape dismissal with focus return, outside-click dismissal, later info-trigger reopening, AI disclosure opening, and typed text preservation. The disclosure is a labelled non-modal dialog; its trigger exposes expanded/controls state and uses native buttons with visible focus.
+
+The default filled capture measures approximately 306 px high at 768 px and wider, 323 px at 390 px, and 396 px in the true 320 px Storybook viewport. The source visual and implementation retain the same compact conversion hierarchy; no P0, P1 or P2 visual discrepancy remains.
+
+## Validation
+
+- `npm run typecheck` — passed.
+- `npm run build` — passed.
+- `npm run audit:ui` — passed.
+- Focused AI/speech and canonical-control tests — 18 passed.
+- `npm run build-storybook` — passed with existing bundle-size/plugin-timing warnings only.
+
+final result: passed
+
+---
+
+# Help page refinement design QA
+
+- Composition target: `/Users/shaun/Downloads/morrovia-help-mockup.png`
+- Current-state evidence: `/Users/shaun/Downloads/Screenshot 2026-08-29 at 7.17.35 PM.png` and `/Users/shaun/Downloads/Screenshot 2026-08-29 at 7.17.45 PM.png`
+- Browser-rendered desktop implementation: `/Users/shaun/Documents/Morrovia/artifacts/help-refinement/help-1440.png`
+- Selected-topic evidence: `/Users/shaun/Documents/Morrovia/artifacts/help-refinement/help-selected-topic-1440.png`
+- Mobile evidence: `/Users/shaun/Documents/Morrovia/artifacts/help-refinement/help-390.png`
+- Verified Storybook implementation: `http://localhost:6106/iframe.html?id=morrovia-05-product-patterns-help-page--desktop-default&viewMode=story`
+- Desktop implementation viewport: 1440 CSS px; capture output is 1600 px wide at the in-app browser's capture density.
+- Mobile implementation viewport: 390 × 844 CSS px; capture output is 433 × 938 px at the same capture density.
+- Responsive viewports: 320, 390, 430, 768, 1024, 1440, and 1680 CSS px.
+- Normalization: the supplied composition target and final desktop/mobile captures were inspected together. The production Morrovia navigation, footer ownership, type roles, tokens, controls, and responsive shell remained authoritative where the target differed.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the current Morrovia display, UI, and metadata roles remain unchanged. The editorial hero and section headings retain their serif hierarchy while topic and question labels use the compact UI role.
+- Spacing and layout rhythm: the desktop page keeps one concise hero, a three-column 11-topic grid, a single full-width selected-topic detail surface, a two-column popular-question list, and a compact two-part support/disclaimer finish. Mobile reduces topics to one-line rows and places detail content below the full list.
+- Colors and tokens: page surfaces are white/paper with restrained line borders. Pink is limited to the existing signal eyebrow and small icon treatments; indigo marks selection and actions. The large lilac topic expansions, empty state, and support block were removed.
+- Image quality: the page reuses the single existing `/journey/illustrations/global-route-confirm.png` asset at desktop/tablet sizes. No new generated asset, CSS drawing, inline SVG, or placeholder imagery was introduced.
+- Copy and content: Help content fell from 1,619 to 1,020 words, a 37% reduction. Every topic has two or three questions, no selected topic exceeds 120 visible words, the six popular questions have concise answers, and passport, booking, saving, Trip Health, analytics, and official-source boundaries remain explicit.
+
+## Interaction, accessibility, and responsive evidence
+
+- Selecting a topic exposes exactly one related detail panel below the grid. Selecting the active topic again or using its labelled close control clears it; selection uses text, border, `aria-pressed`, `aria-expanded`, and `aria-controls`, not color alone.
+- Popular answers use native button disclosure behavior and expose `aria-expanded`/`aria-controls`. The redundant manual Enter/Space handler on native buttons was removed, eliminating its double-toggle risk.
+- Search filters topic names, questions, and answer text; Escape clears a populated search; the no-results state offers a canonical Clear search action. Browser checks exercised matching results, no results, reset, topic selection, topic replacement, and popular-question expand/collapse.
+- The document width matched the viewport at 320, 390, 430, 768, 1024, 1440, and 1680 px. Topic columns resolve to one, one, one, two, three, three, and three, with no page-level horizontal overflow. Mobile topic rows measured at least 59 CSS px high.
+- Semantic inspection found no duplicate IDs, unlabeled buttons, broken images, or application console errors. The isolated Storybook runtime emitted only the existing Next.js runtime-config deprecation warning.
+- The real support route remains `mailto:sw@shaunwhiting.com`; the disclaimer continues to link to the production Passport information page. Navigation and footer source files were not changed.
+
+## Storybook and validation
+
+- Production-backed stories now cover desktop default, 390 px default, selected topic, popular question expanded, search results, and no results.
+- Focused Help, public navigation, and About-shell tests passed; typecheck, strict UI convergence audit, Storybook production build, and Next.js production build passed.
+- The repository-wide copy test remains red on 14 pre-existing em dashes in the trip co-pilot and Storybook catalogue/audit files. No Help file appears in that failure list and the Help-specific copy test passes.
+- Strict UI audit debt is unchanged: Help adds no native-control, raw-color, raw-radius, raw-shadow, raw-font, inline-style, or page-width debt.
+
+## Accepted differences
+
+- The target's custom header/footer and line illustration are directional only. The implementation deliberately keeps Morrovia's production navigation, shared footer ownership, canonical controls, and existing illustration asset.
+- The target does not show the required Popular questions block. The implementation keeps the requested six concise questions without recreating a second content library.
+- The existing compact mobile navigation remains unchanged and can overlap a full-page screenshot during capture; normal viewport behavior has no horizontal overflow or clipped Help controls.
+
+final result: passed
+
+# Shared Homepage / New Builder trip-capture design QA
+
+- Source visual truth: `/Users/shaun/Desktop/Screenshot 2026-08-29 at 6.57.54 AM.png`
+- Replaced Builder reference: `/Users/shaun/Desktop/Screenshot 2026-08-29 at 6.57.46 AM.png`
+- Homepage implementation: `http://127.0.0.1:3021/journey/home`
+- New Builder implementation: `http://127.0.0.1:3021/journey/new`
+- Homepage browser capture: `/private/tmp/morrovia-trip-capture-home-final.png`
+- Builder browser capture: `/private/tmp/morrovia-trip-capture-builder-final.png`
+- Combined comparison: `/private/tmp/morrovia-trip-capture-comparison.png`
+- Implementation: `components/easyt/morrovia-trip-capture.tsx` with one scoped CSS module and shared Storybook coverage.
+
+## Full-view and focused comparison evidence
+
+The source Homepage screenshot and both production-route captures show the same compact trip-capture anatomy: pink eyebrow, large prompt, overlaid Speak control, date/traveller/interest chips, and right-aligned `Plan my trip` action. Runtime measurements report the same 560px component width and approximately 305px component height on Homepage and Builder. The old Builder-only eyebrow, heading, explanatory copy, Continue action, and extraction hint no longer render.
+
+## Required fidelity surfaces
+
+- Typography and copy: both routes consume the same component and therefore the same type tokens, labels, placeholder, voice affordance, and CTA text.
+- Spacing and layout: both routes consume the same CSS module; desktop browser measurements differ by less than one pixel in height and are identical in width.
+- Colours and tokens: the component uses Morrovia semantic tokens and existing shared controls rather than page-local colour values or parallel primitives.
+- Assets: the capture contains no raster artwork; controls reuse the established Lucide and voice-control implementations.
+- States: empty, filled, loading, error, and 390px mobile states are covered in `Morrovia/Trip capture` Storybook stories.
+- Responsive rules: the component is fluid below its 560px maximum, wraps its option/action row at 720px, stacks the primary action at 430px, and tightens compact controls at 340px. The in-app browser viewport capability did not change its reported 1326px CSS viewport during this pass, so exact 320/390/768/1024/1440 browser screenshots could not be captured. Static breakpoint inspection, the mobile Storybook state, Storybook production build, and shared single-implementation architecture provide the responsive evidence for this change.
+
+## Interaction and pipeline evidence
+
+- Typing enables the existing primary action; disabled, loading, and error states remain controlled by each route wrapper.
+- Homepage and Builder retain the existing date range, traveller quantity, interest selection, speech input, and submit handlers.
+- Submitting `Denver, Dallas, Puerto Vallarta and Oaxaca, starting from Paris.` through the New Builder reached the existing review flow with Paris as origin and all four destination intents retained; no resolver or planner behavior was changed.
+- Production browser console review found no application errors on either route.
+
+## Comparison history
+
+1. Before extraction, Homepage and Builder rendered separate capture surfaces with different hierarchy, copy, CTA, and spacing.
+2. The first convergence pass extracted the smallest controlled shared component and moved both route-specific state wrappers onto it.
+3. The compliance pass replaced native chip buttons with the established shared button primitive, documented the textarea/voice composite exception, and reduced the UI-convergence baseline.
+4. The post-fix browser comparison found no remaining actionable P0, P1, or P2 visual, state, interaction, or pipeline issue.
+
+## Validation and residual gap
+
+Typecheck, production build, Storybook build, Builder gate, trip-capture suite, Homepage route/layout checks, UI audit, UI-convergence tests, and whitespace validation all pass. Exact responsive browser screenshots remain a P3 tooling gap because the in-app viewport override did not take effect; no implementation defect or horizontal-overflow signal was found.
+
+final result: passed
+
+---
+
+# Homepage Angkor edge QA
+
+- Implementation: `http://localhost:3010/journey/home`
+- Final 1440 px capture: `artifacts/homepage-hero-refinement/angkor-fade-final-1440-capture.jpg`
+- Focused right-edge capture: `artifacts/homepage-hero-refinement/angkor-edge-final-1440.jpg`
+- Root cause: the opaque Angkor source canvas extended 96 px beyond the hero while the original radial mask was still partially opaque at the hero's clipping boundary.
+- Correction: the existing radial watercolor mask is intersected with a scene-specific right-edge feather that reaches full transparency immediately before the approved clip boundary. Position, scale, route geometry, content, and blending are unchanged.
+- Final visual check: the right-side sky and watercolor cloud dissolve progressively into the page background with no detectable rectangular source-image boundary.
+- Focused homepage hero tests and `git diff --check` passed.
+
+final result: passed
+
+---
+
+# Homepage hero route-strip removal and illustration blending QA
+
+- Approved reference: `/Users/shaun/Downloads/ChatGPT Image Aug 28, 2026, 05_54_08 PM.png`
+- Production implementation: `http://localhost:3010/journey/home`
+- Before capture: `artifacts/homepage-hero-refinement/before-1536.png`
+- Final 1536 × 1024 capture: `artifacts/homepage-hero-refinement/after-1536.png`
+- Side-by-side comparison: `artifacts/homepage-hero-refinement/reference-vs-implementation.png`
+- Responsive captures: `artifacts/homepage-hero-refinement/after-320.png`, `after-390.png`, `after-768.png`, `after-1024.png`, `after-1440.png`, and `after-1728.png` in the same directory.
+
+## Comparison findings
+
+- P1 resolved: the sample Bangkok → Siem Reap → Phnom Penh → Ho Chi Minh City route strip no longer competes with the real trip prompt. Browser inspection confirms no route-strip element is rendered.
+- P1 resolved: all four destination scenes now use individually tuned radial feather masks, varied scale, and asymmetric positioning. Their pale canvas edges dissolve into the page instead of reading as four equal rectangular tiles.
+- P2 resolved: removing the route strip leaves deliberate negative space between the prompt and the lower Rome/Sydney scenes; the benefits row remains immediately below the complete hero composition.
+- P2 resolved: the decorative route paths were made less symmetrical while retaining the existing production SVG, Morrovia action token, and four canonical pin positions.
+- P2 resolved: the mobile composition retains all four scenes in a compact decorative band below the primary prompt instead of discarding half of the approved journey frame.
+
+## Responsive and interaction evidence
+
+- At 320, 390, 768, 1024, 1440, and 1728 px, `documentElement.scrollWidth` equals `clientWidth`; no page-level horizontal overflow was found.
+- All checked widths render exactly four destination scenes and zero route-strip elements.
+- The live homepage form, speech control, dates, traveller and interests actions, and Plan my trip CTA remain unchanged and above the decorative layer.
+- Decorative images, dotted route, and pins remain hidden from assistive technology through the existing `aria-hidden` frame. No new interactive or duplicate live-region surface was introduced.
+
+## Accepted differences
+
+- The reference integrates navigation and hero artwork inside one rounded concept frame. The production page intentionally retains Morrovia's existing shared navigation and page shell, as required by this scoped refinement.
+- The production prompt retains its real input sizing, loading behavior, and responsive controls rather than using the concept's static representation.
+
+No actionable P0, P1, or P2 visual, responsive, or interaction finding remains in the requested scope.
+
+final result: passed
+
+---
+
+# Routes discovery refinement design QA
+
+- Source visual truth: `/Users/shaun/Downloads/ChatGPT Image Aug 28, 2026, 07_02_53 PM.png`
+- Browser-rendered desktop implementation: `/Users/shaun/Documents/Morrovia/artifacts/routes-refinement/after-1440-viewport-v2.png`
+- Combined comparison input: `/Users/shaun/Documents/Morrovia/artifacts/routes-refinement/reference-vs-implementation-final.png`
+- Responsive evidence: `/Users/shaun/Documents/Morrovia/artifacts/routes-refinement/after-320-final.png` and `/Users/shaun/Documents/Morrovia/artifacts/routes-refinement/after-390-final.png`
+- Viewports verified: 320, 390, 768, 1024, 1440, and 1680 CSS px
+- State: published route catalogue, default filters, English UI
+
+## Findings
+
+No actionable P0, P1, or P2 visual, responsive, content-integrity, or interaction issue remains.
+
+- Composition: the page retains one homepage-family scenic hero, compact filters, four featured journeys, one iconic-place row, one travel-style row, a calm next-step banner, and the shared footer.
+- Content integrity: every iconic-place card targets a published route that contains the named attraction; every style card derives its results from the published route interest taxonomy.
+- Visual hierarchy: the final desktop pass tightened the hero, route cards, supporting rows, and section gaps after the first comparison so the page reads as a curated catalogue rather than a content portal.
+- Responsive behavior: the document width matched the viewport at every required breakpoint. Mobile card rows scroll within their section without creating page-level overflow, controls retain usable targets, and the CTA stacks cleanly.
+- Interaction: route and wonder cards keep canonical Route Detail links, travel-style cards reveal their real filtered result set, and the shared Builder CTA keeps the existing `/journey/new` handoff.
+
+## Accepted differences
+
+- The approved mock illustrates six iconic places. Production currently surfaces four because Angkor Wat, Tikal, Cappadocia, Petra, and other mock examples do not all have a compatible published route in the current catalogue; empty or unsupported entries are intentionally omitted.
+- The production CTA uses the shared Morrovia primary button treatment rather than creating a one-off pink button variant.
+
+final result: passed
+
+---
+
+# Homepage four-destination hero design QA
+
+- Source visual truth: `/Users/shaun/Downloads/ChatGPT Image Aug 28, 2026, 05_54_08 PM.png`
+- Implementation: `http://localhost:3010/journey/home`
+- Before captures: `artifacts/homepage-four-destination/before-1440.png`, `artifacts/homepage-four-destination/before-390.png`
+- Final captures: `artifacts/homepage-four-destination/after-1440.png`, `artifacts/homepage-four-destination/after-wide.png`, `artifacts/homepage-four-destination/after-390.png`
+- Final side-by-side comparison: `artifacts/homepage-four-destination/reference-vs-implementation.png`
+- Tested state: English homepage, default two travellers, planner prompt entered, production Builder handoff completed.
+
+## Visual comparison evidence
+
+The final comparison confirms the approved central hierarchy: the existing Morrovia eyebrow, headline, lede, and live planner are centered inside four editorial destination scenes. Japan, Angkor Wat, Rome, and Sydney use one coherent watercolor treatment; pink pins and a dotted indigo route stay behind the product surface and outside the benefit row. The retained route summary remains visible below the planner because it is existing homepage content, but it no longer competes with or overlaps the submit action.
+
+## Responsive and interaction evidence
+
+- Wide desktop browser evidence reports a 1707 px document and viewport width with no horizontal overflow. A normalized 1440 px delivery capture is included for direct review.
+- The live 391 px browser evidence reports document width equal to viewport width, no horizontal overflow, readable headline/planner controls, and a deliberate two-fragment mobile artwork treatment. The route line and two secondary scenes are omitted below 760 px.
+- CSS breakpoints retain the complete four-scene frame through desktop/tablet, reduce scene scale and edge exposure at 1024/768, and use the simplified fragment band at 390/320.
+- Add dates, traveller, and interests controls remained visible and enabled. A real prompt submission navigated to `/journey/new?homeDraft=1` and preserved Tokyo, Kyoto, Osaka, ten-day intent, two travellers, and the Builder handoff state.
+- Decorative imagery and route marks are excluded from the accessibility tree; real planner controls and existing focus/keyboard behavior were not replaced.
+
+## Findings and accepted differences
+
+1. The first implementation inherited the old split-hero grid columns, placing the centered composition in the left column. The final hero explicitly resets to one centered grid column.
+2. The retained route summary initially inherited absolute positioning and covered the submit button. It now follows the planner with a measured 20 px gap.
+3. Mobile artwork initially collapsed because an inherited cross-axis rule gave the decorative frame zero width. The frame now stretches to the content width and renders two intentional fragments.
+4. The reference uses one continuous painted canvas. Production uses four independently optimized WebP scenes with soft edge masks so assets remain maintainable and responsive while preserving the same editorial composition.
+
+No actionable P0, P1, or P2 visual, overflow, interaction, or accessibility issue remains in the implemented hero scope.
+
+final result: passed
+
+---
+
+# Builder spacing, route-copy and canonical-footer QA
+
+## Comparison target
+
+- **Source visual truth:** `/Users/shaun/Downloads/Screenshot 2026-08-28 at 5.30.50 PM.png` (2048 × 1416 px). This is current-state evidence for the cramped navigation gap, zero-padding Stops field, redundant healthy-route copy and page-local footer.
+- **Implementation evidence:** `artifacts/builder-refinement/builder-step1-1440.png` (1920 × 1659 px), `builder-step2-1440.png`, `builder-step1-320.png` (427 × 2149 px), `builder-step1-390.png` (520 × 2037 px), and `footer-short-page-1440.png`.
+- **Combined comparison evidence:** `artifacts/builder-refinement/source-vs-implementation.png` (1920 × 830 px) places the supplied source and browser-rendered Step 1 state together. Both inputs were normalized to 960px width; the source became 960 × 664 and the implementation 960 × 830.
+- **Viewport and density:** browser geometry was verified at 320, 391, 768, 1024, 1440 and 1600 CSS px. Host-scaled captures use approximately 1.333 output pixels per CSS pixel; layout conclusions use the browser-reported CSS geometry, not raster density.
+- **State:** source and implementation both use a three-stop healthy-route Step 1. The implementation uses London → Tokyo → Takayama → Kyoto so Step 2 can also be exercised; the source's starting-point label differs and is not a visual acceptance target.
+
+## Required fidelity surfaces
+
+- **Fonts and typography:** the existing Morrovia display, UI and metadata roles are unchanged. No Builder heading, stepper or footer type style was modified.
+- **Spacing and layout rhythm:** the navigation-to-Builder gap is now owned by the page boundary and measures 32px desktop/wide, 28px tablet and 22px mobile. Internal stepper-to-content spacing remains untouched. The Stops field computes to 9px vertical and 10px horizontal padding with an 8px chip gap.
+- **Colors and visual tokens:** existing paper, ink, line, signal and action tokens remain unchanged. No new local control styling or card treatment was introduced.
+- **Image and asset quality:** this refinement does not add, remove or replace any visible image or icon asset.
+- **Copy and content:** the healthy state now retains only `ROUTE CHECK` and `Your route already flows well.` The reviewed-route facts, reorder reassurance and generic road-transfer trade-off are absent; coverage-change, fixed-commitment and avoid-driving warnings remain available.
+
+## Interaction and responsive evidence
+
+- Step 1 and Step 2 each measured a 32px navigation-to-Builder gap at 1440px.
+- At 320px the three stop chips wrap to three rows; at 391px they wrap to two. Every chip remains within the Stops field bounds and the field's `scrollWidth` equals its `clientWidth`.
+- Document width equals viewport width at 320, 391, 768, 1024 and 1600px, with one production footer in every checked state.
+- The shared Journey shell uses a column flex layout; a short login page placed the single footer at the viewport bottom, while the long Builder continued to scroll naturally.
+- Browser DOM and screenshots confirm `REVIEWED ROUTE FACTS`, the reorder reassurance and generic road-transfer sentence are not rendered in the healthy state.
+
+## Comparison history
+
+1. The supplied source showed an approximately 8px top margin from the Builder's own shell, zero Stops-field padding and a multi-paragraph healthy Route Check. The implementation moves the gap to the page boundary, sets the requested compact field padding and removes only redundant healthy copy.
+2. The first responsive pass confirmed 22px mobile spacing and clean chip wrapping with no horizontal overflow. No post-capture P0/P1/P2 fix was required.
+3. Footer consolidation was verified after moving the exact production `MorroviaFooter` to the Journey layout and removing page-local mounts. The Storybook production build includes `morrovia-footer.stories` importing that component directly.
+
+## Findings
+
+No actionable P0, P1 or P2 mismatch remains within this focused scope. The fixed mobile action dock appears at its viewport anchor in full-page screenshots; browser geometry confirms it does not create horizontal overflow or alter Stops-field containment.
+
+final result: passed
+
+---
+
+# Trip Overview correction-pass design QA
+
+- Approved source: `/Users/shaun/Downloads/ChatGPT Image Aug 28, 2026, 09_57_30 AM (3).png`
+- Detailed acceptance crop: `/Users/shaun/Desktop/Screenshot 2026-08-28 at 10.51.43 AM.png`
+- Previous implementation evidence: `/Users/shaun/Desktop/Screenshot 2026-08-28 at 10.47.09 AM.png`
+- Corrected 1440 capture: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-correction-1440.png`
+- Corrected 768 capture: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-correction-768.png`
+- Corrected 390 captures: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-correction-390.png`, `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-correction-390-route.png`
+- Direct comparison: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-correction-comparison.jpg`
+
+## Blocking acceptance checks
+
+- Planning Progress now has explicit summary, track, and footer rows. Browser geometry measured a consistent 10px gap and zero overlap between every track and its status/action at 390, 768, and 1440.
+- Route cards use one 178px image-led geometry, compact circular sequence numbers, an in-card `Journey origin` label, simple directional chevrons, and a one-line transfer beneath each applicable step. The expanded `From` pill and connector panels are gone.
+- Destination media resolves in canonical order: persisted plan media, the existing itinerary media catalogue, then the existing `/api/journey-place` resolver. Marrakech returned a provider-backed Unsplash image in runtime verification; no destination-specific mapping was added.
+- The compact map is the existing `JourneyPlannerMap` MapLibre component in a non-interactive preview mode. It consumes canonical origin/stop coordinates plus `mapRouteLegsFromTrip`, fits the whole route, exposes no planning controls, and links to the canonical Map workspace.
+- `Why this order` is one shallow banner with one canonical rationale and the existing detailed-itinerary action.
+- The accommodation endpoint returned `{ configured: false, properties: [] }` locally, so the compact fallback is correct. No hotel facts were fabricated or discarded.
+- Page overflow measured 0px at 390, 768, and 1440. The map remains beside the journey at 1440 and moves beneath it at 768/390.
+
+## Visual comparison result
+
+The direct comparison materially closes the composition gap: the readiness strip follows the reference rhythm, the journey is image-led rather than connector-led, the map and route now read as one composition, and the rationale no longer resembles an engine-debug card. Differences in stop count, geography, route shape, imagery, and provider inventory are canonical data differences rather than visual defects.
+
+No actionable P0, P1, or P2 visual findings remain.
+
+final result: passed
+
+---
+
+# Trip Overview presentation refinement design QA
+
+- Current-state source: `/Users/shaun/Desktop/Screenshot 2026-08-28 at 9.43.47 AM.png`
+- Approved visual direction: `/Users/shaun/Downloads/ChatGPT Image Aug 28, 2026, 09_57_30 AM (3).png`
+- Browser-rendered desktop implementation: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-after-1440-top.png`
+- Browser-rendered route implementation: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-after-1440-route.png`
+- Combined comparison input: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-design-comparison.png`
+- Responsive evidence: `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-after-320.png` and `/Users/shaun/.codex/visualizations/2026/08/27/01a044c5-35e1-7000-ba42-9341bab36af7/overview-after-390.png`
+- Production-backed QA state: guest trip built through the real public-route → Builder → Dates & nights → Build trip flow, with Cusco origin, Cusco / Ollantaytambo / Arequipa stops, nine days, three canonical legs and two travellers.
+- Comparison caveat: the approved reference depicts a seven-stop Georgia trip while the browser QA trip depicts a three-stop Peru trip. The comparison therefore evaluates hierarchy, grouping, density, typography, imagery behavior and action presentation rather than false pixel/content equivalence.
+
+## Findings
+
+No actionable P0, P1 or P2 visual, responsive, content, interaction or accessibility findings remain within the requested Overview scope.
+
+- Accommodation: the primary Trip.com action remains central. Overview asks the existing Booking Demand endpoint for at most one date- and coordinate-qualified property and validates the response before rendering factual name, address, rating or total. The QA environment returned no provider-confirmed property, so the implementation correctly used the compact destination-image fallback and Map Stay handoff rather than reproducing the mock's unsupported hotel, price, rating, reviews or amenities.
+- Trip Health: canonical headline, detail, severity and issue destinations remain intact. Two bordered issue rows are shown, and `Showing the 2 highest-priority of 3 checks` explains the relationship to the full count before the review action.
+- Planning progress: itinerary, stay and checklist percentages still come from the existing coverage/readiness functions. The section is now a compact three-column strip with existing small link-button actions rather than a second dashboard of isolated cards.
+- Route: the title now uses canonical date, stop and country facts. Stops use the first real persisted image for the stop before the existing destination resolver, retain number/name/nights and canonical transfer labels/timings, and fall back to an icon treatment only when no image exists. No duplicate map was introduced; the existing Open map handoff remains explicit.
+- Typography, color and shape: current Morrovia display/UI/meta faces, semantic tokens, Lucide icons, borders, radii and focus-ring treatment are retained. No new visual primitive or one-off asset system was added.
+
+## Responsive and accessibility evidence
+
+- Browser checks covered 320, 390-class (391 reported by the browser scale), 430-class (431), 768, 1024 and 1440 CSS px.
+- Document width equalled viewport width at every checked size; no page-level horizontal overflow was found.
+- The route changes to full-width 337 × 73 px stop rows at the 390-class viewport. At 768 px the desktop route strip has a contained 30 px internal overflow; at all other checked widths it has no overflow.
+- The Trip.com action, Map Stay handoff, health review and incomplete progress actions are 44 px high at 320/390/430. Native links preserve keyboard behavior and visible focus rings; the route list is labelled and focusable when its contained desktop overflow is present.
+- Browser console review found no application errors.
+
+## Comparison history
+
+1. The first pass only considered the first itinerary day when resolving a stop image, leaving useful persisted imagery unused. The resolver now prefers any real imaged day for that stop before using the existing destination-media fallback.
+2. The first mobile pass inherited the shared small-control height for health/progress actions. The Overview now overrides the shared control variable to 44 px only at the mobile breakpoint.
+3. Post-fix captures confirmed the approved hierarchy: decisive next step plus supporting visual, compact actionable Trip Health, reduced planning-progress strip and image-led route summary.
+
+## Accepted differences
+
+- The mock's named hotel, room photograph, recommendation label, price, review count, cancellation and breakfast claims are illustrative and intentionally absent unless the existing provider returns the corresponding factual fields. The current provider contract does not return a hotel image, review count, breakfast metadata or a Morrovia recommendation signal.
+- The mock's compact route map is intentionally omitted because Overview has no existing safe shared map-preview component. The canonical Map workspace remains the single map implementation.
+- Exact issue count, progress, route title, stop images, nights and transfer durations derive from the QA trip rather than the Georgia reference.
 
 final result: passed
 
@@ -1324,5 +1884,54 @@ No actionable P0, P1 or P2 findings remain. The longer implementation intro is a
 ## Follow-up polish
 
 No blocking follow-up. A future real-device pass may compare native select rendering across iOS and Android.
+
+final result: passed
+
+---
+
+# Dashboard design-system convergence QA
+
+- Source evidence: `/var/folders/gb/_l8hxm017mv0z46jd1lprhwr0000gn/T/TemporaryItems/NSIRD_screencaptureui_ZttcVH/Screenshot 2026-08-29 at 6.52.03 PM.png`
+- Browser-rendered desktop implementation: `/Users/shaun/Documents/Morrovia/artifacts/dashboard-convergence/dashboard-1440.png`
+- Mobile evidence: `/Users/shaun/Documents/Morrovia/artifacts/dashboard-convergence/dashboard-390.png`
+- Keyboard-focus evidence: `/Users/shaun/Documents/Morrovia/artifacts/dashboard-convergence/dashboard-390-card-focus.png`
+- Verified Storybook implementation: `http://localhost:6106/iframe.html?id=morrovia-05-product-patterns-trips-dashboard--active-trips&viewMode=story`
+- State: authenticated active-trip library with four trips, a long multi-stop title, missing imagery, two visited countries, and one want-to-visit country
+- Source dimensions: 1864 × 2138 px at supplied density
+- Desktop implementation viewport: 1440 × 1100 CSS px; captured output is 1778 × 1358 px at the in-app browser's reported capture density
+- Responsive viewports: 320, 390, 430, 768, 1024, 1440, and 1680 CSS px
+- Normalization: the supplied current-state screenshot and the final 1440 px Storybook capture were reviewed together in one comparison input. Content and fixtures differ intentionally; the comparison targeted the specified control, lifecycle, Stamped, continuation, card-resilience, and interaction changes rather than pixel-cloning the old Dashboard.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- Fonts and typography: the current Morrovia display, UI, and metadata roles remain intact. Long trip titles clamp to four lines, route summaries clamp to two, and neither pushes readiness or actions outside the card.
+- Spacing and layout rhythm: the existing Continue / Stamped / library information architecture and responsive card-grid behavior are preserved. The Stamped summary now balances its real statistics and existing artwork without becoming a second Stamps workspace.
+- Colors and tokens: Active uses the canonical action/lilac family, Planned and Archived use subdued semantic tokens, and genuine critical route state retains danger color, icon, and text.
+- Image quality: saved trip imagery and the existing global-route illustration are reused. Missing trip imagery becomes a labelled real `3 stops` metadata surface rather than an unexplained decorative circle or fabricated image.
+- Copy and content: lifecycle counts, stop totals, Stamped totals, dates, itinerary coverage, stay coverage, and route warnings remain derived from canonical trip and Stamps data.
+
+## Interaction, accessibility, and responsive evidence
+
+- Continue, Stamped, and each trip card expose a self-closing stretched link with a descriptive accessible name. Explicit Open, Edit, and native overflow disclosure controls remain sibling interactions above the overlay, so the DOM contains no nested controls.
+- The keyboard-focus story visibly rings the whole card. Mobile Open and overflow targets measure 44 px; desktop Open/Edit use the canonical compact control while overflow remains 44 px.
+- The Active / Planned / Archived control exposes one pressed option and truthful counts. Planned and Archived stories select their corresponding state, while the empty filter state remains useful.
+- Search filtered the card list to the long Gatwick trip; clearing restored all four; sort changed to Title through the canonical select.
+- The document width matched the viewport at 320, 390, 430, 768, 1024, 1440, and 1680 px. The grid resolved to one, one, one, two, three, four, and four columns respectively, with no page-level horizontal overflow.
+- The production-backed Storybook stories render through an authenticated Storybook-only module double. Production auth, routing, persistence, lifecycle, CAS/recovery, readiness, Stamps data, and analytics paths are unchanged.
+- Browser console review found no Dashboard errors. The isolated Storybook runtime emitted only the repository's existing Next.js runtime-config deprecation warning.
+
+## Comparison history
+
+1. The first static Storybook pass exposed that full Dashboard stories stopped at the signed-out boundary. A Storybook-only authenticated module double now keeps representative production stories inspectable without changing production auth behavior.
+2. The old page-local pink filter surface was removed in favor of `EasyTSegmentedControl`; its shared mobile presentation was extended to a 44 px target rather than recreating a Dashboard variant.
+3. The old lifecycle chip used the same pink signal family as critical states. Active, Planned, and Archived now have distinct non-danger token roles while critical Route remains visibly dangerous.
+4. The final width sweep, independent-hit-area inspection, keyboard-focus capture, and combined visual comparison found no remaining P0/P1/P2 issue.
+
+## Follow-up polish
+
+- P3: the non-interactive grid-view indicator remains page-local because there is no current view toggle or canonical semantic control to invoke.
+- P3: the isolated Storybook runtime's Next.js `next/config` deprecation warning is repository-wide and unrelated to this Dashboard pass.
 
 final result: passed

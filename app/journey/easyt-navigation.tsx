@@ -25,7 +25,7 @@ import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
-  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport" | "routes";
+  current?: "home" | "prototype" | "trips" | "stamped" | "new" | "login" | "profile" | "privacy" | "admin" | "passport" | "routes" | "about";
   account?: { id?: string; name?: string | null; email: string; language?: Language };
   storageOwnerId?: string | null;
   landing?: boolean;
@@ -130,6 +130,7 @@ export default function EasyTNavigation({
   };
 
   const labels = easytCopy[language].nav;
+  const howItWorksLabel = language === "es" ? "Cómo funciona" : "How it works";
   return (
     <>
       <header className={`${styles.header} ${styles.landingHeader}`} data-easyt-app>
@@ -151,13 +152,13 @@ export default function EasyTNavigation({
         >
           <span>{labels.newTrip}</span>
         </EasyTLinkButton>
-        <Link href="/journey/home#how-it-works">{language === "es" ? "Cómo funciona" : "How it works"}</Link>
+        <Link href="/journey/about" aria-current={current === "about" ? "page" : undefined}>{language === "es" ? "Acerca de" : "About"}</Link>
         <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{language === "es" ? "Rutas" : "Routes"}</Link>
         <Link href="/journey/stamped">{labels.stamped}</Link>
         <Link href="/journey/passport">{language === "es" ? "Información de pasaporte" : "Passport info"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
         <span className={styles.landingTour}>
-          <EasyTProductTour triggerLabel={labels.tour} dispatchOpen />
+          <EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen />
         </span>
         {activeAccount ? <details className={styles.accountMenu}>
           <summary className={styles.landingMenuTrigger}>
@@ -170,7 +171,6 @@ export default function EasyTNavigation({
               <span>{activeAccount.email}</span>
             </div>
             <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
-            <Link href="/journey/prep"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Preparativos" : "Travel prep"}</span></Link>
             <Link className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
             <Link className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy"><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
             {isAdmin && <Link className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin"><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
@@ -191,12 +191,12 @@ export default function EasyTNavigation({
           </summary>
           <div className={styles.compactPopover}>
             <Link href="/journey/new" onClick={beginNewTrip}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
-            <Link href="/journey/home#how-it-works"><span>{language === "es" ? "Cómo funciona" : "How it works"}</span></Link>
+            <Link href="/journey/about" aria-current={current === "about" ? "page" : undefined}><span>{language === "es" ? "Acerca de" : "About"}</span></Link>
             <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
             <Link href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
             <Link href="/journey/passport"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Información de pasaporte" : "Passport info"}</span></Link>
             <span className={styles.compactDivider} aria-hidden="true" />
-            <span className={styles.compactTour}><EasyTProductTour triggerLabel={labels.tour} dispatchOpen /></span>
+            <span className={styles.compactTour}><EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen /></span>
             {activeAccount ? <>
               <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
               <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>

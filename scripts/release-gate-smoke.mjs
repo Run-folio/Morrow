@@ -14,6 +14,8 @@ function run(script) {
 }
 
 removeGeneratedTypes();
+run("audit:ui");
+run("test:ui-convergence");
 run("typecheck");
 
 // Type roots from another Next invocation must never affect the release

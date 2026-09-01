@@ -1,5 +1,5 @@
 .footer {
-  width: min(1180px, calc(100% - 48px));
+  width:var(--morrovia-page);
   margin: 0 auto;
   padding: 38px 4px 50px;
   display: grid;
@@ -29,6 +29,12 @@
 }
 
 .footer p { margin: 0; }
+
+.identity {
+  display: grid;
+  gap: 3px;
+  text-align: center;
+}
 
 .footer nav {
   justify-self: end;

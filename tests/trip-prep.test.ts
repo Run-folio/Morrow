@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { deriveTripPrepTasks, nextTripPrepTask, tripDepartureCountdown, tripPrepProgress } from "../lib/easyt/trip-prep.ts";
+import { deriveTripPrepTasks, groupTripPrepTasks } from "../lib/easyt/trip-prep.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -43,10 +43,11 @@ test("derives directive prep tasks from canonical readiness and checklist state"
   assert.equal(tasks.find((task) => task.id === "traveller-passport")?.status, "urgent");
   assert.equal(tasks.find((task) => task.id === "accommodation")?.action?.href, "/journey/prep-trip/map?stop=cusco&mode=stay");
   assert.equal(tasks.find((task) => task.id === "checklist-offline")?.category, "nice");
-  assert.equal(nextTripPrepTask(tasks)?.id, "traveller-passport");
+  assert.deepEqual(groupTripPrepTasks(tasks).must.map((task) => task.id), ["traveller-passport", "accommodation", "travel-insurance", "trip-flights"]);
+  assert.deepEqual(groupTripPrepTasks(tasks).nice.map((task) => task.id), ["checklist-offline"]);
 });
 
-test("progress is derived rather than persisted", () => {
+test("completed canonical state produces only completed preparation tasks", () => {
   const source = trip();
   source.brief.bookings = [{ id: "stay-cusco", type: "stay", title: "Cusco stay", date: "2026-10-01", confirmation: null, url: null }];
   source.brief.checklist = source.brief.checklist?.map((item) => ({ ...item, complete: true }));
@@ -56,16 +57,11 @@ test("progress is derived rather than persisted", () => {
     bookingActions: [],
     readinessCards: [],
   });
-  assert.deepEqual(tripPrepProgress(tasks), { complete: 3, inProgress: 0, toDo: 0, total: 3, percent: 100 });
-  assert.equal(nextTripPrepTask(tasks), null);
+  assert.ok(tasks.length > 0);
+  assert.equal(tasks.every((task) => task.status === "complete"), true);
 });
 
-test("progress handles genuine zero and complete states", () => {
-  assert.deepEqual(tripPrepProgress([]), { complete: 0, inProgress: 0, toDo: 0, total: 0, percent: 0 });
-  assert.equal(tripPrepProgress([{ id: "done", title: "Done", detail: "Done", category: "must", status: "complete", kind: "checklist" }]).percent, 100);
-});
-
-test("missing and invalid dates remain visible blocking Prep tasks", () => {
+test("missing and invalid dates remain visible blocking preparation tasks", () => {
   const source = trip();
   source.startDate = "";
   source.endDate = "";
@@ -79,7 +75,7 @@ test("missing and invalid dates remain visible blocking Prep tasks", () => {
   });
   assert.equal(tasks.find((task) => task.id === "trip-dates")?.status, "to-do");
   assert.match(tasks.find((task) => task.id === "accommodation")?.detail ?? "", /confirm the missing stop dates/i);
-  assert.notEqual(tripPrepProgress(tasks).percent, 100);
+  assert.equal(tasks.some((task) => task.status !== "complete"), true);
 
   source.startDate = "2026-02-31";
   source.endDate = "2026-02-20";
@@ -100,29 +96,6 @@ test("an explicit passport checklist never claims missing traveller context was 
   assert.doesNotMatch(passport?.detail ?? "", /traveller context is saved/i);
 });
 
-test("countdown handles upcoming, missing, invalid, active and ended trips without fake values", () => {
-  assert.equal(tripDepartureCountdown("2026-10-01", "2026-10-06", new Date("2026-09-01T12:00:00")).label, "30 days to go");
-  assert.equal(tripDepartureCountdown("", "", new Date("2026-09-01T12:00:00")).days, null);
-  assert.equal(tripDepartureCountdown("2026-02-31", "2026-03-05", new Date("2026-02-01T12:00:00")).state, "invalid");
-  assert.equal(tripDepartureCountdown("2026-09-01", "2026-09-05", new Date("2026-09-01T08:00:00")).label, "Departure is today.");
-  assert.equal(tripDepartureCountdown("2026-08-31", "", new Date("2026-09-01T08:00:00")).label, "This trip has started.");
-  assert.equal(tripDepartureCountdown("2026-08-31", "2026-09-02", new Date("2026-09-01T08:00:00")).label, "This trip is in progress.");
-  assert.equal(tripDepartureCountdown("2026-08-20", "2026-08-31", new Date("2026-09-01T08:00:00")).label, "This trip has ended.");
-});
-
-test("the departure date remains today throughout the local calendar day", () => {
-  const moments = [
-    new Date(2026, 8, 1, 0, 1),
-    new Date(2026, 8, 1, 12, 0),
-    new Date(2026, 8, 1, 23, 59),
-  ];
-  for (const now of moments) {
-    const countdown = tripDepartureCountdown("2026-09-01", "2026-09-05", now);
-    assert.deepEqual({ state: countdown.state, label: countdown.label }, { state: "starts-today", label: "Departure is today." });
-  }
-  assert.equal(tripDepartureCountdown("2026-09-02", "2026-09-05", new Date(2026, 8, 1, 23, 59)).label, "1 day to go");
-});
-
 test("ended trips retain records without urgent pre-departure passport work", () => {
   const source = trip();
   source.startDate = "2026-08-01";
@@ -134,8 +107,19 @@ test("ended trips retain records without urgent pre-departure passport work", ()
     readinessCards: [],
     now: new Date(2026, 8, 1, 12),
   });
-  assert.equal(tripDepartureCountdown(source.startDate, source.endDate, new Date(2026, 8, 1, 12)).label, "This trip has ended.");
   assert.notEqual(tasks.find((task) => task.id === "traveller-passport")?.status, "urgent");
+});
+
+test("missing traveller details are urgent on departure day but not months in advance", () => {
+  const source = trip();
+  source.startDate = "2026-09-01";
+  source.endDate = "2026-09-06";
+  source.brief.checklist = source.brief.checklist?.filter((item) => !/passport|visa|entry/i.test(`${item.id} ${item.label}`));
+  const profile = { nationalities: [], residenceCountry: "", passportExpiryMonth: "" };
+  const departureDay = deriveTripPrepTasks({ trip: source, profile, bookingActions: [], readinessCards: [], now: new Date("2026-09-01T12:00:00") });
+  const farFuture = deriveTripPrepTasks({ trip: source, profile, bookingActions: [], readinessCards: [], now: new Date("2026-01-01T12:00:00") });
+  assert.equal(departureDay.find((task) => task.id === "traveller-passport")?.status, "urgent");
+  assert.equal(farFuture.find((task) => task.id === "traveller-passport")?.status, "to-do");
 });
 
 test("avoid-driving excludes generated driving work from readiness progress", () => {
@@ -156,5 +140,5 @@ test("avoid-driving excludes generated driving work from readiness progress", ()
     readinessCards: [{ id: "driving", priority: "useful", title: "If you plan to drive", detail: "Should not block this trip." }],
   });
   assert.equal(tasks.some((task) => task.id === "driving-readiness"), false);
-  assert.equal(tripPrepProgress(tasks).percent, 100);
+  assert.equal(tasks.every((task) => task.status === "complete"), true);
 });

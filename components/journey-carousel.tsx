@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { JourneyImage } from "@/lib/journey";
+import ResilientImage from "@/components/easyt/resilient-image";
 import styles from "@/app/journey/journey.module.css";
 
 export function JourneyCarousel({ images, city, storyKey }: { images: JourneyImage[]; city: string; storyKey: string }) {
@@ -34,7 +34,7 @@ export function JourneyCarousel({ images, city, storyKey }: { images: JourneyIma
             exit={{ opacity: 0, x: direction * -22, scale: .99 }}
             transition={{ duration: .42, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image unoptimized fill priority sizes="(max-width: 760px) 88vw, 430px" src={image.src} alt={image.alt} />
+            <ResilientImage className={styles.carouselMedia} src={image.src} alt={image.alt} loading="eager" fallback={<div className={styles.carouselImageFallback} role="img" aria-label={`Image unavailable for ${city}`}><MapPin aria-hidden="true" /><span>Image unavailable</span></div>} />
           </motion.div>
         </AnimatePresence>
         {images.length > 1 ? <div className={styles.carouselControls}>

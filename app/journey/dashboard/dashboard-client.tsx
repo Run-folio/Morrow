@@ -3,16 +3,16 @@
 import Link from "next/link";
 import {
   Archive,
-  AlertTriangle,
   ArrowRight,
   CalendarCheck2,
   Copy,
   Edit3,
   Gift,
+  Globe2,
   Grid2X2,
+  MapPin,
   MoreHorizontal,
   RotateCcw,
-  Search,
   Stamp,
   Trash2,
   X,
@@ -22,8 +22,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
 import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
-import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog } from "@/components/easyt/morrovia-feedback";
+import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
 import {
   cacheCanonicalTrip,
@@ -109,6 +109,8 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [sort, setSort] = useState<SortMode>("updated");
   const [query, setQuery] = useState("");
   const [working, setWorking] = useState<string | null>(null);
+  const [workingAction, setWorkingAction] = useState<"archive" | "restore" | "duplicate" | "delete" | null>(null);
+  const actionInFlightRef = useRef<string | null>(null);
   const [actionError, setActionError] = useState("");
   const [failedAction, setFailedAction] = useState<{ id: string; action: "archive" | "restore" | "duplicate" } | null>(null);
   const [actionNotice, setActionNotice] = useState<{ title: string; detail: string } | null>(null);
@@ -308,7 +310,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   }, [query, sort, trips, view]);
 
   const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = id;
     setWorking(id);
+    setWorkingAction(action);
     setActionError("");
     setFailedAction(null);
     try {
@@ -327,6 +332,18 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         const payload = await response.json() as { trip?: EasyTTrip };
         if ((action === "archive" || action === "restore") && payload.trip) {
           reconcileTripCloudMutation(ownerId, id, action, payload.trip);
+          setActionNotice({
+            title: action === "archive"
+              ? (language === "es" ? "Viaje archivado" : "Trip archived")
+              : (language === "es" ? "Viaje restaurado" : "Trip restored"),
+            detail: action === "archive"
+              ? (language === "es"
+                ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes archivados.`
+                : `“${tripDisplayTitle(payload.trip)}” is now in Archived trips.`)
+              : (language === "es"
+                ? `“${tripDisplayTitle(payload.trip)}” está ahora en Viajes activos.`
+                : `“${tripDisplayTitle(payload.trip)}” is now in Active trips.`),
+          });
         }
         if (action === "duplicate" && payload.trip) {
           setActionNotice({
@@ -346,25 +363,38 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       setActionError("This trip could not be updated. Check your connection and try again.");
       setFailedAction({ id, action });
     } finally {
+      actionInFlightRef.current = null;
       setWorking(null);
+      setWorkingAction(null);
     }
   };
 
   const remove = async (trip: EasyTTrip) => {
+    if (actionInFlightRef.current) return;
+    actionInFlightRef.current = trip.id;
     setWorking(trip.id);
+    setWorkingAction("delete");
     setDeleteError("");
     try {
       const response = await fetch(`/api/easyt/trips/${encodeURIComponent(trip.id)}`, { method: "DELETE" });
       if (response.ok) {
         reconcileTripCloudMutation(ownerId, trip.id, "delete");
         setPendingDelete(null);
+        setActionNotice({
+          title: language === "es" ? "Viaje eliminado" : "Trip deleted",
+          detail: language === "es"
+            ? `“${tripDisplayTitle(trip)}” se eliminó de tu cuenta.`
+            : `“${tripDisplayTitle(trip)}” was removed from your account.`,
+        });
         router.refresh();
       }
       else setDeleteError(response.status === 401 ? "Your session ended. Sign in again before deleting this trip." : "This trip could not be deleted. Please try again.");
     } catch {
       setDeleteError("This trip could not be deleted. Check your connection and try again.");
     } finally {
+      actionInFlightRef.current = null;
       setWorking(null);
+      setWorkingAction(null);
     }
   };
 
@@ -409,42 +439,44 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const conflictActions = syncIssue ? tripConflictResolutionActions(syncIssue.tripId) : null;
   const cloudConflictAvailable = conflictHasCloudCopy(syncIssue?.conflictReason);
 
-  if (boundary === "mismatch") return <section className={styles.syncNotice} role="status">Account changed. Refreshing your private dashboard…</section>;
-  if (boundary === "expired" || boundary === "signed-out") return <section className={styles.syncNotice} role="alert"><strong>Your session ended</strong><span>Your saved trips are hidden until you sign in again.</span><EasyTLinkButton href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton></section>;
+  if (boundary === "mismatch") return <MorroviaStatusBanner className={styles.dashboardNotice} title="Account changed" detail="Refreshing your private dashboard…" />;
+  if (boundary === "expired" || boundary === "signed-out") return <MorroviaStatusBanner className={styles.dashboardNotice} tone="danger" title="Your session ended" detail="Your saved trips are hidden until you sign in again." actions={<EasyTLinkButton href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton>} />;
 
   return (
     <>
       {actionNotice ? <div className={styles.actionNotice}><MorroviaBriefNotice title={actionNotice.title} detail={actionNotice.detail} autoDismissMs={6500} onDismiss={() => setActionNotice(null)} /></div> : null}
-      {actionError ? <aside className={styles.syncNotice} role="alert"><AlertTriangle aria-hidden="true" /><span>{actionError}</span>{actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}</aside> : null}
-      {syncIssue ? <aside className={styles.syncNotice} role="alert">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>{syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.kind === "owner" ? (isSpanish ? "La copia pertenece a otra cuenta" : "Device copy belongs to another account") : syncIssue.conflictReason === "cloud-deleted" ? (isSpanish ? "El viaje fue eliminado de la nube" : "Trip removed from the cloud") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}</strong>
-          <p>{syncIssue.message} {isSpanish ? "La copia de este dispositivo no se ha eliminado." : "The copy on this device has not been removed."}</p>
-        </div>
-        <span>
+      {actionError ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="danger" title={actionError} actions={actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : undefined} /> : null}
+      {syncIssue ? <MorroviaStatusBanner className={styles.dashboardNotice} tone={syncIssue.kind === "auth" || syncIssue.kind === "owner" ? "danger" : "warning"}
+        title={syncIssue.kind === "auth" ? (isSpanish ? "Inicia sesión para sincronizar" : "Sign in to finish syncing") : syncIssue.kind === "owner" ? (isSpanish ? "La copia pertenece a otra cuenta" : "Device copy belongs to another account") : syncIssue.conflictReason === "cloud-deleted" ? (isSpanish ? "El viaje fue eliminado de la nube" : "Trip removed from the cloud") : syncIssue.kind === "conflict" ? (isSpanish ? "Se conservó la copia en la nube" : "Cloud copy kept safe") : (isSpanish ? "El viaje aún no está sincronizado" : "Trip not synced yet")}
+        detail={`${syncIssue.message} ${isSpanish ? "La copia de este dispositivo no se ha eliminado." : "The copy on this device has not been removed."}`}
+        actions={<>
           {syncIssue.kind === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void syncLocalTrip()} loading={syncingLocalTrip}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : null}
           {syncIssue.kind === "auth" || syncIssue.kind === "owner" ? <EasyTLinkButton size="small" variant="secondary" href={`/journey/login?next=${encodeURIComponent("/journey/dashboard")}`}>{isSpanish ? "Cambiar de cuenta" : "Switch account"}</EasyTLinkButton> : <>
             {syncIssue.kind === "conflict" && cloudConflictAvailable ? <EasyTLinkButton size="small" variant="secondary" href={conflictActions!.cloudHref}>{isSpanish ? "Abrir copia en la nube" : conflictActions!.openCloudLabel}</EasyTLinkButton> : null}
             <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>
           </>}
-        </span>
-      </aside> : null}
+        </>} /> : null}
       <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>
         {featuredTrip ? (
-          <article className={styles.continueCard}>
+          <article className={`${styles.continueCard} ${styles.interactiveCard}`}>
+            <Link
+              className={styles.cardOverlay}
+              href={tripWorkspaceHref(featuredTrip.id)}
+              aria-label={`${isSpanish ? "Abrir viaje" : "Open trip"}: ${tripDisplayTitle(featuredTrip)}`}
+              onClick={() => trackTripReopened(featuredTrip)}
+            />
             <div className={styles.continueCopy}>
               <p className={styles.eyebrow}>{isSpanish ? "Continúa este viaje" : "Continue this trip"}</p>
               <h2>{tripDisplayTitle(featuredTrip)}</h2>
               <p className={styles.route}>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
               <p className={styles.continueHint}>{isSpanish ? "Vuelve al plan y continúa desde donde lo dejaste." : "Pick up the plan where you left it and keep shaping the details."}</p>
               <div className={styles.continueActions}>
-                <Link className={styles.primaryAction} href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
+                <EasyTLinkButton href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
                   {isSpanish ? "Continuar planeando" : "Continue planning"}<ArrowRight aria-hidden="true" />
-                </Link>
-                <Link className={styles.secondaryAction} href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
+                </EasyTLinkButton>
+                <EasyTLinkButton variant="secondary" href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
                   {isSpanish ? "Ver detalles" : "View trip details"}
-                </Link>
+                </EasyTLinkButton>
               </div>
             </div>
             <ResilientImage
@@ -452,7 +484,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               src={tripImage(featuredTrip)}
               alt=""
               fallback={<div className={styles.continueImageFallback} aria-hidden="true">
-                <span>{featuredTrip.stops.length || 1}</span>
+                <span><b>{featuredTrip.stops.length}</b>{isSpanish ? "paradas" : "stops"}</span>
                 <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
               </div>}
             />
@@ -471,51 +503,49 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
               <h2>{isSpanish ? "Empieza con un viaje que ya tienes en mente." : "Start with a trip you’ve been thinking about."}</h2>
               <p className={styles.continueHint}>{isSpanish ? "Describe los lugares, el tiempo y el estilo de viaje. Morrovia te ayudará a dar forma a la ruta." : "Describe the places, time and travel style. Morrovia will help shape the route."}</p>
-              <Link className={styles.primaryAction} href="/journey/home#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></Link>
+              <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
             </div>
           </article>
         )}
 
-        {trips.length ? <section className={styles.stampsCard} aria-labelledby="dashboard-stamps-title">
-          <div className={styles.stampsCopy}>
-            <p className={styles.eyebrow}>{isSpanish ? "Tu mundo, marcado" : "Your world, marked"}</p>
-            <h2 id="dashboard-stamps-title">{isSpanish ? "Sellos." : "Stamped."}</h2>
-            <p>{isSpanish ? "Un registro vivo de los lugares donde has estado y los que aún te llaman." : "A living record of places you’ve been and the ones still calling."}</p>
+        {trips.length ? <section className={`${styles.stampsCard} ${styles.interactiveCard}`} aria-labelledby="dashboard-stamps-title">
+          <Link className={styles.cardOverlay} href="/journey/stamped" aria-label={isSpanish ? "Abrir Sellos" : "Open Stamped"} />
+          <div className={styles.stampsMain}>
+            <div className={styles.stampsCopy}>
+              <p className={styles.eyebrow}>{isSpanish ? "Tu mundo, marcado" : "Your world, marked"}</p>
+              <h2 id="dashboard-stamps-title">{isSpanish ? "Sellos." : "Stamped."}</h2>
+              <p>{isSpanish ? "Un registro vivo de los lugares donde has estado y los que aún te llaman." : "A living record of places you’ve been and the ones still calling."}</p>
+            </div>
+            <div className={styles.stampsStats} aria-label={isSpanish ? "Resumen de sellos" : "Stamp summary"}>
+              <span><i><Globe2 aria-hidden="true" /></i><b>{visitedCount}</b><small>{isSpanish ? "Países visitados" : "Countries seen"}</small></span>
+              <span><i><MapPin aria-hidden="true" /></i><b>{wantCount}</b><small>{isSpanish ? "Quiero visitar" : "Want to visit"}</small></span>
+            </div>
+            <EasyTLinkButton className={styles.stampsAction} variant="secondary" href="/journey/stamped">{isSpanish ? "Abrir Sellos" : "Open Stamped"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
           </div>
-          <div className={styles.stampsStats}>
-            <span><b>{visitedCount}</b>{isSpanish ? "visitados" : "visited"}</span>
-            <span><b>{wantCount}</b>{isSpanish ? "por visitar" : "want to visit"}</span>
+          <div className={styles.stampsVisual} aria-hidden="true">
+            <ResilientImage src="/journey/illustrations/global-route-confirm.png" alt="" className={styles.stampsMap} fallback={null} />
           </div>
-          <ResilientImage src="/journey/illustrations/global-route-confirm.png" alt="" className={styles.stampsMap} fallback={null} />
-          <Link className={styles.secondaryAction} href="/journey/stamped">{isSpanish ? "Abrir Sellos" : "Open Stamped"}<ArrowRight aria-hidden="true" /></Link>
         </section> : null}
       </section>
 
       {trips.length ? <section className={styles.tripLibrary} aria-labelledby="trip-library-title">
         <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
         <div className={styles.libraryToolbar}>
-          <div className={styles.statusFilters} role="group" aria-label={isSpanish ? "Filtrar por estado del viaje" : "Filter by trip status"}>
-            {(["draft", "planned", "archived"] as TripStatus[]).map((status) => (
-              <button key={status} type="button" aria-controls="dashboard-trip-grid" aria-pressed={view === status} onClick={() => setView(status)}>
-                {statusLabel(status, language)} <span>{counts[status]}</span>
-              </button>
-            ))}
-          </div>
+          <EasyTSegmentedControl<TripStatus>
+            ariaLabel={isSpanish ? "Filtrar por estado del viaje" : "Filter by trip status"}
+            className={styles.filterControl}
+            value={view}
+            onChange={setView}
+            options={(["draft", "planned", "archived"] as TripStatus[]).map((status) => ({ value: status, label: statusLabel(status, language), count: counts[status], controls: "dashboard-trip-grid" }))}
+          />
           <div className={styles.libraryTools}>
-            <label className={styles.sortControl}>
-              <span className={styles.srOnly}>{isSpanish ? "Ordenar viajes" : "Sort trips"}</span>
-              <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
-                <option value="updated">{isSpanish ? "Ordenar: Actualizados" : "Sort by: Recently updated"}</option>
-                <option value="upcoming">{isSpanish ? "Ordenar: Fecha de inicio" : "Sort by: Start date"}</option>
-                <option value="title">{isSpanish ? "Ordenar: Título" : "Sort by: Title"}</option>
-              </select>
-            </label>
-            <label className={styles.searchControl}>
-              <Search aria-hidden="true" />
-              <span className={styles.srOnly}>{isSpanish ? "Buscar viajes" : "Search trips"}</span>
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isSpanish ? "Buscar viajes" : "Search trips"} />
-            </label>
-            <span className={styles.gridIndicator} aria-hidden="true"><Grid2X2 /></span>
+            <EasyTSelect fieldClassName={styles.sortControl} label={isSpanish ? "Ordenar viajes" : "Sort trips"} labelClassName={styles.srOnly} value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
+              <option value="updated">{isSpanish ? "Ordenar: Actualizados" : "Sort by: Recently updated"}</option>
+              <option value="upcoming">{isSpanish ? "Ordenar: Fecha de inicio" : "Sort by: Start date"}</option>
+              <option value="title">{isSpanish ? "Ordenar: Título" : "Sort by: Title"}</option>
+            </EasyTSelect>
+            <EasyTField fieldClassName={styles.searchControl} label={isSpanish ? "Buscar viajes" : "Search trips"} labelClassName={styles.srOnly} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isSpanish ? "Buscar viajes" : "Search trips"} />
+            <span className={styles.gridIndicator} role="img" aria-label={isSpanish ? "Vista de cuadrícula" : "Grid view"}><Grid2X2 aria-hidden="true" /></span>
           </div>
         </div>
 
@@ -527,6 +557,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               language={language}
               copy={copy}
               working={working === trip.id}
+              workingAction={working === trip.id ? workingAction : null}
               onAction={runAction}
               onGift={openGift}
               onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }}
@@ -537,7 +568,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <Stamp aria-hidden="true" />
               <h3>{query ? (isSpanish ? "Ningún viaje coincide." : "No trips match that search.") : view === "archived" ? copy.emptyArchived : view === "planned" ? (isSpanish ? "Aún no hay viajes planificados." : "No planned trips yet.") : copy.emptyActive}</h3>
               <p>{query ? (isSpanish ? "Prueba otro destino o título." : "Try another destination or title.") : view === "archived" ? copy.archivedHint : copy.activeHint}</p>
-              {view !== "archived" && !query ? <Link className={styles.primaryAction} href="/journey/home#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></Link> : null}
+              {view !== "archived" && !query ? <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
             </div>
           ) : null}
         </div>
@@ -546,7 +577,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       {gifting ? (
         <div className={accountStyles.giftOverlay} role="presentation" onMouseDown={() => setGifting(null)}>
           <section className={accountStyles.giftDialog} role="dialog" aria-modal="true" aria-labelledby="gift-title" onMouseDown={(event) => event.stopPropagation()}>
-            <button className={accountStyles.giftClose} type="button" onClick={() => setGifting(null)} aria-label={isSpanish ? "Cerrar diálogo" : "Close gift dialog"}><X aria-hidden="true" /></button>
+            <EasyTButton className={accountStyles.giftClose} icon={X} iconOnly size="small" variant="secondary" onClick={() => setGifting(null)} aria-label={isSpanish ? "Cerrar diálogo" : "Close gift dialog"}>{isSpanish ? "Cerrar diálogo" : "Close gift dialog"}</EasyTButton>
             <span className={accountStyles.giftDialogIcon}><Gift aria-hidden="true" /></span>
             <p className={accountStyles.eyebrow}>{copy.giftTitle}</p>
             <h2 id="gift-title">{isSpanish ? "Compartir" : "Share"} {tripDisplayTitle(gifting)}</h2>
@@ -554,15 +585,15 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <div className={accountStyles.giftComplete}>
                 <p>{delivered ? copy.inviteSent : copy.inviteReady}</p>
                 <input value={claimUrl} readOnly aria-label={isSpanish ? "Enlace para reclamar" : "Gift claim link"} />
-                <button type="button" className={accountStyles.primaryLink} onClick={() => navigator.clipboard.writeText(claimUrl)}>{copy.copyLink}</button>
+                <EasyTButton className={accountStyles.primaryLink} onClick={() => navigator.clipboard.writeText(claimUrl)}>{copy.copyLink}</EasyTButton>
               </div>
             ) : (
               <>
                 <p className={accountStyles.muted}>{copy.draftHint}</p>
-                <label className={accountStyles.field}><span>{copy.recipient}</span><input type="email" value={giftEmail} onChange={(event) => setGiftEmail(event.target.value)} placeholder="friend@example.com" autoComplete="email" /></label>
-                <label className={accountStyles.field}><span>{copy.note}</span><textarea value={giftNote} onChange={(event) => setGiftNote(event.target.value)} placeholder={isSpanish ? "Un pequeño adelanto para nuestra próxima aventura…" : "A little head start for our next adventure…"} maxLength={500} /></label>
+                <EasyTField fieldClassName={accountStyles.field} label={copy.recipient} type="email" value={giftEmail} onChange={(event) => setGiftEmail(event.target.value)} placeholder="friend@example.com" autoComplete="email" />
+                <EasyTTextArea fieldClassName={accountStyles.field} label={copy.note} value={giftNote} onChange={(event) => setGiftNote(event.target.value)} placeholder={isSpanish ? "Un pequeño adelanto para nuestra próxima aventura…" : "A little head start for our next adventure…"} maxLength={500} />
                 {giftError ? <p className={accountStyles.syncError}>{giftError}</p> : null}
-                <button type="button" className={accountStyles.primaryLink} onClick={sendGift} disabled={giftState === "sending"}>{giftState === "sending" ? copy.creatingInvite : copy.createInvite}</button>
+                <EasyTButton className={accountStyles.primaryLink} loading={giftState === "sending"} onClick={sendGift}>{giftState === "sending" ? copy.creatingInvite : copy.createInvite}</EasyTButton>
               </>
             )}
           </section>
@@ -587,7 +618,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   );
 }
 
-export function TripCard({ trip, language, copy, working, onAction, onGift, onRemove }: {
+export function TripCard({ trip, language, copy, working, workingAction, onAction, onGift, onRemove }: {
   trip: EasyTTrip;
   language: EasyTLanguage;
   copy: {
@@ -600,14 +631,15 @@ export function TripCard({ trip, language, copy, working, onAction, onGift, onRe
     delete: string;
   };
   working: boolean;
+  workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
   onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
   onGift: (trip: EasyTTrip) => void;
   onRemove: (trip: EasyTTrip) => void;
 }) {
   const readiness = tripReadinessSummary(trip);
   const readinessLabels = language === "es"
-    ? { itinerary: "Itinerario", stays: "Estancias", route: "Ruta", prep: "Preparación" }
-    : { itinerary: "Itinerary", stays: "Stays", route: "Route", prep: "Prep" };
+    ? { itinerary: "Itinerario", stays: "Estancias", route: "Ruta", prep: "Tareas prácticas" }
+    : { itinerary: "Itinerary", stays: "Stays", route: "Route", prep: "Practicals" };
   const routeSignal = readiness.signals.find((signal) => signal.id === "route")!;
   const prepSignal = readiness.signals.find((signal) => signal.id === "prep")!;
   const cardSignals = [
@@ -615,28 +647,36 @@ export function TripCard({ trip, language, copy, working, onAction, onGift, onRe
     readiness.signals.find((signal) => signal.id === "stays")!,
     routeSignal.blocked || !routeSignal.complete ? routeSignal : prepSignal,
   ];
-  return <article className={`${styles.tripCard} ${working ? styles.working : ""}`}>
-    <div className={styles.tripCardMeta}><span>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
-    <h3>{tripDisplayTitle(trip)}</h3>
+  const actionLabel = (action: "archive" | "restore" | "duplicate") => {
+    if (!working || workingAction !== action) return action === "archive" ? copy.archive : action === "restore" ? copy.restore : copy.duplicate;
+    if (language === "es") return action === "archive" ? "Archivando…" : action === "restore" ? "Restaurando…" : "Duplicando…";
+    return action === "archive" ? "Archiving…" : action === "restore" ? "Restoring…" : "Duplicating…";
+  };
+  const lifecycleClass = trip.status === "draft" ? styles.lifecycleActive : trip.status === "planned" ? styles.lifecyclePlanned : styles.lifecycleArchived;
+  const title = tripDisplayTitle(trip);
+  return <article className={`${styles.tripCard} ${styles.interactiveCard} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
+    <Link className={styles.cardOverlay} href={tripWorkspaceHref(trip.id)} aria-label={`${language === "es" ? "Abrir viaje" : "Open trip"}: ${title}`} onClick={() => trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined} />
+    <div className={styles.tripCardMeta}><span className={`${styles.lifecycleStatus} ${lifecycleClass}`}>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
+    <h3 title={title}>{title}</h3>
     <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
     <ResilientImage src={tripImage(trip)} alt="" className={styles.tripImage} fallback={<div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>} />
     <ul className={styles.cardReadiness} aria-label={language === "es" ? "Resumen de preparación del viaje" : "Trip readiness summary"}>
-      {cardSignals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.currentStage : undefined}>
+      {cardSignals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.blockedStage : undefined}>
         <span aria-hidden="true">{signal.complete ? "✓" : signal.blocked ? "!" : "•"}</span>
         <div><b>{readinessLabels[signal.id]}</b><small>{signal.label}</small></div>
       </li>)}
     </ul>
     <div className={styles.tripCardActions}>
-      <Link className={styles.openAction} href={tripWorkspaceHref(trip.id)} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></Link>
-      <Link className={styles.editAction} href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}><Edit3 aria-hidden="true" />{copy.edit}</Link>
+      <EasyTLinkButton className={styles.openAction} size="small" href={tripWorkspaceHref(trip.id)} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+      <EasyTLinkButton className={styles.editAction} icon={Edit3} size="small" variant="secondary" href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}>{copy.edit}</EasyTLinkButton>
       <details className={styles.tripMenu}>
         <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${tripDisplayTitle(trip)}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
           <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
-          {trip.status === "archived" ? <button type="button" onClick={() => onAction(trip.id, "restore")}><RotateCcw aria-hidden="true" />{copy.restore}</button> : <button type="button" onClick={() => onAction(trip.id, "archive")}><Archive aria-hidden="true" />{copy.archive}</button>}
-          <button type="button" onClick={() => onAction(trip.id, "duplicate")}><Copy aria-hidden="true" />{copy.duplicate}</button>
-          <button type="button" onClick={() => onGift(trip)}><Gift aria-hidden="true" />{copy.gift}</button>
-          <button type="button" className={styles.deleteAction} onClick={() => onRemove(trip)}><Trash2 aria-hidden="true" />{copy.delete}</button>
+          {trip.status === "archived" ? <EasyTButton icon={RotateCcw} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "restore")}>{actionLabel("restore")}</EasyTButton> : <EasyTButton icon={Archive} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "archive")}>{actionLabel("archive")}</EasyTButton>}
+          <EasyTButton icon={Copy} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onAction(trip.id, "duplicate")}>{actionLabel("duplicate")}</EasyTButton>
+          <EasyTButton icon={Gift} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onGift(trip)}>{copy.gift}</EasyTButton>
+          <EasyTButton icon={Trash2} variant="quiet" size="small" fullWidth className={styles.deleteAction} disabled={working} onClick={() => onRemove(trip)}>{copy.delete}</EasyTButton>
         </div>
       </details>
     </div>

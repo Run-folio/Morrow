@@ -39,7 +39,7 @@ type GooglePlace = {
 
 type PhotonPlace = {
   place_id?: number;
-  properties?: {
+  properties?: Record<string, string | number | undefined> & {
     osm_id?: number;
     name?: string;
     type?: string;
@@ -53,6 +53,12 @@ type PhotonPlace = {
   };
   geometry?: { coordinates?: [number, number] };
 };
+
+function photonNameTags(properties: NonNullable<PhotonPlace["properties"]>) {
+  return Object.fromEntries(
+    Object.entries(properties).filter((entry): entry is [string, string] => typeof entry[1] === "string" && Boolean(entry[1].trim())),
+  );
+}
 
 function addressFor(tags: Record<string, string>, fallback: string) {
   const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
@@ -79,7 +85,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   for (const place of data.features ?? []) {
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
-      const displayName = resolvePlaceDisplayName({ defaultName: properties.name }, locale);
+      const displayName = resolveOsmPlaceDisplayName(photonNameTags(properties), locale);
       if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const { name, nativeName } = displayName;
       const address = [properties.housenumber, properties.street, properties.locality || properties.city, properties.postcode, properties.country || country].filter(Boolean).join(", ") || `${city}, ${country}`;

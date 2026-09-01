@@ -48,9 +48,11 @@ export function cascadeTripSchedule(trip: EasyTTrip): CascadedTrip {
     const stopArrival = arrivalByStop.get(item.stopId);
     if (!stopArrival) return item;
     const offset = Math.max(0, item.dayNumber - (trip.planItems.find((candidate) => candidate.stopId === item.stopId)?.dayNumber ?? item.dayNumber));
-    return { ...item, date: addDays(stopArrival, offset) };
+    const date = addDays(stopArrival, offset);
+    const dayNumber = Math.max(1, Math.round((dateAt(date).getTime() - dateAt(trip.startDate).getTime()) / DAY) + 1);
+    return { ...item, date, dayNumber };
   });
-  const affectedPlanItemCount = planItems.filter((item, index) => item.date !== originalPlanItems[index]?.date).length;
+  const affectedPlanItemCount = planItems.filter((item, index) => item.date !== originalPlanItems[index]?.date || item.dayNumber !== originalPlanItems[index]?.dayNumber).length;
 
   const affectedBookingIds = (trip.brief.bookings ?? [])
     .filter((booking) => booking.date && (booking.date < trip.startDate || booking.date > trip.endDate || Boolean(booking.date && planItems.some((item) => item.date === booking.date && item.type === "transport"))))

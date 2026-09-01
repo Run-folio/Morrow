@@ -3,26 +3,29 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import styles from "./morrovia-footer.module.css";
 
 const copy = {
   en: {
-    copyright: "© 2026 Morrovia Ltd. All rights reserved.",
+    rights: "All rights reserved.",
+    operatedBy: "Operated by",
     about: "About",
     help: "Help",
     affiliate: "Affiliate disclosure",
     privacy: "Privacy",
     terms: "Terms",
-    cookies: "Privacy & cookies",
+    cookies: "Cookie settings",
   },
   es: {
-    copyright: "© 2026 Morrovia Ltd. Todos los derechos reservados.",
+    rights: "Todos los derechos reservados.",
+    operatedBy: "Operado por",
     about: "Acerca de",
     help: "Ayuda",
     affiliate: "Divulgación de afiliados",
     privacy: "Privacidad",
     terms: "Términos",
-    cookies: "Privacidad y cookies",
+    cookies: "Ajustes de cookies",
   },
 } as const;
 
@@ -39,14 +42,17 @@ export default function MorroviaFooter() {
   const text = copy[language];
   return <footer className={styles.footer}>
     <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">Morrovia</Link>
-    <p>{text.copyright}</p>
+    <div className={styles.identity}>
+      <p>© {morroviaLegalIdentity.copyrightYear} {morroviaLegalIdentity.productName}. {text.rights}</p>
+      <p>{text.operatedBy} {morroviaLegalIdentity.legalOperator}</p>
+    </div>
     <nav aria-label="Company and legal information">
-      <span>{text.about}</span>
-      <span>{text.help}</span>
+      <Link href="/journey/about">{text.about}</Link>
+      <Link href="/journey/help">{text.help}</Link>
       <Link href="/journey/affiliate-disclosure">{text.affiliate}</Link>
       <Link href="/journey/privacy">{text.privacy}</Link>
       <span>{text.terms}</span>
-      <Link href="/journey/privacy#analytics-settings">{text.cookies}</Link>
+      <Link href="/journey/cookies#cookie-settings">{text.cookies}</Link>
     </nav>
   </footer>;
 }

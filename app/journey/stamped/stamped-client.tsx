@@ -553,7 +553,7 @@ export function StampedExperience({
                 <div className={styles.countryIdentity}>
                   <span className={styles.flag} aria-hidden="true">{stampCountryFlag(selectedCountry.id)}</span>
                   <div>
-                    <h3>{selectedCountry.name}</h3>
+                    <h2>{selectedCountry.name}</h2>
                     <p>{statusName(selectedStatus, labels)}</p>
                   </div>
                 </div>

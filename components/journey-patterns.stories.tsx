@@ -6,7 +6,6 @@ import { tripFromBuilder, type EasyTTrip } from "@/lib/easyt/trip";
 import { JourneyItineraryRefinement } from "./journey-itinerary-refinement";
 import { JourneyLocalFinder } from "./journey-local-finder";
 import { PlanWorkspace, type PlanWorkspaceCopy } from "./journey-plan-workspace";
-import { JourneyTripPrepAccommodation } from "./journey-trip-prep-accommodation";
 import { JourneyTripQuality } from "./journey-trip-quality";
 
 const planCopy: PlanWorkspaceCopy = {
@@ -72,7 +71,7 @@ function PlanWorkspaceStory() {
 }
 
 const meta = {
-  title: "Patterns/Builder and planner",
+  title: "Morrovia/05 Product Patterns/Builder and planner",
   parameters: { layout: "padded" },
   tags: ["autodocs"],
 } satisfies Meta;
@@ -85,12 +84,12 @@ export const BuilderStart: Story = {
 };
 
 export const BuilderAt390: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: () => <div style={{ width: 390, maxWidth: "100%" }}><TripBuilder /></div>,
 };
 
 export const ShapeTheDayPlan: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: () => <PlanWorkspaceStory />,
 };
 

@@ -2,28 +2,32 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("the homepage hero keeps its prompt and illustrated route together", () => {
+test("the homepage hero keeps one central prompt inside a blended four-destination frame", () => {
   const hero = readFileSync(new URL("../app/journey/home/home-hero-tools.tsx", import.meta.url), "utf8");
+  const frame = readFileSync(new URL("../app/journey/home/home-journey-frame.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/home/home.module.css", import.meta.url), "utf8");
 
   const prompt = hero.indexOf("<HomeTripStarter />");
-  const route = hero.indexOf("<div className={styles.heroRoute}");
 
   assert.notEqual(prompt, -1, "the homepage prompt should remain in the hero");
-  assert.ok(route > prompt, "the route preview should render alongside the prompt, not replace it");
-  assert.match(hero, /southeast-asia-route-hero-v3\.png/,
-    "the approved four-stop watercolor artwork should remain visible");
-  assert.match(hero, /text\.bangkok[\s\S]*text\.siemReap[\s\S]*text\.phnomPenh[\s\S]*text\.hoChiMinh/,
-    "the route summary should keep all four stops in order");
-  assert.match(hero, /text\.totalNights[\s\S]*text\.transfers[\s\S]*text\.countries[\s\S]*text\.stops/,
-    "the practical route totals should remain attached to the illustration");
-
-  assert.match(styles, /\.hero\{display:grid;grid-template-columns:minmax\(500px,37fr\) minmax\(0,63fr\)/,
-    "wide screens should retain the two-sided hero hierarchy");
-  assert.match(styles, /@media\(max-width:1100px\)[\s\S]*\.hero\{grid-template-columns:1fr/,
-    "narrow screens should stack both hero sides instead of hiding the route");
-  assert.match(styles, /@media\(max-width:560px\)[\s\S]*\.heroRouteStrip\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
-    "the four-stop summary should remain readable on phones");
+  assert.doesNotMatch(hero, /styles\.heroRoute(?:Strip)?/,
+    "the illustrative sample route should not compete with the primary trip prompt");
+  assert.doesNotMatch(hero, /text\.(?:bangkok|siemReap|phnomPenh|hoChiMinh)/,
+    "the removed sample route should not leave destination copy in the hero");
+  assert.match(hero, /<HomeJourneyFrame \/>/,
+    "the destination artwork should frame the existing planner");
+  assert.match(frame, /homepage-frame\/japan\.webp[\s\S]*homepage-frame\/angkor\.webp[\s\S]*homepage-frame\/rome\.webp[\s\S]*homepage-frame\/sydney\.webp/,
+    "all four approved destination scenes should be present");
+  assert.match(frame, /<svg[\s\S]*journeyRoute/,
+    "the scene frame should include its decorative route overlay");
+  assert.match(frame, /aria-hidden="true"/,
+    "decorative artwork should stay out of the accessibility tree");
+  assert.match(styles, /\.heroCenter\{[^}]*justify-items:center/,
+    "wide screens should keep the live planner centered in the composition");
+  assert.match(styles, /\.journeySceneJapan\{[^}]*mask-image:radial-gradient/,
+    "the destination scenes should dissolve into the page instead of reading as image tiles");
+  assert.match(styles, /@media\(max-width:760px\)[\s\S]*\.journeySceneAngkor\{[^}]*display:block|@media\(max-width:760px\)[\s\S]*\.journeyScene\{display:block/,
+    "all four destination scenes should remain part of the responsive composition");
 });
 
 test("homepage process-card artwork keeps the square triptych panels intact", () => {

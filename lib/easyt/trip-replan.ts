@@ -4,6 +4,7 @@ import { routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStr
 import type { EasyTTrip, PlanItem, TripStop } from "./trip.ts";
 import { reconcileCuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
+import { reconcileAuthoredDayState } from "./trip-authored-day-state.ts";
 
 export type DayOrderReplan =
   | { state: "recalculated"; trip: EasyTTrip; stopIds: string[] }
@@ -60,6 +61,12 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
     transportModes: structuredConstraints.transportModes?.length ? structuredConstraints.transportModes : intent?.preferences.transportModes,
     optionalStopIds: intent?.hardConstraints.optionalStopIds,
   };
+  const brokenFixedEndpoint = routeConstraints.fixedStartStopId && fullOrder[0] !== routeConstraints.fixedStartStopId
+    ? routeConstraints.fixedStartStopId
+    : routeConstraints.fixedEndStopId && fullOrder.at(-1) !== routeConstraints.fixedEndStopId
+      ? routeConstraints.fixedEndStopId
+      : null;
+  if (brokenFixedEndpoint) return { state: "needs-route-edit", trip, returnedStopId: brokenFixedEndpoint };
   const routeAssessment = assessRouteIntelligence({
     origin: { name: trip.brief.origin, coordinates: trip.brief.originCoordinates },
     stops: stops.map((stop) => ({
@@ -78,10 +85,12 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
         ? structuredScoring.preferredModes
         : intent?.preferences.transportModes.map((mode) => mode === "drive" ? "road" as const : mode),
       avoidFlights: structuredScoring?.avoidFlights,
+      interests: intent?.preferences.interests ?? structuredScoring?.interests,
     },
     allocations: Object.fromEntries(stops.map((stop) => [stop.id, Math.max(1, (stop.nights ?? 0) + 1)])),
   });
-  const replanned = cascadeTripSchedule({ ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, curatedRoute: reconcileCuratedRouteKnowledge(trip.brief.curatedRoute, fullOrder), routeAssessment: routeIntelligenceForPersistence(routeAssessment) } }).trip;
+  const replannedInput = { ...trip, stops, legs: routeLegsFor(trip, stops, routeConstraints), brief: { ...trip.brief, curatedRoute: reconcileCuratedRouteKnowledge(trip.brief.curatedRoute, fullOrder), routeAssessment: routeIntelligenceForPersistence(routeAssessment) } };
+  const replanned = reconcileAuthoredDayState(trip, cascadeTripSchedule(replannedInput).trip);
   return {
     state: "recalculated",
     stopIds: fullOrder,

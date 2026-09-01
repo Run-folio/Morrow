@@ -1,6 +1,7 @@
 /* EasyT only keeps public app-shell files offline. It never stores account,
  * dashboard, profile, API, or user-specific trip responses in Cache Storage. */
-const CACHE_NAME = "easyt-public-shell-v4";
+const CACHE_PREFIX = "easyt-public-shell-";
+const CACHE_NAME = `${CACHE_PREFIX}v5`;
 const PUBLIC_SHELL = [
   "/journey/home",
   "/journey/new",
@@ -30,13 +31,16 @@ async function precachePublicShell() {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(precachePublicShell());
-  self.skipWaiting();
+  // Do not skip the waiting phase. An already-open Next.js client still
+  // references the previous deployment's hashed JS/CSS graph; activating a
+  // new worker and deleting that graph mid-session leaves route-level styles
+  // unavailable on the next client navigation.
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+      Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key))),
     ),
   );
   self.clients.claim();

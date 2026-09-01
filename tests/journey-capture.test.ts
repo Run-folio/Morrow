@@ -72,7 +72,7 @@ test("capture is deterministic and projects the same single resolution into ever
   assert.deepEqual(first.mentions.map((mention) => mention.canonicalPlaceId), ["cusco", "sacred-valley", "machu-picchu"]);
 });
 
-test("provider capture calls one normalized lookup and preserves unknown intent when the provider fails", async () => {
+test("provider capture deduplicates lookups per identity and preserves canonical and unknown intent when the provider fails", async () => {
   let calls = 0;
   const unavailableProvider: PlaceIntelligenceProvider = {
     id: "offline-capture-fixture",
@@ -88,7 +88,8 @@ test("provider capture calls one normalized lookup and preserves unknown intent 
     unavailableProvider,
   );
 
-  assert.equal(calls, 1);
+  assert.equal(calls, 2, "one coordinate lookup for Venice and one deduplicated lookup for Mystery Coast");
+  assert.equal(capture.mentions.find((mention) => mention.canonicalPlaceId === "venice")?.coordinates, undefined);
   const unresolved = capture.mentions.filter((mention) => mention.normalizedPhrase === "mystery coast");
   assert.equal(unresolved.length, 2);
   assert.equal(unresolved.every((mention) => mention.status === "unresolved" && mention.canonicalPlaceId === undefined), true);

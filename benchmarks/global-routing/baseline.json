@@ -233,7 +233,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 2,
+      "unresolvedPlaceCount": 1,
       "routeEndpoints": [
         "Guatemala City",
         "Caye Caulker"
@@ -512,7 +512,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 2,
+      "unresolvedPlaceCount": 1,
       "routeEndpoints": [],
       "crossSurfaceConsistent": null
     },
@@ -1132,7 +1132,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 1,
-      "unresolvedPlaceCount": 3,
+      "unresolvedPlaceCount": 4,
       "routeEndpoints": [
         "Windhoek",
         "Swakopmund"
@@ -1418,7 +1418,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 1,
+      "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "Tbilisi",
         "Yerevan",

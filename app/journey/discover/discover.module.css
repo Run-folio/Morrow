@@ -1,15 +1,366 @@
-.page{min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom));overflow-x:hidden;background:var(--morrovia-paper);color:var(--morrovia-ink);font-family:var(--morrovia-ui)}
-.hero{box-sizing:border-box;position:relative;display:grid;grid-template-columns:minmax(0,430px) minmax(240px,300px);align-items:center;justify-content:space-between;gap:36px;width:min(1380px,calc(100% - 64px));min-height:470px;margin:18px auto 0;padding:52px 42px;overflow:hidden;border:1px solid var(--morrovia-line);border-radius:16px;isolation:isolate}.heroBackdrop{position:absolute;z-index:-2;inset:0;background-image:linear-gradient(90deg,rgba(255,254,251,.99) 0%,rgba(255,254,251,.96) 22%,rgba(255,254,251,.72) 34%,rgba(255,254,251,.08) 58%),url('/journey/japan-evening-route.jpg');background-position:center 54%;background-size:cover}.hero:after{content:"";position:absolute;z-index:-1;inset:0 auto 0 0;width:42%;background:linear-gradient(90deg,rgba(255,255,255,.58),transparent)}
-.heroCopy{align-self:center;max-width:430px}.eyebrow,.featuredLabel,.resultHead small,.discoverySection header small,.allRoutes header small,.bottomBanner small{margin:0;color:var(--morrovia-signal);font:800 9px var(--morrovia-meta);letter-spacing:.15em;text-transform:uppercase}.hero h1{max-width:430px;margin:14px 0 0;color:var(--morrovia-ink);font:600 clamp(54px,4.6vw,74px)/.95 var(--morrovia-display);letter-spacing:-.055em}.hero h1 span{position:relative;white-space:nowrap;font-style:italic}.hero h1 span:after{content:"";position:absolute;right:0;bottom:-5px;left:0;height:5px;border-radius:99px;background:var(--morrovia-signal);transform:rotate(-1.5deg)}.heroCopy>p:not(.eyebrow){max-width:310px;margin:22px 0 0;color:var(--morrovia-ink-soft);font-size:15px;line-height:1.5}.heroActions{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}.primaryAction,.secondaryAction{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:0 18px;border:1px solid var(--morrovia-action);border-radius:var(--morrovia-control-radius);font-size:12px;font-weight:750;text-decoration:none}.primaryAction{background:var(--morrovia-signal);border-color:var(--morrovia-signal);color:#fff}.primaryAction:hover{border-color:var(--morrovia-action);background:var(--morrovia-action)}.primaryAction svg,.secondaryAction svg{width:15px}.secondaryAction{border-color:transparent;background:transparent;color:var(--morrovia-ink)}
-.featuredCard{align-self:center;padding:20px;border:1px solid rgba(217,216,238,.94);border-radius:10px;background:rgba(255,255,255,.96);box-shadow:0 16px 40px rgba(23,16,111,.16);backdrop-filter:blur(12px)}.featuredLabel{display:flex;align-items:center;gap:7px}.featuredLabel svg{display:none}.featuredCard h2{margin:9px 0 0;font:600 24px/1.02 var(--morrovia-display);letter-spacing:-.03em}.featuredCard>p{margin:9px 0 14px;color:var(--morrovia-muted);font-size:11px;line-height:1.45}.featuredCard dl{display:flex;flex-wrap:wrap;gap:7px 10px;margin:0;padding:12px 0;border-top:0;border-bottom:1px solid var(--morrovia-line)}.featuredCard dl div{display:flex;align-items:center;gap:5px}.featuredCard dt{height:13px}.featuredCard dt svg{width:12px;height:12px;color:var(--morrovia-signal)}.featuredCard dd{margin:0;font-size:9px;font-weight:650}.featuredCard>a,.routeCta,.storyLead a{display:inline-flex;align-items:center;gap:7px;margin-top:13px;color:var(--morrovia-ink);font-size:10px;font-weight:800;text-decoration:none}.featuredCard>a svg,.routeCta svg,.storyLead a svg{width:13px}
-.browser{width:min(1380px,calc(100% - 64px));margin:0 auto;padding:14px 0 34px}.filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 22px;padding:22px 26px;border:1px solid var(--morrovia-line);border-radius:16px;background:#fff;box-shadow:0 10px 26px rgba(23,16,111,.04)}.filters>div:first-child{grid-column:1/-1}.filters>div{display:flex;align-items:center;gap:18px}.filters small,.selectLabel{flex:0 0 auto;display:block;margin:0;color:var(--morrovia-signal);font:800 8px var(--morrovia-meta);letter-spacing:.14em}.pills{display:flex;flex-wrap:wrap;gap:9px}.pills button,.select{min-height:34px;border:1px solid var(--morrovia-line);border-radius:9px;background:#fff;color:var(--morrovia-ink);font:650 10px var(--morrovia-ui)}.pills button{padding:0 14px;cursor:pointer}.pills button:hover,.select:hover{border-color:var(--morrovia-ink-soft)}.pills .selected{border-color:var(--morrovia-action);background:var(--morrovia-action);color:#fff}.select{min-width:150px;padding:0 34px 0 12px}.pills button:focus-visible,.select:focus-visible,.primaryAction:focus-visible,.secondaryAction:focus-visible,.featuredCard a:focus-visible,.routeCta:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:3px}
-.resultHead{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:25px 12px 11px}.resultHead p{margin:0;font:600 26px/1 var(--morrovia-display);letter-spacing:-.025em}.seeAllButton{padding:4px;border:0;background:transparent;color:var(--morrovia-ink);font:800 10px var(--morrovia-ui);cursor:pointer}.seeAllButton:hover{text-decoration:underline}.seeAllButton:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:3px}.cardRail,.styleRail{display:flex;gap:14px;padding:2px 0 8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.cardRail::-webkit-scrollbar,.styleRail::-webkit-scrollbar{display:none}.cardRail .routeCard{flex:0 0 calc((100% - 56px)/5);scroll-snap-align:start}
-.routeCard{display:grid;grid-template-rows:180px 1fr;min-width:0;overflow:hidden;border:1px solid var(--morrovia-line);border-radius:11px;background:#fff;box-shadow:0 7px 18px rgba(23,16,111,.045);color:var(--morrovia-ink);text-decoration:none;transition:transform .2s,box-shadow .2s}.routeCardCompact{grid-template-rows:106px 1fr}.routeImage{display:block;background-color:var(--morrovia-lilac);background-position:center;background-size:cover}.routeCardBody{display:flex;flex-direction:column;padding:15px}.routeCardBody>small,.storyLead small,.collectionCard small{color:var(--morrovia-signal);font:800 7px var(--morrovia-meta);letter-spacing:.12em;text-transform:uppercase}.routeCard h3{margin:7px 0 0;font:600 18px/1.02 var(--morrovia-display);letter-spacing:-.025em}.routeCardBody>p{display:-webkit-box;margin:8px 0 11px;overflow:hidden;color:var(--morrovia-muted);font-size:10px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}.routeMeta{display:flex;flex-wrap:wrap;gap:7px 10px;margin-top:auto;padding-top:10px;border-top:0}.routeMeta span{display:flex;align-items:center;gap:4px;color:var(--morrovia-ink-soft);font-size:8px;line-height:1.25;text-transform:capitalize}.routeMeta span:first-child{width:100%}.routeMeta svg{flex:0 0 auto;width:10px;height:10px;color:var(--morrovia-signal)}.routeCta{display:inline-flex;align-items:center;gap:6px;margin-top:11px;color:var(--morrovia-action);font-size:9px;font-weight:800}.routeCta svg{width:12px}.routeCard:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(23,16,111,.09)}.routeCard:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:3px}
-.discoverySection,.allRoutes{padding-top:24px}.discoverySection>header,.allRoutes>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 12px 12px}.discoverySection h2,.allRoutes h2,.bottomBanner h2{margin:0;font:600 26px/1 var(--morrovia-display);letter-spacing:-.025em}.storyGrid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,2fr);gap:14px}.storyLead{position:relative;min-height:280px;overflow:hidden;border-radius:11px;background-color:var(--morrovia-lilac);background-position:center;background-size:cover}.storyLead:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 25%,rgba(12,8,58,.84))}.storyLead>div{position:absolute;z-index:1;right:0;bottom:0;left:0;padding:20px;color:#fff}.storyLead small{color:#ff8cbd}.storyLead h3{max-width:390px;margin:7px 0 0;font:600 29px/1 var(--morrovia-display);letter-spacing:-.03em}.storyLead p{max-width:420px;margin:9px 0 0;color:rgba(255,255,255,.86);font-size:10px;line-height:1.45}.storyLead a{display:none}.storySupports{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.storySupports .routeCard{grid-template-columns:1fr;grid-template-rows:112px 1fr}.storySupports .routeCardBody{padding:14px}.storySupports .routeCard h3{font-size:18px}.storySupports .routeCardBody>p{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3}.storySupports .routeMeta{display:flex}
-.styleRail .styleCard{position:relative;display:flex;flex:0 0 calc((100% - 56px)/5);align-items:end;justify-content:space-between;min-height:122px;padding:14px;overflow:hidden;border-radius:10px;background-color:var(--morrovia-lilac);background-position:center;background-size:cover;color:#fff;text-decoration:none;scroll-snap-align:start}.styleCard:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 20%,rgba(13,9,59,.8))}.styleCard span,.styleCard svg{position:relative;z-index:1}.styleCard span{font:600 15px var(--morrovia-display)}.styleCard svg{width:14px}.collectionGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.collectionCard{position:relative;display:block;min-height:108px;padding:15px;overflow:hidden;border:1px solid var(--morrovia-line);border-radius:10px;background:var(--morrovia-tint);color:var(--morrovia-ink);text-decoration:none}.collectionImage{position:absolute;right:0;bottom:0;width:52%;height:82%;border-radius:0;background-color:transparent;background-position:center;background-size:cover;opacity:.75;mask-image:linear-gradient(90deg,transparent,#000 35%)}.collectionCard>span:nth-child(2){position:relative;z-index:1;display:grid;max-width:54%;gap:7px}.collectionCard strong{font:600 15px var(--morrovia-display)}.collectionCard>svg{display:none}
-.allRoutes .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.moreWrap{display:flex;justify-content:center;padding:32px 0 0}.moreButton{min-height:46px;padding:0 19px;border:1px solid var(--morrovia-action);border-radius:var(--morrovia-control-radius);background:#fff;color:var(--morrovia-ink);font:750 13px var(--morrovia-ui);cursor:pointer}.moreButton:hover{border-color:var(--morrovia-signal);background:var(--morrovia-signal);color:#fff}.moreButton span{margin-left:8px;font:700 10px var(--morrovia-meta)}.empty{display:grid;gap:7px;margin-top:30px;padding:38px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-radius);background:var(--morrovia-lilac)}.empty span{color:var(--morrovia-muted);font-size:13px}.imagePending{background:linear-gradient(135deg,var(--morrovia-lilac),var(--morrovia-lilac-strong))}
-.bottomBanner{display:flex;align-items:center;justify-content:space-between;gap:30px;margin-top:18px;padding:14px 28px;border:1px solid rgba(244,43,122,.15);border-radius:10px;background:linear-gradient(110deg,var(--morrovia-tint),#fff 72%)}.bottomBanner>div{display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:4px 18px}.bottomBanner small{grid-column:1/-1;display:none}.bottomBanner h2{font-size:19px}.bottomBanner p{margin:0;color:var(--morrovia-muted);font-size:10px}.bottomBanner>a{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 16px;border:1px solid var(--morrovia-signal);border-radius:8px;background:#fff;color:var(--morrovia-signal);font-size:10px;font-weight:750;text-decoration:none}.bottomBanner>a:hover{background:var(--morrovia-signal);color:#fff}.bottomBanner svg{width:14px}
-@media(max-width:1040px){.hero{grid-template-columns:minmax(0,1fr) minmax(230px,280px);min-height:430px;padding:40px 30px}.hero h1{font-size:56px}.cardRail .routeCard,.styleRail .styleCard{flex-basis:calc((100% - 28px)/3)}.filters{grid-template-columns:1fr}.filters>div{grid-column:1/-1}.storyGrid{grid-template-columns:1fr}.storyLead{min-height:330px}.storySupports{grid-template-columns:repeat(3,1fr)}.collectionGrid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.page{padding-bottom:var(--morrovia-mobile-dock-offset)}.hero{grid-template-columns:1fr;width:100%;min-height:0;margin-top:0;padding:46px 16px 24px;border-width:0 0 1px;border-radius:0}.heroBackdrop{background-image:linear-gradient(180deg,rgba(255,254,251,.97) 0%,rgba(255,254,251,.88) 40%,rgba(255,254,251,.38) 68%,rgba(255,254,251,.08) 100%),url('/journey/takayama-old-town.jpg');background-position:center}.hero:after{display:none}.hero h1{font-size:clamp(47px,14vw,62px)}.heroCopy>p:not(.eyebrow){font-size:15px}.heroActions{margin-top:22px}.featuredCard{width:min(100%,420px);margin-top:150px;padding:18px}.featuredCard h2{font-size:24px}.browser{width:min(100% - 32px,560px);padding-top:16px}.filters{display:grid;padding:18px 14px}.filters>div{display:grid;gap:9px}.pills{flex-wrap:nowrap;margin-right:-14px;padding-right:14px;overflow-x:auto}.pills button{flex:0 0 auto}.select{width:100%}.resultHead{padding-top:25px}.resultHead p,.discoverySection h2,.allRoutes h2{font-size:25px}.cardRail{margin-right:-16px;padding-right:16px}.cardRail .routeCard,.styleRail .styleCard{flex-basis:78vw}.routeCardCompact{grid-template-rows:140px 1fr}.routeCardBody{padding:16px}.routeCard h3{font-size:21px}.routeMeta span{font-size:9px}.discoverySection,.allRoutes{padding-top:32px}.storyLead{min-height:360px}.storyLead>div{padding:22px}.storyLead h3{font-size:34px}.storySupports{display:flex;margin-right:-16px;padding-right:16px;overflow-x:auto}.storySupports .routeCard{flex:0 0 78vw;grid-template-columns:1fr;grid-template-rows:140px 1fr}.styleRail{margin-right:-16px;padding-right:16px}.styleRail .styleCard{min-height:150px}.collectionGrid{display:flex;margin-right:-16px;padding-right:16px;overflow-x:auto}.collectionCard{flex:0 0 68vw}.allRoutes .grid{grid-template-columns:1fr}.bottomBanner{display:grid;gap:16px;margin-top:30px;padding:22px}.bottomBanner>div{display:grid;gap:6px}.bottomBanner h2{font-size:24px}.bottomBanner p{font-size:12px}.bottomBanner>a{justify-self:start}}
-@media(max-width:390px){.hero h1{font-size:47px}.heroActions{display:grid}.primaryAction,.secondaryAction{width:100%}.featuredCard{margin-top:130px}.storyLead{min-height:340px}}
-@media(max-width:700px){.heroBackdrop{background-image:linear-gradient(180deg,rgba(255,254,251,.97) 0%,rgba(255,254,251,.88) 40%,rgba(255,254,251,.38) 68%,rgba(255,254,251,.08) 100%),url('/journey/japan-evening-route.jpg')}}
+.page {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.hero,
+.browser {
+  width: min(1380px, calc(100% - 64px));
+  margin-inline: auto;
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 430px) minmax(360px, 470px);
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  min-height: 360px;
+  margin-top: 18px;
+  padding: 36px 42px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 16px;
+  box-shadow: 0 16px 44px rgba(23, 16, 111, .06);
+}
+
+.heroBackdrop {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, .99) 0%, rgba(255, 255, 255, .94) 30%, rgba(255, 255, 255, .42) 55%, rgba(242, 240, 255, .2) 100%),
+    url('/journey/illustrations/homepage-frame/japan.webp');
+  background-position: center;
+  background-size: cover;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(242, 240, 255, .28));
+}
+
+.heroCopy { max-width: 430px; }
+.eyebrow,
+.featuredLabel,
+.filterLabel,
+.allRoutes small {
+  margin: 0;
+  color: var(--morrovia-signal);
+  font: 800 9px/1.2 var(--morrovia-meta);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 430px;
+  margin: 14px 0 0;
+  font: 600 clamp(48px, 4vw, 62px)/.96 var(--morrovia-display);
+  letter-spacing: -.052em;
+}
+
+.hero h1 span {
+  position: relative;
+  display: inline-block;
+}
+
+.hero h1 span::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -6px;
+  left: 0;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--morrovia-signal);
+  transform: rotate(-1.5deg);
+}
+
+.heroCopy > p:not(.eyebrow) {
+  max-width: 330px;
+  margin: 20px 0 0;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-body);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.primaryAction {
+  min-height: 44px;
+  padding-inline: 18px;
+  border-color: var(--morrovia-signal);
+  background: var(--morrovia-signal);
+}
+
+.primaryAction:hover { border-color: var(--morrovia-action); background: var(--morrovia-action); }
+
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--morrovia-ink);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.featuredCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 14px;
+  align-items: stretch;
+  padding: 14px;
+  border: 1px solid rgba(217, 216, 238, .94);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 18px 45px rgba(23, 16, 111, .16);
+  backdrop-filter: blur(12px);
+}
+
+.featuredDetails { padding: 5px 2px 3px; min-width: 0; }
+.featuredLabel { display: flex; align-items: center; gap: 7px; }
+.featuredLabel svg { width: 12px; height: 12px; }
+.featuredCard h2 { margin: 9px 0 0; font: 600 24px/1.02 var(--morrovia-display); letter-spacing: -.03em; }
+.featuredCard p { margin: 8px 0 13px; color: var(--morrovia-muted); font: var(--morrovia-type-supporting-body); }
+.featuredCard dl { display: grid; gap: 7px; margin: 0; padding: 10px 0; border-block: 1px solid var(--morrovia-line); }
+.featuredCard dl div { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.featuredCard dt { height: 13px; }
+.featuredCard dt svg { width: 13px; height: 13px; color: var(--morrovia-signal); }
+.featuredCard dd { min-width: 0; margin: 0; overflow: hidden; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.featuredCard a { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; color: var(--morrovia-ink); font: var(--morrovia-type-control); text-decoration: none; }
+.featuredCard a svg { width: 13px; }
+.featuredImage { min-height: 168px; border-radius: 9px; background-position: center; background-size: cover; }
+
+.browser { padding: 12px 0 28px; }
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(170px, .65fr) minmax(190px, .72fr);
+  align-items: center;
+  gap: 22px;
+  padding: 14px 22px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(23, 16, 111, .04);
+}
+
+.regionFilter,
+.compactSelect { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; border: 0; background: transparent; }
+.pills button {
+  min-height: 40px;
+  padding: 0 13px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-control);
+  cursor: pointer;
+}
+.pills button:hover { border-color: var(--morrovia-ink-soft); }
+.pills button[aria-pressed="true"] { border-color: var(--morrovia-action); background: var(--morrovia-action); color: #fff; }
+.pills button:focus-visible,
+.compactSelect select:focus-visible,
+.styleCard:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.compactSelect select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-control);
+}
+.compactSelect > span:last-child { flex: 1; min-width: 0; }
+
+.discoverySection { margin-top: 17px; }
+.discoverySection > header,
+.allRoutes > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 32px; }
+.discoverySection h2,
+.allRoutes h2 { margin: 0; font: 600 22px/1.1 var(--morrovia-display); letter-spacing: -.03em; }
+.discoverySection header button { min-height: 36px; padding-inline: 8px; }
+
+.featuredGrid,
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.routeCard {
+  position: relative;
+  display: grid;
+  grid-template-rows: 108px minmax(0, 1fr);
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: #fff;
+  color: var(--morrovia-ink);
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.routeCard:hover { transform: translateY(-2px); border-color: var(--morrovia-ink-soft); box-shadow: 0 12px 28px rgba(23, 16, 111, .1); }
+.routeImage { display: block; background-position: center; background-size: cover; }
+.imagePending { background: linear-gradient(135deg, var(--morrovia-lilac), #fff); }
+.routeCardBody { position: relative; display: grid; align-content: start; gap: 4px; padding: 10px 38px 10px 12px; }
+.routeCardBody small { color: var(--morrovia-signal); font: 800 8px var(--morrovia-meta); letter-spacing: .12em; text-transform: uppercase; }
+.routeCardBody strong { font: 600 17px/1.05 var(--morrovia-display); letter-spacing: -.025em; }
+.routePath { overflow: hidden; color: var(--morrovia-ink-soft); font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.routeMeta { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 4px; color: var(--morrovia-ink-soft); font-size: 9px; font-weight: 700; }
+.routeMeta > span { display: inline-flex; align-items: center; gap: 4px; }
+.routeMeta svg { width: 12px; height: 12px; color: var(--morrovia-signal); }
+.routeArrow { position: absolute; right: 10px; bottom: 10px; display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid var(--morrovia-line); border-radius: 50%; }
+.routeArrow svg { width: 13px; }
+
+.wonderRail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.wonderCard {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) 26px;
+  min-height: 108px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: #fff;
+  color: var(--morrovia-ink);
+  text-decoration: none;
+}
+.wonderImage { background-position: center; background-size: cover; }
+.wonderBody { display: flex; flex-direction: column; min-width: 0; padding: 12px 10px; }
+.wonderBody strong { font: 600 17px/1.1 var(--morrovia-display); }
+.wonderBody small { margin-top: 4px; color: var(--morrovia-muted); font-size: 9px; }
+.wonderBody > span:not(.wonderMeta) { display: -webkit-box; margin-top: 12px; overflow: hidden; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.wonderMeta { display: flex; align-items: center; gap: 4px; margin-top: auto; padding-top: 9px; color: var(--morrovia-ink-soft); font-size: 8px; font-weight: 700; }
+.wonderMeta svg { width: 11px; height: 11px; color: var(--morrovia-signal); }
+.wonderCard > svg { align-self: center; width: 15px; }
+.wonderCard:hover { border-color: var(--morrovia-ink-soft); }
+
+.styleRail { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.styleCard {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 92px;
+  padding: 15px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background-color: var(--morrovia-lilac);
+  background-position: center;
+  background-size: cover;
+  color: #fff;
+  font: 600 18px/1 var(--morrovia-display);
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+}
+.styleCard::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(13, 8, 71, .02), rgba(13, 8, 71, .82)); }
+.styleCard svg { width: 18px; }
+.styleCard:hover { transform: translateY(-1px); }
+
+.allRoutes { scroll-margin-top: 92px; margin-top: 30px; padding-top: 23px; border-top: 1px solid var(--morrovia-line); }
+.allRoutes > header { margin-bottom: 13px; }
+.allRoutes small { display: block; margin-bottom: 5px; }
+.moreWrap { display: flex; justify-content: center; margin-top: 20px; }
+.empty { display: grid; gap: 5px; place-items: center; min-height: 150px; padding: 24px; border: 1px dashed var(--morrovia-line); border-radius: 12px; color: var(--morrovia-muted); text-align: center; }
+.empty strong { color: var(--morrovia-ink); }
+
+.bottomBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 20px;
+  padding: 14px 20px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-line) 75%, var(--morrovia-action));
+  border-radius: 13px;
+  background: linear-gradient(110deg, var(--morrovia-lilac), #fbf9ff 68%, #fff7fb);
+  box-shadow: 0 10px 30px rgba(23, 16, 111, .05);
+}
+.bottomBanner > div { display: flex; align-items: center; gap: 16px; }
+.bottomIcon { flex: none; width: 30px; height: 30px; color: var(--morrovia-signal); }
+.bottomBanner h2 { margin: 0; font: 600 24px/1 var(--morrovia-display); letter-spacing: -.03em; }
+.bottomBanner p { margin: 5px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+
+@media (max-width: 1100px) {
+  .hero { grid-template-columns: minmax(0, 1fr) 390px; }
+  .filters { grid-template-columns: 1fr 1fr; }
+  .regionFilter { grid-column: 1 / -1; }
+  .featuredGrid, .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wonderRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .styleRail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 820px) {
+  .hero, .browser { width: min(100% - 32px, 720px); }
+  .hero { grid-template-columns: 1fr; min-height: auto; padding: 42px 32px; }
+  .heroBackdrop { background-image: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .75)), url('/journey/illustrations/homepage-frame/japan.webp'); }
+  .heroCopy { max-width: 530px; }
+  .hero h1 { max-width: 560px; }
+  .featuredCard { max-width: 520px; }
+  .filters { grid-template-columns: 1fr; }
+  .regionFilter { grid-column: auto; align-items: flex-start; }
+  .compactSelect { display: grid; grid-template-columns: 72px minmax(0, 1fr); }
+  .styleRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .hero, .browser { width: min(100% - 24px, 430px); }
+  .hero { margin-top: 12px; padding: 34px 20px 22px; border-radius: 14px; }
+  .hero h1 { font-size: clamp(42px, 13vw, 56px); }
+  .featuredCard { grid-template-columns: 1fr 94px; padding: 11px; }
+  .featuredImage { min-height: 178px; }
+  .filters { gap: 14px; padding: 16px; }
+  .regionFilter { display: grid; gap: 9px; }
+  .pills { flex-wrap: nowrap; margin-inline: -4px; padding: 0 4px 4px; overflow-x: auto; scrollbar-width: none; }
+  .pills::-webkit-scrollbar { display: none; }
+  .pills button { min-height: 40px; }
+  .discoverySection { margin-top: 22px; }
+  .discoverySection h2, .allRoutes h2 { font-size: 23px; }
+  .featuredGrid, .wonderRail, .styleRail, .grid {
+    display: flex;
+    gap: 12px;
+    margin-inline: -12px;
+    padding: 0 12px 7px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .featuredGrid::-webkit-scrollbar, .wonderRail::-webkit-scrollbar, .styleRail::-webkit-scrollbar, .grid::-webkit-scrollbar { display: none; }
+  .routeCard { flex: 0 0 82%; grid-template-rows: 132px 1fr; scroll-snap-align: start; }
+  .wonderCard { flex: 0 0 88%; scroll-snap-align: start; }
+  .styleCard { flex: 0 0 74%; min-height: 120px; scroll-snap-align: start; }
+  .bottomBanner { align-items: stretch; flex-direction: column; padding: 20px; }
+  .bottomBanner > div { align-items: flex-start; }
+  .bottomBanner a { width: 100%; }
+}
+
+@media (max-width: 360px) {
+  .hero, .browser { width: calc(100% - 20px); }
+  .hero { padding-inline: 17px; }
+  .heroActions { align-items: stretch; flex-direction: column; }
+  .heroActions a { width: 100%; }
+  .featuredCard { grid-template-columns: 1fr; }
+  .featuredImage { display: none; }
+  .compactSelect { grid-template-columns: 1fr; gap: 7px; }
+  .routeCard { flex-basis: 88%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .routeCard, .styleCard { transition: none; }
+}

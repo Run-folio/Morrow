@@ -1,6 +1,7 @@
 import { parseTripBrief } from "./trip-brief.ts";
 import {
   resolvePlaceMentions,
+  placeResolutionIssuesForMentions,
   reconcileSelfBasePlaceState,
   type PlaceIntelligenceResult,
   type PlaceIssue,
@@ -16,6 +17,7 @@ import {
   unknownPlanningConfidence,
   type PlanningConfidence,
 } from "./planning-confidence.ts";
+import { normalizeTripInterests } from "./trip-interest.ts";
 
 export const STRUCTURED_TRIP_BRIEF_VERSION = 1 as const;
 
@@ -462,7 +464,9 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     ? unique([...input.placeSelections, ...priorSelections], (selection) => selection.mentionId)
     : priorSelections).filter((selection) => !removedMentionIdSet.has(selection.mentionId));
   const selfBaseState = reconcileSelfBasePlaceState(base.placeMentions ?? [], proposedPlaceSelections);
-  const placeSelections = selfBaseState.selections;
+  let placeSelections = selfBaseState.selections;
+  let staleVisitMentionIds = new Set<string>();
+  let activeRouteCanonicalPlaceIds: Set<string> | undefined;
   const selectedDestinations = input.destinations?.map((destination): TripBriefDestination => {
     const prior = base.destinations.find((item) => (destination.canonicalPlaceId && item.canonicalPlaceId === destination.canonicalPlaceId)
       || normalize(item.name) === normalize(destination.name))
@@ -486,6 +490,16 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     selectedDestinations ? [...selectedDestinations, ...preservedDestinations] : preservedDestinations,
     destinationIdentity,
   );
+  if (input.destinations) {
+    const activeRouteStopIds = new Set(input.destinations.flatMap((destination) => destination.id ? [destination.id] : []));
+    activeRouteCanonicalPlaceIds = new Set(input.destinations.flatMap((destination) => destination.canonicalPlaceId ? [destination.canonicalPlaceId] : []));
+    staleVisitMentionIds = new Set(placeSelections.filter((selection) => selection.kind === "visit"
+      && selection.routeStopId
+      && !activeRouteStopIds.has(selection.routeStopId)).map((selection) => selection.mentionId));
+    placeSelections = placeSelections.filter((selection) => selection.kind !== "visit"
+      || !selection.routeStopId
+      || activeRouteStopIds.has(selection.routeStopId));
+  }
   const mustVisitNames = input.mustVisit ?? base.mustVisit.map((destination) => destination.name);
   const mustVisit = mustVisitNames
     .filter((name) => !removedNames.has(normalize(name)))
@@ -564,7 +578,10 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
     hardConstraints,
     softPreferences,
     placeMentions: selfBaseState.mentions.length ? selfBaseState.mentions : base.placeMentions,
-    placeIssues: (base.placeIssues ?? []).filter((issue) => {
+    placeIssues: unique([...(base.placeIssues ?? []), ...placeResolutionIssuesForMentions((base.placeMentions ?? []).filter((mention) => staleVisitMentionIds.has(mention.mentionId)
+      || !activeRouteCanonicalPlaceIds
+      || Boolean(mention.canonicalPlaceId && activeRouteCanonicalPlaceIds.has(mention.canonicalPlaceId))))
+      .filter((issue) => staleVisitMentionIds.has(issue.mentionId))], (issue) => `${issue.code}|${issue.mentionId}`).filter((issue) => {
       if (removedMentionIdSet.has(issue.mentionId)) return false;
       if (selfBaseState.collapsedMentionIds.has(issue.mentionId) && issue.code === "region_requires_base") return false;
       if (issue.code === "missing_routable_destination" && destinations.some((destination) => Boolean(destination.id))) return false;
@@ -655,6 +672,7 @@ export function routeScoringPreferencesFromStructuredBrief(brief: StructuredTrip
     pace: brief.pace?.value,
     preferredModes: preferences.transportModes.map((mode) => mode === "drive" ? "road" as const : mode),
     avoidFlights: preferences.avoidFlights,
+    interests: normalizeTripInterests(brief.interests.map((interest) => interest.value)),
   };
 }
 

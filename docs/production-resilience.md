@@ -57,7 +57,7 @@ The two URL values must be valid HTTP(S) origins and match after normalisation. 
 - Google OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - Email: `RESEND_API_KEY`, `EMAIL_FROM`, `RESEND_WEBHOOK_SECRET`
 - Admin access: `ADMIN_EMAILS`
-- Analytics: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_PROJECT_ID`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=production`
+- Analytics: `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=production` (`NEXT_PUBLIC_CLARITY_PROJECT_ID` is reserved but its loader remains disabled pending replay/masking verification)
 - Optional providers: values documented in `.env.example` for image, research, places, inventory, and affiliate integrations.
 
 Do not use staging credentials or a staging database for a production failover. Do not enable any optional provider solely to satisfy this runbook.

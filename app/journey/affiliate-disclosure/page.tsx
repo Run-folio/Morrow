@@ -1,4 +1,3 @@
-import MorroviaFooter from "@/components/morrovia-footer";
 import EasyTNavigation from "../easyt-navigation";
 import styles from "../privacy/privacy-current.module.css";
 
@@ -41,6 +40,5 @@ export default function AffiliateDisclosurePage() {
         </section>
       </article>
     </div>
-    <MorroviaFooter />
   </main>;
 }

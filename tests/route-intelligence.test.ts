@@ -18,6 +18,29 @@ test("recommends a clearly more direct order when it removes material backtracki
   assert.ok((assessment.improvementMinutes ?? 0) >= 90);
 });
 
+test("accepts a small estimated-time tradeoff when the scorer removes material backtracking", () => {
+  const assessment = assessRouteOrder({
+    origin: { name: "Ljubljana", coordinates: [14.5058, 46.0569] },
+    stops: [
+      { id: "ljubljana", name: "Ljubljana", country: "Slovenia", coordinates: [14.5058, 46.0569] },
+      { id: "sarajevo", name: "Sarajevo", country: "Bosnia and Herzegovina", coordinates: [18.4131, 43.8563] },
+      { id: "zagreb", name: "Zagreb", country: "Croatia", coordinates: [15.9819, 45.815] },
+      { id: "split", name: "Split", country: "Croatia", coordinates: [16.4402, 43.5081] },
+      { id: "dubrovnik", name: "Dubrovnik", country: "Croatia", coordinates: [18.0944, 42.6507] },
+    ],
+    constraints: {
+      fixedStartStopId: "ljubljana",
+      fixedEndStopId: "dubrovnik",
+      requiredStopIds: ["ljubljana", "sarajevo", "zagreb", "split", "dubrovnik"],
+    },
+  });
+
+  assert.equal(assessment.state, "recommendation");
+  assert.deepEqual(assessment.recommendedStopIds, ["ljubljana", "zagreb", "sarajevo", "split", "dubrovnik"]);
+  assert.match(assessment.reasons.join(" "), /backtracking/i);
+  assert.ok((assessment.recommendedTransferMinutes ?? 0) - (assessment.currentTransferMinutes ?? 0) <= 60);
+});
+
 test("does not make an order recommendation without verified coordinates", () => {
   const assessment = assessRouteOrder({
     origin,

@@ -30,6 +30,8 @@ type JourneyPlannerMapProps = {
   selectedLegId?: string | null;
   contextCardsHidden?: boolean;
   plannerPins: PlannerMapPin[];
+  /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */
+  selectedPlannerPinId?: string | null;
   localPlaces?: JourneyLocalPlace[];
   selectedLocalPlaceId?: string | null;
   focusOffset?: [number, number];
@@ -39,6 +41,10 @@ type JourneyPlannerMapProps = {
   pinPlacementMode: boolean;
   /** Show the whole route on first load rather than opening at the selected city. */
   overviewMode?: boolean;
+  /** Render the shared MapLibre surface as a non-interactive whole-route preview. */
+  previewMode?: boolean;
+  /** Accessible name for a scoped preview; the whole-route label remains the default. */
+  previewLabel?: string;
   overviewPadding?: { top: number; right: number; bottom: number; left: number };
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
@@ -173,6 +179,7 @@ export function JourneyPlannerMap({
   selectedLegId,
   contextCardsHidden = false,
   plannerPins,
+  selectedPlannerPinId = null,
   localPlaces = [],
   selectedLocalPlaceId,
   focusOffset,
@@ -181,6 +188,8 @@ export function JourneyPlannerMap({
   draftPinCoordinates,
   pinPlacementMode,
   overviewMode = false,
+  previewMode = false,
+  previewLabel,
   overviewPadding,
   onMapPinDrop,
   onPlannerPinSelect,
@@ -195,7 +204,10 @@ export function JourneyPlannerMap({
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
   const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
+  const removalTimerRef = useRef<number | null>(null);
   const hasInitialisedViewRef = useRef(false);
+  const selectedLegIdRef = useRef(selectedLegId);
+  const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);
   const onLegSelectRef = useRef(onLegSelect);
   const onSelectRef = useRef(onSelect);
   const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
@@ -204,6 +216,10 @@ export function JourneyPlannerMap({
   onSelectRef.current = onSelect;
   onPlannerPinSelectRef.current = onPlannerPinSelect;
   onLocalPlaceSelectRef.current = onLocalPlaceSelect;
+  selectedLegIdRef.current = selectedLegId;
+  selectedPlannerPinIdRef.current = selectedPlannerPinId;
+  const routeFocusKey = previewMode ? null : focusCoordinates;
+  const routeSelectionKey = previewMode ? null : selectedLegId;
   const spatialLegs = useMemo<MapRouteLeg[]>(() => {
     const stopById = new Map(stops.map((stop) => [stop.id, stop]));
     return legs.flatMap((leg, index) => {
@@ -235,31 +251,64 @@ export function JourneyPlannerMap({
   }, [legs, stops]);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-    const firstStop = stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
-      ?? stops.find((stop) => stop.coordinates)?.coordinates
-      ?? [-90.5069, 14.6349];
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: mapStyle,
-      center: firstStop,
-      zoom: 9,
-    });
-    // North-up is fixed in this workspace, so a compass beside the route-fit
-    // control duplicated intent and looked like an unexplained third zoom
-    // button. Keep the familiar MapLibre zoom controls only.
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    mapRef.current = map;
+    if (!containerRef.current) return;
+    if (removalTimerRef.current !== null) {
+      window.clearTimeout(removalTimerRef.current);
+      removalTimerRef.current = null;
+    }
+    if (!mapRef.current) {
+      maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+      const firstStop = stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
+        ?? stops.find((stop) => stop.coordinates)?.coordinates
+        ?? [-90.5069, 14.6349];
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: mapStyle,
+        center: firstStop,
+        zoom: 9,
+        interactive: !previewMode,
+      });
+      const handleMapError = (event: maplibregl.ErrorEvent) => {
+        const value = event.error;
+        if (typeof Event !== "undefined" && value instanceof Event) {
+          console.warn("Morrovia MapLibre resource request ended before the map finished loading.", {
+            type: value.type,
+          });
+          return;
+        }
+        const error = value instanceof Error ? value : new Error("Morrovia MapLibre reported an unknown error.");
+        if (/Failed to fetch|Could not load|NetworkError|Load failed|AJAXError/i.test(error.message)) {
+          console.warn("Morrovia MapLibre could not load a map resource.", error);
+          return;
+        }
+        console.error(error);
+      };
+      if (previewMode) map.on("error", handleMapError);
+      // North-up is fixed in this workspace, so a compass beside the route-fit
+      // control duplicated intent and looked like an unexplained third zoom
+      // button. Keep the familiar MapLibre zoom controls only.
+      if (!previewMode) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+      mapRef.current = map;
+    }
 
     return () => {
-      stopMarkersRef.current.forEach((marker) => marker.remove());
-      legMarkersRef.current.forEach((marker) => marker.remove());
-      pinMarkersRef.current.forEach((marker) => marker.remove());
-      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-      draftPinRef.current?.remove();
-      map.remove();
-      mapRef.current = null;
+      const removeMap = () => {
+        stopMarkersRef.current.forEach((marker) => marker.remove());
+        legMarkersRef.current.forEach((marker) => marker.remove());
+        pinMarkersRef.current.forEach((marker) => marker.remove());
+        localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+        draftPinRef.current?.remove();
+        mapRef.current?.remove();
+        mapRef.current = null;
+      };
+      if (!previewMode) {
+        removeMap();
+        return;
+      }
+      removalTimerRef.current = window.setTimeout(() => {
+        removalTimerRef.current = null;
+        removeMap();
+      }, 0);
     };
   }, []);
 
@@ -281,7 +330,7 @@ export function JourneyPlannerMap({
         );
         map.fitBounds(bounds, {
           padding: effectiveOverviewPadding(map, overviewPadding),
-          offset: overviewFitOffset(),
+          offset: previewMode ? [0, 0] : overviewFitOffset(),
           maxZoom: overviewMaxZoom,
           duration: 0,
         });
@@ -403,7 +452,7 @@ export function JourneyPlannerMap({
         });
       }
       if (map.getLayer("trip-route-selected")) {
-        map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegId ?? ""]);
+        map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegIdRef.current ?? ""]);
       }
       if (map.getLayer("trip-route-hit")) {
         map.on("click", "trip-route-hit", selectRoute);
@@ -424,7 +473,7 @@ export function JourneyPlannerMap({
           );
           map.fitBounds(bounds, {
             padding: effectiveOverviewPadding(map, overviewPadding),
-            offset: overviewFitOffset(),
+            offset: previewMode ? [0, 0] : overviewFitOffset(),
             maxZoom: overviewMaxZoom,
             duration: 0,
           });
@@ -460,7 +509,7 @@ export function JourneyPlannerMap({
           (result, stop) => result.extend(stop.coordinates),
           new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
         );
-        map.fitBounds(bounds, { padding: effectiveOverviewPadding(map, overviewPadding), offset: overviewFitOffset(), maxZoom: overviewMaxZoom, duration: 0 });
+        map.fitBounds(bounds, { padding: effectiveOverviewPadding(map, overviewPadding), offset: previewMode ? [0, 0] : overviewFitOffset(), maxZoom: overviewMaxZoom, duration: 0 });
       });
     }
     return () => {
@@ -473,7 +522,7 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, selectedId, selectedLegId, spatialLegs, stops]);
+  }, [focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, previewMode, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -491,15 +540,20 @@ export function JourneyPlannerMap({
     );
     map.fitBounds(bounds, {
       padding: effectiveOverviewPadding(map, overviewPadding),
-      offset: overviewFitOffset(),
+      offset: previewMode ? [0, 0] : overviewFitOffset(),
       maxZoom: overviewMaxZoom,
       duration: 550,
     });
-  }, [overviewMode, overviewPadding, stops]);
+  }, [overviewMode, overviewPadding, previewMode, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    if (previewMode) {
+      legMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current = [];
+      return;
+    }
     const drawLegMarkers = () => {
       legMarkersRef.current.forEach((marker) => marker.remove());
       legMarkersRef.current = spatialLegs.map((leg, index) => {
@@ -530,7 +584,7 @@ export function JourneyPlannerMap({
       legMarkersRef.current.forEach((marker) => marker.remove());
       legMarkersRef.current = [];
     };
-  }, [contextCardsHidden, spatialLegs]);
+  }, [contextCardsHidden, previewMode, spatialLegs]);
 
   useEffect(() => {
     legMarkersRef.current.forEach((marker) => {
@@ -548,15 +602,20 @@ export function JourneyPlannerMap({
       const cards = new Map(destinationCards.map((card) => [card.stopId, card]));
       stopMarkersRef.current = stops.filter((stop) => stop.coordinates).map((stop, index) => {
         const isOrigin = index === 0 && stop.theme === "transit";
-        const element = document.createElement("button");
-        element.type = "button";
-        element.className = `planner-map__stop ${stop.id === selectedId ? "is-active" : ""} ${stop.id === featuredStopId ? "is-featured" : ""} ${isOrigin ? "is-origin" : ""} ${index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "is-destination" : ""}`;
+        const element = document.createElement(previewMode ? "span" : "button");
+        if (!previewMode) (element as HTMLButtonElement).type = "button";
+        element.className = `planner-map__stop ${previewMode ? "is-preview" : ""} ${stop.id === selectedId ? "is-active" : ""} ${stop.id === featuredStopId ? "is-featured" : ""} ${isOrigin ? "is-origin" : ""} ${index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "is-destination" : ""}`;
         element.dataset.mapStopId = stop.id;
         const relationship = isOrigin ? "trip origin" : index === stops.filter((candidate) => candidate.coordinates).length - 1 ? "final destination" : `overnight stop ${isOrigin ? index + 1 : index}`;
-        element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
+        if (previewMode) element.setAttribute("aria-hidden", "true");
+        else element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
         const number = document.createElement("span");
         number.className = "planner-map__stop-number";
-        number.textContent = isOrigin ? "FROM" : String(stops[0]?.theme === "transit" ? index : index + 1).padStart(2, "0");
+        number.textContent = previewMode
+          ? String(index + 1)
+          : isOrigin
+            ? "FROM"
+            : String(stops[0]?.theme === "transit" ? index : index + 1).padStart(2, "0");
         element.append(number);
         const card = cards.get(stop.id);
         if (card) {
@@ -585,18 +644,20 @@ export function JourneyPlannerMap({
           markerElement.classList.toggle("is-previewed", markerElement.dataset.mapStopId === id);
           markerElement.classList.toggle("is-preview-suppressed", Boolean(id) && markerElement.dataset.mapStopId !== id);
         });
-        element.addEventListener("click", (event) => { event.stopPropagation(); onSelectRef.current(stop.id); });
-        element.addEventListener("mouseenter", () => previewStop(stop.id));
-        element.addEventListener("mouseleave", () => previewStop(undefined));
-        element.addEventListener("focus", () => previewStop(stop.id));
-        element.addEventListener("blur", () => previewStop(undefined));
+        if (!previewMode) {
+          element.addEventListener("click", (event) => { event.stopPropagation(); onSelectRef.current(stop.id); });
+          element.addEventListener("mouseenter", () => previewStop(stop.id));
+          element.addEventListener("mouseleave", () => previewStop(undefined));
+          element.addEventListener("focus", () => previewStop(stop.id));
+          element.addEventListener("blur", () => previewStop(undefined));
+        }
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(stop.coordinates!).addTo(map);
       });
     };
     if (map.isStyleLoaded()) drawMarkers();
     else map.once("load", drawMarkers);
     return () => { map.off("load", drawMarkers); };
-  }, [destinationCards, stops]);
+  }, [destinationCards, previewMode, stops]);
 
   useEffect(() => {
     const mappedStops = stops.filter((stop) => stop.coordinates);
@@ -616,19 +677,44 @@ export function JourneyPlannerMap({
       pinMarkersRef.current = plannerPins.map((pin) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__pin is-${pin.category}`;
+        element.className = `planner-map__pin is-${pin.category} ${pin.id === selectedPlannerPinIdRef.current ? "is-active" : ""}`;
         element.dataset.plannerPinId = pin.id;
         element.setAttribute("aria-label", `Show ${pin.title}`);
         element.title = `Show ${pin.title}`;
         element.innerHTML = `<span>${pinSymbols[pin.category]}</span>`;
-        element.addEventListener("click", (event) => { event.stopPropagation(); onPlannerPinSelectRef.current(pin); });
+        const selectPin = (event: Event) => { event.stopPropagation(); onPlannerPinSelectRef.current(pin); };
+        if (previewMode) {
+          // A non-pannable preview still needs its stable pin controls to be
+          // actionable. Pointer-down avoids MapLibre swallowing the following
+          // click, while the explicit key handler preserves button semantics.
+          element.addEventListener("pointerdown", selectPin);
+          element.addEventListener("mousedown", selectPin);
+          element.addEventListener("click", selectPin);
+          element.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            selectPin(event);
+          });
+        } else {
+          element.addEventListener("click", selectPin);
+        }
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([pin.longitude, pin.latitude]).addTo(map);
       });
     };
-    if (map.isStyleLoaded()) drawPins();
+    // Preview pins are DOM overlays and can update while raster resources are
+    // still settling; the main Map keeps its established style lifecycle.
+    if (previewMode) drawPins();
+    else if (map.isStyleLoaded()) drawPins();
     else map.once("load", drawPins);
     return () => { map.off("load", drawPins); };
-  }, [plannerPins]);
+  }, [plannerPins, previewMode]);
+
+  useEffect(() => {
+    pinMarkersRef.current.forEach((marker) => {
+      const element = marker.getElement();
+      element.classList.toggle("is-active", element.dataset.plannerPinId === selectedPlannerPinId);
+    });
+  }, [selectedPlannerPinId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -721,5 +807,5 @@ export function JourneyPlannerMap({
     map.easeTo({ center: place.coordinates, zoom: Math.max(map.getZoom(), 14), offset, duration: 420 });
   }, [focusOffset, localPlaces, selectedLocalPlaceId]);
 
-  return <div ref={containerRef} className="planner-map" aria-label="Interactive trip map" />;
+  return <div ref={containerRef} className="planner-map" aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"} />;
 }

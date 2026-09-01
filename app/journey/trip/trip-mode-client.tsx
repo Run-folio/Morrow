@@ -30,6 +30,7 @@ import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { authClient } from "@/lib/auth-client";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
+import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import styles from "./trip-mode.module.css";
 
 const defaultChecklist = (): TripChecklistItem[] => [
@@ -282,6 +283,17 @@ export default function TripModeClient() {
     hasDeviceRecoveryIssue: localWriteIssue === "existing-recovery" || localWriteIssue === "preserved-recovery",
     authInterrupted: syncAuthInterrupted,
   });
+  const syncMessage = syncConflict
+    ? "This trip changed on another device. Your edit remains on this device until you reload the cloud copy."
+    : localWriteIssue === "existing-recovery"
+      ? "A different device recovery already exists for this trip. This change was not saved or synced; open the device copy to resolve it first."
+      : localWriteIssue === "preserved-recovery"
+        ? "The cloud copy is open. Your different device copy is still preserved until you explicitly resolve or discard it."
+        : localWriteIssue === "storage"
+          ? "This change is only in this open tab. Browser storage could not save it, so it was not synced."
+          : syncAuthInterrupted
+            ? "Your session expired. This change is still safe on this device."
+            : "This change is still safe on this device, but it has not synced to your account.";
 
   const addBooking = () => {
     if (!trip || !bookingTitle.trim()) return;
@@ -301,7 +313,7 @@ export default function TripModeClient() {
   if (!trip) return <section className={styles.empty}><p>TRIP MODE</p><h1>Your trip will live here.</h1><span>Build a route first, then EasyT will keep the useful details close while you travel.</span><Link href="/journey/new">Start a trip <ArrowRight /></Link></section>;
 
   return <section className={styles.page}>
-    {syncError ? <aside className={styles.syncNotice} role="alert"><span>{syncConflict ? "This trip changed on another device. Your edit remains on this device until you reload the cloud copy." : localWriteIssue === "existing-recovery" ? "A different device recovery already exists for this trip. This change was not saved or synced; open the device copy to resolve it first." : localWriteIssue === "preserved-recovery" ? "The cloud copy is open. Your different device copy is still preserved until you explicitly resolve or discard it." : localWriteIssue === "storage" ? "This change is only in this open tab. Browser storage could not save it, so it was not synced." : syncAuthInterrupted ? "Your session expired. This change is still safe on this device." : "This change is still safe on this device, but it has not synced to your account."}</span><EasyTButton size="small" variant="secondary" onClick={syncAction === "reload-cloud" ? reloadCloudCopy : syncAction === "open-device" ? () => window.location.assign(tripSyncRecoveryPath(trip.id)) : syncAction === "sign-in" ? () => window.location.assign(tripSyncSignInPath(trip.id)) : () => persist(trip)}>{syncAction === "reload-cloud" ? "Reload cloud copy" : syncAction === "open-device" ? "Open device copy" : syncAction === "sign-in" ? "Sign in again" : "Try again"}</EasyTButton></aside> : null}
+    {syncError ? <MorroviaStatusBanner className={styles.tripModeNotice} tone="warning" title={syncMessage} actions={<EasyTButton size="small" variant="secondary" onClick={syncAction === "reload-cloud" ? reloadCloudCopy : syncAction === "open-device" ? () => window.location.assign(tripSyncRecoveryPath(trip.id)) : syncAction === "sign-in" ? () => window.location.assign(tripSyncSignInPath(trip.id)) : () => persist(trip)}>{syncAction === "reload-cloud" ? "Reload cloud copy" : syncAction === "open-device" ? "Open device copy" : syncAction === "sign-in" ? "Sign in again" : "Try again"}</EasyTButton>} /> : null}
     <header className={styles.hero}><div><p>TRIP MODE</p><h1>{trip.title}</h1><span>{lifecycleLabel(trip.startDate, trip.endDate)}</span></div><Link href={tripHref}>Open map <ArrowRight /></Link></header>
     <nav className={styles.tabs} aria-label="Trip mode sections"><button type="button" className={tab === "today" ? styles.active : ""} onClick={() => setTab("today")}>Today</button><button type="button" className={tab === "bookings" ? styles.active : ""} onClick={() => setTab("bookings")}>Bookings <span>{bookings.length}</span></button><button type="button" className={tab === "ready" ? styles.active : ""} onClick={() => setTab("ready")}>Ready</button></nav>
     {tab === "today" ? tripDay ? <div className={styles.today}><article className={styles.dayCard}><p><CalendarCheck2 /> {dayLabel(tripDay.date)} · Day {tripDay.dayNumber}</p><h2>{tripDay.title}</h2><span>{tripDay.reason}</span><ol>{tripDay.notes.map((note, index) => <li key={`${note}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b>{note}</li>)}</ol></article><div className={styles.quickActions}><Link href={`${tripHref}#finder`}><Utensils /> Find food nearby</Link><Link href={`${tripHref}#finder`}><BedDouble /> Find a stay</Link></div>{(dayNotes.length || pins.length) ? <article className={styles.context}><p>FOR TODAY</p>{dayNotes.length ? <div><ClipboardList /><span>{dayNotes.join(" · ")}</span></div> : null}{pins.map((pin) => <div key={pin.id}><MapPin /><span>{pin.title}</span><small>{pin.category}</small></div>)}</article> : null}</div> : <div className={styles.today}><article className={styles.dayCard}><p><CalendarCheck2 /> TODAY</p><h2>No itinerary item is scheduled for today.</h2><span>Open the map or itinerary to review the plan without treating another day as today.</span></article></div> : null}

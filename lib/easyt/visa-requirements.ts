@@ -1,10 +1,13 @@
 import passportIndex from "./data/passport-index-visa-matrix.json" with { type: "json" };
-import { canonicalCountry, entrySourcesByCountry } from "./travel-readiness.ts";
+import { countryFor, countryFlagFromCode } from "./country-registry.ts";
+import { passportNationalityCountries } from "./passport-countries.ts";
+import { entrySourceForCountry } from "./travel-readiness.ts";
 
 export type TouristEntryStatus = "visa-free" | "visa-on-arrival" | "eta" | "e-visa" | "visa-required" | "no-admission" | "not-verified";
 export type VisaLanguage = "en" | "es";
 
 export type TouristEntryRequirement = {
+  informationState: "known" | "unsupported" | "stale";
   status: TouristEntryStatus;
   statusLabel: string;
   visaAnswer: string;
@@ -26,16 +29,27 @@ type Dataset = {
 };
 const dataset = passportIndex as Dataset;
 
-const flagFromIso2 = (code: string | undefined) => code && /^[a-z]{2}$/i.test(code)
-  ? [...code.toUpperCase()].map((character) => String.fromCodePoint(127397 + character.charCodeAt(0))).join("")
-  : "🌐";
+/** Backwards-compatible display-name export. Availability no longer depends on the visa snapshot. */
+export const supportedPassportCountries = passportNationalityCountries.map(({ name }) => name);
 
-/** Available ordinary-passport nationalities in the bundled Passport Index snapshot. */
-export const supportedPassportCountries = (dataset.passportCountries?.map(({ name }) => name) ?? Object.keys(dataset.rules))
-  .sort((a, b) => a.localeCompare(b));
+/** Country flag for passport and destination controls, derived from ISO alpha-2 identity. */
+export const countryFlagFor = (country: string) => countryFlagFromCode(countryFor(country)?.code);
 
-/** Country flag for passport and destination controls, using the bundled ISO country codes. */
-export const countryFlagFor = (country: string) => flagFromIso2(dataset.countryCodes?.[canonicalCountry(country)]);
+const passportDatasetNameByCode = new Map((dataset.passportCountries ?? []).map(({ code, name }) => {
+  const normalizedCode = code.toUpperCase();
+  if (!countryFor(normalizedCode)) throw new Error(`Passport dataset country ${normalizedCode} is not mapped to the canonical registry.`);
+  return [normalizedCode, name];
+}));
+const destinationDatasetNameByCode = new Map<string, string>();
+for (const rules of Object.values(dataset.rules)) {
+  for (const destinationName of Object.keys(rules)) {
+    const code = countryFor(destinationName)?.code ?? dataset.countryCodes?.[destinationName]?.toUpperCase();
+    if (!code || !countryFor(code)) throw new Error(`Passport dataset destination "${destinationName}" is not mapped to the canonical registry.`);
+    const existing = destinationDatasetNameByCode.get(code);
+    if (existing && existing !== destinationName) throw new Error(`Passport dataset destination collision for ${code}: "${existing}" and "${destinationName}".`);
+    destinationDatasetNameByCode.set(code, destinationName);
+  }
+}
 
 const SCHENGEN_DESTINATIONS = new Set([
   "Austria", "Croatia", "Denmark", "Finland", "France", "Germany", "Greece", "Italy",
@@ -87,16 +101,21 @@ const stayFor = (days: number | undefined, language: VisaLanguage) => {
 };
 
 const missingRequirement = (destination: string, language: VisaLanguage): TouristEntryRequirement => {
-  const officialSource = entrySourcesByCountry[destination];
+  const destinationCountry = countryFor(destination);
+  const destinationName = destinationCountry?.name ?? destination;
+  const officialSource = entrySourceForCountry(destination);
   return {
+    informationState: "unsupported",
     status: "not-verified",
-    statusLabel: language === "es" ? "Por verificar" : "Needs verification",
-    visaAnswer: language === "es" ? "Morrovia aún no tiene datos para esta combinación" : "Morrovia does not yet have data for this combination",
-    permittedStay: language === "es" ? "Consulta la fuente oficial" : "Check the official source",
-    detail: language === "es" ? "No mostramos una estimación cuando falta una coincidencia de pasaporte y destino." : "We do not show an estimate when a passport and destination match is missing.",
-    conditions: [language === "es" ? "Las reglas pueden depender de residencia, tránsito y propósito de viaje." : "Rules can depend on residence, transit and travel purpose."],
-    sourceLabel: officialSource?.label ?? "Official destination authority",
-    sourceHref: officialSource?.href ?? "https://www.gov.uk/foreign-travel-advice",
+    statusLabel: language === "es" ? "Información de entrada no disponible" : "Entry information unavailable",
+    visaAnswer: language === "es" ? "Información de entrada no disponible" : "Entry information unavailable",
+    permittedStay: "",
+    detail: language === "es"
+      ? `Actualmente no tenemos requisitos de entrada fiables para este pasaporte y ${destinationName}. Consulta la guía oficial del gobierno, inmigración o la embajada del destino antes de viajar.`
+      : `We don't currently have reliable entry requirements for this passport and ${destinationName}. Check the destination's official government, immigration or embassy guidance before travelling.`,
+    conditions: [],
+    sourceLabel: officialSource?.label ?? (language === "es" ? "Guía oficial del destino" : "Official destination guidance"),
+    sourceHref: officialSource?.href ?? "",
     dataUpdatedAt: "",
   };
 };
@@ -106,14 +125,19 @@ const missingRequirement = (destination: string, language: VisaLanguage): Touris
  * It is a travel-planning aid, never a border decision or a real-time guarantee.
  */
 export const touristEntryRequirementFor = (passport: string, destination: string, language: VisaLanguage = "en"): TouristEntryRequirement => {
-  const passportCountry = canonicalCountry(passport);
-  const destinationCountry = canonicalCountry(destination);
-  const rule = dataset.rules[passportCountry]?.[destinationCountry];
-  const officialSource = entrySourcesByCountry[destinationCountry];
+  const passportCountry = countryFor(passport);
+  const destinationCountry = countryFor(destination);
+  const passportName = passportCountry?.name ?? passport.trim();
+  const destinationName = destinationCountry?.name ?? destination.trim();
+  const passportDatasetName = passportCountry ? passportDatasetNameByCode.get(passportCountry.code) : passportName;
+  const destinationDatasetName = destinationCountry ? destinationDatasetNameByCode.get(destinationCountry.code) : destinationName;
+  const rule = passportDatasetName && destinationDatasetName ? dataset.rules[passportDatasetName]?.[destinationDatasetName] : undefined;
+  const officialSource = entrySourceForCountry(destination);
 
-  if (!rule) return missingRequirement(destinationCountry, language);
+  if (!rule) return missingRequirement(destinationName, language);
 
-  if (EU_EEA_PASSPORTS.has(passportCountry) && SCHENGEN_DESTINATIONS.has(destinationCountry)) return {
+  if (EU_EEA_PASSPORTS.has(passportName) && SCHENGEN_DESTINATIONS.has(destinationName)) return {
+    informationState: "known",
     status: "visa-free",
     statusLabel: language === "es" ? "Libre circulación" : "Free movement",
     visaAnswer: language === "es" ? "No se requiere visado para una visita turística" : "No tourist visa required",
@@ -126,20 +150,21 @@ export const touristEntryRequirementFor = (passport: string, destination: string
   };
 
   const status = statusFromDataset(rule.status);
-  if (status === "not-verified") return missingRequirement(destinationCountry, language);
+  if (status === "not-verified") return missingRequirement(destinationName, language);
   const copy = statusDetails[status][language];
-  const schengenAllowance = passportCountry === "United Kingdom" && SCHENGEN_DESTINATIONS.has(destinationCountry);
+  const schengenAllowance = passportName === "United Kingdom" && SCHENGEN_DESTINATIONS.has(destinationName);
   const permittedStay = schengenAllowance
     ? (language === "es" ? "Hasta 90 días en cualquier período de 180 días" : "Up to 90 days in any 180-day period")
     : stayFor(rule.days, language);
 
   return {
+    informationState: "known",
     status,
     statusLabel: copy.label,
     visaAnswer: copy.answer,
     permittedStay,
     detail: schengenAllowance
-      ? (language === "es" ? `El límite se comparte en todo el espacio Schengen; no se reinicia en ${destinationCountry}.` : `This allowance is shared across the Schengen area, not reset in ${destinationCountry}.`)
+      ? (language === "es" ? `El límite se comparte en todo el espacio Schengen; no se reinicia en ${destinationName}.` : `This allowance is shared across the Schengen area, not reset in ${destinationName}.`)
       : (language === "es" ? "Clasificación indicativa para visitas turísticas con pasaporte ordinario." : "An indicative classification for ordinary tourist travel."),
     conditions: schengenAllowance
       ? [

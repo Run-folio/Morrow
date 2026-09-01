@@ -328,7 +328,7 @@ test("success, failure, timeout, malformed, disabled, and missing-key states nev
   const fixture = semanticFixtures[0]!;
   const routeSource = readFileSync(new URL("../app/api/journey-capture/route.ts", import.meta.url), "utf8");
   assert.match(routeSource, /after\(async \(\) =>/);
-  assert.match(routeSource, /return NextResponse\.json\(deterministic\)/);
+  assert.match(routeSource, /return NextResponse\.json\(await providerFallback\(\)\)/);
   const scenarios: Array<{ expectedStatus: string; mode: "off" | "shadow"; provider?: SemanticIntentProvider }> = [
     { expectedStatus: "completed", mode: "shadow", provider: provider(intentForFixture(fixture)) },
     { expectedStatus: "failed", mode: "shadow", provider: { model: "failure", extract: async () => { throw new Error("offline"); } } },

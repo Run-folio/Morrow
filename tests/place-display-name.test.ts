@@ -48,6 +48,16 @@ const fixtures = [
     tags: { name: "김세리 식당(Kim Seri Restaurant)" },
     expected: { name: "Kim Seri Restaurant", nativeName: "김세리 식당" },
   },
+  {
+    label: "Korean provider transliteration",
+    tags: { name: "교육생식당", "name:ko-Latn": "Gyoyuksaeng Sikdang" },
+    expected: { name: "Gyoyuksaeng Sikdang", nativeName: "교육생식당" },
+  },
+  {
+    label: "Korean international restaurant name",
+    tags: { name: "남해횟집", int_name: "Namhae Sashimi Restaurant" },
+    expected: { name: "Namhae Sashimi Restaurant", nativeName: "남해횟집" },
+  },
 ] as const;
 
 for (const fixture of fixtures) {
@@ -143,6 +153,7 @@ test("all Map place surfaces consume the normalized primary name and unknown sta
   assert.match(finder, /\{place\.name\}<\/strong>/);
   assert.match(workspace, /selectedLocalPlace\?\.name/);
   assert.match(map, /`Show \$\{place\.name\}`/);
+  assert.match(provider, /resolveOsmPlaceDisplayName\(photonNameTags\(properties\), locale\)/);
   assert.match(workspace, /selectedLocalPlace\.operational === true \? <div><dt>Status<\/dt><dd>Operational<\/dd><\/div> : null/);
   assert.doesNotMatch(provider, /operational: true as boolean/);
 });

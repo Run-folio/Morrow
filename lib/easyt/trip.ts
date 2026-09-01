@@ -1,8 +1,9 @@
 import { type RouteIntelligenceAssessment, type RoutePlanningConstraints } from "./planner.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
 import { reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
-import { routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
+import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
+import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -35,7 +36,7 @@ export type TripIntent = {
     budgetSensitivity: BudgetBand;
     transportModes: TripTransportMode[];
     pace: TripIntentPace;
-    interests: string[];
+    interests: TripInterest[];
     dislikes: string[];
   };
 };
@@ -65,13 +66,14 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     pace: trip.brief.pace === "full" ? "packed" : "relaxed",
   });
   const saved = trip.brief.intent;
+  const hasCompatibleSavedIntent = saved?.version === 1;
   const compatible = !saved || saved.version !== 1 ? fallback : {
     ...fallback,
     ...saved,
     travellers: Math.max(1, Math.min(12, Math.round(saved.travellers || fallback.travellers))),
     timing: { ...fallback.timing, ...saved.timing, durationDays },
     hardConstraints: { ...fallback.hardConstraints, ...saved.hardConstraints, mustSeeStopIds: saved.hardConstraints?.mustSeeStopIds ?? fallback.hardConstraints.mustSeeStopIds, optionalStopIds: saved.hardConstraints?.optionalStopIds ?? [], fixedCommitments: saved.hardConstraints?.fixedCommitments ?? [] },
-    preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: saved.preferences?.interests ?? [], dislikes: saved.preferences?.dislikes ?? [] },
+    preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: normalizeTripInterests(saved.preferences?.interests), dislikes: saved.preferences?.dislikes ?? [] },
   };
   const structured = trip.brief.structuredBrief;
   if (!structured) return compatible;
@@ -92,7 +94,9 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
       ...compatible.preferences,
       transportModes: routePreferences.transportModes.length ? routePreferences.transportModes : compatible.preferences.transportModes,
       pace: structured.pace?.value ?? compatible.preferences.pace,
-      interests: structured.interests.map((interest) => interest.value),
+      interests: hasCompatibleSavedIntent
+        ? compatible.preferences.interests
+        : normalizeTripInterests(structured.interests.map((interest) => interest.value)),
       budgetSensitivity: structured.budget?.value ?? compatible.preferences.budgetSensitivity,
     },
   };
@@ -161,6 +165,8 @@ export type PlanItem = {
   title: string;
   reason: string;
   notes: string[];
+  /** Optional broad scheduling intent aligned by index with `notes`. */
+  noteDayParts?: Array<ItineraryDayPart | null>;
   startsAt: string | null;
   endsAt: string | null;
   bookingUrl: string | null;
@@ -168,6 +174,26 @@ export type PlanItem = {
   longitude: number | null;
   image?: string | null;
   sourceUrl?: string | null;
+};
+
+export type ItineraryDayPart = "morning" | "midday" | "afternoon" | "evening";
+
+export type ItineraryIdea = {
+  /** Stable identity for this traveller choice, independent of its day. */
+  id: string;
+  stopId: string;
+  placeId: string;
+  title: string;
+  category: "restaurant" | "activity";
+  coordinates: [number, number];
+  image?: string;
+  sourceUrl?: string;
+  source: "destination-highlight" | "personalised-recommendation";
+  reasons: Array<"destination-significance" | "interest-relevance">;
+  /** Missing means deliberately saved for later; fake days are never used. */
+  dayId?: string;
+  /** Explicit broad scheduling intent; null means planned on a day but not slotted. */
+  dayPart?: ItineraryDayPart | null;
 };
 
 export type TripRecommendation = {
@@ -209,12 +235,16 @@ export type TripBrief = {
   dayAllocations?: Record<string, number>;
   /** Traveller-facing stay nights, stored separately from legacy calendar-day allocations. */
   nightAllocations?: Record<string, number>;
+  /** Stable stop identities whose night counts were explicitly edited by the traveller. */
+  manualNightStopIds?: string[];
   /** Night-native allocation metadata. Older trips keep using dayAllocations. */
   nightAllocation?: NightAllocationResult;
   /** Traveller-authored notes kept with a single calendar day. */
   dayNotes?: Record<number, string[]>;
   /** Only traveller-authored itinerary rows are editable; generated suggestions remain read-only. */
   customActivities?: Record<number, string[]>;
+  /** Canonical stop-bound discovery choices, whether saved or assigned to a day. */
+  itineraryIdeas?: ItineraryIdea[];
   /** Pins are intentionally lightweight: they are part of the editable map, not a separate places database. */
   mapPins?: PlannerMapPin[];
   /** Lightweight traveller-entered confirmations, separate from planning suggestions. */
@@ -287,8 +317,30 @@ export type TripBooking = {
   type: "stay" | "transport" | "reservation" | "other";
   title: string;
   date: string | null;
+  /** Optional provider-neutral end date for a confirmed multi-day booking. */
+  endDate?: string | null;
   confirmation: string | null;
   url: string | null;
+  /** Traveller-confirmed location text when a booking is tied to a place. */
+  location?: string | null;
+  /** Unstructured traveller notes retained without promoting them to facts. */
+  notes?: string[];
+  /** Explicit transport facts only; null means the source did not say. */
+  transportDetails?: {
+    mode: "flight" | "train" | "road" | "ferry" | null;
+    from: string;
+    to: string;
+  };
+  /** Provenance for an explicitly confirmed provider-neutral import. */
+  importDetails?: {
+    candidateId: string;
+    fingerprint: string;
+    sources: Array<"calendar" | "forwarded_email">;
+    provider: string | null;
+    endDate: string | null;
+    location: string | null;
+    confidence: "high" | "medium" | "low";
+  };
 };
 
 export type TripChecklistItem = {
@@ -349,6 +401,7 @@ export type BuilderTripInput = {
   budget: BudgetBand;
   dayAllocations?: Record<string, number>;
   nightAllocations?: Record<string, number>;
+  manualNightStopIds?: string[];
   nightAllocation?: NightAllocationResult;
   draft: BuilderDay[];
   placeDetails?: Record<string, Array<{ title: string; coordinates?: [number, number]; image?: string; sourceUrl?: string }>>;
@@ -367,6 +420,23 @@ const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").
 
 export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
   const now = new Date().toISOString();
+  const fallbackIntent = defaultTripIntent({
+    travellers: 2,
+    durationDays: Math.max(1, Math.round((+new Date(`${input.endDate}T00:00:00`) - +new Date(`${input.startDate}T00:00:00`)) / 86400000) + 1),
+    stopIds: input.stops.map((stop) => stop.id),
+    budgetSensitivity: input.budget,
+    pace: input.pace === "full" ? "packed" : "relaxed",
+  });
+  const suppliedIntent = input.intent ?? fallbackIntent;
+  const canonicalInterests = normalizeTripInterests(input.intent?.preferences.interests
+    ?? input.structuredBrief?.interests.map((interest) => interest.value));
+  const canonicalIntent: TripIntent = {
+    ...suppliedIntent,
+    preferences: { ...suppliedIntent.preferences, interests: canonicalInterests },
+  };
+  const canonicalStructuredBrief = input.structuredBrief
+    ? mergeStructuredTripBrief(input.structuredBrief, { interests: canonicalInterests })
+    : undefined;
   const structuredRouteConstraints: RoutePlanningConstraints = input.structuredBrief
     ? routeConstraintsFromStructuredTripBrief(input.structuredBrief)
     : {};
@@ -441,7 +511,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     status: input.status ?? "draft",
     startDate: input.startDate,
     endDate: input.endDate,
-    travellers: input.intent?.travellers ?? 2,
+    travellers: canonicalIntent.travellers,
     currency: "GBP",
     brief: {
       origin: input.origin,
@@ -458,19 +528,14 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       selectedPlaces: input.picks,
       dayAllocations: input.dayAllocations,
       nightAllocations: input.nightAllocations,
+      manualNightStopIds: input.manualNightStopIds,
       nightAllocation: input.nightAllocation,
       capturedIntent: input.capturedIntent,
       routeAssessment: input.routeAssessment,
       scheduleLocks: input.scheduleLocks ?? { stopIds: [], arrivalDates: {} },
       decisionSelections: input.decisionSelections ?? { transportByLeg: {} },
-      intent: input.intent ?? defaultTripIntent({
-        travellers: 2,
-        durationDays: Math.max(1, Math.round((+new Date(`${input.endDate}T00:00:00`) - +new Date(`${input.startDate}T00:00:00`)) / 86400000) + 1),
-        stopIds: input.stops.map((stop) => stop.id),
-        budgetSensitivity: input.budget,
-        pace: input.pace === "full" ? "packed" : "relaxed",
-      }),
-      structuredBrief: input.structuredBrief,
+      intent: canonicalIntent,
+      structuredBrief: canonicalStructuredBrief,
     },
     stops,
     legs: buildCanonicalTripLegs({

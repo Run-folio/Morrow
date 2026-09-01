@@ -1,9 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
 
-function cardTrip(id: string, title: string, image: string | null): EasyTTrip {
+function cardTrip(id: string, title: string, image: string | null, status: EasyTTrip["status"] = "draft"): EasyTTrip {
   const stops = [
     { id: `${id}-lisbon`, order: 0, name: "Lisbon", country: "Portugal", latitude: 38.72, longitude: -9.14, arrivalDate: "2026-08-25", departureDate: "2026-08-30", nights: 5 },
     { id: `${id}-seville`, order: 1, name: "Seville", country: "Spain", latitude: 37.39, longitude: -5.98, arrivalDate: "2026-08-30", departureDate: "2026-09-04", nights: 5 },
@@ -14,7 +15,7 @@ function cardTrip(id: string, title: string, image: string | null): EasyTTrip {
     id,
     ownerId: "storybook-first-traveller",
     title,
-    status: "draft",
+    status,
     startDate: "2026-08-25",
     endDate: "2026-09-09",
     travellers: 2,
@@ -46,9 +47,15 @@ function cardTrip(id: string, title: string, image: string | null): EasyTTrip {
 
 const cardTrips = [
   cardTrip("storybook-trip-1", "Lisbon, Seville & Barcelona", "/journey/portugal-atlantic-route.jpg"),
-  cardTrip("storybook-trip-2", "A deliberately long multi-stop route title", "/journey/peru-sacred-valley-route.jpg"),
+  cardTrip("storybook-trip-2", "Gatwick, Santiago, Easter Island, Puerto de Punta Arenas & Tierra del Fuego", "/journey/peru-sacred-valley-route.jpg"),
   cardTrip("storybook-trip-3", "Lisbon, Seville & Barcelona", null),
   cardTrip("storybook-trip-4", "Lisbon, Seville & Barcelona", "/journey/portugal-atlantic-route.jpg"),
+];
+
+const populatedStamps = [
+  { countryId: "portugal", status: "visited" as const },
+  { countryId: "spain", status: "visited" as const },
+  { countryId: "japan", status: "want" as const },
 ];
 
 const cardCopy = {
@@ -67,19 +74,23 @@ const renderCardGrid = () => <div className={styles.tripGrid}>{cardTrips.map((tr
   language="en"
   copy={cardCopy}
   working={false}
+  workingAction={null}
   onAction={() => undefined}
   onGift={() => undefined}
   onRemove={() => undefined}
 />)}</div>;
 
 const meta = {
-  title: "Journey/First trip/Empty dashboard",
+  title: "Morrovia/05 Product Patterns/Trips dashboard",
   component: DashboardClient,
   parameters: {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/dashboard" } },
   },
-  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "28px 24px" }}><div style={{ maxWidth: 1180, margin: "0 auto" }}><Story /></div></main>],
+  decorators: [(Story) => {
+    setStorybookAuthOwner("storybook-first-traveller");
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "28px 24px" }}><div style={{ maxWidth: 1180, margin: "0 auto" }}><Story /></div></main>;
+  }],
   args: { trips: [], stamps: [], ownerId: "storybook-first-traveller" },
 } satisfies Meta<typeof DashboardClient>;
 
@@ -87,7 +98,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ZeroTrips: Story = {};
-export const Mobile390: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const ActiveTrips: Story = { args: { trips: cardTrips, stamps: populatedStamps } };
+export const PlannedTrips: Story = { args: { trips: cardTrips.slice(0, 3).map((trip) => ({ ...trip, status: "planned" as const })), stamps: populatedStamps } };
+export const ArchivedTrips: Story = { args: { trips: cardTrips.slice(0, 2).map((trip) => ({ ...trip, status: "archived" as const })), stamps: populatedStamps } };
+export const StampedEmptySummary: Story = { args: { trips: cardTrips.slice(0, 1), stamps: [] } };
+export const Mobile390: Story = { args: { trips: cardTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const ActiveCardsDesktop: Story = { render: renderCardGrid };
-export const ActiveCardsTablet768: Story = { render: renderCardGrid, parameters: { viewport: { defaultViewport: "morrovia768" } } };
-export const ActiveCardsMobile390: Story = { render: renderCardGrid, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const ActiveCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const ActiveCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const ClickableCardKeyboardFocus: Story = {
+  render: renderCardGrid,
+  play: async ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLAnchorElement>('a[aria-label^="Open trip:"]')?.focus();
+  },
+};

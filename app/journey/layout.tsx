@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import MorroviaFooter from "@/components/morrovia-footer";
 import "./journey-design.css";
 
 export const metadata: Metadata = {
@@ -28,5 +29,8 @@ export const viewport: Viewport = {
 };
 
 export default function JourneyLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return children;
+  return <div className="morroviaProductShell">
+    <div className="morroviaProductContent">{children}</div>
+    <MorroviaFooter />
+  </div>;
 }

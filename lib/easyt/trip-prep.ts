@@ -28,7 +28,7 @@ export type TripPrepTask = {
     transferId?: string;
     originStopId?: string;
     destinationStopId?: string;
-    opensDetails?: boolean;
+    opensTravellerDetails?: boolean;
   };
 };
 
@@ -40,20 +40,6 @@ function matchingChecklist(checklist: TripChecklistItem[], pattern: RegExp) {
 
 function checklistStatus(item: TripChecklistItem | undefined): TripPrepTaskStatus | undefined {
   return item ? (item.complete ? "complete" : "to-do") : undefined;
-}
-
-export function tripDepartureCountdown(startDate: string, endDate: string, now = new Date()) {
-  const lifecycle = deriveTripDateFacts({ startDate, endDate }, now).lifecycle;
-  const days = lifecycle.daysUntilStart;
-  if (lifecycle.state === "unavailable") return { days: null, label: "Add dates to see your trip timeline.", state: lifecycle.state };
-  if (lifecycle.state === "invalid") return { days, label: "Review the trip dates before relying on this timeline.", state: lifecycle.state };
-  if (lifecycle.state === "starts-today") return { days, label: "Departure is today.", state: lifecycle.state };
-  if (lifecycle.state === "started") return { days, label: "This trip has started.", state: lifecycle.state };
-  if (lifecycle.state === "in-progress") return { days, label: "This trip is in progress.", state: lifecycle.state };
-  if (lifecycle.state === "ends-today") return { days, label: "This trip ends today.", state: lifecycle.state };
-  if (lifecycle.state === "ended") return { days, label: "This trip has ended.", state: lifecycle.state };
-  if (days === 1) return { days, label: "1 day to go", state: lifecycle.state };
-  return { days, label: `${days} days to go`, state: lifecycle.state };
 }
 
 function categoryForChecklist(item: TripChecklistItem): TripPrepTaskCategory {
@@ -133,7 +119,7 @@ export function deriveTripPrepTasks({
     title: "Trip dates",
     detail: lifecycle.state === "invalid"
       ? "Review the start and end dates; they need to be valid and in order."
-      : "Add both start and end dates before relying on time-sensitive Prep guidance.",
+      : "Add both start and end dates before relying on time-sensitive travel guidance.",
     category: "must",
     status: "to-do",
     kind: "dates",
@@ -168,7 +154,7 @@ export function deriveTripPrepTasks({
     category: "must",
     status: passportStatus,
     kind: "passport",
-    action: { label: "Review details", opensDetails: true },
+    action: { label: "Review traveller details", opensTravellerDetails: true },
   });
 
   const stays = accommodationProgress(trip);
@@ -210,7 +196,7 @@ export function deriveTripPrepTasks({
       category: "must",
       status: checklistStatus(insuranceChecklist) ?? "to-do",
       kind: "insurance",
-      action: insurance.href && insurance.cta ? { label: insurance.cta, href: insurance.href, external: true, affiliate: Boolean(insurance.partner), provider: insurance.partner } : { label: "Review guidance", opensDetails: true },
+      ...(insurance.href && insurance.cta ? { action: { label: insurance.cta, href: insurance.href, external: true, affiliate: Boolean(insurance.partner), provider: insurance.partner } } : {}),
     });
   }
 
@@ -237,7 +223,6 @@ export function deriveTripPrepTasks({
     category: "good",
     status: "to-do",
     kind: "transport",
-    action: { label: "Review guidance", opensDetails: true },
   });
 
   checklist.filter((item) => !consumedChecklist.has(item.id)).forEach((item) => tasks.push({
@@ -252,31 +237,10 @@ export function deriveTripPrepTasks({
   return tasks;
 }
 
-export function tripPrepProgress(tasks: TripPrepTask[]) {
-  const complete = tasks.filter((task) => task.status === "complete").length;
-  const inProgress = tasks.filter((task) => task.status === "in-progress").length;
-  const toDo = tasks.length - complete - inProgress;
+export function groupTripPrepTasks(tasks: TripPrepTask[]) {
   return {
-    complete,
-    inProgress,
-    toDo,
-    total: tasks.length,
-    percent: tasks.length ? Math.round((complete / tasks.length) * 100) : 0,
+    must: tasks.filter((task) => task.category === "must"),
+    good: tasks.filter((task) => task.category === "good"),
+    nice: tasks.filter((task) => task.category === "nice"),
   };
-}
-
-export function nextTripPrepTask(tasks: TripPrepTask[]) {
-  const rank = (task: TripPrepTask) => {
-    if (task.status === "urgent") return 0;
-    const category = task.category === "must" ? 0 : task.category === "good" ? 100 : 200;
-    const essentialKind = task.kind === "dates" ? 0
-      : task.kind === "passport" ? 10
-        : task.kind === "accommodation" ? 20
-          : task.kind === "insurance" ? 30
-            : task.kind === "flight" ? 40
-              : 50;
-    const state = task.status === "in-progress" ? 0 : 1;
-    return category + essentialKind + state;
-  };
-  return tasks.filter((task) => task.status !== "complete").sort((a, b) => rank(a) - rank(b))[0] ?? null;
 }

@@ -1,3 +1,5 @@
+import { countryFor } from "./country-registry.ts";
+
 export type TravelReadinessProfile = {
   nationalities: string[];
   residenceCountry: string;
@@ -117,17 +119,21 @@ type ReadinessInput = {
   language?: "en" | "es";
 };
 
-const countryAliases: Record<string, string> = {
-  usa: "United States", us: "United States", "united states of america": "United States",
-  uk: "United Kingdom", "great britain": "United Kingdom",
-  uae: "United Arab Emirates", turkiye: "Turkey", "türkiye": "Turkey",
-  korea: "South Korea", "republic of korea": "South Korea",
+/** Resolve known countries to the canonical registry name while preserving unknown trip text. */
+export const canonicalCountry = (value: string) => countryFor(value)?.name ?? cleanCountry(value);
+
+const entrySourceByCode = new Map(Object.entries(entrySourcesByCountry).flatMap(([name, source]) => {
+  const country = countryFor(name);
+  return country ? [[country.code, source] as const] : [];
+}));
+
+export const entrySourceForCountry = (value: string): EntrySourceRecord | undefined => {
+  const country = countryFor(value);
+  return country ? entrySourceByCode.get(country.code) : entrySourcesByCountry[cleanCountry(value)];
 };
 
-export const canonicalCountry = (value: string) => countryAliases[cleanCountry(value).toLowerCase()] ?? cleanCountry(value);
-
 export const entrySourcesFor = (countries: string[]): EntrySource[] => [...new Set(countries.map(canonicalCountry).filter(Boolean))].map((country) => {
-  const source = entrySourcesByCountry[country];
+  const source = entrySourceForCountry(country);
   return source ? { country, ...source } : {
     country,
     label: "Official entry and visa authority",

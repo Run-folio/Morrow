@@ -39,7 +39,7 @@ import {
   tripStorageEventMatches,
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
-import { canApplyCanonicalCopilotChange, tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
+import { canonicalTripRevisionCanReplace, canApplyCanonicalCopilotChange, tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
 import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
@@ -169,6 +169,41 @@ test("Open cloud copy and canonical TripShell caching preserve the sole dirty re
     hasDeviceRecoveryIssue: true,
     authInterrupted: false,
   }), "reload-cloud", "a later local edit must not replace the conflict CTA");
+});
+
+test("canonical cache advances to a newer acknowledgement and rejects delayed rollback or stay resurrection", () => {
+  const storage = new MemoryBrowserStorage();
+  const withStay = browserTrip({
+    title: "R2 with imported stay",
+    updatedAt: "2026-08-23T12:00:00.000Z",
+    brief: {
+      ...browserTrip().brief,
+      bookings: [{ id: "stay-rome", type: "stay", title: "Hotel Artemide", date: "2026-12-01", confirmation: "••••1234", url: "https://www.booking.com/hotel/it/artemide.html" }],
+    },
+  });
+  const removed = browserTrip({
+    title: "R3 stay removed",
+    updatedAt: "2026-08-23T12:01:00.000Z",
+  });
+  const newer = browserTrip({
+    title: "R4 manual title edit",
+    updatedAt: "2026-08-23T12:02:00.000Z",
+  });
+
+  assert.equal(cacheCanonicalTripToStorage(storage, withStay), true);
+  assert.equal(cacheCanonicalTripToStorage(storage, removed), true);
+  assert.equal(cacheCanonicalTripToStorage(storage, withStay), false, "a delayed R2 callback cannot replace R3");
+  assert.equal(loadCachedTripFromStorage(storage, removed.id, "owner-a")?.brief.bookings, undefined);
+  assert.equal(cacheCanonicalTripToStorage(storage, newer), true);
+  assert.equal(loadCachedTripFromStorage(storage, newer.id, "owner-a")?.title, "R4 manual title edit");
+
+  assert.equal(canonicalTripRevisionCanReplace(removed, newer), true);
+  assert.equal(canonicalTripRevisionCanReplace(newer, removed), false);
+  assert.equal(canonicalTripRevisionCanReplace(newer, { ...newer, ownerId: "owner-b" }), false);
+  assert.equal(canonicalTripRevisionCanReplace(
+    { ...removed, updatedAt: "opaque-r3" },
+    { ...newer, updatedAt: "opaque-r4" },
+  ), false, "unknown revision formats fail closed instead of guessing freshness");
 });
 
 test("canonical-derived editing cannot replace recovery without its exact handle, while the opened device copy can", () => {
@@ -1147,6 +1182,8 @@ test("service worker reopens the query-based planner shell from cache while offl
     ["/journey/plan", plannerShell],
   ]);
   const addedAssets: string[] = [];
+  const deletedCaches: string[] = [];
+  let skipWaitingCalls = 0;
   const cache = {
     addAll: async () => undefined,
     add: async (asset: string) => { addedAssets.push(asset); },
@@ -1164,15 +1201,15 @@ test("service worker reopens the query-based planner shell from cache while offl
   const serviceWorkerGlobal = {
     location: { origin: "https://morrovia.test" },
     clients: { claim: () => undefined },
-    skipWaiting: () => undefined,
+    skipWaiting: () => { skipWaitingCalls += 1; },
     addEventListener: (type: string, listener: (event: unknown) => void) => listeners.set(type, listener),
   };
   runInNewContext(source, {
     self: serviceWorkerGlobal,
     caches: {
       open: async () => cache,
-      keys: async () => ["easyt-public-shell-v2"],
-      delete: async () => true,
+      keys: async () => ["easyt-public-shell-v4", "analytics-unrelated-cache"],
+      delete: async (key: string) => { deletedCaches.push(key); return true; },
     },
     fetch: async () => {
       throw new TypeError("network unavailable");
@@ -1188,11 +1225,20 @@ test("service worker reopens the query-based planner shell from cache while offl
   installHandler({ waitUntil: (promise: Promise<unknown>) => { installPromise = promise; } });
   assert.ok(installPromise);
   await installPromise;
+  assert.equal(skipWaitingCalls, 0, "a new deployment must not evict the active client's hashed CSS/JS graph");
   assert.deepEqual(addedAssets.sort(), [
     "/_next/static/chunks/home.js",
     "/_next/static/chunks/planner.js",
     "/_next/static/css/planner.css",
   ]);
+
+  let activatePromise: Promise<unknown> | null = null;
+  const activateHandler = listeners.get("activate");
+  assert.ok(activateHandler);
+  activateHandler({ waitUntil: (promise: Promise<unknown>) => { activatePromise = promise; } });
+  assert.ok(activatePromise);
+  await activatePromise;
+  assert.deepEqual(deletedCaches, ["easyt-public-shell-v4"], "activation deletes only Morrovia's superseded shell cache");
 
   let responsePromise: Promise<Response> | null = null;
   const handler = listeners.get("fetch");

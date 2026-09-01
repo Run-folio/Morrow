@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import HomeTripStarter from "./home-trip-starter";
 
 const meta = {
-  title: "Journey/First trip/Home starter",
+  title: "Morrovia/05 Product Patterns/Homepage trip starter",
   component: HomeTripStarter,
   parameters: {
     layout: "fullscreen",
@@ -15,4 +15,4 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const FirstVisit: Story = {};
-export const Mobile390: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };

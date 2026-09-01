@@ -27,7 +27,7 @@ These typed events answer the minimum launch questions without replacing the exi
 | `trip_generation_failed` | Capture fails or the builder cannot produce a usable result. | `trip_source`, coarse `error_type`, `is_authenticated` |
 | `trip_saved` | A meaningful local generation save or cloud persistence boundary succeeds. Passive local autosaves do not emit it. | opaque `trip_id`, `trip_source`, `save_state`, `stop_count`, `is_authenticated` |
 | `trip_save_failed` | The same meaningful persistence boundary fails. | opaque `trip_id`, `trip_source`, `save_state`, coarse `error_type`, `is_authenticated` |
-| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` / `trip_prep_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
+| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
 | `trip_reopened` | A saved trip is deliberately opened from the dashboard. | opaque `trip_id`, `source`, `save_state`, `stop_count` |
 | `trip_edit_started` | Edit is deliberately opened from the dashboard. | opaque `trip_id`, `source` |
 | `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |
@@ -64,7 +64,7 @@ One CTA handler must emit **one** member of this union. Omio and Viator take the
 
 ### Canonical placement taxonomy
 
-`home_footer`, `trip_readiness`, `booking_readiness`, `trip_prep_accommodation`, `itinerary_accommodation`, `itinerary_transfer`, `overview_next_action`, `map_stay_finder`, and `unknown_legacy` are the only reporting values. Legacy `trip_prep_booking_readiness` and `booking_readiness_transport` both normalize to `booking_readiness`.
+`home_footer`, `homepage_stays`, `homepage_experiences`, `homepage_transport`, `homepage_connectivity`, `trip_readiness`, `booking_readiness`, `trip_prep_accommodation`, `itinerary_accommodation`, `itinerary_transfer`, `itinerary_day_experiences`, `overview_next_action`, `overview_before_you_go`, `map_stay_finder`, `map_see_experiences`, `route_detail_experiences`, and `unknown_legacy` are the only reporting values. Legacy `trip_prep_booking_readiness` and `booking_readiness_transport` both normalize to `booking_readiness`.
 
 ### Property allow-list
 
@@ -80,9 +80,13 @@ category        = accommodation | connectivity | transport | ground_transport |
 trip_id?        = opaque product ID
 stop_id?        = opaque product ID
 transfer_id?    = opaque product ID
-workspace_view? = overview | itinerary | map | prep
+workspace_view? = overview | itinerary | map
 destination_count? = coarse number
 ```
+
+Historical commercial events can still contain `workspace_view = prep` and the
+legacy preparation placement names. Reporting continues to normalise those
+records, but current product code must not emit them.
 
 `originStopId` and `destinationStopId` may remain on the existing dedicated Omio source event for operational continuity, but are ignored by the commercial reporting projection. Do not add URLs, partner query parameters, destination names, origin/destination text, raw prompts, traveller names, booking details, notes, passport/profile context, email, payment data, prices or availability to either source event or the projection.
 
@@ -169,6 +173,11 @@ These events never include country names, country codes or country IDs; note or 
 | `attraction_map_opened` | Traveller opens deeper map discovery from destination refinement. | `trip_id`, `stop_id` | Every deliberate open. |
 | `affiliate_click` | Traveller deliberately opens an affiliate-supported next action. | `category`, `provider`, plus `trip_id` and `stop_id` when the surface has them | Each outbound click is counted; do not infer a booking from it. |
 | `affiliate_link_clicked` | Traveller deliberately opens the established Omio or Viator next action. | `partner`, `placement`, plus opaque trip/stop/transfer IDs where the existing surface has them | Included in the same commercial outbound-click reporting union; do not emit alongside `affiliate_click`. |
+| `booking_import_reviewed` | Traveller explicitly adds or dismisses a reviewable imported booking candidate. | `source` (`forwarded_email`), categorical `type`, categorical `confidence`, and `result` (`confirmed`, `dismissed`, or `unmatched`) | Once per successful review action. Never include subject, body, sender, provider, property/operator title, location, booking reference or confirmation URL. |
+| `booking_import_opened` | Traveller opens a deliberate Calendar or forwarded-confirmation import path from the itinerary. | Categorical `source`, `booking_type` (`accommodation`), and `surface` (`itinerary`) | Once per explicit open/check action. Never include event, property, destination, address, email or reference data. |
+| `booking_candidate_confirmed` | Traveller confirms a possible stay into canonical trip state. | Categorical `source` (`calendar`, `forwarded_email`, or `multiple`), `booking_type`, `confidence`, and `surface` | After the validated canonical write succeeds. |
+| `booking_candidate_dismissed` | Traveller rejects a possible stay. | The same categorical fields as confirmation. | After the owner-scoped candidate update succeeds; no trip mutation is implied. |
+| `booking_added_manual` | Traveller saves a stay manually from the itinerary. | `booking_type` (`accommodation`) and `surface` (`itinerary`) | After the canonical local/recovery mutation is accepted. Never include the property name or booking details. |
 | `booking_attributed` | A partner webhook, reporting export, or approved server-to-server attribution identifies a completed booking. | `provider`, `category`, `trip_id` when available, `commission_amount`, `commission_currency`, `commission_status` | Server-only. Unique provider conversion ID; updates amend the same conversion rather than creating a new event. |
 
 ## Collaboration events

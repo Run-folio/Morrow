@@ -72,6 +72,18 @@ test("a geographic zigzag receives an explicit backtracking penalty", () => {
   assert.equal(entered?.penalties.some((penalty) => penalty.code === "unnecessary-backtracking"), true);
 });
 
+test("backtracking penalties scale with objective detour severity", () => {
+  const stops = [stop("d", 4), stop("a", 1), stop("c", 3), stop("b", 2)];
+  const generation = generateRouteCandidates({ origin, stops, estimateLeg: geographicEstimator });
+  const result = scoreRouteCandidates({ origin, candidates: generation.candidates, estimateLeg: geographicEstimator });
+  const entered = result.rankedCandidates.find((item) => item.matchesOriginalOrder);
+  const penalty = entered?.penalties.find((item) => item.code === "unnecessary-backtracking");
+
+  assert.equal(entered?.state, "scored");
+  assert.ok((penalty?.points ?? 0) > 10);
+  assert.ok((penalty?.points ?? 0) <= 30);
+});
+
 test("relaxed pacing avoids one excessive leg while fast pacing can accept it", () => {
   const [a, b, c] = [stop("a", 1), stop("b", 2), stop("c", 3)];
   const candidates = [candidate([a, b, c], 0), candidate([a, c, b], 1, false)];

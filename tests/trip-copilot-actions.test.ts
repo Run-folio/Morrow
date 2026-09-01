@@ -46,11 +46,79 @@ test("a night increase is preview-only and produces deterministic downstream alt
   assert.equal(candidates[1].resultingTrip.stops.find((stop) => stop.id === "hiroshima")?.nights, 1);
 });
 
+test("a night reduction cannot leave an unallocated hole in the saved calendar", () => {
+  const trip = tripCopilotFixture();
+  const candidates = buildTripCopilotPreviewCandidates(trip, { action: "change_stop_nights", stopId: "kyoto", nights: 2 });
+  assert.deepEqual(
+    candidates.map((item) => item.resolvedAction.action === "change_stop_nights" ? item.resolvedAction.resolution.type : null),
+    ["shorten_trip", "increase_stop"],
+  );
+  for (const item of candidates) {
+    const days = item.resultingTrip.planItems.map((planItem) => planItem.dayNumber);
+    assert.deepEqual(days, Array.from({ length: days.length }, (_, index) => index + 1));
+    assert.equal(new Set(item.resultingTrip.planItems.map((planItem) => planItem.date)).size, days.length);
+  }
+});
+
+test("a night reduction keeps traveller-authored day state attached to the surviving stop", () => {
+  const trip = tripCopilotFixture();
+  trip.brief.customActivities = { 7: ["Private tea booking"] };
+  trip.brief.dayNotes = { 7: ["Ask for the quiet room"] };
+  trip.brief.mapPins = [{ id: "tea-pin", title: "Tea room", category: "activity", dayNumber: 7, latitude: 35, longitude: 135 }];
+  trip.planItems.find((item) => item.dayNumber === 7)?.notes.push("Private tea booking");
+
+  const after = applyResolvedTripCopilotAction(trip, {
+    action: "change_stop_nights",
+    stopId: "kyoto",
+    nights: 2,
+    resolution: { type: "shorten_trip", days: 1 },
+  });
+
+  const retainedDay = after.planItems.find((item) => item.stopId === "kyoto" && item.notes.includes("Private tea booking"));
+  assert.ok(retainedDay);
+  assert.deepEqual(after.brief.customActivities?.[retainedDay.dayNumber], ["Private tea booking"]);
+  assert.deepEqual(after.brief.dayNotes?.[retainedDay.dayNumber], ["Ask for the quiet room"]);
+  assert.equal(after.brief.mapPins?.find((pin) => pin.id === "tea-pin")?.dayNumber, retainedDay.dayNumber);
+  assert.equal(after.planItems.some((item) => item.stopId !== "kyoto" && item.notes.includes("Private tea booking")), false);
+});
+
+test("night changes fail closed for the requested or donor stop when protected by a lock or saved stay", () => {
+  const locked = tripCopilotFixture();
+  locked.brief.scheduleLocks = { stopIds: ["kyoto"], arrivalDates: {} };
+  const lockedBefore = structuredClone(locked);
+  assert.throws(
+    () => buildTripCopilotPreviewCandidates(locked, { action: "change_stop_nights", stopId: "kyoto", nights: 4 }),
+    /protected by a schedule lock/,
+  );
+  assert.deepEqual(locked, lockedBefore);
+
+  const booked = tripCopilotFixture();
+  const bookedBefore = structuredClone(booked);
+  assert.throws(
+    () => buildTripCopilotPreviewCandidates(booked, { action: "change_stop_nights", stopId: "tokyo", nights: 5 }),
+    /saved accommodation/,
+  );
+  assert.deepEqual(booked, bookedBefore);
+
+  const donorLocked = tripCopilotFixture();
+  donorLocked.brief.scheduleLocks = { stopIds: ["hiroshima"], arrivalDates: {} };
+  assert.throws(
+    () => applyResolvedTripCopilotAction(donorLocked, {
+      action: "change_stop_nights",
+      stopId: "kyoto",
+      nights: 4,
+      resolution: { type: "reduce_stop", stopId: "hiroshima", nights: 1 },
+    }),
+    /protected by a schedule lock/,
+  );
+});
+
 test("confirmed night and preference actions reuse deterministic cascade without rewriting transport", () => {
   const trip = tripCopilotFixture();
   const nightCandidate = buildTripCopilotPreviewCandidates(trip, { action: "change_stop_nights", stopId: "kyoto", nights: 4 })[0];
   const changed = applyResolvedTripCopilotAction(trip, nightCandidate.resolvedAction);
   assert.equal(changed.stops.find((stop) => stop.id === "kyoto")?.nights, 4);
+  assert.deepEqual(changed.brief.manualNightStopIds, ["kyoto"]);
   assert.equal(changed.endDate, "2026-10-20");
   assert.equal(changed.stops.find((stop) => stop.id === "hiroshima")?.arrivalDate, "2026-10-18");
   assert.deepEqual(changed.legs, trip.legs);
@@ -147,6 +215,22 @@ test("stale previews and cross-owner access are rejected without a write", async
     (error: unknown) => error instanceof TripCopilotApplyError && error.code === "not-found",
   );
   assert.equal(owned.saveCount, 0);
+});
+
+test("a repository failure releases the preview and preserves the previous canonical trip", async () => {
+  const action: ResolvedTripCopilotAction = { action: "set_trip_preference", preference: "pace", value: "packed" };
+  const state = previewState(action);
+  const before = structuredClone(state.trip);
+  const dependencies = memoryDependencies(state);
+  await assert.rejects(
+    applyTripCopilotPreview(
+      { ownerId: state.preview.ownerId, tripId: state.preview.tripId, previewId: state.preview.previewId, expectedAction: action.action, now: new Date("2026-08-27T12:30:00.000Z") },
+      { ...dependencies, async saveTrip() { throw new Error("repository unavailable"); } },
+    ),
+    /repository unavailable/,
+  );
+  assert.deepEqual(state.trip, before);
+  assert.equal(state.preview.status, "pending");
 });
 
 test("only action-specific confirmation routes can reach the canonical save boundary", () => {

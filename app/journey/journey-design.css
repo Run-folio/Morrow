@@ -3,26 +3,33 @@
   --morrovia-ink-soft: #4f4a92;
   --morrovia-action: #3025ce;
   --morrovia-action-hover: #f42b7a;
-  --morrovia-signal: #f42b7a;
+  --morrovia-signal: #d01866;
   --morrovia-paper: #fbfaff;
   --morrovia-lilac: #f2f0ff;
   --morrovia-lilac-strong: #e8e5ff;
   --morrovia-line: #d9d8ee;
-  --morrovia-muted: #7673a4;
+  --morrovia-muted: #6b6798;
   --morrovia-display: Georgia, "Times New Roman", serif;
   --morrovia-ui: var(--font-geist-sans, Geist, Inter, Arial, sans-serif);
   --morrovia-meta: var(--font-geist-mono, ui-monospace, monospace);
+  --morrovia-type-body: 400 16px/1.55 var(--morrovia-ui);
+  --morrovia-type-supporting-body: 400 14px/1.5 var(--morrovia-ui);
+  --morrovia-type-control: 700 13px/1 var(--morrovia-ui);
+  --morrovia-type-metadata: 700 11px/1.35 var(--morrovia-meta);
+  --morrovia-type-eyebrow: 800 10px/1.2 var(--morrovia-meta);
+  --morrovia-type-fine-print: 400 12px/1.45 var(--morrovia-ui);
   --morrovia-page: min(1180px, calc(100% - 48px));
   --morrovia-radius: 14px;
   --morrovia-control-radius: 10px;
   --morrovia-shadow-overlay: 0 28px 80px rgba(23, 16, 111, .22);
   --morrovia-overlay: rgba(23, 16, 111, .28);
   --morrovia-focus-ring: rgba(244, 43, 122, .24);
+  --morrovia-focus-shadow: 0 0 0 3px var(--morrovia-focus-ring);
   --morrovia-danger: #a91f55;
   --morrovia-danger-soft: #fff1f7;
-  --morrovia-success: #078b67;
+  --morrovia-success: #067858;
   --morrovia-tint: #fff1f7;
-  --morrovia-warning: #a56f10;
+  --morrovia-warning: #91600d;
   --morrovia-warning-soft: #fff9e9;
   --morrovia-disabled: #efedf5;
   --morrovia-layer-header: 80;
@@ -43,6 +50,25 @@
 .morrovia-editorial-page h2,
 .morrovia-editorial-page h3 {
   font-family: var(--morrovia-display);
+}
+
+.morroviaProductShell {
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  background: var(--morrovia-paper);
+}
+
+.morroviaProductContent {
+  display: flex;
+  min-width: 0;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+
+.morroviaProductContent > main {
+  min-height: 0 !important;
+  flex: 1 0 auto;
 }
 
 @media (max-width: 700px) {

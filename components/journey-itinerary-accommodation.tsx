@@ -7,6 +7,7 @@ import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import { accommodationDatesReady, overnightAccommodationStops, stayBookingForStop } from "@/lib/easyt/accommodation";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
+import { affiliateDisclosure } from "@/components/easyt/affiliate-link";
 import styles from "./journey-itinerary-accommodation.module.css";
 
 function accommodationDateLabel(stop: TripStop) {
@@ -61,11 +62,11 @@ export function JourneyItineraryAccommodation({ trip, currentStopId, onExploreMa
           </div>
           {sorted ? <><span className={styles.savedStay}>{booking?.title ?? "Accommodation saved"}</span><div className={styles.stayActions}><button type="button" onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Manage stay <Map /></button></div></> : <div className={styles.stayActions}>
             <button type="button" className={styles.findStay} onClick={() => { trackEvent("accommodation_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(stop); }}>Find a stay <Map /></button>
-            {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "itinerary_accommodation", workspace_view: "itinerary" }); }}>{action.cta} <ArrowUpRight /></a> : null}
+            {datesReady && action ? <a href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} onClick={() => { if (action.affiliate) trackEvent("affiliate_click", { category: "accommodation", provider: action.provider, trip_id: trip.id, stop_id: stop.id, placement: "map_stay_finder", workspace_view: "map" }); }}>{action.cta} <ArrowUpRight /></a> : null}
           </div>}
         </article>;
       })}
     </div>
-    {actions.some((action) => action.affiliate) ? <small className={styles.disclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
+    {actions.some((action) => action.affiliate) ? <small className={styles.disclosure}>{affiliateDisclosure}</small> : null}
   </section>;
 }

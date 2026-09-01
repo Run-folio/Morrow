@@ -9,6 +9,7 @@ import {
   trackEvent,
   type LaunchAnalyticsEventMap,
 } from "../lib/analytics.ts";
+import { createPrivacyConsentRecord } from "../lib/privacy-consent.ts";
 
 test("analytics paths omit query data and collapse opaque workspace IDs", () => {
   assert.equal(normalizeAnalyticsPath("/journey/home?brief=private"), "/journey/home");
@@ -63,11 +64,12 @@ test("analytics is a safe no-op outside the browser and without configuration", 
 
 function installAnalyticsWindow(consent: "granted" | "declined", calls: unknown[][]) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const record = createPrivacyConsentRecord({ analytics: consent === "granted", affiliateTracking: false }, "2026-08-30T12:00:00.000Z");
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
       location: { pathname: "/journey/routes/andean-highlands", origin: "https://morrovia.com" },
-      localStorage: { getItem: (key: string) => key === "easyt-analytics-consent" ? consent : null },
+      localStorage: { getItem: (key: string) => key === "easyt-analytics-consent" ? JSON.stringify(record) : null },
       gtag: (...args: unknown[]) => calls.push(args),
     },
   });
@@ -194,6 +196,23 @@ test("commercial click reporting maps either established event to one stable KPI
   });
   assert.equal([booking, omio, tripCom, mapTripCom].filter(Boolean).length, 4, "each source click becomes one KPI record, never one per property");
   assert.equal(JSON.stringify(omio).includes("stop-1"), false, "origin/destination stop IDs are not part of the reporting contract");
+});
+
+test("Overview practical-task affiliate clicks retain their scoped placement", () => {
+  assert.deepEqual(normalizeCommercialOutboundClick("affiliate_link_clicked", {
+    partner: "omio",
+    placement: "overview_before_you_go",
+    tripId: "trip-123",
+    transferId: "leg-456",
+  }), {
+    canonical_event: "commercial_outbound_click",
+    source_event: "affiliate_link_clicked",
+    partner: "omio",
+    placement: "overview_before_you_go",
+    category: "transport",
+    trip_id: "trip-123",
+    transfer_id: "leg-456",
+  });
 });
 
 test("Trip.com category handoffs retain their canonical commercial categories", () => {

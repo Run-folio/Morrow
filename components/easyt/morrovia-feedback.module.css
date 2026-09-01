@@ -14,11 +14,82 @@
 .saveStatus[data-state="device"] { color: var(--morrovia-action); }
 .saveStatus[data-state="error"] { color: var(--morrovia-danger); }
 
+.contextualDisclosure { position: relative; display: inline-flex; font-family: var(--morrovia-ui); }
+.contextualDisclosureTrigger { min-height: 32px; color: var(--morrovia-ink-soft); }
+.contextualDisclosureTrigger:hover,
+.contextualDisclosureTrigger[aria-expanded="true"] { color: var(--morrovia-action); }
+.contextualDisclosurePanel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 9px);
+  box-sizing: border-box;
+  display: grid;
+  width: min(330px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  box-shadow: var(--morrovia-shadow-overlay);
+  color: var(--morrovia-ink);
+}
+.contextualDisclosure[data-align="start"] .contextualDisclosurePanel { left: 0; }
+.contextualDisclosure[data-align="end"] .contextualDisclosurePanel { right: 0; }
+.contextualDisclosureHeading { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.contextualDisclosureHeading > svg { width: 17px; height: 17px; color: var(--morrovia-signal); }
+.contextualDisclosureHeading strong { font: var(--morrovia-type-control); line-height: 1.35; }
+.contextualDisclosurePanel > p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.contextualDisclosureClose {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  /* morrovia-ui-audit-allow-next-line raw-radius -- the icon-only disclosure close control is intentionally circular */
+  border-radius: 50%;
+  background: transparent;
+  color: var(--morrovia-muted);
+  cursor: pointer;
+}
+.contextualDisclosureClose:hover { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
+.contextualDisclosureClose:focus-visible,
+.contextualDisclosureActions a:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.contextualDisclosureClose svg { width: 15px; height: 15px; }
+.contextualDisclosureActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.contextualDisclosureActions > a { color: var(--morrovia-action); font: var(--morrovia-type-control); text-underline-offset: 2px; }
+.contextualDisclosureActions > a:hover { color: var(--morrovia-action-hover); }
+
 .briefNotice,
+.statusBanner,
 .recovery {
   color: var(--morrovia-ink);
   font-family: var(--morrovia-ui);
 }
+
+.statusBanner {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-action) 24%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-lilac) 52%, #fff);
+}
+
+.statusBanner > svg { width: 20px; height: 20px; color: var(--morrovia-action); }
+.statusBanner > div:not(.statusBannerActions) { display: grid; gap: 3px; min-width: 0; }
+.statusBanner strong { font: var(--morrovia-type-control); line-height: 1.35; }
+.statusBanner span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.statusBanner[data-tone="success"] { border-color: color-mix(in srgb, var(--morrovia-success) 32%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-success) 7%, #fff); }
+.statusBanner[data-tone="success"] > svg { color: var(--morrovia-success); }
+.statusBanner[data-tone="warning"] { border-color: color-mix(in srgb, var(--morrovia-warning) 34%, var(--morrovia-line)); background: var(--morrovia-warning-soft); }
+.statusBanner[data-tone="warning"] > svg { color: var(--morrovia-warning); }
+.statusBanner[data-tone="danger"] { border-color: color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); background: var(--morrovia-danger-soft); }
+.statusBanner[data-tone="danger"] > svg { color: var(--morrovia-danger); }
+.statusBannerActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 
 .briefNotice {
   box-sizing: border-box;
@@ -36,11 +107,11 @@
 
 .briefNotice > svg { width: 19px; color: color-mix(in srgb, var(--morrovia-success) 76%, var(--morrovia-ink)); }
 .briefNotice > div { display: grid; gap: 2px; min-width: 0; }
-.briefNotice strong { font-size: 13px; }
-.briefNotice span { color: var(--morrovia-ink-soft); font-size: 11px; line-height: 1.4; }
+.briefNotice strong { font: var(--morrovia-type-control); }
+.briefNotice span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
 .briefNotice > a,
-.briefNotice > button:not(.dismiss) { color: var(--morrovia-action); font-size: 11px; font-weight: 750; }
-.briefNotice > a:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring); }
+.briefNotice > button:not(.dismiss) { color: var(--morrovia-action); font: var(--morrovia-type-control); }
+.briefNotice > a:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
 
 .dismiss {
   display: grid;
@@ -56,7 +127,7 @@
 }
 
 .dismiss:hover { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
-.dismiss:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--morrovia-focus-ring); }
+.dismiss:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
 .dismiss svg { width: 16px; height: 16px; }
 
 .recovery {
@@ -73,9 +144,9 @@
 
 .recovery > svg { width: 20px; height: 20px; color: var(--morrovia-danger); }
 .recovery > div { display: grid; gap: 3px; }
-.recovery strong { font-size: 13px; }
+.recovery strong { font: var(--morrovia-type-control); }
 .recovery span,
-.recovery p { color: var(--morrovia-ink-soft); font-size: 12px; line-height: 1.45; }
+.recovery p { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .recovery p { margin: 1px 0 0; font-weight: 700; }
 .recoveryActions { display: flex !important; flex-wrap: wrap; justify-content: flex-end; gap: 8px !important; }
 
@@ -98,15 +169,27 @@
 .dialogMark svg { width: 21px; height: 21px; }
 .eyebrow { margin: 0 0 8px; color: var(--morrovia-danger); font: 800 9px/1.2 var(--morrovia-meta); letter-spacing: .13em; }
 .dialog h2 { margin: 0; font: 600 34px/1.02 var(--morrovia-display); letter-spacing: -.045em; }
-.dialogDetail { margin: 13px 0 0; color: var(--morrovia-ink-soft); font-size: 14px; line-height: 1.55; }
-.dialog ul { display: grid; gap: 9px; margin: 20px 0 0; padding: 17px 17px 17px 34px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink-soft); font-size: 12px; line-height: 1.45; }
+.dialogDetail { margin: 13px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-body); }
+.dialog ul { display: grid; gap: 9px; margin: 20px 0 0; padding: 17px 17px 17px 34px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .dialog li::marker { color: var(--morrovia-danger); }
-.dialogError { margin: 14px 0 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); border-radius: var(--morrovia-control-radius); background: var(--morrovia-danger-soft); color: var(--morrovia-danger); font-size: 12px; font-weight: 700; line-height: 1.45; }
+.dialogError { margin: 14px 0 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); border-radius: var(--morrovia-control-radius); background: var(--morrovia-danger-soft); color: var(--morrovia-danger); font: var(--morrovia-type-supporting-body); font-weight: 700; }
 .dialogActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
 @keyframes feedbackSpin { to { transform: rotate(360deg); } }
 
 @media (max-width: 520px) {
+  .contextualDisclosurePanel {
+    position: fixed;
+    top: auto;
+    right: 12px !important;
+    bottom: 12px;
+    left: 12px !important;
+    width: auto;
+    max-height: calc(100svh - 24px);
+    overflow: auto;
+  }
+  .contextualDisclosureActions { align-items: stretch; flex-direction: column; }
+  .contextualDisclosureActions > button { width: 100%; }
   .saveStatus { white-space: normal; }
   .briefNotice { grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; }
   .briefNotice > a,
@@ -115,6 +198,9 @@
   .recovery > button,
   .recoveryActions { grid-column: 1 / -1; width: 100%; }
   .recoveryActions button { width: 100%; }
+  .statusBanner { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .statusBannerActions { grid-column: 1 / -1; justify-content: stretch; }
+  .statusBannerActions > * { flex: 1 1 150px; }
   .dialog { padding: 22px 20px; }
   .dialog h2 { font-size: 29px; }
   .dialogActions { flex-direction: column; }

@@ -33,11 +33,25 @@ test("destructive production actions use the shared confirmation dialog", () => 
   assert.match(tripShell, /MorroviaConfirmationDialog/);
 });
 
-test("dashboard duplicate uses one brief confirmation and Prep avoids an extra completion banner", () => {
+test("dashboard duplicate uses one brief confirmation and Overview avoids an extra completion banner", () => {
   const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
-  const prep = read("components/easyt/trip-prep-workspace.tsx");
+  const overview = read("components/easyt/trip-overview-workspace.tsx");
 
   assert.match(dashboard, /Trip duplicated/);
   assert.match(dashboard, /MorroviaBriefNotice/);
-  assert.doesNotMatch(prep, /Prep tasks complete\./);
+  assert.match(overview, /No outstanding practical tasks/);
+  assert.doesNotMatch(overview, /Prep tasks complete\./);
+});
+
+test("dashboard confirms archive, restore, and delete only after the account mutation succeeds", () => {
+  const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
+
+  assert.match(dashboard, /if \(actionInFlightRef\.current\) return;/);
+  assert.match(dashboard, /aria-busy=\{working \|\| undefined\}/);
+  assert.match(dashboard, /disabled=\{working\} onClick=\{\(\) => onAction\(trip\.id, "archive"\)\}/);
+  assert.match(dashboard, /if \(\(action === "archive" \|\| action === "restore"\) && payload\.trip\) \{[\s\S]*reconcileTripCloudMutation[\s\S]*setActionNotice/);
+  assert.match(dashboard, /Trip archived/);
+  assert.match(dashboard, /Trip restored/);
+  assert.match(dashboard, /if \(response\.ok\) \{[\s\S]*reconcileTripCloudMutation\(ownerId, trip\.id, "delete"\);[\s\S]*setActionNotice/);
+  assert.match(dashboard, /Trip deleted/);
 });

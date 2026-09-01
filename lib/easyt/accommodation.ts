@@ -39,3 +39,40 @@ export function accommodationProgress(trip: EasyTTrip) {
     complete: stops.length > 0 && sortedCount === stops.length && datesReadyCount === stops.length,
   };
 }
+
+export type StayBookingDraft = {
+  title: string;
+  confirmation?: string;
+  url?: string;
+};
+
+/** Canonical add/edit boundary shared by stay surfaces; no completion flag is stored. */
+export function upsertStayBooking(trip: EasyTTrip, stopId: string, draft: StayBookingDraft): EasyTTrip {
+  const stop = trip.stops.find((candidate) => candidate.id === stopId);
+  const title = draft.title.trim().replace(/\s+/g, " ");
+  if (!stop || !title) return trip;
+  const existing = stayBookingForStop(trip, stop);
+  const booking: TripBooking = {
+    ...existing,
+    id: `stay-${stop.id}`,
+    type: "stay",
+    title,
+    date: stop.arrivalDate,
+    confirmation: draft.confirmation === undefined ? existing?.confirmation ?? null : draft.confirmation.trim() || null,
+    url: draft.url === undefined ? existing?.url ?? null : draft.url.trim() || null,
+  };
+  return {
+    ...trip,
+    brief: {
+      ...trip.brief,
+      bookings: [...(trip.brief.bookings ?? []).filter((candidate) => candidate.id !== booking.id && candidate.id !== existing?.id), booking],
+    },
+  };
+}
+
+export function removeStayBooking(trip: EasyTTrip, stopId: string): EasyTTrip {
+  const stop = trip.stops.find((candidate) => candidate.id === stopId);
+  if (!stop || !stayBookingForStop(trip, stop)) return trip;
+  const existing = stayBookingForStop(trip, stop)!;
+  return { ...trip, brief: { ...trip.brief, bookings: (trip.brief.bookings ?? []).filter((candidate) => candidate.id !== existing.id) } };
+}

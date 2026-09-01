@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { itineraryNotesForDisplay } from "../lib/easyt/itinerary-presentation.ts";
+import { itineraryNotesForDisplay, semanticSamePlaceArrival } from "../lib/easyt/itinerary-presentation.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
 
 test("a transfer summary removes only repeated generated route and estimate rows", () => {
@@ -32,4 +32,18 @@ test("an unknown canonical leg suppresses a stale generated duration note", () =
   } as TripLeg;
   const notes = ["Flores → San Ignacio", "Estimated door-to-door: about 4h 15m", "Check current border details"];
   assert.deepEqual(itineraryNotesForDisplay({ notes }, leg, { stops: [] }), ["Check current border details"]);
+});
+
+test("same canonical city arrival is semantic and never presented as a zero-minute journey", () => {
+  const leg = {
+    id: "same-city", fromStopId: "origin", toStopId: "rome", classification: "arrival", mode: "walk",
+    distanceKm: 0, durationMinutes: 0, doorToDoorMinutes: 0, provider: "The journey origin and first overnight stop are the same canonical place.",
+    routeMetadata: { source: "canonical-endpoint-identity" },
+    fromEndpoint: { kind: "origin", id: "origin", name: "Rome", canonicalPlaceId: "rome", coordinates: [12.49, 41.9] },
+    toEndpoint: { kind: "stop", id: "rome", name: "Rome", canonicalPlaceId: "rome", coordinates: [12.49, 41.9] },
+  } as TripLeg;
+  const trip = { stops: [] } as unknown as EasyTTrip;
+  assert.equal(semanticSamePlaceArrival(trip, leg), "Arrive in Rome");
+  assert.doesNotMatch(semanticSamePlaceArrival(trip, leg) ?? "", /0m|Rome → Rome/);
+  assert.equal(semanticSamePlaceArrival(trip, { ...leg, classification: "local" }), null);
 });

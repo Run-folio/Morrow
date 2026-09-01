@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { BedDouble, CalendarDays, Check, Cloud, ExternalLink, GripVertical, HardDrive, MapPin, Minus, Plus, Save, ShieldCheck } from "lucide-react";
+import { BedDouble, CalendarDays, Check, Cloud, ExternalLink, GripVertical, HardDrive, MapPin, Minus, Plus, Save } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import TripShell from "./trip-shell";
 import { EasyTButton } from "./easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, type MorroviaSaveState } from "./morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
 import styles from "./morrovia-feedback.stories.module.css";
 
 const prototypeTrip: EasyTTrip = {
@@ -114,14 +114,6 @@ function NightsContext() {
   </section></PrototypeChrome>;
 }
 
-function PrepTaskContext() {
-  const [complete, setComplete] = useState(false);
-  return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace} aria-labelledby="prep-feedback-title"><p className={styles.eyebrow}>TRIP PREP</p><h2 id="prep-feedback-title">A completed task should look completed.</h2><p className={styles.intro}>The task and progress move together. There is no toast or separate success card.</p>
-    <div className={styles.prepProgress} aria-live="polite"><span><strong>{complete ? "50%" : "38%"}</strong><small>{complete ? "4 of 8 tasks complete" : "3 of 8 tasks complete"}</small></span><i aria-hidden="true"><b style={{ width: complete ? "50%" : "38%" }} /></i></div>
-    <article className={`${styles.prepTask} ${complete ? styles.prepComplete : ""}`}><span className={styles.prepIcon}>{complete ? <Check aria-hidden="true" /> : <ShieldCheck aria-hidden="true" />}</span><div><strong>Save offline maps</strong><p>Keep directions available between Matsumoto and Kyoto.</p><span>{complete ? "Complete" : "To do"}</span></div><EasyTButton variant="secondary" onClick={() => setComplete((current) => !current)}>{complete ? "Mark as not done" : "Mark complete"}</EasyTButton></article>
-  </section></TripShell></main>;
-}
-
 function BriefNoticeContext() {
   const [visible, setVisible] = useState(true);
   return <PrototypeChrome current="trips"><section className={styles.dashboardPage}><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>YOUR TRAVEL WORKSPACE</p><h1>Trips<span>.</span></h1></div>{!visible ? <EasyTButton variant="secondary" onClick={() => setVisible(true)}>Show duplicate result</EasyTButton> : null}</div><div className={styles.tripGrid}><article className={styles.prototypeTripCard} id="trip-copy"><div className={styles.prototypeTripMeta}><span>ACTIVE</span><time dateTime="2027-04-14">14 APR – 25 APR 2027</time></div><h2>Japan in spring copy</h2><p>Tokyo → Matsumoto → Kyoto</p><img src="/journey/peru-sacred-valley-route.jpg" alt="" /><ul aria-label="Trip readiness summary"><li><Check aria-hidden="true" /><span><strong>ITINERARY</strong><small>11 of 12 days planned</small></span></li><li><span aria-hidden="true">•</span><span><strong>STAYS</strong><small>0 of 3 stays sorted</small></span></li></ul><EasyTButton>Open copy</EasyTButton></article></div>{visible ? <div className={styles.noticePlacement}><MorroviaBriefNotice title="Trip duplicated" detail="“Japan in spring copy” is ready." action={<a href="#trip-copy">View copy</a>} onDismiss={() => setVisible(false)} /></div> : null}</section></PrototypeChrome>;
@@ -136,6 +128,40 @@ function PersistentRecoveryContext() {
   const [state, setState] = useState<"error" | "retrying" | "saved">("error");
   const retry = () => { setState("retrying"); window.setTimeout(() => setState("saved"), 750); };
   return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ROUTE CHANGE</p><h2>Tokyo to Kyoto</h2><p className={styles.intro}>Keep the route visible while the failed change is resolved.</p><div className={styles.routeSummary}><strong>Tokyo</strong><i /><strong>Matsumoto</strong><i /><strong>Kyoto</strong></div>{state === "error" ? <MorroviaRecoveryFeedback title="Couldn't update this route" detail="The new stop order did not reach your account." safety="Your previous account route and this device edit are both safe." onRetry={retry} retryLabel="Try route update again" /> : <MorroviaSaveStatus state={state === "retrying" ? "saving" : "saved"} label={state === "retrying" ? "Trying route update again…" : "Route updated in your account"} />}</section></TripShell></main>;
+}
+
+function StatusBannerContext() {
+  return <PrototypeChrome current="trips"><section className={styles.workspace} aria-labelledby="status-banner-title">
+    <p className={styles.eyebrow}>PERSISTENT PRODUCT FEEDBACK</p>
+    <h2 id="status-banner-title">One pattern for account and recovery truth.</h2>
+    <p className={styles.intro}>Persistent state stays in the page flow. Tone communicates urgency; the copy continues to explain what is safe.</p>
+    <div style={{ display: "grid", gap: 12 }}>
+      <MorroviaStatusBanner title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTButton size="small">Save this trip</EasyTButton>} />
+      <MorroviaStatusBanner tone="success" title="Trip saved to your account" detail="You can continue this same trip on another device." />
+      <MorroviaStatusBanner tone="warning" title="Device edits kept safe" detail="You’re viewing the cloud copy. Unsynced edits remain separate until you choose what to do." actions={<><EasyTButton size="small" variant="secondary">Open device copy</EasyTButton><EasyTButton size="small" variant="danger">Discard device copy</EasyTButton></>} />
+      <MorroviaStatusBanner tone="danger" title="Your session ended" detail="This trip remains visible and unchanged. Sign in before editing or syncing it." actions={<EasyTButton size="small">Sign in again</EasyTButton>} />
+    </div>
+  </section></PrototypeChrome>;
+}
+
+function ContextualDisclosureContext() {
+  const [open, setOpen] = useState(true);
+  return <PrototypeChrome><section className={styles.workspace} aria-labelledby="contextual-disclosure-title">
+    <p className={styles.eyebrow}>CONTEXTUAL TRANSPARENCY</p>
+    <h2 id="contextual-disclosure-title">Explain a detail where it matters.</h2>
+    <p className={styles.intro}>The disclosure stays anchored to its quiet trigger without adding a permanent paragraph to the primary task.</p>
+    <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 180 }}>
+      <MorroviaContextualDisclosure
+        open={open}
+        onOpenChange={setOpen}
+        title="AI-assisted planning"
+        detail="Morrovia may use Luna, our AI travel assistant, to help interpret your trip brief. AI can make mistakes, so review your resulting plan before relying on important travel details."
+        linkHref="/journey/privacy#ai-and-speech"
+        linkLabel="Privacy details"
+        triggerLabel="AI-assisted"
+      />
+    </div>
+  </section></PrototypeChrome>;
 }
 
 function CloudConflictContext() {
@@ -154,7 +180,7 @@ function AffiliateBoundaryContext() {
   return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ACCOMMODATION</p><h2>Keep the provider boundary honest.</h2><p className={styles.intro}>Opening a booking site is useful, but it does not prove that a stay was booked or paid for.</p><article className={styles.stayCard} aria-live="polite"><span className={styles.stayIcon}><BedDouble aria-hidden="true" /></span><div><span>KYOTO · 21–25 APRIL</span><h3>Kyoto stay</h3><p>No saved accommodation yet</p></div><strong>Needs a stay</strong><div className={styles.stayActions}><EasyTButton icon={ExternalLink} variant="secondary" onClick={() => setProviderOpened(true)}>Open Trip.com</EasyTButton></div>{providerOpened ? <p className={styles.providerOpened} role="status"><ExternalLink aria-hidden="true" />Trip.com opened. This stop still needs a stay.</p> : null}</article><p className={styles.partnerDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</p></section></TripShell></main>;
 }
 
-const meta = { title: "Patterns/Confirmation, Success & Recovery", parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/new" } } } } satisfies Meta;
+const meta = { title: "Morrovia/03 Status & Feedback/Confirmation and recovery", parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/new" } } } } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -164,14 +190,16 @@ export const ReducedMotionSaving: Story = { render: () => <div className={styles
 export const TripSaveSavedToAccount: Story = { render: () => <TripSaveContext initialState="saved" /> };
 export const TripSaveFailedDeviceSafe: Story = { render: () => <TripSaveContext initialState="error" /> };
 export const NightsChangedInline: Story = { render: () => <NightsContext /> };
-export const PrepTaskCompleted: Story = { render: () => <PrepTaskContext /> };
 export const BriefTripDuplicatedNotice: Story = { render: () => <BriefNoticeContext /> };
 export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoticeContext /> };
 export const PersistentRouteRecovery: Story = { render: () => <PersistentRecoveryContext /> };
+export const PersistentStatusBanners: Story = { render: () => <StatusBannerContext /> };
+export const ContextualTransparencyDisclosure: Story = { render: () => <ContextualDisclosureContext /> };
 export const CloudConflictChoice: Story = { render: () => <CloudConflictContext /> };
 export const ConsequentialStopRemoval: Story = { render: () => <RemoveStopContext /> };
 export const AffiliateBoundary: Story = { render: () => <AffiliateBoundaryContext /> };
-export const Mobile320SaveFailure: Story = { parameters: { viewport: { defaultViewport: "morrovia320" } }, render: () => <TripSaveContext initialState="error" /> };
-export const Mobile390Dialog: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } }, render: () => <RemoveStopContext /> };
-export const Tablet768AffiliateBoundary: Story = { parameters: { viewport: { defaultViewport: "morrovia768" } }, render: () => <AffiliateBoundaryContext /> };
+export const Mobile320SaveFailure: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, render: () => <TripSaveContext initialState="error" /> };
+export const Mobile390Dialog: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <RemoveStopContext /> };
+export const Mobile390StatusBanners: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <StatusBannerContext /> };
+export const Tablet768AffiliateBoundary: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } }, render: () => <AffiliateBoundaryContext /> };
 export const DialogFocusAndRestore: Story = { render: () => <RemoveStopContext startOpen={false} /> };

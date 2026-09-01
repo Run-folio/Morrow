@@ -3,6 +3,7 @@ import { cascadeTripSchedule } from "./cascade.ts";
 import { reviewTrip, tripHealth } from "./review.ts";
 import { mergeStructuredTripBrief } from "./structured-trip-brief.ts";
 import { tripReadinessSummary } from "./trip-readiness-summary.ts";
+import { reconcileAuthoredDayState } from "./trip-authored-day-state.ts";
 import { tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 
 export const TRIP_COPILOT_PREVIEW_TTL_MS = 15 * 60_000;
@@ -46,7 +47,9 @@ export type TripCopilotAction =
 export type ChangeStopNightsResolution =
   | { type: "preserve_trip_dates" }
   | { type: "extend_trip"; days: number }
-  | { type: "reduce_stop"; stopId: string; nights: number };
+  | { type: "shorten_trip"; days: number }
+  | { type: "reduce_stop"; stopId: string; nights: number }
+  | { type: "increase_stop"; stopId: string; nights: number };
 
 export type ResolvedTripCopilotAction =
   | (ChangeStopNightsAction & { resolution: ChangeStopNightsResolution })
@@ -190,12 +193,28 @@ export function assertValidResolvedTripCopilotAction(value: unknown, trip: EasyT
     }
     return;
   }
+  if (resolution.type === "shorten_trip") {
+    if (!exactKeys(resolution, ["type", "days"]) || typeof resolution.days !== "number" || !Number.isInteger(resolution.days) || resolution.days <= 0 || resolution.days !== -delta) {
+      throw new TripCopilotActionValidationError("The saved trip reduction is invalid.");
+    }
+    return;
+  }
   if (resolution.type === "reduce_stop") {
     if (!exactKeys(resolution, ["type", "stopId", "nights"]) || typeof resolution.stopId !== "string" || typeof resolution.nights !== "number" || !Number.isInteger(resolution.nights)) {
       throw new TripCopilotActionValidationError("The saved night redistribution is invalid.");
     }
     const reduced = trip.stops.find((item) => item.id === resolution.stopId && item.id !== stop.id);
     if (!reduced || reduced.nights === null || resolution.nights < 1 || reduced.nights - resolution.nights !== delta) {
+      throw new TripCopilotActionValidationError("The saved night redistribution is no longer valid.");
+    }
+    return;
+  }
+  if (resolution.type === "increase_stop") {
+    if (!exactKeys(resolution, ["type", "stopId", "nights"]) || typeof resolution.stopId !== "string" || typeof resolution.nights !== "number" || !Number.isInteger(resolution.nights)) {
+      throw new TripCopilotActionValidationError("The saved night redistribution is invalid.");
+    }
+    const increased = trip.stops.find((item) => item.id === resolution.stopId && item.id !== stop.id);
+    if (!increased || increased.nights === null || resolution.nights < 1 || resolution.nights - increased.nights !== -delta) {
       throw new TripCopilotActionValidationError("The saved night redistribution is no longer valid.");
     }
     return;
@@ -210,6 +229,17 @@ function cloneTrip(trip: EasyTTrip): EasyTTrip {
 const DAY = 86_400_000;
 const addDays = (value: string, days: number) => new Date(Date.parse(`${value}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
 
+function assertStopNightsCanChange(trip: EasyTTrip, stopId: string) {
+  const stop = trip.stops.find((item) => item.id === stopId);
+  if (!stop) throw new TripCopilotActionValidationError("That stop is no longer part of this trip.");
+  if (trip.brief.scheduleLocks?.stopIds.includes(stopId)) {
+    throw new TripCopilotActionValidationError(`${stop.name} is protected by a schedule lock. Change that lock before changing its nights.`);
+  }
+  if (stayBookingForStop(trip, stop)) {
+    throw new TripCopilotActionValidationError(`${stop.name} has saved accommodation. Review that stay before changing its nights.`);
+  }
+}
+
 function updateNightAllocation(trip: EasyTTrip, stopId: string, nights: number): EasyTTrip {
   const nightAllocation = trip.brief.nightAllocation?.allocations
     ? {
@@ -223,6 +253,7 @@ function updateNightAllocation(trip: EasyTTrip, stopId: string, nights: number):
     ...trip,
     brief: {
       ...trip.brief,
+      manualNightStopIds: [...new Set([...(trip.brief.manualNightStopIds ?? []), stopId])],
       ...(trip.brief.nightAllocations ? { nightAllocations: { ...trip.brief.nightAllocations, [stopId]: nights } } : {}),
       ...(trip.brief.dayAllocations ? { dayAllocations: { ...trip.brief.dayAllocations, [stopId]: trip.brief.nightAllocations || trip.brief.nightAllocation?.allocations ? nights : nights + 1 } } : {}),
       ...(nightAllocation ? { nightAllocation } : {}),
@@ -231,8 +262,50 @@ function updateNightAllocation(trip: EasyTTrip, stopId: string, nights: number):
   };
 }
 
-function finalizeMutation(trip: EasyTTrip): EasyTTrip {
-  const cascaded = cascadeTripSchedule(trip).trip;
+function reconcilePlanCoverage(trip: EasyTTrip): EasyTTrip {
+  const orderedStops = [...trip.stops].sort((left, right) => left.order - right.order);
+  const existingByStop = new Map(orderedStops.map((stop) => [
+    stop.id,
+    trip.planItems.filter((item) => item.stopId === stop.id).sort((left, right) => left.dayNumber - right.dayNumber),
+  ]));
+  const planItems: EasyTTrip["planItems"] = [];
+  const finalDay = Math.max(1, Math.round((Date.parse(`${trip.endDate}T00:00:00Z`) - Date.parse(`${trip.startDate}T00:00:00Z`)) / DAY) + 1);
+
+  for (let dayNumber = 1; dayNumber <= finalDay; dayNumber += 1) {
+    const date = addDays(trip.startDate, dayNumber - 1);
+    const stop = orderedStops.find((item, index) => {
+      if (!item.arrivalDate || !item.departureDate) return false;
+      const isLast = index === orderedStops.length - 1;
+      return date >= item.arrivalDate && (date < item.departureDate || (isLast && date === trip.endDate));
+    });
+    if (!stop) continue;
+    const queue = existingByStop.get(stop.id) ?? [];
+    const existing = queue.shift();
+    if (existing) {
+      planItems.push({ ...existing, dayNumber, date });
+    } else {
+      planItems.push({
+        id: `${trip.id}-replan-${stop.id}-${date}`,
+        stopId: stop.id,
+        dayNumber,
+        date,
+        type: "open",
+        title: `Open day in ${stop.name}`,
+        reason: "Added to keep the revised trip calendar complete.",
+        notes: [],
+        startsAt: null,
+        endsAt: null,
+        bookingUrl: null,
+        latitude: null,
+        longitude: null,
+      });
+    }
+  }
+  return { ...trip, planItems };
+}
+
+function finalizeMutation(trip: EasyTTrip, options: { cascadeSchedule?: boolean } = {}): EasyTTrip {
+  const cascaded = options.cascadeSchedule === false ? trip : reconcilePlanCoverage(cascadeTripSchedule(trip).trip);
   const withIntent = {
     ...cascaded,
     brief: { ...cascaded.brief, intent: tripIntentForTrip(cascaded) },
@@ -243,10 +316,16 @@ function finalizeMutation(trip: EasyTTrip): EasyTTrip {
 export function applyResolvedTripCopilotAction(trip: EasyTTrip, action: ResolvedTripCopilotAction): EasyTTrip {
   const source = cloneTrip(trip);
   if (action.action === "change_stop_nights") {
+    assertStopNightsCanChange(source, action.stopId);
+    if (action.resolution.type === "reduce_stop" || action.resolution.type === "increase_stop") {
+      assertStopNightsCanChange(source, action.resolution.stopId);
+    }
     let next = updateNightAllocation(source, action.stopId, action.nights);
     if (action.resolution.type === "extend_trip") next = { ...next, endDate: addDays(next.endDate, action.resolution.days) };
+    if (action.resolution.type === "shorten_trip") next = { ...next, endDate: addDays(next.endDate, -action.resolution.days) };
     if (action.resolution.type === "reduce_stop") next = updateNightAllocation(next, action.resolution.stopId, action.resolution.nights);
-    return finalizeMutation(next);
+    if (action.resolution.type === "increase_stop") next = updateNightAllocation(next, action.resolution.stopId, action.resolution.nights);
+    return reconcileAuthoredDayState(source, finalizeMutation(next));
   }
 
   if (action.action === "set_trip_preference") {
@@ -289,7 +368,7 @@ export function applyResolvedTripCopilotAction(trip: EasyTTrip, action: Resolved
                 : intent.preferences.dislikes.filter((item) => item !== "frequent hotel changes"),
             },
           };
-    return finalizeMutation({ ...next, brief: { ...next.brief, intent: updatedIntent } });
+    return finalizeMutation({ ...next, brief: { ...next.brief, intent: updatedIntent } }, { cascadeSchedule: false });
   }
 
   const structured = source.brief.structuredBrief;
@@ -316,7 +395,7 @@ export function applyResolvedTripCopilotAction(trip: EasyTTrip, action: Resolved
     hardConstraints: { ...intent.hardConstraints, avoidDriving: action.preference === "avoid_drive" },
     preferences: { ...intent.preferences, transportModes },
   };
-  return finalizeMutation({ ...next, brief: { ...next.brief, intent: updatedIntent } });
+  return finalizeMutation({ ...next, brief: { ...next.brief, intent: updatedIntent } }, { cascadeSchedule: false });
 }
 
 function formatDateRange(trip: EasyTTrip) {
@@ -375,7 +454,10 @@ const transportLabel = (preference: ChangeTransportPreferenceAction["preference"
   avoid_drive: "Avoid driving where practical",
 })[preference];
 
-export function buildTripCopilotPreviewCandidates(trip: EasyTTrip, action: TripCopilotAction): TripCopilotPreviewCandidate[] {
+export function buildTripCopilotPreviewCandidates(trip: EasyTTrip, action: TripCopilotAction, now = new Date()): TripCopilotPreviewCandidate[] {
+  if (trip.status === "archived" || Date.parse(`${trip.endDate}T23:59:59Z`) < now.getTime()) {
+    throw new TripCopilotActionValidationError("Past or archived trips cannot be changed by the co-pilot.");
+  }
   if (action.action === "set_trip_preference") {
     const before = action.preference === "pace" ? trip.brief.structuredBrief?.pace?.value ?? tripIntentForTrip(trip).preferences.pace
       : action.preference === "accommodation" ? trip.brief.hotelChanges === "few" ? "fewer_hotel_changes" : "flexible_hotel_changes"
@@ -398,9 +480,40 @@ export function buildTripCopilotPreviewCandidates(trip: EasyTTrip, action: TripC
   const directResolution: ChangeStopNightsResolution = { type: "preserve_trip_dates" };
   const direct = candidate(trip, action, { ...action, resolution: directResolution }, `Change ${stop.name} to ${action.nights} nights`, [{ label: stop.name, before: `${currentNights} nights`, after: `${action.nights} nights` }], []);
   const exceedsTripEnd = direct.warnings.some((warning) => warning.includes("beyond the trip end"));
-  if (delta <= 0 || !exceedsTripEnd) return [direct];
+  if (delta === 0 || (delta > 0 && !exceedsTripEnd)) return [direct];
 
   const alternatives: TripCopilotPreviewCandidate[] = [];
+  if (delta < 0) {
+    const released = -delta;
+    alternatives.push(candidate(
+      trip,
+      action,
+      { ...action, resolution: { type: "shorten_trip", days: released } },
+      `Shorten the trip by ${released} ${released === 1 ? "day" : "days"}`,
+      [
+        { label: stop.name, before: `${currentNights} nights`, after: `${action.nights} nights` },
+        { label: "Trip end", before: trip.endDate, after: addDays(trip.endDate, -released) },
+      ],
+      [],
+    ));
+    const locked = new Set(trip.brief.scheduleLocks?.stopIds ?? []);
+    for (const other of trip.stops.filter((item) => item.id !== stop.id && !locked.has(item.id) && !stayBookingForStop(trip, item) && item.nights !== null).slice(0, 3)) {
+      const nights = (other.nights ?? 0) + released;
+      alternatives.push(candidate(
+        trip,
+        action,
+        { ...action, resolution: { type: "increase_stop", stopId: other.id, nights } },
+        `Move ${released} ${released === 1 ? "night" : "nights"} from ${stop.name} to ${other.name}`,
+        [
+          { label: stop.name, before: `${currentNights} nights`, after: `${action.nights} nights` },
+          { label: other.name, before: `${other.nights} ${other.nights === 1 ? "night" : "nights"}`, after: `${nights} ${nights === 1 ? "night" : "nights"}` },
+        ],
+        [],
+      ));
+    }
+    return alternatives;
+  }
+
   const extendResolution: ChangeStopNightsResolution = { type: "extend_trip", days: delta };
   alternatives.push(candidate(
     trip,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, Luggage, Map } from "lucide-react";
+import { CalendarDays, House, Map } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -10,6 +10,7 @@ import {
   cacheCanonicalTrip,
   discardTripRecovery,
   EASYT_ACTIVE_TRIP_CHANGE_EVENT,
+  loadLocalTrip,
   loadTripRecovery,
   resolveCanonicalEquivalentTripRecovery,
   subscribeToTripStorage,
@@ -18,11 +19,12 @@ import {
   loadRememberedOwner,
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
-import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
+import ResilientImage from "@/components/easyt/resilient-image";
+import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
-import { MorroviaConfirmationDialog } from "./morrovia-feedback";
+import { MorroviaConfirmationDialog, MorroviaStatusBanner } from "./morrovia-feedback";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
@@ -40,8 +42,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
   const conflictActions = tripConflictResolutionActions(trip.id);
-  const visibleActiveTrip = !cacheTrip
-    && activeTrip.id === trip.id
+  const visibleActiveTrip = activeTrip.id === trip.id
     && activeTrip.ownerId === trip.ownerId
     ? activeTrip
     : trip;
@@ -77,7 +78,11 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   }, [ownerBoundary]);
 
   useEffect(() => {
-    setActiveTrip(trip);
+    setActiveTrip((current) => current.id === trip.id
+      && current.ownerId === trip.ownerId
+      && !canonicalTripRevisionCanReplace(current, trip)
+      ? current
+      : trip);
     // A server-resolved deep link is canonical for this owner. Refresh the
     // clean offline cache without replacing a pending recovery document.
     if (cacheTrip) cacheCanonicalTrip(trip);
@@ -113,7 +118,14 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       if (!remainingRecovery) setDiscardFailed(false);
     };
     refreshRecovery();
-    return subscribeToTripStorage(trip.ownerId, trip.id, refreshRecovery);
+    return subscribeToTripStorage(trip.ownerId, trip.id, (change) => {
+      refreshRecovery();
+      if (change.kind !== "cache" || loadTripRecovery(trip.id, trip.ownerId)) return;
+      const cached = loadLocalTrip(trip.id, trip.ownerId);
+      if (cached?.id === trip.id && cached.ownerId === trip.ownerId) {
+        setActiveTrip((current) => canonicalTripRevisionCanReplace(current, cached) ? cached : current);
+      }
+    });
   }, [cacheTrip, trip]);
 
   useEffect(() => {
@@ -126,8 +138,6 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       trackEvent("trip_itinerary_viewed", { ...common, workspace_view: "itinerary" });
     } else if (view === "map") {
       trackEvent("trip_map_viewed", { ...common, workspace_view: "map" });
-    } else if (view === "prep") {
-      trackEvent("trip_prep_viewed", { ...common, workspace_view: "prep" });
     } else {
       trackEvent("trip_overview_viewed", { ...common, workspace_view: "overview" });
     }
@@ -155,23 +165,16 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     <>
       {ownerBoundary === "expired" || ownerBoundary === "signed-out" ? (
         <div className={styles.content}>
-          <aside className={styles.syncNotice} role="alert">
-            <strong>Your session ended</strong>
-            <span>This trip remains visible and unchanged. Sign in before editing or syncing it.</span>
-            <EasyTLinkButton size="small" href={journeyReauthenticationPath(returnTarget)}>Sign in and return here</EasyTLinkButton>
-          </aside>
+          <MorroviaStatusBanner tone="danger" title="Your session ended" detail="This trip remains visible and unchanged. Sign in before editing or syncing it." actions={<EasyTLinkButton size="small" href={journeyReauthenticationPath(returnTarget)}>Sign in and return here</EasyTLinkButton>} />
         </div>
       ) : null}
       {visibleDeviceRecovery ? (
         <div className={styles.content}>
-          <aside className={styles.syncNotice} role="alert">
-            <strong>Device edits kept safe</strong>
-            <span>{discardFailed
+          <MorroviaStatusBanner tone={discardFailed ? "danger" : "warning"} title="Device edits kept safe" detail={discardFailed
               ? "Morrovia couldn’t discard this device copy because browser storage is unavailable. Your edits remain intact."
-              : "You’re viewing the cloud copy. Unsynced edits on this device remain separate until you resume or discard them."}</span>
-            <EasyTLinkButton size="small" href={conflictActions.deviceHref}>{conflictActions.openDeviceLabel}</EasyTLinkButton>
-            <EasyTButton size="small" variant="danger" onClick={() => setDiscardDialogOpen(true)}>{conflictActions.discardDeviceLabel}</EasyTButton>
-          </aside>
+              : "You’re viewing the cloud copy. Unsynced edits on this device remain separate until you resume or discard them."}
+            actions={<><EasyTLinkButton size="small" href={conflictActions.deviceHref}>{conflictActions.openDeviceLabel}</EasyTLinkButton><EasyTButton size="small" variant="danger" onClick={() => setDiscardDialogOpen(true)}>{conflictActions.discardDeviceLabel}</EasyTButton></>}
+          />
         </div>
       ) : null}
       <MorroviaConfirmationDialog
@@ -203,7 +206,6 @@ const views = [
   { id: "overview", label: "Overview", icon: House, suffix: "" },
   { id: "map", label: "Map", icon: Map, suffix: "/map" },
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
-  { id: "prep", label: "Prep", icon: Luggage, suffix: "/prep" },
 ] as const;
 
 export function TripShellNavigation({ tripId }: { tripId: string }) {
@@ -216,9 +218,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
     ? "itinerary"
     : remainder.startsWith("/map")
       ? "map"
-      : remainder.startsWith("/prep")
-        ? "prep"
-        : "overview";
+      : "overview";
 
   return (
     <nav className={styles.subnav} aria-label="Trip workspace">
@@ -252,18 +252,9 @@ export function TripShellImage({
   routeLabel: string;
   stopCount: number;
 }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const showImage = Boolean(src) && failedSrc !== src;
-
   return (
     <div className={styles.tripImage}>
-      <div className={styles.tripImageFallback} aria-hidden={showImage || undefined}>
-        <span>{stopCount || 1}</span>
-        <small>{routeLabel}</small>
-      </div>
-      {showImage ? (
-        <img src={src ?? ""} alt={alt} onError={() => setFailedSrc(src)} />
-      ) : null}
+      <ResilientImage src={src} alt={alt} fallback={<div className={styles.tripImageFallback} role="img" aria-label={`${routeLabel} trip image unavailable`}><span>{stopCount || 1}</span><small>{routeLabel}</small></div>} />
     </div>
   );
 }

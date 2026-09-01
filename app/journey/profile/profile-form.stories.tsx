@@ -4,7 +4,7 @@ import ProfileForm from "./profile-form";
 import styles from "../account.module.css";
 
 const meta = {
-  title: "Pages/Profile",
+  title: "Morrovia/05 Product Patterns/Profile form",
   component: ProfileForm,
   args: {
     ownerId: "storybook-owner",
@@ -13,7 +13,7 @@ const meta = {
     initialLanguage: "en",
     initialTravelProfile: {
       pace: "balanced",
-      priority: "mix",
+      usualInterests: ["food", "culture"],
       hotelMoves: "few",
       budget: "mid",
     },
@@ -61,5 +61,5 @@ export const LongValues: Story = {
 
 export const NarrowScreen: Story = {
   args: { ownerId: "storybook-owner-narrow" },
-  parameters: { viewport: { defaultViewport: "morrovia320" } },
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
 };

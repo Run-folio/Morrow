@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
 import { reviewTrip } from "../lib/easyt/review.ts";
-import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { extractStructuredTripBrief, mergeStructuredTripBrief, structuredTripBriefFromSavedSelections } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 const trip = (): EasyTTrip => ({
@@ -37,12 +37,63 @@ test("recalculates canonical stops and legs for a contiguous day-order change", 
   }
 });
 
+test("benign route replanning preserves stable stop-bound manual night intent", () => {
+  const source = trip();
+  source.brief.nightAllocations = { a: 1, b: 1 };
+  source.brief.manualNightStopIds = ["a"];
+  const result = replanTripAfterDayOrder(source, [source.planItems[2], source.planItems[3], source.planItems[0], source.planItems[1]]);
+
+  assert.equal(result.state, "recalculated");
+  if (result.state === "recalculated") {
+    assert.deepEqual(result.trip.brief.manualNightStopIds, ["a"]);
+    assert.equal(result.trip.stops.find((stop) => stop.id === "a")?.nights, 1);
+    assert.equal(result.trip.stops.find((stop) => stop.id === "b")?.nights, 1);
+  }
+});
+
 test("does not silently pretend a return to an earlier base is a clean route", () => {
   const source = trip();
   const result = replanTripAfterDayOrder(source, [source.planItems[0], source.planItems[2], source.planItems[1], source.planItems[3]]);
 
   assert.equal(result.state, "needs-route-edit");
   if (result.state === "needs-route-edit") assert.equal(result.returnedStopId, "a");
+});
+
+test("refuses day reorders that violate fixed start or end gateways without mutating the trip", () => {
+  const source = trip();
+  source.stops = [
+    { ...source.stops[0], order: 0 },
+    { id: "c", order: 1, name: "C", country: "Testland", latitude: 0, longitude: 5, arrivalDate: null, departureDate: null, nights: 1 },
+    { ...source.stops[1], order: 2 },
+  ];
+  source.planItems = [
+    { ...source.planItems[0], dayNumber: 1, date: "2026-09-01" },
+    { ...source.planItems[2], id: "c1", stopId: "c", dayNumber: 2, date: "2026-09-02", title: "C" },
+    { ...source.planItems[3], id: "b1", stopId: "b", dayNumber: 3, date: "2026-09-03", title: "B" },
+  ];
+  source.brief.structuredBrief = structuredTripBriefFromSavedSelections({
+    destinations: [
+      { id: "a", name: "A", role: "arrival-gateway", priority: "required" },
+      { id: "c", name: "C", role: "preferred", priority: "normal" },
+      { id: "b", name: "B", role: "departure-gateway", priority: "required" },
+    ],
+  });
+  const planItemByStop = new Map(source.planItems.map((item) => [item.stopId, item]));
+
+  for (const { order, protectedStopId } of [
+    { order: ["c", "a", "b"], protectedStopId: "a" },
+    { order: ["a", "b", "c"], protectedStopId: "b" },
+  ]) {
+    const before = structuredClone(source);
+    const result = replanTripAfterDayOrder(source, order.map((stopId) => planItemByStop.get(stopId)!));
+
+    assert.equal(result.state, "needs-route-edit");
+    if (result.state === "needs-route-edit") {
+      assert.equal(result.returnedStopId, protectedStopId);
+      assert.strictEqual(result.trip, source);
+    }
+    assert.deepEqual(source, before);
+  }
 });
 
 test("route replan preserves place mentions, issues, selections, removals and geographic IDs", () => {

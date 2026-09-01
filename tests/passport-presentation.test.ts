@@ -14,6 +14,7 @@ test("verified Passport Index results expose only supported provenance and fresh
   });
 
   assert.equal(presentation.verification, "verified");
+  assert.equal(presentation.informationState, "known");
   assert.equal(presentation.source.official, true);
   assert.equal(presentation.source.label, requirement.sourceLabel);
   assert.equal(presentation.freshness, requirement.dataUpdatedAt);
@@ -26,12 +27,13 @@ test("unknown combinations stay unknown and never acquire fabricated freshness o
   const presentation = passportPresentationFor({ requirement, language: "en", sourceCoverage: "needs-source" });
 
   assert.equal(requirement.status, "not-verified");
-  assert.match(requirement.visaAnswer, /does not yet have data/i);
+  assert.match(requirement.visaAnswer, /information unavailable/i);
   assert.equal(presentation.verification, "needs-confirmation");
+  assert.equal(presentation.informationState, "unsupported");
   assert.equal(presentation.freshness, null);
   assert.equal(presentation.source.official, false);
-  assert.match(presentation.passportValidityContext, /^Confirm required validity/i);
-  assert.doesNotMatch(presentation.passportValidityContext, /months|days|visa-free/i);
+  assert.equal(presentation.passportValidityContext, "");
+  assert.equal(presentation.scopeContext, "");
 });
 
 test("Spanish presentation keeps saved profile context advisory", () => {
@@ -40,4 +42,14 @@ test("Spanish presentation keeps saved profile context advisory", () => {
   assert.match(presentation.passportValidityContext, /2029-04/);
   assert.match(presentation.passportValidityContext, /Confirma/i);
   assert.match(presentation.scopeContext, /pasaporte ordinario/i);
+});
+
+test("stale intelligence remains distinct from unsupported coverage and provider failure", () => {
+  const known = touristEntryRequirementFor("United Kingdom", "Japan", "en");
+  const presentation = passportPresentationFor({ requirement: { ...known, informationState: "stale" }, language: "en" });
+
+  assert.equal(presentation.informationState, "stale");
+  assert.equal(presentation.verification, "needs-confirmation");
+  assert.equal(presentation.freshness, known.dataUpdatedAt);
+  assert.notEqual(presentation.passportValidityContext, "");
 });

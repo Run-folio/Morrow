@@ -8,7 +8,7 @@ function trip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
   return {
     schemaVersion: 1, id: "readiness-summary", ownerId: "owner-a", title: "Readiness", status: "planned", startDate: "2026-10-01", endDate: "2026-10-03", travellers: 2, currency: "GBP",
     brief: { origin: "London", originCountry: "United Kingdom", originCoordinates: [-0.1276, 51.5072], mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: {}, checklist: [{ id: "documents", label: "Check documents", complete: false }] },
-    stops: [{ id: "paris", order: 0, name: "Paris", country: "France", latitude: 48.85, longitude: 2.35, arrivalDate: "2026-10-01", departureDate: "2026-10-04", nights: 2 }],
+    stops: [{ id: "paris", order: 0, name: "Paris", country: "France", latitude: 48.85, longitude: 2.35, arrivalDate: "2026-10-01", departureDate: "2026-10-03", nights: 2 }],
     legs: [{ id: "arrival", fromStopId: "readiness-summary-origin", toStopId: "paris", fromEndpoint: { kind: "origin", id: "readiness-summary-origin", name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] }, toEndpoint: { kind: "stop", id: "paris", name: "Paris", country: "France", coordinates: [2.35, 48.85] }, classification: "arrival", mode: "train", distanceKm: 344, durationMinutes: 270, provider: "Verified fixture", provenance: "provider", confidence: "high", scheduleNeedsChecking: false, warnings: [], routeMetadata: { planningEstimate: false, decisionOption: "fixture" } }], planItems: [], recommendations: [], createdAt: "2026-08-01", updatedAt: "2026-08-01",
     ...overrides,
   };
@@ -25,7 +25,7 @@ test("summary distinguishes empty and partial itineraries from complete coverage
   assert.equal(signal(complete, "itinerary").complete, true);
 });
 
-test("summary derives stays and Prep only from saved canonical facts", () => {
+test("summary derives stays and practical readiness only from saved canonical facts", () => {
   const source = trip();
   assert.equal(signal(source, "stays").complete, false);
   assert.equal(signal(source, "prep").complete, false);
@@ -52,7 +52,7 @@ test("planned but incomplete is not presented as ready, while fully covered fact
     ["itinerary", true, false, "3 days planned"],
     ["stays", true, false, "1 of 1 stays sorted"],
     ["route", true, false, "Route checks clear"],
-    ["prep", true, false, "1 of 1 saved Prep tasks complete"],
+    ["prep", true, false, "1 of 1 saved practical tasks complete"],
   ]);
   assert.equal(tripReadinessSummary(complete).isReady, true);
 });

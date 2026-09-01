@@ -40,7 +40,7 @@ export function tripReadinessSummary(trip: EasyTTrip) {
       id: "prep",
       complete: savedPrep.length > 0 && completedPrep === savedPrep.length,
       blocked: false,
-      label: savedPrep.length ? `${completedPrep} of ${savedPrep.length} saved Prep tasks complete` : "Prep tasks to review",
+      label: savedPrep.length ? `${completedPrep} of ${savedPrep.length} saved practical tasks complete` : "Practical tasks to review",
     },
   ];
 

@@ -7,7 +7,7 @@
 
 .dashboardHeroEmpty { grid-template-columns: minmax(0, 1fr); }
 
-.titleDot { color: var(--morrovia-signal, #ff347f); }
+.titleDot { color: var(--morrovia-signal); }
 
 .actionNotice { display: flex; justify-content: flex-end; margin-top: 22px; }
 
@@ -19,24 +19,7 @@
 .loadingToolbar { display: flex; justify-content: space-between; gap: 18px; }
 .loadingGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 
-.syncNotice {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  margin-top: 22px;
-  padding: 15px 17px;
-  border: 1px solid color-mix(in srgb, var(--morrovia-signal) 38%, var(--morrovia-line));
-  border-radius: var(--morrovia-control-radius);
-  background: color-mix(in srgb, var(--morrovia-signal) 7%, #fff);
-  color: var(--morrovia-ink);
-}
-
-.syncNotice > svg { width: 20px; color: var(--morrovia-signal); }
-.syncNotice strong,
-.syncNotice p { display: block; margin: 0; }
-.syncNotice p { margin-top: 3px; color: var(--morrovia-ink-soft); font-size: 13px; line-height: 1.45; }
-.syncNotice > span { display: flex; gap: 8px; }
+.dashboardNotice { margin-top: 22px; }
 
 .continueCard,
 .stampsCard,
@@ -44,16 +27,40 @@
 .emptyState {
   background: var(--morrovia-surface, #fff);
   border: 1px solid var(--morrovia-line);
-  border-radius: 18px;
+  border-radius: var(--morrovia-radius);
   box-shadow: 0 16px 38px rgb(28 20 95 / 7%);
 }
 
 .continueCard {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, .9fr);
   grid-template-rows: 1fr auto;
   min-height: 326px;
   overflow: hidden;
+}
+
+.interactiveCard {
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.interactiveCard:hover {
+  border-color: var(--morrovia-lilac-strong);
+  box-shadow: 0 19px 42px rgb(28 20 95 / 11%);
+  transform: translateY(-2px);
+}
+
+.cardOverlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
+.cardOverlay:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--morrovia-signal), var(--morrovia-focus-ring);
 }
 
 .continueCopy {
@@ -63,7 +70,7 @@
 
 .eyebrow {
   margin: 0 0 10px;
-  color: var(--morrovia-signal, #ff347f);
+  color: var(--morrovia-signal);
   font: 700 .72rem/1.2 var(--morrovia-meta);
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -86,7 +93,7 @@
 
 .route,
 .tripRoute {
-  color: var(--morrovia-muted, #716da8);
+  color: var(--morrovia-muted);
 }
 
 .route {
@@ -110,52 +117,9 @@
   gap: 10px;
 }
 
-.primaryAction,
-.secondaryAction,
-.openAction,
-.editAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  min-height: 44px;
-  border-radius: 9px;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.primaryAction,
-.openAction {
-  background: var(--morrovia-action, #3426d9);
-  color: white;
-}
-
-.primaryAction {
-  padding: 0 18px;
-}
-
-.primaryAction:hover,
-.openAction:hover {
-  background: var(--morrovia-signal, #ff347f);
-}
-
-.primaryAction svg,
-.secondaryAction svg,
-.openAction svg {
-  width: 17px;
-  height: 17px;
-}
-
-.secondaryAction,
-.editAction {
-  border: 1px solid var(--morrovia-line);
-  background: var(--morrovia-surface, #fff);
-  color: var(--morrovia-ink);
-}
-
-.secondaryAction {
-  padding: 0 17px;
-}
+.continueActions,
+.tripCardActions,
+.stampsAction { position: relative; z-index: 2; }
 
 .continueImage {
   width: calc(100% - 20px);
@@ -175,24 +139,27 @@
   place-content: center;
   padding: 28px;
   border-radius: 14px;
-  background:
-    radial-gradient(circle at 72% 26%, color-mix(in srgb, var(--morrovia-signal) 16%, transparent), transparent 22%),
-    linear-gradient(145deg, var(--morrovia-tint), var(--morrovia-surface));
+  background: var(--morrovia-lilac);
   color: var(--morrovia-ink);
   text-align: center;
 }
 
 .continueImageFallback span {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 14px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--morrovia-action);
-  color: white;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: baseline;
+  justify-self: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--morrovia-lilac-strong);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-surface, #fff);
+  color: var(--morrovia-ink-soft);
+  font: 700 .72rem/1 var(--morrovia-meta);
+  text-transform: uppercase;
 }
+
+.continueImageFallback span b { color: var(--morrovia-action); font-size: 1rem; }
 
 .continueImageFallback p { margin: 0; font-size: .85rem; line-height: 1.45; }
 
@@ -204,7 +171,7 @@
   padding: 1px;
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
-  border-radius: 10px;
+  border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-line);
   list-style: none;
 }
@@ -229,7 +196,7 @@
   place-items: center;
   border: 1px solid var(--morrovia-lilac-strong);
   border-radius: 50%;
-  color: var(--morrovia-muted, #716da8);
+  color: var(--morrovia-muted);
   font-size: .7rem;
   font-weight: 800;
 }
@@ -244,13 +211,13 @@
   text-transform: uppercase;
 }
 .cardReadiness small {
-  color: var(--morrovia-muted, #716da8);
+  color: var(--morrovia-muted);
   font-size: .68rem;
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.cardReadiness .completeStage > span { border-color: var(--morrovia-action, #3426d9); background: var(--morrovia-action, #3426d9); color: white; }
-.cardReadiness .currentStage > span { border-color: var(--morrovia-signal, #ff347f); background: var(--morrovia-signal, #ff347f); color: white; }
+.cardReadiness .completeStage > span { border-color: var(--morrovia-action); background: var(--morrovia-action); color: white; }
+.cardReadiness .blockedStage > span { border-color: var(--morrovia-danger); background: var(--morrovia-danger); color: white; }
 
 .continueEmpty {
   min-height: 326px;
@@ -259,18 +226,22 @@
 
 .stampsCard {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(136px, .85fr);
   min-height: 326px;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 32px;
   overflow: hidden;
 }
 
+.stampsMain {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 28px 0 28px 28px;
+}
+
 .stampsCopy {
-  position: relative;
-  z-index: 2;
-  max-width: 24ch;
+  max-width: 25ch;
 }
 
 .stampsCopy h2 {
@@ -279,44 +250,60 @@
 
 .stampsCopy > p:last-child {
   margin: 10px 0 0;
-  color: var(--morrovia-muted, #716da8);
+  color: var(--morrovia-muted);
   font-size: .86rem;
   line-height: 1.5;
 }
 
 .stampsStats {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  gap: 24px;
-  margin: auto 0 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  margin: auto 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
 }
 
 .stampsStats span {
   display: grid;
-  gap: 3px;
-  padding-right: 24px;
-  border-right: 1px solid var(--morrovia-line);
-  color: var(--morrovia-muted, #716da8);
-  font-size: .72rem;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 10px;
 }
 
-.stampsStats span:last-child { border: 0; }
-.stampsStats b { color: var(--morrovia-ink); font: 700 1.8rem/1 var(--morrovia-display); }
+.stampsStats span + span { border-left: 1px solid var(--morrovia-line); }
+.stampsStats i {
+  display: grid;
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--morrovia-tint);
+  color: var(--morrovia-signal);
+  font-style: normal;
+}
+.stampsStats span:last-child i { background: var(--morrovia-lilac); color: var(--morrovia-action); }
+.stampsStats svg { width: 14px; height: 14px; }
+.stampsStats b { color: var(--morrovia-ink); font-size: 1.2rem; font-weight: 600; line-height: 1; }
+.stampsStats small { min-width: 0; color: var(--morrovia-ink-soft); font-size: .62rem; line-height: 1.25; }
+
+.stampsVisual {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--morrovia-lilac);
+}
 
 .stampsMap {
-  position: absolute;
-  top: 42px;
-  right: -46px;
-  width: 70%;
-  height: 210px;
-  opacity: .38;
+  width: 100%;
+  height: 100%;
+  opacity: .74;
   object-fit: cover;
-  object-position: center;
+  object-position: 58% center;
   mix-blend-mode: multiply;
 }
-
-.stampsCard > .secondaryAction { position: relative; z-index: 2; }
 
 .tripLibrary { margin-top: 28px; }
 
@@ -328,71 +315,20 @@
   margin-bottom: 22px;
 }
 
-.statusFilters {
-  display: inline-flex;
-  padding: 4px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: 11px;
-  background: var(--morrovia-tint, #f5f3ff);
-}
-
-.statusFilters button {
-  min-height: 42px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--morrovia-ink);
-  font: inherit;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.statusFilters button[aria-pressed="true"] {
-  background: var(--morrovia-action, #3426d9);
-  color: white;
-  box-shadow: 0 8px 18px rgb(52 38 217 / 18%);
-}
-
-.statusFilters button span {
-  display: inline-grid;
-  min-width: 23px;
-  height: 23px;
-  margin-left: 6px;
-  place-items: center;
-  border-radius: 50%;
-  background: rgb(255 255 255 / 60%);
-  color: inherit;
-  font-size: .72rem;
-}
-
-.sortControl select,
-.searchControl,
+.filterControl { flex: 0 0 auto; }
+.sortControl { width: 280px; min-width: 0; }
+.searchControl { width: min(260px, 22vw); min-width: 0; }
 .gridIndicator {
-  min-height: 44px;
+  display: grid;
+  width: 50px;
+  min-height: 50px;
+  place-items: center;
   border: 1px solid var(--morrovia-line);
-  border-radius: 9px;
+  border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-surface, #fff);
-  color: var(--morrovia-ink);
+  color: var(--morrovia-ink-soft);
 }
-
-.sortControl select {
-  padding: 0 36px 0 14px;
-  font: inherit;
-}
-
-.searchControl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: min(260px, 22vw);
-  padding: 0 12px;
-}
-
-.searchControl svg,
 .gridIndicator svg { width: 18px; }
-.searchControl input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; }
-.gridIndicator { display: grid; width: 44px; place-items: center; }
 
 .tripGrid {
   display: grid;
@@ -401,19 +337,13 @@
 }
 
 .tripCard {
+  position: relative;
   display: flex;
   height: 100%;
   min-width: 0;
   min-height: 332px;
   flex-direction: column;
   padding: 22px;
-  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
-}
-
-.tripCard:hover {
-  border-color: var(--morrovia-lilac-strong);
-  box-shadow: 0 19px 42px rgb(28 20 95 / 11%);
-  transform: translateY(-2px);
 }
 
 .working { opacity: .58; pointer-events: none; }
@@ -423,33 +353,44 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: var(--morrovia-signal, #ff347f);
+  color: var(--morrovia-muted);
   font: 700 .65rem/1.2 var(--morrovia-meta);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.tripCardMeta span {
+.lifecycleStatus {
   padding: 4px 7px;
-  border: 1px solid color-mix(in srgb, var(--morrovia-signal, #ff347f), transparent 55%);
+  border: 1px solid var(--morrovia-line);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--morrovia-signal, #ff347f), white 93%);
 }
+
+.lifecycleActive { border-color: var(--morrovia-lilac-strong); background: var(--morrovia-lilac); color: var(--morrovia-action); }
+.lifecyclePlanned { background: var(--morrovia-tint); color: var(--morrovia-ink-soft); }
+.lifecycleArchived { background: var(--morrovia-disabled); color: var(--morrovia-muted); }
 
 .tripCardMeta time { text-align: right; }
 
 .tripCard h3 {
+  display: -webkit-box;
   margin-top: 20px;
+  overflow: hidden;
   font-size: clamp(1.25rem, 1.7vw, 1.65rem);
   line-height: 1.05;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
 .tripRoute {
   min-height: 2.7em;
   margin: 12px 0 16px;
+  overflow: hidden;
   font-size: .8rem;
   line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .tripImage {
@@ -469,39 +410,13 @@
   align-content: center;
   padding: 18px;
   border-radius: 10px;
-  background: var(--morrovia-tint, #f5f3ff);
+  background: var(--morrovia-tint);
   color: var(--morrovia-ink);
 }
 
 .tripImageFallback b { grid-row: 1 / 3; align-self: center; font: 700 2rem/1 var(--morrovia-display); }
 .tripImageFallback span { font-weight: 750; }
-.tripImageFallback small { color: var(--morrovia-muted, #716da8); }
-
-.cardProgress {
-  margin-top: auto;
-}
-
-.cardProgress::before {
-  display: block;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--morrovia-tint, #f5f3ff);
-  content: "";
-}
-
-.cardProgress > span {
-  display: block;
-  height: 7px;
-  margin-top: -7px;
-  border-radius: 999px;
-  background: var(--morrovia-signal, #ff347f);
-}
-
-.cardProgress p {
-  margin: 11px 0 0;
-  color: var(--morrovia-muted, #716da8);
-  font-size: .71rem;
-}
+.tripImageFallback small { color: var(--morrovia-muted); }
 
 .tripCardActions {
   margin-top: 14px;
@@ -510,16 +425,13 @@
 .openAction,
 .editAction {
   min-width: 0;
-  padding: 0 12px;
-  font-size: .76rem;
-  white-space: nowrap;
 }
 
 .openAction { flex: 1; }
 .editAction { flex: 1.1; }
 .editAction svg { width: 15px; }
 
-.tripMenu { position: relative; }
+.tripMenu { position: relative; z-index: 2; }
 .tripMenu summary {
   display: grid;
   width: 44px;
@@ -542,11 +454,10 @@
   min-width: 190px;
   padding: 7px;
   border: 1px solid var(--morrovia-line);
-  border-radius: 10px;
+  border-radius: var(--morrovia-control-radius);
   background: white;
   box-shadow: 0 18px 45px rgb(28 20 95 / 18%);
 }
-.tripMenu button,
 .tripMenu a {
   display: flex;
   align-items: center;
@@ -563,23 +474,13 @@
   text-decoration: none;
   cursor: pointer;
 }
-.tripMenu button:hover,
-.tripMenu a:hover { background: var(--morrovia-tint, #f5f3ff); }
-.tripMenu button svg,
+.tripMenu a:hover { background: var(--morrovia-tint); }
 .tripMenu a svg { width: 16px; }
-.tripMenu .deleteAction { color: var(--morrovia-danger, #be284c); }
+.tripMenu .deleteAction { color: var(--morrovia-danger); }
 
-.statusFilters button:focus-visible,
-.sortControl select:focus-visible,
-.searchControl:focus-within,
 .tripMenu summary:focus-visible,
-.tripMenu button:focus-visible,
-.tripMenu a:focus-visible,
-.primaryAction:focus-visible,
-.secondaryAction:focus-visible,
-.openAction:focus-visible,
-.editAction:focus-visible {
-  outline: 2px solid var(--morrovia-signal, #ff347f);
+.tripMenu a:focus-visible {
+  outline: 2px solid var(--morrovia-signal);
   outline-offset: 2px;
   box-shadow: var(--morrovia-focus-ring);
 }
@@ -592,9 +493,9 @@
   padding: 48px;
   text-align: center;
 }
-.emptyState > svg { width: 30px; color: var(--morrovia-signal, #ff347f); }
+.emptyState > svg { width: 30px; color: var(--morrovia-signal); }
 .emptyState h3 { margin: 8px 0 0; color: var(--morrovia-ink); font: 700 1.6rem/1.1 var(--morrovia-display); }
-.emptyState p { max-width: 52ch; margin: 0; color: var(--morrovia-muted, #716da8); }
+.emptyState p { max-width: 52ch; margin: 0; color: var(--morrovia-muted); }
 
 .srOnly {
   position: absolute;
@@ -622,7 +523,6 @@
   .dashboardHero { grid-template-columns: 1fr; }
   .continueCard { min-height: 310px; }
   .stampsCard { min-height: 260px; }
-  .stampsMap { width: 52%; }
   .tripGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -630,8 +530,6 @@
   .loadingToolbar { align-items: stretch; flex-direction: column; }
   .loadingGrid { grid-template-columns: 1fr; }
   .loadingGrid article { min-height: 280px; }
-  .syncNotice { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
-  .syncNotice > span { grid-column: 2; flex-wrap: wrap; }
   .dashboardHero { margin-top: 16px; }
   .continueCard { display: flex; flex-direction: column; }
   .continueCopy { padding: 25px 22px 16px; }
@@ -640,14 +538,14 @@
   .continueImage,
   .continueImageFallback { order: -1; width: calc(100% - 24px); height: 156px; margin: 12px 12px 4px; }
   .continueActions { align-items: stretch; flex-direction: column; }
-  .stampsCard { min-height: 280px; padding: 25px 22px; }
-  .stampsMap { top: 48px; right: -60px; width: 75%; opacity: .28; }
+  .stampsCard { grid-template-columns: 1fr; min-height: 0; }
+  .stampsMain { padding: 24px 22px 25px; }
+  .stampsVisual { order: -1; height: 148px; }
+  .stampsMap { object-position: center 55%; }
   .libraryToolbar { margin-bottom: 16px; }
-  .statusFilters { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
-  .statusFilters button { padding: 0 8px; font-size: .78rem; }
-  .libraryTools { display: grid; grid-template-columns: 1fr 44px; }
-  .sortControl { grid-column: 1 / -1; }
-  .sortControl select { width: 100%; }
+  .filterControl { width: 100%; }
+  .libraryTools { display: grid; grid-template-columns: minmax(0, 1fr) 50px; }
+  .sortControl { grid-column: 1 / -1; width: 100%; }
   .searchControl { width: auto; }
   .tripGrid { grid-template-columns: 1fr; }
   .tripCard { min-height: 315px; }
@@ -657,9 +555,12 @@
 @media (max-width: 390px) {
   .continueCopy h2 { font-size: 1.72rem; }
   .continueCopy,
-  .stampsCard,
   .tripCard { padding-right: 17px; padding-left: 17px; }
-  .statusFilters button span { min-width: 20px; height: 20px; margin-left: 2px; }
   .tripCardActions { display: grid; grid-template-columns: 1fr 44px; }
   .editAction { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactiveCard { transition: none; }
+  .interactiveCard:hover { transform: none; }
 }

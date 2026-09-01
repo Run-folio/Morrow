@@ -1,11 +1,17 @@
 "use client";
 
 import { Mic, Square } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  finalSpeechTranscript,
+  speechFailureKind,
+  type SpeechRecognitionEventLike,
+} from "@/lib/easyt/speech-recognition";
+import { acknowledgeSpeechDisclosure, speechDisclosureAcknowledged } from "@/lib/easyt/speech-disclosure";
+import { EasyTButton } from "./easyt-controls";
+import { MorroviaContextualDisclosure } from "./morrovia-feedback";
 import styles from "./voice-trip-brief.module.css";
 
-type RecognitionResultLike = { 0?: { transcript?: string }; isFinal: boolean };
-type RecognitionEventLike = { resultIndex: number; results: ArrayLike<RecognitionResultLike> };
 type RecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -16,7 +22,7 @@ type RecognitionLike = {
   onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: ((event: { error: string }) => void) | null;
-  onresult: ((event: RecognitionEventLike) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
 };
 type RecognitionConstructor = new () => RecognitionLike;
 
@@ -25,13 +31,6 @@ declare global {
     SpeechRecognition?: RecognitionConstructor;
     webkitSpeechRecognition?: RecognitionConstructor;
   }
-}
-
-export function appendVoiceTranscript(current: string, transcript: string) {
-  const next = transcript.trim();
-  if (!next) return current;
-  const existing = current.trimEnd();
-  return existing ? `${existing}${/\s$/.test(current) ? "" : " "}${next}` : next;
 }
 
 type VoiceTripBriefProps = {
@@ -43,9 +42,12 @@ type VoiceTripBriefProps = {
 export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripBriefProps) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const onTranscriptRef = useRef(onTranscript);
-  const [supported, setSupported] = useState(false);
+  const disclosureId = useId();
+  const [supported, setSupported] = useState<boolean | null>(null);
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState("");
+  const [disclosureOpen, setDisclosureOpen] = useState(false);
+  const [disclosureAcknowledged, setDisclosureAcknowledged] = useState(false);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
@@ -53,6 +55,7 @@ export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripB
 
   useEffect(() => {
     setSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
+    setDisclosureAcknowledged(speechDisclosureAcknowledged(window.localStorage));
     return () => recognitionRef.current?.abort();
   }, []);
 
@@ -62,16 +65,28 @@ export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripB
         stop: "Dejar de escuchar",
         listening: "Escuchando…",
         blocked: "El acceso al micrófono está bloqueado. Puedes seguir escribiendo.",
-        unavailable: "La entrada por voz no está disponible aquí. Puedes seguir escribiendo.",
-        noSpeech: "No oímos nada. Puedes intentarlo de nuevo o seguir escribiendo.",
+        unavailable: "La entrada por voz no está disponible en este navegador. Puedes seguir escribiendo.",
+        noSpeech: "No hemos captado nada. Inténtalo de nuevo o escribe tu viaje.",
+        added: "La transcripción se añadió como texto editable.",
+        disclosureTitle: "Entrada por voz",
+        disclosure: "El servicio de reconocimiento de voz de tu navegador convierte lo que dices en texto editable. Tu navegador o proveedor de voz puede procesar el audio; Morrovia recibe la transcripción resultante.",
+        privacy: "Detalles de privacidad",
+        begin: "Empezar a hablar",
+        info: "Acerca de la entrada por voz",
       }
     : {
         start: "Use voice to add a trip idea",
         stop: "Stop listening",
         listening: "Listening…",
         blocked: "Microphone access was blocked. You can keep typing.",
-        unavailable: "Voice input isn’t available in this browser. You can keep typing.",
-        noSpeech: "We didn’t hear anything. Try again or keep typing.",
+        unavailable: "Speech input isn’t available in this browser. You can keep typing.",
+        noSpeech: "We didn’t catch that. Try again or type your trip.",
+        added: "Speech was added as editable text.",
+        disclosureTitle: "Speech input",
+        disclosure: "Your browser’s speech-recognition service turns what you say into editable text. Your browser or speech provider may process the audio; Morrovia receives the resulting transcript.",
+        privacy: "Privacy details",
+        begin: "Start speaking",
+        info: "About speech input",
       };
 
   const stop = () => recognitionRef.current?.stop();
@@ -92,22 +107,16 @@ export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripB
     recognition.interimResults = false;
     recognition.onstart = () => setListening(true);
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .slice(event.resultIndex)
-        .filter((result) => result.isFinal)
-        .map((result) => result[0]?.transcript ?? "")
-        .join(" ")
-        .trim();
+      const transcript = finalSpeechTranscript(event);
       if (transcript) {
         heardSpeech = true;
         onTranscriptRef.current(transcript);
+        setMessage(text.added);
       }
     };
     recognition.onerror = ({ error }) => {
       hadError = true;
-      if (error === "not-allowed" || error === "service-not-allowed") setMessage(text.blocked);
-      else if (error === "no-speech") setMessage(text.noSpeech);
-      else setMessage(text.unavailable);
+      setMessage(text[speechFailureKind(error)]);
     };
     recognition.onend = () => {
       setListening(false);
@@ -122,13 +131,44 @@ export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripB
     }
   };
 
-  if (!supported) return null;
+  const requestStart = () => {
+    if (listening) {
+      stop();
+      return;
+    }
+    if (!disclosureAcknowledged) {
+      setDisclosureOpen(true);
+      return;
+    }
+    start();
+  };
+
+  const confirmStart = () => {
+    acknowledgeSpeechDisclosure(window.localStorage);
+    setDisclosureAcknowledged(true);
+    setDisclosureOpen(false);
+    start();
+  };
 
   return <div className={`${styles.voice} ${className ?? ""}`}>
-    <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} onClick={listening ? stop : start}>
-      {listening ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />}
-      <span>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
-    </button>
+    <div className={styles.voiceActions}>
+      <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null} onClick={requestStart}>
+        {listening ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />}
+        <span>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
+      </button>
+      <MorroviaContextualDisclosure
+        id={disclosureId}
+        open={disclosureOpen}
+        onOpenChange={setDisclosureOpen}
+        title={text.disclosureTitle}
+        detail={text.disclosure}
+        linkHref="/journey/privacy#ai-and-speech"
+        linkLabel={text.privacy}
+        triggerLabel={text.info}
+        triggerIconOnly
+        actions={<EasyTButton data-disclosure-autofocus="true" size="small" onClick={confirmStart}>{text.begin}</EasyTButton>}
+      />
+    </div>
     <span className={styles.status} role="status" aria-live="polite">{listening ? text.listening : message}</span>
   </div>;
 }

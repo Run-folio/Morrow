@@ -1,16 +1,30 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
-import { getEasyTAuthSecret, isEasyTEmailVerificationRequired } from "@/lib/easyt/auth-environment";
+import {
+  getEasyTAuthSecret,
+  getMorroviaAuthBaseURL,
+  getMorroviaAuthTrustedOrigins,
+  GOOGLE_ACCOUNT_LINKING_POLICY,
+  GOOGLE_AUTH_SCOPES,
+  isEasyTEmailVerificationRequired,
+  isMorroviaGoogleAuthConfigured,
+} from "@/lib/easyt/auth-environment";
 import { passwordResetEmail, sendEasyTEmail, verificationEmail } from "@/lib/easyt/email";
 
-const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-
 function createAuth(databaseUrl: string, secret: string) {
+  const baseURL = getMorroviaAuthBaseURL();
+  const googleEnabled = isMorroviaGoogleAuthConfigured();
   return betterAuth({
-    appName: "EasyT",
-    baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    appName: "Morrovia",
+    baseURL,
     secret,
     database: new Pool({ connectionString: databaseUrl }),
+    account: {
+      // Better Auth remains the sole account/linking owner. New and refreshed
+      // OAuth token fields are encrypted with the Better Auth secret.
+      encryptOAuthTokens: true,
+      accountLinking: GOOGLE_ACCOUNT_LINKING_POLICY,
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
@@ -21,7 +35,7 @@ function createAuth(databaseUrl: string, secret: string) {
         // token through authClient.resetPassword().
         const resetUrl = new URL(
           "/journey/reset-password",
-          process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+          baseURL,
         );
         resetUrl.searchParams.set("token", token);
         await sendEasyTEmail({ to: user.email, ...passwordResetEmail(resetUrl.toString()) });
@@ -42,17 +56,28 @@ function createAuth(databaseUrl: string, secret: string) {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        // Ask only for the identity data EasyT needs and let travellers choose
+        // Ask only for the identity data Morrovia needs and let travellers choose
         // between their Google accounts instead of silently reusing one.
-        scope: ["email", "profile"],
+        scope: [...GOOGLE_AUTH_SCOPES],
         prompt: "select_account",
       },
     } : {},
-    trustedOrigins: [
-      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-    ],
+    trustedOrigins: getMorroviaAuthTrustedOrigins(),
+    onAPIError: {
+      // Invalid/stale OAuth state cannot safely recover a return URL. Bring the
+      // traveller back to the normal auth surface with a bounded error code.
+      errorURL: new URL("/journey/login?oauth=google", baseURL).toString(),
+    },
+    logger: {
+      level: "warn",
+      // Better Auth can pass provider/network error objects as extra logger
+      // arguments. Deliberately omit them so codes, tokens and payloads cannot
+      // enter application logs through this integration.
+      log(level) {
+        if (level === "error") console.error("[Better Auth] Authentication request failed.");
+        else if (level === "warn") console.warn("[Better Auth] Authentication request warning.");
+      },
+    },
   });
 }
 
@@ -65,7 +90,7 @@ export function getAuth(): EasyTAuth {
   const databaseUrl = process.env.DATABASE_URL;
   const secret = getEasyTAuthSecret();
   if (!databaseUrl || !secret) {
-    throw new Error("EasyT authentication is not configured in this environment.");
+    throw new Error("Morrovia authentication is not configured in this environment.");
   }
 
   authInstance = createAuth(databaseUrl, secret);

@@ -75,6 +75,7 @@ function fixtureProvider(requests: string[]): PlaceIntelligenceProvider {
       candidate("calafate-chile", "Los Calafates", "Chile", "town", [-70.86, -53.03]),
     ],
     "el calafate": [candidate("el-calafate", "El Calafate", "Argentina", "town")],
+    cairo: [candidate("cairo-egypt", "Cairo", "Egypt", "city", [31.2357, 30.0444])],
   };
   return {
     id: "global-fixture",
@@ -132,7 +133,7 @@ test("deterministic coverage restores destinations omitted by a valid Luna respo
   );
 
   assert.deepEqual(capture.mentions.map((mention) => mention.sourceText), ["Denver", "Dallas", "Puerto Vallarta", "Oaxaca", "Paris"]);
-  assert.deepEqual(requests, ["Denver", "Dallas", "Puerto Vallarta", "Oaxaca"]);
+  assert.deepEqual(requests, ["Paris", "Denver", "Dallas", "Puerto Vallarta"]);
   assert.deepEqual(capture.mentionCoverage, {
     expectedPlaceMentions: 5,
     resolvedPlaceMentions: 5,
@@ -169,7 +170,7 @@ test("semantic lookup interpretations resolve colloquial names without replacing
     fixtureProvider(requests),
   );
 
-  assert.deepEqual(requests, ["Rio de Janeiro", "El Calafate"]);
+  assert.deepEqual(requests, ["Cusco", "Buenos Aires", "Santiago", "Madrid", "Rio", "Calafate", "Rio de Janeiro", "El Calafate"]);
   assert.deepEqual(capture.mentions.map((mention) => mention.sourceText), ["Cusco", "Rio", "Buenos Aires", "Calafate", "Santiago", "Madrid"]);
   assert.deepEqual(capture.mentions.map((mention) => mention.canonicalName), ["Cusco", "Rio de Janeiro", "Buenos Aires", "El Calafate", "Santiago", "Madrid"]);
   assert.deepEqual(capture.mentions.filter((mention) => mention.role !== "origin").map((mention) => mention.role), ["preferred", "preferred", "preferred", "preferred", "preferred"]);
@@ -201,6 +202,20 @@ test("provider failure cannot reduce the deterministic destination inventory", a
     assert.deepEqual(capture.mentionCoverage.missingFromResolution, []);
     assert.deepEqual(capture.mentionCoverage.missingFromStructuredBrief, []);
   }
+});
+
+test("Cairo has capture and manual resolver parity as a direct city", async () => {
+  const prompt = "Porto to Paris, Rome, Madrid, Cairo";
+  const provider = fixtureProvider([]);
+  const capture = await captureJourneyBriefFromSemanticIntent(prompt, intent("Porto", ["Paris", "Rome", "Madrid"]), provider);
+  const cairo = capture.mentions.find((mention) => mention.sourceText === "Cairo");
+  const manual = await provider.lookup("Cairo", { travelIntent: "route-stop" });
+
+  assert.equal(cairo?.canonicalName, manual[0]?.canonicalName);
+  assert.equal(cairo?.placeType, "city");
+  assert.equal(cairo?.routability, "direct_destination");
+  assert.equal(cairo?.status, "resolved");
+  assert.equal(capture.mentionCoverage.complete, true);
 });
 
 test("development diagnostics trace every geographic span without logging the complete prompt", async () => {

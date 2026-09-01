@@ -11,6 +11,7 @@ import {
   type PlanningConfidence,
 } from "./planning-confidence.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
+import { matchingTripInterests, type TripInterest } from "./trip-interest.ts";
 
 export type NightAllocationPace = "relaxed" | "balanced" | "fast" | "packed";
 
@@ -20,11 +21,16 @@ export type NightAllocationReasonCode =
   | "fallback-minimum"
   | "fallback-ideal"
   | "anchor-priority"
+  | "destination-depth"
+  | "gateway-stop"
   | "required-priority"
   | "traveller-preference"
+  | "interest-fit"
   | "transfer-recovery"
   | "pace"
   | "fixed-nights"
+  | "manual-nights"
+  | "diminishing-returns"
   | "minimum-compromise";
 
 export type NightAllocationReason = {
@@ -40,7 +46,9 @@ export type NightAllocationConflictCode =
   | "fixed-night-mismatch"
   | "minimum-stay-compromise"
   | "fixed-below-minimum"
-  | "one-night-anchor";
+  | "one-night-anchor"
+  | "unallocated-nights"
+  | "overallocated-nights";
 
 export type NightAllocationConflict = {
   code: NightAllocationConflictCode;
@@ -68,8 +76,12 @@ export type NightAllocationStopInput = {
   required?: boolean;
   optional?: boolean;
   anchor?: boolean;
+  /** A fixed arrival/departure gateway; it remains viable but is not assumed to be a deep stay. */
+  gateway?: boolean;
   /** Existing traveller-authored split. It is a target, not a hard constraint. */
   preferredNights?: number;
+  /** An explicit traveller edit. It is authoritative until deliberately cleared. */
+  manualNights?: number;
   /** A booking or linked fixed-date stay that must not be rebalanced. */
   fixedNights?: number;
   /** Existing planner guidance used only when destination knowledge is absent. */
@@ -92,12 +104,14 @@ export type NightAllocationInput = {
   totalNights: number;
   stops: readonly NightAllocationStopInput[];
   pace?: NightAllocationPace;
+  interests?: readonly TripInterest[];
   fixedCommitments?: readonly NightAllocationFixedCommitment[];
   config?: NightAllocationConfig;
   knowledge?: Pick<DestinationKnowledgeStore, "forNightAllocation">;
 };
 
 export type NightGuidanceSource = "destination-knowledge" | "planner-fallback" | "morrovia-default";
+export type NightAllocationStopDepth = "deep" | "substantial" | "ordinary" | "single-purpose" | "gateway";
 
 export type NightAllocationStopResult = {
   stopId: string;
@@ -112,6 +126,9 @@ export type NightAllocationStopResult = {
   isAnchor: boolean;
   isRequired: boolean;
   isFixed: boolean;
+  isManual?: boolean;
+  depth?: NightAllocationStopDepth;
+  matchedInterests?: readonly TripInterest[];
   transferDayLoss: number | null;
   confidence: {
     minimumNights: PlanningConfidence;
@@ -147,6 +164,31 @@ export type NightAllocationFailure = {
 
 export type NightAllocationResult = NightAllocationSuccess | NightAllocationFailure;
 
+export type NightRebalanceAutomaticChange = {
+  stopId: string;
+  name: string;
+  direction: "added" | "removed";
+  nights: number;
+  beforeNights: number;
+  afterNights: number;
+  reason: "clear-highest-marginal-value" | "clear-lowest-marginal-value";
+};
+
+export type RebalanceTripNightsInput = NightAllocationInput & {
+  /** Stable stop-bound values currently visible to the traveller. */
+  currentAllocations: Readonly<Record<string, number>>;
+  /** Explicit traveller edits. These IDs are immutable in this pass. */
+  manualStopIds: readonly string[];
+};
+
+export type RebalanceTripNightsResult = {
+  nightAllocation: NightAllocationResult;
+  automaticChanges: NightRebalanceAutomaticChange[];
+  /** Positive means nights remain to add; negative means nights still need removing. */
+  balanceDelta: number;
+  manualStopIds: string[];
+};
+
 export type NightAllocationConfig = {
   version: string;
   fallbackMinimumNights: number;
@@ -167,13 +209,24 @@ export type NightAllocationConfig = {
   };
   targetGapWeight: number;
   minimumFirstNightBonus: number;
+  requiredSecondNightBonus: number;
   priorityMultiplier: Record<"relaxed" | "balanced" | "fast", number>;
   overflowPriorityMultiplier: Record<"relaxed" | "balanced" | "fast", number>;
   balancePenalty: Record<"relaxed" | "balanced" | "fast", number>;
+  depthBaseValue: Record<NightAllocationStopDepth, number>;
+  diminishingReturn: Record<NightAllocationStopDepth, number>;
+  targetGapBonus: number;
+  idealOverflowPenalty: number;
+  interestMatchValue: number;
+  maximumInterestValue: number;
+  transferTaxValue: number;
+  rebalanceConfidenceMargin: number;
+  rebalanceMinimumReceiveValue: number;
+  rebalanceMaximumDonorValue: number;
 };
 
 export const DEFAULT_NIGHT_ALLOCATION_CONFIG: NightAllocationConfig = {
-  version: "night-allocation-v1",
+  version: "night-allocation-v2-marginal-depth",
   fallbackMinimumNights: 1,
   anchorMinimumNights: 2,
   unknownIdealExtraNights: { relaxed: 2, balanced: 1, fast: 0 },
@@ -192,9 +245,20 @@ export const DEFAULT_NIGHT_ALLOCATION_CONFIG: NightAllocationConfig = {
   },
   targetGapWeight: 6,
   minimumFirstNightBonus: 200,
+  requiredSecondNightBonus: 160,
   priorityMultiplier: { relaxed: 1.2, balanced: 1, fast: 0.25 },
   overflowPriorityMultiplier: { relaxed: 0.1, balanced: 0.1, fast: 0 },
   balancePenalty: { relaxed: 3, balanced: 7, fast: 12 },
+  depthBaseValue: { deep: 76, substantial: 66, ordinary: 56, "single-purpose": 42, gateway: 38 },
+  diminishingReturn: { deep: 9, substantial: 11, ordinary: 14, "single-purpose": 18, gateway: 20 },
+  targetGapBonus: 30,
+  idealOverflowPenalty: 18,
+  interestMatchValue: 6,
+  maximumInterestValue: 12,
+  transferTaxValue: 16,
+  rebalanceConfidenceMargin: 12,
+  rebalanceMinimumReceiveValue: 58,
+  rebalanceMaximumDonorValue: 78,
 };
 
 type Pace = "relaxed" | "balanced" | "fast";
@@ -213,9 +277,13 @@ type PreparedStop = {
   roles: readonly DestinationRole[];
   isAnchor: boolean;
   isRequired: boolean;
+  isManual: boolean;
+  depth: NightAllocationStopDepth;
+  matchedInterests: readonly TripInterest[];
   transferDayLoss: number | null;
   transferRecoveryNights: number;
   fixedNights: number | null;
+  hardFixedNights: number | null;
   fixedMismatch: boolean;
   priority: number;
   reasons: NightAllocationReason[];
@@ -235,14 +303,27 @@ function knownRoles(fact: KnowledgeFact<readonly DestinationRole[]>) {
   return fact.status === "known" ? fact.value : [];
 }
 
+function knownStrings(fact: KnowledgeFact<readonly string[]>) {
+  return fact.status === "known" ? fact.value : [];
+}
+
 function impactFraction(impact: TransferImpact | undefined) {
   return impact?.usableDayLoss.estimatedDayFraction ?? null;
 }
 
-function transferLossFor(stop: NightAllocationStopInput) {
-  const values = [impactFraction(stop.arrivalImpact), impactFraction(stop.departureImpact)]
-    .flatMap((value) => value === null ? [] : [value]);
-  return values.length ? Math.min(2, values.reduce((total, value) => total + value, 0)) : null;
+/**
+ * Charge each internal transfer once across its two adjacent stays: 70% to the
+ * arrival stop and 30% to the departure stop. The first arrival is charged in
+ * full because its origin is outside the stay allocation. This uses both ends
+ * of a stop without counting the same route leg as two full lost days.
+ */
+function transferLossFor(stop: NightAllocationStopInput, index: number, stopCount: number) {
+  const arrival = impactFraction(stop.arrivalImpact);
+  const departure = impactFraction(stop.departureImpact);
+  if (arrival === null && departure === null) return null;
+  const arrivalWeight = index === 0 ? 1 : 0.7;
+  const departureWeight = index === stopCount - 1 ? 1 : 0.3;
+  return Math.min(1.5, (arrival ?? 0) * arrivalWeight + (departure ?? 0) * departureWeight);
 }
 
 function recoveryNights(loss: number | null, config: NightAllocationConfig) {
@@ -297,6 +378,22 @@ function linkedFixedNights(input: NightAllocationInput, stop: NightAllocationSto
   return { value: normalized[0], mismatch: normalized.some((value) => value !== normalized[0]) };
 }
 
+function depthFor(input: {
+  stop: NightAllocationStopInput;
+  roles: readonly DestinationRole[];
+  isAnchor: boolean;
+  minimumNights: number;
+  idealNights: number;
+  idealSource: NightGuidanceSource;
+}): NightAllocationStopDepth {
+  if (input.stop.gateway && !input.isAnchor) return "gateway";
+  if (!input.isAnchor && (input.roles.includes("side-trip") || input.stop.intent === "landmark")) return "single-purpose";
+  if (input.isAnchor) return "deep";
+  if (input.roles.includes("base") || (input.roles.includes("hub") && input.idealNights >= 3)) return "substantial";
+  if (input.idealSource !== "morrovia-default" && input.idealNights - input.minimumNights >= 2) return "substantial";
+  return "ordinary";
+}
+
 function prepareStops(input: NightAllocationInput, config: NightAllocationConfig, notices: NightAllocationNotice[]) {
   const pace = normalizedPace(input.pace);
   const knowledge = input.knowledge ?? destinationKnowledge;
@@ -312,8 +409,8 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
   return input.stops.map((stop, index): PreparedStop => {
     const guidance = knowledge.forNightAllocation(stop);
     const roles = knownRoles(guidance.roles);
-    const isAnchor = Boolean(stop.anchor || stop.intent === "landmark" || roles.includes("anchor"));
-    const isRequired = Boolean(stop.required || isAnchor);
+    const isAnchor = Boolean(stop.anchor || roles.includes("anchor"));
+    const isRequired = Boolean(stop.required || stop.intent === "landmark" || isAnchor);
     const minimumGuidance = guidanceValue(
       guidance.minimumNights,
       stop.fallbackMinimumNights,
@@ -329,7 +426,7 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
       minimumNights + config.unknownIdealExtraNights[pace],
       "Ideal stay",
     );
-    const transferDayLoss = transferLossFor(stop);
+    const transferDayLoss = transferLossFor(stop, index, input.stops.length);
     const transferRecoveryNights = recoveryNights(transferDayLoss, config);
     const idealNights = Math.max(minimumNights, idealGuidance.value) + transferRecoveryNights;
     const paceTarget = minimumNights + Math.round((idealNights - minimumNights) * config.idealProgress[pace]);
@@ -337,13 +434,19 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
       minimumNights,
       stop.preferredNights === undefined ? paceTarget : nonNegativeInteger(stop.preferredNights, paceTarget),
     );
-    const fixed = linkedFixedNights(input, stop);
+    const hardFixed = linkedFixedNights(input, stop);
+    const manualNights = stop.manualNights === undefined ? null : nonNegativeInteger(stop.manualNights, 0);
+    const fixedNights = hardFixed.value ?? manualNights;
+    const fixedMismatch = hardFixed.mismatch || (hardFixed.value !== null && manualNights !== null && hardFixed.value !== manualNights);
+    const isManual = manualNights !== null;
+    const depth = depthFor({ stop, roles, isAnchor, minimumNights, idealNights, idealSource: idealGuidance.source });
+    const matchedInterests = matchingTripInterests(input.interests ?? [], knownStrings(guidance.experienceTags));
     const transferConfidences = [stop.arrivalImpact?.claimConfidence?.doorToDoor, stop.departureImpact?.claimConfidence?.doorToDoor]
       .filter((claim): claim is PlanningConfidence => Boolean(claim));
-    const allocationConfidence = fixed.value !== null
+    const allocationConfidence = fixedNights !== null
       ? createPlanningConfidence({
           state: "structured", level: "high", freshness: "current", scope: "traveller-intent", sources: [],
-          reason: "The night count is fixed by a linked traveller commitment.", confirmationReason: null,
+          reason: isManual ? "The night count is an explicit traveller edit." : "The night count is fixed by a linked traveller commitment.", confirmationReason: null,
         })
       : aggregatePlanningConfidence(
           [minimumGuidance.confidence, idealGuidance.confidence, ...transferConfidences],
@@ -361,7 +464,6 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
     if (roles.includes("side-trip")) priority += config.priority.sideTrip;
     if (stop.optional) priority += config.priority.optional;
     priority += Math.max(0, stop.preferenceWeight ?? 0) * config.priority.preferencePoint;
-    priority += transferRecoveryNights * config.priority.transferNight;
     const reasons: NightAllocationReason[] = [
       {
         code: minimumGuidance.source === "destination-knowledge" ? "destination-minimum" : "fallback-minimum",
@@ -377,10 +479,15 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
       },
       { code: "pace", message: `${pace} pace sets a ${paceTarget}-night target before traveller-authored adjustments.` },
       ...(isAnchor ? [{ code: "anchor-priority" as const, message: `${stop.name} is treated as a major anchor.` }] : []),
+      { code: "destination-depth", message: `${stop.name} has ${depth.replace("-", " ")} stay-depth evidence for marginal night allocation.` },
+      ...(stop.gateway ? [{ code: "gateway-stop" as const, message: `${stop.name} is a fixed route gateway, so extra nights require other stay-value evidence.` }] : []),
       ...(stop.required ? [{ code: "required-priority" as const, message: `${stop.name} is a required or must-visit stop.` }] : []),
-      ...((stop.preferenceWeight ?? 0) > 0 ? [{ code: "traveller-preference" as const, message: `Traveller selections raise ${stop.name}'s allocation priority.` }] : []),
-      ...(transferRecoveryNights ? [{ code: "transfer-recovery" as const, message: `${transferRecoveryNights} additional target night${transferRecoveryNights === 1 ? "" : "s"} protects time lost to arrival or departure travel.` }] : []),
-      ...(fixed.value !== null ? [{ code: "fixed-nights" as const, message: `${fixed.value} night${fixed.value === 1 ? " is" : "s are"} fixed and cannot be rebalanced.` }] : []),
+      ...((stop.preferenceWeight ?? 0) > 0 ? [{ code: "traveller-preference" as const, message: `Traveller-selected places raise ${stop.name}'s allocation priority within a bounded range.` }] : []),
+      ...(matchedInterests.length ? [{ code: "interest-fit" as const, message: `${stop.name} has evidenced ${matchedInterests.join(" + ")} fit for this trip.` }] : []),
+      ...(transferRecoveryNights ? [{ code: "transfer-recovery" as const, message: `${transferRecoveryNights} additional target night${transferRecoveryNights === 1 ? "" : "s"} protects usable time after weighted arrival and departure transfer loss.` }] : []),
+      ...(hardFixed.value !== null ? [{ code: "fixed-nights" as const, message: `${hardFixed.value} night${hardFixed.value === 1 ? " is" : "s are"} fixed and cannot be rebalanced.` }] : []),
+      ...(isManual ? [{ code: "manual-nights" as const, message: `${manualNights} night${manualNights === 1 ? " is" : "s are"} fixed by the traveller's explicit edit.` }] : []),
+      { code: "diminishing-returns", message: `Each additional night in ${stop.name} is valued incrementally with bounded diminishing returns.` },
     ];
     return {
       input: stop,
@@ -396,10 +503,14 @@ function prepareStops(input: NightAllocationInput, config: NightAllocationConfig
       roles,
       isAnchor,
       isRequired,
+      isManual,
+      depth,
+      matchedInterests,
       transferDayLoss,
       transferRecoveryNights,
-      fixedNights: fixed.value,
-      fixedMismatch: fixed.mismatch,
+      fixedNights,
+      hardFixedNights: hardFixed.value,
+      fixedMismatch,
       priority,
       reasons,
     };
@@ -437,20 +548,48 @@ function bestMinimumClaim(stops: PreparedStop[], allocations: Record<string, num
     .sort((left, right) => right.score - left.score || left.stop.index - right.stop.index)[0]?.stop;
 }
 
-function bestExtraClaim(stops: PreparedStop[], allocations: Record<string, number>, config: NightAllocationConfig, pace: Pace) {
+function marginalStayValue(stop: PreparedStop, current: number, config: NightAllocationConfig, pace: Pace) {
+  if (current < stop.minimumNights) {
+    return config.minimumFirstNightBonus
+      + (stop.minimumNights - current) * config.targetGapWeight
+      + stop.priority;
+  }
+  const targetGap = Math.max(0, stop.targetNights - current);
+  const extraIndex = Math.max(0, current - stop.minimumNights);
+  const pastIdeal = Math.max(0, current - stop.idealNights + 1);
+  const interestValue = Math.min(config.maximumInterestValue, stop.matchedInterests.length * config.interestMatchValue);
+  const preferenceValue = Math.min(12, Math.max(0, stop.input.preferenceWeight ?? 0) * config.priority.preferencePoint);
+  const transferValue = current < stop.idealNights ? (stop.transferDayLoss ?? 0) * config.transferTaxValue : 0;
+  const requiredSecondNight = stop.isRequired
+    && current === 1
+    && stop.idealNights >= 2
+    && stop.depth !== "single-purpose"
+    && stop.depth !== "gateway"
+      ? config.requiredSecondNightBonus
+      : 0;
+  const paceDiminishing = pace === "relaxed" ? 0.8 : pace === "fast" ? 1.25 : 1;
+  const roleValue = stop.priority * (targetGap > 0 ? 0.4 : 0.08);
+  return config.depthBaseValue[stop.depth]
+    + (targetGap > 0 ? config.targetGapBonus + targetGap * config.targetGapWeight : 0)
+    + requiredSecondNight
+    + roleValue
+    + interestValue
+    + preferenceValue
+    + transferValue
+    - extraIndex * config.diminishingReturn[stop.depth] * paceDiminishing
+    - pastIdeal * config.idealOverflowPenalty
+    - current * config.balancePenalty[pace] * 0.2;
+}
+
+function rankedExtraClaims(stops: PreparedStop[], allocations: Record<string, number>, config: NightAllocationConfig, pace: Pace) {
   return stops
     .filter((stop) => stop.fixedNights === null)
-    .map((stop) => {
-      const current = allocations[stop.input.id];
-      const gap = Math.max(0, stop.targetNights - current);
-      return {
-        stop,
-        score: (gap > 0 ? 100 + gap * config.targetGapWeight : 0)
-          + stop.priority * (gap > 0 ? config.priorityMultiplier[pace] : config.overflowPriorityMultiplier[pace])
-          - current * config.balancePenalty[pace],
-      };
-    })
-    .sort((left, right) => right.score - left.score || left.stop.index - right.stop.index)[0]?.stop;
+    .map((stop) => ({ stop, score: marginalStayValue(stop, allocations[stop.input.id] ?? 0, config, pace) }))
+    .sort((left, right) => right.score - left.score || left.stop.index - right.stop.index);
+}
+
+function bestExtraClaim(stops: PreparedStop[], allocations: Record<string, number>, config: NightAllocationConfig, pace: Pace) {
+  return rankedExtraClaims(stops, allocations, config, pace)[0]?.stop;
 }
 
 /**
@@ -593,6 +732,9 @@ export function allocateTripNights(input: NightAllocationInput): NightAllocation
     isAnchor: stop.isAnchor,
     isRequired: stop.isRequired,
     isFixed: stop.fixedNights !== null,
+    isManual: stop.isManual,
+    depth: stop.depth,
+    matchedInterests: stop.matchedInterests,
     transferDayLoss: stop.transferDayLoss,
     confidence: {
       minimumNights: stop.minimumConfidence,
@@ -613,6 +755,241 @@ export function allocateTripNights(input: NightAllocationInput): NightAllocation
     conflicts,
     notices,
   };
+}
+
+/**
+ * Reconcile a traveller-authored stay split without turning route order into a
+ * hidden tie-break. Manual and hard-fixed stops are immutable. A remaining
+ * night moves only when the best marginal recipient/donor clears both the
+ * absolute safety threshold and the configured margin over the runner-up.
+ */
+export function rebalanceTripNights(input: RebalanceTripNightsInput): RebalanceTripNightsResult {
+  const config = input.config ?? DEFAULT_NIGHT_ALLOCATION_CONFIG;
+  const totalNights = nonNegativeInteger(input.totalNights, -1);
+  const notices: NightAllocationNotice[] = [];
+  const manualSet = new Set(input.manualStopIds);
+  const manualStopIds = input.stops.map((stop) => stop.id).filter((id) => manualSet.has(id));
+  const finish = (
+    nightAllocation: NightAllocationResult,
+    automaticChanges: NightRebalanceAutomaticChange[] = [],
+  ): RebalanceTripNightsResult => ({
+    nightAllocation,
+    automaticChanges,
+    balanceDelta: nightAllocation.totalAllocatedNights === null ? 0 : totalNights - nightAllocation.totalAllocatedNights,
+    manualStopIds,
+  });
+  if (!Number.isFinite(input.totalNights) || input.totalNights < 0 || !Number.isInteger(input.totalNights)) {
+    return finish(failure(totalNights, config, [{ code: "invalid-total-nights", severity: "error", message: "Total available nights must be a non-negative integer.", stopIds: [] }], notices));
+  }
+  if (!input.stops.length) {
+    if (totalNights !== 0) return finish(failure(totalNights, config, [{ code: "no-stops", severity: "error", message: `${totalNights} nights cannot be allocated without a destination stop.`, stopIds: [] }], notices));
+    return finish({ version: 1, configVersion: config.version, state: "allocated", totalAvailableNights: 0, totalAllocatedNights: 0, allocations: {}, stops: [], conflicts: [], notices: [] });
+  }
+  const duplicateIds = input.stops.filter((stop, index, all) => all.findIndex((candidate) => candidate.id === stop.id) !== index).map((stop) => stop.id);
+  if (duplicateIds.length) {
+    return finish(failure(totalNights, config, [{ code: "duplicate-stop", severity: "error", message: `Night allocation requires unique stop identities; duplicate IDs: ${[...new Set(duplicateIds)].join(", ")}.`, stopIds: [...new Set(duplicateIds)] }], notices));
+  }
+
+  const canonicalInput: NightAllocationInput = {
+    ...input,
+    stops: input.stops.map((stop) => manualSet.has(stop.id)
+      ? { ...stop, manualNights: nonNegativeInteger(input.currentAllocations[stop.id] ?? stop.manualNights, 0) }
+      : { ...stop, manualNights: undefined }),
+  };
+  const prepared = prepareStops(canonicalInput, config, notices);
+  const mismatches = prepared.filter((stop) => stop.fixedMismatch);
+  if (mismatches.length) {
+    return finish(failure(totalNights, config, mismatches.map((stop) => ({
+      code: "fixed-night-mismatch" as const,
+      severity: "error" as const,
+      message: `${stop.input.name} has conflicting traveller and fixed-night commitments.`,
+      stopIds: [stop.input.id],
+    })), notices));
+  }
+  const hardFixedTotal = prepared.reduce((total, stop) => total + (stop.hardFixedNights ?? 0), 0);
+  if (hardFixedTotal > totalNights) {
+    return finish(failure(totalNights, config, [{
+      code: "fixed-nights-exceed-total",
+      severity: "error",
+      message: `${hardFixedTotal} fixed nights cannot fit inside the ${totalNights}-night trip.`,
+      stopIds: prepared.filter((stop) => stop.hardFixedNights !== null).map((stop) => stop.input.id),
+      requiredNights: hardFixedTotal,
+      allocatedNights: totalNights,
+      shortfallNights: hardFixedTotal - totalNights,
+    }], notices));
+  }
+
+  const allocations = Object.fromEntries(prepared.map((stop) => [
+    stop.input.id,
+    stop.fixedNights ?? nonNegativeInteger(input.currentAllocations[stop.input.id], 0),
+  ])) as Record<string, number>;
+  const before = { ...allocations };
+  const pace = normalizedPace(input.pace);
+  let balanceDelta = totalNights - Object.values(allocations).reduce((total, value) => total + value, 0);
+  const initialBalanceDelta = balanceDelta;
+
+  while (balanceDelta > 0) {
+    const ranked = rankedExtraClaims(prepared, allocations, config, pace);
+    const best = ranked[0];
+    const second = ranked[1];
+    const clear = Boolean(best)
+      && best!.score >= config.rebalanceMinimumReceiveValue
+      && (!second || best!.score - second.score >= config.rebalanceConfidenceMargin);
+    if (!clear || !best) break;
+    allocations[best.stop.input.id] += 1;
+    balanceDelta -= 1;
+  }
+
+  while (balanceDelta < 0) {
+    const ranked = prepared
+      .filter((stop) => stop.fixedNights === null && (allocations[stop.input.id] ?? 0) > stop.minimumNights)
+      .map((stop) => ({
+        stop,
+        score: marginalStayValue(stop, (allocations[stop.input.id] ?? 0) - 1, config, pace),
+      }))
+      .sort((left, right) => left.score - right.score || left.stop.index - right.stop.index);
+    const best = ranked[0];
+    const second = ranked[1];
+    const clear = Boolean(best)
+      && best!.score <= config.rebalanceMaximumDonorValue
+      && (!second || second.score - best!.score >= config.rebalanceConfidenceMargin);
+    if (!clear || !best) break;
+    allocations[best.stop.input.id] -= 1;
+    balanceDelta += 1;
+  }
+
+  // When the budget is already exact, allow only a clearly beneficial
+  // one-night swap between unlocked stops. This lets changed canonical
+  // interests/transfer evidence affect flexible nights without recomputing or
+  // clearing traveller-fixed counts. The bounded loop terminates as marginal
+  // returns converge.
+  let swapBudget = totalNights + prepared.length;
+  while (initialBalanceDelta === 0 && balanceDelta === 0 && swapBudget > 0) {
+    swapBudget -= 1;
+    const receivers = rankedExtraClaims(prepared, allocations, config, pace);
+    const donors = prepared
+      .filter((stop) => stop.fixedNights === null && (allocations[stop.input.id] ?? 0) > stop.minimumNights)
+      .map((stop) => ({
+        stop,
+        score: marginalStayValue(stop, (allocations[stop.input.id] ?? 0) - 1, config, pace),
+      }));
+    const swaps = receivers.flatMap((receiver) => donors
+      .filter((donor) => donor.stop.input.id !== receiver.stop.input.id)
+      .map((donor) => ({ receiver, donor, improvement: receiver.score - donor.score })))
+      .sort((left, right) => right.improvement - left.improvement
+        || left.receiver.stop.index - right.receiver.stop.index
+        || left.donor.stop.index - right.donor.stop.index);
+    const swap = swaps[0];
+    const runnerUp = swaps[1];
+    const clear = Boolean(swap)
+      && swap!.improvement >= config.rebalanceConfidenceMargin
+      && (!runnerUp || swap!.improvement - runnerUp.improvement >= config.rebalanceConfidenceMargin);
+    if (!clear || !swap) break;
+    allocations[swap.donor.stop.input.id] -= 1;
+    allocations[swap.receiver.stop.input.id] += 1;
+  }
+
+  const automaticChanges = prepared.flatMap((stop): NightRebalanceAutomaticChange[] => {
+    if (stop.fixedNights !== null) return [];
+    const beforeNights = before[stop.input.id] ?? 0;
+    const afterNights = allocations[stop.input.id] ?? 0;
+    if (beforeNights === afterNights) return [];
+    const direction = afterNights > beforeNights ? "added" as const : "removed" as const;
+    return [{
+      stopId: stop.input.id,
+      name: stop.input.name,
+      direction,
+      nights: Math.abs(afterNights - beforeNights),
+      beforeNights,
+      afterNights,
+      reason: direction === "added" ? "clear-highest-marginal-value" : "clear-lowest-marginal-value",
+    }];
+  });
+  const conflicts: NightAllocationConflict[] = [];
+  for (const stop of prepared) {
+    const allocated = allocations[stop.input.id] ?? 0;
+    if (allocated < stop.minimumNights) {
+      conflicts.push({
+        code: stop.fixedNights !== null ? "fixed-below-minimum" : "minimum-stay-compromise",
+        severity: "warning",
+        message: stop.fixedNights !== null
+          ? `${stop.input.name}'s fixed ${allocated}-night stay is below its ${stop.minimumNights}-night minimum.`
+          : `${stop.input.name} receives ${allocated} of its ${stop.minimumNights} minimum nights because the trip is too short.`,
+        stopIds: [stop.input.id],
+        requiredNights: stop.minimumNights,
+        allocatedNights: allocated,
+        shortfallNights: stop.minimumNights - allocated,
+      });
+    }
+    if (stop.isAnchor && allocated === 1) {
+      conflicts.push({
+        code: "one-night-anchor",
+        severity: "warning",
+        message: `${stop.input.name} is a major anchor with only one night; this occurs only because fixed or total-night constraints require it.`,
+        stopIds: [stop.input.id],
+        requiredNights: Math.max(2, stop.minimumNights),
+        allocatedNights: 1,
+        shortfallNights: Math.max(1, stop.minimumNights - 1),
+      });
+    }
+  }
+  const totalAllocatedNights = Object.values(allocations).reduce((total, nights) => total + nights, 0);
+  if (totalAllocatedNights < totalNights) {
+    conflicts.push({
+      code: "unallocated-nights",
+      severity: "warning",
+      message: `${totalNights - totalAllocatedNights} night${totalNights - totalAllocatedNights === 1 ? " is" : "s are"} left to add because no unlocked destination has a materially stronger marginal claim.`,
+      stopIds: [],
+      requiredNights: totalNights,
+      allocatedNights: totalAllocatedNights,
+      shortfallNights: totalNights - totalAllocatedNights,
+    });
+  } else if (totalAllocatedNights > totalNights) {
+    conflicts.push({
+      code: "overallocated-nights",
+      severity: "warning",
+      message: `${totalAllocatedNights - totalNights} night${totalAllocatedNights - totalNights === 1 ? " needs" : "s need"} to be removed because no safe unlocked donor is materially clearer.`,
+      stopIds: [],
+      requiredNights: totalNights,
+      allocatedNights: totalAllocatedNights,
+      shortfallNights: totalAllocatedNights - totalNights,
+    });
+  }
+  const stops = prepared.map((stop): NightAllocationStopResult => ({
+    stopId: stop.input.id,
+    name: stop.input.name,
+    nights: allocations[stop.input.id] ?? 0,
+    minimumNights: stop.minimumNights,
+    idealNights: stop.idealNights,
+    targetNights: stop.targetNights,
+    minimumSource: stop.minimumSource,
+    idealSource: stop.idealSource,
+    roles: stop.roles,
+    isAnchor: stop.isAnchor,
+    isRequired: stop.isRequired,
+    isFixed: stop.fixedNights !== null,
+    isManual: stop.isManual,
+    depth: stop.depth,
+    matchedInterests: stop.matchedInterests,
+    transferDayLoss: stop.transferDayLoss,
+    confidence: {
+      minimumNights: stop.minimumConfidence,
+      idealNights: stop.idealConfidence,
+      allocation: stop.allocationConfidence,
+    },
+    reasons: stop.reasons,
+  }));
+  return finish({
+    version: 1,
+    configVersion: config.version,
+    state: conflicts.length ? "compromised" : "allocated",
+    totalAvailableNights: totalNights,
+    totalAllocatedNights,
+    allocations,
+    stops,
+    conflicts,
+    notices,
+  }, automaticChanges);
 }
 
 export function tripNightsBetween(startDate: string, endDate: string) {

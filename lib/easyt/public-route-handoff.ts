@@ -1,5 +1,6 @@
 import type { PublicRoutePlanDraft } from "./public-route.ts";
 import { mergeStructuredTripBrief } from "./structured-trip-brief.ts";
+import { normalizeTripInterests } from "./trip-interest.ts";
 
 function localIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -28,7 +29,8 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     startDate,
     endDate,
     datesExplicit: false,
-    interests: draft.interests,
+    interests: normalizeTripInterests(draft.interests),
+    interestsExplicit: true,
     brief: `${draft.routeTitle}.`,
     decisionSelections: { routeOrder: "entered" as const, transportByLeg: {} },
     structuredBrief: mergeStructuredTripBrief(draft.structuredBrief, {

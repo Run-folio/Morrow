@@ -11,6 +11,8 @@ type WikiPage = {
 
 type GeocodeCountry = { address?: { country?: string } };
 
+const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
+
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
 const nonVisitPage = /\b(administrative division|rapid transit line|metro line|population density|electoral district|neighbourhood of madrid|disambiguation|politics of|demographics of|transport in)\b/i;
 const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
@@ -84,6 +86,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
       headers: { "User-Agent": "Morrovia journey planner/1.0 (https://morrovia.com)" },
       next: { revalidate: 60 * 60 * 24 * 7 },
+      signal: AbortSignal.timeout(WIKIPEDIA_DISCOVERY_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("Wikipedia lookup failed");
     const data = await response.json() as { query?: { pages?: Record<string, WikiPage> } };
@@ -120,6 +123,7 @@ export async function GET(request: NextRequest) {
           area: destination,
           type: category.type,
           tags: category.tags,
+          qualityScore: visitorValue(page),
           cost: suggestedVisitLength(page.title!, page.extract!),
           description: `${page.extract!.slice(0, 190).replace(/\s+\S*$/, "")}…`,
           image: page.thumbnail?.source,

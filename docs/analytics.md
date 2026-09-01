@@ -8,7 +8,6 @@ Add these in the production deployment environment.
 
 ```bash
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
-NEXT_PUBLIC_CLARITY_PROJECT_ID=xxxxxxxxxx
 NEXT_PUBLIC_POSTHOG_KEY=phc_xxxxxxxxxx
 NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
 NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=production
@@ -19,12 +18,12 @@ All values are optional. If an ID is missing, the site still builds and runs nor
 
 ## Consent behaviour
 
-Google Analytics 4, Microsoft Clarity and PostHog load only when all of the following are true:
+Google Analytics 4 and PostHog load only when all of the following are true:
 
-- the environment has the relevant provider variables (GA4 and Clarity remain production-only; an explicitly configured PostHog test project may run in development or preview);
+- the environment has the relevant provider variables (GA4 remains production-only; an explicitly configured PostHog test project may run in development or preview);
 - the visitor has explicitly granted optional analytics by choosing it in Morrovia’s privacy controls.
 
-With no choice or a declined choice, no provider loads, `trackEvent` does not send events, and analytics-only deduplication keys are not written to browser storage. Withdrawing consent opts PostHog out of future capture and persistence. Existing third-party vendor cookies from GA4 or Clarity are not removed by the application.
+With no current choice or a rejected Product analytics choice, neither provider loads, `trackEvent` does not send events, and analytics-only deduplication keys are not written. Withdrawal disables future GA dispatch, opts out and resets PostHog, and clears Morrovia-owned optional analytics state plus known first-party analytics cookies. Browser code cannot promise deletion of vendor-side records or third-party state.
 
 Functional browser storage is deliberately separate from analytics consent. Trip drafts and active plans, language and UI preferences, travel profile/readiness data, Stamps, finder choices, product-tour state, feedback drafts, theme, and PWA/cache storage continue to work without analytics.
 
@@ -44,17 +43,13 @@ After consent, GA4 is loaded in production and tracks:
 
 ## Microsoft Clarity
 
-Create or open a project in Microsoft Clarity, then copy the project ID from the tracking code or project settings.
-
-Use that value as `NEXT_PUBLIC_CLARITY_PROJECT_ID`.
-
-After consent, Clarity is loaded only in production and is skipped when the ID is missing.
+Clarity is disabled in the application. Its session-replay and project masking configuration could not be verified against Morrovia's private-trip boundary. Do not re-enable `NEXT_PUBLIC_CLARITY_PROJECT_ID` loading until Strict/project masking, selector overrides, URL capture, replay scope and ConsentV2 behaviour are verified and documented.
 
 ## PostHog
 
 Set both `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST`. The project token is intended for browser use; do not use a PostHog personal API key. With either value absent, PostHog is a safe no-op and builds/tests continue normally.
 
-PostHog is initialized once after consent. Broad autocapture, automatic pageviews, page-leave capture, session replay, surveys and feature-flag polling are disabled. Morrovia emits explicit SPA pageviews and typed product events instead. Person profiles are created only for identified accounts.
+PostHog is initialized once after consent. Broad autocapture, dead-click capture, exception capture, heatmaps, performance/web-vitals capture, automatic pageviews, page-leave capture, session replay, surveys and remote feature-flag/config polling are disabled. Morrovia emits explicit SPA pageviews and typed product events instead. Person profiles are created only for identified accounts.
 
 `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT` may be `production`, `preview` or `development` and is attached to each event. When omitted it falls back to `production` for production builds and `development` otherwise. This distinguishes test/internal traffic without hardcoded accounts or email addresses.
 
@@ -84,6 +79,8 @@ Events are sent through `trackEvent` in `lib/analytics.ts`.
 
 Never add raw trip prompts, itinerary or note text, traveller names, emails, passport/nationality details, booking references, precise addresses, AI bodies, serialized trips or full URLs to event properties.
 
+Luna and speech interactions do not create content-bearing analytics events. If coarse state events such as speech started/succeeded/failed are introduced later, they must use the typed analytics boundary, obey Product analytics consent and contain no prompt, question, answer, transcript, audio, traveller or trip-document content. Current semantic-intent and co-pilot server logs contain aggregate model/usage/count/state diagnostics only; user questions, full projections and speech transcripts are not logged.
+
 Authenticated travellers are identified with the existing opaque application user ID, never email. `posthog.reset()` runs on logout before a new anonymous identity is used, so identities do not leak between accounts. Anonymous-to-authenticated merging uses PostHog's standard `identify` call.
 
 ## Launch event set
@@ -92,7 +89,7 @@ The PostHog launch funnel is intentionally small:
 
 - Planning/generation: `homepage_prompt_started` is a leading prompt-engagement signal; `trip_generation_started` is the submitted planning action; `trip_intent_created`, `route_generated`, `trip_generated` and `trip_generation_failed` measure the resulting journey stages.
 - Persistence: `trip_saved`, `trip_save_failed`, `trip_reopened`.
-- Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`, `trip_prep_viewed`.
+- Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`.
 - Monetisation: the documented commercial outbound-click reporting union (`affiliate_click` plus established Omio/Viator `affiliate_link_clicked`) and `accommodation_search_started`.
 - Supported edits/repairs: `trip_refined`, `trip_edit_started`, `route_repair_applied` and `trip_ready`.
 

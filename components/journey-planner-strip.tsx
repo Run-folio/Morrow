@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
 import type { ReactNode } from "react";
+import ResilientImage from "@/components/easyt/resilient-image";
 import styles from "./journey-planner-strip.module.css";
 
 export type JourneyPlannerStripStop = {
@@ -61,7 +62,7 @@ export function JourneyPlannerStrip({
               aria-current={stop.active ? "step" : undefined}
               onClick={() => onSelectStop(stop.id)}
             >
-              {stop.image ? <img src={stop.image} alt="" /> : <span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>}
+              <ResilientImage src={stop.image} alt="" fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>} />
               <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
             </button>
             {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}

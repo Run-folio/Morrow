@@ -1,35 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Gauge, Route as RouteIcon } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { EasyTButton, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
+import {
+  featuredDiscoveryRoutes,
+  publishedDiscoveryStyles,
+  publishedDiscoveryWonders,
+} from "@/lib/easyt/route-discovery";
 import type { RouteFamily, RouteInterest, RouteRegion } from "@/lib/easyt/route-catalog";
 import { routeImages } from "@/lib/easyt/route-images";
-import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
+import {
+  findRoutePhotos,
+  readRoutePhoto,
+  saveRoutePhoto,
+  trackRoutePhoto,
+  type CachedRoutePhoto,
+} from "@/lib/easyt/route-photo-cache";
 import styles from "./discover.module.css";
 
-const regions: Array<[RouteRegion | "all", string]> = [
-  ["all", "Everywhere"],
-  ["asia", "Asia"],
-  ["south-america", "South America"],
-  ["central-america", "Central America"],
-  ["europe", "Europe"],
-  ["africa", "Africa"],
-  ["north-america", "North America"],
-  ["oceania", "Oceania"],
-];
+type DiscoveryRegion = RouteRegion | "all" | "americas";
 type DiscoveryInterest = RouteInterest | "all" | "slow";
-const interests: Array<[DiscoveryInterest, string]> = [
-  ["all", "Any feeling"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"], ["slow", "Slow travel"],
-];
-
 type LiveImage = CachedRoutePhoto;
+
+const regions: Array<[DiscoveryRegion, string]> = [
+  ["all", "All"], ["asia", "Asia"], ["europe", "Europe"], ["americas", "Americas"],
+  ["africa", "Africa"], ["oceania", "Oceania"],
+];
+const interests: Array<[DiscoveryInterest, string]> = [
+  ["all", "Any style"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"],
+  ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"], ["slow", "Slow travel"],
+];
 const ROUTES_PER_PAGE = 12;
 
+function matchesRegion(route: RouteFamily, region: DiscoveryRegion) {
+  if (region === "all") return true;
+  if (region === "americas") return ["north-america", "central-america", "south-america"].includes(route.region);
+  return route.region === region;
+}
+
 function imageQueryFor(route: RouteFamily) {
-  // Unsplash search quality drops sharply when every stop is packed into one
-  // query. Use the route's editorial image query where supplied; otherwise
-  // anchor the photograph to the first chapter and one defining interest.
   const anchor = route.stops[0];
   return route.imageQuery ?? `${anchor?.name ?? route.bases[0]} ${anchor?.country ?? route.countries[0]} ${route.interests[0]} travel`;
 }
@@ -40,142 +51,168 @@ function imageQueriesFor(route: RouteFamily) {
 }
 
 export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) {
-  const [region, setRegion] = useState<RouteRegion | "all">("all");
+  const [region, setRegion] = useState<DiscoveryRegion>("all");
   const [interest, setInterest] = useState<DiscoveryInterest>("all");
   const [country, setCountry] = useState("all");
-  const countries = useMemo(() => Array.from(new Set(routes.flatMap((route) => route.countries))).sort(), [routes]);
-  const filtered = useMemo(() => routes.filter((route) => {
-    const matchesInterest = interest === "all" || (interest === "slow" ? route.bestFor.toLowerCase().includes("slow") || route.suggestedDays.ideal >= 12 : route.interests.includes(interest));
-    return (region === "all" || route.region === region) && matchesInterest && (country === "all" || route.countries.includes(country));
-  }), [routes, region, interest, country]);
   const [visibleCount, setVisibleCount] = useState(ROUTES_PER_PAGE);
   const [showAllRoutes, setShowAllRoutes] = useState(false);
-  const displayed = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const [liveImages, setLiveImages] = useState<Record<string, LiveImage>>({});
   const [imageStatus, setImageStatus] = useState<Record<string, "loading" | "unavailable">>({});
-  const inFlightImages = useRef(new Set<string>());
   const [queueVersion, setQueueVersion] = useState(0);
+  const inFlightImages = useRef(new Set<string>());
+
+  const countries = useMemo(() => Array.from(new Set(routes.flatMap((route) => route.countries))).sort(), [routes]);
+  const featuredRoutes = useMemo(() => featuredDiscoveryRoutes(routes), [routes]);
+  const wonders = useMemo(() => publishedDiscoveryWonders(routes), [routes]);
+  const travelStyles = useMemo(() => publishedDiscoveryStyles(routes), [routes]);
+  const filtered = useMemo(() => routes.filter((route) => {
+    const matchesInterest = interest === "all"
+      || (interest === "slow" ? route.bestFor.toLowerCase().includes("slow") || route.suggestedDays.ideal >= 12 : route.interests.includes(interest));
+    return matchesRegion(route, region) && matchesInterest && (country === "all" || route.countries.includes(country));
+  }), [routes, region, interest, country]);
+  const displayed = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const imageRoutes = useMemo(() => {
+    const unique = new Map<string, RouteFamily>();
+    [...featuredRoutes, ...travelStyles.map((style) => style.route), ...displayed].forEach((route) => unique.set(route.key, route));
+    return [...unique.values()];
+  }, [displayed, featuredRoutes, travelStyles]);
+  const hasActiveFilters = region !== "all" || interest !== "all" || country !== "all";
+
   useEffect(() => {
-    setLiveImages((current) => ({ ...current, ...Object.fromEntries(routes.flatMap((route) => {
-      const cached = readRoutePhoto(route.key);
-      return cached ? [[route.key, cached] as const] : [];
-    })) }));
+    setLiveImages((current) => ({
+      ...current,
+      ...Object.fromEntries(routes.flatMap((route) => {
+        const cached = readRoutePhoto(route.key);
+        return cached ? [[route.key, cached] as const] : [];
+      })),
+    }));
   }, [routes]);
+
   useEffect(() => {
     let active = true;
-    // Resolve only the routes the traveller has asked to see, with a small
-    // queue rather than an intersection-observer race or an API burst.
-    const pending = displayed.filter((route) => !routeImages[route.key] && !liveImages[route.key] && !inFlightImages.current.has(route.key) && imageStatus[route.key] !== "unavailable").slice(0, 2);
+    const pending = imageRoutes
+      .filter((route) => !routeImages[route.key] && !liveImages[route.key] && !inFlightImages.current.has(route.key) && imageStatus[route.key] !== "unavailable")
+      .slice(0, 2);
     if (!pending.length) return;
     pending.forEach((route) => inFlightImages.current.add(route.key));
     setImageStatus((current) => ({ ...current, ...Object.fromEntries(pending.map((route) => [route.key, "loading"])) }));
-    void Promise.allSettled(pending.map(async (route) => {
-      const result = await findRoutePhotos(imageQueriesFor(route));
-      return { key: route.key, ...result };
-    })).then((results) => {
-      if (!active) return;
-      const settled = results.map((result, index) => result.status === "fulfilled" ? result.value : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
-      const usedIds = new Set(Object.values(liveImages).map((image) => image.id ?? image.src));
-      const images = settled.flatMap((result) => {
-        const image = result.candidates.find((candidate) => !usedIds.has(candidate.id ?? candidate.src)) ?? result.candidates[0];
-        if (!image) return [];
-        usedIds.add(image.id ?? image.src);
-        return [[result.key, image] as const];
+    void Promise.allSettled(pending.map(async (route) => ({ key: route.key, ...await findRoutePhotos(imageQueriesFor(route)) })))
+      .then((results) => {
+        if (!active) return;
+        const settled = results.map((result, index) => result.status === "fulfilled"
+          ? result.value
+          : { key: pending[index].key, candidates: [] as LiveImage[], configured: true });
+        const usedIds = new Set(Object.values(liveImages).map((image) => image.id ?? image.src));
+        const images = settled.flatMap((result) => {
+          const image = result.candidates.find((candidate) => !usedIds.has(candidate.id ?? candidate.src)) ?? result.candidates[0];
+          if (!image) return [];
+          usedIds.add(image.id ?? image.src);
+          return [[result.key, image] as const];
+        });
+        images.forEach(([key, image]) => { saveRoutePhoto(key, image); trackRoutePhoto(image); });
+        setLiveImages((current) => ({ ...current, ...Object.fromEntries(images) }));
+        const unavailableKeys = settled.filter((result) => !result.candidates.length).map((result) => result.key);
+        setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
+      })
+      .finally(() => {
+        pending.forEach((route) => inFlightImages.current.delete(route.key));
+        if (active) setQueueVersion((version) => version + 1);
       });
-      images.forEach(([key, image]) => { saveRoutePhoto(key, image); trackRoutePhoto(image); });
-      setLiveImages((current) => ({ ...current, ...Object.fromEntries(images) }));
-      const unavailableKeys = settled.filter((result) => !result.candidates.length).map((result) => result.key);
-      setImageStatus((current) => ({ ...current, ...Object.fromEntries(unavailableKeys.map((key) => [key, "unavailable"])) }));
-    }).finally(() => {
-      pending.forEach((route) => inFlightImages.current.delete(route.key));
-      if (active) setQueueVersion((version) => version + 1);
-    });
     return () => { active = false; };
-  }, [displayed, liveImages, queueVersion]);
-
-  const resetVisibleCount = () => setVisibleCount(ROUTES_PER_PAGE);
+  }, [imageRoutes, imageStatus, liveImages, queueVersion]);
 
   const imageFor = (route: RouteFamily) => liveImages[route.key]?.src ?? routeImages[route.key];
-  const quickPicks = filtered.slice(0, 6);
-  const storyLead = filtered[0];
-  const storySupports = filtered.slice(1, 4);
-  const travelStyles = [
-    { label: "Food-led routes", interest: "food" as RouteInterest },
-    { label: "Rail journeys", interest: "rail" as RouteInterest },
-    { label: "Nature routes", interest: "nature" as RouteInterest },
-    { label: "Coastal calm", interest: "coast" as RouteInterest },
-    { label: "Heritage routes", interest: "heritage" as RouteInterest },
-  ].map((item) => ({ ...item, route: routes.find((route) => route.interests.includes(item.interest)) })).filter((item): item is typeof item & { route: RouteFamily } => Boolean(item.route));
-  const collections = [
-    { label: "Food-focused", interest: "food" as RouteInterest },
-    { label: "Coastal calm", interest: "coast" as RouteInterest },
-    { label: "Culture-rich", interest: "culture" as RouteInterest },
-    { label: "Mountain escapes", interest: "hiking" as RouteInterest },
-    { label: "Wildlife routes", interest: "wildlife" as RouteInterest },
-    { label: "Rail journeys", interest: "rail" as RouteInterest },
-  ].map((item) => ({ ...item, route: routes.find((route) => route.interests.includes(item.interest)) })).filter((item): item is typeof item & { route: RouteFamily } => Boolean(item.route));
+  const resetVisibleCount = () => setVisibleCount(ROUTES_PER_PAGE);
+  const openResults = () => {
+    setShowAllRoutes(true);
+    requestAnimationFrame(() => document.getElementById("all-routes")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const applyStyle = (nextInterest: RouteInterest) => {
+    setRegion("all"); setCountry("all"); setInterest(nextInterest); resetVisibleCount(); setShowAllRoutes(true);
+    requestAnimationFrame(() => document.getElementById("all-routes")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
-  const routeCard = (route: RouteFamily, compact = false) => {
+  const routeCard = (route: RouteFamily) => {
     const image = imageFor(route);
-    const first = route.stops[0]?.name;
-    const last = route.stops.at(-1)?.name;
-    return <Link className={`${styles.routeCard} ${compact ? styles.routeCardCompact : ""}`} key={route.key} href={`/journey/routes/${route.key}`} aria-label={`See ${route.title}`}>
-      <span className={`${styles.routeImage} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined} />
-      <div className={styles.routeCardBody}>
-        <small>{route.countries.join(" · ")} · {route.region.replace("-", " ")}</small>
-        <h3>{route.title}</h3>
-        <p>{route.bestFor}</p>
-        <div className={styles.routeMeta}>
-          <span><RouteIcon aria-hidden="true" />{route.stops.length} stops{first && last ? ` · ${first} → ${last}` : ""}</span>
-          <span><CalendarDays aria-hidden="true" />{route.suggestedDays.ideal} days</span>
-          <span><Gauge aria-hidden="true" />{route.interests[0]} focus</span>
-        </div>
-        <span className={styles.routeCta}>See the route <ArrowRight aria-hidden="true" /></span>
-      </div>
-    </Link>;
+    return (
+      <Link className={styles.routeCard} key={route.key} href={`/journey/routes/${route.key}`} aria-label={`See ${route.title}`}>
+        <span className={`${styles.routeImage} ${!image ? styles.imagePending : ""}`} style={image ? { backgroundImage: `url(${image})` } : undefined} />
+        <span className={styles.routeCardBody}>
+          <small>{route.countries.join(" · ")}</small>
+          <strong>{route.title}</strong>
+          <span className={styles.routePath}>{route.stops.map((stop) => stop.name).join(" → ")}</span>
+          <span className={styles.routeMeta}>
+            <span><CalendarDays aria-hidden="true" />{route.suggestedDays.ideal} days</span>
+            <span><MapPin aria-hidden="true" />{route.stops.length} stops</span>
+          </span>
+          <span className={styles.routeArrow}><ArrowRight aria-hidden="true" /></span>
+        </span>
+      </Link>
+    );
   };
 
   return (
     <section className={styles.browser} id="discover-routes">
-      <div className={styles.filters}>
-        <div><small>REGION</small><div className={styles.pills}>{regions.map(([key, label]) => <button key={key} className={region === key ? styles.selected : ""} onClick={() => { setRegion(key); resetVisibleCount(); }}>{label}</button>)}</div></div>
-        <div><small>WHAT PULLS YOU IN</small><div className={styles.pills}>{interests.map(([key, label]) => <button key={key} className={interest === key ? styles.selected : ""} onClick={() => { setInterest(key); resetVisibleCount(); }}>{label}</button>)}</div></div>
-        <div><label className={styles.selectLabel} htmlFor="discover-country">COUNTRY</label><select id="discover-country" className={styles.select} value={country} onChange={(event) => { setCountry(event.target.value); resetVisibleCount(); }}><option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}</select></div>
-      </div>
-      <div className={styles.resultHead}><div><p>Quick picks for you</p></div><button type="button" className={styles.seeAllButton} onClick={() => setShowAllRoutes(true)}>See all</button></div>
-      {quickPicks.length > 0 && <div className={styles.cardRail}>{quickPicks.map((route) => routeCard(route, true))}</div>}
-
-      {storyLead && <section className={styles.discoverySection}>
-        <header><h2>Stories worth following</h2><button type="button" className={styles.seeAllButton} onClick={() => setShowAllRoutes(true)}>See all</button></header>
-        <div className={styles.storyGrid}>
-          <article className={styles.storyLead} style={imageFor(storyLead) ? { backgroundImage: `url(${imageFor(storyLead)})` } : undefined}>
-            <div><small>{storyLead.countries.join(" · ")}</small><h3>{storyLead.title}</h3><p>{storyLead.bestFor}</p><Link href={`/journey/routes/${storyLead.key}`}>Read the route story <ArrowRight aria-hidden="true" /></Link></div>
-          </article>
-          <div className={styles.storySupports}>{storySupports.map((route) => routeCard(route, true))}</div>
+      <div className={styles.filters} aria-label="Filter routes">
+        <div className={styles.regionFilter}>
+          <span className={styles.filterLabel}>REGION</span>
+          <EasyTSegmentedControl<DiscoveryRegion>
+            ariaLabel="Region"
+            className={styles.pills}
+            value={region}
+            options={regions.map(([value, label]) => ({ value, label }))}
+            onChange={(value) => { setRegion(value); resetVisibleCount(); setShowAllRoutes(true); }}
+          />
         </div>
-      </section>}
+        <EasyTSelect fieldClassName={styles.compactSelect} labelClassName={styles.filterLabel} label="Style" value={interest} onChange={(event) => { setInterest(event.target.value as DiscoveryInterest); resetVisibleCount(); setShowAllRoutes(true); }}>
+            {interests.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        </EasyTSelect>
+        <EasyTSelect fieldClassName={styles.compactSelect} labelClassName={styles.filterLabel} label="Country" value={country} onChange={(event) => { setCountry(event.target.value); resetVisibleCount(); setShowAllRoutes(true); }}>
+            <option value="all">Any country</option>{countries.map((name) => <option key={name} value={name}>{name}</option>)}
+        </EasyTSelect>
+      </div>
 
       <section className={styles.discoverySection}>
-        <header><h2>Browse by travel style</h2><button type="button" className={styles.seeAllButton} onClick={() => setShowAllRoutes(true)}>See all</button></header>
-        <div className={styles.styleRail}>{travelStyles.map(({ label, route }) => <Link key={label} href={`/journey/routes/${route.key}`} className={styles.styleCard} style={imageFor(route) ? { backgroundImage: `url(${imageFor(route)})` } : undefined}><span>{label}</span><ArrowRight aria-hidden="true" /></Link>)}</div>
+        <header><h2>Featured journeys</h2><EasyTButton size="small" variant="quiet" onClick={openResults}>See all routes <ArrowRight aria-hidden="true" /></EasyTButton></header>
+        <div className={styles.featuredGrid}>{featuredRoutes.map(routeCard)}</div>
       </section>
 
       <section className={styles.discoverySection}>
-        <header><h2>Curated collections</h2><button type="button" className={styles.seeAllButton} onClick={() => setShowAllRoutes(true)}>See all</button></header>
-        <div className={styles.collectionGrid}>{collections.map(({ label, route }) => <Link key={label} href={`/journey/routes/${route.key}`} className={styles.collectionCard}><span className={styles.collectionImage} style={imageFor(route) ? { backgroundImage: `url(${imageFor(route)})` } : undefined} /><span><small>{route.region.replace("-", " ")}</small><strong>{label}</strong></span><ArrowRight aria-hidden="true" /></Link>)}</div>
+        <header><h2>World wonders &amp; iconic places</h2></header>
+        <div className={styles.wonderRail}>{wonders.map((wonder) => (
+          <Link className={styles.wonderCard} key={wonder.key} href={`/journey/routes/${wonder.route.key}`}>
+            <span className={styles.wonderImage} style={{ backgroundImage: `url(${wonder.image})` }} />
+            <span className={styles.wonderBody}>
+              <strong>{wonder.title}</strong><small>{wonder.country}</small>
+              <span>{wonder.route.stops.map((stop) => stop.name).join(" → ")}</span>
+              <span className={styles.wonderMeta}><CalendarDays aria-hidden="true" />{wonder.route.suggestedDays.ideal} days · {wonder.route.stops.length} stops</span>
+            </span>
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        ))}</div>
       </section>
 
-      {showAllRoutes && <section className={styles.allRoutes} id="all-routes">
-        <header><small>ALL ROUTES</small><h2>Keep exploring</h2></header>
-        <div className={styles.grid}>{displayed.map((route) => routeCard(route))}</div>
+      <section className={styles.discoverySection}>
+        <header><h2>Browse by travel style</h2></header>
+        <div className={styles.styleRail}>{travelStyles.map((style) => (
+          <button type="button" key={style.key} className={styles.styleCard}
+            style={imageFor(style.route) ? { backgroundImage: `url(${imageFor(style.route)})` } : undefined}
+            onClick={() => applyStyle(style.interest)}>
+            <span>{style.label}</span><ArrowRight aria-hidden="true" />
+          </button>
+        ))}</div>
+      </section>
+
+      {(showAllRoutes || hasActiveFilters) && <section className={styles.allRoutes} id="all-routes">
+        <header><span><small>ROUTE CATALOGUE</small><h2>{hasActiveFilters ? `${filtered.length} matching ${filtered.length === 1 ? "route" : "routes"}` : "Keep exploring"}</h2></span></header>
+        {displayed.length > 0 ? <div className={styles.grid}>{displayed.map(routeCard)}</div> : <div className={styles.empty}><strong>Nothing matches that combination yet.</strong><span>Try a broader region or style.</span></div>}
+        {displayed.length < filtered.length && <div className={styles.moreWrap}><EasyTButton variant="secondary" onClick={() => setVisibleCount((count) => count + ROUTES_PER_PAGE)}>See more routes</EasyTButton></div>}
       </section>}
-      {showAllRoutes && displayed.length < filtered.length && <div className={styles.moreWrap}>
-        <button type="button" className={styles.moreButton} onClick={() => setVisibleCount((count) => count + ROUTES_PER_PAGE)}>
-          See more routes <span>{Math.min(ROUTES_PER_PAGE, filtered.length - displayed.length)} more</span>
-        </button>
-      </div>}
-      {!filtered.length && <div className={styles.empty}><strong>Nothing matches that combination yet.</strong><span>Try a broader region or feeling.</span></div>}
-      <section className={styles.bottomBanner}><div><small>BUILD FROM ANY STARTING POINT</small><h2>Your trip, your way</h2><p>Every route is fully editable - change pace, swap places, add days.</p></div><a href="#discover-routes">Start exploring <ArrowRight aria-hidden="true" /></a></section>
+
+      <section className={styles.bottomBanner}>
+        <div><Sparkles className={styles.bottomIcon} aria-hidden="true" /><span><h2>Start building</h2><p>Build a flexible multi-stop trip that fits your pace, your way.</p></span></div>
+        <EasyTLinkButton href="/journey/new" icon={ArrowRight}>Start building</EasyTLinkButton>
+      </section>
     </section>
   );
 }

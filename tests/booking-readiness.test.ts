@@ -20,11 +20,10 @@ const trip = (): EasyTTrip => ({
 
 const mainLeg = (source: EasyTTrip) => source.legs.find((leg) => leg.id === "leg")!;
 
-test("creates Trip.com accommodation, activity, flight and connectivity actions from stable itinerary data", () => {
+test("creates current-partner accommodation, activity and connectivity actions from stable itinerary data", () => {
   const actions = buildBookingReadiness(trip());
   assert.equal(actions.filter((action) => action.category === "accommodation").length, 2);
   assert.equal(actions.some((action) => action.category === "activity" && action.stopId === "paris"), true);
-  assert.equal(actions.some((action) => action.category === "flight"), true);
   assert.equal(actions.some((action) => action.category === "connectivity"), true);
   const stay = actions.find((action) => action.id === "stay-paris");
   assert.equal(stay?.href, affiliatePartners.tripCom.accommodationUrl);
@@ -79,15 +78,15 @@ test("uses the approved Viator general activities URL without adding trip parame
 
   assert.equal(action?.href, affiliatePartners.viator.activitiesUrl);
   assert.equal(action?.provider, "viator");
-  assert.equal(action?.cta, "Find activities on Viator");
+  assert.equal(action?.cta, "Browse tours and activities");
   assert.equal(action?.affiliate, true);
 });
 
 test("uses Trip.com tours only as the activities fallback when Viator is unavailable", () => {
-  const action = buildBookingReadiness(trip()).find((candidate) => candidate.id === "activity-paris");
+  const action = buildBookingReadiness(trip(), { activitiesUrl: "" }).find((candidate) => candidate.id === "activity-paris");
   assert.equal(action?.href, affiliatePartners.tripCom.activitiesUrl);
   assert.equal(action?.provider, "trip.com");
-  assert.equal(action?.cta, "Find tours on Trip.com");
+  assert.equal(action?.cta, "Browse experiences");
   assert.equal(action?.affiliateCategory, "activities");
 });
 
@@ -118,13 +117,47 @@ test("keeps an existing configured car-hire partner ahead of the Trip.com fallba
   assert.notEqual(action?.href, affiliatePartners.tripCom.carRentalUrl);
 });
 
+test("valid configured partner context preserves existing attribution parameters", () => {
+  const source = trip();
+  source.legs[1] = { ...mainLeg(source), mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
+  const action = buildBookingReadiness(source, { carHireUrl: "https://partner.example/car?ref=approved&campaign=keep" }).find((candidate) => candidate.id === "car-leg");
+  const url = new URL(action?.href ?? "");
+  assert.equal(url.searchParams.get("ref"), "approved");
+  assert.equal(url.searchParams.get("campaign"), "keep");
+  assert.equal(url.searchParams.get("pickup"), "Paris");
+  assert.equal(url.searchParams.get("dropoff"), "Rome");
+});
+
+test("malformed direct partner configuration falls back without exposing a broken action", () => {
+  const source = trip();
+  source.legs[1] = { ...mainLeg(source), mode: "road", distanceKm: 180, provider: "Road estimate" };
+  source.brief.decisionSelections = { routeOrder: "entered", transportByLeg: { leg: "simplest" } };
+  const actions = buildBookingReadiness(source, {
+    activitiesUrl: "javascript:alert(1)",
+    activitiesProvider: "viator",
+    carHireUrl: "data:text/html,unsafe",
+    sailyUrl: "/relative/connectivity",
+    groundTransportUrl: "not a URL",
+  });
+  const activity = actions.find((action) => action.id === "activity-paris");
+  const car = actions.find((action) => action.id === "car-leg");
+  const connectivity = actions.find((action) => action.id === "trip-connectivity");
+  assert.deepEqual({ href: activity?.href, provider: activity?.provider }, { href: affiliatePartners.tripCom.activitiesUrl, provider: "trip.com" });
+  assert.deepEqual({ href: car?.href, provider: car?.provider }, { href: affiliatePartners.tripCom.carRentalUrl, provider: "trip.com" });
+  assert.equal(connectivity?.href.startsWith("https://saily.com/"), true);
+  assert.equal(connectivity?.affiliate, false);
+  assert.equal(actions.some((action) => action.provider === "ground-transport-partner"), false);
+  assert.equal(actions.every((action) => ["http:", "https:"].includes(new URL(action.href).protocol)), true);
+});
+
 test("does not create an airport-transfer action without an existing airport context", () => {
   assert.equal(buildBookingReadiness(trip()).some((action) => action.category === "ground-transport"), false);
 });
 
 test("keeps existing Omio and Viator partner destinations unchanged", () => {
   assert.equal(affiliatePartners.omio.transportUrl, "https://omio.sjv.io/2RBeqD");
-  assert.equal(affiliatePartners.viator.activitiesUrl, "https://www.viator.com/?pid=P00315646&mcid=42383&medium=link&campaign=morrovia-general-activities");
+  assert.equal(affiliatePartners.viator.activitiesUrl, "https://vi.me/IiuWB");
 });
 
 test("does not offer flights while a blocking schedule conflict remains", () => {

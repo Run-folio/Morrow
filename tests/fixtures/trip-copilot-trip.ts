@@ -42,7 +42,7 @@ export function tripCopilotFixture(): EasyTTrip {
         travellers: 2,
         timing: { flexibility: "fixed", durationDays: 10 },
         hardConstraints: { originRequired: true, mustSeeStopIds: ["kyoto"], optionalStopIds: ["hiroshima"], fixedCommitments: [], avoidDriving: true },
-        preferences: { budgetSensitivity: "mid", transportModes: ["flight", "train"], pace: "relaxed", interests: ["food", "history"], dislikes: ["frequent hotel changes"] },
+        preferences: { budgetSensitivity: "mid", transportModes: ["flight", "train"], pace: "relaxed", interests: ["food", "culture"], dislikes: ["frequent hotel changes"] },
       },
       bookings: [{ id: "stay-tokyo", type: "stay", title: "Tokyo stay", date: "2026-10-10", confirmation: "PRIVATE-CONFIRMATION", url: "https://private.invalid/booking" }],
       checklist: [{ id: "passport", label: "Check passport validity", complete: true }, { id: "insurance", label: "Arrange travel insurance", complete: false }],

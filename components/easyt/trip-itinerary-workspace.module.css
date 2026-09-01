@@ -2,13 +2,16 @@
   width: 100%;
   max-width: 100%;
   display: grid;
-  grid-template-columns: minmax(280px, 31%) minmax(0, 1fr);
-  min-height: 610px;
+  grid-template-columns: minmax(270px, 310px) minmax(0, 1fr) minmax(280px, 320px);
+  min-height: 650px;
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: #fff;
-  box-shadow: 0 12px 34px rgba(23, 16, 111, .04);
+}
+
+.workspaceWithoutContext {
+  grid-template-columns: minmax(270px, 310px) minmax(0, 1fr);
 }
 
 .rail {
@@ -41,7 +44,10 @@
 }
 
 .dayList {
+  max-height: calc(100vh - 180px);
   padding: 8px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .dayButton,
@@ -55,7 +61,7 @@
   align-items: center;
   gap: 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--morrovia-control-radius);
   background: transparent;
   color: var(--morrovia-ink);
   text-align: left;
@@ -80,6 +86,8 @@
 
 .dayButtonActive {
   background: color-mix(in srgb, var(--morrovia-lilac) 72%, var(--morrovia-tint));
+  outline: 1px solid color-mix(in srgb, var(--morrovia-signal) 9%, var(--morrovia-line));
+  outline-offset: -1px;
 }
 
 .dayButtonActive::before {
@@ -133,16 +141,34 @@
   white-space: nowrap;
 }
 
+.dayButton .dayMeta,
+.dayButtonActive .dayMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.dayMeta svg {
+  width: 14px;
+  height: 14px;
+  color: var(--morrovia-ink-soft);
+}
+
+.dayButtonActive .dayMeta svg {
+  color: var(--morrovia-signal);
+}
+
 .dayButton:focus-visible,
 .dayButtonActive:focus-visible,
 .dayNavigation button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+  box-shadow: var(--morrovia-focus-shadow);
 }
 
 .dayPanel {
   min-width: 0;
-  padding: 32px clamp(28px, 3vw, 42px) 24px;
+  padding: 24px clamp(20px, 2vw, 30px) 22px;
 }
 
 .dayHeader {
@@ -175,11 +201,73 @@
 }
 
 .dayHeader h2 {
-  margin: 15px 0 8px;
+  margin: 10px 0 7px;
   color: var(--morrovia-ink);
   font: 600 clamp(34px, 3.4vw, 46px)/.98 var(--morrovia-display);
   letter-spacing: -.045em;
   text-wrap: pretty;
+}
+
+.dayHeader .daySummary {
+  display: flex;
+  max-width: 720px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.daySummary svg {
+  width: 15px;
+  height: 15px;
+  color: var(--morrovia-signal);
+}
+
+.daySummary i {
+  color: var(--morrovia-line);
+  font-style: normal;
+}
+
+.daySummary em {
+  color: var(--morrovia-muted);
+  font-style: normal;
+}
+
+.dayCount {
+  padding: 7px 9px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+  font: 750 9px/1.2 var(--morrovia-meta);
+  white-space: nowrap;
+}
+
+.actions {
+  position: relative;
+  z-index: 4;
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions > a,
+.actions > button {
+  min-height: 40px;
+}
+
+.saveStatus {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.recoveryFeedback,
+.notice {
+  margin-top: 12px;
 }
 
 .dayHeader > div > span {
@@ -252,21 +340,61 @@
   font: 750 12px/1.4 var(--morrovia-meta);
 }
 
+.dayImage > .dayImageFallback {
+  width: 100%;
+  height: 100%;
+}
+
 .details {
-  margin-top: 20px;
-  border: 1px solid var(--morrovia-line);
+  min-width: 0;
+  margin-top: 18px;
+  display: grid;
+  border: 0;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.sequenceEditor {
+  margin-top: 14px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-paper) 96%, var(--morrovia-lilac));
+}
+
+.sequenceEditor > summary {
+  min-height: 44px;
+  padding: 11px 13px;
+  color: var(--morrovia-ink-soft);
+  cursor: pointer;
+  font: 750 11px/1.4 var(--morrovia-meta);
+}
+
+.sequenceEditor[open] > summary {
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.sequenceEditor > .details {
+  margin-top: 0;
+  padding: 10px;
 }
 
 .detailRow {
-  min-height: 46px;
-  padding: 8px 16px;
+  position: relative;
+  min-height: 56px;
+  padding: 9px 10px;
   display: grid;
-  grid-template-columns: 28px 26px minmax(0, 1fr) auto;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid var(--morrovia-line);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-paper) 96%, var(--morrovia-lilac));
+}
+
+.selectedRow {
+  border-color: color-mix(in srgb, var(--morrovia-action) 58%, var(--morrovia-line));
+  outline: 2px solid color-mix(in srgb, var(--morrovia-focus-ring) 66%, transparent);
+  outline-offset: -1px;
 }
 
 .detailRow:last-child {
@@ -274,8 +402,8 @@
 }
 
 .detailIcon {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -284,8 +412,234 @@
 }
 
 .detailIcon svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+}
+
+.timelineGroup {
+  min-width: 0;
+  display: grid;
+}
+
+.timelineTime {
+  color: var(--morrovia-ink-soft);
+  font: 800 9px/1 var(--morrovia-meta);
+  text-align: center;
+}
+
+.itemCopy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.rowSelect {
+  min-width: 0;
+  width: 100%;
+  padding: 4px;
+  display: block;
+  border: 0;
+  border-radius: var(--morrovia-control-radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.rowSelect:hover {
+  background: color-mix(in srgb, var(--morrovia-lilac) 72%, transparent);
+}
+
+.rowSelect:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}
+
+.itemCopy > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--morrovia-ink);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.itemCopy > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--morrovia-muted);
+  font: 650 9px/1.35 var(--morrovia-meta);
+}
+
+.itemCopy i {
+  color: var(--morrovia-line);
+  font-style: normal;
+}
+
+.itemActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.dragHandle {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.rowMenu {
+  position: relative;
+}
+
+.rowMenuPanel {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 164px;
+  padding: 6px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+
+.rowMenuPanel > button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.editingRow {
+  align-items: start;
+}
+
+.rowEditor {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 9px;
+}
+
+.rowEditor > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.confirmedStatus,
+.savedStatus {
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-success) 25%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-success) 8%, var(--morrovia-paper));
+  color: var(--morrovia-success);
+  font: 800 8px/1 var(--morrovia-meta);
+}
+
+.savedStatus {
+  border-color: var(--morrovia-line);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+}
+
+.rowExternal,
+.rowEdit {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+}
+
+.rowExternal:hover {
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-signal);
+}
+
+.rowExternal:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}
+
+.rowExternal svg,
+.rowEdit svg {
+  width: 15px;
+  height: 15px;
+}
+
+.bookingRow {
+  background: color-mix(in srgb, var(--morrovia-tint) 48%, var(--morrovia-paper));
+}
+
+.customRow {
+  background: color-mix(in srgb, var(--morrovia-lilac) 55%, var(--morrovia-paper));
+}
+
+.insertionGroup {
+  display: grid;
+}
+
+.insertionDropReady .insertion {
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-lilac) 68%, transparent);
+}
+
+.insertionDropReady .insertion:hover {
+  background: color-mix(in srgb, var(--morrovia-tint) 72%, var(--morrovia-paper));
+}
+
+.insertion {
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: minmax(10px, 1fr) auto minmax(10px, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.insertion > span {
+  border-top: 1px dashed var(--morrovia-line);
+}
+
+.insertion > button {
+  min-height: 32px;
+  padding-inline: 8px;
+  color: var(--morrovia-muted);
+  font-size: 9px;
+}
+
+.insertion > button:hover {
+  color: var(--morrovia-signal);
+}
+
+.addComposer {
+  margin: 0 0 10px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-action) 32%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-paper) 94%, var(--morrovia-lilac));
+}
+
+.addComposerActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .detailRow > b {
@@ -328,14 +682,36 @@
   text-align: right;
 }
 
-.transferRow { grid-template-columns: 28px 26px minmax(0, 1fr) auto; }
+.transferRow { grid-template-columns: 36px minmax(0, 1fr) auto; }
 
 .omioAction {
-  grid-column: 3 / -1;
+  grid-column: 2 / -1;
   display: grid;
   justify-items: start;
   gap: 4px;
   padding: 2px 0 4px;
+}
+
+.timelineEmpty {
+  min-height: 190px;
+  padding: 28px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  border: 1px dashed var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  color: var(--morrovia-ink-soft);
+  text-align: center;
+}
+
+.timelineEmpty > svg {
+  color: var(--morrovia-signal);
+}
+
+.timelineEmpty p {
+  margin: 0;
+  font-size: 12px;
 }
 
 .omioAction a {
@@ -347,7 +723,7 @@
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-control-radius);
   color: var(--morrovia-ink);
-  background: #fff;
+  background: var(--morrovia-paper);
   font: 750 10px/1.2 var(--morrovia-ui);
   text-decoration: none;
 }
@@ -355,7 +731,7 @@
 .omioAction a:hover { border-color: var(--morrovia-action); color: var(--morrovia-action); }
 .omioAction a:focus-visible { outline: 2px solid var(--morrovia-ink); outline-offset: 2px; }
 .omioAction a svg { width: 14px; height: 14px; }
-.omioAction small { color: var(--morrovia-muted); font: 700 8px/1.35 var(--morrovia-meta); }
+.omioAction small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 
 
 .noDetails {
@@ -415,6 +791,590 @@
   white-space: nowrap;
 }
 
+.contextRail {
+  min-width: 0;
+  border-left: 1px solid var(--morrovia-line);
+  background: color-mix(in srgb, var(--morrovia-paper) 92%, var(--morrovia-lilac));
+}
+
+.contextSection {
+  min-width: 0;
+  padding: 14px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.contextSection:last-child {
+  border-bottom: 0;
+}
+
+.contextSection > summary {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--morrovia-ink);
+  font-size: 11px;
+  font-weight: 800;
+  list-style: none;
+  cursor: pointer;
+}
+
+.contextSection > summary::-webkit-details-marker {
+  display: none;
+}
+
+.contextSection > summary:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 3px;
+}
+
+.contextSection > summary > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--morrovia-signal);
+}
+
+.sectionCount {
+  min-width: 24px;
+  padding: 4px 6px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink-soft);
+  font: 800 8px/1 var(--morrovia-meta);
+  text-align: center;
+}
+
+.mapPreview {
+  position: relative;
+  height: 184px;
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.mapPreview :global(.planner-map) {
+  position: absolute;
+  inset: 0;
+}
+
+.mapPreview :global(.maplibregl-canvas) {
+  outline: 0;
+}
+
+.mapPreview :global(.maplibregl-ctrl-attrib) {
+  font-size: 7px;
+}
+
+.mapPreview :global(.planner-map__stop.is-preview) {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  padding: 0;
+  place-items: center;
+  border: 2px solid var(--morrovia-paper);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-action);
+  color: var(--morrovia-paper);
+  font: 800 8px/1 var(--morrovia-ui);
+}
+
+.mapPreview :global(.planner-map__stop.is-preview::after) {
+  display: none;
+}
+
+.mapPreview :global(.planner-map__pin) {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 2px solid var(--morrovia-paper);
+  border-radius: 50% 50% 50% 0;
+  background: var(--morrovia-ink);
+  color: var(--morrovia-paper);
+  cursor: pointer;
+  transform: rotate(-45deg);
+}
+
+.mapPreview :global(.planner-map__pin span) {
+  transform: rotate(45deg);
+}
+
+.mapPreview :global(.planner-map__pin.is-active) {
+  outline: 3px solid color-mix(in srgb, var(--morrovia-signal) 76%, var(--morrovia-paper));
+  outline-offset: 2px;
+  transform: rotate(-45deg) scale(1.13);
+}
+
+.contextAction {
+  margin-top: 6px;
+  justify-content: space-between;
+}
+
+.contextList {
+  min-width: 0;
+  margin-top: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.logisticsCard,
+.bookingCard,
+.suggestionCard,
+.noteCard,
+.savedIdeas article,
+.savedIdeas button {
+  min-width: 0;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+}
+
+.logisticsCard,
+.savedIdeas button {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.logisticsCard:hover,
+.savedIdeas button:hover {
+  border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line));
+  background: var(--morrovia-lilac);
+}
+
+.logisticsCard:focus-visible,
+.savedIdeas button:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}
+
+.logisticsSelected,
+.savedIdeas .savedIdeaSelected {
+  border-color: var(--morrovia-action);
+  background: var(--morrovia-lilac);
+}
+
+.logisticsCard > svg,
+.bookingCard > svg:first-child,
+.suggestionCard > svg,
+.noteCard > svg,
+.savedIdeas article > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--morrovia-signal);
+}
+
+.savedIdeas button > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--morrovia-signal);
+}
+
+.logisticsCard > svg:last-child {
+  width: 14px;
+  color: var(--morrovia-ink-soft);
+}
+
+.logisticsCard div,
+.bookingCard div,
+.suggestionCard div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.logisticsCard small {
+  color: var(--morrovia-signal);
+  font: 800 7px/1.2 var(--morrovia-meta);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.logisticsCard strong,
+.bookingCard strong,
+.suggestionCard strong,
+.savedIdeas strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--morrovia-ink);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.logisticsCard span,
+.bookingCard span,
+.savedIdeas small {
+  min-width: 0;
+  color: var(--morrovia-muted);
+  font: 650 8px/1.4 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.bookingCard > svg:last-child {
+  width: 15px;
+  height: 15px;
+  color: var(--morrovia-success);
+}
+
+.bookingCard > a {
+  display: grid;
+  place-items: center;
+  color: var(--morrovia-ink-soft);
+}
+
+.bookingCard > a:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 3px;
+}
+
+.bookingCard > a svg {
+  width: 14px;
+  height: 14px;
+}
+
+.suggestionCard {
+  align-items: start;
+}
+
+.suggestionCard p,
+.noteCard p {
+  margin: 0;
+  color: var(--morrovia-muted);
+  font-size: 9px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.noteCard {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+
+.noteCard p {
+  color: var(--morrovia-ink-soft);
+}
+
+.savedIdeas {
+  margin-top: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.savedIdeas article {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+
+.savedIdeas button {
+  grid-template-columns: 24px minmax(0, 1fr);
+}
+
+.savedIdeas article > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.savedIdeas button > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.discoveryList {
+  margin-top: 8px;
+  display: grid;
+  gap: 7px;
+}
+
+.discoveryGroup { margin-top: 10px; }
+
+.discoveryGroup > h4 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: 750 9px/1.35 var(--morrovia-meta);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.discoveryCard {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+
+.discoveryMedia {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  border-radius: calc(var(--morrovia-control-radius) - 1px) calc(var(--morrovia-control-radius) - 1px) 0 0;
+  background: var(--morrovia-lilac);
+}
+
+.discoveryMedia > img,
+.discoveryFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--morrovia-lilac);
+  object-fit: cover;
+}
+
+.discoveryFallback svg {
+  width: 24px;
+  color: var(--morrovia-signal);
+}
+
+.discoveryCopy {
+  min-width: 0;
+  padding: 10px 11px 0;
+  display: grid;
+  gap: 4px;
+}
+
+.discoveryCopy > small {
+  color: var(--morrovia-signal);
+  font: 750 8px/1.35 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.discoveryCopy > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  color: var(--morrovia-ink);
+  font-size: 12px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.discoveryCopy > p {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--morrovia-muted);
+  font-size: 9px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.discoveryCopy > .interestReason {
+  display: block;
+  color: var(--morrovia-ink-soft);
+  font: 700 8px/1.4 var(--morrovia-meta);
+}
+
+.discoveryCard > .discoveryActions {
+  min-width: 0;
+  padding: 10px 11px 11px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.discoveryActions button { min-height: 40px; white-space: normal; }
+
+.dayPicker {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 148px;
+}
+
+.dayPicker > button {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.dayPicker > button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dayPickerPanel {
+  right: 0;
+  left: auto;
+  width: min(310px, calc(100vw - 24px));
+  max-height: min(360px, calc(100vh - 32px));
+  overflow-y: auto;
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+
+.rowMenuPanel > .dayPickerOption {
+  min-width: 0;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.dayPickerOption > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.dayPickerOption strong {
+  color: var(--morrovia-ink);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.dayPickerOption small {
+  color: var(--morrovia-muted);
+  font: 650 8px/1.4 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.dayPickerOption em {
+  color: var(--morrovia-signal);
+  font: 800 7px/1.2 var(--morrovia-meta);
+  font-style: normal;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dayPickerOption[aria-current="true"] {
+  background: var(--morrovia-lilac);
+}
+
+.plannedState {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--morrovia-ink-soft);
+  font: 750 8px/1.35 var(--morrovia-meta);
+}
+
+.plannedState svg { width: 14px; height: 14px; color: var(--morrovia-success); }
+
+.savedIdeaState {
+  padding-inline: 6px;
+  color: var(--morrovia-ink-soft);
+  font: 750 8px/1.35 var(--morrovia-meta);
+}
+
+.discoveryMedia > a {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-paper) 92%, transparent);
+  color: var(--morrovia-ink-soft);
+}
+
+.discoveryMedia > a:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}
+
+.discoveryMedia > a svg {
+  width: 14px;
+}
+
+.suggestionStatus {
+  margin-top: 8px;
+}
+
+.suggestionEmpty,
+.suggestionError {
+  margin: 8px 0 0;
+  padding: 9px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.suggestionError {
+  background: var(--morrovia-danger-soft);
+  color: var(--morrovia-danger);
+}
+
+.experienceHandoff {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.experienceHandoff > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.experienceHandoff strong,
+.experienceHandoff p,
+.experienceHandoff span,
+.experienceHandoff small {
+  overflow-wrap: anywhere;
+}
+
+.experienceHandoff strong { color: var(--morrovia-ink); font-size: 11px; }
+.experienceHandoff p { margin: 0; color: var(--morrovia-ink-soft); font-size: 9px; line-height: 1.45; }
+.experienceHandoff span { color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
+.experienceHandoff small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+
+.contextCopilot {
+  margin-top: 8px;
+}
+
+.contextCopilot :global([data-copilot-scope]) {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.contextCopilot :global([data-copilot-scope]) > button {
+  display: none;
+}
+
+.contextCopilot :global([data-copilot-scope]) > div {
+  padding: 0;
+  border-top: 0;
+}
+
+.railNoteComposer {
+  margin-top: 9px;
+  display: grid;
+  gap: 7px;
+}
+
+.railNoteComposer > button {
+  justify-self: start;
+}
+
 .empty {
   min-height: 360px;
   padding: 40px;
@@ -443,14 +1403,36 @@
   color: var(--morrovia-ink-soft);
 }
 
+@media (max-width: 1200px) {
+  .workspace { grid-template-columns: minmax(240px, 270px) minmax(0, 1fr); }
+  .workspaceWithoutContext { grid-template-columns: minmax(240px, 270px) minmax(0, 1fr); }
+  .rail { grid-row: 1 / span 2; }
+  .contextRail {
+    grid-column: 2;
+    border-top: 1px solid var(--morrovia-line);
+    border-left: 0;
+  }
+  .contextRail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .contextSection {
+    border-right: 1px solid var(--morrovia-line);
+  }
+}
+
 @media (max-width: 900px) {
   .workspace { grid-template-columns: minmax(0, 1fr); }
-  .rail { border-right: 0; border-bottom: 1px solid var(--morrovia-line); }
+  .workspaceWithoutContext { grid-template-columns: minmax(0, 1fr); }
+  .rail { grid-row: auto; border-right: 0; border-bottom: 1px solid var(--morrovia-line); }
   .dayList {
+    max-height: none;
     padding: 10px 12px 14px;
     display: flex;
     gap: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: x proximity;
   }
   .dayButton,
@@ -459,6 +1441,13 @@
     scroll-snap-align: start;
   }
   .dayPanel { padding: 28px; }
+  .contextRail {
+    grid-column: 1;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .contextSection {
+    border-right: 0;
+  }
 }
 
 @media (max-width: 540px) {
@@ -467,16 +1456,33 @@
   .dayPanel { padding: 24px 16px 28px; }
   .rail { max-width: 100%; overflow: hidden; }
   .dayHeader { display: block; }
+  .dayCount { display: inline-flex; margin-top: 10px; }
+  .dayHeader .daySummary { align-items: flex-start; }
+  .daySummary em { flex-basis: 100%; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actions > a,
+  .actions > button { width: 100%; min-height: 44px; padding-inline: 9px; }
+  .saveStatus { margin-left: 0; }
   .omioAction a { width: 100%; justify-content: center; }
   .location { margin-top: 12px; }
   .dayHeader h2 { font-size: clamp(32px, 10vw, 42px); }
   .dayImage { height: 220px; }
   .detailRow {
-    grid-template-columns: 28px 24px minmax(0, 1fr);
+    grid-template-columns: 34px minmax(0, 1fr);
     padding: 11px 12px;
   }
+  .itemActions { grid-column: 2; justify-content: flex-start; }
+  .dragHandle,
+  .rowExternal,
+  .rowEdit { width: 44px; height: 44px; min-height: 44px; }
+  .rowMenuPanel > button,
+  .insertion > button,
+  .discoveryActions button { min-height: 44px; }
+  .rowMenuPanel { right: auto; left: 0; }
+  .editingRow .rowEditor { grid-column: 2; }
+  .transferRow { grid-template-columns: 34px minmax(0, 1fr); }
   .duration {
-    grid-column: 3;
+    grid-column: 2;
     justify-self: start;
     text-align: left;
   }
@@ -484,4 +1490,24 @@
   .dayNavigation > span { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
   .dayNavigation button:first-child { grid-column: 1; grid-row: 2; }
   .dayNavigation button:last-child { grid-column: 2; grid-row: 2; }
+  .contextSection { padding: 14px 12px; }
+  .contextSection > summary { min-height: 44px; }
+  .contextRail { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .mapPreview { height: 210px; }
+  .mapPreview :global(.planner-map__pin) { width: 36px; height: 36px; }
+  .discoveryMedia > a,
+  .bookingCard > a { min-width: 44px; min-height: 44px; }
+  .savedIdeas button { min-height: 44px; }
+  .discoveryMedia { height: 124px; }
+  .dayPickerPanel {
+    position: fixed;
+    z-index: 40;
+    top: auto;
+    right: 12px;
+    bottom: calc(var(--morrovia-mobile-dock-offset, 82px) + 8px);
+    left: 12px;
+    width: auto;
+    max-height: calc(100svh - var(--morrovia-mobile-dock-offset, 82px) - 28px);
+    padding: 9px;
+  }
 }

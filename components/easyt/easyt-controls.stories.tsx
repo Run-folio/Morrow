@@ -10,7 +10,7 @@ import {
 } from "./easyt-controls";
 
 const meta = {
-  title: "Components/Controls",
+  title: "Morrovia/02 Controls/Buttons, fields and segments",
   component: EasyTButton,
   args: { children: "Button" },
   parameters: { layout: "padded" },
@@ -91,8 +91,27 @@ export const Segmented: Story = {
   },
 };
 
+export const SegmentedMobile390: Story = {
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  render: function SegmentedMobileStory() {
+    const [value, setValue] = useState<"active" | "planned" | "archived">("active");
+    return (
+      <EasyTSegmentedControl
+        ariaLabel="Filter trips by status"
+        value={value}
+        onChange={setValue}
+        options={[
+          { label: "Active", value: "active", count: 11 },
+          { label: "Planned", value: "planned", count: 8 },
+          { label: "Archived", value: "archived", count: 0 },
+        ]}
+      />
+    );
+  },
+};
+
 export const NarrowScreen: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia320" } },
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
   render: () => (
     <div style={{ display: "grid", gap: 12, maxWidth: 320 }}>
       <EasyTButton fullWidth>Continue</EasyTButton>

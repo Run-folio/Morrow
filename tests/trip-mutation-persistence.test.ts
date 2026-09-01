@@ -74,6 +74,72 @@ test("sequential Map mutations use the preceding account revision without losing
   assert.equal(saved.updatedAt, "revision-3");
 });
 
+test("a queued edit authored from the same base cannot erase a preceding disjoint edit", async () => {
+  const base = mapTrip();
+  const first = mapTrip({
+    brief: { ...base.brief, customActivities: { 1: ["First restaurant"] } },
+  });
+  const second = mapTrip({
+    title: "A separately authored title",
+  });
+  const submitted: EasyTTrip[] = [];
+  let releaseFirst: ((trip: EasyTTrip) => void) | undefined;
+  const firstResponse = new Promise<EasyTTrip>((resolve) => { releaseFirst = resolve; });
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    submitted.push(structuredClone(trip));
+    if (submitted.length === 1) return firstResponse;
+    return { ...trip, updatedAt: "revision-3" };
+  });
+  queue.reset(base);
+
+  const firstSave = queue.enqueue(first, handle("write-disjoint-1"));
+  const secondSave = queue.enqueue(second, handle("write-disjoint-2"));
+  await Promise.resolve();
+  releaseFirst?.({ ...first, updatedAt: "revision-2" });
+  await firstSave;
+  const saved = await secondSave;
+
+  assert.equal(submitted[1]?.updatedAt, "revision-2");
+  assert.equal(submitted[1]?.title, "A separately authored title");
+  assert.deepEqual(submitted[1]?.brief.customActivities?.[1], ["First restaurant"]);
+  assert.deepEqual(saved.brief.customActivities?.[1], ["First restaurant"]);
+});
+
+test("independent queued additions to the same authored array are merged without duplication", async () => {
+  const base = mapTrip({ brief: { ...mapTrip().brief, customActivities: { 1: ["Market"] } } });
+  const first = mapTrip({ brief: { ...base.brief, customActivities: { 1: ["Market", "Cafe"] } } });
+  const second = mapTrip({ brief: { ...base.brief, customActivities: { 1: ["Market", "Museum"] } } });
+  let canonical = base;
+  let revision = 1;
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    revision += 1;
+    canonical = { ...structuredClone(trip), updatedAt: `revision-${revision}` };
+    return canonical;
+  });
+  queue.reset(base);
+
+  await Promise.all([
+    queue.enqueue(first, handle("write-array-1")),
+    queue.enqueue(second, handle("write-array-2")),
+  ]);
+
+  assert.deepEqual(canonical.brief.customActivities?.[1], ["Market", "Cafe", "Museum"]);
+  assert.equal(new Set(canonical.brief.customActivities?.[1]).size, 3);
+});
+
+test("an unknown revision is never borrowed from this queue", async () => {
+  const base = mapTrip();
+  const submitted: EasyTTrip[] = [];
+  const queue = createTripMutationPersistenceQueue(async (trip) => {
+    submitted.push(structuredClone(trip));
+    return { ...trip, updatedAt: "revision-server" };
+  });
+  queue.reset(base);
+
+  await queue.enqueue({ ...base, updatedAt: "revision-from-another-tab", title: "Unknown base" }, handle("unknown-revision"));
+  assert.equal(submitted[0]?.updatedAt, "revision-from-another-tab");
+});
+
 test("a stale tab still receives the repository conflict instead of borrowing another tab's revision", async () => {
   const base = mapTrip();
   let canonical = base;

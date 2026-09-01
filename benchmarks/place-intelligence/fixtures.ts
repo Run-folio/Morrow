@@ -385,7 +385,7 @@ export const PLACE_INTELLIGENCE_FIXTURES: PlaceIntelligenceFixture[] = [
     prompt: "Hanoi to Saigon",
     expectedSequenceKind: "ordered",
     expectedMentions: [
-      resolved("Hanoi", "hanoi", "city", "direct_destination", { parentCountries: ["Vietnam"] }),
+      resolved("Hanoi", "hanoi", "city", "direct_destination", { roles: ["origin"], parentCountries: ["Vietnam"] }),
       resolved("Saigon", "ho-chi-minh-city", "city", "direct_destination", { canonicalName: "Ho Chi Minh City", parentCountries: ["Vietnam"] }),
     ],
     qualitativeReview: "Does the canonical city identity retain Saigon as the traveller’s original wording?",

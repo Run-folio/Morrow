@@ -1,4 +1,4 @@
-import { captureJourneyBriefFromSemanticIntent, type JourneyCaptureResult } from "../../lib/easyt/journey-capture.ts";
+import { captureJourneyBrief, captureJourneyBriefFromSemanticIntent, type JourneyCaptureResult } from "../../lib/easyt/journey-capture.ts";
 import type { CuratedRouteKnowledge } from "../../lib/easyt/curated-route-knowledge.ts";
 import { mapRouteLegsFromTrip } from "../../lib/easyt/map-spatial-context.ts";
 import { tripHealth } from "../../lib/easyt/review.ts";
@@ -93,6 +93,28 @@ export type GlobalRoutingIntentResult = {
   error?: string;
 };
 
+const RAW_PROMPT_CAPTURE_GATE_CASES = [
+  { prompt: "Paris to Denver, Dallas, Puerto Vallarta, Oaxaca", origin: "Paris", destinations: ["Denver", "Dallas", "Puerto Vallarta", "Oaxaca"] },
+  { prompt: "Madrid to Cusco, Rio, Buenos Aires, El Calafate, Santiago", origin: "Madrid", destinations: ["Cusco", "Rio", "Buenos Aires", "El Calafate", "Santiago"] },
+  { prompt: "Porto to Paris, Rome, Madrid, Cairo", origin: "Porto", destinations: ["Paris", "Rome", "Madrid", "Cairo"] },
+] as const;
+
+/** Product-input preflight: runs before routing so downstream correctness can
+ * never mask an origin or destination already lost during raw capture. */
+export function runRawPromptCaptureGate(repetitions = 10) {
+  const failures: string[] = [];
+  for (let run = 0; run < repetitions; run += 1) for (const fixture of RAW_PROMPT_CAPTURE_GATE_CASES) {
+    const capture = captureJourneyBrief(fixture.prompt);
+    const retained = new Set(capture.mentions.flatMap((mention) => mention.sourceTexts.map(normalize)));
+    const origin = capture.mentions.find((mention) => ["origin", "fixed_start"].includes(mention.role));
+    const missing = fixture.destinations.filter((place) => !retained.has(normalize(place)));
+    if (normalize(origin?.sourceText ?? "") !== normalize(fixture.origin) || missing.length || !capture.mentionCoverage.complete) {
+      failures.push(`run ${run + 1}: ${fixture.prompt} (origin=${origin?.sourceText ?? "missing"}; missing=${missing.join(", ") || "none"})`);
+    }
+  }
+  return { repetitions, cases: RAW_PROMPT_CAPTURE_GATE_CASES.length, failures, complete: failures.length === 0 };
+}
+
 type RunnerOptions = {
   mode?: GlobalRoutingMode;
   fixtures?: GlobalRoutingFixture[];
@@ -154,7 +176,8 @@ function fixtureProvider(fixture: GlobalRoutingFixture): PlaceIntelligenceProvid
     label: "Controlled global routing fixture",
     timeoutMs: 100,
     async lookup(phrase) {
-      const match = places.find((item) => normalize(item.sourceText) === normalize(phrase));
+      const match = places.find((item) => [item.sourceText, item.canonicalName, item.interpretedText]
+        .some((label) => label && normalize(label) === normalize(phrase)));
       if (!match || match.semanticRole === "unresolved") return [];
       if (match.ambiguityCandidates?.length) return match.ambiguityCandidates.map((candidate, index): PlaceProviderCandidate => ({
         providerId: `${match.key}-candidate-${index + 1}`,
@@ -486,6 +509,8 @@ function aggregateScores(results: GlobalRoutingFixtureResult[]) {
 }
 
 export async function runGlobalRoutingBenchmark(options: RunnerOptions = {}): Promise<GlobalRoutingSummary> {
+  const rawCaptureGate = runRawPromptCaptureGate();
+  if (!rawCaptureGate.complete) throw new Error(`Raw-prompt capture gate failed before routing: ${rawCaptureGate.failures.join(" | ")}`);
   const mode = options.mode ?? "deterministic";
   const fixtures = options.fixtures ?? GLOBAL_ROUTING_FIXTURES;
   const evaluated = [] as Array<{ result: GlobalRoutingFixtureResult; telemetry?: GlobalRoutingLiveTelemetry }>;

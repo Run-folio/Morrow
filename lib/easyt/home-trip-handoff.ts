@@ -1,7 +1,8 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
-import { normalizePlacePhrase, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { normalizePlacePhrase, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { EasyTTrip } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
+import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -27,7 +28,9 @@ export type HomeTripDraft = {
   datesExplicit?: boolean;
   travellers?: number;
   travellersExplicit?: boolean;
-  interests?: string[];
+  interests?: TripInterest[];
+  /** Distinguishes an explicit empty selection from an untouched control. */
+  interestsExplicit?: boolean;
   brief?: string;
   nightAllocations?: Record<string, number>;
   decisionSelections?: EasyTTrip["brief"]["decisionSelections"];
@@ -40,7 +43,10 @@ export type HandoffLocationChoice = {
   countryCode?: string;
   region?: string;
   providerId?: string;
+  providerSourceLabel?: string;
   coordinates: [number, number];
+  bounds?: GeographicBounds;
+  routability?: PlaceRoutability;
   kind?: string;
   locality?: string;
 };
@@ -69,7 +75,8 @@ export function createHomeTripDraft(input: {
   endDate: string;
   travellers: number;
   travellersExplicit: boolean;
-  interests: string[];
+  interests: TripInterest[];
+  interestsExplicit?: boolean;
 }): HomeTripDraft {
   return {
     handoffId: input.handoffId,
@@ -83,9 +90,27 @@ export function createHomeTripDraft(input: {
     datesExplicit: input.datesExplicit,
     travellers: input.travellers,
     travellersExplicit: input.travellersExplicit,
-    interests: input.interests,
+    interests: normalizeTripInterests(input.interests),
+    interestsExplicit: input.interestsExplicit ?? input.interests.length > 0,
     brief: input.capture.rawBrief,
   };
+}
+
+/** Resolve both current drafts and pre-#209 drafts at the Builder boundary. */
+export function tripInterestsFromHomeDraft(
+  draft: Pick<HomeTripDraft, "interests" | "interestsExplicit">,
+  capturedInterests: readonly string[] = [],
+) {
+  const selected = normalizeTripInterests(draft.interests);
+  if (draft.interestsExplicit === true || (draft.interestsExplicit === undefined && selected.length)) return selected;
+  return normalizeTripInterests(capturedInterests);
+}
+
+export function homeTripDraftInterestsWereExplicit(
+  draft: Pick<HomeTripDraft, "interests" | "interestsExplicit">,
+) {
+  return draft.interestsExplicit === true
+    || (draft.interestsExplicit === undefined && normalizeTripInterests(draft.interests).length > 0);
 }
 
 export function routableHandoffMentions(mentions: ResolvedPlaceMention[]) {

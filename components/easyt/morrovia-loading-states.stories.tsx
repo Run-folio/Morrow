@@ -296,7 +296,7 @@ function MapContext({ state = "initial" }: { state?: "initial" | "fitting" | "re
 }
 
 const meta = {
-  title: "Patterns/Loading & Progress",
+  title: "Morrovia/03 Status & Feedback/Loading and progress",
   parameters: {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/home" } },
@@ -313,7 +313,7 @@ export const HomepageReady: Story = { render: () => <HomepagePlanningContext ini
 export const ActionPending: Story = { render: () => <ActionPendingContext /> };
 export const BuilderActionPending: Story = { render: () => <BuilderActionContext /> };
 export const TripsDashboardSkeleton: Story = { render: () => <TripsSkeletonContext /> };
-export const TripsDashboardSkeletonMobile320: Story = { parameters: { viewport: { defaultViewport: "morrovia320" } }, render: () => <TripsSkeletonContext /> };
+export const TripsDashboardSkeletonMobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, render: () => <TripsSkeletonContext /> };
 export const ItineraryAndSummarySkeleton: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/loading-prototype/itinerary" } } },
   render: () => <ItinerarySkeletonContext />,
@@ -334,5 +334,5 @@ export const ReducedMotionEquivalent: Story = {
   decorators: [(Story) => <div className={styles.forceReducedMotion}><Story /></div>],
   render: () => <HomepagePlanningContext initialState="long" />,
 };
-export const Mobile390Planning: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } }, render: () => <HomepagePlanningContext /> };
-export const Tablet768Map: Story = { parameters: { viewport: { defaultViewport: "morrovia768" } }, render: () => <MapContext state="recalculating" /> };
+export const Mobile390Planning: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <HomepagePlanningContext /> };
+export const Tablet768Map: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } }, render: () => <MapContext state="recalculating" /> };

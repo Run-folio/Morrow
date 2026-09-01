@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
+import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
+import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripOverviewWorkspace from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
 
@@ -87,21 +90,66 @@ const baseTrip: EasyTTrip = {
   updatedAt: "2026-08-01T10:00:00.000Z",
 };
 
+const prepProfile: TravelReadinessProfile = { nationalities: [], residenceCountry: "", passportExpiryMonth: "" };
+const prepActions: BookingReadinessAction[] = [{
+  id: "trip-connectivity",
+  category: "connectivity",
+  provider: "saily",
+  title: "Set up trip connectivity",
+  detail: "Compare data coverage for Peru before purchasing.",
+  cta: "Check eSIM coverage",
+  href: "https://saily.com/",
+  tripId: baseTrip.id,
+  affiliate: true,
+  livePrice: false,
+}, {
+  id: "trip-flights",
+  category: "flight",
+  provider: "google-flights",
+  title: "Check the Arequipa flight",
+  detail: "Compare the saved route and dates with the provider.",
+  cta: "Check flights",
+  href: "https://www.google.com/travel/flights",
+  tripId: baseTrip.id,
+  affiliate: false,
+  livePrice: false,
+}];
+const prepReadinessCards: ReadinessCard[] = [{
+  id: "insurance",
+  priority: "useful",
+  title: "Travel insurance",
+  detail: "Compare medical cover, cancellation protection and activity exclusions before you travel.",
+}];
+
 const meta = {
-  title: "Components/Trip overview workspace",
+  title: "Morrovia/05 Product Patterns/Trip workspace/Overview",
   component: TripOverviewWorkspace,
   parameters: {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa" } },
   },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip}><Story /></TripShell></main>],
-  args: { trip: baseTrip },
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false}><Story /></TripShell></main>],
+  args: {
+    trip: baseTrip,
+    initialPrepActions: prepActions,
+    initialPrepReadinessCards: prepReadinessCards,
+    initialPrepProfile: prepProfile,
+    initialPrepProviderStatus: "available",
+    now: "2026-07-20",
+  },
 } satisfies Meta<typeof TripOverviewWorkspace>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ActivePlanning: Story = {};
+
+export const TourCapture: Story = {
+  args: {
+    trip: tourTripFixture,
+    initialPrepActions: prepActions.map((action) => ({ ...action, tripId: tourTripFixture.id })),
+  },
+};
 
 export const FirstTripArrival: Story = {
   args: { firstArrival: true },
@@ -130,8 +178,74 @@ export const ReadyTrip: Story = {
   },
 };
 
+export const AllPreparationIncomplete: Story = {
+  args: { trip: { ...baseTrip, brief: { ...baseTrip.brief, bookings: [], checklist: [] } }, initialPrepProfile: prepProfile },
+};
+
+export const AccommodationPartlyComplete: Story = {};
+
+export const AccommodationComplete: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      brief: {
+        ...baseTrip.brief,
+        bookings: baseTrip.stops.map((stop) => ({ id: `stay-${stop.id}`, type: "stay" as const, title: `${stop.name} stay`, date: stop.arrivalDate, confirmation: null, url: null })),
+      },
+    },
+  },
+};
+
+export const TransportComplete: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      brief: {
+        ...baseTrip.brief,
+        bookings: [
+          ...(baseTrip.brief.bookings ?? []),
+          ...baseTrip.legs.map((leg) => ({ id: `booking-${leg.id}`, type: "transport" as const, title: `Saved ${leg.id}`, date: null, confirmation: null, url: null })),
+        ],
+      },
+    },
+  },
+};
+
+export const TravellerDetailsComplete: Story = {
+  args: { initialPrepProfile: { nationalities: ["United Kingdom"], residenceCountry: "United Kingdom", passportExpiryMonth: "2028-08" } },
+};
+
 export const EarlyIncomplete: Story = {
   args: { trip: { ...baseTrip, planItems: baseTrip.planItems.slice(0, 2), brief: { ...baseTrip.brief, bookings: [], checklist: [] } } },
+};
+
+export const MinimalTrip: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      id: "minimal-overview",
+      title: "Cusco",
+      endDate: "2026-08-21",
+      stops: [{ ...baseTrip.stops[0], departureDate: "2026-08-22", nights: 1 }],
+      legs: [],
+      planItems: [{ ...baseTrip.planItems[0], id: "minimal-day", notes: [], image: null }],
+      brief: { ...baseTrip.brief, routeAssessment: undefined, bookings: [], checklist: [] },
+    },
+  },
+};
+
+export const LongerTrip: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      endDate: "2026-09-03",
+      planItems: Array.from({ length: 14 }, (_, index) => planDay(index + 1, baseTrip.stops[Math.min(2, Math.floor(index / 5))].id, `Plan day ${index + 1}`)),
+    },
+  },
+};
+
+export const ProviderUnavailable: Story = {
+  args: { initialPrepActions: [], initialPrepReadinessCards: [], initialPrepProviderStatus: "unavailable" },
 };
 
 export const MissingImagesAndLongRoute: Story = {
@@ -144,7 +258,24 @@ export const MissingImagesAndLongRoute: Story = {
   },
 };
 
-export const Mobile320: Story = { parameters: { viewport: { defaultViewport: "morrovia320" } } };
-export const Mobile390: Story = { parameters: { viewport: { defaultViewport: "morrovia390" } } };
-export const Mobile430: Story = { parameters: { viewport: { defaultViewport: "morrovia430" } } };
-export const Tablet768: Story = { parameters: { viewport: { defaultViewport: "morrovia768" } } };
+export const MissingOptionalData: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      brief: { ...baseTrip.brief, routeAssessment: undefined, bookings: undefined, checklist: undefined },
+      stops: baseTrip.stops.map((stop, index) => index === 1 ? { ...stop, latitude: null, longitude: null } : stop),
+      planItems: baseTrip.planItems.map((item) => ({ ...item, image: null, notes: [] })),
+    },
+  },
+};
+
+export const DepartingToday: Story = { args: { now: "2026-08-21" } };
+export const DepartureFarInFuture: Story = { args: { now: "2026-01-01" } };
+
+export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const Desktop1680: Story = { globals: { viewport: { value: "morrovia1680", isRotated: false } } };

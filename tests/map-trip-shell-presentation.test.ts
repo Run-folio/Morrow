@@ -26,6 +26,10 @@ const mapStylesSource = readFileSync(
   new URL("../app/journey/journey.module.css", import.meta.url),
   "utf8",
 );
+const plannerStripStylesSource = readFileSync(
+  new URL("../components/journey-planner-strip.module.css", import.meta.url),
+  "utf8",
+);
 
 test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /initialMapCameraMode\(customTrip, searchParams\)/);
@@ -86,7 +90,8 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /selectedMapStopFirstItem = customTrip\?\.planItems\.filter\(\(item\) => item\.stopId === selectedTripStop\?\.id\)/);
   assert.match(mapWorkspaceSource, /selectedDestinationDescription = conciseMapDescription\(selectedDestinationMedia\?\.description\)/);
   assert.match(mapWorkspaceSource, /selectedDestinationImage = selectedDestinationMedia\?\.image \?\? selectedMapStopFirstItem\?\.image/);
-  assert.match(mapWorkspaceSource, /hasCanonicalPlanner && selected\.coordinates \? <aside id="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail"/);
+  assert.match(mapWorkspaceSource, /showDayPlanner \? <aside id="shape-day-workspace"/);
   assert.match(mapWorkspaceSource, /context=\{\{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey\.calendar\.length, planItem: selectedPlanItem/);
   assert.match(mapWorkspaceSource, /aria-controls="shape-day-workspace"/);
   assert.match(mapStylesSource, /\.finderDock\.mobileShapeDayOpen\{display:flex!important\}/);
@@ -99,6 +104,16 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapStylesSource, /right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
   assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.mapDestinationContext/);
   assert.match(mapStylesSource, /left:18px!important;[\s\S]*width:clamp\(330px,23vw,380px\)!important/);
+});
+
+test("whole-route mode prioritises route context and keeps mobile Map actions reachable", () => {
+  assert.match(mapWorkspaceSource, /const wholeRouteMapContext = mapMode === "overview"/);
+  assert.match(mapWorkspaceSource, /setMobileShapeDayOpen\(false\);[\s\S]*setMapMode\("overview"\)/);
+  assert.match(mapWorkspaceSource, /showDayPlanner \? <button type="button" className=\{styles\.mapDayControl\}/);
+  assert.match(plannerStripStylesSource, /\.integrated\{grid-template-columns:minmax\(0,1fr\);grid-template-rows:auto auto/);
+  assert.match(plannerStripStylesSource, /\.integrated \.actions\{grid-row:2;width:100%;justify-content:flex-end/);
+  assert.match(plannerStripStylesSource, /\.integrated \.wholeRoute\{width:auto;min-width:0;padding:0 10px;font-size:9px\}/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapDestinationContext \.mapDestinationDescription\{display:none\}/);
 });
 
 test("Add pin restores the original progressive workflow on the canonical trip document", () => {
@@ -144,13 +159,13 @@ test("Map workspace navigation contains no legacy planner destinations", () => {
   assert.match(mapWorkspaceSource, /mapWorkspaceHref\(/);
 });
 
-test("TripShell keeps Overview canonical with the Map-first workspace order", () => {
+test("TripShell keeps Overview canonical with the approved three-workspace order", () => {
   const overview = tripShellSource.indexOf('{ id: "overview", label: "Overview", icon: House, suffix: "" }');
   const map = tripShellSource.indexOf('{ id: "map", label: "Map"');
   const itinerary = tripShellSource.indexOf('{ id: "itinerary", label: "Itinerary"');
-  const prep = tripShellSource.indexOf('{ id: "prep", label: "Prep"');
 
   assert.ok(overview >= 0);
-  assert.ok(overview < map && map < itinerary && itinerary < prep);
+  assert.ok(overview < map && map < itinerary);
+  assert.doesNotMatch(tripShellSource, /id: "prep"|label: "Prep"|suffix: "\/prep"/);
   assert.match(tripShellSource, /: "overview";/);
 });

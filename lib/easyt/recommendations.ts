@@ -1,4 +1,5 @@
 import type { TravelProfile } from "./travel-profile";
+import type { TripInterest } from "./trip-interest.ts";
 
 export type FinderMoment = "now" | "free-hour" | "rainy" | "last-night" | "before-transfer";
 export type FinderPlace = { id: string; name: string; category: string; distanceKm?: number; address: string };
@@ -22,6 +23,7 @@ export function recommendNearbyPlace(
     mood?: "local" | "comfort" | "surprise";
     pace?: "quick" | "relaxed" | "occasion";
     profile?: Partial<TravelProfile>;
+    interests?: readonly TripInterest[];
   },
 ): FinderRecommendation {
   const text = `${place.name} ${place.category}`.toLowerCase();
@@ -41,8 +43,9 @@ export function recommendNearbyPlace(
   if (input.pace === "quick" || input.moment === "now" || input.moment === "free-hour") {
     if (quick) { score += 6; reasons.push("suited to a quick, low-detour stop"); }
   }
-  if (input.mood === "local" || input.profile?.priority === "food") {
-    if (local) { score += 6; reasons.push("matches your interest in local food"); }
+  const foodInterest = (input.interests ?? input.profile?.usualInterests ?? []).includes("food");
+  if (input.mood === "local" || foodInterest) {
+    if (local) { score += 6; reasons.push(foodInterest ? "matches your Food interest" : "fits your local-food preference"); }
   }
   if (input.mood === "comfort" || input.profile?.pace === "slow") {
     if (/cafe|bakery|hotel|guest|restaurant/i.test(text)) { score += 3; reasons.push("a calmer fit for your preferred pace"); }

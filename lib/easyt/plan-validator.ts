@@ -308,7 +308,9 @@ function knownMinimum(
     ? Math.max(0, Math.round(stop.fallbackMinimumNights as number))
     : config.fallbackMinimumNights;
   const roles = guidance.roles.status === "known" ? guidance.roles.value : [];
-  const anchor = Boolean(stop.anchor || stop.intent === "landmark" || roles.includes("anchor"));
+  // A landmark/visit stop is required route intent, but it is not automatically
+  // a deep overnight anchor. Explicit anchor evidence remains authoritative.
+  const anchor = Boolean(stop.anchor || roles.includes("anchor"));
   return {
     minimum: anchor ? Math.max(curated ?? fallback, config.anchorMinimumNights) : curated ?? fallback,
     source: curated === null ? "fallback" : "destination-knowledge",

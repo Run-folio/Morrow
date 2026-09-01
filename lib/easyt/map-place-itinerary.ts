@@ -7,7 +7,9 @@ export type MappedItineraryPlace = {
   coordinates: [number, number];
 };
 
-export function mappedPlacePinId(dayNumber: number, category: "restaurant" | "stay", place: MappedItineraryPlace) {
+export type MappedItineraryPlaceCategory = "restaurant" | "stay" | "activity";
+
+export function mappedPlacePinId(dayNumber: number, category: MappedItineraryPlaceCategory, place: MappedItineraryPlace) {
   const stableProviderId = place.id.replace(/[^a-z0-9_-]+/gi, "-") || "place";
   return `venue-${dayNumber}-${category}-${place.provider ?? "mapped"}-${stableProviderId}`;
 }
@@ -15,7 +17,7 @@ export function mappedPlacePinId(dayNumber: number, category: "restaurant" | "st
 export function addMappedPlaceToTrip(
   trip: EasyTTrip,
   place: MappedItineraryPlace,
-  category: "restaurant" | "stay",
+  category: MappedItineraryPlaceCategory,
   dayNumber: number,
   stopId: string,
 ) {
@@ -23,15 +25,22 @@ export function addMappedPlaceToTrip(
   const stop = trip.stops.find((item) => item.id === stopId);
   const stayBookingId = stop ? `stay-${stop.id}` : undefined;
   const existingActivities = trip.brief.customActivities?.[dayNumber] ?? [];
+  const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const alreadyInActivities = existingActivities.some((activity) => normalize(activity) === normalize(place.name));
+  const day = trip.planItems.find((item) => item.dayNumber === dayNumber);
+  const alreadyInNotes = Boolean(day?.notes.some((note) => normalize(note) === normalize(place.name)));
+  const alreadyPinned = Boolean((trip.brief.mapPins ?? []).some((pin) => pin.id === id));
+  const alreadyBooked = category !== "stay" || !stop || Boolean((trip.brief.bookings ?? []).some((booking) => booking.id === stayBookingId));
+  if (alreadyInActivities && alreadyInNotes && alreadyPinned && alreadyBooked) return trip;
   return {
     ...trip,
     brief: {
       ...trip.brief,
       customActivities: {
         ...(trip.brief.customActivities ?? {}),
-        [dayNumber]: existingActivities.includes(place.name) ? existingActivities : [...existingActivities, place.name],
+        [dayNumber]: alreadyInActivities ? existingActivities : [...existingActivities, place.name],
       },
-      mapPins: (trip.brief.mapPins ?? []).some((pin) => pin.id === id)
+      mapPins: alreadyPinned
         ? (trip.brief.mapPins ?? [])
         : [...(trip.brief.mapPins ?? []), { id, title: place.name, category, dayNumber, longitude: place.coordinates[0], latitude: place.coordinates[1] }],
       bookings: category === "stay" && stop && stayBookingId ? [
@@ -40,7 +49,13 @@ export function addMappedPlaceToTrip(
       ] : trip.brief.bookings,
     },
     planItems: trip.planItems.map((item) => item.dayNumber === dayNumber
-      ? { ...item, notes: item.notes.includes(place.name) ? item.notes : [...item.notes, place.name] }
+      ? item.notes.some((note) => normalize(note) === normalize(place.name))
+        ? item
+        : {
+          ...item,
+          notes: [...item.notes, place.name],
+          ...(item.noteDayParts ? { noteDayParts: [...item.notes.map((_, index) => item.noteDayParts?.[index] ?? null), null] } : {}),
+        }
       : item),
   };
 }
@@ -48,7 +63,7 @@ export function addMappedPlaceToTrip(
 export function removeMappedPlaceFromTrip(
   trip: EasyTTrip,
   place: MappedItineraryPlace,
-  category: "restaurant" | "stay",
+  category: MappedItineraryPlaceCategory,
   dayNumber: number,
   stopId: string,
 ) {
@@ -68,7 +83,13 @@ export function removeMappedPlaceFromTrip(
         : trip.brief.bookings,
     },
     planItems: trip.planItems.map((item) => item.dayNumber === dayNumber
-      ? { ...item, notes: item.notes.filter((note) => note !== place.name) }
+      ? {
+        ...item,
+        notes: item.notes.filter((note) => note !== place.name),
+        ...(item.noteDayParts ? {
+          noteDayParts: item.notes.flatMap((note, index) => note === place.name ? [] : [item.noteDayParts?.[index] ?? null]),
+        } : {}),
+      }
       : item),
   };
 }

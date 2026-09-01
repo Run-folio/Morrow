@@ -6,7 +6,7 @@ import { MorroviaDatePicker } from "./morrovia-date-picker";
 import { MorroviaQuantitySelector } from "./morrovia-quantity-selector";
 
 const meta = {
-  title: "Morrovia/Canonical controls",
+  title: "Morrovia/02 Controls/Date, quantity and forms",
   parameters: { layout: "padded" },
   decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 24 }}><Story /></main>],
 } satisfies Meta;
@@ -53,7 +53,7 @@ export const DatePickerCompact: Story = {
 };
 
 export const DatePickerMobile390: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: function MobileDateStory() {
     const [range, setRange] = useState({ start: "2026-09-03", end: "2026-09-24" });
     return <MorroviaDatePicker mode="range" startLabel="Start date" endLabel="End date" startValue={range.start} endValue={range.end} onChange={setRange} defaultOpen />;
@@ -73,7 +73,7 @@ export const TravellerStates: Story = {
 };
 
 export const TravellerMobile390: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: function MobileTravellerStory() {
     const [travellers, setTravellers] = useState(2);
     return <MorroviaQuantitySelector compact label="Travellers" value={travellers} min={1} max={12} onChange={setTravellers} />;

@@ -16,23 +16,7 @@
 }
 
 .resolverStack { display: grid; gap: 12px; }
-.resolverStack > .syncNotice { width: min(1460px, calc(100% - 48px)); margin: 18px auto 0; }
-
-.syncNotice {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 13px 15px;
-  border: 1px solid color-mix(in srgb, var(--morrovia-signal) 38%, var(--morrovia-line));
-  border-radius: var(--morrovia-control-radius);
-  background: color-mix(in srgb, var(--morrovia-signal) 7%, #fff);
-  color: var(--morrovia-ink);
-  font-size: 13px;
-}
-
-.syncNotice span { flex: 1; color: var(--morrovia-ink-soft); }
-.guestSaveNotice { border-color: color-mix(in srgb, var(--morrovia-action) 34%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-lilac) 58%, #fff); }
-.syncComplete { border-color: color-mix(in srgb, var(--morrovia-success) 38%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-success) 7%, #fff); }
+.resolverNotice { width: min(1460px, calc(100% - 48px)); margin: 18px auto 0; }
 
 .shell {
   overflow: hidden;
@@ -197,7 +181,7 @@
 .editAction:focus-visible,
 .subnav a:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--morrovia-focus-ring);
+  box-shadow: var(--morrovia-focus-shadow);
 }
 
 .editAction svg {
@@ -343,9 +327,7 @@
 }
 
 @media (max-width: 760px) {
-  .resolverStack > .syncNotice { width: min(100% - 24px, 1460px); margin-top: 12px; }
-  .syncNotice { align-items: flex-start; flex-wrap: wrap; }
-  .syncNotice span { flex-basis: calc(100% - 120px); }
+  .resolverNotice { width: min(100% - 24px, 1460px); margin-top: 12px; }
   .workspace {
     width: min(100% - 24px, 1460px);
     padding-top: 12px;
@@ -407,7 +389,6 @@
 }
 
 @media (max-width: 430px) {
-  .syncNotice { align-items: flex-start; flex-direction: column; }
 
   .workspace {
     width: calc(100% - 16px);

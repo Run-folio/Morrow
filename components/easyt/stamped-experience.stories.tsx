@@ -79,7 +79,7 @@ const establishedStatuses = {
 } satisfies Record<string, StampStatus>;
 
 const meta = {
-  title: "Morrovia/Stamps",
+  title: "Morrovia/05 Product Patterns/Stamps",
   parameters: {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/stamped" } },
@@ -147,7 +147,7 @@ export const LongCountryName: Story = {
 };
 
 export const Mobile390: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
   render: () => <StampsFixture
     initialSelectedCountryId="france"
     initialStatuses={establishedStatuses}
@@ -156,6 +156,6 @@ export const Mobile390: Story = {
 };
 
 export const Tablet768: Story = {
-  parameters: { viewport: { defaultViewport: "morrovia768" } },
+  globals: { viewport: { value: "morrovia768", isRotated: false } },
   render: () => <StampsFixture initialStatuses={establishedStatuses} />,
 };

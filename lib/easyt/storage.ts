@@ -1,5 +1,6 @@
-import { isEasyTTrip, type EasyTTrip } from "./trip.ts";
+import { isEasyTTrip, tripIntentForTrip, type EasyTTrip } from "./trip.ts";
 import {
+  canonicalTripRevisionCanReplace,
   EasyTTripSaveConflictError,
   requestTripUpdate,
   tripSyncAuthError,
@@ -487,6 +488,23 @@ function nonEmptyDecisionSelections(selections: TripRecoveryRecord["trip"]["brie
   return selections;
 }
 
+function authoredActivitySchedule(trip: EasyTTrip) {
+  const normalized = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const entries = trip.planItems.flatMap((day) => {
+    const authoredTitles = new Set([
+      ...(trip.brief.customActivities?.[day.dayNumber] ?? []),
+      ...(trip.brief.itineraryIdeas ?? []).filter((idea) => idea.dayId === day.id).map((idea) => idea.title),
+    ].map(normalized));
+    return day.notes.flatMap((title, order) => authoredTitles.has(normalized(title)) ? [{
+      dayId: day.id,
+      title,
+      order,
+      dayPart: day.noteDayParts?.[order] ?? null,
+    }] : []);
+  });
+  return entries.length ? entries : undefined;
+}
+
 /**
  * The recovery boundary protects deliberate traveller decisions, not every
  * field returned by planners and providers. Keep this projection explicit so
@@ -519,8 +537,11 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       selectedPlaces: nonEmptyRecord(brief.selectedPlaces) ?? {},
       dayAllocations: nonEmptyRecord(brief.dayAllocations),
       nightAllocations: nonEmptyRecord(brief.nightAllocations),
+      manualNightStopIds: brief.manualNightStopIds?.length ? [...brief.manualNightStopIds].sort() : undefined,
       dayNotes: nonEmptyRecord(brief.dayNotes),
       customActivities: nonEmptyRecord(brief.customActivities),
+      activitySchedule: authoredActivitySchedule(trip),
+      itineraryIdeas: sortedById(nonEmptyArray(brief.itineraryIdeas)),
       mapPins: sortedById(nonEmptyArray(brief.mapPins)),
       bookings: sortedById(nonEmptyArray(brief.bookings)),
       checklist: sortedById(nonEmptyArray(brief.checklist)),
@@ -655,6 +676,8 @@ function writeCanonicalTripCacheToStorage(
 ) {
   const ownerId = trip.ownerId;
   migrateLegacyTripFromStorage(storage, ownerId);
+  const current = loadCachedTripFromStorage(storage, trip.id, ownerId);
+  if (current && !canonicalTripRevisionCanReplace(current, trip)) return false;
   const record: TripCacheRecord = { version: 2, ownerId, tripId: trip.id, trip, cachedAt: now };
   const cacheKey = tripCacheStorageKey(ownerId, trip.id);
   const stored = safeSet(storage, cacheKey, JSON.stringify(record));
@@ -1314,7 +1337,7 @@ export function saveJourneyPlanBridge(trip: EasyTTrip) {
     startDate: trip.startDate,
     duration: String(duration),
     travellers: String(trip.travellers),
-    interests: [],
+    interests: tripIntentForTrip(trip).preferences.interests,
     picks: trip.brief.selectedPlaces,
     pickDetails,
   };

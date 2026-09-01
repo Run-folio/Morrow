@@ -1,16 +1,16 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import {
   captureJourneyBrief,
-  captureJourneyBriefFallback,
   captureJourneyBriefFromSemanticIntent,
-  developmentJourneyCaptureDiagnostics,
+  captureJourneyBriefWithProvider,
 } from "@/lib/easyt/journey-capture";
 import {
   runConfiguredOpenAISemanticIntentExtraction,
   runConfiguredOpenAISemanticIntentShadow,
   semanticIntentServerConfig,
 } from "@/lib/easyt/openai-semantic-intent.server";
-import { createNominatimPlaceProvider } from "@/lib/easyt/nominatim-place.server";
+import { createOpenWorldPlaceProvider } from "@/lib/easyt/open-world-place.server";
+import type { SemanticIntentStatus } from "@/lib/easyt/semantic-trip-intent";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -41,10 +41,14 @@ export async function POST(request: NextRequest) {
   const brief = typeof body.brief === "string" ? body.brief.slice(0, 600) : "";
   if (!brief.trim()) return NextResponse.json({ message: "Add a trip brief first." }, { status: 400 });
 
-  // Capture is a fast handoff, not a network validation gate. Curated and
-  // canonical matches resolve synchronously; unresolved provider work remains
-  // visible for the builder instead of delaying or blanking the transition.
+  // Preserve every named intent deterministically, then enrich those mentions
+  // through the same bounded open-world resolver used by Builder Search.
   const deterministic = captureJourneyBrief(brief);
+  const openWorldProvider = createOpenWorldPlaceProvider();
+  const providerFallback = async (model?: string, status?: SemanticIntentStatus) => {
+    const capture = await captureJourneyBriefWithProvider(brief, openWorldProvider);
+    return model && status ? { ...capture, semanticExtraction: { model, status, fallbackUsed: true } } : capture;
+  };
 
   // Active mode projects only a validated semantic candidate through the
   // deterministic place and brief boundaries. Shadow mode remains available
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
       ?? request.headers.get("x-real-ip")?.trim()
       ?? "guest";
     if (!consumeCaptureRateLimit(requester)) {
-      return NextResponse.json(captureJourneyBriefFallback(brief, { model: semanticConfig.primary.model, status: "unavailable" }));
+      return NextResponse.json(await providerFallback(semanticConfig.primary.model, "unavailable"));
     }
     const extraction = await runConfiguredOpenAISemanticIntentExtraction({ rawPrompt: brief, timeoutMs: 5_000 });
     const aggregate = {
@@ -78,16 +82,23 @@ export async function POST(request: NextRequest) {
       const capture = await captureJourneyBriefFromSemanticIntent(
         brief,
         extraction.intent,
-        createNominatimPlaceProvider(),
+        openWorldProvider,
         {},
         { model: semanticConfig.primary.model, status: extraction.status },
       );
       if (process.env.NODE_ENV !== "production" && process.env.MORROVIA_CAPTURE_DIAGNOSTICS === "1") {
-        console.info("[journey-capture-diagnostic]", JSON.stringify(developmentJourneyCaptureDiagnostics(extraction.intent, capture)));
+        console.info("[journey-capture-diagnostic]", {
+          kind: "journey-capture-aggregate-diagnostic-v1",
+          coverage: capture.mentionCoverage,
+          semanticMentionCount: Number(Boolean(extraction.intent.origin.sourceText))
+            + extraction.intent.destinationCandidates.length
+            + extraction.intent.pointsOfInterest.length,
+          resolvedMentionCount: capture.mentions.filter((mention) => mention.status === "resolved").length,
+        });
       }
       if (capture.mentionCoverage.complete) return NextResponse.json(capture);
     }
-    return NextResponse.json(captureJourneyBriefFallback(brief, { model: semanticConfig.primary.model, status: extraction.status }));
+    return NextResponse.json(await providerFallback(semanticConfig.primary.model, extraction.status));
   }
   if (semanticConfig.mode === "shadow") {
     after(async () => {
@@ -109,5 +120,5 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json(deterministic);
+  return NextResponse.json(await providerFallback());
 }

@@ -352,12 +352,16 @@ function allocationFor(
     pace: plan.pace,
     fixedCommitments: plan.constraints?.fixedCommitments,
     knowledge,
-    stops: plan.stops.map((stop): NightAllocationStopInput => ({
+    stops: plan.stops.map((stop, index): NightAllocationStopInput => ({
       ...stop,
       required: stop.required || plan.constraints?.requiredStopIds?.includes(stop.id),
       optional: stop.optional || plan.constraints?.optionalStopIds?.includes(stop.id),
+      gateway: plan.constraints?.fixedStartStopId === stop.id || plan.constraints?.fixedEndStopId === stop.id,
       preferredNights: ignorePreferredSplit ? undefined : stop.nights,
       arrivalImpact: legByDestination.get(stop.id)?.transferImpact,
+      departureImpact: plan.stops[index + 1]
+        ? legByDestination.get(plan.stops[index + 1]!.id)?.transferImpact
+        : undefined,
     })),
   });
 }

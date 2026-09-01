@@ -310,6 +310,39 @@ test("a locality selected as its own base collapses to the direct canonical stop
   assert.equal(merged.destinations.filter((destination) => destination.canonicalPlaceId === locality.canonicalPlaceId).length, 1);
 });
 
+test("an unresolved city chosen from global search cannot become a self-base relation", () => {
+  const captured = extractStructuredTripBrief("Cairo");
+  const cairo = captured.placeMentions?.[0];
+  assert.ok(cairo);
+  const merged = mergeStructuredTripBrief(captured, {
+    destinations: [{
+      id: "stop-cairo",
+      name: "Cairo",
+      canonicalPlaceId: "nominatim:cairo-egypt",
+      placeMentionId: cairo.mentionId,
+      placeType: "city",
+      resolutionStatus: "resolved",
+      routability: "direct_destination",
+    }],
+    placeSelections: [{
+      mentionId: cairo.mentionId,
+      kind: "base",
+      selectedCanonicalPlaceId: "nominatim:cairo-egypt",
+      selectedName: "Cairo",
+      selectedPlaceType: "city",
+      selectedParentCountries: ["Egypt"],
+      routeStopId: "stop-cairo",
+      provenance: { id: "builder:cairo", label: "Builder search", kind: "builder", supports: "Traveller selected the Cairo city result." },
+    }],
+  });
+
+  assert.deepEqual(merged.placeSelections, []);
+  assert.equal(merged.placeMentions?.[0]?.canonicalPlaceId, "nominatim:cairo-egypt");
+  assert.equal(merged.placeMentions?.[0]?.placeType, "city");
+  assert.equal(merged.placeMentions?.[0]?.routability, "direct_destination");
+  assert.equal(merged.placeIssues?.some((issue) => issue.code === "region_requires_base"), false);
+});
+
 test("place removals are explicit and do not erase the captured mention", () => {
   const base = extractStructuredTripBrief("The French Alps and Lake Annecy.");
   const alps = base.placeMentions?.find((mention) => mention.canonicalPlaceId === "french-alps");

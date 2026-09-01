@@ -44,15 +44,25 @@ function unique(values: string[]) {
   return values.filter((value, index, all) => all.findIndex((other) => other.toLocaleLowerCase() === value.toLocaleLowerCase()) === index);
 }
 
+function mentionSourceKey(value: string) {
+  return normalizePlacePhrase(value).replace(/^the\s+/, "");
+}
+
+function sameRawPlaceSpan(left: string, right: string) {
+  const leftKey = mentionSourceKey(left);
+  const rightKey = mentionSourceKey(right);
+  return leftKey === rightKey || leftKey.includes(rightKey) || rightKey.includes(leftKey);
+}
+
 function mentionCoverage(
   expected: ExplicitPlaceMention[],
   resolution: PlaceIntelligenceResult,
   structuredBrief: StructuredTripBrief,
 ): JourneyMentionCoverage {
-  const resolvedBySource = new Set(resolution.mentions.map((mention) => mention.sourceText.toLocaleLowerCase()));
+  const resolvedBySource = new Set(resolution.mentions.flatMap((mention) => mention.sourceTexts.map(mentionSourceKey)));
   const routeMentionIds = new Set(structuredBrief.destinations.flatMap((destination) => destination.placeMentionId ? [destination.placeMentionId] : []));
   const missingFromResolution = expected
-    .filter((item) => !resolvedBySource.has(item.sourceText.toLocaleLowerCase()))
+    .filter((item) => !resolvedBySource.has(mentionSourceKey(item.sourceText)))
     .map((item) => item.sourceText);
   const missingFromStructuredBrief = resolution.mentions
     .filter((mention) => mention.role !== "excluded" && !routeMentionIds.has(mention.mentionId))
@@ -138,8 +148,8 @@ function semanticPlaceMentions(
   // reduce the traveller's route.
   for (const mention of deterministicMentions) {
     const normalized = mention.normalizedPhrase;
-    const existing = inputs.find((input) => input.sourceText.toLocaleLowerCase() === mention.sourceText.toLocaleLowerCase()
-      || input.lookupText?.toLocaleLowerCase() === mention.sourceText.toLocaleLowerCase());
+    const existing = inputs.find((input) => sameRawPlaceSpan(input.sourceText, mention.sourceText)
+      || (input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText)));
     if (existing) {
       if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
       if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
@@ -154,7 +164,7 @@ function semanticPlaceMentions(
     });
   }
   return inputs
-    .filter((input, index, all) => all.findIndex((candidate) => candidate.sourceText.toLocaleLowerCase() === input.sourceText.toLocaleLowerCase()) === index)
+    .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)) === index)
     .sort((left, right) => rawBrief.toLocaleLowerCase().indexOf(left.sourceText.toLocaleLowerCase()) - rawBrief.toLocaleLowerCase().indexOf(right.sourceText.toLocaleLowerCase()));
 }
 
@@ -263,8 +273,8 @@ export async function captureJourneyBriefFromSemanticIntent(
   const deterministic = resolvePlaceMentions(brief, context);
   const semanticOnly = semanticPlaceMentions(intent, brief, []);
   const expected = semanticPlaceMentions(intent, brief, deterministic.mentions);
-  const semanticSources = new Set(semanticOnly.map((mention) => mention.sourceText.toLocaleLowerCase()));
-  const recoveredPlaceMentions = expected.filter((mention) => !semanticSources.has(mention.sourceText.toLocaleLowerCase())).length;
+  const semanticSources = new Set(semanticOnly.map((mention) => mentionSourceKey(mention.sourceText)));
+  const recoveredPlaceMentions = expected.filter((mention) => !semanticSources.has(mentionSourceKey(mention.sourceText))).length;
   const resolution = provider
     ? await resolveExplicitPlaceMentionsWithProvider(expected, provider, context)
     : resolveExplicitPlaceMentions(expected, context);

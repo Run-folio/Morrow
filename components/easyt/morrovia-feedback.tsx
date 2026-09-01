@@ -1,11 +1,114 @@
 "use client";
 
-import { AlertCircle, Check, Cloud, HardDrive, LoaderCircle, RotateCcw, X } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, Check, CircleAlert, Cloud, HardDrive, Info, LoaderCircle, RotateCcw, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, type FocusEvent, type ReactNode } from "react";
 import { EasyTButton } from "./easyt-controls";
 import styles from "./morrovia-feedback.module.css";
 
 export type MorroviaSaveState = "idle" | "device" | "saving" | "saved" | "error";
+export type MorroviaStatusTone = "info" | "success" | "warning" | "danger";
+
+export function MorroviaContextualDisclosure({
+  actions,
+  align = "end",
+  detail,
+  id,
+  linkHref,
+  linkLabel,
+  onOpenChange,
+  open,
+  title,
+  triggerIcon = Info,
+  triggerIconOnly = false,
+  triggerLabel,
+}: {
+  actions?: ReactNode;
+  align?: "start" | "end";
+  detail: string;
+  id?: string;
+  linkHref?: string;
+  linkLabel?: string;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  title: string;
+  triggerIcon?: LucideIcon;
+  triggerIconOnly?: boolean;
+  triggerLabel: string;
+}) {
+  const generatedId = useId();
+  const panelId = id ?? generatedId;
+  const titleId = `${panelId}-title`;
+  const detailId = `${panelId}-detail`;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : triggerRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      const preferred = rootRef.current?.querySelector<HTMLElement>("[data-disclosure-autofocus='true']");
+      (preferred ?? rootRef.current?.querySelector<HTMLElement>("[data-disclosure-close='true']"))?.focus();
+    });
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) onOpenChange(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onOpenChange(false);
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onOpenChange, open]);
+
+  const close = () => {
+    onOpenChange(false);
+    window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+  };
+
+  return <div ref={rootRef} className={styles.contextualDisclosure} data-align={align}>
+    <EasyTButton
+      ref={triggerRef}
+      className={styles.contextualDisclosureTrigger}
+      variant="quiet"
+      size="small"
+      icon={triggerIcon}
+      iconOnly={triggerIconOnly}
+      aria-label={triggerIconOnly ? triggerLabel : undefined}
+      aria-expanded={open}
+      aria-controls={panelId}
+      aria-haspopup="dialog"
+      onClick={() => onOpenChange(!open)}
+    >{triggerLabel}</EasyTButton>
+    {open ? <section
+      id={panelId}
+      className={styles.contextualDisclosurePanel}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={titleId}
+      aria-describedby={detailId}
+    >
+      <div className={styles.contextualDisclosureHeading}>
+        <Info aria-hidden="true" />
+        <strong id={titleId}>{title}</strong>
+        <button data-disclosure-close="true" className={styles.contextualDisclosureClose} type="button" onClick={close} aria-label={`Close ${title}`}><X aria-hidden="true" /></button>
+      </div>
+      <p id={detailId}>{detail}</p>
+      {(linkHref && linkLabel) || actions ? <div className={styles.contextualDisclosureActions}>
+        {linkHref && linkLabel ? <Link href={linkHref}>{linkLabel}</Link> : null}
+        {actions}
+      </div> : null}
+    </section> : null}
+  </div>;
+}
 
 const saveCopy: Record<MorroviaSaveState, string> = {
   idle: "No changes to save",
@@ -35,6 +138,44 @@ export function MorroviaSaveStatus({
       <Icon aria-hidden="true" />
       {label ?? saveCopy[state]}
     </span>
+  );
+}
+
+/**
+ * Canonical persistent feedback for session, sync, recovery, and safety states.
+ * Use MorroviaBriefNotice for transient confirmations and
+ * MorroviaRecoveryFeedback for a single failed operation with retry guidance.
+ */
+export function MorroviaStatusBanner({
+  actions,
+  className = "",
+  detail,
+  role,
+  title,
+  tone = "info",
+}: {
+  actions?: ReactNode;
+  className?: string;
+  detail?: string;
+  role?: "alert" | "status";
+  title: string;
+  tone?: MorroviaStatusTone;
+}) {
+  const Icon = tone === "success" ? Check : tone === "danger" ? AlertCircle : tone === "warning" ? CircleAlert : Info;
+  return (
+    <aside
+      className={`${styles.statusBanner} ${className}`}
+      data-tone={tone}
+      role={role ?? (tone === "danger" || tone === "warning" ? "alert" : "status")}
+      aria-atomic="true"
+    >
+      <Icon aria-hidden="true" />
+      <div>
+        <strong>{title}</strong>
+        {detail ? <span>{detail}</span> : null}
+      </div>
+      {actions ? <div className={styles.statusBannerActions}>{actions}</div> : null}
+    </aside>
   );
 }
 

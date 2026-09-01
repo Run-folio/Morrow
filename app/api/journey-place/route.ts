@@ -11,12 +11,17 @@ type UnsplashPhoto = {
   user?: { name?: string; links?: { html?: string } };
 };
 
+const WIKIPEDIA_TIMEOUT_MS = 5_000;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 async function summaryFor(title: string) {
-  const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
+  const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, {
+    next: { revalidate: 60 * 60 * 24 * 14 },
+    signal: AbortSignal.timeout(WIKIPEDIA_TIMEOUT_MS),
+  });
   if (!response.ok) return null;
   const value: unknown = await response.json();
   if (!isRecord(value)) return null;
@@ -41,7 +46,10 @@ async function imageFor(title: string, area?: string, country?: string) {
     gsrnamespace: "0", gsrlimit: "6", prop: "pageimages|extracts", piprop: "thumbnail",
     pithumbsize: "900", exintro: "1", explaintext: "1", origin: "*",
   });
-  const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
+  const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
+    next: { revalidate: 60 * 60 * 24 * 14 },
+    signal: AbortSignal.timeout(WIKIPEDIA_TIMEOUT_MS),
+  });
   if (!response.ok) return undefined;
   const data = await response.json() as { query?: { pages?: Record<string, SearchPage> } };
   const normalisedTitle = title.toLocaleLowerCase();
@@ -113,7 +121,10 @@ export async function GET(request: NextRequest) {
     if (!isInCountry(summary, country) && country) {
       try {
         const params = new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${title} ${country}`, srnamespace: "0", srlimit: "5", origin: "*" });
-        const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, { next: { revalidate: 60 * 60 * 24 * 14 } });
+        const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
+          next: { revalidate: 60 * 60 * 24 * 14 },
+          signal: AbortSignal.timeout(WIKIPEDIA_TIMEOUT_MS),
+        });
         const data = response.ok ? await response.json() as { query?: { search?: SearchResult[] } } : {};
         const candidate = data.query?.search?.find((item) => item.title && `${item.title} ${item.snippet ?? ""}`.toLocaleLowerCase().includes(country.toLocaleLowerCase()));
         summary = candidate?.title ? await summaryFor(candidate.title).catch(() => null) : null;

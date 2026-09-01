@@ -1,7 +1,8 @@
 "use client";
 
-import type { Map as MapLibreMap, Marker as MapLibreMarker, StyleSpecification } from "maplibre-gl";
+import type { ErrorEvent as MapLibreErrorEvent, Map as MapLibreMap, Marker as MapLibreMarker, StyleSpecification } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
+import { normalizeRouteMapFailure } from "@/lib/easyt/route-map-runtime";
 import styles from "./route-overview.module.css";
 
 type RouteStop = { id: string; name: string; coordinates: [number, number] };
@@ -28,23 +29,40 @@ export default function RouteLiveMap({ title, stops, className }: { title: strin
   useEffect(() => {
     const container = containerRef.current;
     const mappedStops = stops.filter((stop) => Number.isFinite(stop.coordinates[0]) && Number.isFinite(stop.coordinates[1]));
-    if (!container || !mappedStops.length) return;
+    if (!container) return;
+    if (!mappedStops.length) {
+      setStatus("unavailable");
+      return;
+    }
     let map: MapLibreMap | null = null;
     let markers: MapLibreMarker[] = [];
     let disposed = false;
     let started = false;
+    let failed = false;
+    const reportFailure = (value: unknown) => {
+      const failure = normalizeRouteMapFailure(value);
+      failed = true;
+      if (failure.category === "provider-resource") {
+        console.warn("Morrovia route map provider unavailable.", failure.error);
+      } else {
+        console.error(failure.error);
+      }
+      if (!disposed) setStatus("unavailable");
+    };
     const initialise = async () => {
       if (started || disposed) return;
       started = true;
       setStatus("loading");
       const maplibregl = await import("maplibre-gl");
       if (disposed) return;
+      maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
       map = new maplibregl.Map({
         container,
         style: mapStyle,
         center: mappedStops[0].coordinates,
         zoom: 7,
       });
+      map.on("error", reportFailure as (event: MapLibreErrorEvent) => void);
       map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
 
       markers = mappedStops.map((stop, index) => {
@@ -88,7 +106,15 @@ export default function RouteLiveMap({ title, stops, className }: { title: strin
         map.fitBounds(bounds, { padding: { top: 70, right: 110, bottom: 70, left: 90 }, maxZoom: 8, duration: 0 });
       };
 
-      const finish = () => { drawRoute(); if (!disposed) setStatus("ready"); };
+      const finish = () => {
+        if (failed) return;
+        try {
+          drawRoute();
+          if (!disposed) setStatus("ready");
+        } catch (error) {
+          reportFailure(error);
+        }
+      };
       if (map.isStyleLoaded()) finish();
       else map.once("load", finish);
     };
@@ -96,15 +122,16 @@ export default function RouteLiveMap({ title, stops, className }: { title: strin
     const observer = "IntersectionObserver" in window ? new IntersectionObserver((entries, currentObserver) => {
       if (entries.some((entry) => entry.isIntersecting)) {
         currentObserver.disconnect();
-        void initialise().catch(() => { if (!disposed) setStatus("unavailable"); });
+        void initialise().catch(reportFailure);
       }
     }, { rootMargin: "320px" }) : null;
     if (observer) observer.observe(container);
-    else void initialise().catch(() => { if (!disposed) setStatus("unavailable"); });
+    else void initialise().catch(reportFailure);
     return () => {
       disposed = true;
       observer?.disconnect();
       markers.forEach((marker) => marker.remove());
+      map?.off("error", reportFailure as (event: MapLibreErrorEvent) => void);
       map?.remove();
     };
   }, [stops, title]);

@@ -12,11 +12,13 @@ import {
 } from "./trip-copilot.ts";
 import { parseTripCopilotAction, type TripCopilotAction } from "./trip-copilot-actions.ts";
 import type { EasyTTrip } from "./trip.ts";
+import { withProviderTimeout } from "./provider-timeout.ts";
 
 type RateWindow = { startedAt: number; count: number };
 const rateWindows = new Map<string, RateWindow>();
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 12;
+export const TRIP_COPILOT_PROVIDER_TIMEOUT_MS = 12_000;
 
 export function consumeTripCopilotRateLimit(ownerId: string, now = Date.now()) {
   const current = rateWindows.get(ownerId);
@@ -61,10 +63,15 @@ export async function answerTripCopilotQuestion(options: {
   message: string;
   selection?: TripCopilotSelection;
   client?: ResponsesClient;
+  timeoutMs?: number;
 }): Promise<TripCopilotResult> {
   const projection = buildTripCopilotProjection(options.trip, options.selection);
   const client = options.client ?? getOpenAIClient();
-  const response = await client.responses.create(buildTripCopilotOpenAIRequest(projection, options.message));
+  const response = await withProviderTimeout({
+    label: "Trip co-pilot provider",
+    timeoutMs: options.timeoutMs ?? TRIP_COPILOT_PROVIDER_TIMEOUT_MS,
+    request: (signal) => client.responses.create(buildTripCopilotOpenAIRequest(projection, options.message), { signal }),
+  });
   const functionCalls = (response.output as unknown[]).filter((item): item is { type: "function_call"; name: string; arguments: string } => {
     if (!item || typeof item !== "object") return false;
     const row = item as { type?: unknown; name?: unknown; arguments?: unknown };

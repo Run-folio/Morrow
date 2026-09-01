@@ -35,7 +35,8 @@ export function validateOptionalAffiliateUrl(value: string | undefined): string 
   try {
     const url = new URL(value);
     if (!url.hostname || url.hostname === "." || url.hostname.startsWith(".") || url.username || url.password) return undefined;
-    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : undefined;
+    // Validation must not normalize or re-encode an approved attribution URL.
+    return url.protocol === "http:" || url.protocol === "https:" ? value : undefined;
   } catch {
     return undefined;
   }
@@ -67,8 +68,7 @@ export function resolveOptionalAffiliateConfiguration(environment: Environment =
 
 /** Emits concise configuration identity only—never a partner URL or its query parameters. */
 export function warnOptionalAffiliateConfiguration(configuration: OptionalAffiliateConfiguration, warn: (message: string) => void = console.warn) {
-  configuration.warnings.forEach(({ partner, configKey, enabledKey, reason }) => {
-    const detail = reason === "missing" ? `${configKey} is missing while ${enabledKey} is enabled` : `${configKey} is invalid`;
-    warn(`[affiliate-config] ${partner}: ${detail}; the optional partner link remains disabled.`);
+  configuration.warnings.forEach(({ partner }) => {
+    warn(`[Morrovia config] Optional partner "${partner}" is enabled or configured but its URL is missing or invalid. The partner action remains disabled.`);
   });
 }

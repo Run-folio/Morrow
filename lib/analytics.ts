@@ -1,17 +1,19 @@
 import posthog, { type CaptureResult, type Properties } from "posthog-js";
+import { clearOptionalAnalyticsStorage, hasAnalyticsConsent } from "./privacy-consent.ts";
 
 export type AnalyticsPrimitive = string | number | boolean | null | undefined;
 export type AnalyticsEventProperties = Record<string, AnalyticsPrimitive>;
 
 type TripSource = "homepage" | "dashboard" | "builder" | "route";
 type SaveState = "local" | "cloud";
+// `prep` remains accepted only when normalising historical commercial events.
 type WorkspaceView = "overview" | "itinerary" | "map" | "prep";
 type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
 
 export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
-export type CommercialOutboundPlacement = "home_footer" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "overview_next_action" | "map_stay_finder" | "unknown_legacy";
+export type CommercialOutboundPlacement = "home_footer" | "homepage_stays" | "homepage_experiences" | "homepage_transport" | "homepage_connectivity" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "itinerary_day_experiences" | "overview_next_action" | "overview_before_you_go" | "map_stay_finder" | "map_see_experiences" | "route_detail_experiences" | "unknown_legacy";
 export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activities" | "car_rental" | "airport_transfer" | "flight" | "other";
 export type CommercialOutboundClick = {
   canonical_event: "commercial_outbound_click";
@@ -44,11 +46,10 @@ export type LaunchAnalyticsEventMap = {
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
-  trip_prep_viewed: { trip_id?: string; workspace_view: "prep"; route_mode: RouteMode; stop_count?: number };
   affiliate_click: { category: string; provider: string; trip_id?: string; stop_id?: string; placement?: string; workspace_view?: WorkspaceView; destination_count?: number };
   affiliate_link_clicked: {
     partner: "viator" | "omio";
-    placement: "trip_prep_booking_readiness" | "booking_readiness_transport" | "itinerary_transfer" | "overview_next_action";
+    placement: "trip_prep_booking_readiness" | "booking_readiness_transport" | "itinerary_transfer" | "overview_next_action" | "overview_before_you_go" | "homepage_experiences" | "homepage_transport" | "itinerary_day_experiences" | "map_see_experiences" | "route_detail_experiences";
     tripId?: string;
     stopId?: string;
     transferId?: string;
@@ -58,7 +59,34 @@ export type LaunchAnalyticsEventMap = {
   trip_edit_started: { trip_id?: string; source: "dashboard" | "workspace" };
   trip_reopened: { trip_id?: string; source: "dashboard"; save_state: "cloud"; stop_count?: number };
   route_repair_applied: { trip_id?: string; repair_count: number; repair_category: string; had_hard_issue?: boolean; source: "map" };
-  accommodation_search_started: { source: "map" | "itinerary" | "prep"; destination_count: number; has_dates: boolean; provider?: string };
+  accommodation_search_started: { source: "map"; destination_count: number; has_dates: boolean; provider?: string };
+  booking_import_reviewed: {
+    source: "forwarded_email";
+    type: "accommodation" | "flight" | "activity" | "ground_transport" | "car_rental" | "other";
+    confidence: "high" | "medium" | "low";
+    result: "confirmed" | "dismissed" | "unmatched";
+  };
+  booking_import_opened: {
+    source: "forwarded_email" | "calendar";
+    booking_type: "accommodation";
+    surface: "itinerary";
+  };
+  booking_candidate_confirmed: {
+    source: "calendar" | "forwarded_email" | "multiple";
+    booking_type: "accommodation";
+    confidence: "high" | "medium" | "low";
+    surface: "itinerary";
+  };
+  booking_candidate_dismissed: {
+    source: "calendar" | "forwarded_email" | "multiple";
+    booking_type: "accommodation";
+    confidence: "high" | "medium" | "low";
+    surface: "itinerary";
+  };
+  booking_added_manual: {
+    booking_type: "accommodation";
+    surface: "itinerary";
+  };
   stamp_status_changed: { previous_status: StampStatus; next_status: StampStatus; source: StampStatusSource; is_authenticated: boolean };
   stamp_note_added: { source: "country_card"; is_authenticated: boolean };
 };
@@ -84,22 +112,17 @@ declare global {
 }
 
 const isBrowser = () => typeof window !== "undefined";
-const ANALYTICS_CONSENT_KEY = "easyt-analytics-consent";
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 const STATIC_JOURNEY_ROUTES = new Set([
-  "admin", "affiliate-disclosure", "dashboard", "discover", "forgot-password", "gift", "home", "login",
+  "admin", "affiliate-disclosure", "cookies", "dashboard", "discover", "forgot-password", "gift", "home", "login",
   "new", "passport", "plan", "plan-next", "prep", "privacy", "profile", "reset-password", "routes", "stamped", "trip",
 ]);
 
 let postHogInitialized = false;
 let pendingAnalyticsUserId: string | null = null;
 
-/** Optional analytics must not run, or leave analytics-only browser state, without consent. */
-export function hasAnalyticsConsent() {
-  if (!isBrowser()) return false;
-  try { return window.localStorage.getItem(ANALYTICS_CONSENT_KEY) === "granted"; } catch { return false; }
-}
+export { hasAnalyticsConsent };
 
 export function analyticsEnvironment(): "production" | "preview" | "development" {
   const configured = process.env.NEXT_PUBLIC_ANALYTICS_ENVIRONMENT;
@@ -127,12 +150,20 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
             : sourcePartner ? "configured_partner" : "unknown_legacy";
   const sourcePlacement = String(properties.placement ?? "").trim();
   const placement: CommercialOutboundPlacement = sourcePlacement === "home_footer" ? "home_footer"
+    : sourcePlacement === "homepage_stays" ? "homepage_stays"
+      : sourcePlacement === "homepage_experiences" ? "homepage_experiences"
+        : sourcePlacement === "homepage_transport" ? "homepage_transport"
+          : sourcePlacement === "homepage_connectivity" ? "homepage_connectivity"
     : sourcePlacement === "trip_readiness" ? "trip_readiness"
       : sourcePlacement === "trip_prep_accommodation" ? "trip_prep_accommodation"
         : sourcePlacement === "itinerary_accommodation" ? "itinerary_accommodation"
           : sourcePlacement === "itinerary_transfer" ? "itinerary_transfer"
+            : sourcePlacement === "itinerary_day_experiences" ? "itinerary_day_experiences"
             : sourcePlacement === "overview_next_action" ? "overview_next_action"
-              : sourcePlacement === "map_stay_finder" ? "map_stay_finder"
+              : sourcePlacement === "overview_before_you_go" ? "overview_before_you_go"
+                : sourcePlacement === "map_stay_finder" ? "map_stay_finder"
+                  : sourcePlacement === "map_see_experiences" ? "map_see_experiences"
+                    : sourcePlacement === "route_detail_experiences" ? "route_detail_experiences"
                 : sourcePlacement === "trip_prep_booking_readiness" || sourcePlacement === "booking_readiness_transport" ? "booking_readiness"
                   : "unknown_legacy";
   const sourceCategory = String(properties.category ?? "").trim().toLocaleLowerCase();
@@ -228,8 +259,14 @@ function ensurePostHogInitialized() {
     posthog.init(POSTHOG_KEY, {
       api_host: POSTHOG_HOST,
       autocapture: false,
+      capture_dead_clicks: false,
+      capture_exceptions: false,
+      capture_heatmaps: false,
+      capture_performance: false,
       capture_pageview: false,
       capture_pageleave: false,
+      advanced_disable_flags: true,
+      advanced_disable_feature_flags: true,
       disable_session_recording: true,
       disable_surveys: true,
       person_profiles: "identified_only",
@@ -246,13 +283,40 @@ function ensurePostHogInitialized() {
 
 export function initializeAnalytics() { ensurePostHogInitialized(); }
 
+function clearKnownOptionalAnalyticsCookies() {
+  if (!isBrowser()) return;
+  const optionalCookiePrefixes = ["_ga", "_gid", "_gat", "_clck", "_clsk", "ph_"];
+  try {
+    document.cookie.split(";").forEach((entry) => {
+      const name = entry.split("=", 1)[0]?.trim();
+      if (!name || !optionalCookiePrefixes.some((prefix) => name.startsWith(prefix))) return;
+      document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+    });
+  } catch { /* Some browser contexts do not expose cookie state. */ }
+}
+
 export function updateAnalyticsConsent(value: "granted" | "declined") {
   if (!isBrowser()) return;
   try {
     if (value === "granted") {
+      const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+      if (measurementId) (window as unknown as Record<string, unknown>)[`ga-disable-${measurementId}`] = false;
+      window.gtag?.("consent", "update", { analytics_storage: "granted", ad_storage: "denied" });
       ensurePostHogInitialized();
       if (postHogInitialized) posthog.opt_in_capturing({ captureEventName: false });
-    } else if (postHogInitialized) posthog.opt_out_capturing();
+    } else {
+      const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+      if (measurementId) (window as unknown as Record<string, unknown>)[`ga-disable-${measurementId}`] = true;
+      window.gtag?.("consent", "update", { analytics_storage: "denied", ad_storage: "denied" });
+      window.clarity?.("consentv2", { ad_Storage: "denied", analytics_Storage: "denied" });
+      window.clarity?.("consent", false);
+      if (postHogInitialized) {
+        posthog.reset(true);
+        posthog.opt_out_capturing();
+      }
+      clearOptionalAnalyticsStorage();
+      clearKnownOptionalAnalyticsCookies();
+    }
   } catch { /* Consent controls must remain usable if a vendor fails. */ }
 }
 
@@ -303,6 +367,5 @@ export function trackEvent(eventName: AnalyticsEventName, properties: AnalyticsE
   try {
     window.gtag?.("event", eventName, payload);
     if (ensurePostHogInitialized()) posthog.capture(eventName, payload);
-    window.clarity?.("set", "last_portfolio_event", eventName);
   } catch { /* Analytics should never affect Morrovia UX. */ }
 }

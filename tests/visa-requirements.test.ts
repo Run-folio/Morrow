@@ -3,9 +3,11 @@ import test from "node:test";
 
 import { countryFlagFor, supportedPassportCountries, touristEntryRequirementFor } from "../lib/easyt/visa-requirements.ts";
 
-test("exposes every passport nationality available in the bundled snapshot", () => {
-  assert.ok(supportedPassportCountries.length >= 190);
+test("exposes semantic passport issuers independently from the bundled visa snapshot", () => {
+  assert.equal(supportedPassportCountries.length, 209);
   assert.ok(supportedPassportCountries.includes("Guatemala"));
+  assert.ok(supportedPassportCountries.includes("Bermuda"));
+  assert.ok(!supportedPassportCountries.includes("Puerto Rico"));
   assert.equal(countryFlagFor("United Kingdom"), "🇬🇧");
   assert.equal(countryFlagFor("Guatemala"), "🇬🇹");
 });

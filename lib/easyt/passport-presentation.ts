@@ -2,6 +2,7 @@ import type { EntrySource } from "./travel-readiness.ts";
 import type { TouristEntryRequirement, VisaLanguage } from "./visa-requirements.ts";
 
 export type PassportPresentation = {
+  informationState: TouristEntryRequirement["informationState"];
   verification: "verified" | "needs-confirmation";
   freshness: string | null;
   source: { href: string; label: string | null; official: boolean };
@@ -30,18 +31,20 @@ export function passportPresentationFor({
     : isSpanish
       ? "Confirma con la fuente oficial la validez exigida después de la fecha de regreso."
       : "Confirm required validity beyond your return date with the official source.";
+  const unsupported = requirement.informationState === "unsupported";
 
   return {
-    verification: requirement.status === "not-verified" ? "needs-confirmation" : "verified",
+    informationState: requirement.informationState,
+    verification: requirement.informationState === "known" ? "verified" : "needs-confirmation",
     freshness: requirement.dataUpdatedAt || null,
     source: {
       href: requirement.sourceHref,
       label: requirement.sourceLabel || null,
       official: sourceCoverage === "official",
     },
-    entryConsiderations: requirement.conditions.filter(Boolean),
-    passportValidityContext: expiryContext,
-    scopeContext: isSpanish
+    entryConsiderations: unsupported ? [] : requirement.conditions.filter(Boolean),
+    passportValidityContext: unsupported ? "" : expiryContext,
+    scopeContext: unsupported ? "" : isSpanish
       ? "Este resultado cubre visitas turísticas con pasaporte ordinario. Tránsito, trabajo, estudios y residencia pueden seguir reglas distintas."
       : "This result covers ordinary-passport tourist visits. Transit, work, study and residence can follow different rules.",
   };
