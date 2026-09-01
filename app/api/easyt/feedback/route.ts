@@ -18,7 +18,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to save feedback.";
-    console.error("EasyT CSAT persistence failed", error);
+    console.error("Morrovia feedback persistence failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode: (error as { code?: unknown } | null)?.code,
+    });
     return NextResponse.json({ error: message }, { status: message === "Unauthorized" ? 401 : 500 });
   }
 }

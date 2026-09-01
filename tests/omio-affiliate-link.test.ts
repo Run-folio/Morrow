@@ -5,10 +5,12 @@ import test from "node:test";
 test("Omio links retain external-link protections, disclosure and accessible labels", () => {
   const itinerary = readFileSync("components/easyt/trip-itinerary-workspace.tsx", "utf8");
   const prep = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
+  const link = readFileSync("components/easyt/affiliate-link.tsx", "utf8");
   const styles = readFileSync("components/easyt/trip-itinerary-workspace.module.css", "utf8");
   assert.match(itinerary, /target="_blank" rel="sponsored noopener noreferrer"/);
   assert.match(itinerary, /opens Omio in a new tab/);
-  assert.match(itinerary, /Partner link · Morrovia may earn a commission at no extra cost to you/);
+  assert.match(itinerary, /<small>\{affiliateDisclosure\}<\/small>/);
+  assert.match(link, /Partner link · Morrovia may earn a commission at no extra cost to you/);
   assert.match(prep, /target="_blank" rel=\{action\.affiliate \? "sponsored noopener noreferrer" : "noopener noreferrer"\}/);
   assert.match(styles, /\.omioAction a \{[\s\S]*min-height: 44px/);
   assert.match(styles, /\.omioAction a:focus-visible/);

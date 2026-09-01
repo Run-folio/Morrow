@@ -258,6 +258,7 @@ test("builder base selection wins operationally while preserving broad prompt ge
       routeStopId: "stop-el-calafate",
       provenance,
     }],
+    completedPlanningAreaMentionIds: [patagonia.mentionId],
   });
 
   assert.equal(merged.destinations.some((destination) => destination.canonicalPlaceId === "patagonia" && !destination.id), true);
@@ -265,6 +266,40 @@ test("builder base selection wins operationally while preserving broad prompt ge
   assert.equal(merged.destinations.find((destination) => destination.name === "El Calafate")?.provenance.source, "builder");
   assert.equal(merged.placeIssues?.some((issue) => issue.mentionId === patagonia.mentionId && issue.code === "region_requires_base"), false);
   assert.equal(merged.placeMentions?.some((mention) => mention.canonicalPlaceId === "patagonia"), true);
+});
+
+test("a broad area stays open after its first child until the traveller explicitly finishes", () => {
+  const base = extractStructuredTripBrief("Thailand");
+  const thailand = base.placeMentions?.find((mention) => mention.canonicalPlaceId === "thailand");
+  assert.ok(thailand);
+  const provenance = thailand.provenance[0];
+  assert.ok(provenance);
+  const bangkokSelection = {
+    mentionId: thailand.mentionId,
+    kind: "base" as const,
+    selectedCanonicalPlaceId: "bangkok",
+    selectedName: "Bangkok",
+    selectedPlaceType: "city" as const,
+    selectedParentCountries: ["Thailand"],
+    routeStopId: "stop-bangkok",
+    provenance,
+  };
+  const chiangMaiSelection = {
+    ...bangkokSelection,
+    selectedCanonicalPlaceId: "chiang-mai",
+    selectedName: "Chiang Mai",
+    routeStopId: "stop-chiang-mai",
+  };
+  const open = mergeStructuredTripBrief(base, { placeSelections: [bangkokSelection, chiangMaiSelection] });
+  assert.equal(open.placeIssues?.some((issue) => issue.mentionId === thailand.mentionId && issue.code === "region_requires_base"), true);
+  assert.deepEqual(open.placeSelections?.filter((selection) => selection.mentionId === thailand.mentionId)
+    .map((selection) => selection.selectedCanonicalPlaceId), ["bangkok", "chiang-mai"]);
+  const complete = mergeStructuredTripBrief(open, {
+    placeSelections: [bangkokSelection, chiangMaiSelection],
+    completedPlanningAreaMentionIds: [thailand.mentionId],
+  });
+  assert.equal(complete.placeIssues?.some((issue) => issue.mentionId === thailand.mentionId && issue.code === "region_requires_base"), false);
+  assert.deepEqual(complete.completedPlanningAreaMentionIds, [thailand.mentionId]);
 });
 
 test("a locality selected as its own base collapses to the direct canonical stop", () => {

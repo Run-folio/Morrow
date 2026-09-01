@@ -40,6 +40,14 @@ import {
   type EasyTBrowserStorage,
 } from "../lib/easyt/storage.ts";
 import { canonicalTripRevisionCanReplace, canApplyCanonicalCopilotChange, tripConflictResolutionActions, tripEditorSyncAction } from "../lib/easyt/trip-continuity.ts";
+import { applyResolvedTripCopilotAction, type ResolvedTripCopilotAction } from "../lib/easyt/trip-copilot-actions.ts";
+import {
+  applyTripCopilotPreview,
+  TripCopilotApplyError,
+  type TripCopilotApplyDependencies,
+  type TripCopilotPreviewRecord,
+} from "../lib/easyt/trip-copilot-apply.ts";
+import { tripCopilotMutationHash, tripCopilotStateHash } from "../lib/easyt/trip-copilot-state.ts";
 import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
@@ -442,6 +450,158 @@ test("a real local edit remains recoverable when cloud is unchanged or independe
   assert.equal(discardTripRecoveryInStorage(storage, recovery.handle, true), true);
   assert.equal(loadTripRecoveryFromStorage(storage, cloudA.id, "owner-a"), null);
   assert.equal(loadLocalTripFromStorage(storage, cloudA.id, "owner-a")?.travellers, 3);
+});
+
+test("canonical Luna Apply and stale control preserve a separate owner-scoped recovery across tabs and reload", async () => {
+  const storage = new MemoryBrowserStorage();
+  const cloudR7 = browserTrip({
+    id: "trip-luna-recovery-cross-tab",
+    title: "Canonical account trip",
+    updatedAt: "2026-08-23T17:07:00.000Z",
+    brief: { ...browserTrip().brief, mustDo: "Canonical museum plan", pace: "slow" },
+  });
+  assert.equal(cacheCanonicalTripToStorage(storage, cloudR7), true);
+
+  // Tab B creates material traveller work while its canonical save is unavailable.
+  const dirtyDevice = {
+    ...cloudR7,
+    brief: { ...cloudR7.brief, mustDo: "Unsynced specialist museum booking" },
+  };
+  const dirtyWrite = saveTripRecoveryToStorage(storage, dirtyDevice, {
+    ownerId: "owner-a",
+    state: "network",
+    writeId: "tab-b-dirty-r7",
+    now: "2026-08-23T17:07:30.000Z",
+  });
+  assert.equal(dirtyWrite.stored, true);
+  assert.equal(loadCachedTripFromStorage(storage, cloudR7.id, "owner-a")?.updatedAt, cloudR7.updatedAt);
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-a")?.trip.brief.mustDo, "Unsynced specialist museum booking");
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-b"), null);
+
+  const action: ResolvedTripCopilotAction = {
+    action: "set_trip_preference",
+    preference: "budget",
+    value: "high",
+  };
+  const previewResult = applyResolvedTripCopilotAction(cloudR7, action);
+  let preview: TripCopilotPreviewRecord = {
+    previewId: "11111111-1111-4111-8111-111111111111",
+    ownerId: "owner-a",
+    tripId: cloudR7.id,
+    actionType: action.action,
+    action,
+    baseUpdatedAt: cloudR7.updatedAt,
+    baseHash: tripCopilotStateHash(cloudR7),
+    expectedHash: tripCopilotMutationHash(previewResult),
+    status: "pending",
+    expiresAt: "2026-08-23T18:00:00.000Z",
+    resultTrip: null,
+  };
+  let canonical = structuredClone(cloudR7);
+  let saveCount = 0;
+  const dependencies: TripCopilotApplyDependencies = {
+    async getPreview(ownerId, tripId, previewId) {
+      return preview.ownerId === ownerId && preview.tripId === tripId && preview.previewId === previewId
+        ? structuredClone(preview)
+        : null;
+    },
+    async claimPreview(ownerId, tripId, previewId) {
+      if (preview.ownerId !== ownerId || preview.tripId !== tripId || preview.previewId !== previewId) return "missing";
+      if (preview.status !== "pending") return preview.status;
+      preview.status = "applying";
+      return "claimed";
+    },
+    async getTrip(ownerId, tripId) {
+      return canonical.ownerId === ownerId && canonical.id === tripId ? structuredClone(canonical) : null;
+    },
+    async saveTrip(ownerId, candidate) {
+      assert.equal(ownerId, "owner-a");
+      assert.equal(candidate.updatedAt, cloudR7.updatedAt, "Luna submits the exact canonical R7 CAS token");
+      saveCount += 1;
+      canonical = { ...structuredClone(candidate), updatedAt: "2026-08-23T17:08:00.000Z" };
+      return structuredClone(canonical);
+    },
+    async completePreview(_ownerId, _tripId, _previewId, trip) {
+      preview = { ...preview, status: "applied", resultTrip: structuredClone(trip) };
+    },
+    async markPreviewStale() { preview = { ...preview, status: "stale" }; },
+    async releasePreview() { preview = { ...preview, status: "pending" }; },
+  };
+  const input = {
+    ownerId: "owner-a",
+    tripId: cloudR7.id,
+    previewId: preview.previewId,
+    expectedAction: action.action,
+    now: new Date("2026-08-23T17:30:00.000Z"),
+  } as const;
+
+  // Tab A's preview is inert and is checked only against canonical R7.
+  assert.equal(canonical.updatedAt, cloudR7.updatedAt);
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-a")?.writeId, dirtyWrite.handle.writeId);
+  const firstApply = await applyTripCopilotPreview(input, dependencies);
+  assert.equal(firstApply.idempotent, false);
+  assert.equal(firstApply.trip.updatedAt, "2026-08-23T17:08:00.000Z");
+  assert.equal(firstApply.trip.brief.budgetBand, "high");
+  assert.equal(firstApply.trip.brief.mustDo, "Canonical museum plan", "device work is not silently merged");
+  assert.equal(firstApply.trip.id, cloudR7.id);
+  assert.equal(saveCount, 1);
+
+  const reconciled = cacheCanonicalTripWithRecoveryToStorage(storage, firstApply.trip);
+  assert.deepEqual(reconciled, { stored: true, recoveryResolved: false });
+  assert.equal(loadCachedTripFromStorage(storage, cloudR7.id, "owner-a")?.updatedAt, firstApply.trip.updatedAt);
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-a")?.writeId, dirtyWrite.handle.writeId);
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-a")?.trip.brief.mustDo, "Unsynced specialist museum booking");
+
+  const repeated = await applyTripCopilotPreview(input, dependencies);
+  assert.equal(repeated.idempotent, true);
+  assert.equal(saveCount, 1, "repeated Apply never advances the cloud twice");
+  await assert.rejects(
+    applyTripCopilotPreview({ ...input, ownerId: "owner-b" }, dependencies),
+    (error: unknown) => error instanceof TripCopilotApplyError && error.code === "not-found",
+  );
+
+  // A reload/reopen still resolves the dirty device document separately from clean cloud R8.
+  assert.equal(loadLocalTripFromStorage(storage, cloudR7.id, "owner-a")?.brief.mustDo, "Unsynced specialist museum booking");
+  assert.equal(loadCachedTripFromStorage(storage, cloudR7.id, "owner-a")?.brief.budgetBand, "high");
+
+  // A real canonical mutation moves R8 -> R9; the old R8 preview must reject.
+  const staleAction: ResolvedTripCopilotAction = {
+    action: "set_trip_preference",
+    preference: "pace",
+    value: "packed",
+  };
+  const cloudR8 = structuredClone(canonical);
+  const staleCandidate = applyResolvedTripCopilotAction(cloudR8, staleAction);
+  preview = {
+    previewId: "22222222-2222-4222-8222-222222222222",
+    ownerId: "owner-a",
+    tripId: cloudR8.id,
+    actionType: staleAction.action,
+    action: staleAction,
+    baseUpdatedAt: cloudR8.updatedAt,
+    baseHash: tripCopilotStateHash(cloudR8),
+    expectedHash: tripCopilotMutationHash(staleCandidate),
+    status: "pending",
+    expiresAt: "2026-08-23T18:00:00.000Z",
+    resultTrip: null,
+  };
+  canonical = { ...cloudR8, travellers: 3, updatedAt: "2026-08-23T17:09:00.000Z" };
+  assert.deepEqual(cacheCanonicalTripWithRecoveryToStorage(storage, canonical), { stored: true, recoveryResolved: false });
+  await assert.rejects(
+    applyTripCopilotPreview({
+      ownerId: "owner-a",
+      tripId: cloudR8.id,
+      previewId: preview.previewId,
+      expectedAction: staleAction.action,
+      now: new Date("2026-08-23T17:30:00.000Z"),
+    }, dependencies),
+    (error: unknown) => error instanceof TripCopilotApplyError && error.code === "stale",
+  );
+  assert.equal(saveCount, 1);
+  assert.equal(canonical.updatedAt, "2026-08-23T17:09:00.000Z");
+  assert.equal(canonical.travellers, 3);
+  assert.notEqual(canonical.brief.pace, "full");
+  assert.equal(loadTripRecoveryFromStorage(storage, cloudR7.id, "owner-a")?.writeId, dirtyWrite.handle.writeId);
 });
 
 test("semantic comparison ignores canonical/provider metadata but protects every editable recovery field", () => {

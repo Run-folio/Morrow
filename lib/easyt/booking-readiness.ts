@@ -274,8 +274,8 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
     provider: affiliatePartners.omio.provider,
     title: partial ? `Check transport options for ${from.name} → ${to.name}` : `Compare transport for ${from.name} → ${to.name}`,
     detail: partial
-      ? "Check live options before relying on this connection; coverage and schedules vary by route."
-      : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare live options before booking.`,
+      ? "Compare transport options on Omio before relying on this connection; coverage and schedules vary by route."
+      : `${leg.mode === "road" ? "Coach or bus" : leg.mode} selected · compare transport options on Omio before booking.`,
     cta: partial ? "Check transport options on Omio" : "Compare transport on Omio",
     href: affiliatePartners.omio.transportUrl,
     tripId: trip.id,
@@ -311,7 +311,7 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     const accommodationUrl = getAccommodationBookingUrl({ stop, dates, travellers: trip.travellers });
     if (accommodationUrl) actions.push({
       id: `stay-${stop.id}`, category: "accommodation", provider: affiliatePartners.tripCom.provider, title: `Find a stay in ${stop.name}`,
-      detail: `${dates.checkIn} to ${dates.checkOut} · ${trip.travellers} traveller${trip.travellers === 1 ? "" : "s"}. Availability and prices are confirmed by Trip.com.`,
+      detail: `${dates.checkIn} to ${dates.checkOut} · ${trip.travellers} traveller${trip.travellers === 1 ? "" : "s"}. Confirm final availability, price, payment and provider terms on Trip.com.`,
       cta: "Find accommodation on Trip.com", href: accommodationUrl,
       tripId: trip.id, stopId: stop.id, affiliate: true, affiliateCategory: "accommodation", livePrice: false,
     });
@@ -338,7 +338,7 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     const openJaw = first.id !== last.id;
     actions.push({
       id: "trip-flights", category: "flight", provider: "google-flights", title: openJaw ? "Check an open-jaw flight" : "Check return flights",
-      detail: `${trip.brief.origin} → ${first.name}${openJaw ? `, returning from ${last.name}` : ""}. Dates are carried into the search; fares remain live on the provider.`,
+      detail: `${trip.brief.origin} → ${first.name}${openJaw ? `, returning from ${last.name}` : ""}. Dates are carried into the search; confirm fares and availability on Google Flights.`,
       cta: "Check flights", href: withParams("https://www.google.com/travel/flights", { q: `Flights from ${trip.brief.origin} to ${first.name} on ${trip.startDate}${openJaw ? ` returning from ${last.name}` : " returning"} on ${trip.endDate}` }),
       tripId: trip.id, affiliate: false, livePrice: false,
     });

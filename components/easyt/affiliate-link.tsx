@@ -6,7 +6,7 @@ import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/
 import { affiliateProviderLabel, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { EasyTLinkButton } from "./easyt-controls";
 
-export const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you.";
+export const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.";
 
 export function MorroviaAffiliateLink({
   action,

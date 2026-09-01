@@ -28,6 +28,7 @@
     "test:route-scoring": "node --experimental-strip-types --test tests/route-scoring.test.ts",
     "test:public-routes": "node --experimental-strip-types --test tests/public-route.test.ts tests/public-route-presentation.test.ts tests/public-route-handoff.test.ts tests/public-route-seo.test.ts tests/curated-route-trust.test.ts tests/public-route-release.test.ts tests/homepage-routes.test.ts tests/route-discovery.test.ts",
     "test:analytics": "node --experimental-strip-types --test tests/analytics.test.ts",
+    "test:runtime-health": "node --experimental-strip-types --test tests/runtime-health.test.ts",
     "test:auth": "node --experimental-strip-types --test tests/google-auth.test.ts tests/auth-feedback.test.ts tests/private-session-boundary.test.ts",
     "test:copy": "node --experimental-strip-types --test tests/morrovia-copy.test.ts",
     "test:stamps": "node --experimental-strip-types --test tests/stamps.test.ts",

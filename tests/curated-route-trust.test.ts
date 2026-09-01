@@ -40,17 +40,46 @@ for (const routeKey of betaRoutes) {
     const trip = buildRouteTrip(routeKey);
     assert.equal(trip.brief.curatedRoute?.coverage.state, "fully-supported");
     assert.equal(trip.brief.curatedRoute?.stops.length, trip.stops.length);
-    assert.equal(trip.legs.every((leg) => leg.routeMetadata.source === "curated-route"), true);
+    const arrivalLeg = trip.legs[0];
+    const curatedTransferLegs = trip.legs.slice(1);
+    assert.equal(arrivalLeg?.routeMetadata.source, "canonical-endpoint-identity");
+    assert.equal(curatedTransferLegs.length, trip.stops.length - 1);
+    assert.equal(curatedTransferLegs.every((leg) => leg.routeMetadata.source === "curated-route"), true);
+    assert.equal(curatedTransferLegs.every((leg) => {
+      const transfer = leg.routeMetadata.curatedRouteTransfer as { sourceIds?: string[] } | undefined;
+      return Boolean(transfer?.sourceIds?.length);
+    }), true);
     const reloaded = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-a", trip)));
     assert.equal(reloaded.brief.curatedRoute.coverage.state, "fully-supported");
     assert.equal(reloaded.brief.originCanonicalPlaceId, trip.brief.originCanonicalPlaceId);
     assert.deepEqual(reloaded.brief.curatedRoute.canonicalStopIds, reloaded.stops.map((stop: { id: string }) => stop.id));
-    assert.equal(reloaded.legs.every((leg: { routeMetadata: { source?: string } }) => leg.routeMetadata.source === "curated-route"), true);
+    assert.equal(reloaded.legs[0]?.routeMetadata.source, "canonical-endpoint-identity");
+    assert.equal(reloaded.legs.slice(1).every((leg: { routeMetadata: { source?: string; curatedRouteTransfer?: { sourceIds?: string[] } } }) => (
+      leg.routeMetadata.source === "curated-route"
+      && Boolean(leg.routeMetadata.curatedRouteTransfer?.sourceIds?.length)
+    )), true);
   });
 }
 
-test("a curated-route reorder preserves matching base facts, downgrades coverage, and does not invent transfers", () => {
-  const trip = buildRouteTrip("japan-slow");
+test("a flexible-gateway curated-route reorder preserves matching base facts, downgrades coverage, and does not invent transfers", () => {
+  const original = buildRouteTrip("japan-slow");
+  const trip = {
+    ...original,
+    brief: {
+      ...original.brief,
+      structuredBrief: original.brief.structuredBrief ? {
+        ...original.brief.structuredBrief,
+        destinations: original.brief.structuredBrief.destinations.map((destination) => ({
+          ...destination,
+          role: "preferred" as const,
+          priority: "normal" as const,
+        })),
+        hardConstraints: original.brief.structuredBrief.hardConstraints.filter((constraint) => (
+          constraint.type !== "start-at" && constraint.type !== "end-at"
+        )),
+      } : undefined,
+    },
+  };
   const reordered = [trip.stops[0]!, trip.stops[2]!, trip.stops[1]!].map((stop, index) => ({
     id: `day-${index + 1}`,
     stopId: stop.id,

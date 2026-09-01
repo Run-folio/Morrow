@@ -81,6 +81,7 @@ function taxonomy(
     const placeType = /\bcity\b/.test(addressType) ? "city" : "town";
     return { placeType, routability: "direct_destination", reason: `provider locality (${addressType}) is directly routable` };
   }
+  if (/\bcontinent\b/.test(kind)) return { placeType: "continent", routability: "planning_area", reason: "provider continent identity remains broad" };
   if (/\bcountry\b/.test(kind)) return { placeType: "country", routability: "planning_area", reason: "provider sovereign identity remains broad" };
   if (/\b(?:island|islet)\b/.test(kind)) return { placeType: "island", routability: "needs_base_selection", reason: "provider island identity needs an overnight base" };
   if (/\b(?:lake|reservoir|national_park|nature_reserve|protected_area|park|bare_rock|peak|volcano|cliff|waterfall|glacier)\b/.test(kind)) return { placeType: "natural_area", routability: "needs_base_selection", reason: "provider natural-area identity remains an anchor" };
@@ -190,8 +191,8 @@ export async function searchNominatimTravelCandidates(
       const name = result.name?.trim() || result.display_name?.split(",")[0]?.trim() || "";
       const country = result.address?.country?.trim() ?? "";
       const providerId = result.osm_type && result.osm_id ? `${result.osm_type}:${result.osm_id}` : "";
-      if (!providerId || !name || !country || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
       const facts = taxonomy(result, context);
+      if (!providerId || !name || (!country && facts.placeType !== "continent") || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
       const providerAliases = Object.values(result.namedetails ?? {}).filter((value) => value && normalize(value) !== normalize(name));
       const quality = matchQuality(name, phrase, mode, providerAliases);
       if (quality === "partial" && !normalize(name).includes(requested) && !requested.includes(normalize(name))) continue;
@@ -218,7 +219,7 @@ export async function searchNominatimTravelCandidates(
         canonicalName: name,
         ...(aliases.length ? { aliases } : {}),
         placeType: facts.placeType,
-        parentCountries: [country],
+        parentCountries: country ? [country] : [],
         parentRegionId: result.address?.state ?? result.address?.county,
         accessPlaceName: result.address?.city ?? result.address?.town ?? result.address?.village ?? result.address?.hamlet
           ?? result.address?.municipality ?? result.address?.suburb ?? result.address?.neighbourhood,

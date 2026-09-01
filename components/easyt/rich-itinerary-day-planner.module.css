@@ -165,6 +165,18 @@
   border-radius: var(--morrovia-radius);
   overflow: hidden;
   background: var(--morrovia-paper);
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+.periodDropReady {
+  border-color: color-mix(in srgb, var(--morrovia-action) 55%, var(--morrovia-line));
+  background: color-mix(in srgb, var(--morrovia-lilac) 42%, var(--morrovia-paper));
+}
+
+.periodDropActive {
+  border-color: var(--morrovia-action);
+  outline: 2px solid color-mix(in srgb, var(--morrovia-action) 18%, transparent);
+  outline-offset: 0;
 }
 
 .periodHeading {
@@ -194,24 +206,57 @@
   min-width: 0;
 }
 
+.activityDropGroup {
+  min-width: 0;
+}
+
+.dropMarker {
+  position: relative;
+  height: 6px;
+  overflow: visible;
+  color: transparent;
+  font: 0/1 var(--morrovia-ui);
+  text-align: center;
+}
+
+.dropMarker::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 10px;
+  left: 10px;
+  height: 2px;
+  border-radius: var(--morrovia-control-radius);
+  background: transparent;
+}
+
+.dropMarkerActive::before {
+  background: var(--morrovia-action);
+}
+
+.dropMarkerActive {
+  color: var(--morrovia-action);
+}
+
 .activity {
   display: grid;
   min-width: 0;
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px 9px;
   align-items: start;
   padding: 12px 13px;
+  transition: opacity .16s ease, transform .16s ease, background .16s ease;
 }
 
 .activity + .activity {
   border-top: 1px solid var(--morrovia-line);
 }
 
-.activity > svg {
-  width: 17px;
-  height: 17px;
-  margin-top: 1px;
-  color: var(--morrovia-action);
+.activityDragging {
+  opacity: .45;
+  background: var(--morrovia-lilac);
+  transform: scale(.985);
 }
 
 .activity strong {
@@ -228,6 +273,18 @@
   gap: 6px;
 }
 
+.dragHandle {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
 .activityTitle > span {
   padding: 4px 6px;
   border: 1px solid color-mix(in srgb, var(--morrovia-success) 28%, var(--morrovia-line));
@@ -240,12 +297,12 @@
 }
 
 .dayPartField {
-  grid-column: 2;
+  grid-column: 1 / -1;
   min-width: 0;
 }
 
 .activityMoveActions {
-  grid-column: 2;
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -279,6 +336,12 @@
   align-items: flex-start;
   justify-content: center;
   padding: 13px;
+}
+
+.freePeriodDropActive {
+  background: var(--morrovia-lilac-strong);
+  outline: 2px solid var(--morrovia-action);
+  outline-offset: -2px;
 }
 
 .addHere {
@@ -373,6 +436,16 @@
 
   .freePeriod {
     min-height: 0;
+  }
+
+  .dragHandle {
+    display: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .dragHandle {
+    display: none;
   }
 }
 

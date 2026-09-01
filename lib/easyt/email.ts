@@ -50,8 +50,13 @@ export async function sendEasyTEmail(email: EasyTEmail) {
     throw new Error("Email delivery is temporarily unavailable. Try again.");
   }
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    await createEasyTEmailEvent({ recipientEmail: email.to, subject: email.subject, template, status: "failed", errorMessage: detail.slice(0, 500) }).catch(() => undefined);
+    await createEasyTEmailEvent({
+      recipientEmail: email.to,
+      subject: email.subject,
+      template,
+      status: "failed",
+      errorMessage: `Email provider rejected request (${response.status})`,
+    }).catch(() => undefined);
     throw new Error("Email delivery is temporarily unavailable. Try again.");
   }
   const payload = await response.json().catch(() => ({})) as { id?: string };

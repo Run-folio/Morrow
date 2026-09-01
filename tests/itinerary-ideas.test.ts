@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { destinationHighlightCandidates, personalisedItineraryCandidates, type ItineraryDiscoveryPlace } from "../lib/easyt/itinerary-day-context.ts";
+import { destinationHighlightCandidates, itinerarySuggestionCandidates, personalisedItineraryCandidates, type ItineraryDiscoveryPlace } from "../lib/easyt/itinerary-day-context.ts";
 import { ideaStateForPlace, itineraryIdeaDayOptions, itineraryIdeaForPlace, preferredItineraryIdeaDay, reconcileItineraryIdeas, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "../lib/easyt/itinerary-ideas.ts";
+import { setDiscoveryPlaceScheduled } from "../lib/easyt/itinerary-activity-placement.ts";
 import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
 
 const places: ItineraryDiscoveryPlace[] = [
@@ -98,4 +99,42 @@ test("route reorder preserves stop/day identity and stop removal drops orphaned 
   assert.equal(reordered.brief.itineraryIdeas?.[0]?.dayId, "day-1");
   const removed = reconcileItineraryIdeas({ ...scheduled, stops: [], planItems: [] });
   assert.deepEqual(removed.brief.itineraryIdeas, []);
+});
+
+test("a scheduled canonical idea remains eligible for its source card to show Added feedback", () => {
+  const base = trip();
+  const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: places[0], reasons: ["destination-significance"] });
+  const scheduled = scheduleItineraryIdea(base, idea, "day-1", "morning");
+  assert.equal(itinerarySuggestionCandidates(scheduled, scheduled.planItems[0]!, places).some((place) => place.id === "temple"), true);
+});
+
+test("Map discovery uses the canonical idea path and preserves metadata, broad placement, and legacy selection", () => {
+  const base = trip();
+  const added = setDiscoveryPlaceScheduled(base, {
+    stopId: "kyoto",
+    place: places[0]!,
+    dayId: "day-2",
+    selected: true,
+    reasons: ["destination-significance"],
+  });
+  const idea = added.brief.itineraryIdeas?.[0];
+  assert.equal(idea?.placeId, "temple");
+  assert.equal(idea?.description, places[0]!.description);
+  assert.equal(idea?.area, "Kyoto");
+  assert.equal(idea?.dayId, "day-2");
+  assert.equal(idea?.dayPart, "morning");
+  assert.deepEqual(added.brief.selectedPlaces.kyoto, ["Kiyomizu-dera"]);
+  assert.equal(added.planItems[1]!.notes.includes("Kiyomizu-dera"), true);
+  assert.equal(setDiscoveryPlaceScheduled(added, { stopId: "kyoto", place: places[0]!, dayId: "day-2", selected: true }), added);
+
+  const removed = setDiscoveryPlaceScheduled(added, {
+    stopId: "kyoto",
+    place: places[0]!,
+    dayId: "day-2",
+    selected: false,
+  });
+  assert.equal(removed.brief.itineraryIdeas?.length, 0);
+  assert.deepEqual(removed.brief.selectedPlaces.kyoto, []);
+  assert.equal(removed.planItems[1]!.notes.includes("Kiyomizu-dera"), false);
+  assert.equal(setDiscoveryPlaceScheduled(removed, { stopId: "kyoto", place: places[0]!, dayId: "day-2", selected: false }), removed);
 });

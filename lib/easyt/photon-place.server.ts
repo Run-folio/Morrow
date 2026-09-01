@@ -67,6 +67,7 @@ function taxonomy(feature: PhotonFeature, context: PlaceResolutionContext): { pl
     const placeType = properties.osm_value === "city" ? "city" : "town";
     return { placeType, routability: "direct_destination", reason: `provider locality (${properties.osm_value}) is directly routable` };
   }
+  if (/\bcontinent\b/.test(kind)) return { placeType: "continent", routability: "planning_area", reason: "provider continent identity remains broad" };
   if (/\bcountry\b/.test(kind)) return { placeType: "country", routability: "planning_area", reason: "provider sovereign identity remains broad" };
   if (/\b(?:island|islet)\b/.test(kind)) return { placeType: "island", routability: "needs_base_selection", reason: "provider island identity needs an overnight base" };
   if (/\b(?:lake|reservoir|national_park|nature_reserve|protected_area|park|bare_rock|peak|volcano|cliff|waterfall|glacier)\b/.test(kind)) return { placeType: "natural_area", routability: "needs_base_selection", reason: "provider natural-area identity remains an anchor" };
@@ -110,8 +111,8 @@ export async function searchPhotonTravelCandidates(
     const name = properties.name?.trim() ?? "";
     const country = properties.country?.trim() ?? "";
     const providerId = properties.osm_type && properties.osm_id ? `${properties.osm_type}:${properties.osm_id}` : "";
-    if (!coordinates || !name || !country || !providerId) return [];
     const facts = taxonomy(feature, context);
+    if (!coordinates || !name || (!country && facts.placeType !== "continent") || !providerId) return [];
     if (facts.placeType === "unknown") return [];
     const quality = matchQuality(name, phrase);
     if (quality === "partial") return [];
@@ -133,7 +134,7 @@ export async function searchPhotonTravelCandidates(
       canonicalName: name,
       ...(quality === "alias" ? { aliases: [phrase] } : {}),
       placeType: facts.placeType,
-      parentCountries: [country],
+      parentCountries: country ? [country] : [],
       parentRegionId: properties.state ?? properties.county,
       accessPlaceName: properties.city,
       coordinates,

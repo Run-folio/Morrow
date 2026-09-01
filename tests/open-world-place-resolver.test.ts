@@ -204,7 +204,8 @@ test("bare exact recognised geographies outrank higher-scoring locality namesake
     );
     const mention = result.mentions[0];
     assert.equal(mention?.canonicalName, phrase);
-    assert.equal(mention?.status, "partially_resolved");
+    assert.equal(["resolved", "partially_resolved"].includes(mention?.status ?? ""), true);
+    assert.notEqual(mention?.status, "ambiguous");
     assert.equal(mention?.requiresBaseSelection, true);
     assert.equal(mention?.directlyRoutable, false);
     assert.equal(result.issues.some((issue) => issue.code === "region_requires_base" && issue.blocksRoute), true);

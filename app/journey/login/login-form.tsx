@@ -116,7 +116,7 @@ export default function LoginForm({
       <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured || googleBusy}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
     </form>
     {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}
-    <p className={styles.legalLink}>Read how Morrovia handles your data in our <a href="/journey/privacy">Privacy notice</a>.</p>
+    <p className={styles.legalLink}>{mode === "sign-up" ? <>By creating an account, you agree to the <a href="/journey/terms">Terms of Use</a> and acknowledge the <a href="/journey/privacy">Privacy Notice</a>.</> : <>Read the <a href="/journey/terms">Terms of Use</a> and how Morrovia handles your data in our <a href="/journey/privacy">Privacy Notice</a>.</>}</p>
   </section>;
 }
 

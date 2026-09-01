@@ -9,6 +9,8 @@ const context = readFileSync(new URL("../lib/easyt/itinerary-day-context.ts", im
 const ideas = readFileSync(new URL("../lib/easyt/itinerary-ideas.ts", import.meta.url), "utf8");
 const accommodation = readFileSync(new URL("../lib/easyt/accommodation.ts", import.meta.url), "utf8");
 const destinationAccommodation = readFileSync(new URL("../components/easyt/destination-accommodation-module.tsx", import.meta.url), "utf8");
+const refinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
+const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
 test("the itinerary redesign stays below TripShell and composes the three workspace regions", () => {
   assert.match(itinerary, /className=\{styles\.rail\}/);
@@ -26,6 +28,45 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /<EasyTTripCopilot/);
   assert.match(itinerary, /<InsertionControl/);
   assert.match(itinerary, /useTripMutationPersistence\(trip, presentation === "shell"\)/);
+});
+
+test("day header prioritises Find ideas and Add note while Luna remains available in More", () => {
+  const actionStart = itinerary.indexOf("className={styles.dayActionRegion}");
+  const actionEnd = itinerary.indexOf("mutation.saveState === \"error\"", actionStart);
+  const actions = itinerary.slice(actionStart, actionEnd);
+  assert.ok(actionStart > -1 && actionEnd > actionStart);
+  assert.ok(actions.indexOf("copy.findIdeas") < actions.indexOf("copy.addNote"));
+  assert.ok(actions.indexOf("copy.addNote") < actions.indexOf(">More</EasyTButton>"));
+  assert.match(actions, /role="menu"[\s\S]*copy\.askMorrovia/);
+  assert.doesNotMatch(actions, /copy\.shapeDay/);
+  assert.match(itinerary, /role="dialog" aria-labelledby=\{`\$\{tabIdPrefix\}-note-title`\}/);
+  assert.match(itinerary, /noteInputRef\.current\?\.focus\(\)/);
+  assert.match(itinerary, /event\.key === "Escape"/);
+  assert.match(styles, /\.headerNoteComposer[\s\S]*position: absolute/);
+  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.headerNoteComposer \{[\s\S]*position: fixed/);
+});
+
+test("Find ideas focuses the existing current-day suggestion surface and becomes a narrow-layout sheet", () => {
+  assert.match(itinerary, /ideasPanelRef\.current\?\.scrollIntoView/);
+  assert.match(itinerary, /ideasPanelRef\.current\?\.focus/);
+  assert.match(itinerary, /id=\{`\$\{tabIdPrefix\}-ideas`\}/);
+  assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);
+  assert.match(styles, /\.ideasSectionFocused/);
+  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.ideasSectionFocused \{[\s\S]*position: fixed/);
+});
+
+test("Map attraction Add schedules the canonical activity instead of only toggling selectedPlaces", () => {
+  assert.match(refinement, /day \? `Add to Day \$\{day\.dayNumber\}` : "Add to trip"/);
+  assert.match(refinement, /scheduledIdea\?\.dayPart/);
+  assert.match(mapWorkspace, /setDiscoveryPlaceScheduled\(trip, \{ stopId, place, dayId: targetDay\.id, selected \}\)/);
+  assert.doesNotMatch(mapWorkspace.slice(mapWorkspace.indexOf("const handleAttractionSelection"), mapWorkspace.indexOf("const undoPlannerEdit")), /selected\s*\? \[\.\.\.\(trip\.brief\.selectedPlaces/);
+});
+
+test("device-copy recovery is calm, explicit, and links to the protected review path", () => {
+  assert.match(itinerary, /You have newer changes on this device/);
+  assert.match(itinerary, /Both versions remain protected while you review the device changes/);
+  assert.match(itinerary, /tripSyncRecoveryPath\(workingTrip\.id\)/);
+  assert.match(itinerary, />Review device changes<\/EasyTLinkButton>/);
 });
 
 test("the contextual rail renders only canonical map, booking, recommendation, note and saved-place data", () => {
@@ -87,7 +128,7 @@ test("long canonical and provider content stays inside the timeline and planning
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(styles, /grid-template-columns: minmax\(270px, 310px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
   assert.match(styles, /\.rowSelect \{[\s\S]*white-space: normal/);
-  assert.match(styles, /\.logisticsCard,[\s\S]*\.savedIdeas button \{[\s\S]*white-space: normal/);
+  assert.match(styles, /\.logisticsCard,[\s\S]*\.savedIdeas > button \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.discoveryCopy > strong \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryCopy > p \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryActions button \{ min-height: 40px/);
@@ -109,12 +150,17 @@ test("recommendation cards use canonical day scoring, an accessible itinerary me
   assert.match(itinerary, /event\.key === "Escape"/);
   assert.match(itinerary, /event\.key === "ArrowDown"/);
   assert.match(itinerary, /triggerRef\.current\?\.focus\(\)/);
-  assert.match(itinerary, /scheduleItineraryIdea\(current, idea, dayId\)/);
+  assert.match(itinerary, /scheduleItineraryIdea\(current, idea, dayId, scheduledPart\)/);
+  assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
+  assert.match(itinerary, /placeItineraryActivity\(current, active\.id/);
   assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
   assert.match(itinerary, />\{pending \? "Saving…" : "Save"\}<\/EasyTButton>/);
   assert.match(styles, /\.discoveryMedia \{[\s\S]*height: 112px/);
   assert.match(styles, /\.discoveryMedia > img,[\s\S]*object-fit: cover/);
   assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.dayPickerPanel \{[\s\S]*position: fixed/);
+  assert.match(itinerary, /Choose day and part of day for/);
+  assert.match(itinerary, /itineraryDayParts\.map/);
+  assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.dragHint \{ display: none; \}/);
   for (const story of ["RecommendationDefault", "RecommendationNoImage", "RecommendationInterestMatch", "RecommendationAlreadySaved", "RecommendationAlreadyAdded", "RecommendationDayPickerOpen", "RecommendationLongTitle", "RecommendationMobile320"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }

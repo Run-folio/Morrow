@@ -20,12 +20,17 @@ test("the production itinerary owner consumes canonical composition and persists
 
 test("broad periods use semantic headings, canonical controls, and a keyboard-accessible clear state", () => {
   assert.match(component, /itineraryDayParts\.map/);
-  assert.match(component, /<section className=\{styles\.period\} aria-labelledby=/);
+  assert.match(component, /<section className=\{`\$\{styles\.period\}/);
   assert.match(component, /<EasyTSelect/);
   assert.match(component, /<option value="">/);
   assert.match(component, /event\.target\.value \? event\.target\.value as ItineraryDayPart : null/);
   assert.match(component, /disabled=\{pending \|\| !onDayPartChange\}/);
-  assert.doesNotMatch(component, /draggable|onDragStart|onDrop/);
+  assert.match(component, /draggable/);
+  assert.match(component, /onActivityDragStart/);
+  assert.match(component, /onActivityDrop/);
+  assert.match(component, /data-day-part=\{part\}/);
+  assert.match(component, /data-drop-index/);
+  assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
 });
 
 test("free periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
@@ -37,6 +42,10 @@ test("free periods, contextual add controls, first-class travel, and tonight con
   assert.match(component, /tonight\.state === "not-organised"/);
   assert.match(component, /copy\.noOvernight/);
   assert.doesNotMatch(component, /09:00|13:00|18:00|hourly|calendar grid/i);
+  const travelSection = component.slice(component.indexOf("composition.transfers.length"), component.indexOf("className={styles.periodGrid}"));
+  const tonightSection = component.slice(component.indexOf("className={styles.tonight}"), component.indexOf("</section>", component.indexOf("className={styles.tonight}")));
+  assert.doesNotMatch(travelSection, /onDrop/);
+  assert.doesNotMatch(tonightSection, /onDrop/);
 });
 
 test("long names and compact breakpoints remain contained without a parallel mobile data path", () => {
@@ -55,6 +64,7 @@ test("Storybook uses the production component for composed planner and responsiv
     "ArrivalDay",
     "BookedActivity",
     "AuthoredActivities",
+    "DraggingActivityOverMorning",
     "EmptyDaypart",
     "MixedGeneratedAndAuthored",
     "FullMorningAfternoonEvening",

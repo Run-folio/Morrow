@@ -339,9 +339,67 @@ export const RecommendationAlreadyAdded: Story = RecommendationAlreadyScheduled;
 export const RecommendationDayPickerOpen: Story = {
   play: async ({ canvasElement }) => {
     const trigger = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
-      .find((button) => button.textContent?.includes("Add to Day 2"));
+      .find((button) => button.getAttribute("aria-label")?.includes("Choose day and part of day"));
     trigger?.click();
   },
+};
+
+export const EmptyDayWithSidebarSuggestion: Story = {
+  args: { trip: edgeCaseTrip, selectedDayNumber: 2, initialSuggestions: { 2: [interestSuggestionPool[0]] } },
+};
+
+export const ClickAddAutomaticallyPlaced: Story = {
+  play: async ({ canvasElement }) => {
+    const add = [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Add to Day"));
+    add?.click();
+  },
+};
+
+export const ExplicitDayPartPlacement: Story = RecommendationDayPickerOpen;
+
+export const SuggestionDraggingOverMorning: Story = {
+  play: async ({ canvasElement }) => {
+    const card = canvasElement.querySelector<HTMLElement>("[data-itinerary-suggestion-id]");
+    const target = canvasElement.querySelector<HTMLElement>("[data-day-part='morning'] [data-drop-index='0']");
+    if (!card || !target) return;
+    const transfer = new DataTransfer();
+    card.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: transfer }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    target.dispatchEvent(new DragEvent("dragenter", { bubbles: true, dataTransfer: transfer }));
+  },
+};
+
+export const SavedIdeaScheduling: Story = UnscheduledSavedIdea;
+export const AlreadyAddedSuggestionState: Story = RecommendationAlreadyScheduled;
+export const MobileAddFallback390: Story = { ...RecommendationDefault, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+export const HeaderMoreMenuOpen: Story = {
+  play: async ({ canvasElement }) => {
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "More")?.click();
+  },
+};
+
+export const AddNoteComposerOpen: Story = {
+  play: async ({ canvasElement }) => {
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Add note"))?.click();
+  },
+};
+
+export const AddNoteMobileSheet390: Story = {
+  ...AddNoteComposerOpen,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const FindIdeasFocused: Story = {
+  play: async ({ canvasElement }) => {
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Find ideas"))?.click();
+  },
+};
+
+export const FindIdeasMobileSheet390: Story = {
+  ...FindIdeasFocused,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const SparseRecommendationEvidence: Story = {

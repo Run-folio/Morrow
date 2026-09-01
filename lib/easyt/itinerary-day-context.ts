@@ -258,14 +258,18 @@ export function itinerarySuggestionCandidates(
     ...(trip.brief.mapPins ?? []).filter((pin) => pin.dayNumber === day.dayNumber).map((pin) => pin.title),
   ].map(normalized));
   const pinIds = new Set((trip.brief.mapPins ?? []).map((pin) => pin.id));
+  const ideaPlaceIds = new Set((trip.brief.itineraryIdeas ?? [])
+    .filter((idea) => idea.stopId === day.stopId)
+    .map((idea) => idea.placeId));
   const seen = new Set<string>();
   const eligible = places.filter((place) => {
     const title = normalized(place.title);
     const category = itineraryDiscoveryCategory(place);
+    const canonicalIdea = ideaPlaceIds.has(place.id);
     const duplicate = !title
       || seen.has(title)
-      || visibleTitles.has(title)
-      || pinIds.has(mappedPlacePinId(day.dayNumber, category, { id: place.id, name: place.title, coordinates: place.coordinates }));
+      || (!canonicalIdea && visibleTitles.has(title))
+      || (!canonicalIdea && pinIds.has(mappedPlacePinId(day.dayNumber, category, { id: place.id, name: place.title, coordinates: place.coordinates })));
     seen.add(title);
     return !duplicate && validCoordinates(place.coordinates);
   });

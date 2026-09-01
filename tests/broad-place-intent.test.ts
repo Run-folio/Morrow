@@ -2,11 +2,133 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { captureJourneyBriefWithProvider } from "../lib/easyt/journey-capture.ts";
 import {
+  guidedPlanningAreaSuggestions,
+  guidedPlanningAreaShapes,
+  placeCandidateWithinPlanningParent,
+  placeMentionSupportsMultipleSelections,
   resolveExplicitPlaceMentionsWithProvider,
   resolvePlaceMentions,
   type PlaceIntelligenceProvider,
   type PlaceProviderCandidate,
 } from "../lib/easyt/place-intelligence.ts";
+
+test("exact continents are recognised as broad planning identity rather than a locality ambiguity", () => {
+  const result = resolvePlaceMentions("Africa");
+  const africa = result.mentions[0];
+  assert.equal(africa?.canonicalPlaceId, "continent-africa");
+  assert.equal(africa?.placeType, "continent");
+  assert.equal(africa?.status, "resolved");
+  assert.equal(africa?.routability, "planning_area");
+  assert.equal(africa?.candidates.length, 0);
+  assert.equal(placeMentionSupportsMultipleSelections(africa!), true);
+  assert.equal(placeCandidateWithinPlanningParent({
+    canonicalName: "Nairobi",
+    placeType: "city",
+    parentCountries: ["Kenya"],
+    coordinates: [36.8219, -1.2921],
+  }, {
+    canonicalPlaceId: africa?.canonicalPlaceId,
+    canonicalName: africa!.canonicalName,
+    placeType: africa!.placeType,
+    parentCountries: africa!.parentCountries,
+  }), true);
+});
+
+test("reviewed route knowledge supplies multi-place country guidance without destination switches", () => {
+  for (const name of ["Australia", "Thailand", "Philippines"]) {
+    const mention = resolvePlaceMentions(name).mentions[0];
+    assert.equal(mention?.placeType, "country");
+    const suggestions = guidedPlanningAreaSuggestions(mention!);
+    assert.equal(suggestions.length >= 2, true, `${name} should have multiple useful choices`);
+    assert.equal(suggestions.every((suggestion) => suggestion.country === name), true);
+    assert.equal(new Set(suggestions.map((suggestion) => suggestion.canonicalPlaceId)).size, suggestions.length);
+  }
+});
+
+test("a specific anchor narrows continent guidance while preserving both identities", async () => {
+  const capture = await captureJourneyBriefWithProvider("I would like to go to Africa to Serengeti", {
+    id: "anchor-fixture",
+    label: "Anchor fixture",
+    lookup: async (phrase) => phrase.toLocaleLowerCase().includes("serengeti") ? [{
+      ...candidate("serengeti", "Serengeti National Park", "natural_area", "Tanzania", [34.8333, -2.3333], "needs_base_selection"),
+    }] : [],
+  });
+  const africa = capture.mentions.find((mention) => mention.canonicalPlaceId === "continent-africa");
+  const serengeti = capture.mentions.find((mention) => mention.canonicalName === "Serengeti National Park");
+  assert.ok(africa);
+  assert.ok(serengeti);
+  const suggestions = guidedPlanningAreaSuggestions(africa, { mentions: capture.mentions, interests: ["wildlife"] });
+  assert.equal(suggestions[0]?.anchorMatched, true);
+  assert.equal(suggestions[0]?.country, "Tanzania");
+  assert.equal(capture.mentions.some((mention) => mention.canonicalPlaceId === "continent-africa"), true);
+  assert.equal(capture.mentions.some((mention) => mention.canonicalName === "Serengeti National Park"), true);
+});
+
+test("reviewed route families provide at most three review-only shapes for a strong country", () => {
+  const thailand = resolvePlaceMentions("Thailand").mentions[0];
+  assert.ok(thailand);
+  const shapes = guidedPlanningAreaShapes(thailand, { interests: ["food", "culture"], durationDays: 14 });
+  assert.equal(shapes.length > 0 && shapes.length <= 3, true);
+  assert.equal(shapes.every((shape) => shape.reviewedAt && shape.places.length >= 2), true);
+  assert.equal(shapes.every((shape) => shape.places.every((place) => place.country === "Thailand")), true);
+  assert.match(shapes[0]?.reason ?? "", /Food|Culture/);
+});
+
+test("a country without a reviewed multi-place route shape stays truthful", () => {
+  const iran = resolvePlaceMentions("Iran").mentions[0];
+  assert.ok(iran);
+  assert.deepEqual(guidedPlanningAreaShapes(iran, { interests: ["culture"], durationDays: 12 }), []);
+});
+
+test("canonical interests rank valid place suggestions without changing the broad parent", () => {
+  const panama = resolvePlaceMentions("Panama").mentions[0];
+  assert.ok(panama);
+  const neutral = guidedPlanningAreaSuggestions(panama);
+  const nature = guidedPlanningAreaSuggestions(panama, { interests: ["nature"] });
+  assert.equal(neutral[0]?.name, "Panama City");
+  assert.equal(nature[0]?.name, "Bocas del Toro");
+  assert.equal(nature.every((suggestion) => suggestion.country === "Panama"), true);
+  assert.equal(panama.canonicalName, "Panama");
+  assert.equal(panama.routability, "planning_area");
+});
+
+test("specific Serengeti intent suppresses unrelated Africa route shapes and place suggestions", async () => {
+  const capture = await captureJourneyBriefWithProvider("I would like to go to Africa to Serengeti", {
+    id: "route-shape-anchor-fixture",
+    label: "Route-shape anchor fixture",
+    lookup: async (phrase) => phrase.toLocaleLowerCase().includes("serengeti") ? [{
+      ...candidate("serengeti-shape", "Serengeti National Park", "natural_area", "Tanzania", [34.8333, -2.3333], "needs_base_selection"),
+    }] : [],
+  });
+  const africa = capture.mentions.find((mention) => mention.canonicalPlaceId === "continent-africa");
+  const serengeti = capture.mentions.find((mention) => mention.canonicalName === "Serengeti National Park");
+  assert.ok(africa);
+  assert.ok(serengeti);
+  const shapes = guidedPlanningAreaShapes(africa, { mentions: capture.mentions, interests: ["nature"] });
+  const suggestions = guidedPlanningAreaSuggestions(africa, { mentions: capture.mentions, interests: ["nature"] });
+  assert.deepEqual(shapes.map((shape) => shape.routeFamilyKey), ["kenya-tanzania"]);
+  assert.equal(shapes[0]?.anchorMentionId, serengeti.mentionId);
+  assert.match(shapes[0]?.reason ?? "", /Serengeti/);
+  assert.equal(suggestions.every((suggestion) => suggestion.country === "Tanzania"), true);
+});
+
+test("unknown duration and interests do not create unsupported fit claims", () => {
+  const italy = resolvePlaceMentions("Italy").mentions[0];
+  assert.ok(italy);
+  const shape = guidedPlanningAreaShapes(italy)[0];
+  assert.ok(shape);
+  assert.doesNotMatch(shape.reason, /length|day|night/i);
+  assert.deepEqual(shape.matchedInterestIds, []);
+});
+
+test("a relaxed pace proposes fewer bases without completing the parent", () => {
+  const italy = resolvePlaceMentions("Italy").mentions[0];
+  assert.ok(italy);
+  const shape = guidedPlanningAreaShapes(italy, { pace: "relaxed" })[0];
+  assert.equal(shape?.places.length, 2);
+  assert.equal(shape?.reason, "Fewer bases for a slower trip.");
+  assert.equal(italy.requiresBaseSelection, true);
+});
 
 const candidate = (
   providerId: string,

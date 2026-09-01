@@ -87,7 +87,7 @@ export default function CookieNoticePage() {
             <Link href="/journey/privacy">Read the Privacy notice</Link>
             <a href="#cookie-settings">Open Cookie settings</a>
           </section>
-          <p className={styles.operator}>{morroviaLegalIdentity.productName} is operated by {morroviaLegalIdentity.legalOperator}.</p>
+          <p className={styles.operator}>{morroviaLegalIdentity.operatorTradingAs} operates the Morrovia product.</p>
         </article>
       </div>
     </main>

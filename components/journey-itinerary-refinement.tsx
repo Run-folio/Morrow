@@ -3,7 +3,7 @@
 import { Map, MapPin, Plus, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
-import { tripIntentForTrip, type EasyTTrip, type TripStop } from "@/lib/easyt/trip";
+import { tripIntentForTrip, type EasyTTrip, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import { itineraryInterestReason, rankItineraryDiscoveryPlaces } from "@/lib/easyt/itinerary-day-context";
 import { affiliateProviderLabel, getCurrentPartnerAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
@@ -14,7 +14,7 @@ import styles from "./journey-itinerary-refinement.module.css";
 type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number };
 const filters = ["All", "Food", "Nature", "Cities", "Beach"];
 
-export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onExploreMap, compact = false, activityAction }: { trip: EasyTTrip; stop?: TripStop; onSelectionChange: (stopId: string, title: string, selected: boolean) => void; onExploreMap: () => void; compact?: boolean; activityAction?: ResolvedAffiliateAction | null }) {
+export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange, onExploreMap, compact = false, activityAction }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; onSelectionChange: (stopId: string, place: Place | string, selected: boolean) => void; onExploreMap: () => void; compact?: boolean; activityAction?: ResolvedAffiliateAction | null }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
@@ -66,9 +66,11 @@ export function JourneyItineraryRefinement({ trip, stop, onSelectionChange, onEx
     {loading && !places.length ? <div className={styles.loadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={54} radius="card" /><MorroviaSkeleton height={54} radius="card" /></div> : null}
     {!loading && searchUnavailable ? <MorroviaSectionStatus state="error" title="Attractions are unavailable" detail="Your day and existing selections are unchanged. Try the provider again when you’re ready." retryLabel="Try places again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
     {visible.length ? <div className={styles.places}>{visible.map((place) => {
-      const isSelected = selected.includes(place.title);
+      const scheduledIdea = (trip.brief.itineraryIdeas ?? []).find((idea) => idea.stopId === stop.id && idea.placeId === place.id && Boolean(idea.dayId));
+      const isSelected = selected.includes(place.title) || Boolean(scheduledIdea);
       const interestReason = itineraryInterestReason(place, interests);
-      return <article key={place.id}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><div><small>{place.area} · {place.type}{interestReason ? ` · ${interestReason}` : ""}</small><strong>{place.title}</strong><p>{place.description}</p></div><button type="button" aria-pressed={isSelected} onClick={() => { onSelectionChange(stop.id, place.title, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id }); }}>{isSelected ? <>Added <X /></> : <><Plus /> Add to trip</>}</button></article>;
+      const scheduledPart = scheduledIdea?.dayPart ? scheduledIdea.dayPart[0]!.toUpperCase() + scheduledIdea.dayPart.slice(1) : null;
+      return <article key={place.id}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><div><small>{place.area} · {place.type}{interestReason ? ` · ${interestReason}` : ""}</small><strong>{place.title}</strong><p>{place.description}</p></div><button type="button" aria-pressed={isSelected} onClick={() => { onSelectionChange(stop.id, place, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id, day_number: day?.dayNumber }); }}>{isSelected ? <>{scheduledPart ? `Added to ${scheduledPart}` : "Added"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to trip"}</>}</button></article>;
     })}</div> : !loading && !searchUnavailable ? <p className={styles.state}>No short list is available yet. Explore the map when you want a deeper look.</p> : null}
     <button type="button" className={styles.explore} onClick={() => { trackEvent("attraction_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(); }}>Explore more on map <Map /></button>
     {experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`map-experiences-${stop.id}`}>

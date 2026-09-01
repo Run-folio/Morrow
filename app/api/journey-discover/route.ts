@@ -134,7 +134,9 @@ export async function GET(request: NextRequest) {
       });
     return NextResponse.json({ places });
   } catch (error) {
-    console.error("Journey discovery failed", error);
+    console.error("Journey discovery failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     return NextResponse.json({ places: [] });
   }
 }

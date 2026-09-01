@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { composeItineraryDay, fallbackItineraryDayPart } from "../lib/easyt/itinerary-day-composition.ts";
+import { placeItineraryActivity, preferredItineraryDayPart } from "../lib/easyt/itinerary-activity-placement.ts";
 import {
   assignItineraryIdeaDayPart,
   itineraryIdeaForPlace,
@@ -22,6 +23,14 @@ class MemoryStorage implements EasyTBrowserStorage {
   setItem(key: string, value: string) { this.values.set(key, value); }
   removeItem(key: string) { this.values.delete(key); }
   key(index: number) { return [...this.values.keys()][index] ?? null; }
+}
+
+class FailingStorage implements EasyTBrowserStorage {
+  get length() { return 0; }
+  getItem() { return null; }
+  setItem() { throw new Error("storage unavailable"); }
+  removeItem() {}
+  key() { return null; }
 }
 
 function day(id: string, stopId: string, dayNumber: number, date: string, notes: string[] = []): PlanItem {
@@ -292,4 +301,90 @@ test("trip duplication remaps the scheduled day identity while preserving dayPar
   assert.equal(copiedIdea?.dayPart, "morning");
   assert.equal(duplicate.planItems.some((item) => item.id === copiedIdea?.dayId), true);
   assert.notEqual(copiedIdea?.dayId, "kyoto-3");
+});
+
+test("automatic Add to Day chooses a deterministic suitable available period without inventing a time", () => {
+  const source = tripFixture();
+  const attraction = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Shosei-en Garden"), reasons: ["destination-significance"] });
+  const food = itineraryIdeaForPlace({ stopId: "kyoto", place: { ...place("market", "Nishiki Market"), type: "Food", tags: ["Food"] }, reasons: ["interest-relevance"] });
+
+  assert.equal(preferredItineraryDayPart(source, "kyoto-4", attraction.category), "morning");
+  assert.equal(preferredItineraryDayPart(source, "kyoto-4", food.category), "midday");
+  const scheduled = scheduleItineraryIdea(source, attraction, "kyoto-4", preferredItineraryDayPart(source, "kyoto-4", attraction.category));
+  assert.equal(scheduled.brief.itineraryIdeas?.find((idea) => idea.id === attraction.id)?.dayPart, "morning");
+  assert.equal(composeItineraryDay(scheduled, "kyoto-4")?.planned.morning[0]?.id, attraction.id);
+});
+
+test("suggestion metadata and stable identity survive scheduling and JSON reload", () => {
+  const source = tripFixture();
+  const idea = itineraryIdeaForPlace({
+    stopId: "kyoto",
+    place: { ...place("cathedral", "Kyoto Cathedral"), image: "/cathedral.jpg", sourceUrl: "https://example.test/cathedral", description: "A compact cultural stop." },
+    reasons: ["destination-significance"],
+  });
+  const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
+  const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
+  const stored = reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  assert.equal(stored?.id, idea.id);
+  assert.equal(stored?.image, "/cathedral.jpg");
+  assert.equal(stored?.sourceUrl, "https://example.test/cathedral");
+  assert.equal(stored?.area, "Kyoto");
+  assert.equal(stored?.placeType, "Culture");
+  assert.equal(stored?.description, "A compact cultural stop.");
+  assert.equal(composeItineraryDay(reloaded, "kyoto-4")?.planned.afternoon[0]?.image, "/cathedral.jpg");
+});
+
+test("canonical drag placement reorders within a period and moves between periods without duplication", () => {
+  const base = tripFixture();
+  const authored: EasyTTrip = {
+    ...base,
+    brief: { ...base.brief, customActivities: { 4: ["Temple walk", "Tea ceremony"] } },
+    planItems: base.planItems.map((item) => item.id === "kyoto-4" ? {
+      ...item,
+      notes: ["Temple walk", "Tea ceremony"],
+      noteDayParts: ["morning", "morning"],
+    } : item),
+  };
+  const initial = composeItineraryDay(authored, "kyoto-4")!;
+  const tea = initial.planned.morning.find((activity) => activity.title === "Tea ceremony")!;
+  const reordered = placeItineraryActivity(authored, "kyoto-4", tea.id, "morning", 0);
+  assert.equal(reordered.changed, true);
+  assert.deepEqual(composeItineraryDay(reordered.trip, "kyoto-4")?.planned.morning.map((activity) => activity.title), ["Tea ceremony", "Temple walk"]);
+
+  const moved = placeItineraryActivity(reordered.trip, "kyoto-4", tea.id, "afternoon", 0);
+  const composition = composeItineraryDay(moved.trip, "kyoto-4")!;
+  assert.equal(moved.changed, true);
+  assert.deepEqual(composition.planned.morning.map((activity) => activity.title), ["Temple walk"]);
+  assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Tea ceremony"]);
+  assert.equal(Object.values(composition.planned).flat().filter((activity) => activity.id === tea.id).length, 1);
+
+  const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });
+  const scheduled = scheduleItineraryIdea(moved.trip, idea, "kyoto-4", "morning");
+  const movedIdea = placeItineraryActivity(scheduled, "kyoto-4", idea.id, "evening", 0);
+  const withMovedIdea = composeItineraryDay(movedIdea.trip, "kyoto-4")!;
+  assert.equal(movedIdea.changed, true);
+  assert.equal(withMovedIdea.planned.evening.some((activity) => activity.id === idea.id), true);
+  assert.equal(Object.values(withMovedIdea.planned).flat().filter((activity) => activity.id === idea.id).length, 1);
+});
+
+test("saved ideas remain unscheduled until the canonical schedule action is used", () => {
+  const source = tripFixture();
+  const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });
+  const saved = { ...source, brief: { ...source.brief, itineraryIdeas: [idea] } };
+  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(saved.planItems.some((day) => day.notes.includes(idea.title)), false);
+  const scheduled = scheduleItineraryIdea(saved, idea, "kyoto-4", "afternoon");
+  assert.equal(scheduled.brief.itineraryIdeas?.[0]?.dayId, "kyoto-4");
+  assert.equal(scheduled.planItems.find((day) => day.id === "kyoto-4")?.notes.filter((note) => note === idea.title).length, 1);
+});
+
+test("a failed durable write leaves the original suggestion and itinerary unchanged", () => {
+  const source = tripFixture();
+  const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });
+  const saved = { ...source, brief: { ...source.brief, itineraryIdeas: [idea] } };
+  const scheduled = scheduleItineraryIdea(saved, idea, "kyoto-4", "afternoon");
+  const write = saveTripRecoveryToStorage(new FailingStorage(), scheduled, { ownerId: null, writeId: "failed-placement" });
+  assert.equal(write.stored, false);
+  assert.equal(saved.brief.itineraryIdeas?.[0]?.dayId, undefined);
+  assert.equal(saved.planItems.find((day) => day.id === "kyoto-4")?.notes.includes(idea.title), false);
 });

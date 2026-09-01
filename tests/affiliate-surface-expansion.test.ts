@@ -68,7 +68,8 @@ test("each affiliate context renders one nearby disclosure and provider-neutral 
   ];
   files.forEach((file) => {
     const source = readFileSync(file, "utf8");
-    assert.equal((source.match(/\{affiliateDisclosure\}/g) ?? []).length, 1, file);
+    const expectedDisclosureContexts = file === "components/easyt/trip-itinerary-workspace.tsx" ? 2 : 1;
+    assert.equal((source.match(/\{affiliateDisclosure\}/g) ?? []).length, expectedDisclosureContexts, file);
     assert.match(source, /affiliateProviderLabel/);
   });
 });

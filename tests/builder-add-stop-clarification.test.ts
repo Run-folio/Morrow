@@ -142,8 +142,50 @@ test("19 needs-base clarification is neutral, focus-managed, and not aria-invali
   assert.match(styles, /\.inlinePlanningClarification\{[^}]*var\(--morrovia-lilac\)/);
 });
 
-test("20 pending base blocks Step 2 and selecting a base clears that blocker", () => {
+test("20 pending geography blocks Step 2 until a base or broad-area completion clears it", () => {
   assert.match(builder, /const blockingPlaceIssue = placeIssues\.find\(\(issue\) => issue\.blocksRoute && !selectedMentionIds\.has\(issue\.mentionId\)\)/);
-  assert.match(builder, /setPlaceSelections\(\(current\) => \[\{[\s\S]*?mentionId: targetMentionId/);
+  assert.match(builder, /const nextSelection: PlaceSelection = \{[\s\S]*?mentionId: targetMentionId/);
+  assert.match(builder, /setPlaceSelections\(\(current\) => \[nextSelection,/);
   assert.match(builder, /setTransientPlanningMentionId\(\(current\) => current === targetMentionId \? null : current\)/);
+  assert.match(builder, /const completePlanningArea = \(mention: CapturedLocation\) =>/);
+  assert.match(builder, /setCompletedPlanningAreaMentionIds\(\(current\) => \[\.\.\.new Set\(\[\.\.\.current, mention\.mentionId\]\)\]\)/);
+});
+
+test("21 route shapes are review-only until the traveller explicitly applies them", () => {
+  assert.match(builder, /Review the places before adding them\. Nothing has changed yet\./);
+  assert.match(builder, /aria-expanded=\{isReviewing\}/);
+  assert.match(builder, /applyGuidedPlanningShape\(mention, shape\)/);
+  assert.doesNotMatch(builder.slice(builder.indexOf("const routeShapes ="), builder.indexOf("const reviewingShape =")), /setStops|setPlaceSelections/);
+});
+
+test("22 applying a route shape adds every proposed canonical place", () => {
+  assert.match(builder, /for \(const suggestion of shape\.places\)[\s\S]*?await addGuidedPlanningPlace\(mention, suggestion\)/);
+  assert.match(builder, /canonicalPlaceId: suggestion\.canonicalPlaceId/);
+  assert.match(builder, /provenance: suggestion\.provenance/);
+});
+
+test("23 applying places does not mark the planning area complete", () => {
+  const applyShape = builder.slice(builder.indexOf("const applyGuidedPlanningShape"), builder.indexOf("const confirmAttractionVisit"));
+  assert.doesNotMatch(applyShape, /completePlanningArea|setCompletedPlanningAreaMentionIds/);
+  assert.match(builder, /Done adding places/);
+});
+
+test("24 completed countries retain the existing explicit reopen path", () => {
+  assert.match(builder, /reopenPlanningArea\(mention\)/);
+  assert.match(builder, /Add or change places/);
+  assert.match(builder, /setCompletedPlanningAreaMentionIds\(\(current\) => current\.filter/);
+});
+
+test("25 lightweight interest guidance is local and keeps scoped search available", () => {
+  assert.match(builder, /setAreaGuidanceInterests\(\(current\) => \(\{ \.\.\.current, \[mention\.mentionId\]: interest \}\)\)/);
+  assert.doesNotMatch(builder.slice(builder.indexOf("WHAT WOULD YOU LIKE MORE OF?"), builder.indexOf("showIndividualSuggestions")), /toggleInterest|setTripIntent|setTravelProfile/);
+  assert.match(builder, /parentConstraint=\{planningParentForMention\(mention\)\}/);
+});
+
+test("26 guidance uses progressive disclosure and native keyboard-operable controls", () => {
+  assert.match(builder, /See other places/);
+  assert.match(builder, /Explore another route/);
+  assert.match(builder, /<button type="button" aria-expanded=\{isReviewing\}/);
+  assert.match(styles, /\.guidedAreaShapes section>button:focus-visible/);
+  assert.match(styles, /\.guidedAreaQuestion>div button:focus-visible/);
 });

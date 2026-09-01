@@ -140,7 +140,8 @@ test("contextual disclosure supports mouse, touch, keyboard dismissal and screen
 
 test("trip submission and typed-value ownership remain unchanged", () => {
   const capture = source("components/easyt/morrovia-trip-capture.tsx");
-  assert.match(capture, /if \(disabled \|\| loading \|\| !value\.trim\(\)\) return/);
+  assert.match(capture, /if \(disabled \|\| loading\) return/);
+  assert.match(capture, /validateJourneyCaptureSubmission\(\{ prompt: value, allowEmptyPrompt \}\)/);
   assert.match(capture, /void onSubmit\(\)/);
   assert.match(capture, /value=\{value\}/);
   assert.match(capture, /onChange=\{\(event\) => updateValue\(event\.target\.value, "text"\)\}/);

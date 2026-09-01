@@ -24,7 +24,10 @@ async function sendGiftEmail(input: {
     return true;
   } catch (error) {
     // The invitation remains valid even when email delivery is unavailable.
-    console.error("EasyT gift email delivery failed", error);
+    console.error("Morrovia gift email delivery failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode: (error as { code?: unknown } | null)?.code,
+    });
     return false;
   }
 }

@@ -177,6 +177,20 @@ export const BookedActivity: Story = FullFourSectionDay;
 
 export const AuthoredActivities: Story = { render: () => <StoryFrame trip={authoredTrip} dayId="kyoto-2" /> };
 
+export const DraggingActivityOverMorning: Story = {
+  args: {
+    dragActive: true,
+    draggedActivityId: "idea-kiyomizu",
+    onActivityDragStart: () => undefined,
+    onActivityDragEnd: () => undefined,
+    onActivityDrop: () => undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const target = canvasElement.querySelector<HTMLElement>("[data-day-part='morning'] [data-drop-index='0']");
+    target?.dispatchEvent(new DragEvent("dragenter", { bubbles: true, dataTransfer: new DataTransfer() }));
+  },
+};
+
 export const EmptyDaypart: Story = SparseDay;
 
 export const MixedGeneratedAndAuthored: Story = FullFourSectionDay;

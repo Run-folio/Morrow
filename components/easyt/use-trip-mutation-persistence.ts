@@ -57,7 +57,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     if (recovery && !matchingRecovery) {
       conflictRef.current = true;
       setFailure("recovery");
-      setError("This device already has a different unsynced copy. Open that device copy before editing this version.");
+      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
       setSaveState("error");
     }
     queueRef.current.reset(initialTrip);
@@ -70,7 +70,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     if (recovery && !matchingRecovery) {
       conflictRef.current = true;
       setFailure("recovery");
-      setError("This device already has a different unsynced copy. Open that device copy before editing this version.");
+      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
       setSaveState("error");
     }
     queueRef.current.reset(initialTrip);
@@ -101,7 +101,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       recoveryHandleRef.current = null;
       conflictRef.current = true;
       setFailure("recovery");
-      setError("A newer device edit was preserved while this version finished syncing. Open the device copy before continuing.");
+      setError("Newer changes on this device were preserved while this version finished syncing. Review them before continuing.");
       setSaveState("error");
     }
     return acknowledged;
@@ -132,7 +132,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     if (!recovery.stored) {
       setFailure("recovery");
       setError(recovery.blockedByExistingRecovery
-        ? "This device already has a different unsynced copy. Open that device copy before editing this version."
+        ? "This browser has newer trip changes saved separately. Review them before editing this version."
         : "Browser storage is unavailable, so this change was not applied.");
       setSaveState("error");
       return false;
@@ -230,7 +230,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     if (loadTripRecovery(saved.id, recoveryOwnerId)) {
       conflictRef.current = true;
       setFailure("recovery");
-      setError("The cloud copy changed, but a separate device edit is still preserved. Open that device copy before continuing.");
+      setError("The saved trip changed, while newer changes on this device remain preserved separately. Review them before continuing.");
       setSaveState("error");
       return false;
     }

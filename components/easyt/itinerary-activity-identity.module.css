@@ -1,0 +1,67 @@
+.identity {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.media,
+.icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-action);
+}
+
+.media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media svg,
+.icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.copy strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: .88rem;
+  line-height: 1.35;
+}
+
+.copy small {
+  overflow-wrap: anywhere;
+  color: var(--morrovia-muted);
+  font: 650 .66rem/1.35 var(--morrovia-meta);
+}
+
+.compact {
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.compact .media,
+.compact .icon {
+  width: 24px;
+  height: 24px;
+}
+
+.compact .copy strong {
+  font-size: .82rem;
+}

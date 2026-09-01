@@ -102,5 +102,5 @@ export const ShapeTheDayEat: Story = {
 };
 
 export const ShapeTheDaySee: Story = {
-  render: () => <div style={{ maxWidth: 620 }}><JourneyItineraryRefinement trip={storyTrip()} stop={storyTrip().stops[0]} onSelectionChange={() => {}} onExploreMap={() => {}} compact /></div>,
+  render: () => <div style={{ maxWidth: 620 }}><JourneyItineraryRefinement trip={storyTrip()} stop={storyTrip().stops[0]} day={storyTrip().planItems[0]} onSelectionChange={() => {}} onExploreMap={() => {}} compact /></div>,
 };

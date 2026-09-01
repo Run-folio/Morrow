@@ -205,3 +205,22 @@ test("base replacement preserves the planning mention relationship and does not 
   assert.doesNotMatch(builder.slice(builder.indexOf("const submitInitialTripBrief"), builder.indexOf("const moveStop")), /tripFromBuilder|persistGeneratedTrip|buildTrip\(/,
     "initial capture must stop at normal Builder review");
 });
+
+test("Builder review keeps origin visible and broad areas open for explicit multi-place completion", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  const styles = read("app/journey/new/trip-builder.module.css");
+  assert.match(builder, /className=\{styles\.visibleOriginField\}/);
+  assert.match(builder, /City or airport you are leaving from/);
+  assert.match(builder, /SHAPE YOUR ROUTE/);
+  assert.match(builder, /guidedPlanningAreaSuggestions\(mention/);
+  assert.match(builder, /Done adding places/);
+  assert.match(builder, /places selected/);
+  assert.match(builder, /areas to shape/);
+  assert.match(builder, /identities to confirm/);
+  assert.doesNotMatch(builder, /\$\{stops\.length\} resolved · \$\{pendingPlaceCount\} to confirm/);
+  assert.match(builder, /completedPlanningAreaMentionIds/);
+  assert.match(builder, /Search within \$\{parentName\}/);
+  assert.match(builder, /aria-live="polite"/);
+  assert.match(styles, /\.guidedAreaSuggestions/);
+  assert.match(styles, /\.recognizedPlaces>div,.guidedAreaSuggestions>div\{grid-template-columns:1fr\}/);
+});

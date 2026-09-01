@@ -12,9 +12,10 @@ const copy = {
     operatedBy: "Operated by",
     about: "About",
     help: "Help",
+    contact: "Contact",
     affiliate: "Affiliate disclosure",
-    privacy: "Privacy",
     terms: "Terms",
+    privacy: "Privacy",
     cookies: "Cookie settings",
   },
   es: {
@@ -22,9 +23,10 @@ const copy = {
     operatedBy: "Operado por",
     about: "Acerca de",
     help: "Ayuda",
+    contact: "Contacto",
     affiliate: "Divulgación de afiliados",
-    privacy: "Privacidad",
     terms: "Términos",
+    privacy: "Privacidad",
     cookies: "Ajustes de cookies",
   },
 } as const;
@@ -41,7 +43,9 @@ export default function MorroviaFooter() {
 
   const text = copy[language];
   return <footer className={styles.footer}>
-    <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">Morrovia</Link>
+    <Link className={styles.brand} href="/journey/home" aria-label={`${morroviaLegalIdentity.productName} home`}>
+      {morroviaLegalIdentity.productName}
+    </Link>
     <div className={styles.identity}>
       <p>© {morroviaLegalIdentity.copyrightYear} {morroviaLegalIdentity.productName}. {text.rights}</p>
       <p>{text.operatedBy} {morroviaLegalIdentity.legalOperator}</p>
@@ -49,9 +53,10 @@ export default function MorroviaFooter() {
     <nav aria-label="Company and legal information">
       <Link href="/journey/about">{text.about}</Link>
       <Link href="/journey/help">{text.help}</Link>
+      <a href={`mailto:${morroviaLegalIdentity.generalContact}`}>{text.contact}</a>
       <Link href="/journey/affiliate-disclosure">{text.affiliate}</Link>
+      <Link href="/journey/terms">{text.terms}</Link>
       <Link href="/journey/privacy">{text.privacy}</Link>
-      <span>{text.terms}</span>
       <Link href="/journey/cookies#cookie-settings">{text.cookies}</Link>
     </nav>
   </footer>;

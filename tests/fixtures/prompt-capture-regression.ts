@@ -212,9 +212,9 @@ export const PROMPT_CAPTURE_REGRESSION_CASES: PromptCaptureRegressionFixture[] =
     id: "vague-warm-asia",
     rawPrompt: "somewhere warm in Asia for 10 days",
     requiredHardFacts: { durationDays: 10, datesMustRemainUnknown: true },
-    acceptableVariations: ["Asia is retained as an unresolved geographic scope for review."],
+    acceptableVariations: ["Asia is retained as a recognised broad geographic scope that still needs concrete route places."],
     prohibitedOutcomes: ["A fabricated Asian destination", "Warm recorded as a route stop"],
-    expectedAmbiguityWarnings: ["unresolved_place", "missing_routable_destination"],
+    expectedAmbiguityWarnings: ["region_requires_base", "missing_routable_destination"],
     failureBoundary: "capture/parser",
     semanticExpectation: {
       originSourceText: null,
@@ -251,9 +251,9 @@ export const PROMPT_CAPTURE_REGRESSION_CASES: PromptCaptureRegressionFixture[] =
     id: "messy-lowercase-typo-route",
     rawPrompt: "10 day japn tokyo kyto oska maybe hiroshma dont want too rusheed",
     requiredHardFacts: { durationDays: 10, canonicalPlaceIds: ["japan", "tokyo", "kyoto", "osaka", "hiroshima"], routablePlaceIds: ["tokyo", "kyoto", "osaka", "hiroshima"], datesMustRemainUnknown: true },
-    acceptableVariations: ["The maybe-qualified Hiroshima may remain optional."],
+    acceptableVariations: ["The maybe-qualified Hiroshima may remain optional; the named Japanese cities can satisfy the country qualifier."],
     prohibitedOutcomes: ["A safely corrected typo disappearing from the usable route", "Invented dates"],
-    expectedAmbiguityWarnings: ["region_requires_base"],
+    expectedAmbiguityWarnings: [],
     failureBoundary: "place resolution",
     semanticExpectation: {
       originSourceText: null,

@@ -2,93 +2,104 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bot, ChevronLeft, Database, Eye, MapPin, Mail, Mic, ShieldCheck } from "lucide-react";
+import { Bot, ChevronLeft, Cookie, Database, ExternalLink, Mail, MapPin, Mic, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import styles from "./privacy.module.css";
-import currentStyles from "./privacy-current.module.css";
+
+const icoComplaintUrl = "https://ico.org.uk/make-a-complaint/data-protection-complaints/data-protection-complaints/";
 
 const copy = {
   en: {
+    skip: "Skip to privacy notice",
     eyebrow: "MORROVIA PRIVACY",
     title: "Your travel data, explained plainly.",
-    intro: "This notice explains what Morrovia stores, why we use it and the choices you have. It reflects the product as it is today, not a promise of features that do not exist.",
-    updated: "Last updated 30 August 2026",
+    intro: "This notice describes what the current Morrovia product collects, stores, sends and derives, why it does so, and the controls available to you.",
+    updated: "Last updated 1 September 2026",
+    contents: "On this page",
+    contentsItems: [["data-we-use", "Data we use"], ["personalisation", "Personalisation"], ["ai-and-speech", "AI and speech"], ["analytics-settings", "Cookies and analytics"], ["providers-and-transfers", "Providers and transfers"], ["retention", "Retention and deletion"], ["your-rights", "Your rights"]],
     summary: "The short version",
-    summaryText: "Morrovia stores the details you choose to save so your plans, preferences and stamps work across devices. We use location only when you ask us to find somewhere nearby. Optional analytics are off until you allow them.",
-    collect: "What we collect",
-    collectItems: [
-      ["Account details", "Your name, email address, account identifier and authentication records. Passwords are handled by the authentication system and are never shown inside Morrovia."],
-      ["Trip information", "Your trip title, dates, destinations, selected places, plan items, notes, pins and the practical route details you save."],
-      ["Profile and memories", "Your travel-profile choices, language preference, country stamps, country notes and any photo you choose to attach to a stamp. If you choose to personalise trip-preparation reminders, this can include nationality or nationalities, country of residence and passport-expiry month only. It never includes a passport number, scan or image."],
-      ["Feedback and email records", "Ratings and comments you send, plus a record of transactional email delivery such as verification, password reset and trip-gift emails."],
-      ["Forwarded booking confirmations", "If you create a private forwarding address and deliberately send a confirmation, Resend receives that individual message. Morrovia verifies the private address and your account sender, rejects attachments, and stores only the extracted booking candidate and a categorical processing record. The Morrovia database does not keep the raw subject, body or HTML."],
+    summaryText: "Morrovia uses the details you provide to build, save and improve your trips. Guest drafts and recovery copies can remain on this device. Signed-in trips and profile choices are stored with your account. Optional analytics and affiliate attribution remain off until you allow them. Morrovia does not scan your inbox, sell travel, or silently turn one trip’s interests into permanent profile preferences.",
+    controller: "Who is responsible",
+    controllerText: "is the operator of Morrovia and the data controller for the personal data described in this notice. The monitored privacy contact is",
+    dataTitle: "What Morrovia uses",
+    dataIntro: "These are the current product data categories and their operational purpose. Some fields are optional and appear only when you use the relevant feature.",
+    dataItems: [
+      { title: "Account and authentication", text: "Name, email, account identifiers, verification state, authentication records, server-side sessions, IP address and user agent are used to create and secure your account. Better Auth handles email/password and session records. If you choose Google sign-in, Google supplies the provider identifier, verified-email state, email, name and profile image under the openid, email and profile scopes. Morrovia does not request Google Drive, Calendar, contacts or mailbox access.", control: "You can update your name in Profile. Account access, correction and deletion requests currently use the manual privacy-contact process below." },
+      { title: "Trips and planning content", text: "Trip titles, free-text prompts, structured intent, routes, dates, nights, traveller count, destinations, coordinates, transport, budgets, constraints, selected places, bookings, notes, custom activities, URLs, itinerary items and recommendations are used to build, explain, save and edit your plan. Guest drafts and recovery state can be held in browser storage. Signed-in trips are stored in Morrovia’s Neon Postgres database.", control: "You can edit trip content, remove plan items and request data rights. The Trips delete action currently soft-deletes a trip from normal account views; a permanent purge period has not been set." },
+      { title: "Profile, preparation and memories", text: "Language, usual interests, pace, hotel-move and budget preferences can be saved as profile defaults. Optional preparation fields can include nationality or nationalities, country of residence and passport-expiry month, but the product does not ask for a passport number, scan or image. Country stamps, notes and an optional memory photo can also be saved.", control: "You can edit or remove profile defaults in Profile, override them on a trip, and remove stamps, notes or photos from Stamps. Never enter passport numbers, scans or photos." },
+      { title: "Feedback, sharing and email", text: "Ratings and comments are stored for support and product improvement. A trip gift stores the recipient email, optional note, private token hash, status and claim information. Transactional email records can include recipient email, subject, template, delivery status, provider ID and a bounded failure message. Resend receives the content needed to send account, security and trip-sharing email.", control: "Feedback is optional. A gift is created only when you enter a recipient and confirm it. Do not share a claim link unless you intend to share the trip." },
     ],
-    location: "Location and nearby search",
-    locationText: "If you choose “Use my location” or start a nearby search, your browser asks first. The coordinates are sent to Morrovia to return nearby places and may be passed to OpenStreetMap-powered search services. Morrovia does not add those coordinates to your saved profile or trip unless you deliberately save a place or pin.",
-    device: "Data kept on this device",
-    deviceText: "Morrovia keeps some information locally on your device so the product works reliably: trip drafts and active plans, language and UI preferences, travel profile and readiness information, finder choices, and stamps or memories. This data stays on the device until it is saved to an account where applicable or you clear your browser’s site data.",
-    cookies: "Necessary cookies and browser technology",
-    cookiesText: "When you sign in, Morrovia uses necessary session and security cookies to keep your account secure and working. We also use functional Cache Storage and a service worker for the public application shell where your browser supports them.",
-    providers: "Services we rely on",
-    providersText: "Morrovia uses a database and authentication service to operate accounts and saved plans, Resend to deliver transactional email and—only if you enable a private forwarding address—to receive the individual booking confirmations you forward, and CARTO and OpenStreetMap-based services including Nominatim, Overpass and Photon for maps, place search and nearby results. External map and booking links take you to those services under their own policies.",
-    analytics: "Optional analytics",
-    analyticsText: "When configured and allowed, PostHog and Google Analytics help us understand product use through deliberately limited events. Optional affiliate attribution is controlled separately. Microsoft Clarity is currently disabled while its replay and masking configuration is verified. Declining optional technology does not affect core planning or account functionality. Review the current technology inventory or change either optional category in Cookie settings.",
-    cookieSettings: "Open Cookie settings",
-    ai: "AI-assisted planning",
-    aiText: "Luna is Morrovia’s AI travel assistant and uses the server-side OpenAI Responses API. Initial trip capture may send up to 600 characters from the brief so Luna can help interpret it. Signed-in co-pilot requests send the question, up to 500 characters, with a reduced trip projection. The co-pilot projection excludes canonical IDs, coordinates, URLs, confirmation references, provider payloads, owner and authentication data, change history and the raw initial brief. Requests use store:false, but this configuration does not prove that provider retention is zero. Current production logs keep aggregate model, usage, count and state diagnostics rather than raw briefs, questions, answers or full projections. Morrovia stores bounded server-side preview records so an authenticated traveller can explicitly apply a proposed change; a broader retention period has not been set. OpenAI processing, retention and international-transfer terms require separate review. Luna can make mistakes, and proposed changes are not saved until you explicitly apply a deterministic preview.",
+    basesTitle: "Why Morrovia uses data",
+    basesText: "The legal basis depends on the purpose and circumstances. Current engineering evidence supports these candidates, which still require legal review:",
+    basesItems: ["Steps you ask Morrovia to take, and performance of the account and trip-planning service, for account, trip, support and import functions.", "Legitimate interests where appropriate for security, fraud prevention, service reliability, support and limited product improvement, balanced against traveller rights.", "Consent for optional product analytics and optional affiliate attribution. You can withdraw it at any time in Cookie settings.", "Legal obligations where Morrovia must retain or disclose information to meet an applicable requirement."],
+    personalisation: "How personalisation works",
+    personalisationText: "Interests and preferences supplied for a trip may influence route scoring, night allocation, nearby suggestions, activities and recommendation ranking. Explicit profile defaults may seed an untouched future trip and nearby recommendations. Trip-specific edits take priority. Changing interests on one trip does not silently rewrite your permanent profile, and this is ordinary travel personalisation rather than sensitive profiling.",
+    personalisationControl: "Edit or remove saved defaults in Profile. Remove or replace interests in the trip builder. A trip can keep its own choices without changing the profile used for future trips.",
+    profileAction: "Open Profile",
+    ai: "Luna and semantic trip processing",
+    aiText: "Luna is Morrovia’s AI travel assistant and uses the server-side OpenAI Responses API. Initial trip capture may send up to 600 characters from the prompt, plus a fixed extraction instruction, so OpenAI can return a bounded semantic interpretation. A signed-in co-pilot request may send your question, up to 500 characters, with a reduced trip view containing planning context such as stop names, dates, nights, transfers, itinerary text, preferences, constraints and readiness summaries.",
+    aiBoundary: "The co-pilot view excludes canonical IDs, coordinates, URLs, confirmation references, provider payloads, owner and authentication data, change history and the raw initial brief. Requests currently use store:false, but that setting does not prove that provider retention is zero. OpenAI processing occurs outside Morrovia systems and may involve international processing. Provider retention and transfer safeguards still require contractual and legal review.",
+    aiControl: "Luna can make mistakes. It cannot directly save a supported trip change: Morrovia creates a deterministic preview and you must review and apply it. The initial prompt and a resulting trip can still be stored by Morrovia as part of your draft or saved trip.",
     speech: "Speech input",
-    speechText: "Speak uses your browser’s SpeechRecognition or webkitSpeechRecognition service in the selected English or Spanish mode. Recognition is one-shot and uses final transcripts. Your browser or its speech provider may process audio; Morrovia receives transcript text rather than an uploaded audio blob. The transcript remains editable and is then handled like text you type: it may be kept in a draft, sent for trip capture and saved with the resulting trip. Morrovia cannot prove that speech audio stays on-device or state a browser-provider retention period.",
-    sharing: "Sharing a trip",
-    sharingText: "A trip gift is a private, time-limited claim link sent to the recipient email you enter. The recipient must sign in with that email to claim their own editable copy. Do not forward a claim link unless you intend to share it.",
-    retention: "Keeping and removing data",
-    retentionText: "You can delete individual trips from Trips and remove stamps, notes and photos from Stamps. Morrovia does not copy the raw body of a forwarded confirmation into its database; the received message remains subject to Resend's provider retention. Extracted booking candidates and categorical security records are account data. A specific deletion schedule for those new records still needs an operating decision and legal review. Account deletion is currently handled by support so we can safely verify the request and remove the associated Morrovia data.",
-    contact: "Your choices and contact",
-    contactText: "To request access to, correction of or deletion of your Morrovia account data, email us from the address on your account. We may need to verify ownership before acting on the request.",
-    email: "Email Morrovia support",
+    speechText: "Speak uses the browser’s SpeechRecognition or webkitSpeechRecognition service in English or Spanish, one shot at a time. The browser or its speech provider may process the audio. Morrovia receives the final transcript text rather than an uploaded audio file, but cannot prove that speech audio stays on-device or state the browser provider’s retention period.",
+    speechControl: "The transcript is placed into the same editable field as typed text and does not submit automatically. If you submit it, it follows the same draft, AI and trip-storage paths as text you typed. You can deny microphone access and continue typing.",
+    location: "Location, place and accommodation searches",
+    locationText: "If you choose nearby search or allow browser location, coordinates are sent to Morrovia and can be passed to Google Places or OpenStreetMap-based services such as Nominatim, Overpass and Photon. Place queries can include a destination, country, planning area and nearby coordinates. Live Booking.com Demand searches can include coordinates, dates, adults, rooms, currency, booker country and locale. Search results do not become part of a saved trip unless you choose a place, pin, stay or booking.",
+    images: "Destination content and images",
+    imagesText: "Morrovia can send place or route search terms to Wikipedia, Wikimedia and, when configured, Unsplash. Unsplash can also receive the provider-required download or selection event for a chosen image. Validated route-photo details and attribution may be cached on this device. Morrovia-provided editorial images are served as ordinary site assets.",
+    booking: "Forwarded booking import",
+    bookingText: "Forwarded booking import is optional and remains unavailable unless the server-side activation gates are configured. When you create a private alias and deliberately forward one confirmation, Resend receives that message. Morrovia verifies the private address and account sender, rejects attachments, and deterministically extracts a booking candidate for your review. Nothing is applied to a trip until an authenticated traveller confirms it.",
+    bookingStorage: "Morrovia’s database stores the extracted candidate and provenance, deduplication fingerprints, status, trip suggestion, provider message ID and categorical security/processing result. It does not intentionally copy the raw subject, body, HTML, headers or attachment content into the Morrovia database. The received message remains subject to Resend’s own retention. Morrovia does not connect to or scan Gmail, Outlook or another mailbox.",
+    cookies: "Necessary technology and optional measurement",
+    cookiesText: "Necessary session and security cookies keep signed-in accounts working. Functional browser storage supports language, trip handoff, private owner-scoped recovery, preferences and UI state. These do not depend on optional analytics consent.",
+    analyticsText: "When configured and allowed, PostHog and Google Analytics receive deliberately limited page and product events. PostHog automatic capture, session recording, heatmaps and similar automatic collection are disabled in Morrovia’s configuration. Optional affiliate attribution, including Omio Impact when configured, is a separate choice. Microsoft Clarity is disabled and is not active tracking.",
+    withdrawalText: "Changing Cookie settings stops Morrovia’s optional event dispatch, opts out or resets configured analytics where supported, removes known Morrovia optional state and reloads after affiliate-attribution withdrawal. Browser code cannot guarantee deletion of records already held by a provider. Rejecting optional technology does not disable core planning or account functions.",
+    cookieSettings: "Open Cookie settings",
+    providers: "Processors, recipients and external services",
+    providersText: "Depending on the feature and deployment configuration, data can be received by the following services:",
+    providerItems: ["Neon for the server-side Postgres database; Better Auth as the authentication software used by Morrovia; and the deployed hosting/runtime provider for application delivery and operational logs.", "Google when you choose Google sign-in, Google Places for configured nearby stay search, and Google Maps or Flights when you open an explicit external handoff.", "Resend for transactional email and, only when activated and deliberately used, a forwarded booking message.", "OpenAI for initial semantic trip interpretation and signed-in Luna requests.", "PostHog, configured Google Analytics and Omio Impact only after the matching optional choice.", "OpenStreetMap services including Nominatim, Overpass, Photon and CARTO, plus Wikipedia, Wikimedia and Unsplash for configured map, place and image features.", "Booking.com Demand for configured live accommodation search, and travel or affiliate providers when you choose to open their external links. Their sites handle their own checkout, payment and policies."],
+    transfers: "International processing",
+    transfersText: "Some providers may process data outside the UK or EEA depending on their service location and Morrovia’s deployment configuration. The repository does not prove each processing location, transfer mechanism or contractual safeguard. Those facts remain a provider and legal review item. Opening an external provider also sends the normal browser request and any context visible in the destination URL to that provider under its own notice.",
+    retention: "How long data is kept",
+    retentionText: "Morrovia keeps account and saved-trip data while the account is active and as needed to provide the service, but fixed deletion periods are not yet implemented for most database records. Browser drafts, recovery copies, preferences and functional state generally remain until product cleanup runs or you clear Morrovia site data. A trip deleted in Trips is currently soft-deleted from normal views rather than immediately purged.",
+    retentionDetail: "Account deletion is a verified manual support process. It removes the product user and its cascading trips, stamps, memories, booking aliases/candidates and co-pilot previews, plus the associated Better Auth sessions and accounts. The current operation retains a minimal account-deletion audit record. Transactional email events are keyed by recipient email and are not currently removed by that operation; gift-recipient records and some provider-held records can also remain. Preview expiry fields exist, but a broader purge schedule, including booking import, feedback, gifts, email events and audit records, is still an unresolved operating and legal item for retention work.",
+    rights: "Your data rights",
+    rightsText: "Depending on the law and circumstances, you may have rights of access, correction, deletion, restriction, objection and data portability, and the right to withdraw consent. Morrovia does not currently provide a complete automated account export or self-service account deletion tool. A trip PDF is not a full account-data export.",
+    rightsSteps: ["Email the privacy contact from the address on your Morrovia account, with the subject “Morrovia data rights request”.", "Say which right you want to use and identify the account or trip involved. Do not email passwords, passport numbers or identity documents unless Morrovia specifically asks for a proportionate verification step.", "Morrovia may verify that you control the account before disclosing, correcting, exporting or deleting data, and will explain if a request cannot be fulfilled in full."],
+    rightsContact: "Start a data rights request",
+    correction: "You can edit your name and travel-profile defaults in Profile, edit trip content in the planner, and remove optional interests, memories and photos. Cookie consent can be withdrawn without contacting support.",
+    complaint: "If you have raised a concern with Morrovia and remain dissatisfied, you can complain to the UK Information Commissioner’s Office (ICO).",
+    complaintAction: "Open the ICO complaint guidance",
+    unresolved: "Operational and legal review still required",
+    unresolvedText: "Morrovia still needs an approved retention schedule, verified hosting and processor locations, international-transfer safeguards, complete provider contract review, a confirmed public registered office and company-registration details, and solicitor review of its Terms. This notice does not invent those facts or claim legal certification.",
     back: "Back to Morrovia",
-    note: "This is a product privacy notice, not legal advice. We will update it as Morrovia’s data practices change.",
   },
   es: {
-    eyebrow: "PRIVACIDAD DE MORROVIA",
-    title: "Tus datos de viaje, explicados con claridad.",
-    intro: "Este aviso explica qué guarda Morrovia, por qué lo usamos y qué opciones tienes. Describe el producto tal como existe hoy, no funciones que aún no existen.",
-    updated: "Última actualización: 30 de agosto de 2026",
-    summary: "En pocas palabras",
-    summaryText: "Morrovia guarda los detalles que eliges para que tus planes, preferencias y sellos funcionen en todos tus dispositivos. Usamos tu ubicación solo cuando nos pides encontrar algo cercano. La analítica opcional permanece desactivada hasta que la permites.",
-    collect: "Qué recopilamos",
-    collectItems: [
-      ["Datos de la cuenta", "Tu nombre, correo electrónico, identificador de cuenta y registros de autenticación. El sistema de autenticación gestiona las contraseñas y nunca se muestran dentro de Morrovia."],
-      ["Información del viaje", "El título, las fechas, destinos, lugares seleccionados, elementos del plan, notas, pines y detalles prácticos de ruta que guardas."],
-      ["Perfil y recuerdos", "Las elecciones de tu perfil de viaje, idioma, sellos de países, notas de países y cualquier foto que adjuntes a un sello. Si eliges personalizar los recordatorios antes de salir, puede incluir nacionalidad o nacionalidades, país de residencia y mes de caducidad del pasaporte, pero nunca un número, escaneo o imagen del pasaporte."],
-      ["Comentarios y registros de correo", "Las valoraciones y comentarios que envías, además de un registro de la entrega de correos transaccionales como verificación, restablecimiento de contraseña y regalos de viajes."],
-      ["Confirmaciones de reserva reenviadas", "Si creas una dirección privada y reenvías deliberadamente una confirmación, Resend recibe ese mensaje individual. Morrovia verifica la dirección privada y el remitente de tu cuenta, rechaza los adjuntos y guarda solo la propuesta de reserva extraída y un registro categórico del proceso. La base de datos de Morrovia no conserva el asunto, cuerpo ni HTML sin procesar."],
+    skip: "Ir al aviso de privacidad", eyebrow: "PRIVACIDAD DE MORROVIA", title: "Tus datos de viaje, explicados con claridad.", intro: "Este aviso describe qué recopila, guarda, envía y deriva el producto actual de Morrovia, por qué lo hace y qué controles tienes.", updated: "Última actualización: 1 de septiembre de 2026", contents: "En esta página",
+    contentsItems: [["data-we-use", "Datos que usamos"], ["personalisation", "Personalización"], ["ai-and-speech", "IA y voz"], ["analytics-settings", "Cookies y analítica"], ["providers-and-transfers", "Proveedores y transferencias"], ["retention", "Conservación y eliminación"], ["your-rights", "Tus derechos"]],
+    summary: "En pocas palabras", summaryText: "Morrovia usa los datos que proporcionas para crear, guardar y mejorar tus viajes. Los borradores de invitado y las copias de recuperación pueden permanecer en este dispositivo. Los viajes y preferencias de perfil de una cuenta se guardan en Morrovia. La analítica y atribución de afiliados opcionales permanecen desactivadas hasta que las permites. Morrovia no examina tu buzón ni convierte silenciosamente los intereses de un viaje en preferencias permanentes.",
+    controller: "Quién es responsable", controllerText: "opera Morrovia y es responsable de los datos personales descritos en este aviso. El contacto de privacidad supervisado es",
+    dataTitle: "Qué datos usa Morrovia", dataIntro: "Estas son las categorías actuales y su finalidad operativa. Algunos campos son opcionales y solo aparecen si utilizas la función correspondiente.",
+    dataItems: [
+      { title: "Cuenta y autenticación", text: "El nombre, correo, identificadores, estado de verificación, registros de autenticación, sesiones del servidor, dirección IP y agente de usuario se usan para crear y proteger la cuenta. Better Auth gestiona el acceso. Si eliges Google, Google facilita el identificador del proveedor, correo verificado, nombre e imagen de perfil con los alcances openid, email y profile. Morrovia no solicita Drive, Calendar, contactos ni acceso al buzón.", control: "Puedes cambiar el nombre en Perfil. El acceso, corrección y eliminación de la cuenta se solicitan actualmente por el proceso manual indicado abajo." },
+      { title: "Viajes y contenido de planificación", text: "Los títulos, textos libres, intención estructurada, rutas, fechas, noches, número de viajeros, destinos, coordenadas, transporte, presupuesto, restricciones, lugares, reservas, notas, actividades, URL, itinerario y recomendaciones se usan para crear, explicar, guardar y editar el viaje. Los borradores de invitado y la recuperación pueden guardarse en el navegador. Los viajes con sesión se guardan en Neon Postgres.", control: "Puedes editar el contenido. La acción Eliminar de Viajes oculta actualmente el viaje mediante borrado lógico; no se ha fijado un plazo de eliminación definitiva." },
+      { title: "Perfil, preparación y recuerdos", text: "El idioma, intereses habituales, ritmo, cambios de hotel y presupuesto pueden guardarse como valores predeterminados. Los campos opcionales de preparación pueden incluir nacionalidad, residencia y mes de caducidad del pasaporte, pero no número, escaneo ni imagen. También puedes guardar sellos, notas y una foto opcional.", control: "Puedes editar o quitar valores predeterminados en Perfil, cambiarlos en cada viaje y borrar sellos, notas o fotos. Nunca introduzcas números, escaneos ni fotos del pasaporte." },
+      { title: "Comentarios, viajes compartidos y correo", text: "Las valoraciones y comentarios se guardan para soporte y mejora. Un regalo de viaje guarda el correo del destinatario, una nota opcional, hash del token privado, estado y datos de reclamación. Los registros transaccionales pueden incluir destinatario, asunto, plantilla, estado, identificador del proveedor y un mensaje de fallo acotado. Resend recibe el contenido necesario para enviar esos correos.", control: "Los comentarios son opcionales. Un regalo solo se crea cuando introduces un destinatario y confirmas. No compartas el enlace salvo que quieras compartir el viaje." },
     ],
-    location: "Ubicación y búsqueda cercana",
-    locationText: "Si eliges “Usar mi ubicación” o inicias una búsqueda cercana, tu navegador pide permiso primero. Las coordenadas se envían a Morrovia para mostrar lugares cercanos y pueden compartirse con servicios de búsqueda basados en OpenStreetMap. Morrovia no añade estas coordenadas a tu perfil ni a tus viajes, a menos que guardes deliberadamente un lugar o un pin.",
-    device: "Datos guardados en este dispositivo",
-    deviceText: "Morrovia guarda parte de la información localmente en tu dispositivo para que el producto funcione de forma fiable: borradores y planes activos, idioma y preferencias de interfaz, perfil e información de preparación, elecciones del buscador y sellos o recuerdos. Estos datos permanecen en el dispositivo hasta que se guardan en una cuenta cuando corresponde o borras los datos del sitio en tu navegador.",
-    cookies: "Cookies necesarias y tecnología del navegador",
-    cookiesText: "Al iniciar sesión, Morrovia usa cookies necesarias de sesión y seguridad para que tu cuenta siga siendo segura y funcione. También usamos Cache Storage funcional y un service worker para la aplicación pública cuando tu navegador los admite.",
-    providers: "Servicios que utilizamos",
-    providersText: "Morrovia usa una base de datos y un servicio de autenticación para operar cuentas y planes guardados, Resend para enviar correos transaccionales y—solo si activas una dirección privada—recibir las confirmaciones de reserva individuales que reenvíes, y CARTO y servicios basados en OpenStreetMap, incluidos Nominatim, Overpass y Photon, para mapas, búsqueda de lugares y resultados cercanos. Los enlaces externos de mapas y reservas te llevan a esos servicios con sus propias políticas.",
-    analytics: "Analítica opcional",
-    analyticsText: "Cuando se configuran y permites su uso, PostHog y Google Analytics ayudan a comprender el uso del producto mediante eventos deliberadamente limitados. La atribución de afiliados opcional se controla por separado. Microsoft Clarity está desactivado mientras se verifica su configuración de repetición y enmascaramiento. Rechazar la tecnología opcional no afecta a la planificación ni a la cuenta. Consulta el inventario actual o cambia cada categoría opcional en Ajustes de cookies.",
-    cookieSettings: "Abrir Ajustes de cookies",
-    ai: "Planificación asistida por IA",
-    aiText: "Luna es el asistente de viaje con IA de Morrovia y utiliza la API Responses de OpenAI desde el servidor. La captura inicial puede enviar hasta 600 caracteres del texto para ayudar a interpretarlo. Las consultas del copiloto con sesión iniciada envían la pregunta, de hasta 500 caracteres, junto con una proyección reducida del viaje. Esta proyección excluye identificadores canónicos, coordenadas, URL, referencias de confirmación, datos de proveedores, datos de propietario y autenticación, historial de cambios y el texto inicial sin procesar. Las solicitudes usan store:false, pero esta configuración no demuestra que la retención del proveedor sea cero. Los registros actuales de producción conservan diagnósticos agregados de modelo, uso, recuentos y estado, no textos, preguntas, respuestas ni proyecciones completas. Morrovia guarda registros acotados de previsualización en el servidor para que un viajero autenticado aplique explícitamente un cambio propuesto; no se ha fijado un periodo de retención más amplio. El tratamiento, la retención y las transferencias internacionales de OpenAI requieren una revisión aparte. Luna puede equivocarse y los cambios propuestos no se guardan hasta que aplicas explícitamente una previsualización determinista.",
-    speech: "Entrada por voz",
-    speechText: "Hablar usa el servicio SpeechRecognition o webkitSpeechRecognition del navegador en el modo de inglés o español seleccionado. El reconocimiento es de una sola toma y utiliza transcripciones finales. El navegador o su proveedor de voz pueden procesar el audio; Morrovia recibe el texto transcrito en lugar de un archivo de audio cargado. La transcripción sigue siendo editable y después se trata como el texto que escribes: puede guardarse en un borrador, enviarse para capturar el viaje y conservarse con el viaje resultante. Morrovia no puede demostrar que el audio permanezca en el dispositivo ni indicar un periodo de retención del proveedor del navegador.",
-    sharing: "Compartir un viaje",
-    sharingText: "Un regalo de viaje es un enlace privado y temporal enviado al correo del destinatario que introduces. El destinatario debe iniciar sesión con ese correo para reclamar su propia copia editable. No reenvíes un enlace de reclamación salvo que quieras compartirlo.",
-    retention: "Conservación y eliminación de datos",
-    retentionText: "Puedes eliminar viajes individuales desde Viajes y quitar sellos, notas y fotos desde Sellos. Morrovia no copia el cuerpo sin procesar de una confirmación reenviada en su base de datos; el mensaje recibido queda sujeto a la retención de Resend. Las propuestas extraídas y los registros categóricos de seguridad son datos de la cuenta. Aún hace falta una decisión operativa y revisión legal para fijar su plazo de eliminación. La eliminación de cuentas se gestiona mediante soporte para verificar la solicitud y retirar los datos asociados.",
-    contact: "Tus opciones y contacto",
-    contactText: "Para solicitar acceso, corrección o eliminación de los datos de tu cuenta de Morrovia, escríbenos desde el correo de tu cuenta. Es posible que necesitemos verificar la titularidad antes de atender la solicitud.",
-    email: "Escribir a soporte de Morrovia",
-    back: "Volver a Morrovia",
-    note: "Este es un aviso de privacidad del producto, no asesoramiento legal. Lo actualizaremos cuando cambien las prácticas de datos de Morrovia.",
+    basesTitle: "Por qué usa Morrovia los datos", basesText: "La base depende de la finalidad y las circunstancias. La evidencia técnica respalda estas bases candidatas, pendientes de revisión legal:", basesItems: ["Medidas solicitadas y prestación del servicio de cuenta y planificación.", "Intereses legítimos cuando corresponda para seguridad, prevención del fraude, fiabilidad, soporte y mejora limitada.", "Consentimiento para analítica y atribución de afiliados opcionales, retirable en Ajustes de cookies.", "Obligaciones legales cuando sea necesario conservar o comunicar información."],
+    personalisation: "Cómo funciona la personalización", personalisationText: "Los intereses y preferencias de un viaje pueden influir en la puntuación de rutas, reparto de noches, lugares cercanos, actividades y orden de recomendaciones. Los valores predeterminados explícitos del perfil pueden iniciar un viaje nuevo sin editar. Las decisiones del viaje tienen prioridad. Cambiar un viaje no modifica silenciosamente el perfil permanente y no se trata de perfiles sensibles.", personalisationControl: "Edita o elimina valores predeterminados en Perfil y cambia los intereses en el constructor. Un viaje puede conservar sus propias decisiones sin cambiar los viajes futuros.", profileAction: "Abrir Perfil",
+    ai: "Luna y procesamiento semántico", aiText: "Luna es el asistente de viaje con IA y usa la API Responses de OpenAI desde el servidor. La captura inicial puede enviar hasta 600 caracteres del texto y una instrucción fija. Una consulta del copiloto puede enviar la pregunta, de hasta 500 caracteres, y una vista reducida con paradas, fechas, noches, traslados, texto del itinerario, preferencias, restricciones y resúmenes de preparación.", aiBoundary: "La vista excluye identificadores canónicos, coordenadas, URL, referencias de confirmación, datos de proveedores, propietario, autenticación, historial y el texto inicial completo. Las solicitudes usan store:false, pero esto no demuestra una retención cero. OpenAI procesa fuera de Morrovia y puede realizar tratamiento internacional. La retención y las garantías de transferencia requieren revisión.", aiControl: "Luna puede equivocarse. No guarda directamente un cambio compatible: Morrovia crea una vista previa determinista y debes revisarla y aplicarla. El texto inicial y el viaje resultante sí pueden guardarse en Morrovia.",
+    speech: "Entrada por voz", speechText: "Hablar usa SpeechRecognition o webkitSpeechRecognition del navegador en inglés o español, una vez cada uso. El navegador o proveedor puede procesar el audio. Morrovia recibe la transcripción final, no un archivo de audio, pero no puede demostrar que el audio permanezca en el dispositivo ni indicar la retención del proveedor.", speechControl: "La transcripción entra en el mismo campo editable que el texto y no se envía sola. Al enviarla, sigue las mismas rutas de borrador, IA y almacenamiento. Puedes negar el micrófono y seguir escribiendo.",
+    location: "Ubicación, lugares y alojamiento", locationText: "La búsqueda cercana o la ubicación autorizada envía coordenadas a Morrovia y puede compartirlas con Google Places o servicios OpenStreetMap como Nominatim, Overpass y Photon. Las consultas pueden incluir destino, país, zona y coordenadas. Booking.com Demand puede recibir coordenadas, fechas, adultos, habitaciones, moneda, país del viajero y configuración regional. Solo se guarda un resultado si eliges guardarlo.",
+    images: "Contenido e imágenes", imagesText: "Morrovia puede enviar términos de búsqueda a Wikipedia, Wikimedia y, si está configurado, Unsplash. Unsplash también puede recibir el evento de descarga o selección requerido para una imagen. La foto de ruta y atribución validadas pueden guardarse en este dispositivo.",
+    booking: "Importación de reservas reenviadas", bookingText: "La función es opcional y no está disponible sin sus controles de activación. Al crear una dirección privada y reenviar una confirmación, Resend recibe ese mensaje. Morrovia verifica la dirección y el remitente, rechaza adjuntos y extrae de forma determinista una propuesta para revisión. Nada se aplica sin confirmación autenticada.", bookingStorage: "La base de Morrovia guarda la propuesta extraída, procedencia, huellas de deduplicación, estado, sugerencia de viaje, identificador del proveedor y resultado categórico. No copia intencionadamente asunto, cuerpo, HTML, cabeceras ni adjuntos sin procesar. El mensaje sigue sujeto a la retención de Resend. Morrovia no conecta ni examina Gmail, Outlook u otro buzón.",
+    cookies: "Tecnología necesaria y medición opcional", cookiesText: "Las cookies necesarias mantienen la sesión y la seguridad. El almacenamiento funcional conserva idioma, traspaso del viaje, recuperación privada, preferencias y estado de interfaz. No depende del consentimiento analítico.", analyticsText: "Cuando están configurados y permitidos, PostHog y Google Analytics reciben eventos limitados. La captura automática, grabación de sesión y mapas de calor de PostHog están desactivados. Omio Impact tiene un control separado. Microsoft Clarity está desactivado.", withdrawalText: "Cambiar Ajustes de cookies detiene los eventos opcionales, reinicia proveedores compatibles y elimina estado opcional conocido. El navegador no puede garantizar la eliminación de registros ya guardados por un proveedor. Rechazar no bloquea la planificación ni la cuenta.", cookieSettings: "Abrir Ajustes de cookies",
+    providers: "Encargados, destinatarios y servicios externos", providersText: "Según la función y configuración, pueden recibir datos:", providerItems: ["Neon, Better Auth y el proveedor de alojamiento y ejecución.", "Google para acceso, Places y enlaces explícitos a Maps o Flights.", "Resend para correo y reservas reenviadas cuando se activa.", "OpenAI para interpretación y Luna.", "PostHog, Google Analytics y Omio Impact solo tras la elección correspondiente.", "Nominatim, Overpass, Photon, CARTO, Wikipedia, Wikimedia y Unsplash para mapas, lugares e imágenes.", "Booking.com Demand para alojamiento y proveedores de viajes o afiliados cuando abres sus enlaces."], transfers: "Tratamiento internacional", transfersText: "Algunos proveedores pueden tratar datos fuera del Reino Unido o EEE según su servicio y despliegue. El repositorio no demuestra cada ubicación, mecanismo ni garantía. Sigue siendo una revisión contractual y legal. Al abrir un servicio externo, este recibe la solicitud normal del navegador y el contexto visible en la URL bajo su propio aviso.",
+    retention: "Cuánto tiempo se conservan", retentionText: "Morrovia conserva cuenta y viajes mientras la cuenta está activa y cuando sea necesario para el servicio, pero no hay plazos fijos implementados para la mayoría de registros. Los datos del navegador permanecen hasta una limpieza del producto o que borres los datos del sitio. Eliminar un viaje lo oculta actualmente mediante borrado lógico.", retentionDetail: "La eliminación de cuenta es un proceso manual verificado. Elimina el usuario, viajes dependientes, sellos, recuerdos, propuestas de reserva, vistas previas y registros asociados de Better Auth. Conserva un registro mínimo de auditoría. Los eventos de correo no se eliminan actualmente por estar vinculados al correo, y pueden quedar datos del destinatario de regalos o del proveedor. Falta aprobar el calendario general de conservación.",
+    rights: "Tus derechos", rightsText: "Según la ley y circunstancias, puedes tener derechos de acceso, corrección, eliminación, limitación, oposición, portabilidad y retirada del consentimiento. Morrovia no ofrece todavía exportación completa ni eliminación automática de cuenta. Un PDF del viaje no es una exportación completa.", rightsSteps: ["Escribe al contacto de privacidad desde el correo de tu cuenta con el asunto “Solicitud de derechos de datos de Morrovia”.", "Indica el derecho y la cuenta o viaje. No envíes contraseñas, números de pasaporte ni documentos salvo que Morrovia solicite una verificación proporcionada.", "Morrovia puede verificar el control de la cuenta y explicará si no puede cumplir una parte de la solicitud."], rightsContact: "Iniciar una solicitud de derechos", correction: "Puedes editar nombre y perfil en Perfil, el contenido en el planificador y quitar intereses, recuerdos y fotos. El consentimiento de cookies se retira sin soporte.", complaint: "Si has planteado una preocupación y sigues disconforme, puedes reclamar ante la autoridad británica ICO.", complaintAction: "Abrir la guía de reclamaciones del ICO",
+    unresolved: "Revisión operativa y legal pendiente", unresolvedText: "Morrovia aún necesita un calendario de conservación aprobado, ubicaciones verificadas de alojamiento y proveedores, garantías de transferencias, revisión contractual completa, domicilio y datos registrales confirmados y revisión jurídica de sus Términos. Este aviso no inventa esos datos ni afirma certificación legal.", back: "Volver a Morrovia",
   },
 } as const;
 
@@ -96,74 +107,34 @@ export default function PrivacyNotice() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
 
   useEffect(() => {
-    const refresh = () => {
-      setLanguage(window.localStorage.getItem("easyt-language") === "es" ? "es" : "en");
-    };
+    const refresh = () => setLanguage(window.localStorage.getItem("easyt-language") === "es" ? "es" : "en");
     refresh();
     window.addEventListener("easyt-language-change", refresh);
-    return () => {
-      window.removeEventListener("easyt-language-change", refresh);
-    };
+    return () => window.removeEventListener("easyt-language-change", refresh);
   }, []);
 
   const t = copy[language];
+  const rightsMailto = `mailto:${morroviaLegalIdentity.privacyContact}?subject=${encodeURIComponent(language === "es" ? "Solicitud de derechos de datos de Morrovia" : "Morrovia data rights request")}`;
 
-  return (
-    <div className={`${styles.page} ${currentStyles.page}`}>
-      <a className={`${styles.skipLink} ${currentStyles.skipLink}`} href="#privacy-content">Skip to privacy notice</a>
-      <section className={`${styles.hero} ${currentStyles.hero}`} aria-labelledby="privacy-title">
-        <p>{t.eyebrow}</p>
-        <h1 id="privacy-title">{t.title}</h1>
-        <span>{t.intro}</span>
-        <small>{t.updated}</small>
-      </section>
-
-      <section id="privacy-content" className={`${styles.content} ${currentStyles.content}`} tabIndex={-1}>
-        <article className={`${styles.card} ${styles.summary}`}>
-          <ShieldCheck aria-hidden="true" />
-          <div><h2>{t.summary}</h2><p>{t.summaryText}</p></div>
-        </article>
-
-        <section className={styles.section} aria-labelledby="collect-title">
-          <p className={styles.kicker}>{t.collect}</p>
-          <div className={styles.dataGrid}>
-            {t.collectItems.map(([title, text]) => <article className={styles.card} key={title}><Database aria-hidden="true" /><h2>{title}</h2><p>{text}</p></article>)}
-          </div>
-        </section>
-
-        <section className={styles.split}>
-          <article className={styles.card}><MapPin aria-hidden="true" /><h2>{t.location}</h2><p>{t.locationText}</p></article>
-          <article className={styles.card}><Database aria-hidden="true" /><h2>{t.device}</h2><p>{t.deviceText}</p></article>
-        </section>
-
-        <article className={styles.card}><ShieldCheck aria-hidden="true" /><h2>{t.cookies}</h2><p>{t.cookiesText}</p></article>
-
-        <article className={styles.card}><Eye aria-hidden="true" /><h2>{t.providers}</h2><p>{t.providersText}</p></article>
-
-        <section id="analytics-settings" className={`${styles.card} ${styles.analytics}`} aria-labelledby="analytics-title">
-          <div><p className={styles.kicker}>{t.analytics}</p><h2 id="analytics-title">{t.analytics}</h2><p>{t.analyticsText}</p></div>
-          <div className={styles.choiceButtons}>
-            <EasyTLinkButton href="/journey/cookies#cookie-settings">{t.cookieSettings}</EasyTLinkButton>
-          </div>
-        </section>
-
-        <section id="ai-and-speech" className={styles.split} aria-label={language === "es" ? "IA y voz" : "AI and speech"}>
-          <article className={styles.card}><Bot aria-hidden="true" /><h2>{t.ai}</h2><p>{t.aiText}</p></article>
-          <article className={styles.card}><Mic aria-hidden="true" /><h2>{t.speech}</h2><p>{t.speechText}</p></article>
-        </section>
-
-        <section className={styles.split}>
-          <article className={styles.card}><Mail aria-hidden="true" /><h2>{t.sharing}</h2><p>{t.sharingText}</p></article>
-          <article className={styles.card}><Database aria-hidden="true" /><h2>{t.retention}</h2><p>{t.retentionText}</p></article>
-        </section>
-
-        <section className={`${styles.card} ${styles.contact}`}>
-          <div><h2>{t.contact}</h2><p>{t.contactText}</p></div>
-          <a href={`mailto:${morroviaLegalIdentity.privacyContact}`}>{t.email} <Mail aria-hidden="true" /></a>
-        </section>
-        <p className={styles.note}>{t.note}</p>
-        <Link className={styles.back} href="/journey/home"><ChevronLeft aria-hidden="true" />{t.back}</Link>
-      </section>
-    </div>
-  );
+  return <div className={styles.page}>
+    <a className={styles.skipLink} href="#privacy-content">{t.skip}</a>
+    <section className={styles.hero} aria-labelledby="privacy-title"><p>{t.eyebrow}</p><h1 id="privacy-title">{t.title}</h1><span>{t.intro}</span><small>{t.updated}</small></section>
+    <section id="privacy-content" className={styles.content} tabIndex={-1}>
+      <nav className={styles.contents} aria-label={t.contents}><strong>{t.contents}</strong><ul>{t.contentsItems.map(([href, label]) => <li key={href}><a href={`#${href}`}>{label}</a></li>)}</ul></nav>
+      <article className={`${styles.card} ${styles.summary}`}><ShieldCheck aria-hidden="true" /><div><h2>{t.summary}</h2><p>{t.summaryText}</p></div></article>
+      <article className={styles.card}><ShieldCheck aria-hidden="true" /><h2>{t.controller}</h2><p><strong>{morroviaLegalIdentity.operatorTradingAs}</strong> {t.controllerText} <a href={`mailto:${morroviaLegalIdentity.privacyContact}`}>{morroviaLegalIdentity.privacyContact}</a>.</p></article>
+      <section id="data-we-use" className={styles.section} aria-labelledby="data-title"><p className={styles.kicker}>DATA AND PURPOSE</p><h2 id="data-title">{t.dataTitle}</h2><p>{t.dataIntro}</p><div className={styles.dataGrid}>{t.dataItems.map((item) => <article className={styles.card} key={item.title}><Database aria-hidden="true" /><h2>{item.title}</h2><p>{item.text}</p><p className={styles.control}><strong>{language === "es" ? "Tu control:" : "Your control:"}</strong> {item.control}</p></article>)}</div></section>
+      <article className={styles.card}><ShieldCheck aria-hidden="true" /><h2>{t.basesTitle}</h2><p>{t.basesText}</p><ul className={styles.factList}>{t.basesItems.map((item) => <li key={item}>{item}</li>)}</ul></article>
+      <section id="personalisation" className={`${styles.card} ${styles.feature}`} aria-labelledby="personalisation-title"><SlidersHorizontal aria-hidden="true" /><div><p className={styles.kicker}>PERSONALISATION</p><h2 id="personalisation-title">{t.personalisation}</h2><p>{t.personalisationText}</p><p className={styles.control}>{t.personalisationControl}</p><EasyTLinkButton href="/journey/profile">{t.profileAction}</EasyTLinkButton></div></section>
+      <section id="ai-and-speech" className={styles.split} aria-label={language === "es" ? "IA y voz" : "AI and speech"}><article className={styles.card}><Bot aria-hidden="true" /><h2>{t.ai}</h2><p>{t.aiText}</p><p>{t.aiBoundary}</p><p className={styles.control}>{t.aiControl}</p></article><article className={styles.card}><Mic aria-hidden="true" /><h2>{t.speech}</h2><p>{t.speechText}</p><p className={styles.control}>{t.speechControl}</p></article></section>
+      <section className={styles.split}><article className={styles.card}><MapPin aria-hidden="true" /><h2>{t.location}</h2><p>{t.locationText}</p></article><article className={styles.card}><Database aria-hidden="true" /><h2>{t.images}</h2><p>{t.imagesText}</p></article></section>
+      <article className={styles.card}><Mail aria-hidden="true" /><h2>{t.booking}</h2><p>{t.bookingText}</p><p>{t.bookingStorage}</p></article>
+      <section id="analytics-settings" className={`${styles.card} ${styles.analytics}`} aria-labelledby="analytics-title"><div><p className={styles.kicker}>COOKIES AND ANALYTICS</p><h2 id="analytics-title">{t.cookies}</h2><p>{t.cookiesText}</p><p>{t.analyticsText}</p><p>{t.withdrawalText}</p></div><div className={styles.choiceButtons}><EasyTLinkButton href="/journey/cookies#cookie-settings">{t.cookieSettings}</EasyTLinkButton></div></section>
+      <section id="providers-and-transfers" className={styles.section} aria-labelledby="providers-title"><p className={styles.kicker}>RECIPIENTS AND TRANSFERS</p><h2 id="providers-title">{t.providers}</h2><p>{t.providersText}</p><ul className={styles.factList}>{t.providerItems.map((item) => <li key={item}>{item}</li>)}</ul><h3>{t.transfers}</h3><p>{t.transfersText}</p></section>
+      <section id="retention" className={styles.section} aria-labelledby="retention-title"><p className={styles.kicker}>RETENTION</p><h2 id="retention-title">{t.retention}</h2><p>{t.retentionText}</p><p>{t.retentionDetail}</p></section>
+      <section id="your-rights" className={`${styles.card} ${styles.rights}`} aria-labelledby="rights-title"><div><p className={styles.kicker}>YOUR RIGHTS</p><h2 id="rights-title">{t.rights}</h2><p>{t.rightsText}</p><ol className={styles.factList}>{t.rightsSteps.map((item) => <li key={item}>{item}</li>)}</ol><p>{t.correction}</p><p>{t.complaint}</p></div><div className={styles.rightsActions}><a className={styles.primaryAction} href={rightsMailto}>{t.rightsContact} <Mail aria-hidden="true" /></a><a href={icoComplaintUrl} target="_blank" rel="noopener noreferrer">{t.complaintAction} <ExternalLink aria-hidden="true" /></a></div></section>
+      <article className={`${styles.card} ${styles.unresolved}`}><Cookie aria-hidden="true" /><h2>{t.unresolved}</h2><p>{t.unresolvedText}</p></article>
+      <Link className={styles.back} href="/journey/home"><ChevronLeft aria-hidden="true" />{t.back}</Link>
+    </section>
+  </div>;
 }

@@ -14,7 +14,7 @@ import {
   type PlanningConfidence,
   type PlanningConfidenceSource,
 } from "./planning-confidence.ts";
-import { routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
+import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
 export const PLACE_INTELLIGENCE_PARSER_VERSION = "place-intelligence-v1-deterministic";
@@ -297,6 +297,8 @@ export function placeCandidateWithinPlanningParent(
     || candidateCountries.some((country) => parentCountries.includes(country));
   if (!countryContained) return false;
 
+  if (parent.placeType === "continent") return countryContained;
+
   if (parent.placeType === "country") {
     return candidateCountries.includes(parentName) || parentCountries.includes(parentName);
   }
@@ -326,7 +328,7 @@ export function recognizedHigherOrderGeographySignificance(evidence: {
     ? Math.max(0, Math.min(1, evidence.providerImportance))
     : undefined;
   const providerRank = evidence.providerRank;
-  if (evidence.placeType === "country") return Math.max(0.9, importance ?? 0);
+  if (evidence.placeType === "continent" || evidence.placeType === "country") return Math.max(0.9, importance ?? 0);
   if (evidence.placeType !== "region" && evidence.placeType !== "sub_region") return 0;
 
   const firstOrder = typeof evidence.administrativeLevel === "number" && evidence.administrativeLevel <= 4;
@@ -371,6 +373,42 @@ export type RegionalBaseSuggestion = {
   provenance: PlaceProvenance[];
 };
 
+export type GuidedPlanningAreaSuggestion = RegionalBaseSuggestion & {
+  routeFamilyKey?: string;
+  anchorMatched: boolean;
+};
+
+export type GuidedPlanningAreaShape = {
+  id: string;
+  mentionId: string;
+  routeFamilyKey: string;
+  title: string;
+  placeSummary: string;
+  reason: string;
+  places: GuidedPlanningAreaSuggestion[];
+  matchedInterestIds: string[];
+  anchorMentionId?: string;
+  reviewedAt: string;
+};
+
+export type GuidedPlanningAreaContext = {
+  mentions?: readonly ResolvedPlaceMention[];
+  interests?: readonly string[];
+  durationDays?: number;
+  pace?: "relaxed" | "balanced" | "packed";
+};
+
+const MULTI_PLACE_PLANNING_TYPES = new Set<PlaceType>([
+  "continent", "country", "macro_region", "region", "sub_region", "archipelago",
+]);
+
+export function placeMentionSupportsMultipleSelections(
+  mention: Pick<ResolvedPlaceMention, "placeType" | "routability" | "requiresBaseSelection">,
+) {
+  return (mention.requiresBaseSelection || mention.routability === "planning_area")
+    && MULTI_PLACE_PLANNING_TYPES.has(mention.placeType);
+}
+
 export type CanonicalPlaceSuggestion = {
   canonicalPlaceId: string;
   name: string;
@@ -385,7 +423,7 @@ export type CanonicalPlaceSuggestion = {
 };
 
 const planningAreaPlaceTypes = new Set<PlaceType>([
-  "country", "macro_region", "region", "sub_region", "island", "archipelago",
+  "continent", "country", "macro_region", "region", "sub_region", "island", "archipelago",
   "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
 ]);
 
@@ -1086,6 +1124,247 @@ export function regionalBaseSuggestions(
   return unique([...reviewed, ...linkedBase, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
 }
 
+/** Guided choices for a recognised broad place. Every option comes from
+ * canonical containment or an existing reviewed route family; this helper
+ * never invents a locality or silently turns the parent area into a stop. */
+export function guidedPlanningAreaSuggestions(
+  mention: ResolvedPlaceMention,
+  context: GuidedPlanningAreaContext = {},
+): GuidedPlanningAreaSuggestion[] {
+  const parentCountries = new Set(mention.parentCountries.map(normalizePlacePhrase));
+  const parentName = normalizePlacePhrase(mention.canonicalName);
+  const broadByCountry = mention.placeType === "continent" || mention.placeType === "country"
+    || mention.placeType === "macro_region" || mention.parentCountries.length > 1;
+  const anchorCountries = new Set((context.mentions ?? [])
+    .filter((candidate) => candidate.mentionId !== mention.mentionId
+      && (candidate.isAnchor || candidate.routability === "anchor_or_poi" || candidate.role === "anchor"
+        || candidate.placeType === "natural_area" || candidate.placeType === "landmark"))
+    .flatMap((candidate) => candidate.parentCountries)
+    .map(normalizePlacePhrase)
+    .filter((country) => !parentCountries.size || parentCountries.has(country)));
+  const interests = new Set((context.interests ?? []).map(normalizePlacePhrase));
+
+  const routeOptions = routeFamilies.flatMap((route) => {
+    const routeCountries = route.countries.map(normalizePlacePhrase);
+    const routeFits = mention.placeType === "country"
+      ? routeCountries.includes(parentName)
+      : broadByCountry && routeCountries.some((country) => parentCountries.has(country));
+    if (!routeFits) return [];
+    const interestScore = route.interests.filter((interest) => interests.has(normalizePlacePhrase(interest))).length * 8;
+    return route.stops.flatMap((stop, stopIndex): Array<GuidedPlanningAreaSuggestion & { score: number }> => {
+      const country = normalizePlacePhrase(stop.country);
+      if (mention.placeType === "country" && country !== parentName) return [];
+      if (mention.placeType !== "country" && parentCountries.size && !parentCountries.has(country)) return [];
+      const anchorMatched = anchorCountries.has(country);
+      const catalog = matchCatalogPlace(stop.name);
+      return [{
+        mentionId: mention.mentionId,
+        regionCanonicalPlaceId: mention.canonicalPlaceId ?? `planning-area:${slug(mention.canonicalName)}`,
+        canonicalPlaceId: catalog?.canonicalPlaceId ?? `route-base:${slug(stop.country)}:${slug(stop.name)}`,
+        name: stop.name,
+        country: stop.country,
+        placeType: catalog?.placeType ?? "town",
+        coordinates: [...stop.coordinates] as [number, number],
+        reason: stop.reason,
+        provenance: [{
+          id: `route-catalog:${route.key}`,
+          label: route.title,
+          kind: "canonical" as const,
+          supports: `This reviewed route family supports ${stop.name} as one possible route place within ${mention.canonicalName}; the traveller still chooses.`,
+          reviewedAt: route.reviewedAt,
+        }],
+        routeFamilyKey: route.key,
+        anchorMatched,
+        score: (anchorMatched ? 100 : 0) + interestScore + Math.max(0, 12 - stopIndex),
+      }];
+    });
+  });
+
+  const canonicalOptions = PLACE_CATALOG.flatMap((entry): Array<GuidedPlanningAreaSuggestion & { score: number }> => {
+    if (!entry.coordinates || !["city", "town", "transport_gateway"].includes(entry.placeType)) return [];
+    const countries = entry.parentCountries.map(normalizePlacePhrase);
+    const contained = mention.placeType === "country"
+      ? countries.includes(parentName)
+      : broadByCountry && countries.some((country) => parentCountries.has(country));
+    if (!contained) return [];
+    const country = entry.parentCountries[0];
+    if (!country) return [];
+    const anchorMatched = countries.some((value) => anchorCountries.has(value));
+    return [{
+      mentionId: mention.mentionId,
+      regionCanonicalPlaceId: mention.canonicalPlaceId ?? `planning-area:${slug(mention.canonicalName)}`,
+      canonicalPlaceId: entry.canonicalPlaceId,
+      name: entry.canonicalName,
+      country,
+      placeType: entry.placeType,
+      coordinates: [...entry.coordinates] as [number, number],
+      reason: anchorMatched
+        ? `In the same country as a specific place you asked to include.`
+        : `A canonical route place within ${mention.canonicalName}.`,
+      provenance: [{
+        ...entry.provenance,
+        kind: entry.provenance.kind === "curated" ? "curated_alias" as const : "canonical" as const,
+      }],
+      anchorMatched,
+      score: anchorMatched ? 90 : 4,
+    }];
+  });
+
+  const ranked = unique([
+    ...regionalBaseSuggestions(mention).map((suggestion) => ({ ...suggestion, anchorMatched: false, score: 120 })),
+    ...routeOptions,
+    ...canonicalOptions,
+  ].sort((left, right) => right.score - left.score), (suggestion) => suggestion.canonicalPlaceId);
+  const anchorScoped = anchorCountries.size && ranked.some((suggestion) => suggestion.anchorMatched)
+    ? ranked.filter((suggestion) => suggestion.anchorMatched)
+    : ranked;
+  return anchorScoped
+    .slice(0, 6)
+    .map(({ score: _score, ...suggestion }) => suggestion);
+}
+
+const routeInterestMatches = (route: RouteFamily, interests: readonly string[]) => {
+  const aliases: Record<string, string[]> = {
+    beach: ["coast"],
+    culture: ["culture", "heritage"],
+    nature: ["nature", "wildlife"],
+  };
+  return interests.filter((interest) => {
+    const values = aliases[normalizePlacePhrase(interest)] ?? [normalizePlacePhrase(interest)];
+    return route.interests.some((routeInterest) => values.includes(normalizePlacePhrase(routeInterest)));
+  }).filter((interest, index, all) => all.indexOf(interest) === index);
+};
+
+const planningAreaAnchorMentions = (mention: ResolvedPlaceMention, mentions: readonly ResolvedPlaceMention[]) => {
+  const parentCountries = new Set(mention.parentCountries.map(normalizePlacePhrase));
+  return mentions.filter((candidate) => candidate.mentionId !== mention.mentionId
+    && (candidate.isAnchor || candidate.routability === "anchor_or_poi" || candidate.role === "anchor"
+      || candidate.placeType === "natural_area" || candidate.placeType === "landmark")
+    && candidate.parentCountries.some((country) => !parentCountries.size || parentCountries.has(normalizePlacePhrase(country))));
+};
+
+const routeMatchesAnchorText = (route: RouteFamily, anchor: ResolvedPlaceMention) => {
+  const routeText = normalizePlacePhrase([
+    route.title,
+    route.bestFor,
+    ...route.bases,
+    ...route.stops.map((stop) => stop.name),
+    ...(route.highlights ?? []),
+  ].join(" "));
+  const anchorLabels = unique([
+    anchor.sourceText,
+    anchor.canonicalName,
+    ...anchor.sourceTexts,
+    ...anchor.aliases,
+  ].map(normalizePlacePhrase).filter((label) => label.length >= 4), (label) => label);
+  const genericAnchorWords = new Set(["area", "island", "mountain", "national", "park", "region", "river"]);
+  return anchorLabels.some((label) => routeText.includes(label)
+    || label.split(" ").some((token) => token.length >= 6 && !genericAnchorWords.has(token) && routeText.includes(token)));
+};
+
+/** A small, review-only route direction derived from an existing editorial
+ * route family. It proposes canonical places but never mutates the trip or
+ * marks the parent area complete. */
+export function guidedPlanningAreaShapes(
+  mention: ResolvedPlaceMention,
+  context: GuidedPlanningAreaContext = {},
+): GuidedPlanningAreaShape[] {
+  if (!placeMentionSupportsMultipleSelections(mention)) return [];
+  const parentCountries = new Set(mention.parentCountries.map(normalizePlacePhrase));
+  const parentName = normalizePlacePhrase(mention.canonicalName);
+  const anchors = planningAreaAnchorMentions(mention, context.mentions ?? []);
+  const anchorCountries = new Set(anchors.flatMap((anchor) => anchor.parentCountries).map(normalizePlacePhrase));
+  const interests = context.interests ?? [];
+
+  const candidates = routeFamilies.flatMap((route) => {
+    if (!route.reviewedAt) return [];
+    const routeCountries = route.countries.map(normalizePlacePhrase);
+    const routeFits = mention.placeType === "country"
+      ? routeCountries.includes(parentName)
+      : routeCountries.some((country) => parentCountries.has(country));
+    if (!routeFits) return [];
+    const containedStops = route.stops.filter((stop) => mention.placeType === "country"
+      ? normalizePlacePhrase(stop.country) === parentName
+      : !parentCountries.size || parentCountries.has(normalizePlacePhrase(stop.country)));
+    if (containedStops.length < 2) return [];
+    const exactAnchor = anchors.find((anchor) => routeMatchesAnchorText(route, anchor));
+    const countryAnchor = exactAnchor ? undefined : anchors.find((anchor) => anchor.parentCountries
+      .some((country) => routeCountries.includes(normalizePlacePhrase(country))));
+    const matchedInterests = routeInterestMatches(route, interests);
+    const limit = context.pace === "relaxed" || (context.durationDays !== undefined && context.durationDays <= 8)
+      ? 2
+      : Math.min(4, containedStops.length);
+    const places = containedStops.slice(0, limit).map((stop): GuidedPlanningAreaSuggestion => {
+      const catalog = matchCatalogPlace(stop.name);
+      return {
+        mentionId: mention.mentionId,
+        regionCanonicalPlaceId: mention.canonicalPlaceId ?? `planning-area:${slug(mention.canonicalName)}`,
+        canonicalPlaceId: catalog?.canonicalPlaceId ?? `route-base:${slug(stop.country)}:${slug(stop.name)}`,
+        name: stop.name,
+        country: stop.country,
+        placeType: catalog?.placeType ?? "town",
+        coordinates: [...stop.coordinates] as [number, number],
+        reason: stop.reason,
+        provenance: [{
+          id: `route-catalog:${route.key}`,
+          label: route.title,
+          kind: "canonical",
+          supports: `This reviewed route family supports ${stop.name} as one possible route place within ${mention.canonicalName}; the traveller still chooses.`,
+          reviewedAt: route.reviewedAt,
+        }],
+        routeFamilyKey: route.key,
+        anchorMatched: Boolean(exactAnchor || countryAnchor),
+      };
+    });
+    const reason = exactAnchor
+      ? `Responds to your ${exactAnchor.sourceText} request using reviewed route knowledge.`
+      : matchedInterests.length
+        ? `Good match for ${matchedInterests.map((interest) => interest.charAt(0).toUpperCase() + interest.slice(1)).join(" + ")}.`
+        : context.pace === "relaxed" && places.length === 2
+          ? "Fewer bases for a slower trip."
+          : context.durationDays !== undefined
+            && context.durationDays >= route.suggestedDays.min
+            && context.durationDays <= route.suggestedDays.max
+            ? "Reviewed for a trip around this length."
+            : route.bestFor;
+    const score = (exactAnchor ? 300 : countryAnchor ? 180 : 0)
+      + matchedInterests.length * 20
+      + (context.durationDays !== undefined
+        && context.durationDays >= route.suggestedDays.min
+        && context.durationDays <= route.suggestedDays.max ? 8 : 0)
+      + (context.pace === "relaxed" && places.length === 2 ? 5 : 0)
+      + (route.confidence === "high" ? 2 : route.confidence === "medium" ? 1 : 0);
+    const containsWholeRoute = places.length === route.stops.length;
+    return [{
+      id: `route-shape:${mention.mentionId}:${route.key}`,
+      mentionId: mention.mentionId,
+      routeFamilyKey: route.key,
+      title: containsWholeRoute ? route.title : places.map((place) => place.name).join(" + "),
+      placeSummary: containsWholeRoute
+        ? places.map((place) => place.name).join(" + ")
+        : route.interests.slice(0, 3).map((interest) => interest.charAt(0).toUpperCase() + interest.slice(1)).join(" · "),
+      reason,
+      places,
+      matchedInterestIds: matchedInterests,
+      anchorMentionId: exactAnchor?.mentionId ?? countryAnchor?.mentionId,
+      reviewedAt: route.reviewedAt,
+      score,
+      exactAnchor: Boolean(exactAnchor),
+      countryAnchor: Boolean(countryAnchor),
+    }];
+  });
+
+  const anchorScoped = anchors.length
+    ? candidates.some((candidate) => candidate.exactAnchor)
+      ? candidates.filter((candidate) => candidate.exactAnchor)
+      : candidates.filter((candidate) => candidate.countryAnchor)
+    : candidates;
+  return unique(anchorScoped.sort((left, right) => right.score - left.score), (shape) => shape.places
+    .map((place) => place.canonicalPlaceId).join("|"))
+    .slice(0, 3)
+    .map(({ score: _score, exactAnchor: _exactAnchor, countryAnchor: _countryAnchor, ...shape }) => shape);
+}
+
 function issueOptionsForMention(mention: ResolvedPlaceMention): PlaceIssueOption[] {
   if (mention.status === "ambiguous") return mention.candidates.map((candidate) => ({
     kind: "candidate",
@@ -1116,6 +1395,11 @@ function issuesForMentions(mentions: ResolvedPlaceMention[]) {
   const issues: PlaceResolutionIssue[] = [];
   for (const mention of mentions) {
     const blocksRoute = blockingRole(mention.role);
+    const countryQualifiedByDirectPlace = mention.placeType === "country"
+      && mentions.some((candidate) => candidate.mentionId !== mention.mentionId
+        && candidate.role !== "excluded"
+        && candidate.routability === "direct_destination"
+        && candidate.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(mention.canonicalName)));
     if (mention.status === "ambiguous") {
       issues.push({
         code: "ambiguous_place", mentionId: mention.mentionId, sourceText: mention.sourceText,
@@ -1130,7 +1414,7 @@ function issuesForMentions(mentions: ResolvedPlaceMention[]) {
         message: `Confirm ${mention.sourceText} before Morrovia uses it in the route.`, severity: blocksRoute ? "error" : "warning", blocksRoute,
         options: [], provenance: mention.provenance, confidence: mention.confidence,
       });
-    } else if ((mention.requiresBaseSelection || (mention.routability === "anchor_or_poi"
+    } else if (!countryQualifiedByDirectPlace && (mention.requiresBaseSelection || (mention.routability === "anchor_or_poi"
       && !mentions.some((candidate) => candidate !== mention
         && candidate.routability === "direct_destination"
         && (candidate.canonicalPlaceId === mention.parentRegionId
@@ -1575,7 +1859,7 @@ function decisiveProviderCandidate(
     && (exact.includes(candidate) || normalizePlacePhrase(candidate.canonicalName).startsWith(`${normalized} `)));
   const exactSameNameRoutes = exactRouteDestinations.filter((candidate) => normalizePlacePhrase(candidate.canonicalName) === normalized);
   const exactBroadGeographies = exact.filter((candidate) => (candidate.routability === "planning_area" || candidate.routability === "needs_base_selection")
-    && ["country", "region", "sub_region", "island", "coast", "natural_area"].includes(candidate.placeType));
+    && ["continent", "country", "region", "sub_region", "island", "coast", "natural_area"].includes(candidate.placeType));
   const contextCountries = new Set((context.countryNames ?? []).map(normalizePlacePhrase));
   const exactContextualForIntent = exactForIntent.filter((candidate) => candidate.parentCountries
     .some((country) => contextCountries.has(normalizePlacePhrase(country))));
@@ -1616,7 +1900,7 @@ function decisiveProviderCandidate(
         - ((rankedExplicitContext[1] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)) >= 12)) {
     return rankedExplicitContext[0];
   }
-  const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "country"
+  const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "continent" || candidate.placeType === "country"
     || ((candidate as PlaceResolutionCandidate & { geographicSignificance?: number }).geographicSignificance ?? 0) >= 0.72);
   // Entity identity precedes route-node suitability. A single provider-backed
   // major geography wins a bare exact name, while coextensive city-states keep
@@ -1710,7 +1994,7 @@ function materialClarificationCandidates(candidates: RankedProviderCandidate[]) 
 }
 
 const PROVIDER_PLACE_TYPES = new Set<PlaceType>([
-  "country", "macro_region", "region", "sub_region", "island", "archipelago", "city", "town", "natural_area", "coast",
+  "continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "city", "town", "natural_area", "coast",
   "mountain_range", "valley", "travel_corridor", "landmark", "transport_gateway", "unknown",
 ]);
 const PROVIDER_ROUTABILITY = new Set<PlaceRoutability>([

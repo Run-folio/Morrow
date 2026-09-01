@@ -7,11 +7,10 @@ import {
   CalendarDays,
   CirclePlus,
   Clock3,
-  MapPin,
+  GripVertical,
   Route,
-  Utensils,
 } from "lucide-react";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState, type DragEvent } from "react";
 import {
   formatTripDuration,
 } from "@/lib/easyt/trip-facts";
@@ -23,6 +22,7 @@ import {
 } from "@/lib/easyt/itinerary-day-composition";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
+import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import styles from "./rich-itinerary-day-planner.module.css";
 
 type RichItineraryDayPlannerProps = {
@@ -39,6 +39,11 @@ type RichItineraryDayPlannerProps = {
   onAddSubmit?: () => void;
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
+  dragActive?: boolean;
+  draggedActivityId?: string | null;
+  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
+  onActivityDragEnd?: () => void;
+  onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
   showHeader?: boolean;
 };
 
@@ -123,6 +128,10 @@ function ActivityRow({
   onBeforeDayPartChange,
   onDayPartChange,
   onMoveActivity,
+  draggable,
+  dragging,
+  onDragStart,
+  onDragEnd,
 }: {
   activity: ComposedItineraryActivity;
   language: "en" | "es";
@@ -133,16 +142,34 @@ function ActivityRow({
   onBeforeDayPartChange: (activityId: string) => void;
   onDayPartChange?: RichItineraryDayPlannerProps["onDayPartChange"];
   onMoveActivity?: RichItineraryDayPlannerProps["onMoveActivity"];
+  draggable: boolean;
+  dragging: boolean;
+  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: () => void;
 }) {
-  const Icon = activity.category === "restaurant" ? Utensils : MapPin;
   const copy = copyFor(language);
   return (
-    <article className={styles.activity} aria-busy={pending || undefined}>
-      <Icon aria-hidden="true" />
+    <article className={`${styles.activity} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined}>
+      <ItineraryActivityIdentity
+        title={activity.title}
+        category={activity.category}
+        image={activity.image}
+        meta={[activity.area, activity.placeType].filter(Boolean).join(" · ") || undefined}
+        compact
+      />
       <div className={styles.activityTitle}>
-        <strong>{activity.title}</strong>
         {activity.booking ? <span>{copy.bookedActivity}</span> : null}
       </div>
+      {draggable ? <EasyTButton
+        className={styles.dragHandle}
+        icon={GripVertical}
+        iconOnly
+        size="small"
+        variant="quiet"
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >Drag to organise: {activity.title}</EasyTButton> : null}
       {activity.dayPartEditable ? (
         <EasyTSelect
           id={controlId}
@@ -197,6 +224,11 @@ export default function RichItineraryDayPlanner({
   onAddSubmit,
   onDayPartChange,
   onMoveActivity,
+  dragActive = false,
+  draggedActivityId = null,
+  onActivityDragStart,
+  onActivityDragEnd,
+  onActivityDrop,
   showHeader = true,
 }: RichItineraryDayPlannerProps) {
   const copy = copyFor(language);
@@ -204,6 +236,7 @@ export default function RichItineraryDayPlanner({
   const tonight = composition.tonight;
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   useEffect(() => {
     const activityId = focusAfterMoveRef.current;
     if (!activityId) return;
@@ -254,14 +287,22 @@ export default function RichItineraryDayPlanner({
           const activities = composition.planned[part];
           const headingId = `${titleId}-${part}`;
           return (
-            <section className={styles.period} aria-labelledby={headingId} key={part}>
+            <section className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`} data-day-part={part} aria-labelledby={headingId} key={part}>
               <div className={styles.periodHeading}>
                 <h3 id={headingId}>{dayPartLabels[language][part]}</h3>
                 {activities.length ? <span>{activities.length}</span> : null}
               </div>
               {activities.length ? (
                 <div className={styles.activityList}>
-                  {activities.map((activity, activityIndex) => (
+                  {activities.map((activity, activityIndex) => <div className={styles.activityDropGroup} key={activity.id}>
+                    <div
+                      className={`${styles.dropMarker} ${dropTarget === `${part}:${activityIndex}` ? styles.dropMarkerActive : ""}`}
+                      data-drop-index={activityIndex}
+                      aria-hidden="true"
+                      onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
+                      onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
+                      onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
+                    >{dragActive ? "Drop here" : null}</div>
                     <ActivityRow
                       activity={activity}
                       language={language}
@@ -272,14 +313,31 @@ export default function RichItineraryDayPlanner({
                       onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                       onDayPartChange={onDayPartChange}
                       onMoveActivity={onMoveActivity}
-                      key={activity.id}
+                      draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
+                      dragging={draggedActivityId === activity.id}
+                      onDragStart={(event) => onActivityDragStart?.(activity, event)}
+                      onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
                     />
-                  ))}
+                  </div>)}
+                  <div
+                    className={`${styles.dropMarker} ${dropTarget === `${part}:${activities.length}` ? styles.dropMarkerActive : ""}`}
+                    data-drop-index={activities.length}
+                    aria-hidden="true"
+                    onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
+                    onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
+                    onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
+                  >{dragActive ? "Drop here" : null}</div>
                 </div>
               ) : (
-                <div className={styles.freePeriod}>
+                <div
+                  className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
+                  data-drop-index="0"
+                  onDragEnter={() => { if (dragActive) setDropTarget(`${part}:0`); }}
+                  onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
+                  onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, 0); setDropTarget(null); }}
+                >
                   <strong>{copy.free}</strong>
-                  <p>{copy.freeDetail}</p>
+                  <p>{dragActive ? "Drop activity here" : copy.freeDetail}</p>
                 </div>
               )}
               <div className={styles.addHere}>
@@ -331,6 +389,10 @@ export default function RichItineraryDayPlanner({
                 onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
+                draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
+                dragging={draggedActivityId === activity.id}
+                onDragStart={(event) => onActivityDragStart?.(activity, event)}
+                onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
                 key={activity.id}
               />
             ))}

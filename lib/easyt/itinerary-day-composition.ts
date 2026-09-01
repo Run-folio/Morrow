@@ -29,6 +29,10 @@ export type ComposedItineraryActivity = {
   noteIndex: number | null;
   /** Saved ideas and unambiguous authored notes own explicit day-part intent. */
   dayPartEditable: boolean;
+  image?: string;
+  sourceUrl?: string;
+  area?: string;
+  placeType?: string;
 };
 
 export type ComposedItineraryTransfer = {
@@ -189,6 +193,10 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       explicitPart,
       noteIndex: sourceIndex,
       dayPartEditable: !booking && (Boolean(idea) || protection.editable),
+      image: idea?.image,
+      sourceUrl: idea?.sourceUrl,
+      area: idea?.area,
+      placeType: idea?.placeType,
     };
   });
   for (const ideas of ideasByTitle.values()) {
@@ -201,6 +209,10 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       explicitPart: idea.dayPart ?? null,
       noteIndex: null,
       dayPartEditable: true,
+      image: idea.image,
+      sourceUrl: idea.sourceUrl,
+      area: idea.area,
+      placeType: idea.placeType,
     });
   }
   const allActivities: ComposedItineraryActivity[] = drafts.map((activity, index) => ({
@@ -212,6 +224,10 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     dayPart: activity.explicitPart ?? fallbackItineraryDayPart(index, drafts.length),
     noteIndex: activity.noteIndex,
     dayPartEditable: activity.dayPartEditable,
+    image: activity.image,
+    sourceUrl: activity.sourceUrl,
+    area: activity.area,
+    placeType: activity.placeType,
   }));
   const planned = Object.fromEntries(itineraryDayParts.map((part) => [
     part,

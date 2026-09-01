@@ -50,7 +50,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
   };
 }
 
-const planningParentTypes = new Set<PlaceType>(["country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"]);
+const planningParentTypes = new Set<PlaceType>(["continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"]);
 
 function finiteQueryNumber(request: NextRequest, key: string) {
   const raw = request.nextUrl.searchParams.get(key);
@@ -63,7 +63,7 @@ function planningParentFromRequest(request: NextRequest): PlanningParentConstrai
   const canonicalName = request.nextUrl.searchParams.get("parentName")?.trim();
   const rawType = request.nextUrl.searchParams.get("parentType")?.trim() as PlaceType | undefined;
   if (!canonicalName || !rawType || !planningParentTypes.has(rawType)) return undefined;
-  const parentCountry = request.nextUrl.searchParams.get("parentCountry")?.trim();
+  const parentCountries = request.nextUrl.searchParams.getAll("parentCountry").map((country) => country.trim()).filter(Boolean);
   const boundsValues = {
     south: finiteQueryNumber(request, "parentSouth"),
     west: finiteQueryNumber(request, "parentWest"),
@@ -77,7 +77,7 @@ function planningParentFromRequest(request: NextRequest): PlanningParentConstrai
     canonicalPlaceId: request.nextUrl.searchParams.get("parentId")?.trim() || undefined,
     canonicalName,
     placeType: rawType,
-    parentCountries: parentCountry ? [parentCountry] : rawType === "country" ? [canonicalName] : [],
+    parentCountries: parentCountries.length ? parentCountries : rawType === "country" ? [canonicalName] : [],
     bounds,
   };
 }

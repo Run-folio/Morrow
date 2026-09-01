@@ -24,6 +24,9 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForO
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip, type MappedItineraryPlace } from "@/lib/easyt/map-place-itinerary";
+import { preferredItineraryIdeaDay, removeItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
+import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
@@ -840,7 +843,7 @@ export function JourneyMapPlannerWorkspace({
     setRecoveryBlockedByExisting(recovery.blockedByExistingRecovery);
     setCloudCopyHasPreservedRecovery(false);
     setCloudSaveError(recovery.blockedByExistingRecovery
-      ? "This device already has a different unsynced copy of this trip. Open the device copy to resolve it before saving this version. This latest change is only in this tab."
+      ? "This browser has newer trip changes saved separately. Review them before saving this version. This latest change is only in this tab."
       : "Browser storage is blocked. This latest change is only in this tab; keep it open and try again after storage is available.");
     setCloudSaveState("error");
     return recovery;
@@ -864,7 +867,7 @@ export function JourneyMapPlannerWorkspace({
       recoveryHandleRef.current = null;
       setRecoveryBlockedByExisting(true);
       setCloudCopyHasPreservedRecovery(false);
-      setCloudSaveError("A newer device edit was preserved while this version finished syncing. Open the device copy before continuing.");
+      setCloudSaveError("Newer changes on this device were preserved while this version finished syncing. Review them before continuing.");
       setCloudSaveState("error");
     }
     return { ...cached, isCurrentRecovery: safeCanonicalResult };
@@ -958,20 +961,25 @@ export function JourneyMapPlannerWorkspace({
     return () => window.clearTimeout(timer);
   }, [lastPlannerTrip, undoMessage]);
 
-  const handleAttractionSelection = useCallback((stopId: string, title: string, selected: boolean) => {
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: {
-        ...trip.brief,
-        selectedPlaces: {
-          ...trip.brief.selectedPlaces,
-          [stopId]: selected
-            ? [...(trip.brief.selectedPlaces[stopId] ?? []), title]
-            : (trip.brief.selectedPlaces[stopId] ?? []).filter((place) => place !== title),
-        },
-      },
-    }), selected ? "Place added to trip" : "Place removed from trip");
-  }, [updatePlannerTrip]);
+  const handleAttractionSelection = useCallback((stopId: string, place: ItineraryDiscoveryPlace | string, selected: boolean) => {
+    updatePlannerTrip((trip) => {
+      const title = typeof place === "string" ? place : place.title;
+      const targetDay = selectedPlanItem?.stopId === stopId
+        ? trip.planItems.find((day) => day.id === selectedPlanItem.id) ?? null
+        : preferredItineraryIdeaDay(trip, stopId);
+      if (typeof place !== "string" && targetDay) return setDiscoveryPlaceScheduled(trip, { stopId, place, dayId: targetDay.id, selected });
+      const legacyIdea = !selected && typeof place === "string"
+        ? (trip.brief.itineraryIdeas ?? []).find((item) => item.stopId === stopId && item.title.toLocaleLowerCase() === title.toLocaleLowerCase())
+        : null;
+      let next = legacyIdea ? removeItineraryIdea(trip, legacyIdea.id) : trip;
+      const existing = next.brief.selectedPlaces[stopId] ?? [];
+      const selectedPlaces = selected
+        ? existing.some((item) => item.toLocaleLowerCase() === title.toLocaleLowerCase()) ? existing : [...existing, title]
+        : existing.filter((item) => item.toLocaleLowerCase() !== title.toLocaleLowerCase());
+      next = { ...next, brief: { ...next.brief, selectedPlaces: { ...next.brief.selectedPlaces, [stopId]: selectedPlaces } } };
+      return next;
+    }, selected ? `Added to Day ${selectedPlanItem?.dayNumber ?? ""}`.trim() : "Place removed from day");
+  }, [selectedPlanItem, updatePlannerTrip]);
 
   const undoPlannerEdit = () => {
     if (!lastPlannerTrip) return;
@@ -1453,7 +1461,7 @@ export function JourneyMapPlannerWorkspace({
   const recoverMapSaveLabel = syncAction === "reload-cloud"
     ? (language === "es" ? "Recargar copia en la nube" : "Reload cloud copy")
     : syncAction === "open-device"
-      ? (language === "es" ? "Abrir copia del dispositivo" : "Open device copy")
+      ? (language === "es" ? "Revisar cambios del dispositivo" : "Review device changes")
       : syncAction === "sign-in"
         ? (language === "es" ? "Iniciar sesión de nuevo" : "Sign in again")
         : (language === "es" ? "Reintentar" : "Try again");
@@ -2228,7 +2236,7 @@ export function JourneyMapPlannerWorkspace({
           }}
           copy={planCopy}
         /> : null}
-        {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction} /></div> : null}
+        {shapeDayTab === "see" && customTrip ? <div className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction} /></div> : null}
         {(shapeDayTab === "stay" || shapeDayTab === "eat") ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={selected.city} country={selected.country} locale={language} dayId={selectedDay.id} coordinates={selected.coordinates!} interests={customTrip ? tripIntentForTrip(customTrip).preferences.interests : []} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1 } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
@@ -2251,10 +2259,10 @@ export function JourneyMapPlannerWorkspace({
             : recoveryBlockedByExisting
               ? cloudCopyHasPreservedRecovery
                 ? (language === "es" ? "Tus cambios del dispositivo están guardados por separado" : "Your device edits are preserved separately")
-                : (language === "es" ? "Abre la copia del dispositivo antes de continuar" : "Open the device copy before continuing")
+                : (language === "es" ? "Tienes cambios más recientes en este dispositivo" : "You have newer changes on this device")
               : (language === "es" ? "No se pudo guardar en tu cuenta" : "Couldn't save to your account")}
         detail={cloudSaveError || (language === "es" ? "No se pudo guardar este viaje ahora." : "This trip could not be saved just now.")}
-        safety={language === "es" ? "Tus cambios del dispositivo siguen conservados y no sustituyeron la copia de la cuenta." : "Your device edits remain preserved and did not replace the account copy."}
+        safety={language === "es" ? "Ambas versiones siguen protegidas mientras revisas los cambios del dispositivo." : "Both versions remain protected while you review the device changes."}
         actions={<button type="button" onClick={recoverMapSave}>{recoverMapSaveLabel}</button>}
       /></div> : null}
 

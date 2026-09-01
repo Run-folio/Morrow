@@ -155,7 +155,7 @@ The prototype never presents `Replace` as the first action and never silently ch
 - Current state: `Needs a stay`
 - Action: `Open Trip.com`
 - Result: `Trip.com opened. This stop still needs a stay.`
-- Disclosure: `Partner link · Morrovia may earn a commission at no extra cost to you.`
+- Disclosure: `Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.`
 
 This exploration deliberately does not invent a traveller-confirmed booking workflow. `Stay sorted` still requires an explicit existing Morrovia save action or a canonical confirmed-booking fact.
 

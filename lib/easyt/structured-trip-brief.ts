@@ -2,6 +2,7 @@ import { parseTripBrief } from "./trip-brief.ts";
 import {
   resolvePlaceMentions,
   placeResolutionIssuesForMentions,
+  placeMentionSupportsMultipleSelections,
   reconcileSelfBasePlaceState,
   type PlaceIntelligenceResult,
   type PlaceIssue,
@@ -107,6 +108,9 @@ export type StructuredTripBrief = {
   placeIssues?: PlaceIssue[];
   /** Explicit traveller choices that resolve an ambiguity or choose a regional base. */
   placeSelections?: PlaceSelection[];
+  /** Broad planning areas remain open for multiple child selections until the
+   * traveller explicitly says that the route has enough places. */
+  completedPlanningAreaMentionIds?: string[];
   /** Explicit removals preserve auditability without silently losing prompt intent. */
   removedPlaceMentionIds?: string[];
 };
@@ -144,6 +148,7 @@ export type StructuredTripBriefBuilderInput = {
   avoidDriving?: boolean;
   avoidFlying?: boolean;
   placeSelections?: PlaceSelection[];
+  completedPlanningAreaMentionIds?: string[];
   removedPlaceMentionIds?: string[];
 };
 
@@ -248,7 +253,7 @@ function maximumTransferMinutesFromPrompt(prompt: string) {
 }
 
 const regionPlaceTypes = new Set<PlaceType>([
-  "macro_region", "region", "sub_region", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
+  "continent", "macro_region", "region", "sub_region", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
 ]);
 
 function placeProvenance(mention: ResolvedPlaceMention): TripBriefProvenance {
@@ -445,6 +450,7 @@ export function extractStructuredTripBrief(
     placeMentions,
     placeIssues: placeIntelligence.issues,
     placeSelections: [],
+    completedPlanningAreaMentionIds: [],
     removedPlaceMentionIds: [],
   };
   return { ...brief, issues: validateStructuredTripBrief(brief) };
@@ -460,9 +466,19 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   const removedMentions = (base.placeMentions ?? []).filter((mention) => removedMentionIdSet.has(mention.mentionId));
   const removedNames = new Set(removedMentions.flatMap((mention) => [mention.canonicalName, mention.sourceText, ...mention.sourceTexts].map(normalize)));
   const priorSelections = base.placeSelections ?? [];
+  const multiPlaceMentionIds = new Set((base.placeMentions ?? [])
+    .filter(placeMentionSupportsMultipleSelections)
+    .map((mention) => mention.mentionId));
   const proposedPlaceSelections = (input.placeSelections
-    ? unique([...input.placeSelections, ...priorSelections], (selection) => selection.mentionId)
+    ? unique([...input.placeSelections, ...priorSelections], (selection) => multiPlaceMentionIds.has(selection.mentionId)
+      ? `${selection.mentionId}|${selection.kind}|${selection.selectedCanonicalPlaceId}`
+      : selection.mentionId)
     : priorSelections).filter((selection) => !removedMentionIdSet.has(selection.mentionId));
+  const completedPlanningAreaMentionIds = unique(
+    input.completedPlanningAreaMentionIds ?? base.completedPlanningAreaMentionIds ?? [],
+    (value) => value,
+  ).filter((mentionId) => !removedMentionIdSet.has(mentionId));
+  const completedPlanningAreaMentionIdSet = new Set(completedPlanningAreaMentionIds);
   const selfBaseState = reconcileSelfBasePlaceState(base.placeMentions ?? [], proposedPlaceSelections);
   let placeSelections = selfBaseState.selections;
   let staleVisitMentionIds = new Set<string>();
@@ -473,7 +489,9 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
       ?? (!destination.canonicalPlaceId
         ? base.destinations.find((item) => destination.placeMentionId && item.placeMentionId === destination.placeMentionId)
         : undefined);
-    const selection = placeSelections.find((item) => item.mentionId === destination.placeMentionId);
+    const selection = placeSelections.find((item) => item.mentionId === destination.placeMentionId
+      && (item.routeStopId === destination.id || item.selectedCanonicalPlaceId === destination.canonicalPlaceId))
+      ?? placeSelections.find((item) => item.mentionId === destination.placeMentionId);
     return {
       ...prior,
       ...destination,
@@ -587,9 +605,14 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
       if (issue.code === "missing_routable_destination" && destinations.some((destination) => Boolean(destination.id))) return false;
       const selection = placeSelections.find((item) => item.mentionId === issue.mentionId);
       if (!selection) return true;
+      const mention = (base.placeMentions ?? []).find((item) => item.mentionId === issue.mentionId);
+      if (issue.code === "region_requires_base" && mention
+        && placeMentionSupportsMultipleSelections(mention)
+        && !completedPlanningAreaMentionIdSet.has(issue.mentionId)) return true;
       return issue.code === "duplicate_alias" || issue.code === "conflicting_place_roles" || issue.code === "unsupported_containment";
     }),
     placeSelections,
+    completedPlanningAreaMentionIds,
     removedPlaceMentionIds,
     source: { ...base.source, inputs: unique([...base.source.inputs, "builder"], (value) => value) },
   };
@@ -611,6 +634,7 @@ export function structuredTripBriefFromSavedSelections(input: StructuredTripBrie
     placeMentions: undefined,
     placeIssues: undefined,
     placeSelections: undefined,
+    completedPlanningAreaMentionIds: undefined,
     removedPlaceMentionIds: undefined,
   };
 }

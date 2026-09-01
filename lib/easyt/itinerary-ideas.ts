@@ -17,6 +17,7 @@ export function itineraryIdeaForPlace(input: {
     id: ideaId(stopId, place.id), stopId, placeId: place.id, title: place.title,
     category: place.type === "Food" || place.tags.includes("Food") ? "restaurant" : "activity",
     coordinates: place.coordinates, image: place.image, sourceUrl: place.sourceUrl,
+    area: place.area, placeType: place.type, description: place.description,
     source: reasons.includes("destination-significance") ? "destination-highlight" : "personalised-recommendation",
     reasons: [...new Set(reasons)],
   };

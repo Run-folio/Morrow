@@ -105,7 +105,7 @@ test("cookie settings and notice are dedicated, public and use the canonical ide
   const page = readFileSync("app/journey/cookies/page.tsx", "utf8");
   const footer = readFileSync("components/morrovia-footer.tsx", "utf8");
   assert.match(page, /<CookiePreferences \/>/);
-  assert.match(page, /morroviaLegalIdentity\.legalOperator/);
+  assert.match(page, /morroviaLegalIdentity\.operatorTradingAs/);
   assert.match(page, /Better Auth session cookie/);
   assert.match(page, /Omio Impact/);
   assert.match(footer, /href="\/journey\/cookies#cookie-settings"/);

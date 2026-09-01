@@ -45,6 +45,7 @@ import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
+import { affiliateDisclosure } from "./affiliate-link";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import { TripPreparationTaskSection, TripTravellerDetailsEditor } from "./trip-preparation";
 import { useTripPrepReadiness, type TripPrepProviderStatus } from "./use-trip-prep-readiness";
@@ -446,7 +447,7 @@ export default function TripOverviewWorkspace({
               {action.external ? <a className={styles.primaryAction} href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={action.provider === "omio" ? `${action.label}, opens Omio in a new tab` : action.provider === "trip.com" ? `${action.label}, opens Trip.com in a new tab` : undefined} onClick={() => { if (action.provider === "omio") trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId }); else if (action.affiliate && action.provider && action.affiliateCategory) trackEvent("affiliate_click", { category: action.affiliateCategory, provider: action.provider, trip_id: trip.id, stop_id: action.stopId, placement: "overview_next_action", workspace_view: "overview" }); }}>{action.label}<ExternalLink aria-hidden="true" /></a> : <EasyTLinkButton href={action.href} size="small">{action.label}<ChevronRight aria-hidden="true" /></EasyTLinkButton>}
               {action.kind === "stay" && action.stopId && action.external ? <EasyTLinkButton href={mapWorkspaceHref(trip.id, action.stopId, "stay")} size="small" variant="secondary">Explore stays on map</EasyTLinkButton> : null}
             </div>
-            {action.affiliate ? <small className={styles.affiliateDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</small> : null}
+            {action.affiliate ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
           </div>
           <div className={styles.nextVisual} aria-live="polite">
             {actionImage ? <ResilientImage src={actionImage.src} alt={actionImage.alt} fallback={null} /> : null}
@@ -455,7 +456,7 @@ export default function TripOverviewWorkspace({
               <h3>{representativeStay.name}</h3>
               {representativeStay.address ? <span><MapPin aria-hidden="true" />{representativeStay.address}</span> : null}
               {representativeStay.rating !== undefined || representativeStay.price ? <small>{[representativeStay.rating !== undefined ? `${representativeStay.rating.toFixed(1)} rating` : null, representativeStay.price ? `${representativeStay.price.currency} ${representativeStay.price.total.toFixed(0)} total` : null].filter(Boolean).join(" · ")}</small> : null}
-            </div> : action.kind === "stay" && actionImageStop ? <div className={styles.stayFallback}><BedDouble aria-hidden="true" /><div><strong>Explore stays around {actionImageStop.name}</strong><span>Compare live options in the Map workspace or continue to Trip.com.</span></div></div> : !actionImage ? <Sparkles className={styles.nextFallback} aria-hidden="true" /> : null}
+            </div> : action.kind === "stay" && actionImageStop ? <div className={styles.stayFallback}><BedDouble aria-hidden="true" /><div><strong>Explore stays around {actionImageStop.name}</strong><span>Review stay results in the Map workspace or open a separate Trip.com search.</span></div></div> : !actionImage ? <Sparkles className={styles.nextFallback} aria-hidden="true" /> : null}
           </div>
         </article>
 

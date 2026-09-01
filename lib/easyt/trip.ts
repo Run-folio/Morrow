@@ -188,6 +188,10 @@ export type ItineraryIdea = {
   coordinates: [number, number];
   image?: string;
   sourceUrl?: string;
+  /** Discovery context retained when the suggestion becomes part of the itinerary. */
+  area?: string;
+  placeType?: string;
+  description?: string;
   source: "destination-highlight" | "personalised-recommendation";
   reasons: Array<"destination-significance" | "interest-relevance">;
   /** Missing means deliberately saved for later; fake days are never used. */

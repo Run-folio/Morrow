@@ -253,12 +253,23 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
     pace,
     interests: route.interests,
   });
+  const routeDestinationIds = new Set(destinations.map((destination) => destination.id));
+  const routeDestinationMentionIds = new Set(destinations.flatMap((destination) => destination.placeMentionId ?? []));
+  const routeDestinationNames = new Set(destinations.map((destination) => normalizedPlaceName(destination.name)));
   const hasOperationalRoute = route.stops.every((stop) => Boolean(stop.country)
     && Number.isFinite(stop.coordinates[0])
     && Number.isFinite(stop.coordinates[1]));
   const structuredBrief: StructuredTripBrief = {
     ...mergedBrief,
-    placeIssues: (mergedBrief.placeIssues ?? []).map((issue) => hasOperationalRoute
+    // The reviewed catalogue definition is the route handoff authority. The
+    // capture parser still supplies intent/provenance, but parser-only place
+    // fragments (for example `Lagos.` or `San Pedro`) must not become extra
+    // Builder stops or false ambiguity blockers beside an exact route stop.
+    destinations: mergedBrief.destinations.filter((destination) => Boolean(destination.id && routeDestinationIds.has(destination.id))),
+    placeIssues: (mergedBrief.placeIssues ?? [])
+      .filter((issue) => routeDestinationMentionIds.has(issue.mentionId)
+        || routeDestinationNames.has(normalizedPlaceName(issue.sourceText)))
+      .map((issue) => hasOperationalRoute
       && (issue.code === "unresolved_place" || issue.code === "region_requires_base")
       ? {
           ...issue,

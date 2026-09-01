@@ -3890,7 +3890,6 @@
           }
         ],
         "issueCodes": [
-          "region_requires_base",
           "region_requires_base"
         ],
         "projectedDestinationIds": [
@@ -3912,7 +3911,6 @@
           "sacred-valley"
         ],
         "projectedIssueCodes": [
-          "region_requires_base",
           "region_requires_base"
         ]
       },
@@ -4721,9 +4719,7 @@
             "order": 1
           }
         ],
-        "issueCodes": [
-          "region_requires_base"
-        ],
+        "issueCodes": [],
         "projectedDestinationIds": [
           "granada-spain",
           "spain"
@@ -4737,9 +4733,7 @@
           "granada-spain",
           "spain"
         ],
-        "projectedIssueCodes": [
-          "region_requires_base"
-        ]
+        "projectedIssueCodes": []
       },
       "findings": [
         {

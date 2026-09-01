@@ -1,3 +1,5 @@
+import { STAMP_COUNTRIES_BY_REGION, STAMP_REGIONS } from "./stamps.ts";
+
 /**
  * Small, deterministic place and alias catalog used at the place-intelligence
  * boundary. It deliberately contains identity and containment only: no route,
@@ -5,6 +7,7 @@
  */
 
 export type PlaceTypeLiteral =
+  | "continent"
   | "country"
   | "macro_region"
   | "region"
@@ -93,6 +96,15 @@ function place(
 
 const country = (id: string, name: string, aliases: readonly string[] = []) =>
   place(id, name, aliases, "country", "planning_area", [name]);
+
+const continents: PlaceCatalogEntry[] = STAMP_REGIONS.map((region) => place(
+  `continent-${region.toLocaleLowerCase()}`,
+  region,
+  [],
+  "continent",
+  "planning_area",
+  STAMP_COUNTRIES_BY_REGION[region].map((entry) => entry.name),
+));
 
 const city = (id: string, name: string, parentCountry: string, aliases: readonly string[] = [], options: EntryOptions = {}) =>
   place(id, name, aliases, "city", "direct_destination", [parentCountry], options);
@@ -361,11 +373,21 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   place("florida", "Florida", [], "region", "planning_area", ["United States"]),
 ];
 
-export const PLACE_CATALOG: readonly PlaceCatalogEntry[] = Object.freeze([
+const explicitPlaces = [
   ...countries,
   ...legacyPlaces,
   ...planningAreas,
   ...benchmarkPlaces,
+];
+const registryCountries = STAMP_REGIONS.flatMap((region) => STAMP_COUNTRIES_BY_REGION[region])
+  .filter((countryEntry) => !explicitPlaces.some((entry) => entry.placeType === "country"
+    && entry.canonicalName.toLocaleLowerCase() === countryEntry.name.toLocaleLowerCase()))
+  .map((countryEntry) => country(countryEntry.id, countryEntry.name));
+
+export const PLACE_CATALOG: readonly PlaceCatalogEntry[] = Object.freeze([
+  ...continents,
+  ...explicitPlaces,
+  ...registryCountries,
 ]);
 
 function normalizedWithMap(value: string) {

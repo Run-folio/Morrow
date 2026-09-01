@@ -5,6 +5,7 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import TripShell from "./trip-shell";
 import { EasyTButton } from "./easyt-controls";
+import { affiliateDisclosure } from "./affiliate-link";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
 import styles from "./morrovia-feedback.stories.module.css";
 
@@ -177,7 +178,7 @@ function RemoveStopContext({ startOpen = true }: { startOpen?: boolean }) {
 
 function AffiliateBoundaryContext() {
   const [providerOpened, setProviderOpened] = useState(false);
-  return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ACCOMMODATION</p><h2>Keep the provider boundary honest.</h2><p className={styles.intro}>Opening a booking site is useful, but it does not prove that a stay was booked or paid for.</p><article className={styles.stayCard} aria-live="polite"><span className={styles.stayIcon}><BedDouble aria-hidden="true" /></span><div><span>KYOTO · 21–25 APRIL</span><h3>Kyoto stay</h3><p>No saved accommodation yet</p></div><strong>Needs a stay</strong><div className={styles.stayActions}><EasyTButton icon={ExternalLink} variant="secondary" onClick={() => setProviderOpened(true)}>Open Trip.com</EasyTButton></div>{providerOpened ? <p className={styles.providerOpened} role="status"><ExternalLink aria-hidden="true" />Trip.com opened. This stop still needs a stay.</p> : null}</article><p className={styles.partnerDisclosure}>Partner link · Morrovia may earn a commission at no extra cost to you.</p></section></TripShell></main>;
+  return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ACCOMMODATION</p><h2>Keep the provider boundary honest.</h2><p className={styles.intro}>Opening a booking site is useful, but it does not prove that a stay was booked or paid for.</p><article className={styles.stayCard} aria-live="polite"><span className={styles.stayIcon}><BedDouble aria-hidden="true" /></span><div><span>KYOTO · 21–25 APRIL</span><h3>Kyoto stay</h3><p>No saved accommodation yet</p></div><strong>Needs a stay</strong><div className={styles.stayActions}><EasyTButton icon={ExternalLink} variant="secondary" onClick={() => setProviderOpened(true)}>Open Trip.com</EasyTButton></div>{providerOpened ? <p className={styles.providerOpened} role="status"><ExternalLink aria-hidden="true" />Trip.com opened. This stop still needs a stay.</p> : null}</article><p className={styles.partnerDisclosure}>{affiliateDisclosure}</p></section></TripShell></main>;
 }
 
 const meta = { title: "Morrovia/03 Status & Feedback/Confirmation and recovery", parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/new" } } } } satisfies Meta;

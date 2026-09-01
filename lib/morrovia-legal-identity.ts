@@ -1,3 +1,7 @@
+const productName = "Morrovia";
+const legalOperator = "Shaun Whiting Limited";
+const publicContact = "sw@shaunwhiting.com";
+
 /**
  * Canonical owner for Morrovia's verified public business identity.
  *
@@ -5,14 +9,16 @@
  * values rather than inventing placeholders or duplicating company facts.
  */
 export const morroviaLegalIdentity = {
-  productName: "Morrovia",
-  legalOperator: "Shaun Whiting Limited",
-  tradingName: "Morrovia",
+  productName,
+  legalOperator,
+  tradingName: productName,
+  operatorTradingAs: `${legalOperator}, trading as ${productName}`,
   registrationJurisdiction: null,
   companyNumber: null,
   registeredOffice: null,
-  supportContact: "sw@shaunwhiting.com",
-  privacyContact: "sw@shaunwhiting.com",
+  generalContact: publicContact,
+  supportContact: publicContact,
+  privacyContact: publicContact,
   copyrightYear: 2026,
 } as const;
 

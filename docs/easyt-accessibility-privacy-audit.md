@@ -1,6 +1,8 @@
 # EasyT accessibility and privacy audit
 
-Last reviewed: 10 August 2026
+Last reviewed: 1 September 2026
+
+Privacy operations update: the processing inventory, provider/transfer register, proposed retention schedule, rights-request procedure, account-closure audit, incident runbook and synthetic rights exercise now live in `docs/privacy-operations.md`. This closes the missing-documentation finding below, but it does **not** close public-launch readiness: provider agreements/settings, approved retention, a live disposable staging exercise, ICO fee decision, EU Article 27 review and legal approval remain `PENDING HUMAN ACTION`.
 
 ## Scope and evidence
 
@@ -62,8 +64,8 @@ It is not a legal opinion, a penetration test or formal WCAG conformance certifi
 5. Review photos stored with Stamps.
    Stamp photos are personal content. Keep file limits and content validation, document image retention and deletion behaviour, and ensure storage access is scoped to the owning account.
 
-6. Maintain data inventory and incident procedures.
-   Document who can access production data, how access is revoked, backup handling, incident response, privacy-request verification and a release checklist for new third-party integrations.
+6. Operate the data inventory and incident procedures.
+   `docs/privacy-operations.md` now documents the repository-evidenced inventory, request and incident paths. Shaun must still create the private access/provider/incident registers, verify account settings and agreements, assign recovery contacts, and run the manual review cadence.
 
 ## Positive controls observed
 
@@ -79,5 +81,6 @@ It is not a legal opinion, a penetration test or formal WCAG conformance certifi
 - [ ] Production cookie/analytics verification in an incognito browser.
 - [ ] Automated accessibility scan plus keyboard and screen-reader test of home, builder, map, finder, account and gift flows.
 - [ ] Test Spanish loading on a fresh browser session.
-- [ ] Test account deletion and data-export support workflow.
+- [x] Run the repository-only synthetic account deletion and data-export support exercise.
+- [ ] Run the end-to-end workflow with a disposable isolated staging account and provider dashboards.
 - [ ] Verify map/provider attributions and external-link privacy disclosures.

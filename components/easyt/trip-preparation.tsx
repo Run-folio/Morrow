@@ -21,6 +21,7 @@ import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import type { TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
+import { affiliateDisclosure } from "./affiliate-link";
 import styles from "./trip-preparation.module.css";
 
 const iconByKind: Record<TripPrepTask["kind"], LucideIcon> = {
@@ -41,8 +42,6 @@ const statusLabel: Record<TripPrepTaskStatus, string> = {
   "to-do": "To do",
   urgent: "Needs attention",
 };
-
-const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you.";
 
 function TaskAction({
   task,
