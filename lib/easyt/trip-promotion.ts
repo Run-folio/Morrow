@@ -1,4 +1,4 @@
-import type { EasyTTrip } from "./trip";
+import type { EasyTTrip, TripLeg } from "./trip";
 
 const singleStopReferenceKeys = new Set([
   "stopId", "fromStopId", "toStopId", "neighbouringStopId", "routeStopId",
@@ -220,11 +220,66 @@ function stableJsonValue(value: unknown): unknown {
   );
 }
 
+const transferResolutionMetadataKeys = new Set([
+  "multimodalResolution",
+  "planningEstimate",
+  "roadFallbackEligible",
+  "source",
+  "transferImpact",
+]);
+
+function resolverOwnedLegProjection(reviewedLeg: TripLeg, canonicalLeg: TripLeg) {
+  const reviewedSource = reviewedLeg.routeMetadata.source;
+  const canonicalResolution = canonicalLeg.routeMetadata.multimodalResolution;
+  const wasResolverEligible = reviewedSource === undefined
+    || reviewedSource === "morrovia-planner"
+    || reviewedSource === "road-routing-provider"
+    || reviewedSource === "multimodal-resolver";
+  const isCanonicalResolution = canonicalLeg.routeMetadata.source === "multimodal-resolver"
+    && isRecord(canonicalResolution)
+    && canonicalResolution.version === 1;
+  if (!wasResolverEligible || !isCanonicalResolution) return null;
+
+  const authoredMetadata = (metadata: Record<string, unknown>) => Object.fromEntries(
+    Object.entries(metadata).filter(([key]) => !transferResolutionMetadataKeys.has(key)),
+  );
+  const projection = (leg: TripLeg) => ({
+    id: leg.id,
+    fromStopId: leg.fromStopId,
+    toStopId: leg.toStopId,
+    fromEndpoint: leg.fromEndpoint,
+    toEndpoint: leg.toEndpoint,
+    classification: leg.classification,
+    straightLineDistanceKm: leg.straightLineDistanceKm,
+    routeMetadata: authoredMetadata(leg.routeMetadata),
+  });
+  return {
+    reviewed: projection(reviewedLeg),
+    canonical: projection(canonicalLeg),
+  };
+}
+
+function canonicalEquivalenceTrips(
+  reviewed: Omit<EasyTTrip, "updatedAt">,
+  canonical: Omit<EasyTTrip, "updatedAt">,
+) {
+  const reviewedLegs = reviewed.legs.map((leg, index) => {
+    const canonicalLeg = canonical.legs[index];
+    return canonicalLeg ? resolverOwnedLegProjection(leg, canonicalLeg)?.reviewed ?? leg : leg;
+  });
+  const canonicalLegs = canonical.legs.map((leg, index) => {
+    const reviewedLeg = reviewed.legs[index];
+    return reviewedLeg ? resolverOwnedLegProjection(reviewedLeg, leg)?.canonical ?? leg : leg;
+  });
+  return [{ ...reviewed, legs: reviewedLegs }, { ...canonical, legs: canonicalLegs }] as const;
+}
+
 /**
  * Prove that the complete reviewed Builder document is the document returned
  * by persistence. Repository-owned normalization (owner, stop IDs and the CAS
- * revision) is allowed; semantic intent, selected bases, order, dates, nights,
- * canonical endpoints and legs must all remain byte-equivalent after that.
+ * revision) and a marked server transfer resolution are allowed; semantic
+ * intent, selected bases, order, dates, nights, canonical endpoints and
+ * traveller-authored transfer constraints must all remain byte-equivalent.
  */
 export function tripBuildDocumentsCanonicalEquivalent(
   reviewedTrip: EasyTTrip,
@@ -242,7 +297,12 @@ export function tripBuildDocumentsCanonicalEquivalent(
     canonicalTrip,
     canonicalTrip.updatedAt,
   );
-  return JSON.stringify(stableJsonValue(reviewed)) === JSON.stringify(stableJsonValue(canonical));
+  const [reviewedForComparison, canonicalForComparison] = canonicalEquivalenceTrips(
+    reviewed,
+    canonical,
+  );
+  return JSON.stringify(stableJsonValue(reviewedForComparison))
+    === JSON.stringify(stableJsonValue(canonicalForComparison));
 }
 
 /** Build a fresh ownerless draft copy before the existing promotion boundary claims it. */

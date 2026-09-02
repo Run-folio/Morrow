@@ -366,6 +366,74 @@ test("Build equivalence covers semantic selections and canonical legs", () => {
   assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, { ...canonical, brief: { ...canonical.brief, structuredBrief: undefined } }, "owner-a"), false);
 });
 
+test("Build equivalence accepts only marked repository transfer enrichment", () => {
+  const reviewed = trip({
+    ownerId: null,
+    status: "planned",
+    legs: [{
+      id: "planner-leg",
+      fromStopId: "trip-dashboard-reconcile-origin",
+      toStopId: "stop-a",
+      fromEndpoint: { kind: "origin", id: "trip-dashboard-reconcile-origin", name: "London", coordinates: [-0.1276, 51.5072] },
+      toEndpoint: { kind: "stop", id: "stop-a", name: "Paris", country: "France", coordinates: [2.3522, 48.8566] },
+      classification: "arrival",
+      mode: "flight",
+      distanceKm: 344,
+      durationMinutes: 240,
+      provider: "Morrovia planner",
+      routeMetadata: { source: "morrovia-planner", transportConstraints: { preferredModes: ["train"] } },
+      warnings: [],
+    }],
+  });
+  const base = canonicalTripForOwner("owner-a", reviewed, "2026-08-20T12:00:00.000Z");
+  const enrichedLeg = {
+    ...base.legs[0]!,
+    mode: "train" as const,
+    durationMinutes: 180,
+    headlineMinutes: 180,
+    doorToDoorMinutes: 180,
+    provider: "Canonical rail evidence",
+    provenance: "planning_estimate" as const,
+    confidence: "high" as const,
+    scheduleNeedsChecking: true,
+    segments: [{
+      id: "london:paris:train:0",
+      mode: "train" as const,
+      fromEndpoint: base.legs[0]!.fromEndpoint!,
+      toEndpoint: base.legs[0]!.toEndpoint!,
+      distanceKm: 344,
+      durationMinutes: 180,
+      provider: "Canonical rail evidence",
+      provenance: "planning_estimate" as const,
+      confidence: "high" as const,
+      scheduleNeedsChecking: true,
+    }],
+    routeMetadata: {
+      transportConstraints: { preferredModes: ["train"] },
+      source: "multimodal-resolver",
+      planningEstimate: true,
+      roadFallbackEligible: false,
+      transferImpact: { usableDayLoss: 0.25 },
+      multimodalResolution: { version: 1, selected: "train", candidates: [], rejected: [] },
+    },
+  };
+  const enriched = { ...base, legs: [enrichedLeg] };
+
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, enriched, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
+    ...enriched,
+    legs: [{ ...enrichedLeg, toEndpoint: { ...enrichedLeg.toEndpoint!, name: "Lyon" } }],
+  }, "owner-a"), false);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
+    ...enriched,
+    legs: [{ ...enrichedLeg, routeMetadata: { ...enrichedLeg.routeMetadata, transportConstraints: { preferredModes: ["flight"] } } }],
+  }, "owner-a"), false);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
+    ...base,
+    legs: [{ ...enrichedLeg, routeMetadata: { ...enrichedLeg.routeMetadata, source: "unmarked-rewrite" } }],
+  }, "owner-a"), false);
+});
+
 test("HTTP save failures retain safe category, status and operation", async () => {
   const owned = trip();
   await assert.rejects(
