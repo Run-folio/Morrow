@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { defaultTripIntent, isEasyTTrip, tripFromBuilder } from "../lib/easyt/trip.ts";
 import { canonicalTripForOwner, tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promotion.ts";
+import { normalizedLegEndpoints } from "../lib/easyt/trip-persistence.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 
 test("the open-world Builder acceptance trip round-trips every reviewed decision", () => {
@@ -31,6 +32,7 @@ test("the open-world Builder acceptance trip round-trips every reviewed decision
     originCountry: "United Kingdom",
     originCanonicalPlaceId: "london",
     originCoordinates: [-0.1276, 51.5072],
+    journeyEnd: { mode: "same_as_start" },
     stops: [
       { id: "cancun", name: "Cancún", country: "Mexico", canonicalPlaceId: "cancun", coordinates: [-86.8515, 21.1619] },
       { id: "tulum", name: "Tulum", country: "Mexico", canonicalPlaceId: "tulum", coordinates: [-87.4654, 20.2114] },
@@ -67,8 +69,18 @@ test("the open-world Builder acceptance trip round-trips every reviewed decision
   assert.deepEqual(parsed.brief.intent?.preferences.interests, ["nature"]);
   assert.deepEqual(parsed.brief.structuredBrief?.placeSelections?.map((selection) => selection.selectedName), ["Caye Caulker", "Flores", "San Pedro La Laguna"]);
   assert.equal(parsed.brief.decisionSelections?.routeOrder, "recommended");
-  assert.equal(parsed.legs.length, 6);
+  assert.equal(parsed.legs.length, 7);
   assert.equal(parsed.legs[0]?.fromEndpoint?.kind, "origin");
   assert.equal(parsed.legs[0]?.fromEndpoint?.name, "London");
+  assert.equal(parsed.brief.journeyEnd?.mode, "same_as_start");
+  assert.equal(parsed.legs.at(-1)?.toEndpoint?.kind, "end");
+  assert.equal(parsed.legs.at(-1)?.toEndpoint?.name, "London");
+  assert.deepEqual(normalizedLegEndpoints(parsed.id, parsed.legs.at(-1)!), {
+    fromEndpointId: parsed.stops.at(-1)!.id,
+    toEndpointId: `${parsed.id}-end`,
+    fromEndpointKind: "stop",
+    toEndpointKind: "end",
+    fromStopId: parsed.stops.at(-1)!.id,
+    toStopId: null,
+  });
 });
-

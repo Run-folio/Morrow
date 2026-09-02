@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { missingStagingSchemaColumns, validateStagingProviderPolicy } from "../scripts/staging-safety.mjs";
+import { missingStagingSchemaColumns, missingStagingSchemaConstraints, validateStagingProviderPolicy } from "../scripts/staging-safety.mjs";
 
 test("staging provider policy makes Luna-only access explicit", () => {
   assert.equal(validateStagingProviderPolicy({ MORROVIA_STAGING_PROVIDER_MODE: "disabled" }), "disabled");
@@ -69,4 +69,15 @@ test("staging preflight accepts the current persistence schema contract", () => 
   ].map(([table_name, column_name]) => ({ table_name, column_name }));
 
   assert.deepEqual(missingStagingSchemaColumns(rows), []);
+});
+
+test("staging preflight requires the canonical journey-end persistence constraint", () => {
+  assert.deepEqual(missingStagingSchemaConstraints([{
+    constraint_name: "easyt_legs_to_endpoint_kind_check",
+    definition: "CHECK ((to_endpoint_kind = ANY (ARRAY['origin'::text, 'stop'::text])))",
+  }]), ["easyt_legs_to_endpoint_kind_check:end"]);
+  assert.deepEqual(missingStagingSchemaConstraints([{
+    constraint_name: "easyt_legs_to_endpoint_kind_check",
+    definition: "CHECK ((to_endpoint_kind = ANY (ARRAY['origin'::text, 'stop'::text, 'end'::text])))",
+  }]), []);
 });

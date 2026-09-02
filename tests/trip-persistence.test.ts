@@ -45,3 +45,20 @@ test("legacy stop-to-stop legs retain normalized stop foreign keys", () => {
   });
 });
 
+test("canonical journey-end endpoints persist without an overnight-stop foreign key", () => {
+  assert.deepEqual(normalizedLegEndpoints("trip", {
+    ...baseLeg,
+    id: "trip-return-leg",
+    fromStopId: "cancun",
+    toStopId: "trip-end",
+    fromEndpoint: { kind: "stop", id: "cancun", name: "Cancún", country: "Mexico", coordinates: [-86.8515, 21.1619] },
+    toEndpoint: { kind: "end", id: "trip-end", name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
+  }), {
+    fromEndpointId: "cancun",
+    toEndpointId: "trip-end",
+    fromEndpointKind: "stop",
+    toEndpointKind: "end",
+    fromStopId: "cancun",
+    toStopId: null,
+  });
+});

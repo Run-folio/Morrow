@@ -26,6 +26,14 @@ export function missingStagingSchemaColumns(rows) {
   );
 }
 
+export function missingStagingSchemaConstraints(rows) {
+  const constraints = new Map(rows.map((row) => [row.constraint_name, row.definition]));
+  const toEndpointKind = constraints.get("easyt_legs_to_endpoint_kind_check") ?? "";
+  return /['\"]end['\"]/.test(toEndpointKind)
+    ? []
+    : ["easyt_legs_to_endpoint_kind_check:end"];
+}
+
 const STAGING_PROVIDER_KEYS = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
@@ -147,6 +155,19 @@ export async function verifyStagingDatabase(config) {
     const missingColumns = missingStagingSchemaColumns(schemaResult.rows);
     if (missingColumns.length) {
       throw new Error(`Staging schema does not match the application migrations: missing ${missingColumns.join(", ")}.`);
+    }
+    const constraintResult = await client.query(`
+      select con.conname as constraint_name, pg_get_constraintdef(con.oid) as definition
+      from pg_constraint con
+      join pg_class rel on rel.oid = con.conrelid
+      join pg_namespace ns on ns.oid = rel.relnamespace
+      where ns.nspname = 'public'
+        and rel.relname = 'easyt_legs'
+        and con.contype = 'c'
+    `);
+    const missingConstraints = missingStagingSchemaConstraints(constraintResult.rows);
+    if (missingConstraints.length) {
+      throw new Error(`Staging schema does not match the application migrations: missing ${missingConstraints.join(", ")}.`);
     }
     return { client, report: { stagingUrl: config.stagingUrl, database: row.database_name, databaseHost: config.expectedDbHost } };
   } catch (error) {
