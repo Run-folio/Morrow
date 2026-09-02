@@ -1,6 +1,6 @@
 import { accommodationProgress, stayBookingForStop } from "./accommodation.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
-import { MORROVIA_OPENAI_MODEL } from "./openai-config.ts";
+import { routeModelTask } from "./model-task-router.ts";
 import { tripHealth } from "./review.ts";
 import { tripReadinessSummary } from "./trip-readiness-summary.ts";
 import {
@@ -396,6 +396,7 @@ export const TRIP_COPILOT_RESPONSE_JSON_SCHEMA = {
 } as const;
 
 export function buildTripCopilotOpenAIRequest(projection: TripCopilotProjection, message: string) {
+  const modelRoute = routeModelTask({ task: "assistant_chat", complexity: "low" });
   const input: Array<{ role: "developer" | "user"; content: string }> = [
     {
       role: "developer",
@@ -404,7 +405,7 @@ export function buildTripCopilotOpenAIRequest(projection: TripCopilotProjection,
     { role: "user", content: cleanText(message, TRIP_COPILOT_MESSAGE_LIMIT) },
   ];
   return {
-    model: MORROVIA_OPENAI_MODEL,
+    model: modelRoute.selectedModel!,
     reasoning: { effort: "low" as const },
     instructions: TRIP_COPILOT_INSTRUCTIONS,
     input,

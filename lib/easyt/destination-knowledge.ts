@@ -60,6 +60,14 @@ export type DestinationConnectivity = {
   access: "direct" | "nearby-gateway";
   note?: string;
 };
+export type DestinationAirGateway = {
+  canonicalId: string;
+  name: string;
+  country: string;
+  coordinates: [number, number];
+  /** P0B currently supports provider-routed road access to an air gateway. */
+  accessMode: "road";
+};
 export type DestinationBorderFriction = "none" | "routine" | "variable" | "high";
 
 export type DestinationKnowledge = {
@@ -74,6 +82,8 @@ export type DestinationKnowledge = {
   minimumNights: KnowledgeFact<number>;
   idealNights: KnowledgeFact<number>;
   connectivity: KnowledgeFact<readonly DestinationConnectivity[]>;
+  /** Explicit gateway evidence; absence must never be interpreted as direct air access. */
+  airGateways?: KnowledgeFact<readonly DestinationAirGateway[]>;
   borderFriction: KnowledgeFact<DestinationBorderFriction>;
   experienceTags: KnowledgeFact<readonly string[]>;
   seasonalityNotes: KnowledgeFact<readonly string[]>;
@@ -105,6 +115,40 @@ export type DestinationTransferKnowledge = {
   note: KnowledgeFact<string>;
 };
 
+/**
+ * Reviewed planning-level rail evidence. Membership means the endpoint is on
+ * the named intercity network, not merely that a station exists nearby.
+ * Networks marked access-only are deliberately insufficient to create a rail
+ * journey without stronger route evidence.
+ */
+export type IntercityRailEndpointKnowledge = {
+  canonicalId: string;
+  name: string;
+  country: string;
+  networkIds: readonly string[];
+};
+
+export type IntercityRailNetworkKnowledge = {
+  id: string;
+  label: string;
+  connectionEvidence: "strong-intercity" | "network-access-only";
+  supportsCrossBorder: boolean;
+  minimumDistanceKm: number;
+  maximumDistanceKm: number;
+  routeDistanceFactor: number;
+  planningSpeedKmh: number;
+  stationAllowanceMinutes: number;
+  source: KnowledgeSource;
+};
+
+export type IntercityRailConnectionEvidence = {
+  networkId: string;
+  networkLabel: string;
+  planningMinutes: number;
+  confidence: "medium";
+  source: KnowledgeSource;
+};
+
 export type DestinationStayGuidance = {
   canonicalId: string | null;
   minimumNights: KnowledgeFact<number>;
@@ -123,6 +167,12 @@ export type DestinationScoringKnowledge = {
   connectivity: KnowledgeFact<readonly DestinationConnectivity[]>;
   arrivalConsiderations: KnowledgeFact<readonly string[]>;
   departureConsiderations: KnowledgeFact<readonly string[]>;
+};
+
+export type DestinationTransferResolutionKnowledge = {
+  canonicalId: string | null;
+  connectivity: KnowledgeFact<readonly DestinationConnectivity[]>;
+  airGateways: KnowledgeFact<readonly DestinationAirGateway[]>;
 };
 
 export type DestinationOnwardLink = {
@@ -158,6 +208,13 @@ const plannerAllowanceSource: KnowledgeSource = {
   kind: "legacy-planner",
   supports: "Deterministic mode and door-to-door planning allowance used by the existing route engine.",
 };
+const multimodalPlanningSource: KnowledgeSource = {
+  id: "morrovia:multimodal-planning-v1",
+  label: "Morrovia multimodal planning evidence",
+  kind: "curated",
+  supports: "Canonical endpoint connectivity and air-gateway relationships used for conservative planning estimates, not live schedules.",
+  reviewedAt: "2026-09-01",
+};
 
 type CuratedDestinationInput = {
   canonicalId: string;
@@ -166,10 +223,12 @@ type CuratedDestinationInput = {
   country: string;
   region: string;
   coordinates: [number, number];
-  roles: readonly DestinationRole[];
-  minimumNights: number;
-  idealNights: number;
+  roles?: readonly DestinationRole[];
+  /** Omit stay guidance when the source only supports transport identity. */
+  minimumNights?: number;
+  idealNights?: number;
   connectivity?: readonly DestinationConnectivity[];
+  airGateways?: readonly DestinationAirGateway[];
   experienceTags: readonly string[];
   seasonalityNotes?: readonly string[];
   arrivalConsiderations?: readonly string[];
@@ -187,12 +246,21 @@ function curatedDestination(input: CuratedDestinationInput): DestinationKnowledg
     countryCode: missing("Country code"),
     region: knownKnowledgeFact(input.region, "static", input.source),
     coordinates: knownKnowledgeFact(input.coordinates, "static", input.source),
-    roles: knownKnowledgeFact(input.roles, "static", input.source),
-    minimumNights: knownKnowledgeFact(input.minimumNights, "static", input.source),
-    idealNights: knownKnowledgeFact(input.idealNights, "estimated", input.source),
+    roles: input.roles === undefined
+      ? missing("Destination roles")
+      : knownKnowledgeFact(input.roles, "static", input.source),
+    minimumNights: input.minimumNights === undefined
+      ? missing("Minimum nights")
+      : knownKnowledgeFact(input.minimumNights, "static", input.source),
+    idealNights: input.idealNights === undefined
+      ? missing("Ideal nights")
+      : knownKnowledgeFact(input.idealNights, "estimated", input.source),
     connectivity: input.connectivity?.length
       ? knownKnowledgeFact(input.connectivity, "static", input.source)
       : missing("Transport connectivity"),
+    airGateways: input.airGateways?.length
+      ? knownKnowledgeFact(input.airGateways, "static", input.source)
+      : missing("Air gateways"),
     borderFriction: missing("Destination-level border friction"),
     experienceTags: knownKnowledgeFact(input.experienceTags, "static", input.source),
     seasonalityNotes: input.seasonalityNotes?.length
@@ -233,6 +301,12 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
     source: japanSource,
   }),
   curatedDestination({
+    canonicalId: "hiroshima", name: "Hiroshima", aliases: ["seed-hiroshima"], country: "Japan", region: "asia",
+    coordinates: [132.4553, 34.3853], roles: ["anchor"], minimumNights: 2, idealNights: 3,
+    connectivity: [{ mode: "rail", reach: "national", access: "direct", note: "National intercity rail is available; verify the timetable for the traveller's dates." }],
+    experienceTags: ["food", "culture", "rail"], source: japanSource,
+  }),
+  curatedDestination({
     canonicalId: "bologna", name: "Bologna", aliases: ["seed-bologna"], country: "Italy", region: "europe",
     coordinates: [11.3426, 44.4949], roles: ["hub", "base"], minimumNights: 3, idealNights: 3,
     connectivity: [{ mode: "rail", reach: "national", access: "direct" }],
@@ -265,6 +339,7 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
     canonicalId: "hoi-an", name: "Hoi An", aliases: ["seed-hoi-an"], country: "Vietnam", region: "asia",
     coordinates: [108.338, 15.88], roles: ["base"], minimumNights: 3, idealNights: 4,
     connectivity: [{ mode: "air", reach: "national", access: "nearby-gateway", note: "Flight access is planned via Da Nang and needs a ground-transfer allowance." }],
+    airGateways: [{ canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], accessMode: "road" }],
     experienceTags: ["food", "culture", "nature"],
     arrivalConsiderations: ["Flight access is via Da Nang, so arrival planning must include the onward ground transfer."],
     seasonalityNotes: ["Monsoon patterns vary by coast and region; Vietnam should not be treated as one weather season."],
@@ -307,6 +382,27 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
     connectivity: [{ mode: "rail", reach: "international", access: "direct" }],
     experienceTags: ["rail", "food", "coast"],
     seasonalityNotes: ["Summer heat and rail demand increase."], source: iberiaSource,
+  }),
+  curatedDestination({
+    canonicalId: "lima", name: "Lima", country: "Peru", region: "south-america",
+    coordinates: [-77.0428, -12.0464],
+    connectivity: [{ mode: "air", reach: "international", access: "direct" }, { mode: "bus", reach: "national", access: "direct" }],
+    experienceTags: ["food", "culture", "coast"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "huacachina", name: "Huacachina", country: "Peru", region: "south-america",
+    coordinates: [-75.768, -14.088],
+    connectivity: [{ mode: "air", reach: "international", access: "nearby-gateway", note: "Flight access is via Lima and requires an onward ground transfer." }, { mode: "bus", reach: "regional", access: "direct" }],
+    airGateways: [{ canonicalId: "lima", name: "Lima", country: "Peru", coordinates: [-77.0428, -12.0464], accessMode: "road" }],
+    experienceTags: ["nature", "adventure"],
+    arrivalConsiderations: ["Protect time for the overland transfer from Lima rather than treating Huacachina as the flight endpoint."],
+    source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "la-paz", name: "La Paz", country: "Bolivia", region: "south-america",
+    coordinates: [-68.1193, -16.4897],
+    connectivity: [{ mode: "air", reach: "international", access: "direct" }],
+    experienceTags: ["culture", "nature", "food"], source: multimodalPlanningSource,
   }),
 ];
 
@@ -361,6 +457,79 @@ export const CURATED_DESTINATION_TRANSFERS: readonly DestinationTransferKnowledg
   plannerTransfer("hong-kong", "zhangjiajie", "train", 420, `Typical high-speed rail door-to-door allowance; ${verifyLiveTimetable}`),
 ];
 
+const intercityRailEvidenceSource: KnowledgeSource = {
+  id: "morrovia:reviewed-intercity-rail-networks-v1",
+  label: "Morrovia reviewed intercity rail network evidence",
+  kind: "curated",
+  supports: "Planning-level strong intercity rail viability and generalized door-to-door duration estimates; live services still require timetable verification.",
+  reviewedAt: "2026-09-01",
+};
+
+/**
+ * Multi-endpoint networks provide generalized connection evidence without
+ * encoding route-pair answers. Their parameters are conservative planning
+ * assumptions across the network, not live schedule or train-specific facts.
+ */
+export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowledge[] = [
+  {
+    id: "uk-intercity-mainline",
+    label: "United Kingdom intercity mainline network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: false,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 800,
+    routeDistanceFactor: 1.12,
+    planningSpeedKmh: 155,
+    stationAllowanceMinutes: 60,
+    source: intercityRailEvidenceSource,
+  },
+  {
+    id: "western-europe-high-speed",
+    label: "Western Europe high-speed intercity network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: true,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 800,
+    routeDistanceFactor: 1.12,
+    planningSpeedKmh: 175,
+    stationAllowanceMinutes: 60,
+    source: intercityRailEvidenceSource,
+  },
+  {
+    id: "central-europe-intercity",
+    label: "Central Europe intercity network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: true,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 500,
+    routeDistanceFactor: 1.15,
+    planningSpeedKmh: 125,
+    stationAllowanceMinutes: 60,
+    source: intercityRailEvidenceSource,
+  },
+];
+
+export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKnowledge[] = [
+  { canonicalId: "london", name: "London", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "edinburgh", name: "Edinburgh", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "glasgow", name: "Glasgow", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "york", name: "York", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "newcastle", name: "Newcastle", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "manchester", name: "Manchester", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
+  { canonicalId: "paris", name: "Paris", country: "France", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "lille", name: "Lille", country: "France", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "brussels", name: "Brussels", country: "Belgium", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "antwerp", name: "Antwerp", country: "Belgium", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "rotterdam", name: "Rotterdam", country: "Netherlands", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "amsterdam", name: "Amsterdam", country: "Netherlands", networkIds: ["western-europe-high-speed"] },
+  { canonicalId: "munich", name: "Munich", country: "Germany", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "nuremberg", name: "Nuremberg", country: "Germany", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "salzburg", name: "Salzburg", country: "Austria", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "innsbruck", name: "Innsbruck", country: "Austria", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "linz", name: "Linz", country: "Austria", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "vienna", name: "Vienna", country: "Austria", networkIds: ["central-europe-intercity"] },
+];
+
 const normalise = (value: string) => value
   .normalize("NFKD")
   .replace(/[\u0300-\u036f]/g, "")
@@ -377,7 +546,9 @@ export type DestinationKnowledgeStore = {
   canonicalId(input: DestinationIdentityInput): string | null;
   forNightAllocation(input: DestinationIdentityInput): DestinationStayGuidance;
   forRouteScoring(input: DestinationIdentityInput): DestinationScoringKnowledge;
+  forTransferResolution(input: DestinationIdentityInput): DestinationTransferResolutionKnowledge;
   findTransfer(from: DestinationIdentityInput, to: DestinationIdentityInput): DestinationTransferKnowledge | undefined;
+  findIntercityRailConnection(from: DestinationIdentityInput, to: DestinationIdentityInput, distanceKm: number): IntercityRailConnectionEvidence | undefined;
   commonOnwardLinks(input: DestinationIdentityInput): KnowledgeFact<readonly DestinationOnwardLink[]>;
 };
 
@@ -386,6 +557,8 @@ export function createDestinationKnowledgeStore(options: {
   destinationOverrides?: readonly DestinationKnowledgeOverride[];
   transfers?: readonly DestinationTransferKnowledge[];
   transferOverrides?: readonly DestinationTransferKnowledge[];
+  intercityRailNetworks?: readonly IntercityRailNetworkKnowledge[];
+  intercityRailEndpoints?: readonly IntercityRailEndpointKnowledge[];
 } = {}): DestinationKnowledgeStore {
   const destinationById = new Map((options.destinations ?? CURATED_DESTINATION_KNOWLEDGE).map((destination) => [normalise(destination.canonicalId), destination]));
   for (const override of options.destinationOverrides ?? []) {
@@ -446,8 +619,14 @@ export function createDestinationKnowledgeStore(options: {
   for (const transfer of [...(options.transfers ?? CURATED_DESTINATION_TRANSFERS), ...(options.transferOverrides ?? [])]) {
     transferByPair.set(transferKey(transfer.fromCanonicalId, transfer.toCanonicalId), transfer);
   }
+  const railNetworkById = new Map((options.intercityRailNetworks ?? CURATED_INTERCITY_RAIL_NETWORKS)
+    .map((network) => [normalise(network.id), network]));
+  const railEndpointById = new Map((options.intercityRailEndpoints ?? CURATED_INTERCITY_RAIL_ENDPOINTS)
+    .map((endpoint) => [normalise(endpoint.canonicalId), endpoint]));
 
-  const rawIdentityForTransfer = (input: DestinationIdentityInput) => normalise(input.id ?? input.name);
+  const rawIdentityForTransfer = (input: DestinationIdentityInput) => normalise(
+    input.canonicalPlaceId ?? input.providerId ?? input.id ?? input.name,
+  );
   const identityForTransfer = (input: DestinationIdentityInput) => resolveId(input) ?? rawIdentityForTransfer(input);
   const unknownFor = (field: string, input: DestinationIdentityInput) => unknownKnowledgeFact(`${field} is unknown for ${input.name}.`);
   const findDestination = (input: DestinationIdentityInput) => {
@@ -480,8 +659,42 @@ export function createDestinationKnowledgeStore(options: {
         departureConsiderations: destination?.departureConsiderations ?? unknownFor("Departure considerations", input),
       };
     },
+    forTransferResolution: (input) => {
+      const destination = findDestination(input);
+      return {
+        canonicalId: destination?.canonicalId ?? null,
+        connectivity: destination?.connectivity ?? unknownFor("Transport connectivity", input),
+        airGateways: destination?.airGateways ?? unknownFor("Air gateways", input),
+      };
+    },
     findTransfer: (from, to) => transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
       ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to))),
+    findIntercityRailConnection: (from, to, distanceKm) => {
+      const fromEndpoint = railEndpointById.get(identityForTransfer(from));
+      const toEndpoint = railEndpointById.get(identityForTransfer(to));
+      if (!fromEndpoint || !toEndpoint || !Number.isFinite(distanceKm)) return undefined;
+      const crossBorder = normalise(fromEndpoint.country) !== normalise(toEndpoint.country);
+      const sharedNetworks = fromEndpoint.networkIds
+        .map((id) => railNetworkById.get(normalise(id)))
+        .filter((network): network is IntercityRailNetworkKnowledge => Boolean(network)
+          && toEndpoint.networkIds.some((id) => normalise(id) === normalise(network!.id)))
+        .filter((network) => network.connectionEvidence === "strong-intercity"
+          && (!crossBorder || network.supportsCrossBorder)
+          && distanceKm >= network.minimumDistanceKm
+          && distanceKm <= network.maximumDistanceKm)
+        .sort((left, right) => left.maximumDistanceKm - right.maximumDistanceKm || left.id.localeCompare(right.id));
+      const network = sharedNetworks[0];
+      if (!network) return undefined;
+      const planningMinutes = Math.max(15, Math.round((network.stationAllowanceMinutes
+        + ((distanceKm * network.routeDistanceFactor) / network.planningSpeedKmh) * 60) / 15) * 15);
+      return {
+        networkId: network.id,
+        networkLabel: network.label,
+        planningMinutes,
+        confidence: "medium",
+        source: network.source,
+      };
+    },
     commonOnwardLinks: (input) => {
       const fromId = identityForTransfer(input);
       const links = [...transferByPair.values()]

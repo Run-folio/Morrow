@@ -43,7 +43,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\}/);
   assert.match(mapSource, /maplibregl\.setWorkerUrl\("\/maplibre\/maplibre-gl-worker\.mjs"\)/);
   assert.match(mapSource, /geometry: \{ type: "LineString" as const, coordinates: mappedStops\.map\(\(stop\) => stop\.coordinates\) \}/);
-  assert.match(mapSource, /geometry: \{ type: "LineString" as const, coordinates: \[leg\.fromCoordinates, leg\.toCoordinates\] \}/);
+  assert.match(mapSource, /coordinates: segment\.routeGeometry\?\.length \? segment\.routeGeometry : \[segment\.fromCoordinates, segment\.toCoordinates\]/);
   assert.match(mapSource, /source: "trip-route"/);
   assert.match(mapSource, /source: "trip-route-legs"/);
   assert.match(mapSource, /trip-route-hit/);

@@ -252,15 +252,6 @@ export function estimateLeg(
       confidence: "unconfirmed",
     });
   }
-  const suspiciousIdentity = sameCountry && distanceKm !== null && distanceKm >= 3000;
-  if (suspiciousIdentity) {
-    return withLegPlanningConfidence({
-      mode: "flight", distanceKm, durationMinutes: null, label: `${from.name} → ${to.name}`,
-      note: `Check ${to.name} before trusting this route: both stops are set in ${to.country}, but their coordinates are ${distanceKm.toLocaleString()} km apart.`,
-      confidence: "unconfirmed",
-      transferImpact: estimateTransferImpact({ mode: "flight", international }),
-    });
-  }
   if (known?.mode.status === "known" && known.planningMinutes.status === "known" && known.durationBasis.status === "known" && known.note.status === "known") {
     const transferImpact = estimateTransferImpact({
       mode: known.mode.value,
@@ -308,10 +299,10 @@ export function estimateLeg(
   // Cruise speed alone makes short heuristic flights look impossibly brief
   // (for example, a 400 km leg can fall near 30 minutes). Keep a conservative
   // one-hour airborne planning floor without claiming a live schedule.
-  const headlineMinutes = Math.max(60, (distanceKm / 760) * 60);
+  const { headlineMinutes, totalMinutes } = estimateFlightPlanningMinutes(distanceKm);
   const headline = knownKnowledgeFact(headlineMinutes, "estimated", TRANSFER_IMPACT_RULE_SOURCE);
   return withLegPlanningConfidence({
-    mode: "flight", distanceKm, durationMinutes: Math.round(180 + headlineMinutes), label: `${from.name} → ${to.name}`,
+    mode: "flight", distanceKm, durationMinutes: totalMinutes, label: `${from.name} → ${to.name}`,
     note: "Door-to-door flight estimate, including airport time. Verify flight schedules before booking.", confidence: "medium",
     transferImpact: estimateTransferImpact({
       mode: "flight",
@@ -320,6 +311,12 @@ export function estimateLeg(
       connectionCount: null,
     }),
   }, { duration: headline });
+}
+
+/** Broad door-to-door flight allowance used only after flight feasibility is established. */
+export function estimateFlightPlanningMinutes(distanceKm: number) {
+  const headlineMinutes = Math.max(60, (distanceKm / 760) * 60);
+  return { headlineMinutes, totalMinutes: Math.round(180 + headlineMinutes) };
 }
 
 type TransportFeasibilityKnowledge = Pick<DestinationKnowledgeStore, "findTransfer" | "forRouteScoring">;
@@ -431,6 +428,7 @@ function routeEstimate(
   origin: { name: string; coordinates?: [number, number] },
   stops: PlannerStop[],
   legEstimator: (from: PlannerStop | { name: string; coordinates?: [number, number] }, to: PlannerStop) => EstimatedLeg = estimateLeg,
+  end?: PlannerStop,
 ) {
   // An origin is useful for choosing the direction of the trip, but it should
   // not prevent us from spotting an obvious loop within the requested stops.
@@ -438,6 +436,7 @@ function routeEstimate(
   const legs = origin.coordinates
     ? stops.map((stop, index) => legEstimator(index ? stops[index - 1] : origin, stop))
     : stops.slice(1).map((stop, index) => legEstimator(stops[index], stop));
+  if (end && stops.length) legs.push(legEstimator(stops.at(-1)!, end));
   const impactMinutes = legs.map((leg) => transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes));
   if (impactMinutes.some((minutes) => minutes === null)) return { legs, minutes: null };
   return { legs, minutes: impactMinutes.reduce<number>((total, minutes) => total + (minutes ?? 0), 0) };
@@ -461,6 +460,8 @@ function transportTradeoffs(legs: EstimatedLeg[], constraints?: RoutePlanningCon
  */
 export function assessRouteOrder(input: {
   origin: { name: string; coordinates?: [number, number] };
+  /** Hard final journey endpoint used only as terminal routing context. */
+  end?: PlannerStop;
   stops: PlannerStop[];
   constraints?: RoutePlanningConstraints;
   scoringPreferences?: RouteScoringPreferences;
@@ -484,6 +485,7 @@ export function assessRouteOrder(input: {
   }));
   const scoring = scoreRouteCandidates({
     origin: input.origin,
+    end: input.end,
     candidates: generation.candidates,
     estimateLeg: constrainedEstimateLeg,
     preferences: {
@@ -516,10 +518,10 @@ export function assessRouteOrder(input: {
     };
   }
 
-  const current = routeEstimate(input.origin, input.stops, constrainedEstimateLeg);
+  const current = routeEstimate(input.origin, input.stops, constrainedEstimateLeg, input.end);
   const winner = scoring.winner;
   const bestCandidate = winner ? generation.candidates.find((candidate) => candidate.metadata.candidateIndex === winner.candidateIndex) : undefined;
-  const best = bestCandidate ? { candidate: bestCandidate, stops: bestCandidate.stops, ...routeEstimate(input.origin, bestCandidate.stops, constrainedEstimateLeg) } : undefined;
+  const best = bestCandidate ? { candidate: bestCandidate, stops: bestCandidate.stops, ...routeEstimate(input.origin, bestCandidate.stops, constrainedEstimateLeg, input.end) } : undefined;
   if (!best || best.minutes === null) {
     return {
       state: "insufficient-data", currentStopIds, recommendedStopIds: currentStopIds,
@@ -655,6 +657,7 @@ export function recommendStopDurations(input: {
 
 export function assessRouteIntelligence(input: {
   origin: { name: string; coordinates?: [number, number] };
+  end?: PlannerStop;
   stops: PlannerStop[];
   picks: Record<string, string[]>;
   availableDays: number;

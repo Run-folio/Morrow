@@ -5,6 +5,7 @@ import type { EasyTTrip, PlanItem, TripStop } from "./trip.ts";
 import { reconcileCuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import { reconcileAuthoredDayState } from "./trip-authored-day-state.ts";
+import { originPlaceFromBrief, plannerEndpointForJourneyEnd } from "./journey-endpoints.ts";
 
 export type DayOrderReplan =
   | { state: "recalculated"; trip: EasyTTrip; stopIds: string[] }
@@ -23,6 +24,7 @@ const routeLegsFor = (trip: EasyTTrip, stops: TripStop[], constraints: RoutePlan
     providerId: trip.brief.originProviderId,
     coordinates: trip.brief.originCoordinates ?? null,
   },
+  journeyEnd: trip.brief.journeyEnd,
   stops,
   constraints,
   curatedRoute: trip.brief.curatedRoute,
@@ -46,7 +48,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
   const fullOrder = [...stopIds, ...trip.stops.map((stop) => stop.id).filter((id) => !stopIds.includes(id))];
   const stopById = new Map(trip.stops.map((stop) => [stop.id, stop]));
   const stops = fullOrder.map((id, order) => ({ ...stopById.get(id)!, order }));
-  const structuredConstraints: RoutePlanningConstraints = trip.brief.structuredBrief ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief) : {};
+  const structuredConstraints: RoutePlanningConstraints = trip.brief.structuredBrief ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief, trip.stops.map((stop) => stop.id)) : {};
   const structuredScoring = trip.brief.structuredBrief ? routeScoringPreferencesFromStructuredBrief(trip.brief.structuredBrief) : undefined;
   const intent = trip.brief.intent;
   const avoidDriving = Boolean(structuredConstraints.avoidDriving || intent?.hardConstraints.avoidDriving);
@@ -69,6 +71,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
   if (brokenFixedEndpoint) return { state: "needs-route-edit", trip, returnedStopId: brokenFixedEndpoint };
   const routeAssessment = assessRouteIntelligence({
     origin: { name: trip.brief.origin, coordinates: trip.brief.originCoordinates },
+    end: plannerEndpointForJourneyEnd(trip.id, originPlaceFromBrief(trip.brief), trip.brief.journeyEnd),
     stops: stops.map((stop) => ({
       id: stop.id,
       name: stop.name,

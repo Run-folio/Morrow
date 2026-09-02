@@ -3,6 +3,7 @@ import type { NightAllocationResult } from "./night-allocation.ts";
 import { reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routePreferencesFromStructuredBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
+import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
@@ -15,6 +16,17 @@ export type BudgetBand = "value" | "mid" | "high";
 export type TripIntentPace = "relaxed" | "balanced" | "packed";
 export type TripTransportMode = "flight" | "train" | "drive";
 export type FixedTripCommitment = { id: string; label: string; date?: string };
+export type JourneyEndpointPlace = {
+  name: string;
+  canonicalPlaceId?: string;
+  country?: string;
+  providerId?: string;
+  coordinates?: [number, number];
+};
+export type JourneyEndSelection =
+  | { mode: "unknown" }
+  | { mode: "same_as_start" }
+  | { mode: "explicit"; place: JourneyEndpointPlace };
 
 /**
  * The durable, structured counterpart to a traveller's free-form brief.
@@ -24,6 +36,8 @@ export type FixedTripCommitment = { id: string; label: string; date?: string };
 export type TripIntent = {
   version: 1;
   travellers: number;
+  /** Journey-level routing context. Absence on legacy documents means unknown. */
+  journeyEnd?: JourneyEndSelection;
   timing: { flexibility: "fixed" | "flexible"; durationDays: number };
   hardConstraints: {
     originRequired: boolean;
@@ -50,6 +64,7 @@ export function defaultTripIntent(input: Partial<Omit<TripIntent, "version" | "h
   return {
     version: 1,
     travellers: Math.max(1, Math.min(12, Math.round(input.travellers ?? 2))),
+    ...(input.journeyEnd === undefined ? {} : { journeyEnd: normalizeJourneyEnd(input.journeyEnd) }),
     timing: { flexibility: "fixed", durationDays: Math.max(1, Math.round(input.durationDays ?? 7)) },
     hardConstraints: { originRequired: true, mustSeeStopIds: input.stopIds ?? [], optionalStopIds: [], fixedCommitments: [], avoidDriving: false },
     preferences: { budgetSensitivity: input.budgetSensitivity ?? "mid", transportModes: ["flight", "train"], pace: input.pace ?? "balanced", interests: [], dislikes: [] },
@@ -75,6 +90,8 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
     hardConstraints: { ...fallback.hardConstraints, ...saved.hardConstraints, mustSeeStopIds: saved.hardConstraints?.mustSeeStopIds ?? fallback.hardConstraints.mustSeeStopIds, optionalStopIds: saved.hardConstraints?.optionalStopIds ?? [], fixedCommitments: saved.hardConstraints?.fixedCommitments ?? [] },
     preferences: { ...fallback.preferences, ...saved.preferences, transportModes: saved.preferences?.transportModes?.length ? saved.preferences.transportModes : fallback.preferences.transportModes, interests: normalizeTripInterests(saved.preferences?.interests), dislikes: saved.preferences?.dislikes ?? [] },
   };
+  const savedJourneyEnd = trip.brief.journeyEnd ?? compatible.journeyEnd;
+  if (savedJourneyEnd !== undefined) compatible.journeyEnd = normalizeJourneyEnd(savedJourneyEnd);
   const structured = trip.brief.structuredBrief;
   if (!structured) return compatible;
   const routePreferences = routePreferencesFromStructuredBrief(structured);
@@ -119,11 +136,28 @@ export type TripStop = {
   nights: number | null;
 };
 
+export type TripTransferMode = "flight" | "train" | "road" | "ferry" | "walk" | "mixed" | "unknown";
+
+export type TransferSegment = {
+  id: string;
+  mode: Exclude<TripTransferMode, "mixed">;
+  fromEndpoint: CanonicalRouteEndpoint;
+  toEndpoint: CanonicalRouteEndpoint;
+  distanceKm: number | null;
+  durationMinutes: number | null;
+  provider: string | null;
+  provenance: TripLegProvenance;
+  confidence: "high" | "medium" | "low" | "unknown";
+  scheduleNeedsChecking: boolean;
+  routeGeometry?: Array<[number, number]>;
+};
+
 export type TripLeg = {
   id: string;
   fromStopId: string;
   toStopId: string;
-  mode: "flight" | "train" | "road" | "ferry" | "walk" | "unknown";
+  /** Journey-level summary. `mixed` is backed by two or more canonical segments. */
+  mode: TripTransferMode;
   distanceKm: number | null;
   durationMinutes: number | null;
   provider: string | null;
@@ -141,10 +175,14 @@ export type TripLeg = {
   confidence?: "high" | "medium" | "low" | "unknown";
   scheduleNeedsChecking?: boolean;
   warnings?: string[];
+  /** Optional canonical route path as GeoJSON-order [longitude, latitude] points. */
+  routeGeometry?: Array<[number, number]>;
+  /** Optional segment detail; legacy single-mode legs remain valid without it. */
+  segments?: TransferSegment[];
 };
 
 export type CanonicalRouteEndpoint = {
-  kind: "origin" | "stop";
+  kind: "origin" | "stop" | "end" | "gateway";
   id: string;
   name: string;
   country?: string;
@@ -185,15 +223,25 @@ export type ItineraryIdea = {
   placeId: string;
   title: string;
   category: "restaurant" | "activity";
-  coordinates: [number, number];
+  /** Missing when a live inventory product has no trustworthy physical coordinates. */
+  coordinates?: [number, number];
   image?: string;
   sourceUrl?: string;
   /** Discovery context retained when the suggestion becomes part of the itinerary. */
   area?: string;
   placeType?: string;
   description?: string;
-  source: "destination-highlight" | "personalised-recommendation";
+  source: "destination-highlight" | "personalised-recommendation" | "live-provider-inventory";
   reasons: Array<"destination-significance" | "interest-relevance">;
+  provider?: "viator";
+  providerProductId?: string;
+  providerMetadata?: {
+    rating?: number;
+    reviewCount?: number;
+    duration?: { fixedMinutes?: number; fromMinutes?: number; toMinutes?: number };
+    price?: { amount: number; currency: string };
+    provenance: { kind: "live_provider_search"; provider: "viator"; checkedAt: string };
+  };
   /** Missing means deliberately saved for later; fake days are never used. */
   dayId?: string;
   /** Explicit broad scheduling intent; null means planned on a day but not slotted. */
@@ -227,6 +275,8 @@ export type TripBrief = {
   originCanonicalPlaceId?: string;
   originCountry?: string;
   originProviderId?: string;
+  /** Final journey endpoint. Missing on legacy trips is intentionally unknown. */
+  journeyEnd?: JourneyEndSelection;
   /** Public editorial route used as the starting point, when one exists. */
   sourceRouteKey?: string;
   /** Reviewed route evidence retained from Route Detail into the editable trip. */
@@ -297,7 +347,7 @@ export type TripCapturedIntent = {
     canonicalName: string;
     canonicalPlaceId?: string;
     placeType?: import("./place-intelligence.ts").PlaceType;
-    role: "origin" | "stop";
+    role: "origin" | "stop" | "end";
     order: number;
     status: "resolved" | "unresolved";
     intent?: "place" | "landmark";
@@ -395,6 +445,7 @@ export type BuilderTripInput = {
   originCanonicalPlaceId?: string;
   originCountry?: string;
   originProviderId?: string;
+  journeyEnd?: JourneyEndSelection;
   stops: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string }>;
   startDate: string;
   endDate: string;
@@ -432,17 +483,19 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
     pace: input.pace === "full" ? "packed" : "relaxed",
   });
   const suppliedIntent = input.intent ?? fallbackIntent;
+  const suppliedJourneyEnd = input.journeyEnd ?? suppliedIntent.journeyEnd;
   const canonicalInterests = normalizeTripInterests(input.intent?.preferences.interests
     ?? input.structuredBrief?.interests.map((interest) => interest.value));
   const canonicalIntent: TripIntent = {
     ...suppliedIntent,
+    ...(suppliedJourneyEnd === undefined ? {} : { journeyEnd: normalizeJourneyEnd(suppliedJourneyEnd) }),
     preferences: { ...suppliedIntent.preferences, interests: canonicalInterests },
   };
   const canonicalStructuredBrief = input.structuredBrief
     ? mergeStructuredTripBrief(input.structuredBrief, { interests: canonicalInterests })
     : undefined;
   const structuredRouteConstraints: RoutePlanningConstraints = input.structuredBrief
-    ? routeConstraintsFromStructuredTripBrief(input.structuredBrief)
+    ? routeConstraintsFromStructuredTripBrief(input.structuredBrief, input.stops.map((stop) => stop.id))
     : {};
   const avoidDriving = Boolean(structuredRouteConstraints.avoidDriving || input.intent?.hardConstraints.avoidDriving);
   const legConstraints: RoutePlanningConstraints = {
@@ -523,6 +576,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       originCanonicalPlaceId: input.originCanonicalPlaceId,
       originCountry: input.originCountry,
       originProviderId: input.originProviderId,
+      journeyEnd: canonicalIntent.journeyEnd,
       sourceRouteKey: input.sourceRouteKey,
       curatedRoute,
       mustDo: input.mustDo,
@@ -551,6 +605,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
         providerId: input.originProviderId,
         coordinates: input.originCoordinates ?? null,
       },
+      journeyEnd: canonicalIntent.journeyEnd,
       stops,
       constraints: legConstraints,
       curatedRoute,

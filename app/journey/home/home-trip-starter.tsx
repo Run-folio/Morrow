@@ -3,14 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
+import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
 import { travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
-import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
+import { applySelectedOriginToJourneyCapture, createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { createHomeTripDraft, HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
+import type { CanonicalPlaceSuggestion } from "@/lib/easyt/place-intelligence";
+import type { JourneyEndSelection } from "@/lib/easyt/trip";
+import { journeyEndpointPlaceFromSuggestion } from "@/lib/easyt/journey-endpoints";
 
 function iso(date: Date) { return date.toISOString().slice(0, 10); }
 export default function HomeTripStarter() {
@@ -21,6 +25,11 @@ export default function HomeTripStarter() {
   if (!captureRequestGateRef.current) captureRequestGateRef.current = createLatestJourneyCaptureRequestGate();
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [brief, setBrief] = useState("");
+  const [startInput, setStartInput] = useState("");
+  const [startSelection, setStartSelection] = useState<CanonicalPlaceSuggestion | undefined>();
+  const [journeyEndInput, setJourneyEndInput] = useState("");
+  const [journeyEnd, setJourneyEnd] = useState<JourneyEndSelection>({ mode: "unknown" });
+  const [journeyEndTouched, setJourneyEndTouched] = useState(false);
   const [travelProfile, setTravelProfile] = useState<TravelProfile | null>(null);
   const [startDate, setStartDate] = useState(() => iso(new Date()));
   const [endDate, setEndDate] = useState(() => iso(new Date(Date.now() + 6 * 86_400_000)));
@@ -59,10 +68,10 @@ export default function HomeTripStarter() {
     const captureRequest = captureRequestGateRef.current!.begin();
     let responseReceived = false;
     try {
-      const payload = await requestJourneyCapture(tripBrief, {
+      const payload = applySelectedOriginToJourneyCapture(await requestJourneyCapture(tripBrief, {
         signal: captureRequest.signal,
         onResponse: () => { responseReceived = true; },
-      });
+      }), startSelection);
       if (!captureRequest.isCurrent()) return;
       const handoffId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(createHomeTripDraft({
@@ -75,6 +84,8 @@ export default function HomeTripStarter() {
         travellersExplicit,
         interests,
         interestsExplicit,
+        origin: startSelection ? journeyEndpointPlaceFromSuggestion(startSelection) : undefined,
+        journeyEnd: journeyEndTouched ? journeyEnd : payload.journeyEnd,
       })));
       router.push("/journey/new?homeDraft=1");
     } catch {
@@ -93,6 +104,27 @@ export default function HomeTripStarter() {
     value={brief}
     onValueChange={(value) => { setBrief(value); setCaptureError(""); }}
     onPromptStarted={markPromptStarted}
+    endpointEntry={<JourneyEndpointsEditor
+      language={language}
+      startValue={startInput}
+      endValue={journeyEndInput}
+      endSelection={journeyEnd}
+      showHeading={false}
+      showHint={false}
+      onStartChange={(value) => { setStartInput(value); setStartSelection(undefined); }}
+      onStartSelect={(suggestion) => { setStartInput(suggestion.name); setStartSelection(suggestion); }}
+      onEndChange={(value) => {
+        setJourneyEndTouched(true);
+        setJourneyEndInput(value);
+        setJourneyEnd(value.trim() ? { mode: "explicit", place: { name: value.trim() } } : { mode: "unknown" });
+      }}
+      onEndSelect={(suggestion) => {
+        setJourneyEndTouched(true);
+        setJourneyEndInput(suggestion.name);
+        setJourneyEnd({ mode: "explicit", place: journeyEndpointPlaceFromSuggestion(suggestion) });
+      }}
+      onEndModeChange={(mode) => { setJourneyEndTouched(true); setJourneyEndInput(""); setJourneyEnd({ mode }); }}
+    />}
     startDate={startDate}
     endDate={endDate}
     onDatesChange={(range) => { setStartDate(range.start); setEndDate(range.end); setDatesExplicit(true); }}

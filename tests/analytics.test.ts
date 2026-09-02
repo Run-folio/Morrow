@@ -105,6 +105,30 @@ test("route_started is a no-op without analytics consent", () => {
   assert.deepEqual(calls, []);
 });
 
+test("workspace orientation analytics stays off before consent", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("declined", calls);
+  try {
+    trackEvent("workspace_orientation_started", { workspace: "map", orientation_version: 1, source: "automatic", total_steps: 2 });
+    assert.equal(calls.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test("workspace orientation analytics contains only coarse guide metadata", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("granted", calls);
+  try {
+    trackEvent("workspace_orientation_completed", { workspace: "itinerary", orientation_version: 1, source: "replay", total_steps: 3, last_step_reached: 3 });
+    const [, name, payload] = calls[0] as [string, string, Record<string, unknown>];
+    assert.equal(name, "workspace_orientation_completed");
+    assert.deepEqual(Object.keys(payload).sort(), ["environment", "last_step_reached", "orientation_version", "page_path", "source", "total_steps", "workspace"]);
+  } finally {
+    restore();
+  }
+});
+
 test("Viator affiliate clicks use the dedicated, privacy-safe event", () => {
   const calls: unknown[][] = [];
   const restore = installAnalyticsWindow("granted", calls);

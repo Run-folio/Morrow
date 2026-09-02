@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
-import { createOpenWorldPlaceProvider, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
-import { placeCandidateWithinPlanningParent, type GeographicBounds, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
+import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
+import { placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 
 function normalise(value: string) {
   return value.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -45,12 +45,14 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     coordinates: candidate.coordinates,
     bounds: candidate.bounds,
     kind: candidate.placeType,
+    placeType: candidate.placeType,
     locality: candidate.placeType === "city" || candidate.placeType === "town" ? candidate.canonicalName : undefined,
     routability: candidate.routability,
   };
 }
 
 const planningParentTypes = new Set<PlaceType>(["continent", "country", "macro_region", "region", "sub_region", "island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor"]);
+const nearbyAnchorTypes = new Set<PlaceType>(["island", "archipelago", "natural_area", "coast", "mountain_range", "valley", "travel_corridor", "landmark"]);
 
 function finiteQueryNumber(request: NextRequest, key: string) {
   const raw = request.nextUrl.searchParams.get(key);
@@ -82,7 +84,58 @@ function planningParentFromRequest(request: NextRequest): PlanningParentConstrai
   };
 }
 
+function nearbyAnchorFromRequest(request: NextRequest): NearbyBaseAnchor | undefined {
+  const canonicalName = request.nextUrl.searchParams.get("anchorName")?.trim();
+  const placeType = request.nextUrl.searchParams.get("anchorType")?.trim() as PlaceType | undefined;
+  const longitude = finiteQueryNumber(request, "anchorLon");
+  const latitude = finiteQueryNumber(request, "anchorLat");
+  const parentCountries = request.nextUrl.searchParams.getAll("anchorCountry").map((country) => country.trim()).filter(Boolean);
+  if (!canonicalName || !placeType || !nearbyAnchorTypes.has(placeType)
+    || longitude === undefined || latitude === undefined
+    || longitude < -180 || longitude > 180 || latitude < -90 || latitude > 90
+    || !parentCountries.length) return undefined;
+  return {
+    canonicalPlaceId: request.nextUrl.searchParams.get("anchorId")?.trim() || undefined,
+    canonicalName,
+    placeType,
+    parentCountries,
+    parentRegionId: request.nextUrl.searchParams.get("anchorRegion")?.trim() || undefined,
+    coordinates: [longitude, latitude],
+  };
+}
+
+function responseNearbyCandidate(candidate: NearbyBaseSuggestion) {
+  return {
+    canonicalPlaceId: candidate.canonicalPlaceId,
+    name: candidate.name,
+    label: candidate.label,
+    country: candidate.country,
+    region: candidate.region,
+    coordinates: candidate.coordinates,
+    placeType: candidate.placeType,
+    routability: candidate.routability,
+    providerId: candidate.provenance[0]?.id,
+    providerSourceLabel: candidate.provenance[0]?.label,
+    distanceKm: candidate.distanceKm,
+    containment: candidate.containment,
+    confidence: candidate.confidence,
+    provenance: candidate.provenance,
+    reason: candidate.reason,
+  };
+}
+
 export async function GET(request: NextRequest) {
+  if (request.nextUrl.searchParams.get("nearbyBases") === "1") {
+    const anchor = nearbyAnchorFromRequest(request);
+    if (!anchor) return NextResponse.json({ candidates: [], status: "invalid-anchor" }, { status: 400 });
+    try {
+      const candidates = await searchOpenWorldNearbyBaseSuggestions(anchor, { limit: 5, maximumDistanceKm: 140 });
+      return NextResponse.json({ candidates: candidates.map(responseNearbyCandidate), status: candidates.length ? "ready" : "empty" });
+    } catch {
+      return NextResponse.json({ candidates: [], status: "unavailable" }, { status: 503 });
+    }
+  }
+
   const place = request.nextUrl.searchParams.get("place")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
   const requestedIntent = request.nextUrl.searchParams.get("intent");
@@ -90,6 +143,7 @@ export async function GET(request: NextRequest) {
     ? requestedIntent
     : "route-stop";
   const planningParent = planningParentFromRequest(request);
+  const nearbyAnchor = request.nextUrl.searchParams.get("nearbyBaseSearch") === "1" ? nearbyAnchorFromRequest(request) : undefined;
   const nearLat = Number(request.nextUrl.searchParams.get("nearLat"));
   const nearLon = Number(request.nextUrl.searchParams.get("nearLon"));
   const nearby = Number.isFinite(nearLat) && Number.isFinite(nearLon) ? [nearLon, nearLat] as [number, number] : undefined;
@@ -102,10 +156,11 @@ export async function GET(request: NextRequest) {
     }, createOpenWorldPlaceProvider()))
       .filter((candidate) => !country || matchesCountry(candidate.parentCountries?.[0], country))
       .filter((candidate) => !planningParent || placeCandidateWithinPlanningParent(candidate, planningParent))
+      .filter((candidate) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, candidate)))
       .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0) || distanceFrom(nearby, left) - distanceFrom(nearby, right));
 
     if (request.nextUrl.searchParams.get("candidates") === "1") {
-      return NextResponse.json({ candidates: candidates.slice(0, 4).map(responseCandidate) });
+      return NextResponse.json({ candidates: candidates.slice(0, 8).map(responseCandidate) });
     }
 
     const countries = candidates.map((candidate) => candidate.parentCountries?.[0] ?? "");

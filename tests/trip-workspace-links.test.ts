@@ -12,7 +12,6 @@ import {
   mapWorkspaceHref,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
-  shouldShowFirstTripOrientation,
   tripSaveSignInHref,
   tripWorkspaceHref,
   workspaceViewFromPathname,
@@ -53,12 +52,9 @@ test("a generated guest trip opens before auth and an explicit save returns to t
   assert.equal(new URLSearchParams(signIn.split("?", 2)[1]).get("next"), `${arrival}&saved=1`);
 });
 
-test("first-trip orientation is scoped to the generated arrival and shown once", () => {
+test("a generated arrival remains distinguishable from normal workspace navigation", () => {
   assert.equal(isFirstTripWorkspaceArrival("?created=1&saved=1"), true);
   assert.equal(isFirstTripWorkspaceArrival("?created=0"), false);
-  assert.equal(shouldShowFirstTripOrientation(true, false), true);
-  assert.equal(shouldShowFirstTripOrientation(true, true), false);
-  assert.equal(shouldShowFirstTripOrientation(false, false), false);
 });
 
 test("login return links accept canonical trip workspaces but not account surfaces", () => {

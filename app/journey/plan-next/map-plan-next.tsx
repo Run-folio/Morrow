@@ -10,7 +10,9 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalT
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
-import type { JourneyLeg, JourneyStop } from "@/lib/journey";
+import type { JourneyStop } from "@/lib/journey";
+import { mapRouteLegsFromTrip, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { tripHealth } from "@/lib/easyt/review";
 import styles from "./map-plan-next.module.css";
 import editorial from "../surface-editorial.module.css";
@@ -28,7 +30,7 @@ function formatDuration(minutes: number | null) {
   return `${hours ? `${hours}h ` : ""}${remainder ? `${remainder}m` : ""}`.trim();
 }
 
-function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, number]>): { stops: JourneyStop[]; legs: JourneyLeg[] } {
+function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, number]>): { stops: JourneyStop[]; legs: MapRouteLeg[] } {
   const stops = [...trip.stops]
     .sort((a, b) => a.order - b.order)
     .map((stop): JourneyStop => ({
@@ -43,15 +45,16 @@ function mapData(trip: EasyTTrip, resolvedCoordinates: Record<string, [number, n
       highlights: [],
       aiPrompt: "",
     }));
-  const stopById = new Map(stops.map((stop) => [stop.id, stop]));
-  const legs = [...trip.legs].map((leg): JourneyLeg => ({
-    from: leg.fromStopId,
-    to: leg.toStopId,
-    mode: leg.mode === "train" ? "rail" : leg.mode === "flight" ? "flight" : leg.mode === "road" ? "road" : leg.mode === "ferry" ? "ferry" : "unknown",
-    label: `${stopById.get(leg.fromStopId)?.city ?? "Previous stop"} → ${stopById.get(leg.toStopId)?.city ?? "Next stop"}`,
-    detail: leg.provider ?? "Planning estimate",
-    duration: formatDuration(leg.durationMinutes),
-  }));
+  const spatialTrip: EasyTTrip = {
+    ...trip,
+    stops: trip.stops.map((stop) => {
+      const coordinates = resolvedCoordinates[stop.id];
+      return coordinates && (stop.longitude === null || stop.latitude === null)
+        ? { ...stop, longitude: coordinates[0], latitude: coordinates[1] }
+        : stop;
+    }),
+  };
+  const legs = mapRouteLegsFromTrip(spatialTrip);
   return { stops, legs };
 }
 
@@ -141,7 +144,7 @@ export default function MapPlanNext() {
   if (sessionPending || loading || documentScopeMismatch) return <main className={styles.page}><EasyTNavigation current="trips" /><div className={styles.loading}>Loading your map plan…</div></main>;
   if (!trip || !selectedStop || !selectedTripStop) return <main className={styles.page}><EasyTNavigation current="trips" /><section className={styles.empty}><p className={styles.eyebrow}>New map view</p><h1>Open a trip first.</h1><p>This comparison view reads the same saved plan as the current map planner.</p><Link href="/journey/dashboard">Go to trips <ChevronRight aria-hidden="true" /></Link></section></main>;
 
-  const transferLabel = selectedLeg ? `${selectedLeg.mode === "train" ? "Train" : selectedLeg.mode === "flight" ? "Flight" : selectedLeg.mode === "road" ? "Road" : selectedLeg.mode === "ferry" ? "Ferry" : "Mode to confirm"} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
+  const transferLabel = selectedLeg ? `${transferJourneyModeLabel(selectedLeg)} · ${formatDuration(selectedLeg.durationMinutes)}` : "Arrival details to confirm";
   const decisions = (health?.issues ?? []).filter((issue) => issue.status === "open").slice(0, 3);
 
   return <main className={`${styles.page} ${editorial.surface} ${editorial.map} morrovia-editorial-page`}>

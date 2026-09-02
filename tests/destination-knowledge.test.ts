@@ -39,6 +39,21 @@ test("keeps unsupported destination facts explicitly unknown", () => {
   assert.equal(scoring.connectivity.confidence, "unknown");
 });
 
+test("transport-only destination evidence does not become stay-depth evidence", () => {
+  for (const place of [
+    { id: "lima", name: "Lima", country: "Peru" },
+    { id: "huacachina", name: "Huacachina", country: "Peru" },
+    { id: "la-paz", name: "La Paz", country: "Bolivia" },
+  ]) {
+    const stay = destinationKnowledge.forNightAllocation(place);
+    const transfer = destinationKnowledge.forTransferResolution(place);
+    assert.equal(stay.minimumNights.status, "unknown");
+    assert.equal(stay.idealNights.status, "unknown");
+    assert.equal(stay.roles.status, "unknown");
+    assert.equal(transfer.connectivity.status, "known");
+  }
+});
+
 test("exposes anchor roles and separate minimum and ideal night guidance", () => {
   const siemReap = destinationKnowledge.forNightAllocation({ id: "siem-reap", name: "Siem Reap", country: "Cambodia" });
 

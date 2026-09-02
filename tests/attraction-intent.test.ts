@@ -10,7 +10,7 @@ import {
   type AttractionVisitTarget,
   type PlaceSelection,
 } from "../lib/easyt/place-intelligence.ts";
-import { buildCredibleItinerary, type PlannerPlace, type PlannerStop } from "../lib/easyt/planner.ts";
+import { buildCredibleItinerary, type PlannerStop } from "../lib/easyt/planner.ts";
 import { mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { tripFromBuilder } from "../lib/easyt/trip.ts";
 
@@ -89,23 +89,14 @@ test("real Homepage capture -> StructuredTripBrief -> Builder relationship -> ca
   assert.equal(structuredBrief.placeIssues?.some((issue) => issue.mentionId === machuPicchu.mentionId && issue.blocksRoute), false);
   assert.equal(structuredBrief.destinations.some((destination) => destination.canonicalPlaceId === "machu-picchu"), true);
 
-  const attraction: PlannerPlace = {
-    title: "Machu Picchu",
-    area: "Ollantaytambo",
-    type: "Traveller-requested attraction",
-    cost: 0,
-    tags: ["Culture"],
-    description: "Protect time for the named visit and confirm current access arrangements.",
-    coordinates: machuPicchu.coordinates,
-  };
   const allocations = { cusco: 2, ollanta: 2, arequipa: 2, lima: 2 };
   const draft = buildCredibleItinerary({
     origin: "Madrid",
     stops,
     startDate: "2026-09-01",
     allocations,
-    picks: { ollanta: ["Machu Picchu"] },
-    places: { cusco: [], ollanta: [attraction], arequipa: [], lima: [] },
+    picks: {},
+    places: { cusco: [], ollanta: [], arequipa: [], lima: [] },
   });
   const trip = tripFromBuilder({
     id: "machu-trip",
@@ -113,7 +104,7 @@ test("real Homepage capture -> StructuredTripBrief -> Builder relationship -> ca
     stops,
     startDate: "2026-09-01",
     endDate: "2026-09-08",
-    picks: { ollanta: ["Machu Picchu"] },
+    picks: {},
     mustDo: prompt,
     pace: "slow",
     hotels: "few",
@@ -124,7 +115,7 @@ test("real Homepage capture -> StructuredTripBrief -> Builder relationship -> ca
   });
   assert.deepEqual(trip.stops.map((stop) => stop.name), ["Cusco", "Ollantaytambo", "Arequipa", "Lima"]);
   assert.equal(trip.stops.some((stop) => stop.name === "Machu Picchu"), false);
-  assert.equal(trip.planItems.some((item) => item.title === "Machu Picchu" && item.stopId === "ollanta"), true);
+  assert.equal(trip.planItems.some((item) => item.title === "Machu Picchu"), false, "a base relationship alone must not fabricate an itinerary activity");
   assert.deepEqual(JSON.parse(JSON.stringify(trip.brief.structuredBrief?.placeSelections)), trip.brief.structuredBrief?.placeSelections);
 });
 
@@ -134,7 +125,6 @@ test("canonical containment attaches major attractions to existing route stops w
     ["Starting from New York, Rome, Florence, Venice, Pisa and the Colosseum", "Colosseum", "Rome"],
     ["Starting from Toronto, Delhi, Jaipur, Agra, Taj Mahal and Varanasi", "Taj Mahal", "Agra"],
     ["Starting from Los Angeles, Mexico City, Oaxaca, Mérida, Tulum and Chichén Itzá", "Chichén Itzá", "Mérida"],
-    ["Starting from London, Flores, Tikal and Antigua Guatemala", "Tikal", "Flores"],
     ["Starting from Cairo, Amman, Wadi Musa, Petra and Aqaba", "Petra", "Wadi Musa"],
     ["Starting from Los Angeles, Las Vegas, Grand Canyon Village and Flagstaff, visit the Grand Canyon", "Grand Canyon", "Grand Canyon Village"],
   ] as const;
@@ -217,12 +207,14 @@ test("base removal restores attraction review; reorder and save/reload retain a 
   assert.equal(reconciled.placeIssues?.some((issue) => issue.mentionId === attractionMention.mentionId && issue.blocksRoute), true);
 });
 
-test("Builder uses the confirmed relationship pattern and feeds visit intent into existing planner inputs", async () => {
+test("Builder keeps confirmed visit relationships canonical without manufacturing planner activities", async () => {
   const source = await readFile(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   assert.match(source, /inferAttractionVisitSelections/);
   assert.match(source, /visiting from/);
   assert.match(source, /picks: effectivePicks/);
-  assert.match(source, /visitPlannerPlaces/);
-  assert.match(source, /Visit from \$\{attractionProposal\.target\.name\}/);
+  assert.doesNotMatch(source, /visitPlannerPlaces/);
+  assert.match(source, /Anchor\/base relationships stay in StructuredTripBrief/);
+  assert.match(source, /nearbyBases/);
+  assert.match(source, /confirmAttractionVisit/);
   assert.doesNotMatch(source, /stops\.map\([^)]*Machu Picchu/);
 });

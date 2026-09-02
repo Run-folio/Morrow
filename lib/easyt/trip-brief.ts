@@ -96,7 +96,8 @@ export function parseTripBrief(value: string, suppliedPlaces?: PlaceIntelligence
   const placeResult = suppliedPlaces ?? resolvePlaceMentions(value);
   const active = activeResolvedMentions(placeResult);
   const originMention = active.find((mention) => mention.role === "origin" || mention.role === "fixed_start");
-  const destinationMentions = removeRedundantCountryStops(active.filter(legacyDestinationMention));
+  const destinationMentions = removeRedundantCountryStops(active.filter((mention) => legacyDestinationMention(mention)
+    && !["origin", "fixed_start", "fixed_end"].includes(mention.role)));
   const origin = originMention?.canonicalName;
   const stops = unique(
     destinationMentions.filter((mention) => mention.canonicalPlaceId !== originMention?.canonicalPlaceId).map((mention) => mention.canonicalName),

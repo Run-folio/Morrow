@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
-import { BedDouble, CarFront, CircleHelp, Footprints, Plane, Ship, TrainFront, type LucideIcon } from "lucide-react";
+import { BedDouble, CarFront, CircleHelp, Footprints, Plane, Route, Ship, TrainFront, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { feature } from "topojson-client";
@@ -67,10 +67,12 @@ const transportIcons: Record<MapRouteLeg["mode"], LucideIcon> = {
   road: CarFront,
   ferry: Ship,
   walk: Footprints,
+  mixed: Route,
   unknown: CircleHelp,
 };
 
 function legMidpoint(leg: MapRouteLeg): [number, number] {
+  if (leg.routeGeometry?.length) return leg.routeGeometry[Math.floor(leg.routeGeometry.length / 2)];
   let [fromLongitude, fromLatitude] = leg.fromCoordinates;
   let [toLongitude, toLatitude] = leg.toCoordinates;
   if (Math.abs(toLongitude - fromLongitude) > 180) {
@@ -347,18 +349,29 @@ export function JourneyPlannerMap({
     const map = mapRef.current;
     if (!map) return;
     const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
-    const route = {
-      type: "Feature" as const,
-      properties: {},
-      geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
-    };
     const routeLegs = {
       type: "FeatureCollection" as const,
-      features: spatialLegs.map((leg) => ({
+      features: spatialLegs.flatMap((leg) => {
+        const segments = leg.routeSegments?.length ? leg.routeSegments : [{
+          mode: leg.mode,
+          fromCoordinates: leg.fromCoordinates,
+          toCoordinates: leg.toCoordinates,
+          routeGeometry: leg.routeGeometry,
+        }];
+        return segments.map((segment) => ({
+          type: "Feature" as const,
+          properties: { id: leg.id, mode: segment.mode },
+          geometry: { type: "LineString" as const, coordinates: segment.routeGeometry?.length ? segment.routeGeometry : [segment.fromCoordinates, segment.toCoordinates] },
+        }));
+      }),
+    };
+    const route = routeLegs.features.length ? routeLegs : {
+      type: "FeatureCollection" as const,
+      features: [{
         type: "Feature" as const,
-        properties: { id: leg.id, mode: leg.mode },
-        geometry: { type: "LineString" as const, coordinates: [leg.fromCoordinates, leg.toCoordinates] },
-      })),
+        properties: { id: "whole-route", mode: "unknown" },
+        geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
+      }],
     };
 
     const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
@@ -380,7 +393,13 @@ export function JourneyPlannerMap({
       const source = map.getSource("trip-route") as GeoJSONSource | undefined;
       if (source) source.setData(route);
       else {
-        map.addSource("trip-route", { type: "geojson", data: route });
+        map.addSource("trip-route", {
+          type: "geojson",
+          data: route,
+          ...(spatialLegs.some((leg) => leg.routeProvider === "openrouteservice")
+            ? { attribution: "Road routing © openrouteservice.org by HeiGIT | Map data © OpenStreetMap contributors" }
+            : {}),
+        });
       }
       const legSource = map.getSource("trip-route-legs") as GeoJSONSource | undefined;
       if (legSource) legSource.setData(routeLegs);

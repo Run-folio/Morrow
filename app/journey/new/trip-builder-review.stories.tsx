@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { AlertTriangle, Check, CheckCircle2, ChevronRight, MapPin, X } from "lucide-react";
+import { AlertTriangle, CarFront, Check, CheckCircle2, ChevronRight, MapPin, Route, TrainFront, X } from "lucide-react";
 import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
 import { TOUR_TRIP_ROUTE, tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
 import styles from "./trip-builder.module.css";
 
-type ReviewState = "unresolved" | "partial" | "resolved" | "inline-base" | "broad-area" | "route-shapes" | "route-shape-review" | "route-shape-applied" | "interest-guidance" | "low-knowledge" | "anchor-guidance" | "reorder" | "accepted" | "normal" | "compressed" | "unknown" | "arrival" | "tour";
+type ReviewState = "unresolved" | "partial" | "resolved" | "inline-base" | "broad-area" | "route-shapes" | "route-shape-review" | "route-shape-applied" | "interest-guidance" | "low-knowledge" | "anchor-guidance" | "reorder" | "accepted" | "normal" | "compressed" | "unknown" | "arrival" | "road" | "rail" | "mixed" | "tour";
 
 const bases = [
   ["Belize", "Caye Caulker"],
@@ -131,19 +131,25 @@ function TourRouteReview() {
   </div>;
 }
 
-function TimingReview({ kind }: { kind: "normal" | "compressed" | "unknown" | "arrival" }) {
+function TimingReview({ kind }: { kind: "normal" | "compressed" | "unknown" | "arrival" | "road" | "rail" | "mixed" }) {
   const title = kind === "compressed" ? "6 stops in 7 days is very fast-paced."
     : kind === "unknown" ? "One major transfer still needs checking."
       : kind === "arrival" ? "The arrival journey takes most of the first day."
-        : "This trip has a comfortable amount of time in each place.";
+        : kind === "road" ? "The road connection is resolved for planning."
+          : kind === "rail" ? "Rail is the sensible intercity connection."
+            : kind === "mixed" ? "This journey needs a flight and a ground transfer."
+          : "This trip has a comfortable amount of time in each place.";
   const summary = kind === "compressed" ? "6 stops have one night or less, and one transfer still needs checking."
     : kind === "unknown" ? "Transfer to confirm · Mode and timing still need checking."
       : kind === "arrival" ? "From London · Keep the first evening light after arrival."
-        : "All nights are allocated, with time protected around the known transfers.";
+        : kind === "road" ? "Huacachina → Lima · Road · ~4h 15m total."
+          : kind === "rail" ? "Hiroshima → Kyoto · Rail · ~2h total."
+            : kind === "mixed" ? "La Paz → Huacachina · Flight + road · ~8h 45m total."
+          : "All nights are allocated, with time protected around the known transfers.";
   return <div style={{ display: "grid", gap: 12 }}>
     <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>NIGHTS ALLOCATED</span><p><CheckCircle2 aria-hidden="true" /><strong>6 nights total</strong><span aria-hidden="true">•</span><b>All nights allocated</b></p></div>
     <section className={`${styles.timingWarning} ${kind === "compressed" ? styles.timingWarningStrong : ""}`} role="status" aria-label={`${kind === "compressed" ? "Strong caution" : "Trip pacing"}: ${title}`}>
-      <button type="button" className={styles.disclosureHead} aria-expanded="false"><AlertTriangle aria-hidden="true" /><span><strong>{title}</strong><small>{summary}</small></span><ChevronRight aria-hidden="true" /></button>
+      <button type="button" className={styles.disclosureHead} aria-expanded="false">{kind === "road" ? <CarFront aria-hidden="true" /> : kind === "rail" ? <TrainFront aria-hidden="true" /> : kind === "mixed" ? <Route aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}<span><strong>{title}</strong><small>{summary}</small></span><ChevronRight aria-hidden="true" /></button>
     </section>
   </div>;
 }
@@ -165,7 +171,7 @@ function ReviewFixture({ state }: { state: ReviewState }) {
       {state === "reorder" && <RouteReview />}
       {state === "accepted" && <RouteReview accepted />}
       {state === "tour" && <TourRouteReview />}
-      {(["normal", "compressed", "unknown", "arrival"] as ReviewState[]).includes(state) && <div style={{ padding: 16 }}><TimingReview kind={state as "normal" | "compressed" | "unknown" | "arrival"} /></div>}
+      {(["normal", "compressed", "unknown", "arrival", "road", "rail", "mixed"] as ReviewState[]).includes(state) && <div style={{ padding: 16 }}><TimingReview kind={state as "normal" | "compressed" | "unknown" | "arrival" | "road" | "rail" | "mixed"} /></div>}
     </section>
   </main>;
 }
@@ -199,6 +205,18 @@ export const NormalPacedTrip: Story = { args: { state: "normal" } };
 export const HighlyCompressedTrip: Story = { args: { state: "compressed" } };
 export const UnknownMajorTransfer: Story = { args: { state: "unknown" } };
 export const LongArrival: Story = { args: { state: "arrival" } };
+export const RoadResolvedTransfer: Story = { args: { state: "road" } };
+export const RailResolvedTransfer: Story = { args: { state: "rail" } };
+export const MixedResolvedTransfer: Story = { args: { state: "mixed" } };
+export const RoadResolvedTransferAt320: Story = { ...RoadResolvedTransfer, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const RoadResolvedTransferAt390: Story = { ...RoadResolvedTransfer, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const RoadResolvedTransferAt768: Story = { ...RoadResolvedTransfer, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const RoadResolvedTransferAt1024: Story = { ...RoadResolvedTransfer, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const MixedResolvedTransferAt320: Story = { ...MixedResolvedTransfer, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const MixedResolvedTransferAt390: Story = { ...MixedResolvedTransfer, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const MixedResolvedTransferAt768: Story = { ...MixedResolvedTransfer, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const MixedResolvedTransferAt1024: Story = { ...MixedResolvedTransfer, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const MixedResolvedTransferAt1440: Story = { ...MixedResolvedTransfer, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const ClarificationAt390: Story = { args: { state: "partial" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const InlineBaseSelectionAt390: Story = { args: { state: "inline-base" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const BroadAreaGuidanceAt390: Story = { args: { state: "broad-area" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };

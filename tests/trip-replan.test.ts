@@ -2,8 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
 import { reviewTrip } from "../lib/easyt/review.ts";
+import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, structuredTripBriefFromSavedSelections } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+
+class MemoryStorage implements EasyTBrowserStorage {
+  private readonly values = new Map<string, string>();
+  get length() { return this.values.size; }
+  key(index: number) { return [...this.values.keys()][index] ?? null; }
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string) { this.values.set(key, value); }
+  removeItem(key: string) { this.values.delete(key); }
+}
 
 const trip = (): EasyTTrip => ({
   schemaVersion: 1, id: "trip", ownerId: null, title: "Test", status: "draft", startDate: "2026-09-01", endDate: "2026-09-04", travellers: 2, currency: "GBP",
@@ -137,6 +147,52 @@ test("route replan preserves place mentions, issues, selections, removals and ge
   assert.equal(result.trip.brief.structuredBrief?.destinations.find((destination) => destination.id === "a")?.canonicalPlaceId, baseOption.canonicalPlaceId);
   assert.notEqual(result.trip.brief.structuredBrief?.destinations.find((destination) => destination.id === "a")?.id, baseOption.canonicalPlaceId);
   assert.equal(result.trip.brief.structuredBrief?.placeIssues?.some((issue) => issue.code === "region_requires_base"), true);
+});
+
+test("nearby landmark base survives save/reload and replan without turning the anchor into a route leg", () => {
+  const captured = extractStructuredTripBrief("Visit Tikal.");
+  const tikal = captured.placeMentions?.find((mention) => mention.canonicalPlaceId === "tikal");
+  assert.ok(tikal);
+  const structuredBrief = mergeStructuredTripBrief(captured, {
+    destinations: [
+      { id: "a", name: "Flores", canonicalPlaceId: "open-world:fixture:node:1", placeMentionId: tikal.mentionId, placeType: "city", resolutionStatus: "resolved", routability: "direct_destination" },
+      { id: "b", name: "Antigua Guatemala", canonicalPlaceId: "antigua-guatemala", placeType: "city", resolutionStatus: "resolved", routability: "direct_destination" },
+    ],
+    placeSelections: [{
+      mentionId: tikal.mentionId,
+      kind: "visit",
+      selectedCanonicalPlaceId: "open-world:fixture:node:1",
+      selectedName: "Flores",
+      selectedPlaceType: "city",
+      selectedParentCountries: ["Guatemala"],
+      routeStopId: "a",
+      relationshipType: "visit-from-base",
+      provenance: { id: "fixture:node:1", label: "Nearby fixture provider", kind: "provider", supports: "Traveller-selected canonical nearby base." },
+    }],
+    completedPlanningAreaMentionIds: [tikal.mentionId],
+  });
+  const source = trip();
+  source.stops = [
+    { ...source.stops[0]!, name: "Flores", country: "Guatemala", canonicalPlaceId: "open-world:fixture:node:1" },
+    { ...source.stops[1]!, name: "Antigua Guatemala", country: "Guatemala", canonicalPlaceId: "antigua-guatemala" },
+  ];
+  source.brief.structuredBrief = JSON.parse(JSON.stringify(structuredBrief));
+
+  const result = replanTripAfterDayOrder(source, [source.planItems[2]!, source.planItems[3]!, source.planItems[0]!, source.planItems[1]!]);
+  assert.equal(result.state, "recalculated");
+  if (result.state !== "recalculated") return;
+  const reloaded = JSON.parse(JSON.stringify(result.trip)) as EasyTTrip;
+  const visit = reloaded.brief.structuredBrief?.placeSelections?.find((selection) => selection.mentionId === tikal.mentionId);
+  assert.equal(visit?.selectedName, "Flores");
+  assert.equal(visit?.routeStopId, "a");
+  assert.equal(reloaded.brief.structuredBrief?.placeMentions?.some((mention) => mention.canonicalPlaceId === "tikal"), true);
+  assert.equal(reloaded.stops.some((stop) => stop.name === "Tikal"), false);
+  assert.equal(reloaded.legs.some((leg) => leg.fromEndpoint?.name === "Tikal" || leg.toEndpoint?.name === "Tikal"), false);
+  const storage = new MemoryStorage();
+  assert.equal(saveTripRecoveryToStorage(storage, reloaded, { writeId: "nearby-base-recovery" }).stored, true);
+  const recovered = loadTripRecoveryFromStorage(storage, reloaded.id, reloaded.ownerId)?.trip;
+  assert.equal(recovered?.brief.structuredBrief?.placeSelections?.find((selection) => selection.mentionId === tikal.mentionId)?.routeStopId, "a");
+  assert.equal(recovered?.brief.structuredBrief?.placeMentions?.some((mention) => mention.canonicalPlaceId === "tikal"), true);
 });
 
 test("flags a split base in Plan Review after an intentional day-level return", () => {

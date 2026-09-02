@@ -1,0 +1,21 @@
+.root { position: relative; min-width: 0; }
+.root > input { box-sizing: border-box; width: 100%; min-height: 50px; padding: 0 16px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); outline: none; background: var(--morrovia-paper); color: var(--morrovia-ink); font: 500 15px/1.2 var(--morrovia-ui); cursor: text; transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+.root > input:hover { border-color: var(--morrovia-ink-soft); }
+.root > input:focus-visible { border-color: var(--morrovia-signal); box-shadow: var(--morrovia-focus-shadow); }
+.root > input[aria-invalid="true"] { border-color: var(--morrovia-danger); }
+.root > input::placeholder { color: var(--morrovia-muted); }
+.root > input:disabled { background: var(--morrovia-disabled); color: var(--morrovia-muted); cursor: not-allowed; }
+.hasClear > input { padding-right: 52px; }
+.clear { position: absolute; z-index: 2; top: 5px; right: 5px; min-width: 40px; padding: 0; }
+.menu { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; left: 0; display: grid; max-height: min(320px,48svh); overflow: auto; padding: 6px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); box-shadow: var(--morrovia-shadow-overlay); }
+.menu > p { margin: 0; padding: 11px 12px; color: var(--morrovia-muted); font-size: 12px; line-height: 1.4; }
+.menu > button { display: grid; grid-template-columns: 20px minmax(0,1fr); align-items: center; gap: 9px; min-height: 52px; padding: 7px 10px; border: 0; border-radius: var(--morrovia-control-radius); background: transparent; color: var(--morrovia-ink); text-align: left; cursor: pointer; }
+.menu > button:hover,.menu > .optionOn { background: var(--morrovia-lilac); }
+.menu > button:focus-visible { outline: 2px solid var(--morrovia-focus-ring); outline-offset: -2px; }
+.menu svg { width: 17px; height: 17px; color: var(--morrovia-action); }
+.menu span { display: grid; gap: 2px; min-width: 0; }
+.menu b { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.menu small { color: var(--morrovia-muted); font-size: 11px; line-height: 1.3; white-space: normal; }
+.failure { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 8px; }
+.failure p { margin: 0; color: var(--morrovia-muted); font-size: 12px; line-height: 1.4; }
+.failure button { min-height: 44px; padding-inline: 10px; }

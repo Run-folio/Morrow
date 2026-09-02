@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import styles from "./journey-planner-strip.module.css";
 
@@ -28,6 +28,7 @@ export function JourneyPlannerStrip({
   onSelectStop,
   overflow,
   presentation = "focused",
+  containerRef,
 }: {
   summary: string;
   stops: JourneyPlannerStripStop[];
@@ -41,9 +42,10 @@ export function JourneyPlannerStrip({
   onSelectStop: (id: string) => void;
   overflow: ReactNode;
   presentation?: "focused" | "integrated";
+  containerRef?: Ref<HTMLElement>;
 }) {
   return (
-    <header className={`${styles.strip} ${presentation === "integrated" ? styles.integrated : ""}`}>
+    <header ref={containerRef} className={`${styles.strip} ${presentation === "integrated" ? styles.integrated : ""}`}>
       {presentation === "focused" ? <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">
         Morrovia
       </Link> : null}

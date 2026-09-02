@@ -1,0 +1,47 @@
+{
+  "kind": "morrovia-terra-rollout-evidence/v1",
+  "fullRunAt": "2026-09-01T23:37:54.190Z",
+  "targetedValidationAt": "2026-09-01T23:39:43.609Z",
+  "model": "gpt-5.6-terra",
+  "fixtureCount": 12,
+  "fullRun": {
+    "structuredValidityRate": 1,
+    "simpleIntentPreservationRate": 1,
+    "simpleUnnecessarySuggestionAvoidanceRate": 1,
+    "complexIntentPreservationRate": 1,
+    "broadDestinationUnderstandingRate": 1,
+    "visitIntentRetentionRate": 1,
+    "coherenceClassificationRate": 1,
+    "averageLatencyMs": 3571,
+    "totalInputTokens": 23103,
+    "totalOutputTokens": 4010,
+    "estimatedCostUsd": 0.094326,
+    "modelCalls": 12
+  },
+  "productionPolicyEvaluation": {
+    "terraEligibleCases": 10,
+    "lunaCases": 2,
+    "boundedSuggestionSuccessWithSingleSafeRetry": 10,
+    "canonicalResolutionSuccessAfterProviderAlignedValidation": 10,
+    "simpleRoutesRegressed": 0,
+    "rolloutGatePassed": true
+  },
+  "targetedValidation": {
+    "caseIds": ["africa-serengeti", "tikal-landmark", "short-italy-coast"],
+    "structuredValidityRate": 1,
+    "intentPreservationRate": 1,
+    "boundedSuggestionRate": 1,
+    "canonicalResolutionSuccessRate": 1,
+    "averageLatencyMs": 3944,
+    "estimatedCostUsd": 0.024486
+  },
+  "reviewedFindings": [
+    "Africa remained a container, Serengeti remained visit intent, and Arusha, Karatu and Seronera resolved as optional canonical candidates.",
+    "Thailand produced bounded general candidates; the interests fixture shifted toward Bangkok, Krabi and Ayutthaya.",
+    "Philippines produced multiple optional island/base candidates without completing the country automatically.",
+    "Australia returned three optional choices and explicitly marked the broad 10-day interpretation as needing review.",
+    "The explicit Tokyo, Kanazawa, Takayama and Kyoto route returned no suggestions and routes to Luna in production.",
+    "One Tikal full-run response returned no suggestions; the production empty-result retry policy was added and the targeted retry returned canonical Flores.",
+    "No model-provided coordinates, provider IDs, transport modes, distances or durations crossed the structured boundary."
+  ]
+}

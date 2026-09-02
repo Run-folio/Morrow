@@ -1,0 +1,37 @@
+{
+  "kind": "morrovia-current-luna-planning-baseline/v1",
+  "frozenAt": "2026-09-01T23:26:19.803Z",
+  "model": "gpt-5.6-luna",
+  "schema": "semantic-trip-intent/v2",
+  "fixtureCount": 12,
+  "completed": 11,
+  "structuredValidityRate": 0.9166666666666666,
+  "averageLatencyMs": 2442,
+  "totalInputTokens": 17931,
+  "totalOutputTokens": 2498,
+  "estimatedCostUsd": 0.006584,
+  "modelCalls": 12,
+  "planningSuggestionCount": 0,
+  "caseStatuses": {
+    "explicit-europe": "completed",
+    "africa-serengeti": "completed",
+    "thailand-country": "completed",
+    "thailand-interests": "completed",
+    "philippines-archipelago": "completed",
+    "australia-short": "completed",
+    "tikal-landmark": "completed",
+    "atitlan-natural-area": "completed",
+    "tokyo-thailand-mixed": "invalid-response",
+    "explicit-japan": "completed",
+    "short-italy-coast": "completed",
+    "incoherent-seven-days": "completed"
+  },
+  "reviewedFindings": [
+    "Explicit Europe and Japan route intent was preserved without suggestions.",
+    "Africa was classified as a planning area and Serengeti as a point of interest, but no bases were suggested.",
+    "Thailand, Philippines and Australia were classified as planning areas, but no bounded route interpretation was produced.",
+    "Thailand interests were extracted as food, coast and culture.",
+    "Tokyo plus relaxing Thailand failed strict validation.",
+    "The seven-day London, Tokyo, Bali and New York request did not preserve London in semantic destination output and did not express a repair warning."
+  ]
+}

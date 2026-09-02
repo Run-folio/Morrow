@@ -138,7 +138,7 @@ Use a vendor event UUID to remove exact ingestion duplicates first when one is a
 - **Strong activation:** the same opaque `trip_id` records `trip_saved(save_state="cloud")` and `trip_overview_viewed`. This represents a usable trip that can continue across devices.
 - **Return signal:** a later deliberate `trip_reopened` for that trip.
 
-Count distinct trip IDs rather than raw event totals because workspace views can repeat on reload. Segment `trip_saved` by `save_state`; local and cloud saves are intentionally separate persistence boundaries. No orientation-completion event is required, and prompt text, place phrases and traveller details remain excluded.
+Count distinct trip IDs rather than raw event totals because workspace views can repeat on reload. Segment `trip_saved` by `save_state`; local and cloud saves are intentionally separate persistence boundaries. Workspace orientation uses only `workspace_orientation_started`, `workspace_orientation_completed` and `workspace_orientation_dismissed`, with workspace, version, source, total-step count and last step reached. Prompt text, place phrases, trip IDs and traveller details remain excluded from these events.
 
 ## Stamps events
 

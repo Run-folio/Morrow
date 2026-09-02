@@ -1,6 +1,6 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
 
-export const SEMANTIC_TRIP_INTENT_SCHEMA_VERSION = "semantic-trip-intent/v1" as const;
+export const SEMANTIC_TRIP_INTENT_SCHEMA_VERSION = "semantic-trip-intent/v2" as const;
 export const SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION = "raw-trip-prompt/v1" as const;
 export const SEMANTIC_INTENT_MODELS = {
   primary: { model: "gpt-5.6-luna", reasoningEffort: "low" },
@@ -19,6 +19,12 @@ export type SemanticTripIntent = {
   schemaVersion: typeof SEMANTIC_TRIP_INTENT_SCHEMA_VERSION;
   rawPromptVersion: typeof SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION;
   origin: { sourceText: string | null; certainty: SemanticIntentCertainty | null };
+  journeyEnd: {
+    sourceText: string | null;
+    interpretedText: string | null;
+    mode: "explicit_place" | "same_as_start" | "unknown";
+    certainty: SemanticIntentCertainty | null;
+  };
   duration: { sourceText: string | null; value: number | null; unit: "days" | "nights" | "weeks" | null };
   explicitDateTexts: string[];
   destinationCandidates: Array<{
@@ -75,6 +81,12 @@ export const SEMANTIC_TRIP_INTENT_JSON_SCHEMA = strictObject({
   schemaVersion: { type: "string", enum: [SEMANTIC_TRIP_INTENT_SCHEMA_VERSION] },
   rawPromptVersion: { type: "string", enum: [SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION] },
   origin: strictObject({ sourceText: nullableString, certainty }),
+  journeyEnd: strictObject({
+    sourceText: nullableString,
+    interpretedText: nullableString,
+    mode: { type: "string", enum: ["explicit_place", "same_as_start", "unknown"] },
+    certainty,
+  }),
   duration: strictObject({
     sourceText: nullableString,
     value: { type: ["number", "null"] },
@@ -193,7 +205,7 @@ function array(value: unknown, path: string, issues: SemanticIntentValidationIss
 /** Treat model output as untrusted even after strict structured generation. */
 export function validateSemanticTripIntent(value: unknown, rawPrompt: string): SemanticIntentValidationResult {
   const issues: SemanticIntentValidationIssue[] = [];
-  const rootKeys = ["schemaVersion", "rawPromptVersion", "origin", "duration", "explicitDateTexts", "destinationCandidates", "pointsOfInterest", "transport", "pace", "interests", "constraints", "ambiguities", "unresolvedMeaningfulText"];
+  const rootKeys = ["schemaVersion", "rawPromptVersion", "origin", "journeyEnd", "duration", "explicitDateTexts", "destinationCandidates", "pointsOfInterest", "transport", "pace", "interests", "constraints", "ambiguities", "unresolvedMeaningfulText"];
   const root = inspectKeys(value, "$", rootKeys, issues);
   if (!root) return { valid: false, intent: null, issues };
   if (root.schemaVersion !== SEMANTIC_TRIP_INTENT_SCHEMA_VERSION) issues.push({ code: "invalid-value", path: "$.schemaVersion" });
@@ -203,6 +215,18 @@ export function validateSemanticTripIntent(value: unknown, rawPrompt: string): S
   const originText = origin ? source(origin.sourceText, "$.origin.sourceText", rawPrompt, issues, true) : null;
   const originCertainty = origin ? enumValue(origin.certainty, certaintyValues, "$.origin.certainty", issues, true) : null;
   if ((originText === null) !== (originCertainty === null)) issues.push({ code: "inconsistent-value", path: "$.origin" });
+
+  const journeyEnd = inspectKeys(root.journeyEnd, "$.journeyEnd", ["sourceText", "interpretedText", "mode", "certainty"], issues);
+  const journeyEndText = journeyEnd ? source(journeyEnd.sourceText, "$.journeyEnd.sourceText", rawPrompt, issues, true) : null;
+  if (journeyEnd) interpretedText(journeyEnd.interpretedText, "$.journeyEnd.interpretedText", issues);
+  const journeyEndMode = journeyEnd ? enumValue(journeyEnd.mode, ["explicit_place", "same_as_start", "unknown"] as const, "$.journeyEnd.mode", issues) : null;
+  const journeyEndCertainty = journeyEnd ? enumValue(journeyEnd.certainty, certaintyValues, "$.journeyEnd.certainty", issues, true) : null;
+  if (journeyEndMode === "unknown" && (journeyEndText !== null || journeyEndCertainty !== null || journeyEnd?.interpretedText !== null)) {
+    issues.push({ code: "inconsistent-value", path: "$.journeyEnd" });
+  }
+  if (journeyEndMode !== null && journeyEndMode !== "unknown" && (journeyEndText === null || journeyEndCertainty === null)) {
+    issues.push({ code: "inconsistent-value", path: "$.journeyEnd" });
+  }
 
   const duration = inspectKeys(root.duration, "$.duration", ["sourceText", "value", "unit"], issues);
   const durationText = duration ? source(duration.sourceText, "$.duration.sourceText", rawPrompt, issues, true) : null;
@@ -427,6 +451,7 @@ export type SemanticIntentComparison = {
   };
   semantic: {
     originSourceText: string | null;
+    journeyEnd: SemanticTripIntent["journeyEnd"];
     duration: { value: number; unit: "days" | "nights" | "weeks" } | null;
     destinationSourceTexts: string[];
     destinationCandidates: SemanticTripIntent["destinationCandidates"];
@@ -459,6 +484,7 @@ export function compareSemanticIntent(deterministic: JourneyCaptureResult, extra
   const deterministicTransport = deterministic.structuredBrief.transportPreferences.map((item) => item.value);
   const intent = extraction.intent;
   const coverage = intent ? [
+    ...(intent.journeyEnd.sourceText ? [intent.journeyEnd.sourceText] : []),
     ...intent.destinationCandidates.map((item) => item.sourceText),
     ...intent.pointsOfInterest.map((item) => item.sourceText),
     ...intent.ambiguities.map((item) => item.sourceText),
@@ -483,6 +509,7 @@ export function compareSemanticIntent(deterministic: JourneyCaptureResult, extra
     },
     semantic: intent ? {
       originSourceText: intent.origin.sourceText,
+      journeyEnd: intent.journeyEnd,
       duration: modelDuration,
       destinationSourceTexts: intent.destinationCandidates.map((item) => item.sourceText),
       destinationCandidates: intent.destinationCandidates,
@@ -548,6 +575,7 @@ export function shouldEscalateSemanticIntent(input: {
   if (explicitDurationPattern.test(input.rawPrompt) && (!intent.duration.sourceText || !intent.duration.value || !intent.duration.unit)) add("explicit-duration-missing", ["duration"], "explicit-source-signal-not-classified");
   const semanticCoverage = new Set([
     ...(intent.origin.sourceText ? [normalize(intent.origin.sourceText)] : []),
+    ...(intent.journeyEnd.sourceText ? [normalize(intent.journeyEnd.sourceText)] : []),
     ...intent.destinationCandidates.map((item) => normalize(item.sourceText)),
     ...intent.pointsOfInterest.map((item) => normalize(item.sourceText)),
     ...intent.ambiguities.map((item) => normalize(item.sourceText)),

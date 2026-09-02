@@ -1,8 +1,9 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
 import { normalizePlacePhrase, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
-import type { EasyTTrip } from "./trip.ts";
+import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
+import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -15,6 +16,7 @@ export type HomeTripDraft = {
   originCanonicalPlaceId?: string;
   originCountry?: string;
   originProviderId?: string;
+  journeyEnd?: JourneyEndSelection;
   destination?: { id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] };
   destinations?: Array<{ id: string; name: string; country: string; canonicalPlaceId?: string; providerId?: string; coordinates?: [number, number] }>;
   locationMentions?: ResolvedPlaceMention[];
@@ -22,6 +24,8 @@ export type HomeTripDraft = {
   regions?: string[];
   parserVersion?: string;
   structuredBrief?: JourneyCaptureResult["structuredBrief"];
+  planningSuggestions?: JourneyCaptureResult["planningSuggestions"];
+  planningAssessment?: JourneyCaptureResult["planningAssessment"];
   startDate?: string;
   endDate?: string;
   durationDays?: number;
@@ -77,7 +81,10 @@ export function createHomeTripDraft(input: {
   travellersExplicit: boolean;
   interests: TripInterest[];
   interestsExplicit?: boolean;
+  origin?: JourneyEndpointPlace;
+  journeyEnd?: JourneyEndSelection;
 }): HomeTripDraft {
+  const origin = input.origin ? canonicalJourneyEndpointPlace(input.origin) : undefined;
   return {
     handoffId: input.handoffId,
     locationMentions: input.capture.mentions,
@@ -85,6 +92,16 @@ export function createHomeTripDraft(input: {
     regions: input.capture.regions,
     parserVersion: input.capture.parserVersion,
     structuredBrief: input.capture.structuredBrief,
+    planningSuggestions: input.capture.planningSuggestions,
+    planningAssessment: input.capture.planningAssessment,
+    ...(origin ? {
+      origin: origin.name,
+      originCoordinates: origin.coordinates,
+      originCanonicalPlaceId: origin.canonicalPlaceId,
+      originCountry: origin.country,
+      originProviderId: origin.providerId,
+    } : {}),
+    journeyEnd: normalizeJourneyEnd(input.journeyEnd ?? input.capture.journeyEnd),
     durationDays: input.capture.durationDays,
     ...(input.datesExplicit ? { startDate: input.startDate, endDate: input.endDate } : {}),
     datesExplicit: input.datesExplicit,
@@ -114,7 +131,7 @@ export function homeTripDraftInterestsWereExplicit(
 }
 
 export function routableHandoffMentions(mentions: ResolvedPlaceMention[]) {
-  return mentions.filter((mention) => mention.role !== "excluded"
+  return mentions.filter((mention) => mention.role !== "excluded" && mention.role !== "fixed_end"
     && (mention.status === "resolved" || mention.status === "partially_resolved")
     && Boolean(mention.canonicalPlaceId)
     && mention.routability === "direct_destination");
@@ -166,12 +183,21 @@ export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, re
   if (resolutionPending || !draft.brief || trip.brief.capturedIntent?.originalBrief !== draft.brief) return false;
   const routeMentions = routableHandoffMentions(draft.structuredBrief?.placeMentions ?? draft.locationMentions ?? []);
   const stopNames = new Set(trip.stops.map((stop) => normalizePlacePhrase(stop.name)));
-  return routeMentions.every((mention) => {
+  const routeDurable = routeMentions.every((mention) => {
     const expected = normalizePlacePhrase(mention.canonicalName);
     return mention.role === "origin" || mention.role === "fixed_start"
       ? normalizePlacePhrase(trip.brief.origin) === expected
       : stopNames.has(expected);
   });
+  if (!routeDurable) return false;
+  const expectedEnd = normalizeJourneyEnd(draft.journeyEnd ?? { mode: "unknown" });
+  const actualEnd = normalizeJourneyEnd(trip.brief.journeyEnd);
+  if (expectedEnd.mode !== actualEnd.mode) return false;
+  if (expectedEnd.mode !== "explicit" || actualEnd.mode !== "explicit") return true;
+  return sameJourneyPlace(
+    resolvedJourneyEndPlace(originPlaceFromBrief(trip.brief), expectedEnd),
+    resolvedJourneyEndPlace(originPlaceFromBrief(trip.brief), actualEnd),
+  );
 }
 
 export function removeHomeTripDraftIfDurable(

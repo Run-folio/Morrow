@@ -5,6 +5,7 @@ import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
 import { EasyTLinkButton } from "./easyt-controls";
 import { TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
+import { WorkspaceOrientationLauncher, WorkspaceOrientationProvider } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
 
 export function formatTripShellDates(startDate: string, endDate: string) {
@@ -21,7 +22,7 @@ function statusLabel(status: TripStatus) {
   return "Planning";
 }
 
-export default function TripShell({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
+export default function TripShell({ trip, children, cacheTrip = true, orientationAutoStart = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean; orientationAutoStart?: boolean }) {
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
   const image = trip.planItems.find((item) => Boolean(item.image))?.image ?? null;
   const duration = tripShellDuration(trip.startDate, trip.endDate);
@@ -29,7 +30,8 @@ export default function TripShell({ trip, children, cacheTrip = true }: { trip: 
 
   return (
     <div className={styles.workspace}>
-      <section className={styles.shell} aria-labelledby="trip-shell-title">
+      <WorkspaceOrientationProvider ownerId={trip.ownerId} autoStart={orientationAutoStart}>
+        <section className={styles.shell} aria-labelledby="trip-shell-title">
         <header className={styles.tripHeader}>
           <TripShellImage
             key={image ?? "trip-image-fallback"}
@@ -63,23 +65,27 @@ export default function TripShell({ trip, children, cacheTrip = true }: { trip: 
             </dl>
           </div>
 
-          <EasyTLinkButton
-            className={styles.editAction}
-            href={editHref}
-            icon={Edit3}
-            size="small"
-            variant="secondary"
-          >
-            Edit trip brief
-          </EasyTLinkButton>
+          <div className={styles.headerActions}>
+            <EasyTLinkButton
+              className={styles.editAction}
+              href={editHref}
+              icon={Edit3}
+              size="small"
+              variant="secondary"
+            >
+              Edit trip brief
+            </EasyTLinkButton>
+            <WorkspaceOrientationLauncher />
+          </div>
         </header>
 
         <TripShellNavigation tripId={trip.id} />
-      </section>
+        </section>
 
-      <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>
-        <div className={styles.content}>{children}</div>
-      </TripShellTripProvider>
+        <TripShellTripProvider trip={trip} cacheTrip={cacheTrip}>
+          <div className={styles.content}>{children}</div>
+        </TripShellTripProvider>
+      </WorkspaceOrientationProvider>
     </div>
   );
 }

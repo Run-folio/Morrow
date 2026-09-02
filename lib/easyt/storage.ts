@@ -530,6 +530,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
     currency: trip.currency,
     brief: {
       originIdentity,
+      journeyEnd: brief.journeyEnd,
       mustDo: brief.mustDo,
       pace: brief.pace,
       hotelChanges: brief.hotelChanges,

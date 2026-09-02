@@ -130,7 +130,11 @@ export function outgoingLegForPlanItem(
 export function itineraryDayLegs(trip: EasyTTrip, day: PlanItem) {
   const incoming = incomingLegForPlanItem(trip, day);
   const outgoing = outgoingLegForPlanItem(trip, day);
-  return [...new Map([incoming, outgoing]
+  const laterAtStop = orderedTripPlanItems(trip).some((candidate) => candidate.stopId === day.stopId && candidate.dayNumber > day.dayNumber);
+  const finalDeparture = laterAtStop
+    ? null
+    : trip.legs.find((leg) => leg.classification === "departure" && leg.fromStopId === day.stopId) ?? null;
+  return [...new Map([incoming, outgoing, finalDeparture]
     .filter((leg): leg is TripLeg => Boolean(leg))
     .map((leg) => [leg.id, leg])).values()];
 }

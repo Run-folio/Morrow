@@ -16,6 +16,8 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const builder = read("app/journey/new/trip-builder.tsx");
 const styles = read("app/journey/new/trip-builder.module.css");
 const geocode = read("app/api/journey-geocode/route.ts");
+const autocomplete = read("components/easyt/canonical-place-autocomplete.tsx");
+const dialog = read("components/easyt/builder-clarification-dialog.tsx");
 
 const emptyResult = (): PlaceIntelligenceResult => ({
   version: PLACE_INTELLIGENCE_VERSION,
@@ -48,13 +50,15 @@ test("2 Scotland produces the canonical base-selection issue, not an unresolved-
   assert.equal(issues.some((issue) => issue.code === "unresolved_place"), false);
 });
 
-test("3 Add Stop transitions a recognised planning area into the inline clarification owner", () => {
+test("3 Add Stop transitions a recognised planning area into the shared dialog owner", () => {
   assert.match(builder, /placeSuggestionRequiresBaseSelection\(canonicalSuggestion\)[\s\S]*?beginPlanningAreaClarification\(canonicalSuggestion\)/);
-  assert.match(builder, /inlinePlanningClarification/);
+  const begin = builder.slice(builder.indexOf("const beginPlanningAreaClarification"), builder.indexOf("const cancelTransientPlanningClarification"));
+  assert.match(begin, /setClarificationSessionIds\(\[appended\.mention\.mentionId\]\)/);
+  assert.match(begin, /setClarificationOpen\(true\)/);
 });
 
 test("4 Scotland base search remains hard-bound to the selected parent", () => {
-  assert.match(builder, /parentConstraint=\{planningParentForMention\(inlineStopBaseMention\)\}/);
+  assert.match(builder, /parentConstraint: clarificationUsesNearbyBases \? undefined : planningParentForMention\(activeClarificationMention\)/);
   assert.match(geocode, /filter\(\(candidate\) => !planningParent \|\| placeCandidateWithinPlanningParent\(candidate, planningParent\)\)/);
 });
 
@@ -77,7 +81,7 @@ test("8 cancelling a transient Add Stop clarification removes its mention and se
   assert.match(builder, /cancelTransientPlanningClarification[\s\S]*?placeMentions: mentions[\s\S]*?placeSelections:/);
   assert.match(builder, /setPlaceSelections\(\(current\) => current\.filter\(\(selection\) => selection\.mentionId !== mentionId\)\)/);
   assert.match(builder, /originBeforePlanningClarificationRef\.current = \{[\s\S]*?name: origin/);
-  assert.match(builder, /setOrigin\(previousOrigin\?\.name \?\? ""\)/);
+  assert.match(builder, /replaceJourneyOrigin\(previousOrigin \?\? \{ name: "" \}\)/);
 });
 
 test("9 Iran enters the same inline base-selection semantics", () => {
@@ -97,7 +101,7 @@ test("11 foreign candidates never satisfy the Iran parent", () => {
 test("12 Georgia country and Georgia state remain materially distinct identities", () => {
   assert.notEqual(georgiaCountry.canonicalPlaceId, georgiaState.canonicalPlaceId);
   assert.notEqual(georgiaCountry.country, georgiaState.country);
-  assert.match(builder, /showPlaceType \? ` · \$\{placeTypeLabel\(suggestion\.placeType\)\}`/);
+  assert.match(autocomplete, /showPlaceType \? ` · \$\{placeTypeLabel\(suggestion\.placeType\)\}`/);
 });
 
 test("13 choosing Georgia country creates a country-bound base flow", () => {
@@ -152,10 +156,10 @@ test("20 pending geography blocks Step 2 until a base or broad-area completion c
 });
 
 test("21 route shapes are review-only until the traveller explicitly applies them", () => {
-  assert.match(builder, /Review the places before adding them\. Nothing has changed yet\./);
-  assert.match(builder, /aria-expanded=\{isReviewing\}/);
-  assert.match(builder, /applyGuidedPlanningShape\(mention, shape\)/);
-  assert.doesNotMatch(builder.slice(builder.indexOf("const routeShapes ="), builder.indexOf("const reviewingShape =")), /setStops|setPlaceSelections/);
+  assert.match(dialog, /Review these places before adding them\. Nothing changes until you confirm\./);
+  assert.match(dialog, /aria-expanded=\{reviewing\}/);
+  assert.match(builder, /applyGuidedPlanningShape\(activeClarificationMention, guided\)/);
+  assert.doesNotMatch(dialog.slice(dialog.indexOf("const reviewing ="), dialog.indexOf("onApplyShape\?\.\(shape\)")), /setStops|setPlaceSelections/);
 });
 
 test("22 applying a route shape adds every proposed canonical place", () => {
@@ -167,7 +171,7 @@ test("22 applying a route shape adds every proposed canonical place", () => {
 test("23 applying places does not mark the planning area complete", () => {
   const applyShape = builder.slice(builder.indexOf("const applyGuidedPlanningShape"), builder.indexOf("const confirmAttractionVisit"));
   assert.doesNotMatch(applyShape, /completePlanningArea|setCompletedPlanningAreaMentionIds/);
-  assert.match(builder, /Done adding places/);
+  assert.match(builder, /Done with \$\{clarificationParentName\}/);
 });
 
 test("24 completed countries retain the existing explicit reopen path", () => {
@@ -176,16 +180,16 @@ test("24 completed countries retain the existing explicit reopen path", () => {
   assert.match(builder, /setCompletedPlanningAreaMentionIds\(\(current\) => current\.filter/);
 });
 
-test("25 lightweight interest guidance is local and keeps scoped search available", () => {
-  assert.match(builder, /setAreaGuidanceInterests\(\(current\) => \(\{ \.\.\.current, \[mention\.mentionId\]: interest \}\)\)/);
-  assert.doesNotMatch(builder.slice(builder.indexOf("WHAT WOULD YOU LIKE MORE OF?"), builder.indexOf("showIndividualSuggestions")), /toggleInterest|setTripIntent|setTravelProfile/);
-  assert.match(builder, /parentConstraint=\{planningParentForMention\(mention\)\}/);
+test("25 sequential guidance keeps scoped search without adding another preference model", () => {
+  assert.match(builder, /parentConstraint: clarificationUsesNearbyBases \? undefined : planningParentForMention\(activeClarificationMention\)/);
+  assert.match(builder, /nearbyAnchor: clarificationUsesNearbyBases \? activeNearbyBaseAnchor : undefined/);
+  assert.doesNotMatch(dialog, /toggleInterest|setTripIntent|setTravelProfile|areaGuidanceInterests/);
 });
 
 test("26 guidance uses progressive disclosure and native keyboard-operable controls", () => {
-  assert.match(builder, /See other places/);
-  assert.match(builder, /Explore another route/);
-  assert.match(builder, /<button type="button" aria-expanded=\{isReviewing\}/);
-  assert.match(styles, /\.guidedAreaShapes section>button:focus-visible/);
-  assert.match(styles, /\.guidedAreaQuestion>div button:focus-visible/);
+  assert.match(dialog, /<button type="button" aria-expanded=\{reviewing\}/);
+  assert.match(dialog, /setReviewingShapeId\(reviewing \? null : shape\.id\)/);
+  const dialogStyles = read("components/easyt/builder-clarification-dialog.module.css");
+  assert.match(dialogStyles, /\.shapes article > button:focus-visible/);
+  assert.match(dialogStyles, /\.suggestions > div button:focus-visible/);
 });

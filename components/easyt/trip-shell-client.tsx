@@ -25,6 +25,7 @@ import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaStatusBanner } from "./morrovia-feedback";
+import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
@@ -51,7 +52,6 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     && deviceRecovery.ownerId === trip.ownerId
     ? deviceRecovery
     : null;
-
   useEffect(() => {
     const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
     const onStorage = (event: StorageEvent) => {
@@ -72,6 +72,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
         previouslyAuthenticatedOwnerId: authenticatedOwnerRef.current,
       })
     : "current";
+  useWorkspaceOrientationBlocker(ownerBoundary !== "current" || Boolean(visibleDeviceRecovery) || discardDialogOpen);
 
   useEffect(() => {
     if (ownerBoundary === "mismatch") window.location.reload();
@@ -219,9 +220,10 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
     : remainder.startsWith("/map")
       ? "map"
       : "overview";
+  const orientationTarget = useWorkspaceOrientationTarget("overview", "workspace-navigation");
 
   return (
-    <nav className={styles.subnav} aria-label="Trip workspace">
+    <nav ref={orientationTarget} className={styles.subnav} aria-label="Trip workspace">
       {views.map((view) => {
         const Icon = view.icon;
         const active = activeView === view.id;

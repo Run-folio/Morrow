@@ -35,10 +35,6 @@ export function isFirstTripWorkspaceArrival(search: string) {
   return new URLSearchParams(query).get("created") === "1";
 }
 
-export function shouldShowFirstTripOrientation(firstArrival: boolean, alreadySeen: boolean) {
-  return firstArrival && !alreadySeen;
-}
-
 export function isCanonicalTripWorkspaceHref(href: string) {
   return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|prep))?(?:[?#].*)?$/.test(href);
 }

@@ -206,7 +206,7 @@ function issue(input: Omit<PlanValidationIssue, "id" | "sources" | "relatedTripH
 
 export function planWithStructuredBriefConstraints(plan: FinalPlan, brief: StructuredTripBrief | undefined): FinalPlan {
   if (!brief) return plan;
-  const structured = routeConstraintsFromStructuredTripBrief(brief);
+  const structured = routeConstraintsFromStructuredTripBrief(brief, plan.stops.map((stop) => stop.id));
   const existing = plan.constraints ?? {};
   return {
     ...plan,

@@ -16,6 +16,7 @@ import {
 } from "./trip-continuity";
 import { EasyTTrip, isEasyTTrip } from "./trip";
 import { normalizedLegEndpoints } from "./trip-persistence";
+import { resolveTripTransferJourneys } from "./multimodal-transfer-resolution.server";
 import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
@@ -281,7 +282,7 @@ export async function getTripForOwner(
     where id = ${tripId} and owner_id = ${ownerId} and deleted_at is null
     limit 1
   `) as TripDocumentRow[];
-  return rows[0] && isEasyTTrip(rows[0].document) ? rows[0].document : null;
+  return rows[0] && isEasyTTrip(rows[0].document) ? resolveTripTransferJourneys(rows[0].document) : null;
 }
 
 export async function saveTripForOwner(
@@ -295,7 +296,8 @@ export async function saveTripForOwner(
   // namespace them before persistence and update every relation atomically.
   // The incoming updatedAt remains the compare-and-swap token; only the
   // repository issues the next token after the update has won.
-  const document = canonicalTripForOwner(ownerId, trip, nextTripUpdatedAt(trip.updatedAt));
+  const routedTrip = await resolveTripTransferJourneys(trip);
+  const document = canonicalTripForOwner(ownerId, routedTrip, nextTripUpdatedAt(trip.updatedAt));
   const documentJson = JSON.stringify(document);
   const transactionResults = await sql.transaction((tx) => [
     tx`select pg_advisory_xact_lock(hashtextextended(${document.id}, 0))`,
@@ -475,7 +477,8 @@ export async function promoteTripForOwner(
   }
 
   const sql = getEasyTDatabase();
-  const document = canonicalTripForOwner(ownerId, trip);
+  const routedTrip = await resolveTripTransferJourneys(trip);
+  const document = canonicalTripForOwner(ownerId, routedTrip);
   const documentJson = JSON.stringify(document);
   const transactionResults = await sql.transaction((tx) => [
     // Serialize promotion attempts for one canonical ID. This makes concurrent

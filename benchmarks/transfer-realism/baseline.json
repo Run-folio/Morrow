@@ -1,0 +1,1081 @@
+{
+  "generatedBy": "canonical-transfer-realism-benchmark-v1",
+  "fixtureCount": 28,
+  "regions": [
+    "africa",
+    "east-asia",
+    "europe",
+    "latin-america",
+    "north-america",
+    "oceania",
+    "south-asia",
+    "southeast-asia"
+  ],
+  "statuses": {
+    "correct": 28,
+    "acceptable-not-ideal": 0,
+    "clearly-wrong": 0
+  },
+  "failureCategories": {
+    "J_unknown_is_appropriate": 2
+  },
+  "metrics": {
+    "preferredMode": {
+      "correct": 28,
+      "total": 28,
+      "percent": 100
+    },
+    "acceptableMode": {
+      "correct": 28,
+      "total": 28,
+      "percent": 100
+    },
+    "clearlyWrong": {
+      "count": 0,
+      "total": 28,
+      "percent": 0
+    },
+    "unknown": {
+      "count": 2,
+      "total": 28,
+      "percent": 7.1,
+      "appropriate": 2
+    },
+    "durationPlausibility": {
+      "plausible": 26,
+      "assessed": 26,
+      "percent": 100
+    },
+    "gatewayComposition": {
+      "correct": 3,
+      "assessed": 3,
+      "percent": 100
+    },
+    "segmentIntegrity": {
+      "correct": 28,
+      "total": 28,
+      "percent": 100
+    },
+    "determinism": {
+      "correct": 28,
+      "assessed": 28,
+      "percent": 100
+    },
+    "providerEfficiency": {
+      "calls": 13,
+      "allowedCalls": 14,
+      "efficientFixtures": 28,
+      "totalFixtures": 28,
+      "duplicateCalls": 0,
+      "percent": 100
+    }
+  },
+  "results": [
+    {
+      "id": "huacachina-lima-road",
+      "route": "Huacachina → Lima",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 255,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 255,
+            "score": 74.94,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "edinburgh-st-andrews-road",
+      "route": "Edinburgh → St Andrews",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 90,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 90,
+            "score": 75.63,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "mendoza-san-rafael-road",
+      "route": "Mendoza → San Rafael",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 210,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 210,
+            "score": 75.13,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "los-angeles-san-diego-road",
+      "route": "Los Angeles → San Diego",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 150,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 150,
+            "score": 75.38,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "auckland-rotorua-road",
+      "route": "Auckland → Rotorua",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 195,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 195,
+            "score": 75.19,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "hiroshima-kyoto-rail",
+      "route": "Hiroshima → Kyoto",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 120,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "train",
+        "candidates": [
+          {
+            "id": "rail:direct-connectivity",
+            "summaryMode": "train",
+            "totalDurationMinutes": 120,
+            "score": 85.5,
+            "evidence": "direct_rail_connectivity",
+            "reasons": [
+              "Both canonical endpoints have direct national or regional rail connectivity.",
+              "Rail avoids airport and driving friction for this intercity distance."
+            ]
+          }
+        ],
+        "rejected": [
+          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+        ],
+        "selectedCandidateId": "rail:direct-connectivity"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "london-paris-rail",
+      "route": "London → Paris",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 270,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "preserved",
+        "candidates": [],
+        "rejected": []
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "paris-amsterdam-rail",
+      "route": "Paris → Amsterdam",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 225,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "train",
+        "candidates": [
+          {
+            "id": "rail:network:western-europe-high-speed",
+            "summaryMode": "train",
+            "totalDurationMinutes": 225,
+            "score": 85.06,
+            "evidence": "intercity_rail_network",
+            "reasons": [
+              "Both canonical endpoints share reviewed strong intercity evidence on the Western Europe high-speed intercity network.",
+              "Rail avoids airport and driving friction for this intercity distance."
+            ]
+          },
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 255,
+            "score": 61.94,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+        ],
+        "selectedCandidateId": "rail:network:western-europe-high-speed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "rome-florence-rail",
+      "route": "Rome → Florence",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 120,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "high",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "preserved",
+        "candidates": [],
+        "rejected": []
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "tokyo-kanazawa-rail",
+      "route": "Tokyo → Kanazawa",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 190,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "high",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "preserved",
+        "candidates": [],
+        "rejected": []
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "bologna-florence-rail",
+      "route": "Bologna → Florence",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 60,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "train",
+        "candidates": [
+          {
+            "id": "rail:direct-connectivity",
+            "summaryMode": "train",
+            "totalDurationMinutes": 60,
+            "score": 85.75,
+            "evidence": "direct_rail_connectivity",
+            "reasons": [
+              "Both canonical endpoints have direct national or regional rail connectivity.",
+              "Rail avoids airport and driving friction for this intercity distance."
+            ]
+          }
+        ],
+        "rejected": [
+          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+        ],
+        "selectedCandidateId": "rail:direct-connectivity"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "madrid-barcelona-rail",
+      "route": "Madrid → Barcelona",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 210,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "high",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "preserved",
+        "candidates": [],
+        "rejected": []
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "london-edinburgh-rail",
+      "route": "London → Edinburgh",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 285,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "train",
+        "candidates": [
+          {
+            "id": "rail:network:uk-intercity-mainline",
+            "summaryMode": "train",
+            "totalDurationMinutes": 285,
+            "score": 84.81,
+            "evidence": "intercity_rail_network",
+            "reasons": [
+              "Both canonical endpoints share reviewed strong intercity evidence on the United Kingdom intercity mainline network.",
+              "Rail avoids airport and driving friction for this intercity distance."
+            ]
+          }
+        ],
+        "rejected": [
+          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+        ],
+        "selectedCandidateId": "rail:network:uk-intercity-mainline"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "lima-new-york-flight",
+      "route": "Lima → New York",
+      "selectedMode": "flight",
+      "status": "correct",
+      "durationMinutes": 660,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "flight",
+        "candidates": [
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 660,
+            "score": 60.25,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ],
+        "selectedCandidateId": "flight:legacy-estimate"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "perth-sydney-flight",
+      "route": "Perth → Sydney",
+      "selectedMode": "flight",
+      "status": "correct",
+      "durationMinutes": 465,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "flight",
+        "candidates": [
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 465,
+            "score": 61.06,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ],
+        "selectedCandidateId": "flight:legacy-estimate"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "delhi-goa-flight",
+      "route": "Delhi → Goa",
+      "selectedMode": "flight",
+      "status": "correct",
+      "durationMinutes": 330,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "flight",
+        "candidates": [
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 330,
+            "score": 61.63,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ],
+        "selectedCandidateId": "flight:legacy-estimate"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "cape-town-nairobi-flight",
+      "route": "Cape Town → Nairobi",
+      "selectedMode": "flight",
+      "status": "correct",
+      "durationMinutes": 525,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "flight",
+        "candidates": [
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 525,
+            "score": 60.81,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ],
+        "selectedCandidateId": "flight:legacy-estimate"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "la-paz-huacachina-mixed",
+      "route": "La Paz → Huacachina",
+      "selectedMode": "mixed",
+      "status": "correct",
+      "durationMinutes": 525,
+      "durationPlausible": true,
+      "gatewayCorrect": true,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "mixed",
+        "candidates": [
+          {
+            "id": "mixed:air-gateway",
+            "summaryMode": "mixed",
+            "totalDurationMinutes": 525,
+            "score": 76.81,
+            "evidence": "air_gateway_composition",
+            "reasons": [
+              "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+              "Provider-routed ground access completes the journey to the actual stop."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "mixed:air-gateway"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "hanoi-hoi-an-mixed",
+      "route": "Hanoi → Hoi An",
+      "selectedMode": "mixed",
+      "status": "correct",
+      "durationMinutes": 285,
+      "durationPlausible": true,
+      "gatewayCorrect": true,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "mixed",
+        "candidates": [
+          {
+            "id": "mixed:air-gateway",
+            "summaryMode": "mixed",
+            "totalDurationMinutes": 285,
+            "score": 77.81,
+            "evidence": "air_gateway_composition",
+            "reasons": [
+              "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+              "Provider-routed ground access completes the journey to the actual stop."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "mixed:air-gateway"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "tokyo-hoi-an-mixed",
+      "route": "Tokyo → Hoi An",
+      "selectedMode": "mixed",
+      "status": "correct",
+      "durationMinutes": 525,
+      "durationPlausible": true,
+      "gatewayCorrect": true,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "mixed",
+        "candidates": [
+          {
+            "id": "mixed:air-gateway",
+            "summaryMode": "mixed",
+            "totalDurationMinutes": 525,
+            "score": 76.81,
+            "evidence": "air_gateway_composition",
+            "reasons": [
+              "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+              "Provider-routed ground access completes the journey to the actual stop."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "mixed:air-gateway"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "da-nang-hoi-an-road",
+      "route": "Da Nang Airport → Hoi An",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 45,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 45,
+            "score": 75.81,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "puebla-oaxaca-road",
+      "route": "Puebla → Oaxaca",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 300,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 300,
+            "score": 74.75,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "paris-brussels-rail",
+      "route": "Paris → Brussels",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 120,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "low",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "preserved",
+        "candidates": [],
+        "rejected": []
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "salzburg-munich-terrestrial",
+      "route": "Salzburg → Munich",
+      "selectedMode": "train",
+      "status": "correct",
+      "durationMinutes": 120,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "train",
+        "candidates": [
+          {
+            "id": "rail:network:central-europe-intercity",
+            "summaryMode": "train",
+            "totalDurationMinutes": 120,
+            "score": 85.5,
+            "evidence": "intercity_rail_network",
+            "reasons": [
+              "Both canonical endpoints share reviewed strong intercity evidence on the Central Europe intercity network.",
+              "Rail avoids airport and driving friction for this intercity distance."
+            ]
+          },
+          {
+            "id": "flight:legacy-estimate",
+            "summaryMode": "flight",
+            "totalDurationMinutes": 255,
+            "score": 61.94,
+            "evidence": "legacy_flight_estimate",
+            "reasons": [
+              "The legacy planner supports a flight estimate and no gateway contradiction is known."
+            ]
+          }
+        ],
+        "rejected": [
+          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+        ],
+        "selectedCandidateId": "rail:network:central-europe-intercity"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "wellington-nelson-water-unknown",
+      "route": "Wellington → Nelson",
+      "selectedMode": "unknown",
+      "status": "correct",
+      "durationMinutes": null,
+      "durationPlausible": null,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "unknown",
+      "provenance": "unknown",
+      "diagnostic": {
+        "version": 1,
+        "selected": "unresolved",
+        "candidates": [],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ]
+      },
+      "failureCategories": [
+        "J_unknown_is_appropriate"
+      ],
+      "failureOwnership": "appropriate-uncertainty"
+    },
+    {
+      "id": "santorini-naxos-ferry",
+      "route": "Santorini → Naxos",
+      "selectedMode": "ferry",
+      "status": "correct",
+      "durationMinutes": 150,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 0,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "high",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "ferry",
+        "candidates": [
+          {
+            "id": "exact:ferry",
+            "summaryMode": "ferry",
+            "totalDurationMinutes": 150,
+            "score": 103.38,
+            "evidence": "exact_transfer",
+            "reasons": [
+              "An exact canonical transfer fact supports this mode and planning duration."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "exact:ferry"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    },
+    {
+      "id": "nadi-taveuni-unknown",
+      "route": "Nadi → Taveuni",
+      "selectedMode": "unknown",
+      "status": "correct",
+      "durationMinutes": null,
+      "durationPlausible": null,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "unknown",
+      "provenance": "planning_estimate",
+      "diagnostic": {
+        "version": 1,
+        "selected": "unresolved",
+        "candidates": [],
+        "rejected": [
+          "No plausible provider-routed road candidate was available."
+        ]
+      },
+      "failureCategories": [
+        "J_unknown_is_appropriate"
+      ],
+      "failureOwnership": "appropriate-uncertainty"
+    },
+    {
+      "id": "zanzibar-airport-nungwi-road",
+      "route": "Zanzibar Airport → Nungwi",
+      "selectedMode": "road",
+      "status": "correct",
+      "durationMinutes": 75,
+      "durationPlausible": true,
+      "gatewayCorrect": null,
+      "segmentIntegrity": true,
+      "presentationCorrect": true,
+      "deterministic": true,
+      "providerCalls": 1,
+      "providerCallEfficient": true,
+      "duplicateProviderCalls": 0,
+      "confidence": "medium",
+      "provenance": "routing_engine",
+      "diagnostic": {
+        "version": 1,
+        "selected": "road",
+        "candidates": [
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 75,
+            "score": 75.69,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          }
+        ],
+        "rejected": [],
+        "selectedCandidateId": "road:routed"
+      },
+      "failureCategories": [],
+      "failureOwnership": "none"
+    }
+  ]
+}

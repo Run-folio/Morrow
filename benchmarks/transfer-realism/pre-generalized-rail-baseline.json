@@ -1,0 +1,29 @@
+{
+  "kind": "morrovia-transfer-realism-pre-generalized-rail/v1",
+  "capturedAt": "2026-09-01T23:58:00.000Z",
+  "fixtureCount": 28,
+  "statuses": {
+    "correct": 25,
+    "acceptable-not-ideal": 0,
+    "clearly-wrong": 3
+  },
+  "metrics": {
+    "preferredMode": { "correct": 25, "total": 28, "percent": 89.3 },
+    "acceptableMode": { "correct": 25, "total": 28, "percent": 89.3 },
+    "durationPlausibility": { "plausible": 26, "assessed": 26, "percent": 100 },
+    "gatewayComposition": { "correct": 3, "assessed": 3, "percent": 100 },
+    "segmentIntegrity": { "correct": 28, "total": 28, "percent": 100 },
+    "determinism": { "correct": 28, "assessed": 28, "percent": 100 },
+    "providerEfficiency": { "calls": 14, "allowedCalls": 14, "efficientFixtures": 28, "totalFixtures": 28, "duplicateCalls": 0, "percent": 100 },
+    "unknown": { "count": 2, "total": 28, "percent": 7.1, "appropriate": 2 }
+  },
+  "clearlyWrong": [
+    { "id": "paris-amsterdam-rail", "selectedMode": "flight", "expectedMode": "train", "durationMinutes": 255 },
+    { "id": "london-edinburgh-rail", "selectedMode": "road", "expectedMode": "train", "durationMinutes": 450 },
+    { "id": "salzburg-munich-terrestrial", "selectedMode": "flight", "expectedMode": "train", "durationMinutes": 255 }
+  ],
+  "failureCategories": {
+    "A_missing_destination_knowledge": 3,
+    "J_unknown_is_appropriate": 2
+  }
+}

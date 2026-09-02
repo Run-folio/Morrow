@@ -88,6 +88,7 @@ export type MorroviaTripCaptureProps = {
   onSubmit: () => void | Promise<void>;
   onTravellersChange: (value: number) => void;
   onValueChange: (value: string) => void;
+  endpointEntry?: ReactNode;
   manualEntry?: ReactNode;
   startDate: string;
   travelProfile?: TravelProfile | null;
@@ -110,6 +111,7 @@ export function MorroviaTripCapture({
   onSubmit,
   onTravellersChange,
   onValueChange,
+  endpointEntry,
   manualEntry,
   startDate,
   travelProfile,
@@ -154,14 +156,19 @@ export function MorroviaTripCapture({
       onChange={(event) => updateValue(event.target.value, "text")}
       maxLength={600}
       placeholder={text.briefPlaceholder}
+      disabled={disabled || loading}
     />
   );
 
   return <form id={formId} className={styles.root} onSubmit={submit}>
     <div className={styles.card}>
       <span className={styles.label}>{text.briefLabel}</span>
-      <div className={`${styles.promptField}${promptError ? ` ${styles.promptFieldError}` : ""}`}>
-        <div className={styles.textareaField}>
+      <div className={`${styles.promptField}${promptError ? ` ${styles.promptFieldError}` : ""}`} onMouseDown={(event) => {
+        if (event.target === event.currentTarget) textareaRef.current?.focus();
+      }}>
+        <div className={styles.textareaField} onMouseDown={(event) => {
+          if (!(event.target instanceof HTMLElement) || !event.target.closest("button, a")) textareaRef.current?.focus();
+        }}>
           {promptTextarea}
           <VoiceTripBrief
             className={styles.voiceInput}
@@ -171,6 +178,7 @@ export function MorroviaTripCapture({
         </div>
         {promptError ? <p id={promptErrorId} className={styles.promptError} role="alert">{promptError}</p> : null}
       </div>
+      {endpointEntry ? <div className={styles.endpointEntry}>{endpointEntry}</div> : null}
       {manualEntry ? <section className={styles.manualEntry} aria-label={language === "es" ? "Entrada manual del viaje" : "Manual trip entry"}>
         <div className={styles.manualDivider}><span>{language === "es" ? "o introdúcelo manualmente" : "or enter it manually"}</span></div>
         {manualEntry}

@@ -128,7 +128,7 @@ const meta = {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa" } },
   },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false}><Story /></TripShell></main>],
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false}><Story /></TripShell></main>],
   args: {
     trip: baseTrip,
     initialPrepActions: prepActions,

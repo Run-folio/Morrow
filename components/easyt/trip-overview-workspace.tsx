@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -36,10 +35,9 @@ import {
   itineraryDayForRecommendation,
   itineraryWorkspaceHref,
   mapWorkspaceHref,
-  shouldShowFirstTripOrientation,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
-import { originEndpointForTrip } from "@/lib/easyt/trip-legs";
+import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -53,6 +51,9 @@ import { deriveOverviewReadinessCategories, type OverviewReadinessCategory, type
 import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
+import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
+import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
+import { MorroviaPartnerPromotion } from "./partner-promotion";
 
 type OverviewAction = {
   title: string;
@@ -84,8 +85,6 @@ type OverviewStayResult = {
   rating?: number;
   price?: { total: number; currency: string };
 };
-
-const WORKSPACE_ORIENTATION_KEY = "morrovia-workspace-orientation-seen-v1";
 
 const progressIconByCategory: Record<OverviewReadinessCategoryId, LucideIcon> = {
   itinerary: CalendarCheck2,
@@ -256,14 +255,12 @@ function representativeStayFromPayload(value: unknown): OverviewStayResult | nul
 
 export default function TripOverviewWorkspace({
   trip,
-  firstArrival = false,
   initialPrepActions,
   initialPrepReadinessCards,
   initialPrepProfile,
   initialPrepProviderStatus,
   now,
 }: TripOverviewWorkspaceProps) {
-  const [showOrientation, setShowOrientation] = useState(false);
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
   const [representativeStay, setRepresentativeStay] = useState<OverviewStayResult | null>(null);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, { src: string; alt: string }>>({});
@@ -275,13 +272,9 @@ export default function TripOverviewWorkspace({
     initialProviderStatus: initialPrepProviderStatus,
     now,
   });
-  useEffect(() => {
-    let alreadySeen = false;
-    try { alreadySeen = window.localStorage.getItem(WORKSPACE_ORIENTATION_KEY) === "1"; } catch { alreadySeen = false; }
-    if (!shouldShowFirstTripOrientation(firstArrival, alreadySeen)) return;
-    setShowOrientation(true);
-    try { window.localStorage.setItem(WORKSPACE_ORIENTATION_KEY, "1"); } catch { /* Browser storage is optional. */ }
-  }, [firstArrival]);
+  const nextOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-next");
+  const progressOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-progress");
+  useWorkspaceOrientationReady("overview", Boolean(trip.stops.length && trip.planItems.length));
   const action = overviewActionForTrip(trip);
   const issues = issueSummary(trip);
   const visibleIssues = issues.slice(0, 2);
@@ -325,6 +318,23 @@ export default function TripOverviewWorkspace({
           : action.kind === "ready" ? CheckCircle2
             : Route;
   const origin = originEndpointForTrip(trip);
+  const journeyEnd = endEndpointForTrip(trip);
+  const lastRouteStop = orderedStops.at(-1);
+  const journeyEndIsLastStop = Boolean(journeyEnd && lastRouteStop && sameJourneyPlace({
+    name: journeyEnd.name,
+    country: journeyEnd.country,
+    canonicalPlaceId: journeyEnd.canonicalPlaceId,
+    providerId: journeyEnd.providerId,
+    coordinates: journeyEnd.coordinates ?? undefined,
+  }, {
+    name: lastRouteStop.name,
+    country: lastRouteStop.country,
+    canonicalPlaceId: lastRouteStop.canonicalPlaceId,
+    providerId: lastRouteStop.providerId,
+    coordinates: lastRouteStop.longitude !== null && lastRouteStop.latitude !== null
+      ? [lastRouteStop.longitude, lastRouteStop.latitude]
+      : undefined,
+  }));
   const originLongitude = origin.coordinates?.[0] ?? null;
   const originLatitude = origin.coordinates?.[1] ?? null;
   const overviewMapStops = useMemo<JourneyStop[]>(() => [{
@@ -429,16 +439,8 @@ export default function TripOverviewWorkspace({
 
   return (
     <section className={styles.overview} aria-label="Trip overview">
-      {showOrientation ? <aside className={styles.orientation} aria-labelledby="workspace-orientation-title">
-        <header><div><p>{health.isReady ? "Your trip is ready" : "Your trip is taking shape"}</p><h2 id="workspace-orientation-title">Choose what to refine next.</h2></div><EasyTButton icon={X} iconOnly size="small" variant="secondary" onClick={() => setShowOrientation(false)} aria-label="Dismiss workspace orientation">Dismiss workspace orientation</EasyTButton></header>
-        <ul>
-          <li><strong>Overview</strong><span>See the next action, readiness and practical tasks.</span></li>
-          <li><strong>Map</strong><span>Explore stays, food and places around each stop.</span></li>
-          <li><strong>Itinerary</strong><span>Shape the trip day by day.</span></li>
-        </ul>
-      </aside> : null}
       <div className={styles.grid}>
-        <article className={`${styles.nextAction} ${action.kind === "stay" && !representativeStay ? styles.nextActionFallback : ""}`}>
+        <article ref={nextOrientationTarget} className={`${styles.nextAction} ${action.kind === "stay" && !representativeStay ? styles.nextActionFallback : ""}`}>
           <div className={styles.nextCopy}>
             <div className={styles.nextEyebrow}><span className={styles.actionIcon}><ActionIcon aria-hidden="true" /></span><p>Your next step</p></div>
             <h2>{action.title}</h2>
@@ -448,6 +450,7 @@ export default function TripOverviewWorkspace({
               {action.kind === "stay" && action.stopId && action.external ? <EasyTLinkButton href={mapWorkspaceHref(trip.id, action.stopId, "stay")} size="small" variant="secondary">Explore stays on map</EasyTLinkButton> : null}
             </div>
             {action.affiliate ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
+            <MorroviaPartnerPromotion action={action} now={now ? new Date(now) : undefined} />
           </div>
           <div className={styles.nextVisual} aria-live="polite">
             {actionImage ? <ResilientImage src={actionImage.src} alt={actionImage.alt} fallback={null} /> : null}
@@ -474,7 +477,7 @@ export default function TripOverviewWorkspace({
           <EasyTLinkButton className={styles.healthAction} href={issues[0]?.href ?? routeIssueHref(trip.id)} size="small" variant="secondary" fullWidth>{issues.length ? "Start review" : "Review trip"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
         </article>
 
-        <section className={styles.progressCard} aria-labelledby="overview-progress-title">
+        <section ref={progressOrientationTarget} className={styles.progressCard} aria-labelledby="overview-progress-title">
           <div className={styles.sectionHeading}>
             <div><p>Readiness at a glance</p><h2 id="overview-progress-title">Planning progress</h2></div>
           </div>
@@ -517,14 +520,17 @@ export default function TripOverviewWorkspace({
           </div>
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
-              {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}`} tabIndex={0}>
+              {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                 {[
                   { id: origin.id, name: origin.name, image: resolvedPlaceImages[origin.id], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
                   ...orderedStops.map((stop, index) => {
                     const next = orderedStops[index + 1];
-                    const leg = next ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id) : null;
-                    return { id: stop.id, name: stop.name, image: stopImage(trip, stop, index) ?? resolvedPlaceImages[stop.id], meta: formatTripNights(stop.nights), href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
+                    const leg = next
+                      ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id)
+                      : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
+                    return { id: stop.id, name: stop.name, image: stopImage(trip, stop, index) ?? resolvedPlaceImages[stop.id], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
                   }),
+                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: resolvedPlaceImages[journeyEnd.id], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
                   <Link className={styles.routeStopLink} href={step.href}><article>
                     <div className={styles.stopNumber}>{index + 1}</div>

@@ -189,7 +189,8 @@ test("Builder manual and inline-base interactions reuse canonical owners", () =>
   assert.doesNotMatch(geocode, /Iran|Scotland|Georgia|Wales|Ireland/,
     "parent-bound search must not use destination-specific lookup tables");
 
-  assert.match(capture, /\.promptField:focus-within\s*\{\s*border-color: var\(--morrovia-focus-ring\)/);
+  assert.match(capture, /\.promptField:focus-within\s*\{\s*border-color: var\(--morrovia-signal\)/);
+  assert.match(capture, /box-shadow: var\(--morrovia-focus-shadow\)/);
   assert.match(capture, /textarea:focus-visible\s*\{ outline: none; \}/);
   assert.match(styles, /\.summaryEditorOn\{scroll-margin-top:40px\}/);
   assert.doesNotMatch(styles, /\.summaryEditorOn\{[^}]*box-shadow/);
@@ -208,19 +209,21 @@ test("base replacement preserves the planning mention relationship and does not 
 
 test("Builder review keeps origin visible and broad areas open for explicit multi-place completion", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
-  const styles = read("app/journey/new/trip-builder.module.css");
-  assert.match(builder, /className=\{styles\.visibleOriginField\}/);
-  assert.match(builder, /City or airport you are leaving from/);
-  assert.match(builder, /SHAPE YOUR ROUTE/);
-  assert.match(builder, /guidedPlanningAreaSuggestions\(mention/);
-  assert.match(builder, /Done adding places/);
-  assert.match(builder, /places selected/);
+  const endpoints = read("components/easyt/journey-endpoints-editor.tsx");
+  const dialog = read("components/easyt/builder-clarification-dialog.tsx");
+  const dialogStyles = read("components/easyt/builder-clarification-dialog.module.css");
+  assert.match(builder, /<JourneyEndpointsEditor/);
+  assert.match(endpoints, /City or airport you are leaving from/);
+  assert.match(builder, /<BuilderClarificationDialog/);
+  assert.match(builder, /guidedPlanningAreaSuggestions\(activeClarificationMention/);
+  assert.match(builder, /Done with \$\{clarificationParentName\}/);
+  assert.match(dialog, /SELECTED PLACES/);
   assert.match(builder, /areas to shape/);
   assert.match(builder, /identities to confirm/);
   assert.doesNotMatch(builder, /\$\{stops\.length\} resolved · \$\{pendingPlaceCount\} to confirm/);
   assert.match(builder, /completedPlanningAreaMentionIds/);
-  assert.match(builder, /Search within \$\{parentName\}/);
-  assert.match(builder, /aria-live="polite"/);
-  assert.match(styles, /\.guidedAreaSuggestions/);
-  assert.match(styles, /\.recognizedPlaces>div,.guidedAreaSuggestions>div\{grid-template-columns:1fr\}/);
+  assert.match(builder, /Search within \$\{clarificationParentName\}/);
+  assert.match(dialog, /aria-live="polite"/);
+  assert.match(dialogStyles, /\.suggestions/);
+  assert.match(dialogStyles, /@media \(max-width: 620px\)[\s\S]*?\.choices,.suggestions > div \{ grid-template-columns: 1fr; \}/);
 });

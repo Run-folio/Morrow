@@ -67,6 +67,7 @@ function semanticIntent(fixture: OpenWorldGauntletFixture): SemanticTripIntent {
     schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
     rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
     origin: { sourceText: null, certainty: null },
+    journeyEnd: { sourceText: null, interpretedText: null, mode: "unknown", certainty: null },
     duration: { sourceText: null, value: null, unit: null },
     explicitDateTexts: [],
     destinationCandidates: fixture.mentions

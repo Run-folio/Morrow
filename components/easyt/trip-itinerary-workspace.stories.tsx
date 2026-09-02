@@ -5,6 +5,7 @@ import { defaultTripIntent, type EasyTTrip, type PlanItem } from "@/lib/easyt/tr
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { affiliatePartners, getActivityBookingAction } from "@/lib/easyt/booking-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
+import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
 import TripItineraryWorkspace from "./trip-itinerary-workspace";
 import TripShell from "./trip-shell";
 
@@ -90,6 +91,68 @@ const trip: EasyTTrip = {
   }],
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
+};
+
+const roadResolvedTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-road-resolved-itinerary",
+  legs: trip.legs.map((leg) => leg.id === "cusco-valley" ? {
+    ...leg,
+    mode: "road",
+    distanceKm: 62,
+    straightLineDistanceKm: 37,
+    routedDistanceKm: 62,
+    durationMinutes: 90,
+    headlineMinutes: 90,
+    doorToDoorMinutes: 90,
+    provenance: "routing_engine",
+    confidence: "medium",
+    provider: "OpenRouteService road route; Morrovia planning estimate, not a live timetable.",
+    routeGeometry: [[-71.967, -13.532], [-72.02, -13.45], [-72.083, -13.333]],
+    routeMetadata: { planningEstimate: true, source: "road-routing-provider", roadRouting: { provider: "openrouteservice", checkedAt: "2026-09-01T12:00:00.000Z" } },
+  } : leg),
+};
+
+const railResolvedTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-rail-resolved-itinerary",
+  legs: trip.legs.map((leg) => leg.id === "cusco-valley" ? {
+    ...leg,
+    mode: "train",
+    fromEndpoint: { kind: "stop", id: "cusco", name: "Hiroshima", country: "Japan", canonicalPlaceId: "hiroshima", coordinates: [132.4553, 34.3853] },
+    toEndpoint: { kind: "stop", id: "sacred-valley", name: "Kyoto", country: "Japan", canonicalPlaceId: "kyoto", coordinates: [135.7681, 35.0116] },
+    distanceKm: 310,
+    durationMinutes: 120,
+    doorToDoorMinutes: 120,
+    headlineMinutes: 120,
+    provenance: "planning_estimate",
+    confidence: "medium",
+    provider: "Morrovia rail planning estimate from canonical intercity connectivity; verify the live timetable.",
+    segments: [{ id: "hiroshima-kyoto-rail", mode: "train", fromEndpoint: { kind: "stop", id: "cusco", name: "Hiroshima", country: "Japan", canonicalPlaceId: "hiroshima", coordinates: [132.4553, 34.3853] }, toEndpoint: { kind: "stop", id: "sacred-valley", name: "Kyoto", country: "Japan", canonicalPlaceId: "kyoto", coordinates: [135.7681, 35.0116] }, distanceKm: 310, durationMinutes: 120, provider: "Morrovia rail planning estimate", provenance: "planning_estimate", confidence: "medium", scheduleNeedsChecking: true }],
+    routeMetadata: { planningEstimate: true, source: "multimodal-resolver" },
+  } : leg),
+};
+
+const mixedResolvedTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-mixed-resolved-itinerary",
+  legs: trip.legs.map((leg) => leg.id === "cusco-valley" ? {
+    ...leg,
+    mode: "mixed",
+    fromEndpoint: { kind: "stop", id: "cusco", name: "La Paz", country: "Bolivia", canonicalPlaceId: "la-paz", coordinates: [-68.1193, -16.4897] },
+    toEndpoint: { kind: "stop", id: "sacred-valley", name: "Huacachina", country: "Peru", canonicalPlaceId: "huacachina", coordinates: [-75.768, -14.088] },
+    durationMinutes: 525,
+    doorToDoorMinutes: 525,
+    headlineMinutes: 525,
+    provenance: "planning_estimate",
+    confidence: "medium",
+    provider: "Morrovia multimodal planning estimate; verify each live service before booking.",
+    segments: [
+      { id: "lapaz-lima-flight", mode: "flight", fromEndpoint: { kind: "stop", id: "cusco", name: "La Paz", country: "Bolivia", canonicalPlaceId: "la-paz", coordinates: [-68.1193, -16.4897] }, toEndpoint: { kind: "gateway", id: "gateway:lima", name: "Lima", country: "Peru", canonicalPlaceId: "lima", coordinates: [-77.0428, -12.0464] }, distanceKm: 1077, durationMinutes: 270, provider: "Morrovia flight planning estimate", provenance: "planning_estimate", confidence: "medium", scheduleNeedsChecking: true },
+      { id: "lima-huacachina-road", mode: "road", fromEndpoint: { kind: "gateway", id: "gateway:lima", name: "Lima", country: "Peru", canonicalPlaceId: "lima", coordinates: [-77.0428, -12.0464] }, toEndpoint: { kind: "stop", id: "sacred-valley", name: "Huacachina", country: "Peru", canonicalPlaceId: "huacachina", coordinates: [-75.768, -14.088] }, distanceKm: 305, durationMinutes: 255, provider: "OpenRouteService road route", provenance: "routing_engine", confidence: "medium", scheduleNeedsChecking: true, routeGeometry: [[-77.0428, -12.0464], [-76.5, -13.2], [-75.768, -14.088]] },
+    ],
+    routeMetadata: { planningEstimate: true, source: "multimodal-resolver" },
+  } : leg),
 };
 
 const edgeCaseTrip: EasyTTrip = {
@@ -244,7 +307,7 @@ const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Itinerary",
   component: TripItineraryWorkspace,
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/itinerary" } } },
-  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false}><Story /></TripShell></>}</main>],
+  decorators: [(Story, context) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh" }}>{context.args.presentation === "legacy" ? <Story /> : <><EasyTNavigation current="trips" /><TripShell trip={context.args.trip} cacheTrip={false} orientationAutoStart={false}><Story /></TripShell></>}</main>],
   args: {
     trip,
     presentation: "shell",
@@ -416,20 +479,16 @@ export const AccommodationBooked: Story = {
 
 export const SameCityArrival: Story = {
   args: {
-    trip: {
-      ...trip,
-      id: "storybook-itinerary-same-city-arrival",
-      brief: { ...trip.brief, origin: "Cusco", originCanonicalPlaceId: "cusco" },
-      legs: [{
-        id: "storybook-same-city-arrival-leg", fromStopId: "storybook-itinerary-same-city-arrival-origin", toStopId: "cusco",
-        fromEndpoint: { kind: "origin", id: "storybook-itinerary-same-city-arrival-origin", name: "Cusco", canonicalPlaceId: "cusco", coordinates: [-71.967, -13.532] },
-        toEndpoint: { kind: "stop", id: "cusco", name: "Cusco", country: "Peru", canonicalPlaceId: "cusco", coordinates: [-71.967, -13.532] },
-        classification: "arrival", mode: "walk", distanceKm: 0, durationMinutes: 0, doorToDoorMinutes: 0, provider: "The journey origin and first overnight stop are the same canonical place.", provenance: "planning_estimate", routeMetadata: { source: "canonical-endpoint-identity" },
-      }, ...trip.legs.slice(1)],
-    },
+    trip: cancunReturnTripFixture,
     selectedDayNumber: 1,
   },
 };
+
+export const FinalReturnJourney: Story = { args: { trip: cancunReturnTripFixture, selectedDayNumber: 6 } };
+export const FinalReturnJourneyMobile320: Story = { ...FinalReturnJourney, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const FinalReturnJourneyMobile390: Story = { ...FinalReturnJourney, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const FinalReturnJourneyTablet768: Story = { ...FinalReturnJourney, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const FinalReturnJourneyDesktop1024: Story = { ...FinalReturnJourney, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 
 export const AccommodationNeededMobile320: Story = { ...AccommodationNeeded, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const AccommodationNeededMobile390: Story = { ...AccommodationNeeded, globals: { viewport: { value: "morrovia390", isRotated: false } } };
@@ -454,6 +513,23 @@ export const TravelDay: Story = {
 };
 
 export const DeepLinkedTravelDay: Story = { args: { selectedDayNumber: 4 } };
+export const RoadResolvedTravelDay: Story = { args: { trip: roadResolvedTrip, selectedDayNumber: 4 } };
+export const RoadResolvedTravelDayMobile320: Story = { ...RoadResolvedTravelDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const RoadResolvedTravelDayMobile390: Story = { ...RoadResolvedTravelDay, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const RoadResolvedTravelDayTablet768: Story = { ...RoadResolvedTravelDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const RoadResolvedTravelDayDesktop1024: Story = { ...RoadResolvedTravelDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const RailResolvedTravelDay: Story = { args: { trip: railResolvedTrip, selectedDayNumber: 4 } };
+export const RailResolvedTravelDayMobile320: Story = { ...RailResolvedTravelDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const RailResolvedTravelDayMobile390: Story = { ...RailResolvedTravelDay, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const RailResolvedTravelDayTablet768: Story = { ...RailResolvedTravelDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const RailResolvedTravelDayDesktop1024: Story = { ...RailResolvedTravelDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const RailResolvedTravelDayDesktop1440: Story = { ...RailResolvedTravelDay, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const MixedResolvedTravelDay: Story = { args: { trip: mixedResolvedTrip, selectedDayNumber: 4 } };
+export const MixedResolvedTravelDayMobile320: Story = { ...MixedResolvedTravelDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const MixedResolvedTravelDayMobile390: Story = { ...MixedResolvedTravelDay, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const MixedResolvedTravelDayTablet768: Story = { ...MixedResolvedTravelDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const MixedResolvedTravelDayDesktop1024: Story = { ...MixedResolvedTravelDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const MixedResolvedTravelDayDesktop1440: Story = { ...MixedResolvedTravelDay, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 
 export const MissingImageAndLongTitle: Story = {
   args: {

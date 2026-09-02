@@ -65,6 +65,7 @@ function intentForFixture(fixture: PromptCaptureRegressionFixture): SemanticTrip
     schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
     rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
     origin: { sourceText: expected.originSourceText, certainty: expected.originSourceText ? "explicit" : null },
+    journeyEnd: { sourceText: null, interpretedText: null, mode: "unknown", certainty: null },
     duration: { sourceText: durationSource, value: expected.duration?.value ?? null, unit: expected.duration?.unit ?? null },
     explicitDateTexts: expected.explicitDateTexts ?? [],
     destinationCandidates: expected.destinationSourceTexts.map((sourceText) => ({
@@ -291,7 +292,7 @@ test("escalation uses explicit structured reasons instead of a global confidence
   const unresolvedDeterministic = captureJourneyBrief(unresolvedPrompt);
   const unresolvedIntent: SemanticTripIntent = {
     ...structuredClone(good),
-    origin: { sourceText: null, certainty: null }, duration: { sourceText: null, value: null, unit: null }, explicitDateTexts: [],
+    origin: { sourceText: null, certainty: null }, journeyEnd: { sourceText: null, interpretedText: null, mode: "unknown", certainty: null }, duration: { sourceText: null, value: null, unit: null }, explicitDateTexts: [],
     destinationCandidates: [{ sourceText: "Paris", interpretedText: null, role: "route-stop", certainty: "explicit" }], pointsOfInterest: [],
     transport: { departure: { sourceText: null, mode: null }, interStop: { sourceText: null, modes: [] }, avoid: [] }, pace: { sourceText: null, value: null }, interests: [], constraints: [], ambiguities: [], unresolvedMeaningfulText: [],
   };

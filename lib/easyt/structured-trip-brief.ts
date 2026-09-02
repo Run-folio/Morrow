@@ -193,7 +193,7 @@ function sourceExcerpt(prompt: string, name: string) {
 
 function explicitGateway(prompt: string, kind: "start" | "end") {
   const pattern = kind === "start"
-    ? /(?:start|begin)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+?)(?=\s+(?:and\s+)?(?:then\s+)?(?:travel|go|continue|head|fly|take)\b|[,.;\n]|$)/i
+    ? /(?:start|begin)(?:ing)?\s+(?:(?:in|at)\s+)?([^,.\n;]+?)(?=\s+(?:and\s+)?(?:then\s+)?(?:travel|go|continue|head|fly|take|finish|end)\b|[,.;\n]|$)/i
     : /(?:finish|end)(?:ing)?\s+(?:in|at)\s+([^,.\n;]+)/i;
   return pattern.exec(prompt)?.[1]?.trim();
 }
@@ -701,8 +701,12 @@ export function routeScoringPreferencesFromStructuredBrief(brief: StructuredTrip
 }
 
 /** Hard route constraints are derived separately from soft transport preferences. */
-export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBrief) {
-  const destinationId = (name: string) => brief.destinations.find((destination) => destination.id && normalize(destination.name) === normalize(name))?.id;
+export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBrief, routeStopIds?: readonly string[]) {
+  const activeRouteStopIds = routeStopIds ? new Set(routeStopIds) : null;
+  const destinationId = (name: string) => {
+    const id = brief.destinations.find((destination) => destination.id && normalize(destination.name) === normalize(name))?.id;
+    return id && (!activeRouteStopIds || activeRouteStopIds.has(id)) ? id : undefined;
+  };
   const start = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "start-at"; value: string } => constraint.type === "start-at");
   const end = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "end-at"; value: string } => constraint.type === "end-at");
   const maximum = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-stops" }> => constraint.type === "maximum-stops");

@@ -22,6 +22,7 @@ import type { TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
 import { affiliateDisclosure } from "./affiliate-link";
+import { MorroviaPartnerPromotion } from "./partner-promotion";
 import styles from "./trip-preparation.module.css";
 
 const iconByKind: Record<TripPrepTask["kind"], LucideIcon> = {
@@ -118,6 +119,7 @@ function TripPreparationTaskRow({
     </div>
     <TaskAction task={task} tripId={tripId} onOpenTravellerDetails={onOpenTravellerDetails} />
     {showsAffiliateDisclosure ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
+    <MorroviaPartnerPromotion className={styles.partnerPromotion} action={task.action} />
   </article>;
 }
 

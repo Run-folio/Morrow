@@ -4,14 +4,18 @@ import type { TransferImpact } from "./transfer-impact.ts";
 import type {
   CanonicalRouteEndpoint,
   EasyTTrip,
+  JourneyEndSelection,
   TripLeg,
   TripLegClassification,
   TripStop,
 } from "./trip.ts";
+import { originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
+import { destinationKnowledge } from "./destination-knowledge.ts";
 
 const normaliseIdentity = (value: string | undefined) => value?.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ?? "";
 
 export const tripOriginEndpointId = (tripId: string) => `${tripId}-origin`;
+export const tripEndEndpointId = (tripId: string) => `${tripId}-end`;
 
 function validCoordinates(value: [number, number] | null | undefined): value is [number, number] {
   return Boolean(value
@@ -51,22 +55,70 @@ export function stopEndpoint(stop: TripStop): CanonicalRouteEndpoint {
   };
 }
 
+export function endEndpointForTrip(trip: Pick<EasyTTrip, "id" | "brief">): CanonicalRouteEndpoint | null {
+  const place = resolvedJourneyEndPlace(originPlaceFromBrief(trip.brief), trip.brief.journeyEnd);
+  if (!place) return null;
+  return {
+    kind: "end",
+    id: tripEndEndpointId(trip.id),
+    name: place.name,
+    country: place.country,
+    canonicalPlaceId: place.canonicalPlaceId,
+    providerId: place.providerId,
+    coordinates: validCoordinates(place.coordinates) ? place.coordinates : null,
+  };
+}
+
 export function routeEndpointForLeg(
   trip: Pick<EasyTTrip, "id" | "brief" | "stops">,
   leg: TripLeg,
   side: "from" | "to",
 ): CanonicalRouteEndpoint | null {
-  const snapshot = side === "from" ? leg.fromEndpoint : leg.toEndpoint;
-  if (snapshot) return snapshot;
   const stopId = side === "from" ? leg.fromStopId : leg.toStopId;
+  // Current trip identity is authoritative. Saved leg snapshots are evidence
+  // for legacy documents, never a reason to retain stale endpoint geography.
+  if (stopId === tripOriginEndpointId(trip.id)) return originEndpointForTrip(trip);
+  if (stopId === tripEndEndpointId(trip.id)) return endEndpointForTrip(trip);
   const stop = trip.stops.find((item) => item.id === stopId);
   if (stop) return stopEndpoint(stop);
-  if (stopId === tripOriginEndpointId(trip.id)) return originEndpointForTrip(trip);
-  return null;
+  return side === "from" ? leg.fromEndpoint ?? null : leg.toEndpoint ?? null;
+}
+
+function sameRoutePlace(left: CanonicalRouteEndpoint, right: CanonicalRouteEndpoint) {
+  return sameJourneyPlace({
+    name: left.name,
+    country: left.country,
+    canonicalPlaceId: left.canonicalPlaceId,
+    providerId: left.providerId,
+    coordinates: left.coordinates ?? undefined,
+  }, {
+    name: right.name,
+    country: right.country,
+    canonicalPlaceId: right.canonicalPlaceId,
+    providerId: right.providerId,
+    coordinates: right.coordinates ?? undefined,
+  });
+}
+
+/** Keep route roles distinct in durable state while removing adjacent travel
+ * duplicates. A first stop replaces an identical origin in the travel chain
+ * so itinerary transitions continue to use the stop's stable ID. */
+export function deduplicateAdjacentRouteEndpoints(endpoints: readonly CanonicalRouteEndpoint[]) {
+  return endpoints.reduce<CanonicalRouteEndpoint[]>((result, endpoint) => {
+    const previous = result.at(-1);
+    if (!previous || !sameRoutePlace(previous, endpoint)) return [...result, endpoint];
+    if (previous.kind === "origin" && endpoint.kind === "stop") return [...result.slice(0, -1), endpoint];
+    return result;
+  }, []);
 }
 
 export function canonicalRouteEndpoints(trip: Pick<EasyTTrip, "id" | "brief" | "stops">) {
-  return [originEndpointForTrip(trip), ...[...trip.stops].sort((left, right) => left.order - right.order).map(stopEndpoint)];
+  const end = endEndpointForTrip(trip);
+  return deduplicateAdjacentRouteEndpoints([
+    originEndpointForTrip(trip),
+    ...[...trip.stops].sort((left, right) => left.order - right.order).map(stopEndpoint),
+    ...(end ? [end] : []),
+  ]);
 }
 
 export function tripLegClassificationLabel(classification: TripLegClassification | undefined) {
@@ -82,6 +134,7 @@ function knownMinutes(value: TransferImpact["headline"] | TransferImpact["doorTo
 }
 
 function classificationFor(from: CanonicalRouteEndpoint, to: CanonicalRouteEndpoint, distanceKm: number | null): TripLegClassification {
+  if (to.kind === "end") return "departure";
   if (from.kind === "origin") return "arrival";
   const sameCountry = Boolean(from.country && to.country && normaliseIdentity(from.country) === normaliseIdentity(to.country));
   if (!sameCountry) return "international";
@@ -143,6 +196,7 @@ function validateEstimate(input: {
 export type BuildCanonicalTripLegsInput = {
   tripId: string;
   origin: Omit<CanonicalRouteEndpoint, "kind" | "id">;
+  journeyEnd?: JourneyEndSelection;
   stops: TripStop[];
   constraints?: RoutePlanningConstraints;
   curatedRoute?: CuratedRouteKnowledge;
@@ -159,37 +213,33 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
     id: tripOriginEndpointId(input.tripId),
     coordinates: validCoordinates(input.origin.coordinates) ? input.origin.coordinates : null,
   };
-  const endpoints = [origin, ...[...input.stops].sort((left, right) => left.order - right.order).map(stopEndpoint)];
+  const endPlace = resolvedJourneyEndPlace({
+    name: origin.name,
+    country: origin.country,
+    canonicalPlaceId: origin.canonicalPlaceId,
+    providerId: origin.providerId,
+    coordinates: origin.coordinates ?? undefined,
+  }, input.journeyEnd);
+  const end: CanonicalRouteEndpoint | null = endPlace ? {
+    kind: "end",
+    id: tripEndEndpointId(input.tripId),
+    name: endPlace.name,
+    country: endPlace.country,
+    canonicalPlaceId: endPlace.canonicalPlaceId,
+    providerId: endPlace.providerId,
+    coordinates: validCoordinates(endPlace.coordinates) ? endPlace.coordinates : null,
+  } : null;
+  const endpoints = deduplicateAdjacentRouteEndpoints([
+    origin,
+    ...[...input.stops].sort((left, right) => left.order - right.order).map(stopEndpoint),
+    ...(end ? [end] : []),
+  ]);
   if (endpoints.length < 2) return [];
   return endpoints.slice(1).map((to, index) => {
     const from = endpoints[index];
     const directDistance = validCoordinates(from.coordinates) && validCoordinates(to.coordinates)
       ? haversineKm(from.coordinates ?? undefined, to.coordinates ?? undefined)
       : null;
-    if (from.kind === "origin" && sameEntity(from, to, directDistance)) {
-      return {
-        id: `${input.tripId}-leg-${index + 1}`,
-        fromStopId: from.id,
-        toStopId: to.id,
-        fromEndpoint: from,
-        toEndpoint: to,
-        classification: "arrival",
-        mode: "walk",
-        distanceKm: 0,
-        straightLineDistanceKm: 0,
-        routedDistanceKm: 0,
-        durationMinutes: 0,
-        headlineMinutes: 0,
-        doorToDoorMinutes: 0,
-        usableDayLoss: 0,
-        provider: "The journey origin and first overnight stop are the same canonical place.",
-        provenance: "planning_estimate",
-        confidence: "high",
-        scheduleNeedsChecking: false,
-        warnings: [],
-        routeMetadata: { planningEstimate: false, source: "canonical-endpoint-identity", classification: "arrival", validationWarnings: [] },
-      } satisfies TripLeg;
-    }
     const fromPlanner = {
       name: from.name,
       ...(from.country ? { country: from.country } : {}),
@@ -215,6 +265,12 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
     const unsupportedHeuristicRail = baseline.mode === "train"
       && !curated
       && baseline.planningConfidence?.availability.state !== "structured";
+    const fromTransferKnowledge = destinationKnowledge.forTransferResolution(from);
+    const toTransferKnowledge = destinationKnowledge.forTransferResolution(to);
+    const gatewayResolutionRequired = (fromTransferKnowledge.airGateways.status === "known" && fromTransferKnowledge.airGateways.value.length > 0)
+      || (toTransferKnowledge.airGateways.status === "known" && toTransferKnowledge.airGateways.value.length > 0);
+    const roadExplicitlyExcluded = Boolean(input.constraints?.avoidDriving
+      || input.constraints?.excludedTransportModes?.includes("road"));
     const estimate: EstimatedLeg = unsupportedHeuristicRail
       ? {
           ...baseline,
@@ -279,6 +335,8 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
       routeMetadata: {
         planningEstimate: true,
         source: curated ? "curated-route" : "morrovia-planner",
+        roadFallbackEligible: !invalid && !curated && unsupportedHeuristicRail && !roadExplicitlyExcluded,
+        gatewayResolutionRequired: !invalid && !curated && gatewayResolutionRequired,
         ...(curated ? { curatedRouteTransfer: curated } : {}),
         label: estimate.label,
         routingConfidence: invalid ? "unconfirmed" : curated?.confidence ?? estimate.confidence,
@@ -286,6 +344,11 @@ export function buildCanonicalTripLegs(input: BuildCanonicalTripLegsInput): Trip
         planningConfidence: estimate.planningConfidence,
         classification,
         validationWarnings: validation.warnings,
+        transportConstraints: {
+          avoidDriving: Boolean(input.constraints?.avoidDriving),
+          excludedModes: input.constraints?.excludedTransportModes ?? [],
+          preferredModes: input.constraints?.transportModes ?? [],
+        },
       },
     };
   });
@@ -296,8 +359,8 @@ export function canonicalLegIntegrityIssues(trip: Pick<EasyTTrip, "id" | "brief"
   const issues: Array<{ legId: string | null; message: string }> = [];
   if (!trip.brief.origin.trim()) issues.push({ legId: null, message: "The journey origin is missing." });
   if (!validCoordinates(trip.brief.originCoordinates)) issues.push({ legId: null, message: "The journey origin needs validated coordinates." });
-  if (trip.stops.length && trip.legs.length !== trip.stops.length) {
-    issues.push({ legId: null, message: "The canonical route must contain one arrival leg plus one leg between each overnight stop." });
+  if (trip.legs.length !== Math.max(0, expectedEndpoints.length - 1)) {
+    issues.push({ legId: null, message: "The canonical route must contain each journey endpoint and overnight-stop connection exactly once." });
   }
   trip.legs.forEach((leg, index) => {
     const expectedFrom = expectedEndpoints[index];
@@ -310,10 +373,12 @@ export function canonicalLegIntegrityIssues(trip: Pick<EasyTTrip, "id" | "brief"
     const coordinatesValid = validCoordinates(from?.coordinates) && validCoordinates(to?.coordinates);
     const straightLine = coordinatesValid ? haversineKm(from?.coordinates ?? undefined, to?.coordinates ?? undefined) : null;
     if (!coordinatesValid) issues.push({ legId: leg.id, message: "Both leg endpoints need validated coordinates." });
-    if (from && to && from.kind !== "origin" && sameEntity(from, to, straightLine)) {
+    if (from && to && from.kind !== "origin" && to.kind !== "end" && sameEntity(from, to, straightLine)) {
       issues.push({ legId: leg.id, message: "The leg endpoints resolve to the same place." });
     }
-    if (straightLine !== null && leg.distanceKm !== null && Math.abs(straightLine - leg.distanceKm) > Math.max(25, straightLine * 0.08)) {
+    const savedStraightLine = leg.straightLineDistanceKm
+      ?? (leg.routedDistanceKm === null || leg.routedDistanceKm === undefined ? leg.distanceKm : null);
+    if (straightLine !== null && savedStraightLine !== null && Math.abs(straightLine - savedStraightLine) > Math.max(25, straightLine * 0.08)) {
       issues.push({ legId: leg.id, message: "The saved distance does not match the canonical endpoint coordinates." });
     }
     const headline = leg.headlineMinutes ?? null;
@@ -329,6 +394,27 @@ export function canonicalLegIntegrityIssues(trip: Pick<EasyTTrip, "id" | "brief"
     const expectedClassification = from && to ? classificationFor(from, to, straightLine) : null;
     if (leg.classification && expectedClassification && leg.classification !== expectedClassification) {
       issues.push({ legId: leg.id, message: `The leg is classified as ${leg.classification}, but its canonical route context requires ${expectedClassification}.` });
+    }
+    if (leg.segments?.length) {
+      const segmentMinutes = leg.segments.every((segment) => segment.durationMinutes !== null)
+        ? leg.segments.reduce((total, segment) => total + (segment.durationMinutes ?? 0), 0)
+        : null;
+      if (leg.mode === "mixed" && leg.segments.length < 2) {
+        issues.push({ legId: leg.id, message: "A mixed transfer must contain at least two canonical segments." });
+      }
+      if (segmentMinutes !== null && doorToDoor !== null && segmentMinutes !== doorToDoor) {
+        issues.push({ legId: leg.id, message: "The transfer total must equal the sum of its canonical segments." });
+      }
+      if (leg.segments[0]?.fromEndpoint.id !== from?.id || leg.segments.at(-1)?.toEndpoint.id !== to?.id) {
+        issues.push({ legId: leg.id, message: "Canonical transfer segments must start and finish at the leg endpoints." });
+      }
+      leg.segments.slice(1).forEach((segment, segmentIndex) => {
+        if (leg.segments?.[segmentIndex]?.toEndpoint.id !== segment.fromEndpoint.id) {
+          issues.push({ legId: leg.id, message: "Canonical transfer segments must form one continuous journey." });
+        }
+      });
+    } else if (leg.mode === "mixed") {
+      issues.push({ legId: leg.id, message: "A mixed transfer cannot be saved without canonical segments." });
     }
     if (leg.warnings?.length) issues.push(...leg.warnings.map((message) => ({ legId: leg.id, message })));
     if (leg.mode === "unknown" || leg.durationMinutes === null) {

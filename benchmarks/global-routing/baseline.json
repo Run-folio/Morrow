@@ -35,7 +35,7 @@
     }
   },
   "p0RegressionFailures": [],
-  "unknownTransferCount": 56,
+  "unknownTransferCount": 57,
   "unresolvedPlaceCount": 58,
   "results": [
     {
@@ -1503,7 +1503,6 @@
       "unresolvedPlaceCount": 0,
       "routeEndpoints": [
         "Delhi",
-        "Delhi",
         "Jaipur",
         "Jodhpur",
         "Udaipur"
@@ -1954,10 +1953,9 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 2,
+      "unknownTransferCount": 3,
       "unresolvedPlaceCount": 0,
       "routeEndpoints": [
-        "Tokyo",
         "Tokyo",
         "Kanazawa",
         "Kyoto",

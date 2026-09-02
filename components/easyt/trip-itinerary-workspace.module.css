@@ -780,7 +780,7 @@
   font-size: 12px;
 }
 
-.omioAction a {
+.omioAction > a {
   min-height: 44px;
   padding: 0 11px;
   display: inline-flex;
@@ -794,10 +794,10 @@
   text-decoration: none;
 }
 
-.omioAction a:hover { border-color: var(--morrovia-action); color: var(--morrovia-action); }
-.omioAction a:focus-visible { outline: 2px solid var(--morrovia-ink); outline-offset: 2px; }
-.omioAction a svg { width: 14px; height: 14px; }
-.omioAction small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.omioAction > a:hover { border-color: var(--morrovia-action); color: var(--morrovia-action); }
+.omioAction > a:focus-visible { outline: 2px solid var(--morrovia-ink); outline-offset: 2px; }
+.omioAction > a svg { width: 14px; height: 14px; }
+.omioAction > small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 
 
 .noDetails {
@@ -1596,7 +1596,7 @@
     max-height: calc(100svh - var(--morrovia-mobile-dock-offset, 82px) - 28px);
     padding: 16px;
   }
-  .omioAction a { width: 100%; justify-content: center; }
+  .omioAction > a { width: 100%; justify-content: center; }
   .location { margin-top: 12px; }
   .dayHeader h2 { font-size: clamp(32px, 10vw, 42px); }
   .dayImage { height: 220px; }

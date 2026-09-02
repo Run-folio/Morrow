@@ -1,10 +1,10 @@
 {
-  "total": 210,
+  "total": 208,
   "maxTotal": 224,
   "dimensions": {
     "intent": 28,
     "constraints": 28,
-    "route": 28,
+    "route": 26,
     "time-realism": 32,
     "state-preservation": 32,
     "uncertainty": 30,
@@ -26,6 +26,6 @@
     { "id": "budget-question-is-not-budget", "score": 12, "dimensions": { "intent": 2, "constraints": 2, "route": 0, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["route state is not appropriate for the captured intent"] },
     { "id": "caucasus-context-resolves-georgia", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
     { "id": "short-italy-time-realism", "score": 14, "dimensions": { "intent": 2, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": [] },
-    { "id": "spanish-aliases-and-origin", "score": 12, "dimensions": { "intent": 0, "constraints": 2, "route": 2, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["intent facts changed"] }
+    { "id": "spanish-aliases-and-origin", "score": 10, "dimensions": { "intent": 0, "constraints": 2, "route": 0, "time-realism": 2, "state-preservation": 2, "uncertainty": 2, "explanation": 2 }, "deterministicFailures": ["intent facts changed", "route state is not appropriate for the captured intent"] }
   ]
 }

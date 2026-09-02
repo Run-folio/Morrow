@@ -186,6 +186,8 @@ type CandidateFacts = {
 
 export type ScoreRouteCandidatesInput = {
   origin: RouteOrigin;
+  /** Final journey endpoint. It contributes a departure leg, not a route stop. */
+  end?: PlannerStop;
   candidates: RouteCandidate[];
   estimateLeg: LegEstimator;
   preferences?: RouteScoringPreferences;
@@ -211,9 +213,9 @@ const preferredModeSet = (preferences?: RouteScoringPreferences) => new Set(
   (preferences?.preferredModes ?? []).filter((mode) => !preferences?.avoidFlights || mode !== "flight"),
 );
 
-function legsFor(origin: RouteOrigin, candidate: RouteCandidate, estimateLeg: LegEstimator): ScoredLeg[] {
+function legsFor(origin: RouteOrigin, candidate: RouteCandidate, estimateLeg: LegEstimator, end?: PlannerStop): ScoredLeg[] {
   const stops = candidate.stops;
-  return (origin.coordinates ? stops : stops.slice(1)).map((stop, index) => {
+  const legs = (origin.coordinates ? stops : stops.slice(1)).map((stop, index) => {
     const actualIndex = origin.coordinates ? index : index + 1;
     const previous = actualIndex ? stops[actualIndex - 1] : origin;
     const leg = estimateLeg(previous, stop);
@@ -229,10 +231,26 @@ function legsFor(origin: RouteOrigin, candidate: RouteCandidate, estimateLeg: Le
         ?? (impactMinutes === null ? null : Math.min(1, impactMinutes / 600)),
     };
   });
+  if (end && stops.length) {
+    const from = stops.at(-1)!;
+    const leg = estimateLeg(from, end);
+    const impactMinutes = transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes);
+    legs.push({
+      index: stops.length,
+      fromStopId: from.id,
+      toStopId: end.id,
+      leg,
+      impactMinutes,
+      headlineMinutes: transferHeadlineMinutes(leg.transferImpact),
+      usableDayFraction: leg.transferImpact?.usableDayLoss.estimatedDayFraction
+        ?? (impactMinutes === null ? null : Math.min(1, impactMinutes / 600)),
+    });
+  }
+  return legs;
 }
 
 function candidateFacts(input: ScoreRouteCandidatesInput, candidate: RouteCandidate, config: RouteScoringConfig): CandidateFacts {
-  const legs = legsFor(input.origin, candidate, input.estimateLeg);
+  const legs = legsFor(input.origin, candidate, input.estimateLeg, input.end);
   const legConfidences = legs.map(({ leg }) => leg.planningConfidence ?? planningConfidenceForLegacyLeg({
     confidence: leg.confidence,
     durationMinutes: leg.durationMinutes,

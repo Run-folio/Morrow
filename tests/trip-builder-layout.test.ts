@@ -202,8 +202,8 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "transfer values should use the canonical persisted leg");
   assert.match(timeStep, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/,
     "the canonical door-to-door value should remain the display source");
-  assert.match(timeStep, /leg\.mode === "flight" && transferMinutes !== null \? " total" : ""/,
-    "known flight transfers should be labelled as the total journey time");
+  assert.match(timeStep, /includesFlight && transferMinutes !== null \? " total" : ""/,
+    "known direct and multimodal flight transfers should be labelled as the total journey time");
   assert.match(timeStep, /The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time/,
     "flight totals should expose their calculation basis to assistive technology");
   assert.match(timeStep, /Remove one night from \$\{stop\.name\}; \$\{days\} nights currently/);
@@ -246,13 +246,18 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
 test("clarification presentation separates action-required geography from confirmed stay bases", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+  const dialog = readFileSync(new URL("../components/easyt/builder-clarification-dialog.tsx", import.meta.url), "utf8");
 
   assert.match(builder, /pendingReviewPlaceMentions = useMemo/);
   assert.match(builder, /geographyReviewPlaceMentions = useMemo/,
     "an in-place Add Stop clarification should not be duplicated below in Geography to review");
   assert.match(builder, /resolvedPlaceMentions = useMemo/);
-  assert.match(builder, /geographyReviewPlaceMentions\.length > 0/,
-    "Geography to review must disappear when no item still needs action");
+  assert.match(builder, /pendingClarificationIds\.length > 0 && <BuilderClarificationResume/,
+    "the compact resume action must disappear when no item still needs action");
+  assert.match(builder, /<BuilderClarificationDialog/);
+  assert.doesNotMatch(builder, /geographyReviewPlaceMentions\.map\(/,
+    "the normal Builder layout must not render every broad area at once");
+  assert.match(dialog, /SELECTED PLACES/);
   assert.match(builder, /STAY BASES CONFIRMED/);
   assert.match(builder, /staying in \$\{selection\.selectedName\}/,
     "confirmed anchors should explain where the traveller will stay");
@@ -268,10 +273,10 @@ test("clarification presentation separates action-required geography from confir
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
-  assert.match(builder, /transferImpactFromMetadata\(builderCanonicalLegs\[index\]\?\.routeMetadata\.transferImpact\)/,
+  assert.match(builder, /transferImpactFromMetadata\(builderCanonicalLegs\.find\(\(leg\) => leg\.toStopId === stop\.id\)\?\.routeMetadata\.transferImpact\)/,
     "arrival allocation must decode the transfer-impact payload rather than its route-metadata wrapper");
-  assert.match(builder, /transferImpactFromMetadata\(builderCanonicalLegs\[index \+ 1\]\?\.routeMetadata\.transferImpact\)/,
-    "departure allocation must use the following canonical leg's transfer-impact payload");
+  assert.match(builder, /transferImpactFromMetadata\(builderCanonicalLegs\.find\(\(leg\) => leg\.fromStopId === stop\.id\)\?\.routeMetadata\.transferImpact\)/,
+    "departure allocation must use the canonical leg leaving this stop even after endpoint deduplication");
   assert.match(builder, /departureImpact: departureImpact \?\? undefined/,
     "both sides of each stay must reach the shared night allocator");
   assert.doesNotMatch(builder, /transferImpactFromMetadata\(builderCanonicalLegs\[index\]\?\.routeMetadata\)/,

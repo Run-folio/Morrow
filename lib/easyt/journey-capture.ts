@@ -13,6 +13,10 @@ import {
 import { extractStructuredTripBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
 import { parseTripBrief } from "./trip-brief.ts";
 import type { SemanticIntentStatus, SemanticTripIntent } from "./semantic-trip-intent.ts";
+import { journeyEndFromCapturedIntent } from "./journey-endpoints.ts";
+import type { JourneyEndSelection } from "./trip.ts";
+import type { GuidedPlanningAreaSuggestion } from "./place-intelligence.ts";
+import type { ModelTaskDecision } from "./model-task-router.ts";
 
 export type JourneyMentionCoverage = {
   expectedPlaceMentions: number;
@@ -31,13 +35,23 @@ export type JourneyCaptureResult = {
   routeHints: string[];
   mentions: ResolvedPlaceMention[];
   structuredBrief: StructuredTripBrief;
+  /** Journey-level end routing context. It is never projected as a route stop. */
+  journeyEnd: JourneyEndSelection;
   mentionCoverage: JourneyMentionCoverage;
   semanticExtraction?: {
     model: string;
     status: SemanticIntentStatus;
     fallbackUsed: boolean;
     recoveredPlaceMentions?: number;
+    task?: ModelTaskDecision["task"];
+    complexity?: ModelTaskDecision["complexity"];
+    fallbackModel?: string;
+    callCount?: number;
   };
+  /** Advisory model suggestions only after canonical provider validation. They
+   * remain optional Builder choices and never become stops automatically. */
+  planningSuggestions?: GuidedPlanningAreaSuggestion[];
+  planningAssessment?: { coherence: "coherent" | "needs-review" | "unknown"; warning: string | null };
 };
 
 function unique(values: string[]) {
@@ -82,6 +96,7 @@ function captureFromResolution(
   resolution: PlaceIntelligenceResult,
   expected: ExplicitPlaceMention[] = resolution.mentions.map((mention) => ({ sourceText: mention.sourceText, role: mention.role })),
   semanticExtraction?: JourneyCaptureResult["semanticExtraction"],
+  planning?: Pick<JourneyCaptureResult, "planningSuggestions" | "planningAssessment">,
 ): JourneyCaptureResult {
   const parsed = parseTripBrief(rawBrief, resolution);
   const structuredBrief = extractStructuredTripBrief(rawBrief, resolution.parserVersion, resolution);
@@ -100,8 +115,11 @@ function captureFromResolution(
     routeHints: parsed.routeHints,
     mentions: resolution.mentions,
     structuredBrief,
+    journeyEnd: journeyEndFromCapturedIntent(rawBrief, resolution.mentions),
     mentionCoverage: mentionCoverage(expected, resolution, structuredBrief),
     ...(semanticExtraction ? { semanticExtraction } : {}),
+    ...(planning?.planningSuggestions?.length ? { planningSuggestions: planning.planningSuggestions } : {}),
+    ...(planning?.planningAssessment ? { planningAssessment: planning.planningAssessment } : {}),
   };
   return result;
 }
@@ -121,6 +139,12 @@ function semanticPlaceMentions(
 ): ExplicitPlaceMention[] {
   const inputs: ExplicitPlaceMention[] = [];
   if (intent.origin.sourceText) inputs.push({ sourceText: geographySourceSpan(intent.origin.sourceText, rawBrief), role: "origin" });
+  if (intent.journeyEnd?.mode === "explicit_place" && intent.journeyEnd.sourceText) inputs.push({
+    sourceText: geographySourceSpan(intent.journeyEnd.sourceText, rawBrief),
+    role: "fixed_end",
+    travelIntent: "route-stop",
+    ...(intent.journeyEnd.interpretedText ? { lookupText: intent.journeyEnd.interpretedText } : {}),
+  });
   for (const destination of intent.destinationCandidates) inputs.push({
     sourceText: geographySourceSpan(destination.sourceText, rawBrief),
     // Semantic certainty describes confidence in the interpretation, not
@@ -268,7 +292,8 @@ export async function captureJourneyBriefFromSemanticIntent(
   intent: SemanticTripIntent,
   provider?: PlaceIntelligenceProvider,
   context: PlaceResolutionContext = {},
-  extraction?: { model: string; status: SemanticIntentStatus },
+  extraction?: { model: string; status: SemanticIntentStatus; task?: ModelTaskDecision["task"]; complexity?: ModelTaskDecision["complexity"]; fallbackModel?: string; callCount?: number },
+  planning?: Pick<JourneyCaptureResult, "planningSuggestions" | "planningAssessment">,
 ): Promise<JourneyCaptureResult> {
   const deterministic = resolvePlaceMentions(brief, context);
   const semanticOnly = semanticPlaceMentions(intent, brief, []);
@@ -278,7 +303,7 @@ export async function captureJourneyBriefFromSemanticIntent(
   const resolution = provider
     ? await resolveExplicitPlaceMentionsWithProvider(expected, provider, context)
     : resolveExplicitPlaceMentions(expected, context);
-  return captureFromResolution(brief, resolution, expected, extraction ? { ...extraction, fallbackUsed: false, recoveredPlaceMentions } : undefined);
+  return captureFromResolution(brief, resolution, expected, extraction ? { ...extraction, fallbackUsed: false, recoveredPlaceMentions } : undefined, planning);
 }
 
 export function captureJourneyBriefFallback(

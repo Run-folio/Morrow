@@ -1,0 +1,32 @@
+.promotion {
+  display: grid;
+  gap: 3px;
+  max-width: 460px;
+  padding-left: 10px;
+  border-left: 2px solid var(--morrovia-signal);
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-fine-print);
+}
+
+.promotion strong {
+  color: var(--morrovia-ink);
+  font: 750 11px/1.3 var(--morrovia-ui);
+}
+
+.promotion p { margin: 0; }
+.promotion code {
+  color: var(--morrovia-ink);
+  font: 750 1em/1 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.promotion a {
+  color: var(--morrovia-action);
+  font-weight: 750;
+  text-underline-offset: 2px;
+}
+
+.promotion a:focus-visible {
+  outline: 2px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}

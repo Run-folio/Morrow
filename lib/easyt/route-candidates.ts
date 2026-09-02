@@ -52,6 +52,7 @@ export type RouteCandidateGeneration = {
 };
 
 type RouteOrigin = { name: string; coordinates?: [number, number] };
+type RouteEnd = PlannerStop;
 type LegEstimator = (from: RouteOrigin | PlannerStop, to: PlannerStop) => EstimatedLeg;
 type CandidateSeed = { stops: PlannerStop[]; source: RouteCandidateSource };
 
@@ -70,10 +71,11 @@ function sameOrder(left: PlannerStop[], right: PlannerStop[]) {
   return left.length === right.length && left.every((stop, index) => stop.id === right[index]?.id);
 }
 
-function routeEstimate(origin: RouteOrigin, stops: PlannerStop[], estimateLeg: LegEstimator) {
+function routeEstimate(origin: RouteOrigin, stops: PlannerStop[], estimateLeg: LegEstimator, end?: RouteEnd) {
   const legs = origin.coordinates
     ? stops.map((stop, index) => estimateLeg(index ? stops[index - 1] : origin, stop))
     : stops.slice(1).map((stop, index) => estimateLeg(stops[index], stop));
+  if (end && stops.length) legs.push(estimateLeg(stops.at(-1)!, end));
   if (legs.some((leg) => leg.durationMinutes === null)) return { legs, minutes: null };
   return { legs, minutes: legs.reduce((total, leg) => total + (leg.durationMinutes ?? 0), 0) };
 }
@@ -143,6 +145,7 @@ function candidateIssues(
   stops: PlannerStop[],
   constraints: RoutePlanningConstraints | undefined,
   estimateLeg: LegEstimator,
+  end?: RouteEnd,
 ) {
   const issues: RouteConstraintIssue[] = [];
   if (constraints?.fixedStartStopId && stops[0]?.id !== constraints.fixedStartStopId) {
@@ -162,7 +165,7 @@ function candidateIssues(
   const forbiddenModes = new Set<EstimatedLeg["mode"]>(constraints?.excludedTransportModes ?? []);
   if (constraints?.avoidDriving) forbiddenModes.add("road");
   if (forbiddenModes.size) {
-    const { legs } = routeEstimate(origin, stops, estimateLeg);
+    const { legs } = routeEstimate(origin, stops, estimateLeg, end);
     const conflicts = legs.filter((leg) => forbiddenModes.has(leg.mode));
     if (conflicts.length) {
       issues.push({
@@ -173,7 +176,7 @@ function candidateIssues(
     }
   }
   if (constraints?.maximumTransferMinutes !== undefined) {
-    const { legs } = routeEstimate(origin, stops, estimateLeg);
+    const { legs } = routeEstimate(origin, stops, estimateLeg, end);
     const conflicts = legs.filter((leg) => {
       const realisticMinutes = transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes);
       return realisticMinutes !== null && realisticMinutes > constraints.maximumTransferMinutes!;
@@ -214,6 +217,8 @@ function boundedSeeds(origin: RouteOrigin, flexible: PlannerStop[], start: Plann
  */
 export function generateRouteCandidates(input: {
   origin: RouteOrigin;
+  /** A hard journey endpoint used for route burden, never inserted as a stop. */
+  end?: RouteEnd;
   stops: PlannerStop[];
   constraints?: RoutePlanningConstraints;
   estimateLeg: LegEstimator;
@@ -242,13 +247,13 @@ export function generateRouteCandidates(input: {
   const deduplicated = seeds.filter((seed, index, all) => all.findIndex((item) => orderKey(item.stops) === orderKey(seed.stops)) === index);
   const constraintIssues: RouteConstraintIssue[] = [];
   const viable = deduplicated.flatMap((seed) => {
-    const issues = candidateIssues(input.origin, seed.stops, input.constraints, input.estimateLeg);
+    const issues = candidateIssues(input.origin, seed.stops, input.constraints, input.estimateLeg, input.end);
     issues.forEach((issue) => {
       const key = `${issue.code}:${issue.stopIds.join("|")}`;
       if (!constraintIssues.some((item) => `${item.code}:${item.stopIds.join("|")}` === key)) constraintIssues.push(issue);
     });
     if (issues.length) return [];
-    const estimate = routeEstimate(input.origin, seed.stops, input.estimateLeg);
+    const estimate = routeEstimate(input.origin, seed.stops, input.estimateLeg, input.end);
     return [{
       stops: seed.stops,
       source: seed.source,

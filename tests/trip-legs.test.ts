@@ -64,12 +64,11 @@ test("overland preference does not invent an unsupported cross-border service", 
     stops: [from, to],
     constraints: { transportModes: ["train", "drive"] },
   });
-  assert.equal(legs[0]?.mode, "walk");
-  assert.equal(legs[0]?.durationMinutes, 0);
-  assert.equal(legs[1]?.classification, "international");
-  assert.equal(legs[1]?.mode, "unknown");
-  assert.equal(legs[1]?.durationMinutes, null);
-  assert.match(legs[1]?.provider ?? "", /no supported road, rail or ferry service fact/i);
+  assert.equal(legs.length, 1);
+  assert.equal(legs[0]?.classification, "international");
+  assert.equal(legs[0]?.mode, "unknown");
+  assert.equal(legs[0]?.durationMinutes, null);
+  assert.match(legs[0]?.provider ?? "", /no supported road, rail or ferry service fact/i);
 });
 
 test("local movement is local only at genuinely local distance", () => {
@@ -78,7 +77,10 @@ test("local movement is local only at genuinely local distance", () => {
     origin: { name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
     stops: [
       stop("rome", 0, "Rome", "Italy", [12.4964, 41.9028]),
-      stop("vatican", 1, "Vatican City", "Italy", [12.4534, 41.9029]),
+      // Use a genuinely local same-country place. Vatican City carries its own
+      // canonical country identity, so labelling it Italy correctly fails the
+      // destination-integrity boundary before local-mode classification.
+      stop("trastevere", 1, "Trastevere", "Italy", [12.4663, 41.8897]),
     ],
   });
   assert.equal(legs[0]?.classification, "arrival");
@@ -142,4 +144,38 @@ test("Map consumes the same origin-inclusive canonical legs", () => {
   } as Pick<EasyTTrip, "id" | "brief" | "stops" | "legs">;
   assert.deepEqual(canonicalRouteEndpoints(trip).map((endpoint) => endpoint.name), ["London", "Cancún", "Tulum"]);
   assert.deepEqual(mapRouteLegsFromTrip(trip).map((leg) => [leg.fromName, leg.toName]), [["London", "Cancún"], ["Cancún", "Tulum"]]);
+});
+
+test("different IDs for the same origin and first overnight city create no transfer", () => {
+  for (const [name, country, originId, stopId, coordinates] of [
+    ["Delhi", "India", "fixture:delhi", "fixture:delhi-stop", [77.1025, 28.7041]],
+    ["Tokyo", "Japan", "fixture:tokyo", "fixture:tokyo-stop", [139.6917, 35.6895]],
+  ] as const) {
+    const first = stop(stopId, 0, name, country, [...coordinates]);
+    const next = stop(`${stopId}-next`, 1, name === "Delhi" ? "Jaipur" : "Kanazawa", country, name === "Delhi" ? [75.7873, 26.9124] : [136.6562, 36.5613]);
+    const legs = buildCanonicalTripLegs({
+      tripId: `${name}-identity`,
+      origin: { name, country, canonicalPlaceId: originId, coordinates: [...coordinates] },
+      stops: [first, next],
+    });
+    assert.equal(legs.length, 1);
+    assert.equal(legs[0]?.fromStopId, first.id);
+    assert.equal(legs[0]?.toStopId, next.id);
+    assert.equal(first.nights, 3);
+  }
+});
+
+test("an equivalent final stop and journey return create no zero-distance departure leg", () => {
+  const delhi = stop("fixture:delhi-stop", 0, "Delhi", "India", [77.1025, 28.7041]);
+  const jaipur = stop("jaipur", 1, "Jaipur", "India", [75.7873, 26.9124]);
+  const legs = buildCanonicalTripLegs({
+    tripId: "same-return",
+    origin: { name: "Delhi", country: "India", canonicalPlaceId: "fixture:delhi", coordinates: [77.1025, 28.7041] },
+    journeyEnd: { mode: "explicit", place: { name: "Jaipur", country: "India", canonicalPlaceId: "provider:jaipur-return", coordinates: [75.7873, 26.9124] } },
+    stops: [delhi, jaipur],
+  });
+  assert.equal(legs.length, 1);
+  assert.equal(legs[0]?.fromStopId, delhi.id);
+  assert.equal(legs[0]?.toStopId, jaipur.id);
+  assert.equal(jaipur.nights, 3);
 });

@@ -143,3 +143,23 @@ test("the comparable calibration output is deterministic without freezing tunabl
     comparableRouteQualityCalibration(runRouteQualityCalibration()),
   );
 });
+
+test("transport evidence does not distort either reviewed Andes stay split", () => {
+  const results = runRouteQualityCalibration().results.filter((result) => result.id.startsWith("andes-"));
+  assert.deepEqual(results.map((result) => ({
+    id: result.id,
+    quality: result.nightAllocationQuality,
+    allocations: result.nightAllocation.allocations,
+  })), [
+    {
+      id: "andes-cross-border-linear",
+      quality: "GOOD",
+      allocations: { lima: 4, huacachina: 4, cusco: 4, "sacred-valley": 4, "lake-titicaca": 3, "la-paz": 3, uyuni: 3 },
+    },
+    {
+      id: "andes-deliberate-backtracking",
+      quality: "GOOD",
+      allocations: { lima: 4, huacachina: 4, "sacred-valley": 3, cusco: 3, "lake-titicaca": 3, "la-paz": 3, uyuni: 3 },
+    },
+  ]);
+});

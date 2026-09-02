@@ -8,6 +8,7 @@ import styles from "./easyt-product-tour.module.css";
 import mobileStyles from "./easyt-product-tour-mobile.module.css";
 
 export const PRODUCT_TOUR_OPEN_EVENT = "easyt-open-product-tour";
+export const PRODUCT_TOUR_STATE_EVENT = "easyt-product-tour-state";
 
 const copy = {
   en: {
@@ -52,10 +53,10 @@ export function EasyTFirstVisitTourPrompt() {
   }, []);
 
   if (!visible) return null;
-  return <div className={styles.firstVisitPrompt}>
+  return <div className={styles.firstVisitPrompt} data-product-tour-prompt="true">
     <span>{text.prompt}</span>
     <button type="button" onClick={() => { setVisible(false); window.dispatchEvent(new Event(PRODUCT_TOUR_OPEN_EVENT)); }}>{text.takeTour}</button>
-    <button className={styles.promptDismiss} type="button" aria-label={text.dismissPrompt} onClick={() => { rememberTourSeen(); setVisible(false); }}><X aria-hidden="true" /></button>
+    <button className={styles.promptDismiss} type="button" aria-label={text.dismissPrompt} onClick={() => { rememberTourSeen(); setVisible(false); window.dispatchEvent(new CustomEvent(PRODUCT_TOUR_STATE_EVENT, { detail: { open: false } })); }}><X aria-hidden="true" /></button>
   </div>;
 }
 
@@ -70,6 +71,10 @@ export default function EasyTProductTour({ triggerLabel, listenForOpen = false, 
   const text = copy[language];
   const current = text.steps[step];
   const close = () => { rememberTourSeen(); setOpen(false); };
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(PRODUCT_TOUR_STATE_EVENT, { detail: { open } }));
+  }, [open]);
 
   useEffect(() => {
     setLanguage(languageFromStorage());

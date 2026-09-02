@@ -1,0 +1,10 @@
+.handoff {
+  display: grid;
+  gap: 6px;
+  max-width: 460px;
+}
+
+.handoff small {
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+}

@@ -21,6 +21,22 @@ export const PLACE_INTELLIGENCE_PARSER_VERSION = "place-intelligence-v1-determin
 
 export type PlaceType = PlaceTypeLiteral;
 
+/**
+ * The repository normalizes provider settlements such as villages, hamlets,
+ * municipalities, resort localities and island settlements to `town`.  A
+ * usable overnight base therefore needs both that settlement identity and the
+ * capability to participate directly in the route; geographic type alone is
+ * not sufficient.
+ */
+export const OVERNIGHT_BASE_PLACE_TYPES = ["city", "town"] as const satisfies readonly PlaceType[];
+
+export function isOvernightBaseEligible(
+  place: Pick<PlaceResolutionCandidate, "placeType" | "routability">,
+) {
+  return place.routability === "direct_destination"
+    && OVERNIGHT_BASE_PLACE_TYPES.includes(place.placeType as (typeof OVERNIGHT_BASE_PLACE_TYPES)[number]);
+}
+
 export type PlaceResolutionStatus = "resolved" | "partially_resolved" | "ambiguous" | "unresolved";
 export type PlaceRoutability =
   | "direct_destination"
@@ -178,7 +194,12 @@ export function reconcileSelfBasePlaceState(
     if (selection.kind === "visit") continue;
     const mention = mentions.find((item) => item.mentionId === selection.mentionId);
     if (!mention) continue;
-    const directType = ["city", "town", "transport_gateway"].includes(selection.selectedPlaceType ?? mention.placeType);
+    const directType = isOvernightBaseEligible({
+      placeType: selection.selectedPlaceType ?? mention.placeType,
+      // A stored base selection is itself evidence that this selected entity
+      // was resolved as a direct route destination.
+      routability: "direct_destination",
+    });
     const sameIdentity = Boolean(mention.canonicalPlaceId && mention.canonicalPlaceId === selection.selectedCanonicalPlaceId)
       || normalizePlacePhrase(mention.canonicalName) === normalizePlacePhrase(selection.selectedName)
       || normalizePlacePhrase(mention.sourceText) === normalizePlacePhrase(selection.selectedName);
@@ -254,6 +275,11 @@ export type PlaceProviderCandidate = {
   canonicalName: string;
   aliases?: string[];
   placeType: PlaceType;
+  /** Provider-normalized settlement granularity used only for nearby-base
+   * suitability. Village/locality remain represented by the existing town
+   * route-stop type while retaining their weaker base evidence. */
+  settlementKind?: "city" | "town" | "village" | "locality";
+  settlementPopulation?: number;
   parentCountries?: string[];
   parentRegionId?: string;
   accessPlaceName?: string;
@@ -273,6 +299,22 @@ export type PlaceProviderCandidate = {
   normalizationReason?: string;
 };
 
+export type NearbyBaseAnchor = {
+  canonicalPlaceId?: string;
+  canonicalName: string;
+  placeType: PlaceType;
+  parentCountries: string[];
+  parentRegionId?: string;
+  coordinates?: [number, number];
+};
+
+export type NearbyBaseSuggestion = CanonicalPlaceSuggestion & {
+  distanceKm: number;
+  containment: "country" | "region";
+  confidence: PlanningConfidence;
+  reason: string;
+};
+
 export type PlanningParentConstraint = {
   canonicalPlaceId?: string;
   canonicalName: string;
@@ -286,10 +328,13 @@ export type PlanningParentConstraint = {
  * has chosen a planning geography, a candidate must be canonically contained
  * by it; an in-country or nearby ranking boost is not sufficient. */
 export function placeCandidateWithinPlanningParent(
-  candidate: Pick<PlaceProviderCandidate, "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates">,
+  candidate: Pick<PlaceProviderCandidate, "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates" | "routability">,
   parent: PlanningParentConstraint,
 ) {
-  if (candidate.placeType !== "city" && candidate.placeType !== "town" && candidate.placeType !== "transport_gateway") return false;
+  if (!isOvernightBaseEligible({
+    placeType: candidate.placeType,
+    routability: candidate.routability ?? "direct_destination",
+  })) return false;
   const candidateCountries = (candidate.parentCountries ?? []).map(normalizePlacePhrase);
   const parentCountries = parent.parentCountries.map(normalizePlacePhrase);
   const parentName = normalizePlacePhrase(parent.canonicalName);
@@ -359,6 +404,9 @@ export type PlaceIntelligenceProvider = {
   /** Keep homepage capture bounded even when an enrichment provider stalls. */
   timeoutMs?: number;
   lookup: (phrase: string, context: PlaceResolutionContext) => Promise<PlaceProviderCandidate[]>;
+  /** Optional provider-neutral spatial lookup. Implementations return only
+   * compact canonical settlement facts; raw provider payloads stay server-side. */
+  nearby?: (anchor: NearbyBaseAnchor, radiusKm: number) => Promise<PlaceProviderCandidate[]>;
 };
 
 export type RegionalBaseSuggestion = {
@@ -399,7 +447,8 @@ export type GuidedPlanningAreaContext = {
 };
 
 const MULTI_PLACE_PLANNING_TYPES = new Set<PlaceType>([
-  "continent", "country", "macro_region", "region", "sub_region", "archipelago",
+  "continent", "country", "macro_region", "region", "sub_region", "island", "archipelago",
+  "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
 ]);
 
 export function placeMentionSupportsMultipleSelections(
@@ -439,11 +488,12 @@ const ORDER_LANGUAGE = /(?:→|->|\bthen\b|\bnext\b|\bvia\b|\bthrough\b|\bto\b|\
 const UNKNOWN_CANDIDATE = /\b(?:the\s+)?[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*(?:\s+(?:de|del|la|las|los|of|the|[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*)){0,3}/gu;
 const LOWERCASE_TYPO_CANDIDATE = /\b[\p{Ll}][\p{L}'’.-]{3,}\b/gu;
 const DELIMITED_UNKNOWN_CANDIDATE = /(?:^|[,;])\s*([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})\s*(?=,|;|$)/gu;
-const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*(?:out of|from)\s+([\p{L}'’.-]+(?:\s+(?!(?:to|through|via|then|and|drive|fly|take|travel|go)\b)[\p{L}'’.-]+){0,3})/giu;
+const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*from\s+([\p{L}'’.-]+(?:\s+(?!(?:to|through|via|then|and|drive|fly|take|travel|go)\b)[\p{L}'’.-]+){0,3})/giu;
 const BROAD_PLANNING_CANDIDATE = /\b(?:the\s+)?(?:fjords?|alps|highlands|coast|wine\s+country|islands?|desert|patagonia|riviera|lake\s+district)\b/giu;
 const NON_PLACE_PHRASES = new Set([
   "a", "about", "add", "avoid", "avoiding", "begin", "by", "days", "do", "drive", "easter", "five", "flight", "flights", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "home", "i", "is", "it",
   "keep", "keep the", "nature", "no", "one", "prefer", "relaxed", "road", "route", "skip", "start", "starting", "the", "three", "trip",
+  "back", "end", "ending", "finish", "finishing", "home", "ill", "jaw", "know", "not", "open", "out", "return", "returning", "sure", "where", "yet",
   "luxury", "take", "ten", "travel", "two", "we", "week", "weeks", "with", "without",
   "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
   "spring", "summer", "autumn", "fall", "winter", "wet season", "dry season", "high season", "low season", "shoulder season",
@@ -669,6 +719,151 @@ function coordinateDistanceKm(left: [number, number], right: [number, number]) {
   return 6371 * 2 * Math.atan2(Math.sqrt(area), Math.sqrt(1 - area));
 }
 
+export function nearbyBaseSearchPreposition(anchor: Pick<NearbyBaseAnchor, "placeType">) {
+  return ["natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(anchor.placeType)
+    ? "around"
+    : "near";
+}
+
+export function nearbyBaseAnchorForMention(
+  mention: Pick<ResolvedPlaceMention, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates" | "routability">,
+): NearbyBaseAnchor | undefined {
+  if (mention.routability === "direct_destination" || !mention.coordinates || !validPlaceCoordinates(mention.coordinates)) return undefined;
+  if (!["landmark", "natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(mention.placeType)) return undefined;
+  return {
+    canonicalPlaceId: mention.canonicalPlaceId,
+    canonicalName: mention.canonicalName,
+    placeType: mention.placeType,
+    parentCountries: [...mention.parentCountries],
+    parentRegionId: mention.parentRegionId,
+    coordinates: [...mention.coordinates] as [number, number],
+  };
+}
+
+export function placeCandidateSuitableAsNearbyBase(
+  anchor: NearbyBaseAnchor,
+  candidate: Pick<PlaceProviderCandidate, "providerId" | "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates" | "routability">,
+  maximumDistanceKm = 140,
+) {
+  if (!anchor.coordinates || !validPlaceCoordinates(anchor.coordinates) || !candidate.providerId.trim()
+    || !candidate.canonicalName.trim() || !candidate.coordinates || !validPlaceCoordinates(candidate.coordinates)) return undefined;
+  if (!isOvernightBaseEligible({
+    placeType: candidate.placeType,
+    routability: candidate.routability ?? "direct_destination",
+  })) return undefined;
+  const anchorCountries = new Set(anchor.parentCountries.map(normalizePlacePhrase));
+  const candidateCountries = (candidate.parentCountries ?? []).map(normalizePlacePhrase).filter(Boolean);
+  if (!candidateCountries.length || (anchorCountries.size && !candidateCountries.some((country) => anchorCountries.has(country)))) return undefined;
+  const distanceKm = coordinateDistanceKm(anchor.coordinates, candidate.coordinates);
+  if (!Number.isFinite(distanceKm) || distanceKm > maximumDistanceKm) return undefined;
+  const anchorIdentity = normalizePlacePhrase(anchor.canonicalPlaceId ?? anchor.canonicalName);
+  const candidateIdentity = normalizePlacePhrase(candidate.providerId);
+  const sameName = normalizePlacePhrase(anchor.canonicalName) === normalizePlacePhrase(candidate.canonicalName);
+  if (candidateIdentity === anchorIdentity || (sameName && distanceKm <= 5)) return undefined;
+
+  const anchorRegion = normalizePlacePhrase(anchor.parentRegionId ?? "");
+  const candidateRegion = normalizePlacePhrase(candidate.parentRegionId ?? "");
+  const sameRegion = Boolean(anchorRegion && candidateRegion && anchorRegion === candidateRegion);
+  // Explicitly contradictory regional evidence is unsafe unless the settlement
+  // is close enough to be the attraction's containing urban locality. Missing
+  // regional metadata is accepted only for a tightly nearby, country-contained
+  // settlement rather than a distant city in the same country.
+  if (anchorRegion && candidateRegion && !sameRegion && distanceKm > 30) return undefined;
+  if (anchorRegion && !candidateRegion && distanceKm > 60) return undefined;
+  return { distanceKm, containment: sameRegion ? "region" as const : "country" as const };
+}
+
+/** Rank a provider shortlist using only canonical containment, settlement
+ * suitability, provider confidence and trustworthy coordinates. Distance is
+ * deliberately dominant; provider prominence cannot pull in a distant city. */
+export function rankNearbyBaseCandidates(
+  anchor: NearbyBaseAnchor,
+  candidates: readonly PlaceProviderCandidate[],
+  options: { limit?: number; maximumDistanceKm?: number } = {},
+): NearbyBaseSuggestion[] {
+  const maximumDistanceKm = Math.max(10, Math.min(options.maximumDistanceKm ?? 140, 200));
+  const limit = Math.max(1, Math.min(options.limit ?? 5, 5));
+  const conflictedProviderIds = new Set<string>();
+  const byProviderId = new Map<string, PlaceProviderCandidate[]>();
+  for (const candidate of candidates) byProviderId.set(candidate.providerId, [...(byProviderId.get(candidate.providerId) ?? []), candidate]);
+  for (const [providerId, records] of byProviderId) {
+    if (records.some((record, index) => records.slice(index + 1).some((other) => {
+      if (normalizePlacePhrase(record.canonicalName) !== normalizePlacePhrase(other.canonicalName)) return true;
+      const recordCountry = normalizePlacePhrase(record.parentCountries?.[0] ?? "");
+      const otherCountry = normalizePlacePhrase(other.parentCountries?.[0] ?? "");
+      if (recordCountry !== otherCountry) return true;
+      return Boolean(record.coordinates && other.coordinates && coordinateDistanceKm(record.coordinates, other.coordinates) > 5);
+    }))) conflictedProviderIds.add(providerId);
+  }
+
+  const ranked = candidates.flatMap((candidate) => {
+    if (conflictedProviderIds.has(candidate.providerId)) return [];
+    const suitability = placeCandidateSuitableAsNearbyBase(anchor, candidate, maximumDistanceKm);
+    if (!suitability || !candidate.coordinates) return [];
+    const country = candidate.parentCountries?.[0];
+    if (!country) return [];
+    const distanceScore = Math.max(0, 90 - suitability.distanceKm * 0.65);
+    const containmentScore = suitability.containment === "region" ? 20 : 11;
+    const settlementKind = candidate.settlementKind ?? candidate.placeType;
+    const population = candidate.settlementPopulation;
+    const settlementScore = settlementKind === "city" ? 26
+      : settlementKind === "town" ? 21
+        : settlementKind === "village"
+          ? population && population >= 1_000 ? 16 : population && population >= 500 ? 10 : 8
+          : population && population >= 1_000 ? 12 : 7;
+    const providerEvidence = Math.max(0, Math.min(8, (candidate.rankScore ?? 0) / 25));
+    const score = distanceScore + containmentScore + settlementScore + providerEvidence;
+    const roundedDistance = Math.max(1, Math.round(suitability.distanceKm));
+    const source: PlaceProvenance = {
+      id: candidate.providerId,
+      label: candidate.providerSourceLabel ?? "Global place provider",
+      kind: "provider",
+      supports: `Provider-identified ${candidate.placeType} ${roundedDistance} km from ${anchor.canonicalName}; ${suitability.containment}-level containment was retained.`,
+    };
+    const reason = `${roundedDistance} km from ${anchor.canonicalName} · Verified ${candidate.placeType}`;
+    return [{
+      score,
+      suggestion: {
+        canonicalPlaceId: candidate.providerId.startsWith("open-world:") ? candidate.providerId : `open-world:${candidate.providerId}`,
+        name: candidate.canonicalName,
+        label: `${candidate.canonicalName}${candidate.parentRegionId ? ` · ${candidate.parentRegionId}` : ""}, ${country}`,
+        country,
+        region: candidate.parentRegionId,
+        placeType: candidate.placeType,
+        coordinates: [...candidate.coordinates] as [number, number],
+        routability: "direct_destination" as const,
+        provenance: [source],
+        distanceKm: suitability.distanceKm,
+        containment: suitability.containment,
+        confidence: createPlanningConfidence({
+          state: "inferred",
+          level: suitability.containment === "region" || suitability.distanceKm <= 60 ? "high" : "medium",
+          freshness: "current",
+          scope: "general-route",
+          sources: [{ id: source.id, label: source.label, kind: "provider", supports: source.supports }],
+          reason,
+          ...(suitability.containment === "country" && suitability.distanceKm > 60
+            ? { confirmationReason: "The traveller should confirm this country-contained but more remote base." }
+            : {}),
+        }),
+        reason,
+      } satisfies NearbyBaseSuggestion,
+    }];
+  }).sort((left, right) => right.score - left.score
+    || left.suggestion.distanceKm - right.suggestion.distanceKm
+    || left.suggestion.name.localeCompare(right.suggestion.name));
+
+  return ranked
+    .filter((item, index, all) => !all.slice(0, index).some((prior) => (
+      prior.suggestion.canonicalPlaceId === item.suggestion.canonicalPlaceId
+      || (normalizePlacePhrase(prior.suggestion.name) === normalizePlacePhrase(item.suggestion.name)
+        && normalizePlacePhrase(prior.suggestion.country) === normalizePlacePhrase(item.suggestion.country)
+        && coordinateDistanceKm(prior.suggestion.coordinates!, item.suggestion.coordinates!) <= 10)
+    )))
+    .slice(0, limit)
+    .map(({ suggestion }) => suggestion);
+}
+
 function sameCountryForVisit(mention: ResolvedPlaceMention, target: AttractionVisitTarget) {
   if (!target.country || !mention.parentCountries.length) return true;
   return mention.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(target.country ?? ""));
@@ -883,9 +1078,9 @@ function roleAt(prompt: string, sourceText: string, start: number, placeType: Pl
   const before = normalizePlacePhrase(prompt.slice(Math.max(0, start - 64), start));
   const after = normalizePlacePhrase(prompt.slice(start + sourceText.length, Math.min(prompt.length, start + sourceText.length + 45)));
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
-  if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly home from$|return(?:ing)? from$/.test(before)) return "fixed_end";
-  if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)? (?:in|at)$/.test(before)) return "fixed_start";
-  if (/(?:leaving from|departing from|depart from|fly(?:ing)? out of|from|desde|saliendo de)$/.test(before)) return "origin";
+  if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
+  if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$/.test(before)) return "fixed_start";
+  if (/(?:leaving from|departing from|depart from|from|desde|saliendo de)$/.test(before)) return "origin";
   if (!before && /^(?:to|through|via)\b/.test(after)) return "origin";
   if (/(?:fly|flying) into$|(?:arrive|arriving) (?:in|at)$/.test(before)) return "gateway";
   if (/^(?:is )?(?:essential|required|a must|non negotiable|the priority|definitely)/.test(after)
@@ -1032,12 +1227,6 @@ const REGION_ROUTE_KEYS: Record<string, string[]> = {
   balkans: ["balkans-overland"],
 };
 
-const REVIEWED_BASE_IDS: Record<string, string[]> = {
-  "lake-atitlan": ["panajachel", "san-pedro-la-laguna"],
-  tikal: ["flores-guatemala", "el-remate"],
-  belize: ["san-ignacio-belize", "caye-caulker", "belize-city"],
-};
-
 function routeFamiliesForRegion(canonicalPlaceId: string) {
   return (REGION_ROUTE_KEYS[canonicalPlaceId] ?? [])
     .map((key) => routeFamilyByKey[key])
@@ -1053,29 +1242,6 @@ export function regionalBaseSuggestions(
   const seen = new Set<string>();
   const anchor = findCatalogPlaceById(canonicalPlaceId);
   const relatedPlanningIds = unique([canonicalPlaceId, ...(anchor?.parentRegionId ? [anchor.parentRegionId] : [])], (value) => value);
-  const reviewed = relatedPlanningIds.flatMap((planningId) => REVIEWED_BASE_IDS[planningId] ?? []).flatMap((baseId): RegionalBaseSuggestion[] => {
-    const entry = findCatalogPlaceById(baseId);
-    const coordinates = entry?.coordinates;
-    const country = entry?.parentCountries[0];
-    if (!entry || !coordinates || !country) return [];
-    return [{
-      mentionId,
-      regionCanonicalPlaceId: canonicalPlaceId,
-      canonicalPlaceId: entry.canonicalPlaceId,
-      name: entry.canonicalName,
-      country,
-      placeType: entry.placeType,
-      coordinates: [...coordinates] as [number, number],
-      reason: `A reviewed overnight base for ${findCatalogPlaceById(canonicalPlaceId)?.canonicalName ?? canonicalPlaceId}.`,
-      provenance: [{
-        id: `morrovia-place-catalog:${entry.canonicalPlaceId}`,
-        label: "Morrovia reviewed clarification base",
-        kind: "canonical",
-        supports: `${entry.canonicalName} is a real reviewed base candidate; the traveller still chooses whether to use it.`,
-        reviewedAt: "2026-08-27",
-      }],
-    }];
-  });
   const linkedLocality = anchor?.parentRegionId ? findCatalogPlaceById(anchor.parentRegionId) : undefined;
   const linkedBase = linkedLocality?.coordinates
     && linkedLocality.parentCountries[0]
@@ -1121,7 +1287,7 @@ export function regionalBaseSuggestions(
       }],
     }];
   }));
-  return unique([...reviewed, ...linkedBase, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
+  return unique([...linkedBase, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
 }
 
 /** Guided choices for a recognised broad place. Every option comes from

@@ -2,8 +2,12 @@ import {
   searchNominatimTravelCandidates,
 } from "./nominatim-place.server.ts";
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
+import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
 import {
   providerLookupRequest,
+  rankNearbyBaseCandidates,
+  type NearbyBaseAnchor,
+  type NearbyBaseSuggestion,
   type PlaceIntelligenceProvider,
   type PlaceProviderCandidate,
   type PlaceResolutionContext,
@@ -12,7 +16,8 @@ import {
 export type OpenWorldPlaceSource = {
   id: string;
   label: string;
-  search: (phrase: string, context: PlaceResolutionContext) => Promise<OpenWorldTravelCandidate[]>;
+  search?: (phrase: string, context: PlaceResolutionContext) => Promise<OpenWorldTravelCandidate[]>;
+  nearby?: (anchor: NearbyBaseAnchor, radiusKm: number) => Promise<OpenWorldTravelCandidate[]>;
 };
 
 export type OpenWorldTravelCandidate = PlaceProviderCandidate & {
@@ -88,6 +93,11 @@ function defaultSources(fetchImpl?: typeof fetch): OpenWorldPlaceSource[] {
       id: "photon",
       label: "Komoot Photon",
       search: (phrase, context) => searchPhotonTravelCandidates(phrase, context, fetchImpl),
+    },
+    {
+      id: "openstreetmap-overpass",
+      label: "OpenStreetMap Overpass",
+      nearby: (anchor, radiusKm) => searchOpenStreetMapNearbySettlements(anchor, radiusKm, fetchImpl),
     },
   ];
 }
@@ -210,6 +220,7 @@ export function createOpenWorldPlaceProvider(options: {
   const cacheTtlMs = Math.max(1, options.cacheTtlMs ?? 86_400_000);
   const maxCacheEntries = Math.max(1, options.maxCacheEntries ?? 500);
   const sourceTimeoutMs = Math.max(1, Math.min(options.sourceTimeoutMs ?? 3_500, 5_000));
+  const nearbySourceTimeoutMs = Math.max(1, Math.min(options.sourceTimeoutMs ?? 10_000, 11_000));
   return {
     id: "open-world",
     label: "Morrovia open-world place resolver",
@@ -224,9 +235,10 @@ export function createOpenWorldPlaceProvider(options: {
       }
       if (cached) cache.delete(key);
 
-      const settled = await Promise.allSettled(sources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
+      const searchSources = sources.filter((source) => source.search);
+      const settled = await Promise.allSettled(searchSources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`${source.id} lookup timed out`)), sourceTimeoutMs);
-        source.search(request.phrase, request.context).then(
+        source.search!(request.phrase, request.context).then(
           (sourceCandidates) => {
             clearTimeout(timer);
             resolve(sourceCandidates.flatMap((candidate): PlaceProviderCandidate[] => {
@@ -258,6 +270,53 @@ export function createOpenWorldPlaceProvider(options: {
       }
       return cloneCandidates(candidates);
     },
+    async nearby(anchor, radiusKm) {
+      const nearbySources = sources.filter((source) => source.nearby);
+      if (!nearbySources.length) return [];
+      const key = JSON.stringify({
+        nearby: normalized(anchor.canonicalPlaceId ?? anchor.canonicalName),
+        countries: anchor.parentCountries.map(normalized).sort(),
+        region: normalized(anchor.parentRegionId ?? ""),
+        coordinates: anchor.coordinates?.map((coordinate) => Number(coordinate.toFixed(4))),
+        radiusKm: Math.round(radiusKm),
+      });
+      const cached = cache.get(key);
+      if (cached?.expiresAt && cached.expiresAt > Date.now()) {
+        const validated = cloneCandidates(cached.candidates);
+        if (validated.length === cached.candidates.length) return validated;
+      }
+      if (cached) cache.delete(key);
+
+      const settled = await Promise.allSettled(nearbySources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`${source.id} nearby lookup timed out`)), nearbySourceTimeoutMs);
+        source.nearby!(anchor, radiusKm).then(
+          (sourceCandidates) => {
+            clearTimeout(timer);
+            resolve(sourceCandidates.flatMap((candidate): PlaceProviderCandidate[] => {
+              const validated = validatedCandidate(candidate);
+              if (!validated) return [];
+              return [{
+                ...validated,
+                providerId: `${source.id}:${validated.providerId}`,
+                providerSourceId: source.id,
+                providerSourceLabel: source.label,
+                normalizationReason: `${validated.normalizationReason ?? "provider nearby settlement"}; source=${source.label}`,
+              }];
+            }));
+          },
+          (error) => { clearTimeout(timer); reject(error); },
+        );
+      })));
+      if (!settled.some((result) => result.status === "fulfilled")) throw new Error("Nearby place providers unavailable");
+      const candidates = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
+        .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0))
+        .filter((candidate, index, all) => !all.slice(0, index).some((prior) => sameCanonicalFact(prior, candidate)));
+      if (candidates.length) {
+        cache.set(key, { expiresAt: Date.now() + cacheTtlMs, candidates: cloneCandidates(candidates) });
+        while (cache.size > maxCacheEntries) cache.delete(cache.keys().next().value!);
+      }
+      return cloneCandidates(candidates);
+    },
   };
 }
 
@@ -267,4 +326,15 @@ export async function searchOpenWorldTravelCandidates(
   provider: PlaceIntelligenceProvider = createOpenWorldPlaceProvider(),
 ) {
   return provider.lookup(phrase, context);
+}
+
+export async function searchOpenWorldNearbyBaseSuggestions(
+  anchor: NearbyBaseAnchor,
+  options: { limit?: number; maximumDistanceKm?: number } = {},
+  provider: PlaceIntelligenceProvider = createOpenWorldPlaceProvider(),
+): Promise<NearbyBaseSuggestion[]> {
+  if (!provider.nearby || !anchor.coordinates) return [];
+  const maximumDistanceKm = options.maximumDistanceKm ?? 140;
+  const candidates = await provider.nearby(anchor, maximumDistanceKm);
+  return rankNearbyBaseCandidates(anchor, candidates, { ...options, maximumDistanceKm });
 }

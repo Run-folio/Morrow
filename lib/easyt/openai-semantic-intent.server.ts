@@ -11,8 +11,10 @@ import type { JourneyCaptureResult } from "./journey-capture.ts";
 import type OpenAI from "openai";
 import {
   buildOpenAISemanticIntentRequest,
+  buildOpenAIPlanningIntentRequest,
   parseOpenAISemanticIntentResponse,
 } from "./openai-semantic-intent-request.ts";
+import type { PlanningModelProvider } from "./planning-model-runtime.ts";
 
 type ServerEnvironment = {
   NODE_ENV?: string;
@@ -61,7 +63,7 @@ export function createOpenAISemanticIntentProvider(options: {
       const client = options.client ?? (await import("./openai.server.ts")).getOpenAIClient();
       let payload: unknown;
       try {
-        payload = await client.responses.create(buildOpenAISemanticIntentRequest(rawPrompt, config.model), { signal });
+        payload = await client.responses.create(buildOpenAISemanticIntentRequest(rawPrompt, config.model, config.reasoningEffort), { signal });
       } catch (error) {
         const status = error && typeof error === "object" && typeof (error as { status?: unknown }).status === "number"
           ? (error as { status: number }).status
@@ -75,10 +77,38 @@ export function createOpenAISemanticIntentProvider(options: {
   };
 }
 
-export function configuredOpenAISemanticIntentProvider(environment: ServerEnvironment = process.env) {
+export function createOpenAIPlanningModelProvider(options: {
+  tier?: keyof typeof SEMANTIC_INTENT_MODELS;
+  client?: Pick<OpenAI, "responses">;
+} = {}): PlanningModelProvider {
+  if (typeof window !== "undefined") throw new Error("Planning model providers are server-only.");
+  const config = SEMANTIC_INTENT_MODELS[options.tier ?? "escalation"];
+  return {
+    model: config.model,
+    async plan(rawPrompt, signal) {
+      const client = options.client ?? (await import("./openai.server.ts")).getOpenAIClient();
+      let payload: unknown;
+      try {
+        payload = await client.responses.create(buildOpenAIPlanningIntentRequest(rawPrompt, config.model, config.reasoningEffort), { signal });
+      } catch (error) {
+        const status = error && typeof error === "object" && typeof (error as { status?: unknown }).status === "number"
+          ? (error as { status: number }).status : 500;
+        throw new SemanticIntentProviderError({ status, category: providerCategory(status) });
+      }
+      const parsed = parseOpenAISemanticIntentResponse(payload);
+      if (!parsed) throw new SemanticIntentProviderError({ category: "malformed-response" });
+      return parsed;
+    },
+  };
+}
+
+export function configuredOpenAISemanticIntentProvider(
+  environment: ServerEnvironment = process.env,
+  tier: keyof typeof SEMANTIC_INTENT_MODELS = "primary",
+) {
   const config = semanticIntentServerConfig(environment);
   return config.mode !== "off" && environment.OPENAI_API_KEY
-    ? createOpenAISemanticIntentProvider({ tier: "primary" })
+    ? createOpenAISemanticIntentProvider({ tier })
     : undefined;
 }
 

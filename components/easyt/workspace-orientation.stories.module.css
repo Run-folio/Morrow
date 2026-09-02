@@ -1,0 +1,7 @@
+.canvas { min-height: 720px; padding: 40px; background: var(--morrovia-paper); color: var(--morrovia-ink); font-family: var(--morrovia-ui); }
+.header { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.targets { display: grid; gap: 28px; }
+.target { min-height: 130px; padding: 24px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.target h2 { margin: 0 0 8px; font: 600 28px/1.05 var(--morrovia-display); }
+.target p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-body); }
+@media (max-width: 700px) { .canvas { min-height: 760px; padding: 18px 14px var(--morrovia-mobile-dock-offset); } .target { min-height: 150px; padding: 18px; } }

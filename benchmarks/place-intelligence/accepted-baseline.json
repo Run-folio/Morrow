@@ -379,8 +379,7 @@
         ],
         "projectedDestinationNames": [
           "London",
-          "Paris",
-          "London and finish in Paris"
+          "Paris"
         ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [
@@ -5382,8 +5381,7 @@
         ],
         "projectedDestinationNames": [
           "Buenos Aires",
-          "Santiago",
-          "Buenos Aires and finish in Santiago"
+          "Santiago"
         ],
         "projectedRegionNames": [],
         "projectedPlaceIds": [

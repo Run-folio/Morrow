@@ -27,6 +27,7 @@
 .status-urgent .statusChip { color: var(--morrovia-danger); background: var(--morrovia-paper); }
 .taskAction { --control-height: 40px; align-self: center; }
 .affiliateDisclosure { grid-column: 1 / -1; margin-top: -3px; padding-left: 44px; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.partnerPromotion { grid-column: 1 / -1; margin-left: 44px; }
 
 .travellerEditor { display: grid; gap: 16px; margin-top: 16px; padding: 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-lilac); }
 .travellerEditor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
@@ -43,6 +44,7 @@
 @media (max-width: 760px) {
   .taskRow { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 76px; }
   .taskAction { --control-height: 44px; width: 44px; height: 44px; }
+  .partnerPromotion { margin-left: 0; }
   .travellerFields { grid-template-columns: minmax(0, 1fr); }
   .travellerActions { align-items: stretch; flex-direction: column; }
   .travellerActions > button { width: 100%; }

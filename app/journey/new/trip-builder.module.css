@@ -601,7 +601,7 @@
 .placeAutocompleteMenu>button:focus-visible{outline:2px solid var(--morrovia-focus-ring);outline-offset:-2px}
 .placeAutocompleteFailure{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 8px}.placeAutocompleteFailure p{margin:0;color:var(--muted);font-size:12px;line-height:1.4}.placeAutocompleteFailure button{min-height:44px;padding-inline:10px}
 .baseSelector{display:grid;gap:6px;margin-top:2px}.baseSelector>span{color:var(--ink);font:650 11px/1.4 var(--morrovia-ui)}.baseSelector input{box-sizing:border-box;width:100%;min-height:44px;padding:0 11px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:600 13px var(--morrovia-ui);outline:none}.baseSelector input:focus-visible{border-color:var(--morrovia-focus-ring);outline:none}.baseSelectorError{margin:0;color:var(--morrovia-danger)!important;font-size:11px!important}
-.manualCaptureFields{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:10px;min-width:0}.manualCaptureField{display:grid;align-content:start;gap:6px;min-width:0}.manualCaptureField>span{color:var(--ink);font:700 10px/1.2 var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}.manualCaptureField input{box-sizing:border-box;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:600 13px var(--morrovia-ui);outline:none}.manualCaptureField input:focus-visible{border-color:var(--morrovia-focus-ring);outline:none}.manualDestinationEditor{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.manualDestinationEditor>button{min-height:44px}.manualDestinationChips{display:flex;flex-wrap:wrap;gap:5px}.manualDestinationChips>span{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:4px 4px 4px 9px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:650 11px var(--morrovia-ui)}.manualDestinationChips button{--control-height:44px;--control-padding:0}.manualDestinationChips svg{width:13px;height:13px}
+.manualCaptureFields{display:grid;grid-template-columns:1fr;gap:10px;min-width:0}.manualCaptureField{display:grid;align-content:start;gap:6px;min-width:0}.manualCaptureField>span{color:var(--ink);font:700 10px/1.2 var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}.manualCaptureField input{box-sizing:border-box;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:600 13px var(--morrovia-ui);outline:none}.manualCaptureField input:focus-visible{border-color:var(--morrovia-focus-ring);outline:none}.manualDestinationEditor{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.manualDestinationEditor>button{min-height:44px}.manualDestinationChips{display:flex;flex-wrap:wrap;gap:5px}.manualDestinationChips>span{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:4px 4px 4px 9px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:650 11px var(--morrovia-ui)}.manualDestinationChips button{--control-height:44px;--control-padding:0}.manualDestinationChips svg{width:13px;height:13px}
 .placesSection .confirmedStops{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;background:transparent}.placesSection .confirmedStops>span{display:none}.placesSection .confirmedStops>div{gap:8px;min-width:0}.placesSection .confirmedStops button{max-width:100%;min-height:38px;border-radius:var(--morrovia-control-radius);color:var(--ink);font-size:13px;white-space:normal;text-align:left}.stopEditor{display:grid;gap:8px}.stopEditor .suggestions{margin:0}.stopEditor .suggestions button{min-height:34px;border-radius:8px;color:var(--ink)}
 .inlinePlanningClarification{display:grid;gap:10px;min-width:0;padding:13px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:color-mix(in srgb,var(--morrovia-lilac) 45%,var(--morrovia-paper))}.inlinePlanningIdentity{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;min-width:0}.inlinePlanningIdentity strong{overflow:hidden;color:var(--ink);font-size:14px;text-overflow:ellipsis;white-space:nowrap}.inlinePlanningIdentity span{color:var(--morrovia-ink-soft);font:700 10px/1.4 var(--morrovia-meta);text-transform:uppercase}.inlinePlanningIdentity p{grid-column:1/-1;margin:4px 0 0;color:var(--morrovia-ink-soft);font:var(--morrovia-type-supporting-body)}.inlinePlanningSearch{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px;min-width:0}.inlinePlanningSearch>button{min-height:44px;padding-inline:12px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:700 12px var(--morrovia-ui);cursor:pointer}.inlinePlanningSearch>button:hover{border-color:var(--morrovia-action);color:var(--morrovia-action)}.inlinePlanningSearch>button:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
 .pickedPreferences{display:grid;gap:8px;padding:17px 24px;border-bottom:1px solid var(--line)}.pickedPreferences>div{display:flex;flex-wrap:wrap;gap:7px}.pickedPreferences span{min-height:31px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--morrovia-lilac);color:var(--ink);font:650 12px/31px var(--morrovia-ui)}
@@ -762,9 +762,9 @@
   padding: 18px 24px;
 }
 .homepageHandoff .handoffOrigin {
-  grid-template-columns: 132px minmax(0, 1fr);
-  align-items: center;
-  min-height: 88px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  min-height: 0;
 }
 .homepageHandoff .handoffSectionTitle { color: var(--ink); font-size: 15px; }
 .homepageHandoff .handoffOrigin .visibleOriginField { width: 100%; }
@@ -1209,7 +1209,7 @@
 .homepageHandoff .tripUnderstood { gap: 10px; }
 .homepageHandoff .stepHero { margin-bottom: 6px; }
 .homepageHandoff .placesSection { gap: 9px; padding: 13px 18px; }
-.homepageHandoff .handoffOrigin { min-height: 62px; }
+.homepageHandoff .handoffOrigin { min-height: 0; }
 .homepageHandoff .tripUnderstood .detailsToggle { min-height: 64px; padding: 12px 18px; }
 .homepageHandoff .routeCheck { min-height: 70px; padding: 12px 18px; }
 .homepageHandoff .pickedPreferences { margin-block: 1px; }
@@ -1285,6 +1285,12 @@
 .timeAllocationState svg { color: var(--morrovia-success); }
 .timingWarningStrong { border-width: 2px; border-color: var(--morrovia-warning); background: color-mix(in srgb, var(--morrovia-warning-soft) 72%, #fff); }
 .disclosureHead:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
+.completedAreaSummaries { display: flex; flex-wrap: wrap; gap: 7px; }
+.completedAreaSummaries > span { display: flex; min-height: 44px; align-items: center; gap: 7px; padding: 4px 4px 4px 11px; border: 1px solid var(--line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
+.completedAreaSummaries > span > span { display: grid; gap: 1px; }
+.completedAreaSummaries b { color: var(--ink); font-size: 11px; }
+.completedAreaSummaries small { color: var(--muted); font-size: 9px; }
+.completedAreaSummaries button { min-height: 36px; padding-inline: 8px; color: var(--morrovia-action); }
 
 @media (max-width: 840px) {
   .resolvedPlaces { padding-inline: 20px; }
@@ -1295,4 +1301,6 @@
   .resolvedPlaces > div { grid-template-columns: 1fr; }
   .resolvedPlaces article { grid-template-columns: 20px minmax(0, 1fr); align-items: start; }
   .resolvedPlaces article > button { grid-column: 2; justify-self: start; padding: 0; }
+  .completedAreaSummaries { display: grid; grid-template-columns: 1fr; }
+  .completedAreaSummaries > span { justify-content: space-between; }
 }

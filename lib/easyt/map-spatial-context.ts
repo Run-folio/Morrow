@@ -2,6 +2,7 @@ import type { EasyTTrip, TripLeg } from "./trip.ts";
 import type { PlanningConfidence } from "./planning-confidence.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
+import { canonicalTransferSegments, transferJourneyModeLabel } from "./transfer-journey.ts";
 
 export type MapTransportMode = TripLeg["mode"];
 
@@ -24,6 +25,14 @@ export type MapRouteLeg = {
   planningNote: string | null;
   classification: NonNullable<TripLeg["classification"]>;
   warnings: string[];
+  routeGeometry?: Array<[number, number]>;
+  routeSegments?: Array<{
+    mode: Exclude<MapTransportMode, "mixed">;
+    fromCoordinates: [number, number];
+    toCoordinates: [number, number];
+    routeGeometry?: Array<[number, number]>;
+  }>;
+  routeProvider?: "openrouteservice";
 };
 
 export type MapCopilotScope =
@@ -50,6 +59,7 @@ export function mapTransportModeLabel(mode: MapTransportMode) {
   if (mode === "road") return "Road";
   if (mode === "ferry") return "Ferry";
   if (mode === "walk") return "Walk";
+  if (mode === "mixed") return "Mixed transfer";
   return "Unknown transport";
 }
 
@@ -83,6 +93,13 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       || scheduleConfidence?.confirmation.needed !== false
       || metadata.planningEstimate !== false);
     const curated = Boolean(metadata.curatedRouteTransfer);
+    const routeSegments = canonicalTransferSegments(leg).flatMap((segment) => segment.fromEndpoint.coordinates && segment.toEndpoint.coordinates ? [{
+      mode: segment.mode,
+      fromCoordinates: segment.fromEndpoint.coordinates,
+      toCoordinates: segment.toEndpoint.coordinates,
+      ...(segment.routeGeometry?.length ? { routeGeometry: segment.routeGeometry } : {}),
+    }] : []);
+    const usesOpenRouteService = canonicalTransferSegments(leg).some((segment) => segment.provenance === "routing_engine" && /openrouteservice/i.test(segment.provider ?? ""));
     return [{
       id: leg.id,
       fromStopId: leg.fromStopId,
@@ -92,12 +109,14 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       fromCoordinates: from.coordinates,
       toCoordinates: to.coordinates,
       mode: leg.mode,
-      modeLabel: mapTransportModeLabel(leg.mode),
-      distanceKm: leg.straightLineDistanceKm ?? leg.distanceKm,
+      modeLabel: transferJourneyModeLabel(leg),
+      distanceKm: leg.routedDistanceKm ?? leg.distanceKm,
       headlineMinutes: leg.headlineMinutes ?? knownPlanningMinutes(impact?.headline),
       doorToDoorMinutes: leg.doorToDoorMinutes ?? knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,
       confidence,
-      provenanceLabel: curated
+      provenanceLabel: leg.provenance === "routing_engine"
+        ? "Routed planning estimate"
+        : curated
         ? "Curated route guidance"
         : metadata.planningEstimate
           ? "Morrovia planning estimate"
@@ -106,6 +125,11 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       planningNote: leg.provider?.trim() || metadata.curatedRouteTransfer?.note?.trim() || null,
       classification: leg.classification ?? (from.kind === "origin" ? "arrival" : "intercity"),
       warnings: leg.warnings ?? [],
+      ...(leg.routeGeometry?.length ? { routeGeometry: leg.routeGeometry } : {}),
+      ...(routeSegments.length > 1 ? { routeSegments } : {}),
+      ...((metadata as { roadRouting?: { provider?: unknown } }).roadRouting?.provider === "openrouteservice" || usesOpenRouteService
+        ? { routeProvider: "openrouteservice" as const }
+        : {}),
     }];
   });
 }

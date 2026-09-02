@@ -95,7 +95,8 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
       note: "No persisted transport fact is available for this connection.",
       confidence: "unconfirmed",
     };
-    const supportedMode: EstimatedLeg["mode"] = persisted.mode;
+    const segmentMode = persisted.mode === "mixed" ? persisted.segments?.[0]?.mode : persisted.mode;
+    const supportedMode: EstimatedLeg["mode"] = segmentMode === "walk" || !segmentMode ? "unknown" : segmentMode;
     const savedConfidence = persisted.routeMetadata.routingConfidence;
     const confidence: EstimatedLeg["confidence"] = savedConfidence === "high" || savedConfidence === "medium" || savedConfidence === "unconfirmed"
       ? savedConfidence
@@ -132,7 +133,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
   const structuredConstraints: RoutePlanningConstraints = trip.brief.structuredBrief
-    ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief)
+    ? routeConstraintsFromStructuredTripBrief(trip.brief.structuredBrief, trip.stops.map((stop) => stop.id))
     : {};
   const requiredStopIds = structuredConstraints.requiredStopIds?.length
     ? structuredConstraints.requiredStopIds

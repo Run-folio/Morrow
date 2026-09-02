@@ -4,11 +4,12 @@ import type { RouteConstraintIssue } from "./route-candidates.ts";
 import type { PlanValidationReport } from "./plan-validator.ts";
 import { assessPlanRealism, type PlanRealismAssessment } from "./plan-realism.ts";
 import type { TransferImpact } from "./transfer-impact.ts";
-import type { EasyTTrip } from "./trip.ts";
+import type { EasyTTrip, JourneyEndSelection } from "./trip.ts";
 
 export type BuildTripConflictCode =
   | "origin-required"
   | "origin-unverified"
+  | "end-unverified"
   | "route-empty"
   | "route-input-invalid"
   | "place-review-required"
@@ -36,6 +37,7 @@ export type BuildTripConflict = {
 export type CanBuildTripInput = {
   origin: string;
   originCoordinates?: [number, number];
+  journeyEnd?: JourneyEndSelection;
   stops: Array<{ id: string; name: string; country?: string; coordinates?: [number, number] }>;
   placeReviewPending?: boolean;
   placeIssues?: Array<Pick<PlaceIssue, "message" | "blocksRoute" | "mentionId">>;
@@ -79,6 +81,10 @@ export function canBuildTrip(input: CanBuildTripInput) {
   if (!input.origin.trim()) conflicts.push(conflict({ code: "origin-required", stage: "places", message: "Add the city or airport you are leaving from.", source: "builder" }));
   if (input.origin.trim() && (!input.originCoordinates || input.originCoordinates.some((value) => !Number.isFinite(value)))) {
     conflicts.push(conflict({ code: "origin-unverified", stage: "time", message: "Confirm the departure location before building the trip.", source: "builder" }));
+  }
+  if (input.journeyEnd?.mode === "explicit"
+    && (!input.journeyEnd.place.coordinates || input.journeyEnd.place.coordinates.some((value) => !Number.isFinite(value)))) {
+    conflicts.push(conflict({ code: "end-unverified", stage: "places", message: "Choose the ending place from the suggestions, or select Not sure yet.", source: "builder" }));
   }
   if (!input.stops.length) conflicts.push(conflict({ code: "route-empty", stage: "places", message: "Add at least one destination before building the trip.", source: "builder" }));
   if (uniqueStopIds.size !== stopIds.length || input.stops.some((stop) => !stop.id.trim() || !stop.name.trim() || !stop.country?.trim()

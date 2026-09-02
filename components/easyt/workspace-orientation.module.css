@@ -1,0 +1,48 @@
+.scope { display: contents; }
+
+.coachmark {
+  z-index: var(--morrovia-layer-modal, 200);
+  box-sizing: border-box;
+  padding: 18px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-paper);
+  box-shadow: var(--morrovia-shadow-overlay);
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-ui);
+}
+
+.popover { position: fixed; }
+
+.heading,
+.heading > div,
+.actions { display: flex; align-items: center; }
+.heading { justify-content: space-between; gap: 12px; }
+.heading > div { gap: 9px; }
+.heading p,
+.heading span { margin: 0; font: 800 10px/1.2 var(--morrovia-meta); letter-spacing: .1em; text-transform: uppercase; }
+.heading p { color: var(--morrovia-signal); }
+.heading span { color: var(--morrovia-muted); }
+.coachmark h2 { margin: 16px 0 7px; font: 600 27px/1.05 var(--morrovia-display); letter-spacing: -.035em; }
+.coachmark > p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.actions { justify-content: space-between; gap: 10px; margin-top: 18px; }
+
+.launcher { position: relative; flex: none; }
+.menu { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; width: 180px; padding: 6px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); box-shadow: var(--morrovia-shadow-overlay); }
+.menu button { width: 100%; justify-content: flex-start; }
+
+.scope :global([data-workspace-orientation-active="true"]) {
+  outline: 3px solid color-mix(in srgb, var(--morrovia-signal) 64%, transparent);
+  outline-offset: 5px;
+}
+
+@media (max-width: 700px) {
+  .sheet { position: fixed; right: 12px; bottom: calc(var(--morrovia-mobile-dock-offset, 82px) + 10px); left: 12px; width: auto; max-height: min(340px, calc(100dvh - var(--morrovia-mobile-dock-offset, 82px) - 24px)); overflow: auto; }
+  .coachmark h2 { font-size: 24px; }
+  .heading > div { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coachmark,
+  .scope :global([data-workspace-orientation-active="true"]) { transition: none !important; scroll-behavior: auto !important; }
+}

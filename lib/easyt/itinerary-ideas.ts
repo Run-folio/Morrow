@@ -24,14 +24,16 @@ export function itineraryIdeaForPlace(input: {
 }
 
 export function ideaStateForPlace(trip: EasyTTrip, stopId: string, placeId: string) {
-  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.stopId === stopId && item.placeId === placeId);
+  const providerIdentity = placeId.startsWith("viator:");
+  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.placeId === placeId && (providerIdentity || item.stopId === stopId));
   if (!idea) return { state: "available" as const, idea: null, day: null };
   const day = idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId) ?? null : null;
   return day ? { state: "planned" as const, idea, day } : { state: "saved" as const, idea, day: null };
 }
 
 export function saveItineraryIdea(trip: EasyTTrip, idea: ItineraryIdea): EasyTTrip {
-  const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id);
+  const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
+    || Boolean(idea.provider && idea.providerProductId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
   if (existing) return trip;
   if (!trip.stops.some((stop) => stop.id === idea.stopId)) return trip;
   return { ...trip, brief: { ...trip.brief, itineraryIdeas: [...(trip.brief.itineraryIdeas ?? []), idea] } };
@@ -45,7 +47,9 @@ export function scheduleItineraryIdea(
 ): EasyTTrip {
   const day = trip.planItems.find((item) => item.id === dayId && item.stopId === idea.stopId);
   if (!day) return trip;
-  const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id);
+  const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
+    || Boolean(idea.provider && idea.providerProductId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+  if (existing && existing.id !== idea.id) return trip;
   const scheduledDayPart = dayPart === undefined ? existing?.dayPart ?? null : dayPart;
   const exactDuplicate = existing?.placeId === idea.placeId
     && existing.dayId === dayId
@@ -53,12 +57,16 @@ export function scheduleItineraryIdea(
   if (exactDuplicate) return trip;
   const previousDay = existing?.dayId ? trip.planItems.find((item) => item.id === existing.dayId) : undefined;
   const base = existing && previousDay
-    ? removeMappedPlaceFromTrip(trip, { id: existing.placeId, name: existing.title, coordinates: existing.coordinates }, existing.category, previousDay.dayNumber, existing.stopId)
+    ? existing.coordinates
+      ? removeMappedPlaceFromTrip(trip, { id: existing.placeId, name: existing.title, coordinates: existing.coordinates }, existing.category, previousDay.dayNumber, existing.stopId)
+      : removeCoordinateLessIdeaFromTrip(trip, existing, previousDay)
     : trip;
   const stored = { ...idea, dayId, dayPart: scheduledDayPart };
   const ideas = [...(base.brief.itineraryIdeas ?? []).filter((item) => item.id !== idea.id), stored];
   const withIdea = { ...base, brief: { ...base.brief, itineraryIdeas: ideas } };
-  return addMappedPlaceToTrip(withIdea, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }, idea.category, day.dayNumber, idea.stopId);
+  return idea.coordinates
+    ? addMappedPlaceToTrip(withIdea, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }, idea.category, day.dayNumber, idea.stopId)
+    : addCoordinateLessIdeaToTrip(withIdea, stored, day);
 }
 
 /** Broad scheduling is explicit traveller intent and never changes the item's day. */
@@ -85,7 +93,8 @@ export function removeItineraryIdea(trip: EasyTTrip, id: string): EasyTTrip {
   if (!idea) return trip;
   let next = trip;
   const day = idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId) : undefined;
-  if (day) next = removeMappedPlaceFromTrip(next, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }, idea.category, day.dayNumber, idea.stopId);
+  if (day && idea.coordinates) next = removeMappedPlaceFromTrip(next, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }, idea.category, day.dayNumber, idea.stopId);
+  else if (day) next = removeCoordinateLessIdeaFromTrip(next, idea, day);
   return { ...next, brief: { ...next.brief, itineraryIdeas: (next.brief.itineraryIdeas ?? []).filter((item) => item.id !== id) } };
 }
 
@@ -137,3 +146,29 @@ export function reconcileItineraryIdeas(trip: EasyTTrip): EasyTTrip {
 }
 
 export function sameIdeaTitle(left: string, right: string) { return normalize(left) === normalize(right); }
+
+function addCoordinateLessIdeaToTrip(trip: EasyTTrip, idea: ItineraryIdea, day: PlanItem) {
+  const activities = trip.brief.customActivities?.[day.dayNumber] ?? [];
+  const alreadyStored = activities.some((activity) => normalize(activity) === normalize(idea.title));
+  const alreadyNoted = day.notes.some((note) => normalize(note) === normalize(idea.title));
+  if (alreadyStored && alreadyNoted) return trip;
+  return {
+    ...trip,
+    brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [day.dayNumber]: alreadyStored ? activities : [...activities, idea.title] } },
+    planItems: trip.planItems.map((item) => item.id === day.id && !alreadyNoted
+      ? { ...item, notes: [...item.notes, idea.title], ...(item.noteDayParts ? { noteDayParts: [...item.noteDayParts, idea.dayPart ?? null] } : {}) }
+      : item),
+  };
+}
+
+function removeCoordinateLessIdeaFromTrip(trip: EasyTTrip, idea: ItineraryIdea, day: PlanItem) {
+  return {
+    ...trip,
+    brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [day.dayNumber]: (trip.brief.customActivities?.[day.dayNumber] ?? []).filter((item) => normalize(item) !== normalize(idea.title)) } },
+    planItems: trip.planItems.map((item) => item.id === day.id ? {
+      ...item,
+      notes: item.notes.filter((note) => normalize(note) !== normalize(idea.title)),
+      ...(item.noteDayParts ? { noteDayParts: item.notes.flatMap((note, index) => normalize(note) === normalize(idea.title) ? [] : [item.noteDayParts?.[index] ?? null]) } : {}),
+    } : item),
+  };
+}

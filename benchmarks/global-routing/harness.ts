@@ -136,6 +136,7 @@ function recordedIntent(fixture: GlobalRoutingFixture): SemanticTripIntent {
     schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
     rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
     origin: { sourceText: fixture.origin?.sourceText ?? null, certainty: fixture.origin ? "explicit" : null },
+    journeyEnd: { sourceText: null, interpretedText: null, mode: "unknown", certainty: null },
     duration: { sourceText: null, value: null, unit: null },
     explicitDateTexts: [],
     destinationCandidates: destinations.map((item) => ({
@@ -392,7 +393,10 @@ async function evaluateFixture(fixture: GlobalRoutingFixture, options: RunnerOpt
 
   const trip = buildTrip(fixture, capture);
   const routeEndpoints = trip ? canonicalRouteEndpoints(trip).map((endpoint) => endpoint.name) : [];
-  const expectedEndpoints = fixture.origin ? [fixture.origin.canonicalName, ...fixture.routeOrder.map((key) => fixture.destinations.find((item) => item.key === key)?.canonicalName ?? key)] : [];
+  const expectedStopEndpoints = fixture.routeOrder.map((key) => fixture.destinations.find((item) => item.key === key)?.canonicalName ?? key);
+  const expectedEndpoints = fixture.origin
+    ? [fixture.origin.canonicalName, ...(fixture.originAlsoOvernight ? expectedStopEndpoints.slice(1) : expectedStopEndpoints)]
+    : [];
   const shouldBuildRoute = Boolean(fixture.origin && fixture.routeOrder.length);
   check("route-integrity", shouldBuildRoute ? Boolean(trip) && JSON.stringify(routeEndpoints) === JSON.stringify(expectedEndpoints) : trip === null, {
     id: "canonical-route-sequence", failure: "Canonical origin/stop order did not match the validated fixture.", expected: expectedEndpoints.length ? expectedEndpoints.join(" → ") : "No canonical route until an origin is supplied.", actual: routeEndpoints.length ? routeEndpoints.join(" → ") : "no route",
@@ -400,8 +404,9 @@ async function evaluateFixture(fixture: GlobalRoutingFixture, options: RunnerOpt
   check("route-integrity", !trip || trip.stops.length === fixture.routeOrder.length, {
     id: "no-inserted-or-dropped-stops", failure: "The canonical stop set changed.", expected: fixture.routeOrder.join(", ") || "no operational stops", actual: trip?.stops.map((stop) => stop.id).join(", ") ?? "no route",
   });
-  check("route-integrity", !trip || trip.legs.length === trip.stops.length, {
-    id: "origin-participation", failure: "The route omitted its origin-inclusive first leg.", expected: "One arrival leg plus one leg between each overnight stop.", actual: trip ? `${trip.legs.length} legs for ${trip.stops.length} stops` : "route gated",
+  const expectedLegCount = trip ? Math.max(0, expectedEndpoints.length - 1) : 0;
+  check("route-integrity", !trip || trip.legs.length === expectedLegCount, {
+    id: "origin-participation", failure: "The route contains a missing or duplicate canonical endpoint leg.", expected: "One leg between each distinct adjacent travel endpoint.", actual: trip ? `${trip.legs.length} legs for ${expectedEndpoints.length} distinct endpoints and ${trip.stops.length} overnight stops` : "route gated",
   });
   if (fixture.originAlsoOvernight) {
     const firstStop = trip?.stops[0];

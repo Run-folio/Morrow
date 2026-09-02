@@ -3,6 +3,20 @@ import { useState } from "react";
 import { TOUR_TRIP_PROMPT, tourTripFixture } from "./storybook/tour-trip.fixture";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaTripCapture, type MorroviaTripCaptureProps } from "./morrovia-trip-capture";
+import { JourneyEndpointsEditor } from "./journey-endpoints-editor";
+
+const endpointEntry = (start: string, end: string, mode: "unknown" | "same_as_start" | "explicit") => <JourneyEndpointsEditor
+  showHeading={false}
+  showHint={false}
+  startValue={start}
+  endValue={end}
+  endSelection={mode === "explicit" ? { mode, place: { name: end } } : { mode }}
+  onStartChange={() => undefined}
+  onStartSelect={() => undefined}
+  onEndChange={() => undefined}
+  onEndSelect={() => undefined}
+  onEndModeChange={() => undefined}
+/>;
 
 function ControlledCapture(props: Partial<MorroviaTripCaptureProps>) {
   const [value, setValue] = useState(props.value ?? "");
@@ -25,6 +39,7 @@ function ControlledCapture(props: Partial<MorroviaTripCaptureProps>) {
     onSubmit={() => undefined}
     allowEmptyPrompt={props.allowEmptyPrompt}
     manualEntry={props.manualEntry}
+    endpointEntry={props.endpointEntry}
     loading={props.loading}
     disabled={props.disabled}
     error={props.error}
@@ -66,6 +81,25 @@ export const EmptyPromptValidation: Story = {
 export const AIAndSpeechTransparency: Story = { args: { value: "A relaxed train trip from Paris through Switzerland." } };
 export const CompactDefaultHierarchy: Story = { args: { value: "A relaxed train trip from Paris through Switzerland." } };
 export const Filled: Story = { args: { value: "Paris to Lisbon, Madrid and Seville for two weeks.", interests: ["food", "culture"] } };
+export const HomepageStartUnknownEnd: Story = {
+  args: { value: "Two weeks through Japan.", endpointEntry: endpointEntry("London, United Kingdom", "", "unknown") },
+};
+export const HomepageSameAsStart: Story = {
+  args: { value: "Two weeks in Japan from London and back to London.", endpointEntry: endpointEntry("London, United Kingdom", "", "same_as_start") },
+};
+export const HomepageExplicitOpenJaw: Story = {
+  args: { value: "Open jaw into Tokyo and out of Seoul.", endpointEntry: endpointEntry("Tokyo, Japan", "Seoul, South Korea", "explicit") },
+};
+export const HomepageEndpointFocus: Story = {
+  args: { value: "Two weeks through Japan.", endpointEntry: endpointEntry("London, United Kingdom", "", "unknown") },
+  play: async ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLInputElement>('input[aria-label="Ending at"]')?.focus();
+  },
+};
+export const HomepageEndpointsAt390: Story = {
+  args: { value: "Two weeks through Japan.", endpointEntry: endpointEntry("London, United Kingdom", "", "unknown") },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
 export const BuilderManualAlternative: Story = {
   args: {
     allowEmptyPrompt: true,

@@ -172,6 +172,8 @@
   transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
+.headerActions { display: flex; align-items: center; gap: 7px; }
+
 .editAction:hover {
   border-color: var(--morrovia-signal);
   background: var(--morrovia-lilac);
@@ -370,6 +372,8 @@
     justify-self: start;
   }
 
+  .headerActions { grid-column: 1 / -1; justify-self: start; }
+
   .subnav {
     min-height: 60px;
     padding-inline: 5px;
@@ -437,8 +441,10 @@
   }
 
   .editAction {
-    width: 100%;
+    flex: 1;
   }
+
+  .headerActions { width: 100%; }
 
   .subnav a {
     min-width: 0;

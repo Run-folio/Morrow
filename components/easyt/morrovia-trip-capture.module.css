@@ -33,19 +33,24 @@
   padding: 14px;
   border: 1px solid var(--morrovia-line);
   border-radius: calc(var(--morrovia-control-radius) + 2px);
-  background: white;
+  background: var(--morrovia-paper);
+  cursor: text;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
 }
 
+.promptField:hover { border-color: var(--morrovia-ink-soft); }
 .promptField:focus-within {
-  border-color: var(--morrovia-focus-ring);
+  border-color: var(--morrovia-signal);
+  box-shadow: var(--morrovia-focus-shadow);
 }
 
 .promptFieldError,
+.promptFieldError:hover,
 .promptFieldError:focus-within {
   border-color: var(--morrovia-danger);
 }
 
-.textareaField { position: relative; }
+.textareaField { position: relative; cursor: text; }
 
 .textareaField textarea {
   box-sizing: border-box;
@@ -57,15 +62,18 @@
   outline: none;
   background: transparent;
   color: var(--morrovia-ink);
-  font: 500 14px/1.55 var(--morrovia-ui);
+  font: 500 15px/1.5 var(--morrovia-ui);
+  cursor: text;
   resize: vertical;
 }
 
 .textareaField textarea::placeholder { color: var(--morrovia-muted); }
 .textareaField textarea:focus-visible { outline: none; }
+.textareaField textarea:disabled { color: var(--morrovia-muted); cursor: not-allowed; }
 .promptError { margin: 0; color: var(--morrovia-danger); font: var(--morrovia-type-supporting-body); }
 
 .manualEntry { display: grid; gap: 10px; min-width: 0; }
+.endpointEntry { min-width: 0; padding: 4px 0 2px; }
 .manualDivider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 9px; color: var(--morrovia-muted); font: 650 10px/1.2 var(--morrovia-ui); }
 .manualDivider::before,
 .manualDivider::after { content: ""; height: 1px; background: var(--morrovia-line); }
