@@ -1075,13 +1075,17 @@ function rawCatalogMatches(prompt: string): RawCatalogMatch[] {
 }
 
 function roleAt(prompt: string, sourceText: string, start: number, placeType: PlaceType): PlaceMentionRole {
+  const rawAfter = prompt.slice(start + sourceText.length, Math.min(prompt.length, start + sourceText.length + 45));
   const before = normalizePlacePhrase(prompt.slice(Math.max(0, start - 64), start));
-  const after = normalizePlacePhrase(prompt.slice(start + sourceText.length, Math.min(prompt.length, start + sourceText.length + 45)));
+  const after = normalizePlacePhrase(rawAfter);
   if (/(?:do not|dont|not|never)(?: want to)? visit$|(?:skip|exclude|excluding|avoid)$/.test(before)) return "excluded";
   if (/(?:^| )(?:finish|finishing|end|ending)(?: the trip)? (?:in|at)$|fly(?:ing)? (?:home|back)? from$|(?:fly(?:ing)? )?out of$|(?:back|return(?:ing)?) to$|one way to$/.test(before)) return "fixed_end";
   if (/(?:^| )(?:start|starting|begin|beginning)(?: the trip)?(?: (?:in|at))?$/.test(before)) return "fixed_start";
   if (/(?:leaving from|departing from|depart from|from|desde|saliendo de)$/.test(before)) return "origin";
-  if (!before && /^(?:to|through|via)\b/.test(after)) return "origin";
+  // Arrow separators are removed by geographic normalization. Preserve their
+  // structural meaning here: the first place in an explicit A → B / A -> B
+  // route is the departure point, just like the existing A to B form.
+  if (!before && (/^\s*(?:→|->)\s*\S/.test(rawAfter) || /^(?:to|through|via)\b/.test(after))) return "origin";
   if (/(?:fly|flying) into$|(?:arrive|arriving) (?:in|at)$/.test(before)) return "gateway";
   if (/^(?:is )?(?:essential|required|a must|non negotiable|the priority|definitely)/.test(after)
     || /(?:must visit|cannot miss|cant miss|essential|non negotiable|definitely)[^,.]{0,24}$/.test(before)

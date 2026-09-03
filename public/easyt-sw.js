@@ -1,7 +1,8 @@
 /* EasyT only keeps public app-shell files offline. It never stores account,
  * dashboard, profile, API, or user-specific trip responses in Cache Storage. */
 const CACHE_PREFIX = "easyt-public-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v5`;
+const CACHE_NAME = `${CACHE_PREFIX}v6`;
+const PREVIOUS_CACHE_NAME = `${CACHE_PREFIX}v5`;
 const PUBLIC_SHELL = [
   "/journey/home",
   "/journey/new",
@@ -30,21 +31,33 @@ async function precachePublicShell() {
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(precachePublicShell());
-  // Do not skip the waiting phase. An already-open Next.js client still
-  // references the previous deployment's hashed JS/CSS graph; activating a
-  // new worker and deleting that graph mid-session leaves route-level styles
-  // unavailable on the next client navigation.
+  event.waitUntil(Promise.all([precachePublicShell(), self.skipWaiting()]));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key))),
+      Promise.all(keys
+        .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME && key !== PREVIOUS_CACHE_NAME)
+        .map((key) => caches.delete(key))),
     ),
   );
   self.clients.claim();
 });
+
+async function networkFirstPublicShell(request, pathname) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(pathname, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(pathname);
+    return cached || Response.error();
+  }
+}
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
@@ -56,16 +69,11 @@ self.addEventListener("fetch", (event) => {
   const isPublicShell = PUBLIC_SHELL.includes(url.pathname);
   const isStaticAsset = url.pathname.startsWith("/_next/static/");
 
-  // Query-bearing planner URLs contain only a trip ID and recovery intent.
-  // Serve the already-cached public shell while offline; the owner-scoped
-  // browser store supplies the document. Never cache the query response.
-  if (request.mode === "navigate" && isPublicShell && url.search) {
-    event.respondWith(
-      fetch(request).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        return (await cache.match(url.pathname)) || Response.error();
-      }),
-    );
+  // Documents must advance with the deployment. Store a successful response
+  // under its query-free shell path so recovery URLs can reopen offline without
+  // pinning their query or an older deployment's asset graph.
+  if (request.mode === "navigate" && isPublicShell) {
+    event.respondWith(networkFirstPublicShell(request, url.pathname));
     return;
   }
 
@@ -74,7 +82,9 @@ self.addEventListener("fetch", (event) => {
   if (isPublicShell || isStaticAsset) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
-        const cached = await cache.match(request);
+        // Keep the immediately previous graph available while already-open
+        // clients finish, but all new documents come from the network above.
+        const cached = await cache.match(request) || await caches.match(request);
         if (cached) return cached;
         const response = await fetch(request);
         if (response.ok) cache.put(request, response.clone());

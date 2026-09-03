@@ -101,7 +101,7 @@ The current support deletion implementation is an admin-only operation. It delet
 | `morrovia:trip-intent-tracked:*`, `morrovia:route-generated:*`, `morrovia:route-accepted:*`, `morrovia:trip-ready:*` | Prevent duplicate optional analytics events | Optional analytics | Written only when analytics consent exists | `localStorage`; no explicit expiry |
 | `morrovia:budget-viewed:*`, `morrovia:health-shown:*`, `morrovia:attraction-viewed:*`, `morrovia:accommodation-viewed:*` | Per-tab analytics de-duplication | Optional analytics | Events themselves are consent-gated; some component-level legacy events should be rechecked as part of #211 | `sessionStorage`; browser-tab session |
 | `morrovia-stamps-expanded-regions` | Expanded UI state | Functional candidate | On expansion | `sessionStorage`; browser-tab session |
-| `easyt-public-shell-v4` Cache Storage | Public Journey HTML/static shell only | Functional/necessary candidate | Production service-worker install/use | Retained until service-worker version cleanup or site-data clearing |
+| `easyt-public-shell-v6` Cache Storage | Public Journey HTML/static shell only | Functional/necessary candidate | Production service-worker install/use | Retained until service-worker version cleanup or site-data clearing |
 
 No application IndexedDB use was found. The service worker excludes API responses and account/user-specific routes from Cache Storage and uses public `/journey/home`, `/journey/new`, `/journey/plan`, icons, and required static assets.
 

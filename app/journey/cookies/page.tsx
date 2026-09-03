@@ -33,7 +33,7 @@ const technologies = [
   },
   {
     name: "Public application-shell cache",
-    detail: "First-party Cache Storage named easyt-public-shell-v4. Functional technology created by the production service worker for public Journey pages and static assets. It remains until service-worker version cleanup or browser site data is cleared; account and API responses are excluded.",
+    detail: "First-party Cache Storage named easyt-public-shell-v6. Functional technology created by the production service worker for public Journey pages and static assets. It remains until service-worker version cleanup or browser site data is cleared; account and API responses are excluded.",
   },
   {
     name: "PostHog",

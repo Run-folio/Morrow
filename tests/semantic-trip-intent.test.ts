@@ -219,6 +219,46 @@ test("validated Luna candidates project through deterministic geography with com
   assert.deepEqual(capture.semanticExtraction, { model: "gpt-5.6-luna", status: "completed", fallbackUsed: false, recoveredPlaceMentions: 0 });
 });
 
+test("explicit route structure outranks a semantic model that misclassifies the origin as a destination", async () => {
+  const rawPrompt = "Paris → Amsterdam → Brussels for approximately 8 days";
+  const intent: SemanticTripIntent = {
+    schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
+    rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+    origin: { sourceText: null, certainty: null },
+    journeyEnd: { sourceText: null, interpretedText: null, mode: "unknown", certainty: null },
+    duration: { sourceText: "approximately 8 days", value: 8, unit: "days" },
+    explicitDateTexts: [],
+    destinationCandidates: ["Paris", "Amsterdam", "Brussels"].map((sourceText) => ({
+      sourceText,
+      interpretedText: null,
+      role: "route-stop" as const,
+      certainty: "explicit" as const,
+    })),
+    pointsOfInterest: [],
+    transport: {
+      departure: { sourceText: null, mode: null },
+      interStop: { sourceText: null, modes: [] },
+      avoid: [],
+    },
+    pace: { sourceText: null, value: null },
+    interests: [],
+    constraints: [],
+    ambiguities: [],
+    unresolvedMeaningfulText: [],
+  };
+
+  const capture = await captureJourneyBriefFromSemanticIntent(rawPrompt, intent);
+  const origins = capture.mentions.filter((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  assert.deepEqual(origins.map((mention) => mention.canonicalPlaceId), ["paris"]);
+  assert.deepEqual(
+    capture.mentions.filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start").map((mention) => mention.canonicalName),
+    ["Amsterdam", "Brussels"],
+  );
+  assert.equal(capture.mentions.filter((mention) => mention.canonicalPlaceId === "paris").length, 1);
+  assert.equal(capture.structuredBrief.destinations.filter((destination) => destination.canonicalPlaceId === "paris").length, 1);
+  assert.equal(capture.durationDays, 8);
+});
+
 test("malformed output, schema failure, timeout, and provider failure are bounded failure states", async () => {
   const rawPrompt = semanticFixtures[0]?.rawPrompt ?? "";
   assert.equal((await evaluateSemanticIntentShadow(rawPrompt, { mode: "shadow", provider: provider("not-an-object") })).status, "invalid-response");

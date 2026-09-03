@@ -1333,7 +1333,7 @@ test("cross-tab storage matching is scoped to exact owner and trip keys", () => 
   assert.equal(tripStorageEventMatches(null, "owner-a", tripId), false);
 });
 
-test("service worker reopens the query-based planner shell from cache while offline", async () => {
+test("service worker advances public documents online and reopens the planner shell offline", async () => {
   const source = readFileSync(new URL("../public/easyt-sw.js", import.meta.url), "utf8");
   const listeners = new Map<string, (event: unknown) => void>();
   const plannerShell = '<!doctype html><div>offline planner shell</div><link rel="stylesheet" href="/_next/static/css/planner.css"><script src="/_next/static/chunks/planner.js"></script>';
@@ -1341,9 +1341,14 @@ test("service worker reopens the query-based planner shell from cache while offl
     ["/journey/home", '<!doctype html><script src="/_next/static/chunks/home.js"></script>'],
     ["/journey/plan", plannerShell],
   ]);
+  const previousCachedResponses = new Map([
+    ["/_next/static/chunks/previous-client.js", "old client dependency"],
+  ]);
   const addedAssets: string[] = [];
   const deletedCaches: string[] = [];
+  const cachedWrites: Array<{ key: string; body: string }> = [];
   let skipWaitingCalls = 0;
+  let networkResponse: Response | null = null;
   const cache = {
     addAll: async () => undefined,
     add: async (asset: string) => { addedAssets.push(asset); },
@@ -1356,7 +1361,10 @@ test("service worker reopens the query-based planner shell from cache while offl
       const body = cachedResponses.get(key);
       return body === undefined ? undefined : new Response(body, { status: 200 });
     },
-    put: async () => undefined,
+    put: async (request: string | { url: string }, response: Response) => {
+      const raw = typeof request === "string" ? request : request.url;
+      cachedWrites.push({ key: raw, body: await response.text() });
+    },
   };
   const serviceWorkerGlobal = {
     location: { origin: "https://morrovia.test" },
@@ -1368,10 +1376,19 @@ test("service worker reopens the query-based planner shell from cache while offl
     self: serviceWorkerGlobal,
     caches: {
       open: async () => cache,
-      keys: async () => ["easyt-public-shell-v4", "analytics-unrelated-cache"],
+      match: async (request: string | { url: string }) => {
+        const current = await cache.match(request);
+        if (current) return current;
+        const raw = typeof request === "string" ? request : request.url;
+        const key = raw.startsWith("http") ? new URL(raw).pathname : raw;
+        const previous = previousCachedResponses.get(key);
+        return previous === undefined ? undefined : new Response(previous, { status: 200 });
+      },
+      keys: async () => ["easyt-public-shell-v4", "easyt-public-shell-v5", "analytics-unrelated-cache"],
       delete: async (key: string) => { deletedCaches.push(key); return true; },
     },
     fetch: async () => {
+      if (networkResponse) return networkResponse.clone();
       throw new TypeError("network unavailable");
     },
     URL,
@@ -1385,7 +1402,7 @@ test("service worker reopens the query-based planner shell from cache while offl
   installHandler({ waitUntil: (promise: Promise<unknown>) => { installPromise = promise; } });
   assert.ok(installPromise);
   await installPromise;
-  assert.equal(skipWaitingCalls, 0, "a new deployment must not evict the active client's hashed CSS/JS graph");
+  assert.equal(skipWaitingCalls, 1, "the network-first worker must take over from the cache-first release");
   assert.deepEqual(addedAssets.sort(), [
     "/_next/static/chunks/home.js",
     "/_next/static/chunks/planner.js",
@@ -1398,11 +1415,29 @@ test("service worker reopens the query-based planner shell from cache while offl
   activateHandler({ waitUntil: (promise: Promise<unknown>) => { activatePromise = promise; } });
   assert.ok(activatePromise);
   await activatePromise;
-  assert.deepEqual(deletedCaches, ["easyt-public-shell-v4"], "activation deletes only Morrovia's superseded shell cache");
+  assert.deepEqual(deletedCaches, ["easyt-public-shell-v4"], "activation retains one previous hashed graph for already-open clients");
 
   let responsePromise: Promise<Response> | null = null;
   const handler = listeners.get("fetch");
   assert.ok(handler);
+  networkResponse = new Response("<!doctype html><div>current deployment shell</div>", { status: 200 });
+  handler({
+    request: {
+      method: "GET",
+      mode: "navigate",
+      url: "https://morrovia.test/journey/new",
+    },
+    respondWith: (response: Promise<Response> | Response) => {
+      responsePromise = Promise.resolve(response);
+    },
+  });
+  assert.ok(responsePromise, "public shell navigation must be handled online");
+  const currentResponse = await (responsePromise as Promise<Response>);
+  assert.equal(await currentResponse.text(), "<!doctype html><div>current deployment shell</div>");
+  assert.deepEqual(cachedWrites, [{ key: "/journey/new", body: "<!doctype html><div>current deployment shell</div>" }]);
+
+  networkResponse = null;
+  responsePromise = null;
   handler({
     request: {
       method: "GET",
@@ -1417,4 +1452,18 @@ test("service worker reopens the query-based planner shell from cache while offl
   assert.ok(responsePromise, "query-based planner navigation must be handled while offline");
   const response = await (responsePromise as Promise<Response>);
   assert.equal(await response.text(), plannerShell);
+
+  responsePromise = null;
+  handler({
+    request: {
+      method: "GET",
+      mode: "no-cors",
+      url: "https://morrovia.test/_next/static/chunks/previous-client.js",
+    },
+    respondWith: (staticResponse: Promise<Response> | Response) => {
+      responsePromise = Promise.resolve(staticResponse);
+    },
+  });
+  assert.ok(responsePromise, "an already-open old client must retain its immediately previous hashed dependency graph");
+  assert.equal(await (await (responsePromise as Promise<Response>)).text(), "old client dependency");
 });

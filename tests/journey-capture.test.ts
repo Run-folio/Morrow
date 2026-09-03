@@ -72,6 +72,48 @@ test("capture is deterministic and projects the same single resolution into ever
   assert.deepEqual(first.mentions.map((mention) => mention.canonicalPlaceId), ["cusco", "sacred-valley", "machu-picchu"]);
 });
 
+test("Builder capture receives an explicit Paris route as one origin and two ordered stops", async () => {
+  const places = new Map([
+    ["paris", { name: "Paris", country: "France", coordinates: [2.3522, 48.8566] as [number, number] }],
+    ["amsterdam", { name: "Amsterdam", country: "Netherlands", coordinates: [4.9041, 52.3676] as [number, number] }],
+    ["brussels", { name: "Brussels", country: "Belgium", coordinates: [4.3517, 50.8503] as [number, number] }],
+  ]);
+  const provider: PlaceIntelligenceProvider = {
+    id: "builder-explicit-route",
+    label: "Builder explicit route fixture",
+    lookup: async (phrase) => {
+      const place = places.get(phrase.toLocaleLowerCase());
+      return place ? [{
+        providerId: `provider-${phrase.toLocaleLowerCase()}`,
+        canonicalName: place.name,
+        aliases: [],
+        placeType: "city",
+        parentCountries: [place.country],
+        coordinates: place.coordinates,
+        routability: "direct_destination",
+        matchQuality: "exact",
+        rankScore: 100,
+      }] : [];
+    },
+  };
+
+  const capture = await captureJourneyBriefWithProvider(
+    "Paris → Amsterdam → Brussels for approximately 8 days",
+    provider,
+  );
+  const origins = capture.mentions.filter((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  assert.deepEqual(origins.map((mention) => mention.canonicalName), ["Paris"]);
+  assert.deepEqual(
+    routableHandoffMentions(capture.mentions)
+      .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
+      .map((mention) => mention.canonicalName),
+    ["Amsterdam", "Brussels"],
+  );
+  assert.equal(capture.mentions.filter((mention) => mention.canonicalPlaceId === origins[0]?.canonicalPlaceId).length, 1);
+  assert.equal(capture.durationDays, 8);
+  assert.equal(capture.structuredBrief.duration?.precision, "approximate");
+});
+
 test("provider capture deduplicates lookups per identity and preserves canonical and unknown intent when the provider fails", async () => {
   let calls = 0;
   const unavailableProvider: PlaceIntelligenceProvider = {

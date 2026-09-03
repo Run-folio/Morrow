@@ -47,6 +47,45 @@ test("explicit prompt preserves gateways, exact nights and a must-visit anchor",
   assert.equal(brief.hardConstraints.some((constraint) => constraint.type === "duration"), true);
 });
 
+test("explicit ordered routes preserve their first locality as the canonical origin", () => {
+  for (const prompt of [
+    "Paris → Amsterdam → Brussels for approximately 8 days",
+    "Paris -> Amsterdam -> Brussels",
+    "Paris to Amsterdam to Brussels",
+  ]) {
+    const brief = extractStructuredTripBrief(prompt);
+    assert.equal(brief.destinations.find((place) => place.role === "arrival-gateway")?.canonicalPlaceId, "paris", prompt);
+    assert.deepEqual(
+      brief.destinations.filter((place) => place.role !== "arrival-gateway").map((place) => place.name),
+      ["Amsterdam", "Brussels"],
+      prompt,
+    );
+    assert.equal(brief.destinations.filter((place) => place.canonicalPlaceId === "paris").length, 1, prompt);
+  }
+
+  const approximate = extractStructuredTripBrief("Paris → Amsterdam → Brussels for approximately 8 days");
+  assert.deepEqual(
+    { value: approximate.duration?.value, unit: approximate.duration?.unit, precision: approximate.duration?.precision },
+    { value: 8, unit: "days", precision: "approximate" },
+  );
+});
+
+test("explicit origin language outranks ordered-route syntax without changing unordered or broad intent", () => {
+  const override = extractStructuredTripBrief("Starting in London, travel Paris → Amsterdam → Brussels");
+  assert.equal(override.destinations.find((place) => place.role === "arrival-gateway")?.canonicalPlaceId, "london");
+  assert.deepEqual(
+    override.destinations.filter((place) => place.role !== "arrival-gateway").map((place) => place.name),
+    ["Paris", "Amsterdam", "Brussels"],
+  );
+
+  const unordered = extractStructuredTripBrief("I want to visit Paris, Amsterdam and Brussels");
+  assert.equal(unordered.destinations.some((place) => place.role === "arrival-gateway"), false);
+
+  const broad = extractStructuredTripBrief("I would like to go to Africa to Serengeti");
+  assert.equal(broad.destinations.some((place) => place.role === "arrival-gateway"), false);
+  assert.equal(broad.destinations.find((place) => place.name === "Africa")?.placeType, "continent");
+});
+
 test("the same natural-language intent produces an identical comprehensive brief", () => {
   const prompt = "About 12 nights in Japan. Start in Tokyo, Kyoto is essential, finish in Osaka. Two travellers want a relaxed pace, food, trains, an affordable trip, no driving and no more than 4 stops.";
   const first = extractStructuredTripBrief(prompt);
