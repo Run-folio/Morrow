@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { itineraryDayMapContext } from "../lib/easyt/itinerary-day-context.ts";
+import { buildCredibleItinerary } from "../lib/easyt/planner.ts";
 import {
   canonicalJourneyEndpointPlace,
   journeyEndpointIdentityIsCoherent,
@@ -61,6 +62,53 @@ function acceptanceTrip() {
       items: [],
       type: index === 0 ? "arrival" : "activity",
     })),
+  });
+}
+
+function exactItineraryTrip() {
+  const calendarDays = {
+    "cancun-stop": 3,
+    tulum: 4,
+    antigua: 4,
+    "caye-caulker": 3,
+    "belize-city": 3,
+    flores: 5,
+  };
+  const nights = {
+    "cancun-stop": 3,
+    tulum: 4,
+    antigua: 4,
+    "caye-caulker": 3,
+    "belize-city": 3,
+    flores: 4,
+  };
+  const draft = buildCredibleItinerary({
+    origin: cancun.name,
+    originCoordinates: cancun.coordinates,
+    stops,
+    startDate: "2026-10-01",
+    allocations: calendarDays,
+    picks: {},
+    places: {},
+  });
+  return tripFromBuilder({
+    id: "cancun-exact-itinerary-regression",
+    origin: cancun.name,
+    originCountry: cancun.country,
+    originCanonicalPlaceId: cancun.canonicalPlaceId,
+    originCoordinates: cancun.coordinates,
+    journeyEnd: { mode: "same_as_start" },
+    stops,
+    startDate: "2026-10-01",
+    endDate: "2026-10-22",
+    picks: {},
+    mustDo: "Start in Cancún, stay overnight through Flores, then return to Cancún for 22 days",
+    pace: "slow",
+    hotels: "few",
+    budget: "mid",
+    dayAllocations: calendarDays,
+    nightAllocations: nights,
+    draft,
   });
 }
 
@@ -148,13 +196,25 @@ test("Map ignores a stale saved leg snapshot and fits the canonical Cancún retu
   assert.equal(mapped.some((leg) => leg.fromCoordinates[0] > 100), false);
 });
 
-test("Itinerary has no fake first-day arrival and retains the final return transfer", () => {
-  const trip = acceptanceTrip();
+test("the persisted 21-night Cancún itinerary suppresses the generated same-place rows and retains every real transfer", () => {
+  const trip = JSON.parse(JSON.stringify(exactItineraryTrip())) as ReturnType<typeof exactItineraryTrip>;
+  assert.equal(trip.planItems[0]?.notes.some((note) => note === "Cancún → Cancún"), true, "fixture must reproduce the stale generated row");
   const first = composeItineraryDay(trip, trip.planItems[0]!.id);
   const last = composeItineraryDay(trip, trip.planItems.at(-1)!.id);
   assert.equal(first?.transfers.some((transfer) => transfer.origin === "Cancún" && transfer.destination === "Cancún"), false);
+  assert.doesNotMatch(JSON.stringify({ transfers: first?.transfers, planned: first?.planned }), /Cancún → Cancún|Morrovia planning estimate: about 0h 3[05]m/);
+  assert.equal(first?.tonight.destination, "Cancún");
+  assert.equal(first?.planned.morning.some((activity) => activity.title.includes("Check in")), true);
+
+  const transfers = trip.planItems.flatMap((day) => composeItineraryDay(trip, day.id)?.transfers ?? []);
+  const uniqueTransfers = [...new Map(transfers.map((transfer) => [transfer.id, transfer])).values()];
+  assert.deepEqual([uniqueTransfers[0]?.origin, uniqueTransfers[0]?.destination], ["Cancún", "Tulum"]);
+  assert.equal(uniqueTransfers.some((transfer) => transfer.origin === "Cancún" && transfer.destination === "Cancún"), false);
+  assert.equal(uniqueTransfers.length, 6);
   assert.equal(last?.transfers.some((transfer) => transfer.direction === "departing" && transfer.origin === "Flores" && transfer.destination === "Cancún"), true);
-  assert.equal(last?.tonight.destination, "Flores");
+  assert.equal(trip.stops.length, 6);
+  assert.equal(trip.stops.reduce((total, stop) => total + (stop.nights ?? 0), 0), 21);
+  assert.equal(trip.planItems.length, 22);
   assert.equal(itineraryDayMapContext(trip, trip.planItems.at(-1)!, null).legs.some((leg) => leg.fromName === "Flores" && leg.toName === "Cancún"), true);
 });
 
