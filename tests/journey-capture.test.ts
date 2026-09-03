@@ -114,6 +114,35 @@ test("Builder capture receives an explicit Paris route as one origin and two ord
   assert.equal(capture.structuredBrief.duration?.precision, "approximate");
 });
 
+test("Builder capture preserves an explicit origin-identical opening stay and resolved return", async () => {
+  const prompt = "Start in Cancún, stay overnight in Cancún, Tulum, Antigua Guatemala, Caye Caulker, Belize City and Flores, then return to Cancún for 22 days";
+  const provider: PlaceIntelligenceProvider = {
+    id: "endpoint-stay-fixture",
+    label: "Endpoint stay fixture",
+    lookup: async (phrase) => phrase.toLocaleLowerCase() === "flores" ? [{
+      providerId: "flores-guatemala",
+      canonicalName: "Flores",
+      aliases: [],
+      placeType: "city",
+      parentCountries: ["Guatemala"],
+      coordinates: [-89.897, 16.9294],
+      routability: "direct_destination",
+      matchQuality: "exact",
+      rankScore: 100,
+    }] : [],
+  };
+
+  const capture = await captureJourneyBriefWithProvider(prompt, provider);
+  const origin = capture.mentions.find((mention) => mention.role === "fixed_start" || mention.role === "origin");
+  const stays = routableHandoffMentions(capture.mentions).filter((mention) => mention !== origin && mention.role !== "fixed_end");
+  assert.equal(origin?.canonicalName, "Cancún");
+  assert.deepEqual(stays.map((mention) => mention.canonicalName), ["Cancún", "Tulum", "Antigua Guatemala", "Caye Caulker", "Belize City", "Flores"]);
+  assert.deepEqual(capture.journeyEnd, { mode: "same_as_start" });
+  assert.equal(capture.mentions.some((mention) => /return to/i.test(mention.sourceText)), false);
+  assert.equal(capture.structuredBrief.placeIssues?.some((issue) => /return to/i.test(issue.sourceText)), false);
+  assert.equal(capture.durationDays, 22);
+});
+
 test("provider capture deduplicates lookups per identity and preserves canonical and unknown intent when the provider fails", async () => {
   let calls = 0;
   const unavailableProvider: PlaceIntelligenceProvider = {

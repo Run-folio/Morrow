@@ -100,7 +100,7 @@ export function parseTripBrief(value: string, suppliedPlaces?: PlaceIntelligence
     && !["origin", "fixed_start", "fixed_end"].includes(mention.role)));
   const origin = originMention?.canonicalName;
   const stops = unique(
-    destinationMentions.filter((mention) => mention.canonicalPlaceId !== originMention?.canonicalPlaceId).map((mention) => mention.canonicalName),
+    destinationMentions.map((mention) => mention.canonicalName),
     normalise,
   );
   const regionMentions = active.filter((mention) => mention.placeType !== "country"

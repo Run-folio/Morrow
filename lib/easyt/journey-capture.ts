@@ -68,6 +68,27 @@ function sameRawPlaceSpan(left: string, right: string) {
   return leftKey === rightKey || leftKey.includes(rightKey) || rightKey.includes(leftKey);
 }
 
+function semanticJourneyRole(role: ExplicitPlaceMention["role"]) {
+  if (role === "origin" || role === "fixed_start") return "origin";
+  if (role === "fixed_end") return "end";
+  if (role === "excluded") return "excluded";
+  return "stay";
+}
+
+function duplicatesRelationalJourneyEnd(sourceText: string, intent: SemanticTripIntent) {
+  const endSource = intent.journeyEnd.sourceText;
+  return Boolean(endSource
+    && intent.journeyEnd.mode !== "unknown"
+    && /\b(?:back|return|ending|finish|home)\b/i.test(endSource)
+    && mentionSourceKey(sourceText) === mentionSourceKey(endSource));
+}
+
+function duplicatesOriginWithoutExplicitStay(sourceText: string, deterministicMentions: ResolvedPlaceMention[]) {
+  const matching = deterministicMentions.filter((mention) => sameRawPlaceSpan(sourceText, mention.sourceText));
+  return matching.some((mention) => mention.role === "origin" || mention.role === "fixed_start")
+    && !matching.some((mention) => semanticJourneyRole(mention.role) === "stay");
+}
+
 function mentionCoverage(
   expected: ExplicitPlaceMention[],
   resolution: PlaceIntelligenceResult,
@@ -145,14 +166,18 @@ function semanticPlaceMentions(
     travelIntent: "route-stop",
     ...(intent.journeyEnd.interpretedText ? { lookupText: intent.journeyEnd.interpretedText } : {}),
   });
-  for (const destination of intent.destinationCandidates) inputs.push({
+  for (const destination of intent.destinationCandidates) {
+    if (duplicatesRelationalJourneyEnd(destination.sourceText, intent)
+      || duplicatesOriginWithoutExplicitStay(destination.sourceText, deterministicMentions)) continue;
+    inputs.push({
     sourceText: geographySourceSpan(destination.sourceText, rawBrief),
     // Semantic certainty describes confidence in the interpretation, not
     // whether the traveller considers an explicitly listed stop optional.
     role: "preferred",
     travelIntent: destination.role,
     ...(destination.interpretedText ? { lookupText: destination.interpretedText } : {}),
-  });
+    });
+  }
   for (const point of intent.pointsOfInterest) inputs.push({
     sourceText: geographySourceSpan(point.sourceText, rawBrief),
     role: "anchor",
@@ -161,6 +186,7 @@ function semanticPlaceMentions(
   });
   for (const ambiguity of intent.ambiguities) {
     if (!['destination', 'poi'].includes(ambiguity.kind)) continue;
+    if (duplicatesRelationalJourneyEnd(ambiguity.sourceText, intent)) continue;
     const sourceText = geographySourceSpan(ambiguity.sourceText, rawBrief);
     if (!inputs.some((input) => input.sourceText.toLocaleLowerCase() === sourceText.toLocaleLowerCase())) {
       inputs.push({ sourceText, role: ambiguity.kind === "poi" ? "anchor" : "preferred" });
@@ -172,8 +198,9 @@ function semanticPlaceMentions(
   // reduce the traveller's route.
   for (const mention of deterministicMentions) {
     const normalized = mention.normalizedPhrase;
-    const existing = inputs.find((input) => sameRawPlaceSpan(input.sourceText, mention.sourceText)
-      || (input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText)));
+    const existing = inputs.find((input) => semanticJourneyRole(input.role) === semanticJourneyRole(mention.role)
+      && (sameRawPlaceSpan(input.sourceText, mention.sourceText)
+        || (input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText))));
     if (existing) {
       if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
       if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
@@ -188,7 +215,8 @@ function semanticPlaceMentions(
     });
   }
   return inputs
-    .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)) === index)
+    .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)
+      && semanticJourneyRole(candidate.role) === semanticJourneyRole(input.role)) === index)
     .sort((left, right) => rawBrief.toLocaleLowerCase().indexOf(left.sourceText.toLocaleLowerCase()) - rawBrief.toLocaleLowerCase().indexOf(right.sourceText.toLocaleLowerCase()));
 }
 

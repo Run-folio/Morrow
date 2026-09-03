@@ -32,6 +32,17 @@ test("allocated nights reconcile exactly with the trip duration", () => {
   });
 });
 
+test("an explicit opening stay sharing the origin identity receives nights like every other stop", () => {
+  const result = allocateTripNights({
+    totalNights: 21,
+    stops: ["cancun-stay", "tulum", "antigua", "caye-caulker", "belize-city", "flores"].map((id) => stop(id)),
+  });
+  assert.notEqual(result.state, "conflict");
+  assert.equal(result.totalAllocatedNights, 21);
+  assert.ok((result.allocations?.["cancun-stay"] ?? 0) > 0);
+  assert.deepEqual(Object.keys(result.allocations ?? {}), ["cancun-stay", "tulum", "antigua", "caye-caulker", "belize-city", "flores"]);
+});
+
 test("night-native persisted metadata keeps cascade date boundaries exact", () => {
   const nightAllocation = allocateTripNights({ totalNights: 6, stops: [stop("a"), stop("b")] });
   assert.notEqual(nightAllocation.state, "conflict");

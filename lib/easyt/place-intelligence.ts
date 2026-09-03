@@ -55,6 +55,16 @@ export type PlaceMentionRole =
   | "optional"
   | "excluded";
 
+/** Geographic identity is deduplicated within one journey role, not across
+ * endpoints and stays. The same place can deliberately be the start, an
+ * overnight stop and the end of one trip. */
+function placeMentionJourneyRole(role: PlaceMentionRole) {
+  if (role === "origin" || role === "fixed_start") return "origin";
+  if (role === "fixed_end") return "end";
+  if (role === "excluded") return "excluded";
+  return "stay";
+}
+
 export type GeographicBounds = {
   south: number;
   west: number;
@@ -1788,7 +1798,8 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   const deduped: typeof sorted = [];
   for (const mention of sorted) {
     const existing = mention.canonicalPlaceId
-      ? deduped.find((item) => item.canonicalPlaceId === mention.canonicalPlaceId)
+      ? deduped.find((item) => item.canonicalPlaceId === mention.canonicalPlaceId
+        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role))
       : undefined;
     if (!existing) {
       deduped.push(mention);
@@ -1799,9 +1810,20 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
     if (!overlaps) existing._roles.push(mention.role);
     if (existing.role === "preferred" && mention.role !== "preferred") existing.role = mention.role;
   }
+  const usedMentionIds = new Set<string>();
   return deduped.map((mention, order) => {
     const { _start, _end, _roles, ...publicMention } = mention;
+    if (usedMentionIds.has(publicMention.mentionId)) {
+      publicMention.mentionId = `${publicMention.mentionId}-${placeMentionJourneyRole(publicMention.role)}-${order}`;
+    }
+    usedMentionIds.add(publicMention.mentionId);
     if (new Set(_roles).has("excluded") && _roles.some((role) => role === "required" || role === "preferred" || role === "anchor")) {
+      publicMention.provenance = [...publicMention.provenance, { id: `role-conflict:${publicMention.mentionId}`, label: "Morrovia role guard", kind: "context", supports: "The same canonical place was both included and excluded." }];
+    }
+    const crossRoleConflict = publicMention.canonicalPlaceId && deduped.some((candidate) => candidate !== mention
+      && candidate.canonicalPlaceId === publicMention.canonicalPlaceId
+      && (candidate.role === "excluded") !== (publicMention.role === "excluded"));
+    if (crossRoleConflict && !publicMention.provenance.some((source) => source.id.startsWith("role-conflict:"))) {
       publicMention.provenance = [...publicMention.provenance, { id: `role-conflict:${publicMention.mentionId}`, label: "Morrovia role guard", kind: "context", supports: "The same canonical place was both included and excluded." }];
     }
     return { ...publicMention, order };
@@ -1856,16 +1878,15 @@ export function resolveExplicitPlaceMentions(
 ): PlaceIntelligenceResult {
   const synthetic = inputs.map((input) => input.sourceText.replace(/^\p{Ll}/u, (letter) => letter.toLocaleUpperCase())).join(", ");
   const deterministic = resolvePlaceMentions(synthetic, context);
-  const available = [...deterministic.mentions];
   const mentions = inputs.map((input, order) => {
     const normalized = normalizePlacePhrase(input.sourceText);
-    const index = available.findIndex((mention) => mention.normalizedPhrase === normalized
+    const matched = deterministic.mentions.find((mention) => mention.normalizedPhrase === normalized
       || normalizePlacePhrase(mention.canonicalName) === normalized
       || mention.aliases.some((alias) => normalizePlacePhrase(alias) === normalized));
-    const matched = index >= 0 ? available.splice(index, 1)[0] : undefined;
     if (!matched) return unresolvedExplicitMention(input, order);
     return {
       ...matched,
+      mentionId: matched.order === order ? matched.mentionId : `${matched.mentionId}-${placeMentionJourneyRole(input.role)}-${order}`,
       sourceText: input.sourceText,
       sourceTexts: [input.sourceText],
       normalizedPhrase: normalized,
@@ -2289,7 +2310,8 @@ function deduplicateProviderMentions(mentions: ResolvedPlaceMention[]) {
   const deduplicated: ResolvedPlaceMention[] = [];
   for (const mention of mentions) {
     const existingIndex = mention.canonicalPlaceId
-      ? deduplicated.findIndex((item) => item.canonicalPlaceId === mention.canonicalPlaceId)
+      ? deduplicated.findIndex((item) => item.canonicalPlaceId === mention.canonicalPlaceId
+        && placeMentionJourneyRole(item.role) === placeMentionJourneyRole(mention.role))
       : -1;
     if (existingIndex < 0) {
       deduplicated.push({ ...mention, sourceTexts: [...mention.sourceTexts], provenance: [...mention.provenance] });
@@ -2311,7 +2333,18 @@ function deduplicateProviderMentions(mentions: ResolvedPlaceMention[]) {
       provenance: unique([...existing.provenance, ...mention.provenance, ...(conflictSource ? [conflictSource] : [])], (source) => source.id),
     };
   }
-  return deduplicated.map((mention, order) => ({ ...mention, order }));
+  return deduplicated.map((mention, order) => {
+    const crossRoleConflict = mention.canonicalPlaceId && deduplicated.some((candidate) => candidate !== mention
+      && candidate.canonicalPlaceId === mention.canonicalPlaceId
+      && (candidate.role === "excluded") !== (mention.role === "excluded"));
+    return {
+      ...mention,
+      order,
+      ...(crossRoleConflict && !mention.provenance.some((source) => source.id.startsWith("role-conflict:")) ? {
+        provenance: [...mention.provenance, { id: `role-conflict:${mention.mentionId}`, label: "Morrovia role guard", kind: "context" as const, supports: "The same canonical place was both included and excluded." }],
+      } : {}),
+    };
+  });
 }
 
 type RankedProviderCandidate = PlaceResolutionCandidate & Pick<PlaceProviderCandidate, "matchQuality" | "rankScore" | "geographicSignificance">;

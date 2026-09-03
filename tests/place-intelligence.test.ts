@@ -34,6 +34,18 @@ test("Nikko suggestions and prompt capture converge on one canonical identity", 
   assert.equal(canonicalPlaceFactsMatch("nikko", { country: "Japan", coordinates: [-66.1568, -16.2902] }), false);
 });
 
+test("same canonical place keeps explicit origin, stay and end roles while ordinary stay aliases deduplicate", () => {
+  const roleAware = resolvePlaceMentions("Start in Cancún, stay overnight in Cancun, then return to Cancún");
+  assert.deepEqual(
+    roleAware.mentions.filter((mention) => mention.canonicalPlaceId === "cancun").map((mention) => mention.role),
+    ["fixed_start", "preferred", "fixed_end"],
+  );
+  assert.equal(new Set(roleAware.mentions.map((mention) => mention.mentionId)).size, roleAware.mentions.length);
+
+  const aliases = resolvePlaceMentions("Bangkok, Bangkok and Bangkok");
+  assert.equal(aliases.mentions.filter((mention) => mention.canonicalPlaceId === "bangkok").length, 1);
+});
+
 test("canonical autocomplete returns contextual route identities and supports keyboard selection", () => {
   const morocco = canonicalPlaceSuggestionsForQuery("chef", ["Morocco"]);
   assert.deepEqual(morocco.map(({ canonicalPlaceId, name, country }) => ({ canonicalPlaceId, name, country })), [

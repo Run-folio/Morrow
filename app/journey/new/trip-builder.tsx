@@ -991,8 +991,9 @@ function TripBuilderDocument() {
         const selectedMention = selection
           ? capturedStructuredBrief.placeMentions?.find((mention) => mention.mentionId === selection.mentionId)
           : undefined;
-        const prior = capturedStructuredBrief.destinations.find((destination) => destination.id === stop.id
-          || destination.name.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
+        const prior = capturedStructuredBrief.destinations.find((destination) => destination.id === stop.id)
+          ?? capturedStructuredBrief.destinations.find((destination) => destination.name.toLocaleLowerCase() === stop.name.toLocaleLowerCase()
+            && destination.role !== "arrival-gateway" && destination.role !== "departure-gateway");
         const priorParentWasRemoved = Boolean(prior?.placeMentionId && removedPlaceMentionIds.includes(prior.placeMentionId));
         return {
           id: stop.id,

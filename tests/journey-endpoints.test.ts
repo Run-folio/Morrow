@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { canBuildTrip, type CanBuildTripInput } from "../lib/easyt/can-build-trip.ts";
 import { createHomeTripDraft, homeTripDraftIsDurable, routableHandoffMentions } from "../lib/easyt/home-trip-handoff.ts";
-import { captureJourneyBrief } from "../lib/easyt/journey-capture.ts";
+import { captureJourneyBrief, captureJourneyBriefWithProvider } from "../lib/easyt/journey-capture.ts";
 import {
   isSameCanonicalPlace,
   normalizeJourneyEnd,
@@ -13,6 +13,7 @@ import {
 } from "../lib/easyt/journey-endpoints.ts";
 import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
 import { placeAutocompleteKeyAction } from "../lib/easyt/place-autocomplete.ts";
+import type { PlaceIntelligenceProvider } from "../lib/easyt/place-intelligence.ts";
 import { assessRouteOrder, type EstimatedLeg, type PlannerStop } from "../lib/easyt/planner.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
@@ -239,6 +240,92 @@ test("14 home without a known Start remains unknown and creates no false place",
   const capture = captureJourneyBrief("Thailand then home");
   assert.equal(capture.journeyEnd.mode, "unknown");
   assert.equal(capture.mentions.some((mention) => /home/i.test(mention.sourceText)), false);
+});
+
+test("same-place origin, opening stay and return persist while movement skips the same-place transition", () => {
+  const cancun = { name: "Cancún", country: "Mexico", canonicalPlaceId: "cancun", coordinates: [-86.8515, 21.1619] as [number, number] };
+  const trip = tripFromBuilder({
+    id: "endpoint-stay-round-trip",
+    origin: cancun.name,
+    originCountry: cancun.country,
+    originCanonicalPlaceId: cancun.canonicalPlaceId,
+    originCoordinates: cancun.coordinates,
+    journeyEnd: { mode: "same_as_start" },
+    stops: [
+      { id: "cancun-stay", ...cancun },
+      { id: "tulum", name: "Tulum", country: "Mexico", canonicalPlaceId: "tulum", coordinates: [-87.4654, 20.2114] },
+      { id: "antigua", name: "Antigua Guatemala", country: "Guatemala", canonicalPlaceId: "antigua-guatemala", coordinates: [-90.734, 14.557] },
+      { id: "caye-caulker", name: "Caye Caulker", country: "Belize", canonicalPlaceId: "caye-caulker", coordinates: [-88.0329, 17.7425] },
+      { id: "belize-city", name: "Belize City", country: "Belize", canonicalPlaceId: "belize-city", coordinates: [-88.1962, 17.5046] },
+      { id: "flores", name: "Flores", country: "Guatemala", canonicalPlaceId: "flores-guatemala", coordinates: [-89.897, 16.9294] },
+    ],
+    startDate: "2026-10-01", endDate: "2026-10-22", picks: {}, mustDo: "Round trip with an opening Cancún stay",
+    pace: "slow", hotels: "few", budget: "mid", nightAllocations: {
+      "cancun-stay": 4, tulum: 4, antigua: 4, "caye-caulker": 3, "belize-city": 3, flores: 3,
+    }, draft: [],
+  });
+  assert.equal(trip.brief.origin, "Cancún");
+  assert.deepEqual(trip.stops.map((stop) => stop.name), ["Cancún", "Tulum", "Antigua Guatemala", "Caye Caulker", "Belize City", "Flores"]);
+  assert.equal(trip.stops.reduce((total, stop) => total + (stop.nights ?? 0), 0), 21);
+  assert.deepEqual(trip.brief.journeyEnd, { mode: "same_as_start" });
+  assert.deepEqual(trip.legs.map((leg) => [leg.fromEndpoint?.name, leg.toEndpoint?.name]), [
+    ["Cancún", "Tulum"],
+    ["Tulum", "Antigua Guatemala"],
+    ["Antigua Guatemala", "Caye Caulker"],
+    ["Caye Caulker", "Belize City"],
+    ["Belize City", "Flores"],
+    ["Flores", "Cancún"],
+  ]);
+  assert.equal(trip.legs.some((leg) => leg.fromEndpoint?.name === "Cancún" && leg.toEndpoint?.name === "Cancún"), false);
+
+  const reloaded = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-endpoint-stay", trip))) as EasyTTrip;
+  assert.equal(isEasyTTrip(reloaded), true);
+  assert.equal(reloaded.brief.origin, "Cancún");
+  assert.deepEqual(reloaded.stops.map((stop) => stop.name), ["Cancún", "Tulum", "Antigua Guatemala", "Caye Caulker", "Belize City", "Flores"]);
+  assert.equal(reloaded.stops.reduce((total, stop) => total + (stop.nights ?? 0), 0), 21);
+  assert.deepEqual(reloaded.brief.journeyEnd, { mode: "same_as_start" });
+  assert.deepEqual(reloaded.legs.map((leg) => [leg.fromEndpoint?.name, leg.toEndpoint?.name]), [
+    ["Cancún", "Tulum"],
+    ["Tulum", "Antigua Guatemala"],
+    ["Antigua Guatemala", "Caye Caulker"],
+    ["Caye Caulker", "Belize City"],
+    ["Belize City", "Flores"],
+    ["Flores", "Cancún"],
+  ]);
+});
+
+test("an explicit initial London stay survives without a London-to-London leg", () => {
+  const capture = captureJourneyBrief("Start in London, stay 2 nights in London, then Paris and Amsterdam");
+  assert.deepEqual(capture.mentions.filter((mention) => mention.canonicalPlaceId === "london").map((mention) => mention.role), ["fixed_start", "preferred"]);
+  const trip = buildTrip({ mode: "unknown" }, {
+    origin: "London", originCountry: "United Kingdom", originCanonicalPlaceId: "london", originCoordinates: [-0.1276, 51.5072],
+    stops: [
+      { id: "london-stay", name: "London", country: "United Kingdom", canonicalPlaceId: "london", coordinates: [-0.1276, 51.5072] },
+      { id: "paris", name: "Paris", country: "France", canonicalPlaceId: "paris", coordinates: [2.3522, 48.8566] },
+      { id: "amsterdam", name: "Amsterdam", country: "Netherlands", canonicalPlaceId: "amsterdam", coordinates: [4.9041, 52.3676] },
+    ],
+    nightAllocations: { "london-stay": 2, paris: 3, amsterdam: 4 },
+  });
+  assert.equal(trip.stops[0]?.nights, 2);
+  assert.deepEqual(trip.legs.map((leg) => [leg.fromEndpoint?.name, leg.toEndpoint?.name]), [["London", "Paris"], ["Paris", "Amsterdam"]]);
+});
+
+test("round trips without an explicit origin stay do not invent one and different ends remain distinct", async () => {
+  const provider: PlaceIntelligenceProvider = {
+    id: "round-trip-endpoint-fixture", label: "Round-trip endpoint fixture",
+    lookup: async (phrase) => phrase.toLocaleLowerCase() === "flores" ? [{
+      providerId: "flores-guatemala", canonicalName: "Flores", placeType: "city", parentCountries: ["Guatemala"],
+      coordinates: [-89.897, 16.9294], routability: "direct_destination", matchQuality: "exact", rankScore: 100,
+    }] : [],
+  };
+  const roundTrip = await captureJourneyBriefWithProvider("Start in Cancún, visit Tulum and Flores, then return to Cancún", provider);
+  assert.deepEqual(routableHandoffMentions(roundTrip.mentions).filter((mention) => !["origin", "fixed_start"].includes(mention.role)).map((mention) => mention.canonicalName), ["Tulum", "Flores"]);
+  assert.equal(roundTrip.mentions.filter((mention) => mention.canonicalPlaceId === "cancun" && !["origin", "fixed_start", "fixed_end"].includes(mention.role)).length, 0);
+  assert.deepEqual(roundTrip.journeyEnd, { mode: "same_as_start" });
+
+  const openJaw = captureJourneyBrief("Start in Cancún, visit Tulum, finish in Mexico City");
+  assert.equal(openJaw.journeyEnd.mode === "explicit" && openJaw.journeyEnd.place.canonicalPlaceId, "mexico-city");
+  assert.deepEqual(routableHandoffMentions(openJaw.mentions).filter((mention) => !["origin", "fixed_start"].includes(mention.role)).map((mention) => mention.canonicalName), ["Tulum"]);
 });
 
 test("15 an explicit Homepage control overrides prompt inference", () => {

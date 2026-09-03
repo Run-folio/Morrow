@@ -281,11 +281,13 @@ function destinationRoleForMention(
   prompt: string,
   startText?: string,
   endText?: string,
+  hasExplicitStartMention = false,
+  hasExplicitEndMention = false,
 ): Pick<TripBriefDestination, "role" | "priority"> {
-  if (mention.role === "fixed_start" || mention.role === "origin" || mentionMatches(mention, startText)) {
+  if (mention.role === "fixed_start" || mention.role === "origin" || (!hasExplicitStartMention && mentionMatches(mention, startText))) {
     return { role: "arrival-gateway", priority: "required" };
   }
-  if (mention.role === "fixed_end" || mentionMatches(mention, endText)) {
+  if (mention.role === "fixed_end" || (!hasExplicitEndMention && mentionMatches(mention, endText))) {
     return { role: "departure-gateway", priority: "required" };
   }
   if (mention.role === "excluded") return { role: "excluded", priority: "normal" };
@@ -302,6 +304,8 @@ function destinationFromMention(
   prompt: string,
   startText?: string,
   endText?: string,
+  hasExplicitStartMention = false,
+  hasExplicitEndMention = false,
 ): TripBriefDestination | undefined {
   // Exclusions remain first-class place mentions and hard constraints, but
   // are not positive destinations for routing or builder hydration.
@@ -316,13 +320,18 @@ function destinationFromMention(
     sourceLabel: mention.sourceText,
     parentCountries: [...mention.parentCountries],
     parentCanonicalPlaceId: mention.parentRegionId,
-    ...destinationRoleForMention(mention, prompt, startText, endText),
+    ...destinationRoleForMention(mention, prompt, startText, endText, hasExplicitStartMention, hasExplicitEndMention),
     provenance: placeProvenance(mention),
   };
 }
 
 function destinationIdentity(destination: Pick<TripBriefDestination, "canonicalPlaceId" | "name">) {
-  return destination.canonicalPlaceId ? `place:${destination.canonicalPlaceId}` : `name:${normalize(destination.name)}`;
+  const role = "role" in destination
+    ? destination.role === "arrival-gateway" ? "origin"
+      : destination.role === "departure-gateway" ? "end"
+        : destination.role === "excluded" ? "excluded" : "stay"
+    : "stay";
+  return `${role}:${destination.canonicalPlaceId ? `place:${destination.canonicalPlaceId}` : `name:${normalize(destination.name)}`}`;
 }
 
 export function extractStructuredTripBrief(
@@ -339,6 +348,8 @@ export function extractStructuredTripBrief(
   const parsed = parseTripBrief(rawPrompt, placeIntelligence);
   const startText = explicitGateway(rawPrompt, "start") ?? parsed.origin;
   const endText = explicitGateway(rawPrompt, "end");
+  const hasExplicitStartMention = placeMentions.some((mention) => mention.role === "origin" || mention.role === "fixed_start");
+  const hasExplicitEndMention = placeMentions.some((mention) => mention.role === "fixed_end");
   const duration = durationFromPrompt(rawPrompt, parsed.durationDays);
   const countries = unique([
     ...placeMentions
@@ -347,7 +358,7 @@ export function extractStructuredTripBrief(
     ...parsed.countries.map((value) => ({ value, provenance: promptExplicit(sourceExcerpt(rawPrompt, value)) })),
   ], (country) => normalize(country.value));
   const resolvedDestinations = placeMentions
-    .map((mention) => destinationFromMention(mention, rawPrompt, startText, endText))
+    .map((mention) => destinationFromMention(mention, rawPrompt, startText, endText, hasExplicitStartMention, hasExplicitEndMention))
     .filter((destination): destination is TripBriefDestination => Boolean(destination));
   const fallbackNames = unique(
     [...(startText ? [startText] : []), ...parsed.stops, ...(endText ? [endText] : [])]

@@ -259,6 +259,36 @@ test("explicit route structure outranks a semantic model that misclassifies the 
   assert.equal(capture.durationDays, 8);
 });
 
+test("semantic projection preserves an explicit same-place stay but drops a duplicated relational return candidate", async () => {
+  const rawPrompt = "Start in Cancún, stay overnight in Cancún, Tulum, then return to Cancún for 22 days";
+  const intent: SemanticTripIntent = {
+    schemaVersion: SEMANTIC_TRIP_INTENT_SCHEMA_VERSION,
+    rawPromptVersion: SEMANTIC_TRIP_INTENT_RAW_PROMPT_VERSION,
+    origin: { sourceText: "Cancún", certainty: "explicit" },
+    journeyEnd: { sourceText: "return to Cancún", interpretedText: "Cancún", mode: "same_as_start", certainty: "explicit" },
+    duration: { sourceText: "22 days", value: 22, unit: "days" },
+    explicitDateTexts: [],
+    destinationCandidates: ["Cancún", "Tulum", "return to Cancún"].map((sourceText) => ({
+      sourceText,
+      interpretedText: null,
+      role: "route-stop" as const,
+      certainty: "explicit" as const,
+    })),
+    pointsOfInterest: [],
+    transport: { departure: { sourceText: null, mode: null }, interStop: { sourceText: null, modes: [] }, avoid: [] },
+    pace: { sourceText: null, value: null },
+    interests: [], constraints: [], ambiguities: [], unresolvedMeaningfulText: [],
+  };
+
+  const capture = await captureJourneyBriefFromSemanticIntent(rawPrompt, intent);
+  assert.deepEqual(
+    capture.mentions.filter((mention) => mention.canonicalPlaceId === "cancun").map((mention) => mention.role),
+    ["origin", "preferred", "fixed_end"],
+  );
+  assert.equal(capture.mentions.some((mention) => /return to/i.test(mention.sourceText)), false);
+  assert.deepEqual(capture.journeyEnd, { mode: "same_as_start" });
+});
+
 test("malformed output, schema failure, timeout, and provider failure are bounded failure states", async () => {
   const rawPrompt = semanticFixtures[0]?.rawPrompt ?? "";
   assert.equal((await evaluateSemanticIntentShadow(rawPrompt, { mode: "shadow", provider: provider("not-an-object") })).status, "invalid-response");

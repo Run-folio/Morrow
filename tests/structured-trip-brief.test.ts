@@ -70,6 +70,15 @@ test("explicit ordered routes preserve their first locality as the canonical ori
   );
 });
 
+test("structured destinations deduplicate within journey roles without erasing an origin-identical stay", () => {
+  const brief = extractStructuredTripBrief("Start in Cancún, stay overnight in Cancún, Tulum, then return to Cancún for 22 days");
+  assert.deepEqual(
+    brief.destinations.filter((destination) => destination.canonicalPlaceId === "cancun").map((destination) => destination.role),
+    ["arrival-gateway", "preferred", "departure-gateway"],
+  );
+  assert.equal(brief.destinations.filter((destination) => destination.name === "Tulum").length, 1);
+});
+
 test("explicit origin language outranks ordered-route syntax without changing unordered or broad intent", () => {
   const override = extractStructuredTripBrief("Starting in London, travel Paris → Amsterdam → Brussels");
   assert.equal(override.destinations.find((place) => place.role === "arrival-gateway")?.canonicalPlaceId, "london");
