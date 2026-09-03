@@ -256,6 +256,68 @@ test("structured hard constraints resolve to stable route stop IDs", () => {
   assert.deepEqual(constraints.excludedTransportModes, ["road"]);
 });
 
+test("external endpoints never borrow an active same-name overnight stop ID", () => {
+  const prompt = "Start in Cancún, stay overnight in Cancún, Tulum, Antigua Guatemala, Caye Caulker, Belize City and Flores, then return to Cancún for 22 days";
+  const names = ["Cancún", "Tulum", "Antigua Guatemala", "Caye Caulker", "Belize City", "Flores"];
+  const routeStops = names.map((name, index) => ({ id: `stop-${index}`, name, role: "preferred" as const, priority: "normal" as const }));
+  const brief = mergeStructuredTripBrief(extractStructuredTripBrief(prompt), {
+    destinations: [
+      { name: "Cancún", role: "arrival-gateway", priority: "required" },
+      ...routeStops,
+      { name: "Cancún", role: "departure-gateway", priority: "required" },
+    ],
+    mustVisit: names,
+  });
+
+  const constraints = routeConstraintsFromStructuredTripBrief(brief, routeStops.map((stop) => stop.id));
+  assert.equal(constraints.fixedStartStopId, undefined);
+  assert.equal(constraints.fixedEndStopId, undefined);
+  assert.deepEqual(constraints.requiredStopIds, routeStops.map((stop) => stop.id));
+});
+
+test("endpoint geography stays separate from an opening or earlier same-place stay", () => {
+  const openingStay = mergeStructuredTripBrief(
+    extractStructuredTripBrief("Start in London, stay in London, then Paris and Amsterdam, finish in Brussels"),
+    { destinations: [
+      { name: "London", role: "arrival-gateway", priority: "required" },
+      { id: "stay-london", name: "London", role: "preferred", priority: "normal" },
+      { id: "stay-paris", name: "Paris", role: "preferred", priority: "normal" },
+      { id: "stay-amsterdam", name: "Amsterdam", role: "preferred", priority: "normal" },
+      { name: "Brussels", role: "departure-gateway", priority: "required" },
+    ] },
+  );
+  const openingConstraints = routeConstraintsFromStructuredTripBrief(openingStay, ["stay-london", "stay-paris", "stay-amsterdam"]);
+  assert.equal(openingConstraints.fixedStartStopId, undefined);
+  assert.equal(openingConstraints.fixedEndStopId, undefined);
+
+  const earlierStay = mergeStructuredTripBrief(
+    extractStructuredTripBrief("Start in London, stay in Paris, Amsterdam and Brussels, then return to Paris"),
+    { destinations: [
+      { name: "London", role: "arrival-gateway", priority: "required" },
+      { id: "stay-paris", name: "Paris", role: "preferred", priority: "normal" },
+      { id: "stay-amsterdam", name: "Amsterdam", role: "preferred", priority: "normal" },
+      { id: "stay-brussels", name: "Brussels", role: "preferred", priority: "normal" },
+      { name: "Paris", role: "departure-gateway", priority: "required" },
+    ] },
+  );
+  const earlierConstraints = routeConstraintsFromStructuredTripBrief(earlierStay, ["stay-paris", "stay-amsterdam", "stay-brussels"]);
+  assert.equal(earlierConstraints.fixedStartStopId, undefined);
+  assert.equal(earlierConstraints.fixedEndStopId, undefined);
+});
+
+test("active gateway destinations still produce genuine fixed first and last stop constraints", () => {
+  const brief = mergeStructuredTripBrief(extractStructuredTripBrief("Start in Bangkok and finish in Ho Chi Minh City"), {
+    destinations: [
+      { id: "fixed-bangkok", name: "Bangkok", role: "arrival-gateway", priority: "required" },
+      { id: "middle", name: "Siem Reap", role: "preferred", priority: "normal" },
+      { id: "fixed-hcmc", name: "Ho Chi Minh City", role: "departure-gateway", priority: "required" },
+    ],
+  });
+  const constraints = routeConstraintsFromStructuredTripBrief(brief, ["fixed-bangkok", "middle", "fixed-hcmc"]);
+  assert.equal(constraints.fixedStartStopId, "fixed-bangkok");
+  assert.equal(constraints.fixedEndStopId, "fixed-hcmc");
+});
+
 test("missing information remains unknown", () => {
   const brief = extractStructuredTripBrief("I want to visit Cambodia and Vietnam.");
   assert.equal(brief.duration, undefined);

@@ -714,10 +714,15 @@ export function routeScoringPreferencesFromStructuredBrief(brief: StructuredTrip
 /** Hard route constraints are derived separately from soft transport preferences. */
 export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBrief, routeStopIds?: readonly string[]) {
   const activeRouteStopIds = routeStopIds ? new Set(routeStopIds) : null;
-  const destinationId = (name: string) => {
-    const id = brief.destinations.find((destination) => destination.id && normalize(destination.name) === normalize(name))?.id;
+  const destinationId = (name: string, matchesRole: (destination: TripBriefDestination) => boolean) => {
+    const id = brief.destinations.find((destination) => destination.id
+      && normalize(destination.name) === normalize(name)
+      && matchesRole(destination))?.id;
     return id && (!activeRouteStopIds || activeRouteStopIds.has(id)) ? id : undefined;
   };
+  const activeStayId = (name: string) => destinationId(name, (destination) => destination.role !== "arrival-gateway"
+    && destination.role !== "departure-gateway"
+    && destination.role !== "excluded");
   const start = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "start-at"; value: string } => constraint.type === "start-at");
   const end = brief.hardConstraints.find((constraint): constraint is TripBriefHardConstraint & { type: "end-at"; value: string } => constraint.type === "end-at");
   const maximum = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-stops" }> => constraint.type === "maximum-stops");
@@ -727,15 +732,15 @@ export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBri
     .map((constraint) => ({ label: constraint.value, date: constraint.date }));
   const requiredStopIds = brief.hardConstraints
     .filter((constraint): constraint is TripBriefHardConstraint & { type: "must-visit"; value: string } => constraint.type === "must-visit")
-    .flatMap((constraint) => destinationId(constraint.value) ?? []);
+    .flatMap((constraint) => activeStayId(constraint.value) ?? []);
   const excludedStopIds = brief.hardConstraints
     .filter((constraint): constraint is TripBriefHardConstraint & { type: "excluded-destination"; value: string } => constraint.type === "excluded-destination")
-    .flatMap((constraint) => destinationId(constraint.value) ?? []);
+    .flatMap((constraint) => activeStayId(constraint.value) ?? []);
   const preferences = routePreferencesFromStructuredBrief(brief);
   const noFlying = brief.hardConstraints.some((constraint) => constraint.type === "no-flying");
   return {
-    fixedStartStopId: start ? destinationId(start.value) : undefined,
-    fixedEndStopId: end ? destinationId(end.value) : undefined,
+    fixedStartStopId: start ? destinationId(start.value, (destination) => destination.role === "arrival-gateway") : undefined,
+    fixedEndStopId: end ? destinationId(end.value, (destination) => destination.role === "departure-gateway") : undefined,
     requiredStopIds: unique(requiredStopIds, (id) => id),
     excludedStopIds: unique(excludedStopIds, (id) => id),
     maximumStops: maximum?.value,

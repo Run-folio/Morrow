@@ -32,6 +32,18 @@ test("fixed endpoints only permute flexible middle stops", () => {
   ]);
 });
 
+test("a genuinely identical fixed first and last active stop remains a hard conflict", () => {
+  const stops = [stop("boundary", 0), stop("middle", 1)];
+  const result = generateRouteCandidates({
+    origin,
+    stops,
+    constraints: { fixedStartStopId: "boundary", fixedEndStopId: "boundary" },
+    estimateLeg: estimatedLeg,
+  });
+  assert.equal(result.candidates.length, 0);
+  assert.deepEqual(result.constraintIssues.find((issue) => issue.code === "fixed-endpoint-conflict")?.stopIds, ["boundary"]);
+});
+
 test("the original route remains a candidate when hard constraints allow it", () => {
   const stops = [stop("c", 2), stop("a", 0), stop("b", 1)];
   const result = generateRouteCandidates({ origin, stops, estimateLeg: estimatedLeg });

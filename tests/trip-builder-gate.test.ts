@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { canBuildTrip, type CanBuildTripInput } from "../lib/easyt/can-build-trip.ts";
 import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
+import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
+import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 function allocatedNightResult(allocations: Record<string, number>, state: "allocated" | "compromised" = "allocated"): NightAllocationResult {
@@ -57,6 +59,46 @@ test("valid builder document passes the authoritative invariant", () => {
   assert.equal(result.canBuildTrip, true);
   assert.deepEqual(result.conflicts, []);
   assert.equal(result.qualityClassification, "reasonable");
+});
+
+test("the exact Cancún endpoint and opening-stay trip can advance to dates and nights", () => {
+  const prompt = "Start in Cancún, stay overnight in Cancún, Tulum, Antigua Guatemala, Caye Caulker, Belize City and Flores, then return to Cancún for 22 days";
+  const stops = [
+    { id: "cancun-stay", name: "Cancún", country: "Mexico", coordinates: [-86.8515, 21.1619] as [number, number] },
+    { id: "tulum", name: "Tulum", country: "Mexico", coordinates: [-87.4654, 20.2114] as [number, number] },
+    { id: "antigua", name: "Antigua Guatemala", country: "Guatemala", coordinates: [-90.734, 14.557] as [number, number] },
+    { id: "caye-caulker", name: "Caye Caulker", country: "Belize", coordinates: [-88.0329, 17.7425] as [number, number] },
+    { id: "belize-city", name: "Belize City", country: "Belize", coordinates: [-88.1962, 17.5046] as [number, number] },
+    { id: "flores", name: "Flores", country: "Guatemala", coordinates: [-89.897, 16.9294] as [number, number] },
+  ];
+  const brief = mergeStructuredTripBrief(extractStructuredTripBrief(prompt), {
+    destinations: [
+      { name: "Cancún", role: "arrival-gateway", priority: "required" },
+      ...stops.map((stop) => ({ id: stop.id, name: stop.name, role: "preferred" as const, priority: "normal" as const })),
+      { name: "Cancún", role: "departure-gateway", priority: "required" },
+    ],
+    mustVisit: stops.map((stop) => stop.name),
+  });
+  const constraints = routeConstraintsFromStructuredTripBrief(brief, stops.map((stop) => stop.id));
+  const route = generateRouteCandidates({
+    origin: { name: "Cancún", coordinates: [-86.8515, 21.1619] },
+    stops,
+    constraints,
+    estimateLeg: () => ({ mode: "road", distanceKm: 100, durationMinutes: 120, label: "Test transfer", note: "Fixture.", confidence: "medium" }),
+  });
+  const input = validInput();
+  input.origin = "Cancún";
+  input.originCoordinates = [-86.8515, 21.1619];
+  input.stops = stops;
+  input.placeIssues = [];
+  input.routeConstraintIssues = route.constraintIssues;
+  input.requiredStopIds = constraints.requiredStopIds;
+  input.expectedDurationDays = 22;
+
+  assert.equal(constraints.fixedStartStopId, undefined);
+  assert.equal(constraints.fixedEndStopId, undefined);
+  assert.equal(route.constraintIssues.some((issue) => issue.code === "fixed-endpoint-conflict"), false);
+  assert.equal(canBuildTrip(input).canAdvanceToTime, true);
 });
 
 test("a viable itinerary is not rejected across the exploratory duration range", () => {
