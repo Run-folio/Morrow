@@ -841,6 +841,95 @@ test("a guest recovery is explicitly claimed by A and is not readable when the b
   assert.equal(loadActiveTripFromStorage(storage, "owner-a")?.id, guestTrip.id);
 });
 
+test("the authenticated workspace promotes a complete planned guest recovery into one Account B trip", async () => {
+  const storage = new MemoryBrowserStorage();
+  const ownerId = "owner-b";
+  const guestTrip = browserTrip({
+    id: "trip-ea1af747-9a3e-4c7d-a0d2-1d1e19f30980",
+    ownerId: null,
+    status: "planned",
+    title: "Paris, Brussels and Amsterdam",
+    startDate: "2026-10-04",
+    endDate: "2026-10-11",
+    brief: {
+      ...browserTrip().brief,
+      origin: "Paris",
+      mustDo: "Amsterdam and Brussels",
+      selectedPlaces: { brussels: [], amsterdam: [] },
+    },
+    stops: [
+      { id: "brussels", order: 0, name: "Brussels", country: "Belgium", latitude: 50.8503, longitude: 4.3517, arrivalDate: "2026-10-04", departureDate: "2026-10-08", nights: 4 },
+      { id: "amsterdam", order: 1, name: "Amsterdam", country: "Netherlands", latitude: 52.3676, longitude: 4.9041, arrivalDate: "2026-10-08", departureDate: "2026-10-11", nights: 3 },
+    ],
+    legs: [
+      { id: "paris-brussels", fromStopId: "trip-ea1af747-9a3e-4c7d-a0d2-1d1e19f30980-origin", toStopId: "brussels", fromEndpoint: { kind: "origin", id: "trip-ea1af747-9a3e-4c7d-a0d2-1d1e19f30980-origin", name: "Paris", country: "France", coordinates: [2.3522, 48.8566] }, toEndpoint: { kind: "stop", id: "brussels", name: "Brussels", country: "Belgium", coordinates: [4.3517, 50.8503] }, classification: "arrival", mode: "train", distanceKm: 264, durationMinutes: 120, provider: "Morrovia planner", routeMetadata: {}, warnings: [] },
+      { id: "brussels-amsterdam", fromStopId: "brussels", toStopId: "amsterdam", fromEndpoint: { kind: "stop", id: "brussels", name: "Brussels", country: "Belgium", coordinates: [4.3517, 50.8503] }, toEndpoint: { kind: "stop", id: "amsterdam", name: "Amsterdam", country: "Netherlands", coordinates: [4.9041, 52.3676] }, classification: "intercity", mode: "train", distanceKm: 173, durationMinutes: 120, provider: "Morrovia planner", routeMetadata: {}, warnings: [] },
+    ],
+  });
+  const guestRecovery = saveTripRecoveryToStorage(storage, guestTrip, {
+    ownerId: null,
+    writeId: "guest-save-before-auth",
+  });
+  assert.equal(guestRecovery.stored, true);
+
+  // This is the post-callback boundary: only the explicit saved intent and an
+  // established Account B identity move the device record into B's namespace.
+  const claimed = claimGuestTripRecoveryForOwnerInStorage(storage, guestTrip.id, ownerId);
+  assert.equal(claimed?.stored, true);
+  assert.equal(claimed?.guestResolved, true);
+  assert.equal(loadTripRecoveryFromStorage(storage, guestTrip.id, null), null);
+  const recovery = loadTripRecoveryFromStorage(storage, guestTrip.id, ownerId);
+  assert.ok(recovery);
+  assert.deepEqual(recovery.trip, guestTrip);
+
+  const accountTrips = new Map<string, EasyTTrip>();
+  const requests: Array<{ endpoint: string; method: string; ownerId: string | null; status: EasyTTrip["status"]; id: string }> = [];
+  const request: typeof fetch = async (input, init) => {
+    const endpoint = String(input);
+    const body = JSON.parse(String(init?.body)) as EasyTTrip;
+    requests.push({ endpoint, method: String(init?.method), ownerId: body.ownerId, status: body.status, id: body.id });
+    const existing = accountTrips.get(body.id);
+    if (endpoint.endsWith("/promote")) {
+      if (existing) {
+        return new Response(JSON.stringify({ trip: existing, outcome: "conflict", conflictReason: "cloud-different", error: "already promoted" }), { status: 409, headers: { "content-type": "application/json" } });
+      }
+      const promoted = canonicalTripForOwner(ownerId, body);
+      accountTrips.set(promoted.id, promoted);
+      return new Response(JSON.stringify({ trip: promoted, outcome: "promoted" }), { status: 201, headers: { "content-type": "application/json" } });
+    }
+    assert.ok(existing, "the planned PUT must follow an exact-ID promotion");
+    const planned = { ...body, updatedAt: "2026-08-23T12:00:00.000Z" };
+    accountTrips.set(planned.id, planned);
+    return new Response(JSON.stringify({ trip: planned }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  const canonical = await saveTripRecoveryToEasyT(recovery.trip, recovery, request);
+  const acknowledgement = cacheCanonicalTripWithRecoveryToStorage(storage, canonical, recovery);
+  assert.deepEqual(requests.map(({ endpoint, method, ownerId: requestOwner, status, id }) => ({ endpoint, method, ownerId: requestOwner, status, id })), [
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(guestTrip.id)}/promote`, method: "POST", ownerId: null, status: "draft", id: guestTrip.id },
+    { endpoint: `/api/easyt/trips/${encodeURIComponent(guestTrip.id)}`, method: "PUT", ownerId, status: "planned", id: guestTrip.id },
+  ]);
+  assert.equal(accountTrips.size, 1);
+  assert.equal(canonical.id, guestTrip.id);
+  assert.equal(canonical.ownerId, ownerId);
+  assert.equal(canonical.status, "planned");
+  assert.equal(canonical.brief.origin, "Paris");
+  assert.equal(canonical.stops.reduce((total, stop) => total + (stop.nights ?? 0), 0), 7);
+  assert.deepEqual(canonical.stops.map((stop) => stop.name), ["Brussels", "Amsterdam"]);
+  assert.deepEqual(canonical.legs.map((leg) => [leg.mode, leg.durationMinutes]), [["train", 120], ["train", 120]]);
+  assert.deepEqual(accountTrips.get(guestTrip.id), canonical, "Account B listing and direct read share the canonical document");
+  assert.deepEqual(acknowledgement, { stored: true, recoveryResolved: true });
+  assert.equal(loadTripRecoveryFromStorage(storage, guestTrip.id, ownerId), null);
+  assert.deepEqual(loadCachedTripFromStorage(storage, guestTrip.id, ownerId), canonical, "refresh/reopen resolves the owner-scoped cache");
+  assert.equal(loadLocalTripFromStorage(storage, guestTrip.id, null), null, "sign-out cannot reopen the account object as a guest");
+  assert.equal(loadLocalTripFromStorage(storage, guestTrip.id, "owner-a"), null, "another account cannot read the local Account B object");
+
+  const retry = await saveTripRecoveryToEasyT(guestTrip, recovery, request);
+  assert.deepEqual(retry, canonical);
+  assert.equal(accountTrips.size, 1, "retry acknowledges the existing exact-ID document without a duplicate");
+  assert.equal(requests.at(-1)?.endpoint, `/api/easyt/trips/${encodeURIComponent(guestTrip.id)}/promote`);
+});
+
 test("claiming a guest recovery never deletes a newer guest write interleaved by another tab", () => {
   const storage = new MemoryBrowserStorage();
   const guestTrip = browserTrip({ id: "trip-guest-interleave", ownerId: null, title: "Guest edit being claimed" });

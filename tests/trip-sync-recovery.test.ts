@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -122,4 +123,16 @@ test("sign-in recovery returns to the exact planner document and requests one re
   const target = tripSyncRecoveryPath(id);
   assert.equal(target, "/journey/plan?trip=trip-recovery%20with%20spaces&save=1&recover=1");
   assert.equal(tripSyncSignInPath(id), `/journey/login?next=${encodeURIComponent(target)}`);
+});
+
+test("the trip workspace waits for authenticated saved intent, then uses the recovery-aware persistence path", () => {
+  const resolver = readFileSync(new URL("../components/easyt/trip-shell-resolver.tsx", import.meta.url), "utf8");
+  assert.match(
+    resolver,
+    /if \(ownerId && searchParams\.get\("saved"\) === "1"\) claimGuestTripRecoveryForOwner\(tripId, ownerId\);[\s\S]*loadTripRecovery\(tripId, ownerId \?\? null\)/,
+    "guest recovery must remain untouched until both the saved intent and authenticated owner are present",
+  );
+  assert.match(resolver, /saveTripRecoveryToEasyT\(localTrip, recovery\)/);
+  assert.doesNotMatch(resolver, /promoteTripToEasyT\(localTrip\)/);
+  assert.doesNotMatch(resolver, /setTimeout\(/, "auth readiness must be state-driven, not delay-driven");
 });

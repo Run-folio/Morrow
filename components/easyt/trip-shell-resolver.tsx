@@ -10,7 +10,7 @@ import {
   EasyTTripSaveConflictError,
   loadTripRecovery,
   markTripRecoveryState,
-  promoteTripToEasyT,
+  saveTripRecoveryToEasyT,
   saveTripToEasyT,
   tripForRecoveryScope,
 } from "@/lib/easyt/storage";
@@ -78,7 +78,7 @@ export default function TripShellResolver({
     try {
       const result = localTrip.ownerId
         ? { trip: await saveTripToEasyT(scopedLocalTrip), outcome: "already-canonical" as const }
-        : await promoteTripToEasyT(localTrip);
+        : { trip: await saveTripRecoveryToEasyT(localTrip, recovery), outcome: "promoted" as const };
       const cached = cacheCanonicalTrip(result.trip, recovery);
       const remainingRecovery = loadTripRecovery(tripId, ownerId);
       if (!responseIsCurrent()) return;
