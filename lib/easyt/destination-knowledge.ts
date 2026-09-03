@@ -623,11 +623,36 @@ export function createDestinationKnowledgeStore(options: {
     .map((network) => [normalise(network.id), network]));
   const railEndpointById = new Map((options.intercityRailEndpoints ?? CURATED_INTERCITY_RAIL_ENDPOINTS)
     .map((endpoint) => [normalise(endpoint.canonicalId), endpoint]));
+  const railEndpointByNameCountry = new Map<string, IntercityRailEndpointKnowledge>();
+  const railEndpointNameCandidates = new Map<string, IntercityRailEndpointKnowledge[]>();
+  for (const endpoint of railEndpointById.values()) {
+    railEndpointByNameCountry.set(identityCountryKey(endpoint.name, endpoint.country), endpoint);
+    const nameKey = normalise(endpoint.name);
+    railEndpointNameCandidates.set(nameKey, [...(railEndpointNameCandidates.get(nameKey) ?? []), endpoint]);
+  }
+
+  const resolveRailEndpoint = (input: DestinationIdentityInput) => {
+    for (const identity of [input.canonicalPlaceId, input.id, input.providerId]) {
+      const endpoint = identity ? railEndpointById.get(normalise(identity)) : undefined;
+      if (endpoint) return endpoint;
+    }
+    if (input.country) {
+      const endpoint = railEndpointByNameCountry.get(identityCountryKey(input.name, input.country));
+      if (endpoint) return endpoint;
+    }
+    const candidates = railEndpointNameCandidates.get(normalise(input.name));
+    return candidates?.length === 1 ? candidates[0] : undefined;
+  };
 
   const rawIdentityForTransfer = (input: DestinationIdentityInput) => normalise(
     input.canonicalPlaceId ?? input.providerId ?? input.id ?? input.name,
   );
-  const identityForTransfer = (input: DestinationIdentityInput) => resolveId(input) ?? rawIdentityForTransfer(input);
+  const identityForTransfer = (input: DestinationIdentityInput) => {
+    const destinationId = resolveId(input);
+    if (destinationId) return destinationId;
+    const railEndpoint = resolveRailEndpoint(input);
+    return railEndpoint ? normalise(railEndpoint.canonicalId) : rawIdentityForTransfer(input);
+  };
   const unknownFor = (field: string, input: DestinationIdentityInput) => unknownKnowledgeFact(`${field} is unknown for ${input.name}.`);
   const findDestination = (input: DestinationIdentityInput) => {
     const id = resolveId(input);
@@ -670,8 +695,8 @@ export function createDestinationKnowledgeStore(options: {
     findTransfer: (from, to) => transferByPair.get(transferKey(rawIdentityForTransfer(from), rawIdentityForTransfer(to)))
       ?? transferByPair.get(transferKey(identityForTransfer(from), identityForTransfer(to))),
     findIntercityRailConnection: (from, to, distanceKm) => {
-      const fromEndpoint = railEndpointById.get(identityForTransfer(from));
-      const toEndpoint = railEndpointById.get(identityForTransfer(to));
+      const fromEndpoint = resolveRailEndpoint(from);
+      const toEndpoint = resolveRailEndpoint(to);
       if (!fromEndpoint || !toEndpoint || !Number.isFinite(distanceKm)) return undefined;
       const crossBorder = normalise(fromEndpoint.country) !== normalise(toEndpoint.country);
       const sharedNetworks = fromEndpoint.networkIds

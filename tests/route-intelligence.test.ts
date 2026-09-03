@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, usableStopDays } from "../lib/easyt/planner.ts";
+import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, routeTransferSavingMinutes, usableStopDays } from "../lib/easyt/planner.ts";
 import { transferHeadlineMinutes } from "../lib/easyt/transfer-impact.ts";
 
 const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
+
+test("route saving claims require a genuine positive comparison", () => {
+  assert.equal(routeTransferSavingMinutes({ currentTransferMinutes: 360, recommendedTransferMinutes: 240 }), 120);
+  assert.equal(routeTransferSavingMinutes({ currentTransferMinutes: 240, recommendedTransferMinutes: 240 }), null);
+  assert.equal(routeTransferSavingMinutes({ currentTransferMinutes: null, recommendedTransferMinutes: 240 }), null);
+  assert.equal(routeTransferSavingMinutes({ currentTransferMinutes: 240, recommendedTransferMinutes: null }), null);
+});
 
 test("recommends a clearly more direct order when it removes material backtracking", () => {
   const stops = [

@@ -354,11 +354,16 @@ async function mixedGatewayCandidate(
 }
 
 function shouldPreserve(leg: TripLeg) {
-  const metadata = leg.routeMetadata as { source?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
+  const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
   if (metadata.decisionOption !== undefined || metadata.userConfirmed === true || metadata.confirmed === true) return true;
   if (metadata.source === "curated-route" || metadata.source === "traveller-authored" || metadata.source === "imported-booking") return true;
   if (leg.mode !== "unknown" && metadata.source === undefined) return true;
-  if (leg.mode === "train" || leg.mode === "ferry" || leg.mode === "walk" || leg.mode === "mixed") return leg.durationMinutes !== null;
+  if (leg.mode === "train" || leg.mode === "ferry" || leg.mode === "walk" || leg.mode === "mixed") {
+    const deterministicNetworkEstimateNeedsResolution = leg.mode === "train"
+      && metadata.source === "morrovia-planner"
+      && metadata.routingConfidence !== "high";
+    return leg.durationMinutes !== null && !deterministicNetworkEstimateNeedsResolution;
+  }
   return false;
 }
 

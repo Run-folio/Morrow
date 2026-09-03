@@ -110,6 +110,17 @@ export type RouteOrderAssessment = {
   confidence?: PlanningConfidence;
 };
 
+/** A route recommendation only has a time-saving claim when both totals are valid and the saving is positive. */
+export function routeTransferSavingMinutes(
+  route: Pick<RouteOrderAssessment, "currentTransferMinutes" | "recommendedTransferMinutes">,
+) {
+  const current = route.currentTransferMinutes;
+  const recommended = route.recommendedTransferMinutes;
+  if (current === null || recommended === null || !Number.isFinite(current) || !Number.isFinite(recommended)) return null;
+  const saving = Math.round(current - recommended);
+  return saving > 0 ? saving : null;
+}
+
 export type StopDurationRecommendation = {
   stopId: string;
   minimumDays: number;
@@ -237,7 +248,7 @@ function withLegPlanningConfidence(
 export function estimateLeg(
   from: PlannerStop | { name: string; coordinates?: [number, number] },
   to: PlannerStop,
-  knowledge: Pick<DestinationKnowledgeStore, "findTransfer"> = destinationKnowledge,
+  knowledge: Pick<DestinationKnowledgeStore, "findTransfer" | "findIntercityRailConnection"> = destinationKnowledge,
 ): EstimatedLeg {
   const distanceKm = haversineKm(from.coordinates, to.coordinates);
   const sameCountry = "country" in from && from.country.toLowerCase() === to.country.toLowerCase();
@@ -274,6 +285,25 @@ export function estimateLeg(
   if (distanceKm === null) {
     const mode = sameCountry ? "road" : "flight";
     return withLegPlanningConfidence({ mode, distanceKm: null, durationMinutes: null, label: `${from.name} → ${to.name}`, note: "Confirm the best connection before booking.", confidence: "unconfirmed", transferImpact: estimateTransferImpact({ mode, international }) });
+  }
+  const rail = knowledge.findIntercityRailConnection(from, to, distanceKm);
+  if (rail) {
+    const mode = knownKnowledgeFact("train", "static", rail.source);
+    const duration = knownKnowledgeFact(rail.planningMinutes, "estimated", rail.source);
+    return withLegPlanningConfidence({
+      mode: "train",
+      distanceKm,
+      durationMinutes: rail.planningMinutes,
+      label: `${from.name} → ${to.name}`,
+      note: `${rail.networkLabel}; Morrovia planning estimate, verify the live timetable.`,
+      confidence: "medium",
+      transferImpact: estimateTransferImpact({
+        mode: "train",
+        knownDoorToDoorMinutes: duration,
+        international,
+        connectionCount: null,
+      }),
+    }, { mode, duration });
   }
   if (distanceKm <= 45) {
     const durationMinutes = Math.max(35, Math.round(25 + distanceKm * 1.15));
@@ -319,7 +349,7 @@ export function estimateFlightPlanningMinutes(distanceKm: number) {
   return { headlineMinutes, totalMinutes: Math.round(180 + headlineMinutes) };
 }
 
-type TransportFeasibilityKnowledge = Pick<DestinationKnowledgeStore, "findTransfer" | "forRouteScoring">;
+type TransportFeasibilityKnowledge = Pick<DestinationKnowledgeStore, "findTransfer" | "findIntercityRailConnection" | "forRouteScoring">;
 
 function ferryAccessWithoutLandConnectivity(
   stop: PlannerStop | { name: string; coordinates?: [number, number] },

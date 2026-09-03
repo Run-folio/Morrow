@@ -3,12 +3,14 @@ import test from "node:test";
 
 import {
   createDestinationKnowledgeStore,
+  destinationKnowledge,
   type IntercityRailEndpointKnowledge,
   type IntercityRailNetworkKnowledge,
   type KnowledgeSource,
 } from "../lib/easyt/destination-knowledge.ts";
 import { mapRouteLegsFromTrip } from "../lib/easyt/map-spatial-context.ts";
 import { resolveCanonicalTransferJourney } from "../lib/easyt/multimodal-transfer-resolution.ts";
+import { assessRouteOrder, routeTransferSavingMinutes } from "../lib/easyt/planner.ts";
 import type { RoadRouteRequest, RoadRouteResult, RoadRoutingProvider } from "../lib/easyt/road-routing.ts";
 import { buildCanonicalTripLegs } from "../lib/easyt/trip-legs.ts";
 import { canonicalTransferSegments, transferJourneyModeLabel } from "../lib/easyt/transfer-journey.ts";
@@ -31,6 +33,14 @@ function stop(id: string, name: string, country: string, coordinates: [number, n
   };
 }
 
+function providerStop(id: string, name: string, country: string, coordinates: [number, number]): TripStop {
+  return {
+    ...stop(id, name, country, coordinates),
+    canonicalPlaceId: `provider-place:${id}:opaque`,
+    providerId: `provider-result:${id}:opaque`,
+  };
+}
+
 function leg(from: TripStop, to: TripStop) {
   return buildCanonicalTripLegs({
     tripId: `rail-test:${from.id}:${to.id}`,
@@ -38,10 +48,21 @@ function leg(from: TripStop, to: TripStop) {
       name: from.name,
       country: from.country,
       canonicalPlaceId: from.canonicalPlaceId,
+      providerId: from.providerId,
       coordinates: [from.longitude!, from.latitude!],
     },
     stops: [to],
   })[0];
+}
+
+function unresolvedLeg(from: TripStop, to: TripStop) {
+  return {
+    ...leg(from, to),
+    mode: "unknown" as const,
+    durationMinutes: null,
+    headlineMinutes: null,
+    doorToDoorMinutes: null,
+  };
 }
 
 class CountingRoadProvider implements RoadRoutingProvider {
@@ -72,6 +93,81 @@ const salzburg = stop("salzburg", "Salzburg", "Austria", [13.055, 47.8095]);
 const munich = stop("munich", "Munich", "Germany", [11.582, 48.1351]);
 const brussels = stop("brussels", "Brussels", "Belgium", [4.3517, 50.8503]);
 
+test("provider-backed Western Europe identities resolve all required directions to canonical rail", () => {
+  const providerParis = providerStop("paris-provider", "Paris", "France", [2.3522, 48.8566]);
+  const providerBrussels = providerStop("brussels-provider", "Brussels", "Belgium", [4.3517, 50.8503]);
+  const providerAmsterdam = providerStop("amsterdam-provider", "Amsterdam", "Netherlands", [4.9041, 52.3676]);
+  const cases = [
+    [providerParis, providerBrussels, 90, 180],
+    [providerBrussels, providerParis, 90, 180],
+    [providerBrussels, providerAmsterdam, 90, 180],
+    [providerAmsterdam, providerBrussels, 90, 180],
+    [providerParis, providerAmsterdam, 180, 300],
+    [providerAmsterdam, providerParis, 180, 300],
+  ] as const;
+
+  for (const [from, to, minimum, maximum] of cases) {
+    const canonical = leg(from, to);
+    assert.equal(canonical.mode, "train", `${from.name} → ${to.name}`);
+    assert.ok(canonical.durationMinutes !== null && canonical.durationMinutes >= minimum && canonical.durationMinutes <= maximum, `${from.name} → ${to.name}: ${canonical.durationMinutes}`);
+    assert.equal(transferJourneyModeLabel(canonical), "Rail");
+  }
+});
+
+test("Builder-equivalent Paris to Amsterdam to Brussels uses the same rail mode as presentation", () => {
+  const providerParis = providerStop("paris-builder", "Paris", "France", [2.3522, 48.8566]);
+  const providerAmsterdam = providerStop("amsterdam-builder", "Amsterdam", "Netherlands", [4.9041, 52.3676]);
+  const providerBrussels = providerStop("brussels-builder", "Brussels", "Belgium", [4.3517, 50.8503]);
+  const legs = buildCanonicalTripLegs({
+    tripId: "builder-rail-regression",
+    origin: {
+      name: providerParis.name,
+      country: providerParis.country,
+      canonicalPlaceId: providerParis.canonicalPlaceId,
+      providerId: providerParis.providerId,
+      coordinates: [providerParis.longitude!, providerParis.latitude!],
+    },
+    stops: [providerAmsterdam, providerBrussels],
+  });
+
+  assert.deepEqual(legs.map((item) => item.mode), ["train", "train"]);
+  assert.deepEqual(legs.map(transferJourneyModeLabel), ["Rail", "Rail"]);
+  assert.ok(legs.every((item) => item.durationMinutes !== null && item.durationMinutes >= 90 && item.durationMinutes <= 300));
+
+  const route = assessRouteOrder({
+    origin: {
+      name: providerParis.name,
+      coordinates: [providerParis.longitude!, providerParis.latitude!],
+    },
+    stops: [
+      { id: providerAmsterdam.id, name: providerAmsterdam.name, country: providerAmsterdam.country, canonicalPlaceId: providerAmsterdam.canonicalPlaceId, providerId: providerAmsterdam.providerId, coordinates: [providerAmsterdam.longitude!, providerAmsterdam.latitude!] },
+      { id: providerBrussels.id, name: providerBrussels.name, country: providerBrussels.country, canonicalPlaceId: providerBrussels.canonicalPlaceId, providerId: providerBrussels.providerId, coordinates: [providerBrussels.longitude!, providerBrussels.latitude!] },
+    ],
+    availableDays: 8,
+  });
+  assert.equal(route.state, "recommendation");
+  assert.deepEqual(route.recommendedStopIds, [providerBrussels.id, providerAmsterdam.id]);
+  assert.equal(route.currentTransferMinutes, 345);
+  assert.equal(route.recommendedTransferMinutes, 240);
+  assert.equal(routeTransferSavingMinutes(route), 105);
+});
+
+test("deterministic rail network evidence survives unavailable exact or live provider data", async () => {
+  const provider = new CountingRoadProvider();
+  const providerBrussels = providerStop("brussels-fallback", "Brussels", "Belgium", [4.3517, 50.8503]);
+  const providerAmsterdam = providerStop("amsterdam-fallback", "Amsterdam", "Netherlands", [4.9041, 52.3676]);
+  const knowledge = {
+    ...destinationKnowledge,
+    findTransfer: () => undefined,
+  };
+  const result = await resolveCanonicalTransferJourney(unresolvedLeg(providerBrussels, providerAmsterdam), { knowledge, provider });
+
+  assert.equal(result.leg.mode, "train");
+  assert.ok(result.leg.durationMinutes !== null && result.leg.durationMinutes >= 90 && result.leg.durationMinutes <= 180);
+  assert.match(result.diagnostic.selectedCandidateId ?? "", /^rail:network:/);
+  assert.equal(provider.calls.length, 0);
+});
+
 test("reviewed network evidence creates domestic and cross-border rail candidates without road calls", async () => {
   for (const [from, to, expectedMinutes] of [
     [paris, amsterdam, 225],
@@ -79,7 +175,7 @@ test("reviewed network evidence creates domestic and cross-border rail candidate
     [salzburg, munich, 120],
   ] as const) {
     const provider = new CountingRoadProvider();
-    const result = await resolveCanonicalTransferJourney(leg(from, to), { provider });
+    const result = await resolveCanonicalTransferJourney(unresolvedLeg(from, to), { provider });
     assert.equal(result.leg.mode, "train");
     assert.equal(result.leg.durationMinutes, expectedMinutes);
     assert.match(result.diagnostic.selectedCandidateId ?? "", /^rail:network:/);
@@ -90,8 +186,8 @@ test("reviewed network evidence creates domestic and cross-border rail candidate
 
 test("Brussels to Amsterdam proves the mechanism generalizes beyond the permanent benchmark routes", async () => {
   const provider = new CountingRoadProvider();
-  const first = await resolveCanonicalTransferJourney(leg(brussels, amsterdam), { provider });
-  const second = await resolveCanonicalTransferJourney(leg(brussels, amsterdam), { provider });
+  const first = await resolveCanonicalTransferJourney(unresolvedLeg(brussels, amsterdam), { provider });
+  const second = await resolveCanonicalTransferJourney(unresolvedLeg(brussels, amsterdam), { provider });
   assert.equal(first.leg.mode, "train");
   assert.ok(first.leg.durationMinutes !== null && first.leg.durationMinutes >= 90 && first.leg.durationMinutes <= 180);
   assert.deepEqual(first.diagnostic, second.diagnostic);

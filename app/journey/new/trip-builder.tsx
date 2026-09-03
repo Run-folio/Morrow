@@ -20,7 +20,7 @@ import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotio
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
-import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
@@ -1372,6 +1372,7 @@ function TripBuilderDocument() {
     shortfall: (comfortable: number) => `${comfortable} days would feel more comfortable`,
     shortfallHelp: "Adjust the time, remove a stop, or accept that some days will be more intensive.",
   };
+  const routeTransferSaving = routeTransferSavingMinutes(routeIntelligence.route);
 
   /** Existing duration guidance remains the fallback when destination knowledge is unavailable. */
   const recommendedNights = useMemo(() => {
@@ -3702,14 +3703,14 @@ function TripBuilderDocument() {
                   <p>{routeCopy.eyebrow}</p>
                   {routeRecommendationVisible ? <>
                     <h3>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")} {routeCopy.cleanerOrder}</h3>
-                    <span>{routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0)} {routeCopy.direction}</span>
+                    <span>{routeTransferSaving === null ? routeCopy.direction : `${routeCopy.removesTravel(routeTransferSaving)} ${routeCopy.direction}`}</span>
                   </> : <>
                     <h3>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Tus condiciones fijas están protegidas." : "Your fixed commitments are protected.") : routeCopy.currentOrder}</h3>
                     {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <span>{language === "es" ? "Confirma dónde encaja cada condición antes de cambiar el orden." : "Confirm where each commitment sits before changing the order."}</span>}
                   </>}
                   {routeIntelligence.route.tradeoffs[0] && !effectiveIntent.hardConstraints.fixedCommitments.length && effectiveIntent.hardConstraints.avoidDriving && <span className={styles.routeTradeoff}>{language === "es" ? "Evitar coche está activo: compara tren o vuelo para los traslados locales antes de reservar." : "Avoid driving is active: compare rail or flight for local transfers before booking."}</span>}
                   {routeRecommendationVisible && <div className={styles.decisionAlternatives}>
-                    <article className={decisionSelections.routeOrder === "recommended" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "RECOMENDADO" : "MORROVIA RECOMMENDS"}</b><strong>{language === "es" ? "Ruta más directa" : "More direct route"}</strong></div><span>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</span><small>{routeCopy.removesTravel(routeIntelligence.route.improvementMinutes ?? 0)} {language === "es" ? "Es una estimación de planificación, no un horario en vivo." : "This is a planning estimate, not a live timetable."}</small></article>
+                    <article className={decisionSelections.routeOrder === "recommended" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "RECOMENDADO" : "MORROVIA RECOMMENDS"}</b><strong>{language === "es" ? "Ruta más directa" : "More direct route"}</strong></div><span>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</span><small>{routeTransferSaving === null ? routeCopy.direction : routeCopy.removesTravel(routeTransferSaving)} {language === "es" ? "Es una estimación de planificación, no un horario en vivo." : "This is a planning estimate, not a live timetable."}</small></article>
                     <article className={decisionSelections.routeOrder === "entered" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "TU ORDEN" : "YOUR ORDER"}</b><strong>{language === "es" ? "Mantener la intención" : "Keep your intended sequence"}</strong></div><span>{stops.map((stop) => stop.name).join(" → ")}</span><small>{language === "es" ? "Conserva el orden que elegiste, con más tiempo de traslado estimado." : "Preserves the order you chose, with more estimated transfer time."}</small></article>
                   </div>}
                 </div>

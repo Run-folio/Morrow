@@ -351,16 +351,6 @@
               "Both canonical endpoints share reviewed strong intercity evidence on the Western Europe high-speed intercity network.",
               "Rail avoids airport and driving friction for this intercity distance."
             ]
-          },
-          {
-            "id": "flight:legacy-estimate",
-            "summaryMode": "flight",
-            "totalDurationMinutes": 255,
-            "score": 61.94,
-            "evidence": "legacy_flight_estimate",
-            "reasons": [
-              "The legacy planner supports a flight estimate and no gateway contradiction is known."
-            ]
           }
         ],
         "rejected": [
@@ -924,16 +914,6 @@
             "reasons": [
               "Both canonical endpoints share reviewed strong intercity evidence on the Central Europe intercity network.",
               "Rail avoids airport and driving friction for this intercity distance."
-            ]
-          },
-          {
-            "id": "flight:legacy-estimate",
-            "summaryMode": "flight",
-            "totalDurationMinutes": 255,
-            "score": 61.94,
-            "evidence": "legacy_flight_estimate",
-            "reasons": [
-              "The legacy planner supports a flight estimate and no gateway contradiction is known."
             ]
           }
         ],
