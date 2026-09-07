@@ -1,0 +1,53 @@
+.page { color: var(--morrovia-ink); background: var(--morrovia-paper); font: var(--morrovia-type-body); }
+.page * { box-sizing: border-box; }
+.page h1,.page h2,.page h3,.page p,.page figure { margin: 0; }
+.page h1,.page h2 { font-family: var(--morrovia-ui); font-weight: 500; letter-spacing: -.06em; line-height: 1; }
+.page em { display: block; font-family: var(--morrovia-display); font-weight: 400; }
+.page a { color: inherit; }
+.page a:focus-visible,.page button:focus-visible,.page figure:focus-visible { outline: 3px solid var(--morrovia-signal); outline-offset: 4px; }
+.eyebrow { display: block; font: var(--morrovia-type-metadata); letter-spacing: .12em; text-transform: uppercase; }
+.skip { position: fixed; z-index: 300; top: 12px; left: 16px; padding: 14px; background: var(--morrovia-paper); color: var(--morrovia-ink)!important; transform: translateY(-180%); }
+.skip:focus { transform: none; }
+.hero { position: relative; isolation: isolate; min-height: max(900px,100svh); display: flex; flex-direction: column; color: var(--morrovia-paper); overflow: clip; background: var(--morrovia-ink); }
+.landscape,.heroShade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; object-fit: cover; }
+.landscape { transform: translateX(var(--depth-x,0px)) scale(1.03); transition: transform 600ms ease, filter 350ms ease; filter: brightness(.65) saturate(.8); }
+.heroShade { z-index: -1; background: color-mix(in srgb,var(--morrovia-ink) 25%,transparent); transition: background 350ms ease; }
+.hero:has(.planner:focus-within) .heroShade { background: color-mix(in srgb,var(--morrovia-ink) 45%,transparent); }
+.hero:has(.planner:focus-within) .landscape { transform: scale(1.03); }
+.navigation { position: relative; z-index: var(--morrovia-layer-header); }
+.navigation :global(header[data-easyt-app]) { background: transparent; border-color: color-mix(in srgb,var(--morrovia-paper) 30%,transparent); }
+.navigation :global(header[data-easyt-app]) > a,.navigation :global(header[data-easyt-app]) > nav > a { color: var(--morrovia-paper); }
+.navigation :global(header[data-easyt-app]) > a > span { color: inherit; }
+.heroBody { width: 92%; margin: auto; display: grid; grid-template-columns: minmax(0,1.12fr) minmax(440px,.88fr); gap: 4vw; align-items: center; padding: 64px 0; }
+.heroCopy h1 { font-size: clamp(86px,8.4vw,162px); margin: 32px 0; line-height: .97; }
+.heroCopy h1 em { max-width: 7ch; line-height: .97; }
+.heroCopy p { max-width: 350px; font-size: 17px; }
+.planner { width: 100%; max-width: 560px; justify-self: end; padding: 28px; background: var(--morrovia-paper); color: var(--morrovia-ink); border-radius: var(--morrovia-radius); }
+.planner form { margin: 0; max-width: none; }
+.planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
+.planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
+.heroBottom { width: 92%; margin: 0 auto 28px; display: flex; justify-content: space-between; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
+.heroBottom a { display: flex; align-items: center; gap: 10px; }
+.heroBottom button { color: var(--morrovia-paper); }
+.heroBottom svg { width: 18px; height: 18px; }
+@media(max-width:840px) {
+  .hero { min-height: 100svh; }
+  .heroBody { width: calc(100% - 36px); grid-template-columns: 1fr; padding: 36px 0; gap: 28px; }
+  .heroCopy h1 { font-size: clamp(58px,11vw,86px); margin: 22px 0; }
+  .heroCopy h1 em { max-width: none; }
+  .heroCopy p { font-size: 15px; max-width: 380px; }
+  .planner { max-width: 620px; justify-self: start; padding: 18px; }
+  .heroBottom { flex-wrap: wrap; font-size: 11px; }
+}
+@media(max-width:520px) {
+  .heroBody { width: calc(100% - 28px); padding: 24px 0; }
+  .heroCopy h1 { font-size: clamp(52px,13.5vw,66px); }
+  .planner { padding: 14px; }
+  .planner :global([class*="journey-endpoints-editor_fields"]) { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+  .planner :global([class*="journey-endpoints-editor_shortcuts"]) button { padding-inline: 0; font-size: 11px; min-height: 44px; }
+  .planner :global([class*="attributeActions"]) { gap: 4px; }
+  .planner :global([class*="attributeActions"]) button { padding-inline: 7px; font-size: 11px; min-height: 44px; }
+}
+.page[data-quiet="true"] *, .page[data-quiet="true"] *::before { animation: none!important; transition: none!important; }
+.page[data-quiet="true"] .landscape { transform: none; }
+@media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none; } }
