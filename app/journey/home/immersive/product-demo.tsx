@@ -8,6 +8,7 @@ import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-s
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import { createHomepageDemo, homepageDemoReducer, homepageDemoDay, type HomepageDemoState } from "@/lib/easyt/homepage-demo";
 import { DestinationPhoto } from "./route-chapters";
+import { homepageJourneyLabel } from "@/lib/easyt/homepage-navigation";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
@@ -41,6 +42,6 @@ export default function ProductDemo({ route, routes, change }: { route: Immersiv
       : <div className={styles.itineraryDemo}><div className={styles.itineraryPhoto}><DestinationPhoto route={route} index={selected} /></div><div className={styles.itineraryDay}><span className={styles.eyebrow}>{es ? "Itinerario · día" : "Itinerary · day"} {homepageDemoDay(nights, selected)} · {es ? "ejemplo" : "sample"}</span><h3>{stop.name}.<br />{es ? "Tu próximo capítulo." : "Your next chapter."}</h3><EasyTButton variant="quiet" icon={ArrowRight} onClick={() => select((selected + 1) % route.stops.length)}>{es ? "Siguiente destino" : "Next destination"}</EasyTButton><dl><div><dt>{es ? "Viaje" : "Travel"}</dt><dd>{selected ? `${route.stops[selected - 1].name} → ${stop.name}` : `${es ? "Llegada a" : "Arrive in"} ${stop.name}`}<small>{es ? "Transporte y horarios por confirmar" : "Transport and timing to confirm"}</small></dd></div><div><dt>{es ? "Esta noche" : "Tonight"}</dt><dd>{stop.name} · 1 / {nights[selected]}<small>{es ? "Alojamiento por elegir" : "Accommodation to choose"}</small></dd></div></dl><p>{es ? "Idea para la tarde" : "Afternoon idea"} · {es ? "Explora" : "Explore"} {stop.name}</p><p>{es ? "Idea para la noche · prueba la comida local" : "Evening idea · leave time for a local meal"}</p><small>{es ? "Las actividades y estancias no están reservadas." : "Activities and stays are not booked."}</small></div></div>}
       </div>
     </div>
-    <div className={styles.productExamples}><span className={styles.eyebrow}>{es ? "Prueba otro viaje" : "Try another journey"}</span><div role="group" aria-label={es ? "Viaje de ejemplo" : "Sample journey"}>{routes.map((item, index) => <EasyTButton variant="quiet" key={item.key} aria-pressed={item.key === route.key} onClick={() => { change(index, "product"); setNotice(""); }}>{item.title}</EasyTButton>)}</div></div>
+    <div className={styles.productExamples}><span className={styles.eyebrow}>{es ? "Prueba otro viaje" : "Try another journey"}</span><div role="group" aria-label={es ? "Viaje de ejemplo" : "Sample journey"}>{routes.map((item, index) => <EasyTButton variant="quiet" key={item.key} aria-pressed={item.key === route.key} onClick={() => { change(index, "product"); setNotice(""); }}>{homepageJourneyLabel(item.key, item.title).short}</EasyTButton>)}</div></div>
   </section>;
 }

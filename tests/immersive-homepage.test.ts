@@ -6,11 +6,13 @@ import { immersiveHomepageRoutes, initialImmersiveRouteIndex, nextHomepageRoute,
 import { isPublishedPublicRouteKey, publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { createHomepageDemo, homepageDemoReducer, homepageDemoDay } from "../lib/easyt/homepage-demo.ts";
 import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.ts";
+import { homepageRouteView } from "../lib/easyt/homepage-navigation.ts";
 import { existsSync } from "node:fs";
 
-test("homepage switch fails closed, without browser-dependent routing", () => {
-  for (const value of [undefined, "", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
+test("homepage defaults to the staging implementation with an explicit original-page fallback", () => {
+  for (const value of ["", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
   assert.equal(immersiveHomepageEnabled("true"), true);
+  assert.equal(immersiveHomepageEnabled(undefined), true);
   const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
   assert.match(page, /process\.env\.IMMERSIVE_HOMEPAGE_V2/);
   assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
@@ -119,4 +121,28 @@ test("quiet view stops scroll work and the final action focuses the original pro
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(closing, /#start-building textarea/);
   assert.match(closing, /focus\(\{ preventScroll: true \}\)/);
+});
+
+
+test("route impressions are once per initial entry or changed selection, never effect replay", () => {
+  let previous: string | null = null;
+  const events: string[] = [];
+  for (const key of ["japan-slow", "japan-slow", "balkans-overland", "balkans-overland", "japan-slow"]) {
+    const selection = homepageRouteView(previous, key);
+    if (selection) events.push(selection);
+    previous = key;
+  }
+  assert.deepEqual(events, ["initial", "change", "change"]);
+  assert.equal(homepageRouteView(null, "japan-slow"), "initial");
+});
+
+test("hero, story and sample consume the same selected route and rights-cleared hero image", () => {
+  const source = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
+  assert.match(source, /useState\(initialIndex\)/);
+  assert.match(source, /index=\{index\} onChange=\{setIndex\}/);
+  assert.match(source, /heroPhoto = route.heroPhoto/);
+  for (const route of immersiveHomepageRoutes()) {
+    assert.ok(route.heroPhoto?.rights && route.heroPhoto.source);
+    assert.ok(route.countries.includes(route.heroPhoto.country));
+  }
 });

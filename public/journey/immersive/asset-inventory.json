@@ -438,5 +438,34 @@
         "bytes": 293484
       }
     ]
+  },
+  {
+    "route": "japan-slow",
+    "category": "hero",
+    "file": "hero-japan",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-f12e4b8c-584c-4ec3-a0b7-17b4814dbfe6.png",
+    "rights": "Generated for this project without third-party source imagery. Imagined landscape inspired by the Japanese Alps; not documentary geography.",
+    "status": "generated-project-asset",
+    "alt": "",
+    "decorative": true,
+    "context": "Decorative Japan-aware hero landscape; credit identifies it as imagined.",
+    "label": "Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/hero-japan-480.webp",
+        "width": 480,
+        "bytes": 22178
+      },
+      {
+        "src": "/journey/immersive/hero-japan-768.webp",
+        "width": 768,
+        "bytes": 50464
+      },
+      {
+        "src": "/journey/immersive/hero-japan-1536.webp",
+        "width": 1536,
+        "bytes": 165676
+      }
+    ]
   }
 ]

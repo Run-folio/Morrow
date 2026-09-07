@@ -21,6 +21,7 @@ These typed events answer the minimum launch questions without replacing the exi
 | Event | Exact trigger | Safe properties |
 | --- | --- | --- |
 | `route_started` | A traveller deliberately selects **Plan this route** on a public Route Detail page. | public `route_id`, `stop_count`, `duration_days`, `placement` (`hero` or `final`) |
+| `homepage_route_viewed` | The immersive homepage mounts its server-selected example, or a different example is selected. Ref-guarded against effect replay; no pre-consent replay. | canonical `route_id`, `selection` (`initial` / `change`), `stop_count` |
 | `homepage_prompt_started` | A homepage prompt first reaches three non-whitespace characters, whether typed or dictated. | `source`, `input_method`, `is_authenticated` |
 | `trip_generation_started` | The homepage planning request is submitted, or a direct builder trip is submitted. | `trip_source`, `has_dates`, `traveller_count`, `is_authenticated` |
 | `trip_generated` | The builder has produced a usable trip with at least one stop and plan item. | opaque `trip_id`, `trip_source`, `stop_count`, `duration_days`, `traveller_count`, `has_dates`, `save_state`, `result` |

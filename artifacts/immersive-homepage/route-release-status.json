@@ -1,0 +1,258 @@
+[
+  {
+    "key": "japan-slow",
+    "published": true,
+    "canonicalSequence": [
+      "Tokyo",
+      "Takayama",
+      "Kyoto"
+    ],
+    "sourceLinks": [
+      {
+        "label": "Japan Travel",
+        "url": "https://www.japan.travel/en/",
+        "covers": "Official destination and regional context"
+      },
+      {
+        "label": "Japan Railways",
+        "url": "https://www.japanrailpass-reservation.net/",
+        "covers": "Rail planning reference"
+      }
+    ],
+    "routeKey": "japan-slow",
+    "status": "incomplete",
+    "blockers": [
+      {
+        "code": "recommended-nights",
+        "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+      },
+      {
+        "code": "route-order-rationale",
+        "detail": "The route needs an explicit rationale for its published order."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Tokyo → Takayama cannot be a reviewed medium-confidence assumption without linked provenance."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Takayama → Kyoto cannot be a reviewed medium-confidence assumption without linked provenance."
+      },
+      {
+        "code": "explicit-unknowns",
+        "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+      },
+      {
+        "code": "editorial-owner",
+        "detail": "The route needs an editorial owner."
+      },
+      {
+        "code": "editorial-reviewer",
+        "detail": "The route needs an editorial reviewer."
+      },
+      {
+        "code": "image-rights",
+        "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+      }
+    ],
+    "needsVerification": [],
+    "reviewedAssumptions": []
+  },
+  {
+    "key": "balkans-overland",
+    "published": false,
+    "canonicalSequence": [
+      "Dubrovnik",
+      "Kotor",
+      "Shkodër",
+      "Tirana"
+    ],
+    "sourceLinks": [
+      {
+        "label": "Croatia Tourism",
+        "url": "https://croatia.hr/en-gb",
+        "covers": "Official destination context"
+      },
+      {
+        "label": "Montenegro Travel",
+        "url": "https://www.montenegro.travel/en",
+        "covers": "Official destination context"
+      },
+      {
+        "label": "Albania Tourism",
+        "url": "https://albania.al/",
+        "covers": "Official destination context"
+      }
+    ],
+    "routeKey": "balkans-overland",
+    "status": "incomplete",
+    "blockers": [
+      {
+        "code": "recommended-nights",
+        "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+      },
+      {
+        "code": "route-order-rationale",
+        "detail": "The route needs an explicit rationale for its published order."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Dubrovnik → Kotor is marked needs-review without source evidence or an explicit unknown."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Kotor → Shkodër is marked needs-review without source evidence or an explicit unknown."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Shkodër → Tirana cannot be a reviewed medium-confidence assumption without linked provenance."
+      },
+      {
+        "code": "explicit-unknowns",
+        "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+      },
+      {
+        "code": "editorial-owner",
+        "detail": "The route needs an editorial owner."
+      },
+      {
+        "code": "editorial-reviewer",
+        "detail": "The route needs an editorial reviewer."
+      },
+      {
+        "code": "image-rights",
+        "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+      }
+    ],
+    "needsVerification": [],
+    "reviewedAssumptions": []
+  },
+  {
+    "key": "vietnam-cambodia",
+    "published": false,
+    "canonicalSequence": [
+      "Hanoi",
+      "Hoi An",
+      "Ho Chi Minh City",
+      "Siem Reap"
+    ],
+    "sourceLinks": [
+      {
+        "label": "Vietnam Tourism",
+        "url": "https://vietnam.travel/",
+        "covers": "Official destination context"
+      },
+      {
+        "label": "Visit Cambodia",
+        "url": "https://www.tourismcambodia.com/",
+        "covers": "Official tourism context"
+      },
+      {
+        "label": "UNESCO Angkor",
+        "url": "https://whc.unesco.org/en/list/668/",
+        "covers": "Heritage context"
+      }
+    ],
+    "routeKey": "vietnam-cambodia",
+    "status": "incomplete",
+    "blockers": [
+      {
+        "code": "recommended-nights",
+        "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+      },
+      {
+        "code": "route-order-rationale",
+        "detail": "The route needs an explicit rationale for its published order."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Hanoi → Hoi An cannot be a reviewed medium-confidence assumption without linked provenance."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Hoi An → Ho Chi Minh City cannot be a reviewed medium-confidence assumption without linked provenance."
+      },
+      {
+        "code": "connection-evidence",
+        "detail": "Ho Chi Minh City → Siem Reap is marked needs-review without source evidence or an explicit unknown."
+      },
+      {
+        "code": "explicit-unknowns",
+        "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+      },
+      {
+        "code": "editorial-owner",
+        "detail": "The route needs an editorial owner."
+      },
+      {
+        "code": "editorial-reviewer",
+        "detail": "The route needs an editorial reviewer."
+      },
+      {
+        "code": "image-rights",
+        "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+      }
+    ],
+    "needsVerification": [],
+    "reviewedAssumptions": []
+  },
+  {
+    "key": "iceland-ring-road",
+    "published": false,
+    "canonicalSequence": [
+      "Reykjavík",
+      "Vík",
+      "Mývatn",
+      "Akureyri"
+    ],
+    "sourceLinks": [
+      {
+        "label": "Visit Iceland Ring Road",
+        "url": "https://www.visiticeland.com/article/the-ring-road/",
+        "covers": "Official Ring Road context"
+      }
+    ],
+    "routeKey": "iceland-ring-road",
+    "status": "incomplete",
+    "blockers": [
+      {
+        "code": "recommended-nights",
+        "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+      },
+      {
+        "code": "route-order-rationale",
+        "detail": "The route needs an explicit rationale for its published order."
+      },
+      {
+        "code": "connection-assumption",
+        "detail": "Reykjavík → Vík needs a reviewed connection assumption or an explicit unknown."
+      },
+      {
+        "code": "connection-assumption",
+        "detail": "Vík → Mývatn needs a reviewed connection assumption or an explicit unknown."
+      },
+      {
+        "code": "connection-assumption",
+        "detail": "Mývatn → Akureyri needs a reviewed connection assumption or an explicit unknown."
+      },
+      {
+        "code": "explicit-unknowns",
+        "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+      },
+      {
+        "code": "editorial-owner",
+        "detail": "The route needs an editorial owner."
+      },
+      {
+        "code": "editorial-reviewer",
+        "detail": "The route needs an editorial reviewer."
+      },
+      {
+        "code": "image-rights",
+        "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+      }
+    ],
+    "needsVerification": [],
+    "reviewedAssumptions": []
+  }
+]

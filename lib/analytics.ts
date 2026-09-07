@@ -33,6 +33,7 @@ export type LaunchAnalyticsEventMap = {
   workspace_orientation_completed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
   workspace_orientation_dismissed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
   route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" };
+  homepage_route_viewed: { route_id: string; selection: "initial" | "change"; stop_count: number };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };
   trip_generation_started: { trip_source: TripSource; has_dates: boolean; traveller_count: number; is_authenticated: boolean };
   trip_intent_created: { traveller_count: number; stop_count: number; duration_days: number; dates_flexible: boolean; fixed_commitment_count: number; avoid_driving: boolean };

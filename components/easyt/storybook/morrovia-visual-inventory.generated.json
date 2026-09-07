@@ -5380,7 +5380,7 @@
       },
       {
         "value": "12px",
-        "count": 354,
+        "count": 355,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5440,7 +5440,7 @@
       },
       {
         "value": "4px",
-        "count": 205,
+        "count": 207,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",

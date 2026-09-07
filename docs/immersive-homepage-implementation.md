@@ -1,137 +1,157 @@
-# Immersive homepage implementation
+# Immersive homepage — staging implementation review
 
-Status: **homepage-focused checks and builds pass, but the approved four-route experience is not release-ready. Keep the current homepage.** No staging deployment, publication change, main-branch change or production flag change was made.
+**Status: incomplete; do not deploy.** The implementation is local on `staging`. No push or deployment was performed. The immersive presentation is now the default; explicit `IMMERSIVE_HOMEPAGE_V2=false` restores the original homepage. This report supersedes the earlier feature-branch report.
 
-Branch: `codex/immersive-homepage`. Candidate: `http://127.0.0.1:8873/journey/home`. Flag-off comparison: `http://127.0.0.1:8870/journey/home`.
+## 1. Starting SHA and branch
 
-## Parity checklist (written before implementation)
+Starting staging SHA: `a523c7558694af745844b1b7cd37a0ec89009762`. The worktree was clean. A fresh fetch confirmed `origin/staging` at that SHA, local `main` at the same SHA, and `origin/main` (`ed5913abff3d2eeb34b873eb60464a07d3ba323d`) already in its ancestry. Staging was then fast-forwarded through the six existing homepage commits ending at `846f3f3`; subsequent refinements were made directly on staging.
 
-| Capability | Production owner to preserve | Verification |
-| --- | --- | --- |
-| New trip, account, Routes, language, mobile dock | EasyTNavigation | existing component retained; language/nav checked, authenticated pass pending |
-| Text/speech, AI disclosure, dates, travellers, interests | HomeTripStarter → MorroviaTripCapture | capture parity tests + browser controls/handoff pass; microphone pending |
-| Origin/end/same-as-start and canonical suggestions | JourneyEndpointsEditor | existing callbacks retained |
-| Submission/error/retry/latest-request protection | HomeTripStarter | existing capture request gate retained |
-| Homepage → Builder | createHomeTripDraft / HOME_TRIP_DRAFT_KEY | existing handoff retained |
-| Reviewed route → Builder | RoutePlanLink / routePlannerPayload | no replacement handoff |
-| Route availability | publicRoutePublishedFamilies / release workflow | unpublished routes excluded |
-| Demo views | isolated reducer using public route detail | no storage, fetch or TripDocument writes |
-| Affiliates and attribution | getCurrentPartnerAction / MorroviaAffiliateLink | canonical click owner only |
-| Privacy, consent, legal | existing app shell / MorroviaFooter | retained |
-| Motion and keyboard | local Quiet view + system media query | static endpoint; explicit controls |
-| Responsive hero | scoped composition around canonical capture | 320/390/430 and desktop review |
+## 2. Files changed
 
+The [complete file manifest](../artifacts/immersive-homepage/changed-files.txt) lists changes against the starting SHA. Main groups:
 
-## 1. Architecture used
+- `app/journey/home/page.tsx`, `loading.tsx`, and `immersive/`: page composition, real capture integration, route chapters, isolated product sample, affiliate chapter, final CTA, responsive styling and language hook.
+- `lib/easyt/immersive-homepage-{config,routes}.ts`, `homepage-navigation.ts`, `homepage-demo.ts`, `homepage-affiliate-imagery.ts`: request choice, canonical route DTOs, selection helpers, in-memory sample and asset mapping.
+- Shared navigation and its Storybook story; optional prefetch forwarding in `EasyTLinkButton`.
+- `lib/analytics.ts`, its documentation/tests, homepage tests and `.env.staging.example`.
+- `public/journey/immersive/`: rights-cleared responsive imagery, provenance inventories and public credits.
+- `docs/immersive-homepage-route-review.md` and `artifacts/immersive-homepage/`: review record, screenshots, measurements and validation evidence.
 
-The existing server-rendered `/journey/home` selects the new composition only when `IMMERSIVE_HOMEPAGE_V2` is exactly `true` and at least one eligible canonical example is available. The server selects the initial example using the existing Fisher–Yates helper and serializes its index. The client never re-randomizes it. Page-specific chapters share a selected-route controller; the product sample uses a separate in-memory reducer.
+## 3. Architecture and composition
 
-## 2. Files added and changed
+Hero → places → journey → Map/Builder/Itinerary → booking support → immersive final CTA. The real app footer follows. Large desktop chapters use viewport scale where useful; mobile chapters follow content height. The homepage does not introduce another planning engine, trip store or endpoint model. The old homepage remains available through the explicit server-side fallback switch.
 
-The main additions are `app/journey/home/immersive/`, `app/journey/home/loading.tsx`, `lib/easyt/immersive-homepage-{config,routes}.ts`, `lib/easyt/homepage-{navigation,demo,affiliate-imagery}.ts`, `public/journey/immersive/`, and `tests/immersive-homepage.test.ts`. The existing server page and staging environment example gain the switch. Shared navigation and link-button types gain an optional prefetch control; existing callers retain their behavior. Storybook gains an immersive-navigation example and its generated inventory update. Evidence is in `artifacts/immersive-homepage/`.
+## 4. Production owners reused
 
-## 3. Prototype-only code excluded
+`HomeTripStarter` composes `MorroviaTripCapture`, `JourneyEndpointsEditor`, date/traveller/interest controls, speech and AI disclosure. Its real request gate and `createHomeTripDraft` handoff remain unchanged. `EasyTNavigation`, `EasyTButton`, `EasyTLinkButton`, `EasyTSegmentedControl`, `MorroviaQuantitySelector`, `ResilientImage`, `JourneyPlannerMap`, `RoutePlanLink`, the canonical affiliate owner and `MorroviaFooter` are reused.
 
-No simulated AI response, fake receipt, prototype voice handling, fake affiliate URLs, hard-coded stop/night/transport fixture catalogue, prototype persistence, navigation replacements, or new prototype application routes were imported. Unresolved prototype background binaries were excluded. Local QA instrumentation lives outside production source and is not included in the build.
+Shared extension: optional link prefetch control, used by immersive navigation to avoid eager Builder loading. Storybook includes the real immersive navigation state. No new shared primitive was created. The page-specific scatter composition, atmospheric scrims and demo layout are intentional editorial exceptions; control semantics/tokens stay shared. Scoped disclosure positioning keeps the existing dialog above the mobile dock and neighbouring chapters, with a 44px close target.
 
-## 4. Production components reused
+## 5. Route-data source
 
-`HomeTripStarter`, `MorroviaTripCapture`, `JourneyEndpointsEditor`, `EasyTNavigation`, `EasyTButton`, `EasyTLinkButton`, `EasyTSegmentedControl`, `MorroviaQuantitySelector`, `ResilientImage`, `RoutePlanLink`, `MorroviaAffiliateLink`, and the existing footer/consent owners are reused. The map composes `JourneyPlannerMap` in its existing whole-route preview mode with the existing overview preview CSS. Stop selection remains available through the adjacent accessible stop list. It does not reproduce the full interactive planning map or Builder.
+`homepageEligibleRouteCards()` → `publicRouteDetailFor()` owns admission and content. Stops, coordinates, countries, nights, range, summary and Builder draft are derived from canonical records. Editorial headings/themes are presentation copy. The available subset is currently only `japan-slow`; the UI truthfully displays `1 / 1`, disables previous/next and omits unpublished alternatives.
 
-Shared extensions are limited to nonvisual navigation prefetch control. The new scatter/align chapter and chapter layouts are unique homepage composition. Existing Georgia/UI fonts, tokens, controls and rounded geometry remain authoritative. The six documented raw indigo values are narrow photographic scrim exceptions; they are not a second UI palette.
+## 6. Japan five-stop implementation/source
 
-## 5. Route-data ownership and publication blocker
+**Not complete.** Canonical Japan remains Tokyo → Takayama → Kyoto. The requested Tokyo → Kanazawa → Takayama → Kyoto → Osaka sequence has not been smuggled into a homepage fixture. The [content-review record](immersive-homepage-route-review.md) identifies the canonical catalogue/Builder seed changes, connection replacements, night guidance, reviewer and image association required. The [machine-readable release report](../artifacts/immersive-homepage/route-release-status.json) records every current blocker. No independent reviewer identity, reviewed-night value or confidence upgrade has been invented.
 
-`homepageEligibleRouteCards()` and `publicRouteDetailFor()` own admission and handoff data. Stops, countries, coordinates, durations, minimum nights and the journey title come from canonical records. Approved short places-chapter labels are presentation copy; they do not define routes. Destination media joins to canonical place/country names through a rights inventory.
+## 7. Randomisation
 
-The current eligible subset is **Japan: Tokyo → Takayama → Kyoto**. Japan is not the approved five-stop sequence. `balkans-overland`, `vietnam-cambodia` and `iceland-ring-road` remain `needs-review` and unpublished. The candidate truthfully shows `1 / 1`, disables previous/next and omits unavailable alternatives. It does not present four fabricated or unpublished examples.
+The server reuses the existing Fisher–Yates selection and serializes one initial index. One client selected-route state is initialized from it. Rerenders, language changes, focus, sample edits and hydration do not rerandomize. Four-way selection cannot currently be demonstrated because three requested families remain unpublished.
 
-The existing [editorial release workflow](public-route-editorial-release.md) requires “an editorial owner, independent reviewer, and explicit unknowns array”. It also requires recommended nights, route-order rationale, connection provenance and rights records. The legacy published Japan entry does not itself meet all new-release fields. Image licensing work here is not a substitute for route editorial review. Reviewer/provenance information was requested; it has not been supplied. No confidence flags or reviewer identities were invented.
+## 8. Two-stage route interaction
 
-## 6. Affiliate ownership
+Places and journey remain separate chapters. Desktop photographs settle from stagger/rotation into an ordered line over 45svh of ordinary scrolling. Hover/focus emphasis does not reflow the page. Quiet view/mobile use the static ordered state. Route changes use the same owner and compensate only the active chapter’s offset; journey changes focus its heading without scrolling back to places. Approved mixed headings and route-character labels are restored.
 
-The four categories resolve through `getCurrentPartnerAction` and delegate all clicks to `MorroviaAffiliateLink`: current accommodation/Trip.com resolver, Viator, Omio and Saily. Existing fallback, attribution, consent, new-tab and sponsored/noopener/noreferrer behavior is retained. Category focus/hover/selection changes only the displayed illustration. Clicks never mark bookings or trip-readiness tasks complete. One compact commission disclosure is shown.
+## 9. Product demo isolation
 
-## 7. Asset provenance and loading
+Map starts active. Map/Builder/Itinerary controls attach directly to the canvas; the journey selector sits below. A reducer stores nights, selected stop and current view in memory only. Adding a night changes subsequent itinerary day numbering and map totals. Reset restores the canonical seed. No account creation, storage writes, mutation API, TripDocument or real-trip analytics are used by the sample. Route changes retain the view and update the shared homepage route, including hero and affiliates.
 
-- [Generated asset inventory](../public/journey/immersive/asset-inventory.json): two original imagined hero/closing landscapes plus sixteen distinct route/category scenes. It records source generation IDs, rights/status, semantics and responsive files/bytes. The sixteen scenes derive from the four approved generated atlases, with technical extraction/resizing only.
-- [Destination inventory](../public/journey/immersive/destination-inventory.json): sixteen named destination photographs with author, source, licence URL, derivative notice and measured responsive dimensions. These records cover current and prospective canonical examples; unused images are not eagerly loaded. Osaka still needs its final image association if a reviewed five-stop Japan record is published.
-- [Public credits](../public/journey/immersive/credits.html): source and licence attribution. Hero and closing images are explicitly imagined landscapes. Affiliate scenes are illustrations, not provider inventory or booked services.
+## 10. Map lazy loading
 
-The hero is the only eager photograph in the measured candidate. Named destination pictures are responsive/lazy. The map mounts only near its chapter. Affiliates request the active image and then one adjacent category progressively, honoring Save Data for that prefetch. They do not load all sixteen files at first paint.
+The sample imports its Map component dynamically after an IntersectionObserver reaches the chapter (300px margin). It uses the production `JourneyPlannerMap` whole-route preview, real coordinates, numbered order and selected-stop state. Connections are labelled illustrative/subject to confirmation; this is not a timetable claim. MapLibre was absent from initial-page script requests and appeared only on reaching the sample. Existing `RoutePlanLink` may prefetch Builder dependencies near the journey chapter; that is separate from first-paint Map loading.
 
-## 8. Visual parity
+## 11. Affiliate resolver integration
 
-Preserved: immersive hero; large mixed hierarchy; embedded real prompt; portrait scatter→align with the approved 45vh travel; separate places and photographic explanation chapters; Map-first canvas with view controls attached and journey selector below; large affiliate chapter; final immersive CTA. Licensed/generation-provenance replacements preserve the photographic composition but are not pixel-identical to the prototype.
+Every outbound action uses `getCurrentPartnerAction` and `MorroviaAffiliateLink`: current Trip.com accommodation owner, Viator, Omio and Saily. Existing fallback, consent, analytics, sponsored/noopener/noreferrer and new-tab behaviour remain in that owner. Image/category interaction never marks bookings or readiness complete. One commission disclosure is shown.
 
-The three-stop/one-route publication subset is a visible parity gap. Full four-route visual approval is not claimed. The actual map uses the canonical numbered whole-route preview and accessible adjacent selection, rather than copying the prototype map rendering. See the [responsive contact sheet](../artifacts/immersive-homepage/responsive-contact.jpg), [places](../artifacts/immersive-homepage/places-1440.jpg), [journey](../artifacts/immersive-homepage/journey-1440.jpg), [map](../artifacts/immersive-homepage/map-1440.jpg), [affiliates](../artifacts/immersive-homepage/affiliates-1440.jpg) and [closing](../artifacts/immersive-homepage/closing-1440.jpg).
+## 12. Affiliate image mapping
 
-## 9. Functional parity
+Sixteen distinct route/category scenes cover four route keys × accommodation/activities/transport/connectivity. Hover, keyboard focus and category selection change only the current illustration. Changing the shared journey substitutes that route’s corresponding scene. The active scene loads near the viewport, then one likely adjacent category warms opportunistically, respecting Save Data. These are separate from itinerary destination photographs; they are not provider inventory.
 
-A real local submission reached `/journey/new?homeDraft=1` with Tokyo, Takayama, Kyoto, ten days, two travellers, Food and Culture. Builder used its real interpretation/review UI, including its existing remaining Japan-area clarification; no fake completed plan was shown. See [handoff evidence](../artifacts/immersive-homepage/real-capture-handoff.txt).
+## 13. Image provenance
 
-Browser checks exercised dates, traveller quantity, interests, AI disclosure, canonical London origin suggestions, same-as-start, English/Spanish switching and final-CTA focus. The sample increased Tokyo from three to four nights; Map retained the total and Itinerary showed Takayama on day five. Reset restored nine nights. All four active-route affiliate image states were checked. The canonical Start with this route CTA also reached Builder with all three stops and ten days. Its existing ending-place confirmation still gates continuation, so a full route-to-completed-Builder pass is not claimed. See [route handoff](../artifacts/immersive-homepage/route-handoff.txt). No sample mutation reached real-trip storage or analytics. Authenticated account flows and real microphone transcription remain staging/device checks; their production owners were retained.
+[Generated inventory](../public/journey/immersive/asset-inventory.json), [destination inventory](../public/journey/immersive/destination-inventory.json), and [public credits](../public/journey/immersive/credits.html) record source, rights, intended use, semantics and responsive variants. No unresolved prototype photo was shipped. The final Japan hero is an explicitly labelled imagined Japanese-Alps landscape generated for this task; it preserves the approved open landscape composition. Other prospective route heroes resolve credited destination images. Closing imagery is an imagined coast. Generated affiliate scenes do not imply availability or exact listings. Osaka’s final production association remains part of the five-stop content task.
 
-## 10. Mobile results
+## 14. Mobile implementation
 
-Captured 320×740, 390×667, 390×844, 430×932, 768×1024, 1024×900, 1440×1000 and 1920×1080. The 1920 viewport was displayed at 80% in a QA iframe, then exported at its CSS dimensions. Captures use exact iframe widths, not a scaled desktop layout. At 320 and 390, document width matched viewport width. The prompt uses natural content height, side-by-side endpoints at compact widths, wrapping attribute controls and readable 16px input text. The measured 390px form was approximately 470px tall rather than the old ~1043px surface.
+Verified at 320×740, 390×667, 390×844, 430×932, 768×1024, 1024×900, 1440×1000 and 1920×1080. Document width matched each target. The final 1440px capture was displayed at 80% and the 1920px capture at 60% to fit the review window, then exported at their CSS dimensions. Other captures use their native iframe dimensions. At 390px the real form measures about 437px tall, versus the original approximately 1043px; at 320px it is about 493px. AI disclosure shares the planning-action row. Text remains 16px with canonical internal field padding; endpoints use two columns; attributes wrap rather than shrinking touch targets. On short screens, scrolling is still needed. The existing mobile navigation and safe-area spacing are retained. Physical keyboard/microphone testing remains outstanding.
 
-On short screens the real mobile navigation dock is retained; scrolling is necessary to reach all form controls. Traveller/date/interest/disclosure controls were exercised at 320px. The initially inherited white dock text was corrected. Physical mobile keyboard, dictation and low-end device behavior remain unverified.
+## 15. Reduced motion
 
-## 11. Reduced motion
+Quiet view and `prefers-reduced-motion` disable pointer depth, image transitions and scatter transformations. Images appear ordered immediately; extra sticky dwell and scroll listeners are removed. Desktop listeners reattach after viewport changes. Closing CTA focuses the real textarea immediately without a delayed focus steal. Quiet view was browser-tested; a physical OS reduced-motion/device pass remains unverified.
 
-Quiet view and system reduced motion disable image transitions, pointer depth and scatter transforms. Quiet view removes the extra sticky travel and stops scroll work. A media-query listener reattaches desktop progression correctly after resizing. Mobile has no scatter scroll listener. Final CTA focus/scroll is immediate, with no timer-driven focus steal. The existing map preview uses its static preview behavior. Quiet view was exercised in the browser; a physical OS setting/device pass is still required.
+## 16. Accessibility
 
-## 12. Performance before/after
+One hero h1, chapter h2s and sample h3s; real labelled capture controls; explicit previous/next controls and live current count; focusable photographs; pressed-state segmented controls and example selection; descriptive affiliate new-tab labels; visible focus and legal disclosure links. No gesture-only control. Browser checks exercised AI disclosure, Escape dismissal/focus return, keyboard focus and closing CTA. A 320px layering defect was found and fixed: disclosure now sits above the dock and route chapter, with its full text/link visible. This is not a full screen-reader or automated contrast certification.
 
-| Measurement | Existing homepage | Candidate |
-| --- | ---: | ---: |
-| Next production first-load JS (reported compressed estimate) | 344 kB | 355 kB |
-| Image bytes observed before scrolling, 390×844 | 3,530,730 | 61,040 |
-| Image bytes observed before scrolling, 1440×1000 | 3,761,864 | 178,034 |
-| Initial CLS, 390×844 | 0.309 | 0 |
-| Initial CLS, 1440×1000 | 0.108 | 0 |
-| Local LCP, 390×844 | 1,276ms, consent paragraph | 752ms, hero image |
-| Local LCP, 1440×1000 | 668ms, original hero illustration | 788ms, hero image |
+## 17. Analytics
 
-These are single local browser observations, not field Core Web Vitals, cold-network benchmarks or low-end CPU results. The original mobile run included first-visit consent, so its LCP element is not directly comparable. The desktop original-tree measurement was repeated using the flag-off comparison build; the 344kB JS baseline came from the pre-change build. Responsive candidate selections were 768w at mobile and 1536w at desktop; other device pixel ratios can select different files.
+Existing hero prompt/submit/request gating, `route_started`, pageview/Routes path and canonical affiliate click events remain unchanged. Added only `homepage_route_viewed` with public `route_id`, `selection` (initial/change) and `stop_count`. A ref guard ignores effect replay and repeated same-route selections. It attempts one initial event per mounted homepage entry and one per changed selection. The central consent owner may drop events before consent; they are not replayed later. Demo night/view interactions emit no real-trip product events. Consent/coarse-payload and duplicate-selection tests pass; live provider delivery is unverified.
 
-A temporary local proxy injected PerformanceObservers and exposed measurements in a hidden DOM output; this code is not shipped. Raw JSON evidence is in the artifacts directory. The server loading fallback now reserves the viewport so the footer cannot flash before streamed content. Navigation prefetch is disabled only for the new homepage, reducing initial observed script requests from 43 to 19. The temporary dual-homepage bundle accounts for the small first-load increase.
+## 18. Performance before/after
 
-The demo map chunk (`7884…js` in this build), MapLibre/shared worker and related chunks were absent at first paint and appeared when the sample was reached. Nearby route-CTA prefetch can also request Builder dependencies after scrolling into the story. The maximum observed event duration during sample interactions was 104ms; session CLS after lazy content and interactions was 0.015. This is an event-timing observation, not a validated INP score. Low-end-mobile map cost remains a staging acceptance item.
+Original Next first-load estimate: **344kB**. Final estimate is recorded in [build output](../artifacts/immersive-homepage/build.log) (approximately 356kB). Original image bytes before scrolling: 3,530,730 at 390px and 3,761,864 at 1440px. The earlier generated-Andes candidate measured 61,040 / 178,034 bytes; those are historical measurements, not the final Japan asset. Final measurements are in `performance-staging-390.json` and `performance-staging-1440.json` and show **50,464 bytes at 390px / 165,676 bytes at 1440px**, **CLS 0** at both widths, and local LCP observations of **364ms / 456ms**. Initial image transfer is approximately 98.6% / 95.6% lower than the original. Each final initial request set contained 19 scripts; the map stayed deferred.
 
-## 13. Accessibility
+All timings are single local browser observations without CPU/network throttling, not field Core Web Vitals. Earlier baseline CLS was 0.309 mobile / 0.108 desktop; candidate initial CLS was 0. Lazy-map interaction testing previously observed a maximum 104ms event duration (not a validated INP score). Low-end-device performance remains an acceptance item.
 
-DOM checks confirmed one H1, H2 chapters, H3/H4 sample hierarchy, labelled controls, current-route live status, pressed-state view controls, keyboard equivalents for route controls and image focus, meaningful destination alt text and decorative landscapes. The AI disclosure opens its labelled dialog and receives focus. The final action focuses the existing labelled textarea. Functional text uses canonical token pairs; photography uses localized scrims. The map has an equivalent text stop list.
+## 19. Visual comparison
 
-This is not a complete screen-reader or automated contrast certification. Keyboard/speech/OS-motion behavior across Safari, mobile browsers and authenticated states remains part of staging approval. Shared control touch sizes were not reduced to fit the composition.
+The latest prototype `src/App.jsx`, final CSS and `review.html` were read directly before production refinements. The approved large mixed typography, spatial portrait geometry, 45svh pacing, separate journey chapter, attached product tabs, larger product/affiliate headings, sixteen affiliate states and closing invitation are retained. [Responsive contact sheet](../artifacts/immersive-homepage/responsive-contact.jpg) and chapter captures are in the evidence directory. Production navigation and real form controls intentionally retain their owners. The missing five-stop/four-route content remains a material visual-parity gap; no four-route browser approval is claimed.
 
-## 14. Analytics
+## 20. Tests
 
-The real `HomeTripStarter` retains prompt-start request gating and submission events. `RoutePlanLink` retains `route_started`. Affiliate clicks have exactly one canonical owner. The sample adds no real-trip events, persistence calls or new taxonomy. There is no client randomization or hydration effect issuing route impressions. Existing consent/privacy gates remain unchanged. Relevant analytics/privacy and commercial-boundary tests passed; live consented event delivery is a staging check.
+**137 focused tests pass** across immersive homepage, navigation, homepage layout/randomisation, public routes/handoff/release, capture/endpoint parity, analytics, affiliate commercial boundaries and privacy. Coverage includes deterministic selection helpers, scroll-offset correction, shared view/night continuity, isolation, sixteen image mappings, canonical click delegation, reduced-motion/final focus wiring and consent-safe route-view deduplication.
 
-## 15. Tests and validation
+Broader `npm run test:public-routes`: **33 pass, 3 fail**. The same failures were independently reproduced on starting SHA `a523c75`: Japan, Andean and Portugal curated-evidence tests expect `canonical-endpoint-identity` but receive `curated-route`. The affected endpoint/route model owners were not changed. Logs are in the evidence directory. This broader check is not green.
 
-134 focused/relevant tests passed: immersive homepage, existing hero layout, route selection/publication/handoff/release, navigation architecture, capture entry parity, endpoint editing, analytics, affiliate commercial/surface boundaries and consent/privacy runtime. `npm run typecheck`, `npm run build:check`, `npm run audit:ui`, production Storybook build and `git diff --check` passed. No ESLint configuration was introduced.
+## 21. Build/typecheck/audit
 
-Unit coverage verifies deterministic injected selection, four-item wraparound, local scroll correction, reducer continuity/minima/reset/nonmutation, publication exclusion, real-owner wiring, sixteen image states/fallback, named-photo attribution and Quiet-view/focus behavior. Four-route browser switching cannot be honestly verified until those routes are published. The broader `npm run test:public-routes` run finished with 33 passes and three failures in `curated-route-trust.test.ts` (Japan, Andean Highlands, Portugal). All three reproduce in an isolated archive of starting commit `a523c75`: the expected arrival-leg source is `canonical-endpoint-identity`, but the actual source is `curated-route`. No involved route/trip owner was changed in this task. These baseline failures remain unresolved and are an additional acceptance item. No application hydration error was observed. An early temporary QA observer syntax error was corrected; it was not production code.
+`npm run build:check`, `npm run typecheck`, `npm run audit:ui`, Storybook build and `git diff --check` pass after final refinements. Generated Next environment/config churn is restored to the repository baseline. No ESLint configuration was introduced. Storybook’s generated visual inventory reflects the actual scoped rules and shared navigation story.
 
-## 16. Feature flag and rollback
+## 22. Remaining gaps
 
-`IMMERSIVE_HOMEPAGE_V2` is absent/default-off, with `false` documented in `.env.staging.example`. No browser override exists. Rollback is setting/removing the server variable and redeploying through the existing host environment mechanism. The original component tree remains present and was checked in the flag-off local server. No main/production default was changed.
+1. Canonical five-stop Japan authoring/review and publication of Balkans, Vietnam–Cambodia and Iceland. See the precise release report and content-review record.
+2. The three confirmed baseline route-trust test failures.
+3. Full four-route production/browser randomisation, transitions, sample continuity and image-state matrix, which cannot be truthfully exercised before publication.
+4. Authenticated/device, real speech, screen-reader/contrast and low-end performance acceptance. Existing owners are preserved; these passes are not claimed.
 
-## 17. Staging readiness
+## 23. Staging readiness and intended deployment steps
 
-**Hold staging rollout.** The homepage-focused tests and build checks pass; the broader route suite has three confirmed baseline failures, and the approved four-route content and full acceptance matrix remain incomplete. The user’s staged rollout was conditional on all stages being green. No staging or production environment, database, route publication or deployed application was mutated. The next rollout remains: reviewed canonical content → local four-route parity checks → staging deploy flag-off → confirm fallback → enable staging flag → real functional/device/performance QA → user review.
+**Not ready to deploy. No push/deploy performed.** The local default-on implementation is for review, not a release approval.
 
-## 18. Remaining gaps
+After the gaps above are resolved and the user explicitly requests deployment:
 
-1. Canonical reviewed five-stop Japan content, and publication-ready Balkans, Vietnam/Cambodia and Iceland records with required editorial provenance/reviewer. Do not fill this gap with homepage fixtures.
-2. Browser verification of all four route states, stable random coverage and journey-section switching at the same scroll position once those records exist.
-3. Full staging hero/route handoff, consented analytics delivery, authenticated account behavior, real microphone/keyboard, OS reduced motion, contrast/screen-reader review, and low-end mobile performance.
-4. Resolve the three baseline route-trust persistence test failures and review the existing route-handoff ending-place confirmation.
-5. Final five-stop Japan image association (including Osaka) and full four-route visual review against the approved prototype.
+1. On `staging`, check `git status --short`, fetch `origin main staging`, verify the approved SHA and main ancestry, and commit the reviewed diff if needed. Do not include unrelated changes.
+2. Re-run the focused suites, `npm run test:public-routes`, `npm run typecheck`, `npm run build:check`, `npm run audit:ui`, `npm run build-storybook`, `npm run release:gate` and `git diff --check`.
+3. Verify the existing isolated staging deploy and its environment against [staging-e2e.md](staging-e2e.md). Confirm the staging-only host/database/auth configuration and `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=preview`. No provider secrets or production environment values should be copied as part of this homepage change.
+4. Only with explicit deployment authorization, `git push origin staging`, then trigger/confirm the existing protected staging branch deployment at the reviewed SHA. Repository documentation specifies a Netlify staging deployment; this task did not verify a live site ID or change host configuration.
+5. Run `npm run staging:preflight` using staging-only configuration, then the homepage functional/consent/device matrix at `https://staging.morrovia.com/journey/home`. Confirm default immersive presentation and explicit-false fallback. Do not seed/reset data unless that separate QA workflow is authorized.
+6. Record deployed SHA, checks and screenshots for review. Rollback: set `IMMERSIVE_HOMEPAGE_V2=false` on the staging deployment and redeploy its approved SHA. Do not merge to main or deploy production as part of this staging step.
 
-The current one-route candidate is reviewable locally, but is not represented as the approved complete homepage.
+## Capability parity checklist
 
-IMMERSIVE HOMEPAGE IMPLEMENTATION NOT READY — KEEP CURRENT HOMEPAGE
+| Capability | Result / owner |
+| --- | --- |
+| Morrovia wordmark/navigation | Retained: EasyTNavigation |
+| New trip | Retained canonical entry |
+| About | Retained navigation/footer |
+| Routes / View all routes | Retained `/journey/discover` |
+| Stamps | Retained navigation/mobile dock |
+| Passport info | Retained navigation/mobile dock |
+| How it works / Tour | Retained live navigation owner |
+| Account / sign-in | Retained session-aware navigation; authenticated browser pass pending |
+| Language | Retained EN/ES owner; checked |
+| Natural-language prompt | Real MorroviaTripCapture |
+| Speech | Real voice owner; physical microphone pass pending |
+| Starting point | Real endpoint editor/autocomplete |
+| Ending point | Real endpoint editor/autocomplete |
+| Same-as-start | Real canonical callback; checked |
+| Dates | Real date picker; checked |
+| Travellers | Real quantity control; checked |
+| Interests | Real selection control; checked |
+| AI transparency | Real disclosure, compact row, layering fixed |
+| Plan my trip | Real submit/request gate |
+| Homepage → Builder | Real home draft handoff; local submission checked |
+| Route → Builder | Real RoutePlanLink; current three-stop handoff checked |
+| Route discovery | Current publication boundary and real Routes destination |
+| Analytics | Existing owners plus consent-gated homepage-only impression |
+| Affiliate disclosure/clicks | Canonical resolver/link, state-neutral |
+| Privacy/legal/footer | Existing app shell and MorroviaFooter |
+| Keyboard/accessibility | Explicit controls/focus retained; full assistive-tech pass pending |
+| Responsive/mobile | All requested widths captured; no horizontal overflow |
+| Quiet/reduced motion | Static ordered layout; controls retained |
+
+No useful production capability was intentionally removed. Content publication and unverified acceptance cases are explicitly called out above rather than treated as completed parity.
+
+IMMERSIVE HOMEPAGE IMPLEMENTATION INCOMPLETE — DO NOT DEPLOY

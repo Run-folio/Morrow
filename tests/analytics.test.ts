@@ -327,3 +327,19 @@ if (false) {
   // @ts-expect-error commercial events reject raw traveller prompts
   trackEvent("affiliate_click", { category: "accommodation", provider: "booking.com", raw_prompt: "private trip text" });
 }
+
+
+test("homepage route impressions carry only catalogue metadata and respect consent", () => {
+  for (const consent of ["declined", "granted"] as const) {
+    const calls: unknown[][] = [];
+    const restore = installAnalyticsWindow(consent, calls);
+    try {
+      trackEvent("homepage_route_viewed", { route_id: "japan-slow", selection: "initial", stop_count: 3 });
+      assert.equal(calls.length, consent === "granted" ? 1 : 0);
+      if (consent === "granted") {
+        assert.equal(calls[0][1], "homepage_route_viewed");
+        assert.deepEqual(Object.keys(calls[0][2] as object).sort(), ["environment", "page_path", "route_id", "selection", "stop_count"]);
+      }
+    } finally { restore(); }
+  }
+});

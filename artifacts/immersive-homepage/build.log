@@ -86,13 +86,13 @@ Route (app)                                                                     
 ├ ○ /journey/forgot-password                                                     3.31 kB         302 kB
 ├ ƒ /journey/gift/[token]                                                        4.15 kB         303 kB
 ├ ○ /journey/help                                                                9.16 kB         313 kB
-├ ƒ /journey/home                                                                25.1 kB         355 kB
+├ ƒ /journey/home                                                                25.7 kB         356 kB
 ├ ƒ /journey/login                                                               5.02 kB         304 kB
 ├ ○ /journey/new                                                                 71.4 kB        1.01 MB
 ├ ○ /journey/new/import                                                           129 kB         428 kB
-├ ○ /journey/passport                                                            7.64 kB         312 kB
+├ ○ /journey/passport                                                            7.63 kB         312 kB
 ├ ○ /journey/plan                                                                  348 B        1.01 MB
-├ ƒ /journey/plan-next                                                           6.94 kB         864 kB
+├ ƒ /journey/plan-next                                                           6.95 kB         864 kB
 ├ ƒ /journey/prep                                                                  252 B         103 kB
 ├ ○ /journey/privacy                                                             14.3 kB         313 kB
 ├ ƒ /journey/profile                                                             14.9 kB         314 kB

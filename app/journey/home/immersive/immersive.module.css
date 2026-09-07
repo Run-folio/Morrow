@@ -24,6 +24,11 @@
 .heroCopy h1 em { max-width: 7ch; line-height: .97; }
 .heroCopy p { max-width: 350px; font-size: 17px; }
 .planner { width: 100%; max-width: 560px; justify-self: end; padding: 28px; background: var(--morrovia-paper); color: var(--morrovia-ink); border-radius: var(--morrovia-radius); }
+/* Keep the canonical disclosure above adjacent immersive chapters and navigation. */
+.hero:has(.planner [role="dialog"]) { z-index: var(--morrovia-layer-modal); }
+.planner:has([role="dialog"]) { position: relative; z-index: var(--morrovia-layer-modal); }
+.planner [role="dialog"] { top: auto; bottom: calc(100% + 9px); }
+.planner [data-disclosure-close] { width: 44px; height: 44px; }
 .planner form { margin: 0; max-width: none; }
 .planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
 .planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
@@ -44,8 +49,13 @@
   .heroBody { width: calc(100% - 28px); padding: 24px 0; }
   .heroCopy h1 { font-size: clamp(52px,13.5vw,66px); }
   .planner { padding: 14px; }
+  .planner [role="dialog"] { bottom: calc(var(--morrovia-mobile-dock-offset) + 12px); max-height: calc(100svh - var(--morrovia-mobile-dock-offset) - 24px); }
   .planner :global([class*="journey-endpoints-editor_fields"]) { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
   .planner :global([class*="journey-endpoints-editor_shortcuts"]) button { padding-inline: 0; font-size: 11px; min-height: 44px; }
+  .planner :global([class*="actionCluster"]) { flex-wrap: nowrap; justify-content: space-between; gap: 4px; }
+  .planner :global([class*="morrovia-trip-capture_action__"]) { width: auto; min-width: 0; flex: 1; }
+  .planner :global([class*="actionCluster"]) > div:first-child > button { min-height: 44px; font-size: 11px; padding-inline: 4px; }
+  .planner :global([class*="actionCluster"]) button[type="submit"] { padding-inline: 12px; min-height: 48px; }
   .planner :global([class*="attributeActions"]) { gap: 4px; }
   .planner :global([class*="attributeActions"]) button { padding-inline: 7px; font-size: 11px; min-height: 44px; }
 }
@@ -181,6 +191,7 @@
 .photos figcaption > span { font: var(--morrovia-type-metadata); color: var(--morrovia-signal); }
 .photos figcaption strong { font: 28px/1.1 var(--morrovia-display); }
 .photos figcaption small { font: var(--morrovia-type-fine-print); }
+.photos figure:focus-visible strong { color: var(--morrovia-action); }
 .photos figure:focus-visible .destinationPhoto { transform: scale(1.035); }
 @media(hover:hover) and (pointer:fine) { .photos figure:hover .destinationPhoto { transform: scale(1.035); } .photos figure:hover strong { color: var(--morrovia-action); } }
 .routeFoot { display: flex; justify-content: space-between; gap: 20px; font: var(--morrovia-type-supporting-body); margin-top: 20px; }

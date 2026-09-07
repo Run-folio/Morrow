@@ -2,6 +2,7 @@ import { homepageEligibleRouteCards, selectHomepageRouteCards } from "./homepage
 import { publicRouteDetailFor, type PublicRouteDetail } from "./public-route.ts";
 import { routeFamilyByKey } from "./route-catalog.ts";
 import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
+import generatedInventory from "../../public/journey/immersive/asset-inventory.json" with { type: "json" };
 export { nextHomepageRoute, routeScrollCorrection } from "./homepage-navigation.ts";
 
 /** Presentation keys, not route definitions. Publication remains canonical. */
@@ -10,8 +11,23 @@ export type ImmersiveRoute = PublicRouteDetail & {
   dayRange: { min: number; max: number };
   minimumNights: number[];
   href: string;
+  heroPhoto: { variants: Array<{ src: string; width: number; bytes: number }>; credit: string; creditEs: string; country: string; rights: string; source: string } | null;
   photos: Array<(typeof destinationInventory)[number] | null>;
 };
+
+const heroPlace: Record<string, string> = {
+  "japan-slow": "kyoto", "balkans-overland": "kotor",
+  "vietnam-cambodia": "hoi-an", "iceland-ring-road": "vik",
+};
+
+function heroFor(key: string): ImmersiveRoute["heroPhoto"] {
+  const generated = generatedInventory.find((image) => image.route === key && image.category === "hero");
+  if (generated?.label) return { variants: generated.variants, credit: "Imagined landscape · inspired by the Japanese Alps", creditEs: "Paisaje imaginado · inspirado en los Alpes japoneses", country: generated.label, rights: generated.rights, source: generated.source };
+  const photo = destinationInventory.find((image) => image.key === heroPlace[key]);
+  if (!photo) return null;
+  const credit = `${photo.place} · ${photo.author} · ${photo.license}`;
+  return { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl };
+}
 
 export function immersiveHomepageRoutes(): ImmersiveRoute[] {
   const eligible = homepageEligibleRouteCards();
@@ -19,7 +35,7 @@ export function immersiveHomepageRoutes(): ImmersiveRoute[] {
     const card = eligible.find((item) => item.routeKey === key);
     const detail = card ? publicRouteDetailFor(key) : null;
     if (!card || !detail) return [];
-    return [{ ...detail, dayRange: card.dayRange, href: card.href,
+    return [{ ...detail, heroPhoto: heroFor(key), dayRange: card.dayRange, href: card.href,
       photos: detail.stops.map((stop) => destinationInventory.find((image) => image.country === stop.country && image.place.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === stop.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ?? null),
       // Unresolved legacy hero rights: use the attributed destination-photo
       // owner until canonical release metadata explicitly clears the asset.

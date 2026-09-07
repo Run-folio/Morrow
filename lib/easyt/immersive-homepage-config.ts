@@ -1,4 +1,4 @@
-/** Server-owned request choice. Missing or misspelled values fail closed. */
+/** Server-owned presentation choice; explicit false retains the original homepage. */
 export function immersiveHomepageEnabled(value: string | undefined) {
-  return value === "true";
+  return value === undefined || value === "true";
 }

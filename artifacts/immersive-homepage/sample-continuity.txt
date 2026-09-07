@@ -1,223 +1,33 @@
-- main:
-  - link "Skip to trip prompt":
-    - /url: "#start-building"
-  - link "Morrovia home":
-    - /url: /journey/home
-    - generic: Morrovia ✦
-  - navigation "Morrovia navigation":
-    - link "New trip":
-      - /url: /journey/new
-      - generic: New trip
-    - link "About":
-      - /url: /journey/about
-    - link "Routes":
-      - /url: /journey/discover
-    - link "Stamps":
-      - /url: /journey/stamped
-    - link "Passport info":
-      - /url: /journey/passport
-    - button "How it works"
-    - link "Sign in":
-      - /url: /journey/dashboard
-    - combobox "Language":
-      - option "EN" [selected]
-      - option "ES"
-  - generic: Complex trips, made simple.
-  - heading "Go further. Make it yours." [level=1]:
-    - text: Go further.
-    - emphasis: Make it yours.
-  - paragraph: Turn your multi-stop ideas into a thoughtful first route. Then make it your own.
-  - generic: TELL US ABOUT YOUR TRIP
-  - textbox "TELL US ABOUT YOUR TRIP":
-    - /placeholder: "Where would you like to go and for how long?\nAny must see places to base the trip around?"
-  - button "Use voice to add a trip idea":
-    - generic: Speak
-  - button "About speech input":
-    - generic: About speech input
-  - status
-  - region "YOUR JOURNEY":
-    - generic: Starting from
-    - combobox "Starting from"
-    - generic: Ending at
-    - combobox "Ending at"
-    - group "Journey end options":
-      - button "Same as start"
-  - button "Add dates":
-    - text: Add dates
-  - button "2 travellers":
-    - text: 2 travellers
-  - button "Interests":
-    - text: Interests
-  - button "AI-assisted":
-    - text: AI-assisted
-  - button "Plan my trip":
-    - text: Plan my trip
-  - generic: Imagined landscape · inspired by the Andes
-  - button "Quiet view":
-    - text: Quiet view
-  - link "From an idea to a journey":
-    - /url: "#routes"
-    - text: From an idea to a journey
-  - region "Places along the journey":
-    - generic: Japan
-    - heading "Japan by rail." [level=2]:
-      - text: Japan
-      - emphasis: by rail.
-    - paragraph: 3 places · 1 country
-    - group "Browse journeys":
-      - button "Previous journey" [disabled]:
-        - generic: Previous journey
-      - status:
-        - text: 1 / 1
-        - generic: · Japan, one good day at a time
-      - button "Next journey" [disabled]:
-        - generic: Next journey
-      - link "View all routes":
-        - /url: /journey/discover
-        - text: View all routes
-    - figure "Tokyo · Japan":
-      - img "Tokyo, Japan"
-      - link "Basile Morin · CC BY-SA 4.0":
-        - /url: /journey/immersive/credits.html
-      - generic: 01 · Japan
-      - strong: Tokyo
-      - generic: 3 minimum nights
-    - figure "Takayama · Japan":
-      - img "Takayama, Japan"
-      - link "Raita Futo · CC BY 2.0":
-        - /url: /journey/immersive/credits.html
-      - generic: 02 · Japan
-      - strong: Takayama
-      - generic: 2 minimum nights
-    - figure "Kyoto · Japan":
-      - img "Kyoto, Japan"
-      - link "Kanchi1979 · CC BY-SA 4.0":
-        - /url: /journey/immersive/credits.html
-      - generic: 03 · Japan
-      - strong: Kyoto
-      - generic: 3 minimum nights
-    - generic: 8–14 days · a starting point
-    - link "The journey between them":
-      - /url: "#route-story"
-      - text: The journey between them
-  - link "Kanchi1979 · CC BY-SA 4.0":
-    - /url: /journey/immersive/credits.html
-  - generic: Japan
-  - heading "Japan, one good day at a time" [level=2]:
-    - text: Japan,
-    - emphasis: one good day at a time
-  - paragraph: Food · Culture
-  - paragraph: A first-time Japan route that moves from Tokyo’s energy into a smaller mountain town, then ends with Kyoto at a human pace.
-  - paragraph: Tokyo → Takayama → Kyoto
-  - paragraph: Nights are a planning guide. Confirm connections and schedules before booking.
-  - link "Start with this route":
-    - /url: /journey/new?homeDraft=1&inspire=japan-slow
-    - text: Start with this route
-  - link "See whole journey":
-    - /url: "#product"
-    - text: See whole journey
-  - complementary:
-    - generic: Another way to go
-    - link "View all routes":
-      - /url: /journey/discover
-  - generic: The whole trip, in view
-  - heading "Your whole trip. Connected." [level=2]:
-    - text: Your whole trip.
-    - emphasis: Connected.
-  - paragraph:
-    - text: Across countries. Between places.
-    - text: Into the days you’ll actually live.
-  - group "Product view":
-    - button "Map"
-    - button "Builder"
-    - button "Itinerary" [active] [pressed]
-  - generic: Japan
-  - generic: 10 nights · interactive sample
-  - button "Reset":
-    - text: Reset
-  - status: "Tokyo: 4 nights. Updated across every view."
-  - generic "itinerary sample":
-    - img "Takayama, Japan"
-    - link "Raita Futo · CC BY 2.0":
-      - /url: /journey/immersive/credits.html
-    - generic: Itinerary · day 5 · sample
-    - heading "Takayama. Your next chapter." [level=3]:
-      - text: Takayama.
-      - text: Your next chapter.
-    - button "Next destination":
-      - text: Next destination
-    - term: Travel
-    - definition:
-      - text: Tokyo → Takayama
-      - generic: Transport and timing to confirm
-    - term: Tonight
-    - definition:
-      - text: Takayama · 1 / 3
-      - generic: Accommodation to choose
-    - paragraph: Afternoon idea · Explore Takayama
-    - paragraph: Evening idea · leave time for a local meal
-    - generic: Activities and stays are not booked.
-  - generic: Try another journey
-  - group "Sample journey":
-    - button "Japan, one good day at a time" [pressed]
-  - generic: When your trip takes shape
-  - heading "Plan it here. Book when you’re ready." [level=2]:
-    - text: Plan it here.
-    - emphasis: Book when you’re ready.
-  - figure "Japan · Stays A quiet place to land.":
-    - img "Japanese-style guesthouse courtyard · generated atmospheric illustration"
-    - generic: Japan · Stays
-    - emphasis: A quiet place to land.
-  - button "Stays" [pressed]
-  - link "Find a stay, opens Trip.com in a new tab":
-    - /url: https://www.trip.com/t/pdAWQqi56W2
-    - text: Find a stay
-  - generic: Trip.com
-  - button "Experiences"
-  - link "Explore experiences, opens Viator in a new tab":
-    - /url: https://vi.me/IiuWB
-    - text: Explore experiences
-  - generic: Viator
-  - button "Transport"
-  - link "Compare transport, opens Omio in a new tab":
-    - /url: https://omio.sjv.io/2RBeqD
-    - text: Compare transport
-  - generic: Omio · coverage varies by route
-  - button "Connectivity"
-  - link "Stay connected, opens Saily in a new tab":
-    - /url: https://go.saily.site/aff_c?offer_id=101&aff_id=16085
-    - text: Stay connected
-  - generic: Saily
-  - paragraph: Partner links · Morrovia may earn a commission at no extra cost to you.
-  - generic: The best part is still ahead.
-  - heading "Go somewhere that stays with you." [level=2]:
-    - text: Go somewhere
-    - emphasis: that stays with you.
-  - button "Plan my trip":
-    - text: Plan my trip
-  - generic: Complex trips, made simple.
-  - link "Image credits":
-    - /url: /journey/immersive/credits.html
-- contentinfo:
-  - link "Morrovia home":
-    - /url: /journey/home
-    - text: Morrovia ✦
-  - paragraph: © 2026 Morrovia. All rights reserved.
-  - paragraph: Operated by Shaun Whiting Limited
-  - navigation "Company and legal information":
-    - link "About":
-      - /url: /journey/about
-    - link "Help":
-      - /url: /journey/help
-    - link "Contact":
-      - /url: mailto:sw@shaunwhiting.com
-    - link "Affiliate disclosure":
-      - /url: /journey/affiliate-disclosure
-    - link "Terms":
-      - /url: /journey/terms
-    - link "Privacy":
-      - /url: /journey/privacy
-    - link "Cookie settings":
-      - /url: /journey/cookies#cookie-settings
-- button "Open Next.js Dev Tools":
-- alert
+THE WHOLE TRIP, IN VIEW
+Your whole trip.
+Connected.
+
+Across countries. Between places.
+Into the days you’ll actually live.
+
+Map
+Builder
+Itinerary
+Japan
+10 nights · interactive sample
+Reset
+Tokyo: 4 nights. Updated across every view.
+Raita Futo · CC BY 2.0
+ITINERARY · DAY 5 · SAMPLE
+Takayama.
+Your next chapter.
+Next destination
+Travel
+Tokyo → Takayama
+Transport and timing to confirm
+Tonight
+Takayama · 1 / 3
+Accommodation to choose
+
+Afternoon idea · Explore Takayama
+
+Evening idea · leave time for a local meal
+
+Activities and stays are not booked.
+TRY ANOTHER JOURNEY
+Japan
