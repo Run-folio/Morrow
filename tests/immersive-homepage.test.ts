@@ -4,6 +4,7 @@ import test from "node:test";
 import { immersiveHomepageEnabled } from "../lib/easyt/immersive-homepage-config.ts";
 import { immersiveHomepageRoutes, initialImmersiveRouteIndex, nextHomepageRoute, routeScrollCorrection } from "../lib/easyt/immersive-homepage-routes.ts";
 import { isPublishedPublicRouteKey, publicRouteDetailFor } from "../lib/easyt/public-route.ts";
+import { createHomepageDemo, homepageDemoReducer, homepageDemoDay } from "../lib/easyt/homepage-demo.ts";
 
 test("homepage switch fails closed, without browser-dependent routing", () => {
   for (const value of [undefined, "", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
@@ -39,4 +40,34 @@ test("hero composes real capture and current handoff owners", () => {
   assert.match(capture, /<JourneyEndpointsEditor/);
   assert.match(capture, /router\.push\("\/journey\/new\?homeDraft=1"\)/);
   assert.doesNotMatch(hero, /capture-receipt|setSubmitted|Math\.random|Voice\.jsx/);
+});
+
+test("one night decision persists between demo views without changing catalogue data", () => {
+  const routes = immersiveHomepageRoutes();
+  const route = routes[0];
+  const original = structuredClone(route);
+  let state = createHomepageDemo(routes);
+  const before = homepageDemoDay(state.nights[route.key], 1);
+  state = homepageDemoReducer(state, { type: "night", route, index: 0, value: route.stops[0].nights + 1 });
+  for (const view of ["itinerary", "map", "builder"] as const) {
+    state = homepageDemoReducer(state, { type: "view", view });
+    assert.equal(state.view, view);
+    assert.equal(homepageDemoDay(state.nights[route.key], 1), before + 1);
+  }
+  assert.deepEqual(route, original);
+  assert.equal(homepageDemoReducer(state, { type: "night", route, index: 0, value: NaN }), state);
+  state = homepageDemoReducer(state, { type: "night", route, index: 0, value: -1 });
+  assert.equal(state.nights[route.key][0], route.minimumNights[0]);
+  state = homepageDemoReducer(state, { type: "reset", route });
+  assert.deepEqual(state.nights[route.key], route.stops.map((stop) => stop.nights));
+});
+
+test("demo has no account, storage, analytics or mutation dependency and lazy-loads the map", () => {
+  for (const name of ["lib/easyt/homepage-demo.ts", "app/journey/home/immersive/product-demo.tsx", "app/journey/home/immersive/demo-map.tsx"]) {
+    const source = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /localStorage|sessionStorage|trackEvent|fetch\(|repository|TripDocument/);
+  }
+  const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
+  assert.match(product, /dynamic\(\(\) => import\("\.\/demo-map"\)/);
+  assert.ok(product.indexOf("styles.canvasNavigation") < product.indexOf("styles.productExamples"));
 });
