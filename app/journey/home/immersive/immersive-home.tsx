@@ -10,6 +10,7 @@ import styles from "./immersive.module.css";
 import RouteChapters from "./route-chapters";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import ProductDemo from "./product-demo";
+import AffiliateChapter from "./affiliate-chapter";
 
 export function useHomepageLanguage() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
@@ -50,6 +51,6 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
       </div>
       <div className={styles.heroBottom}><span>{es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes"}</span><EasyTButton variant="quiet" icon={Pause} aria-pressed={quiet || systemQuiet} disabled={systemQuiet} onClick={() => setQuiet(!quiet)}>{systemQuiet ? (es ? "Movimiento reducido" : "Reduced motion") : (es ? "Vista tranquila" : "Quiet view")}</EasyTButton><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
     </section>
-    <RouteChapters routes={routes} initialIndex={initialIndex}>{(route, change) => <ProductDemo route={route} routes={routes} change={change} />}</RouteChapters>
+    <RouteChapters routes={routes} initialIndex={initialIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
   </main>;
 }

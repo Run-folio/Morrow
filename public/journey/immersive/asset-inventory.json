@@ -1,0 +1,442 @@
+[
+  {
+    "route": "japan-slow",
+    "category": "accommodation",
+    "file": "affiliate-japan-accommodation",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-1013bbf0-1e9e-4fcd-b92e-9563d02937fb.png; quadrant 1",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Japanese-style guesthouse courtyard · generated atmospheric illustration",
+    "decorative": false,
+    "context": "A quiet place to land.",
+    "label": "Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-japan-accommodation-384.webp",
+        "width": 384,
+        "bytes": 17638
+      },
+      {
+        "src": "/journey/immersive/affiliate-japan-accommodation-768.webp",
+        "width": 768,
+        "bytes": 52018
+      }
+    ]
+  },
+  {
+    "route": "japan-slow",
+    "category": "activities",
+    "file": "affiliate-japan-activities",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-1013bbf0-1e9e-4fcd-b92e-9563d02937fb.png; quadrant 2",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Cultural lane and tea shop in Japan · generated atmospheric illustration",
+    "decorative": false,
+    "context": "A little closer to local life.",
+    "label": "Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-japan-activities-384.webp",
+        "width": 384,
+        "bytes": 19046
+      },
+      {
+        "src": "/journey/immersive/affiliate-japan-activities-768.webp",
+        "width": 768,
+        "bytes": 44838
+      }
+    ]
+  },
+  {
+    "route": "japan-slow",
+    "category": "transport",
+    "file": "affiliate-japan-transport",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-1013bbf0-1e9e-4fcd-b92e-9563d02937fb.png; quadrant 3",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Japanese local train at a rural platform · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Between cities, by rail.",
+    "label": "Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-japan-transport-384.webp",
+        "width": 384,
+        "bytes": 20066
+      },
+      {
+        "src": "/journey/immersive/affiliate-japan-transport-768.webp",
+        "width": 768,
+        "bytes": 62210
+      }
+    ]
+  },
+  {
+    "route": "japan-slow",
+    "category": "connectivity",
+    "file": "affiliate-japan-connectivity",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-1013bbf0-1e9e-4fcd-b92e-9563d02937fb.png; quadrant 4",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Traveller with a phone in a Japanese cafe · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Connected as you explore.",
+    "label": "Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-japan-connectivity-384.webp",
+        "width": 384,
+        "bytes": 13914
+      },
+      {
+        "src": "/journey/immersive/affiliate-japan-connectivity-768.webp",
+        "width": 768,
+        "bytes": 32112
+      }
+    ]
+  },
+  {
+    "route": "balkans-overland",
+    "category": "accommodation",
+    "file": "affiliate-balkans-accommodation",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-3ea192ee-d6e5-445a-957e-1ee4a7f5e036.png; quadrant 1",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Stone guesthouse terrace above an Adriatic bay · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Wake up by the bay.",
+    "label": "The Balkans",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-balkans-accommodation-384.webp",
+        "width": 384,
+        "bytes": 26802
+      },
+      {
+        "src": "/journey/immersive/affiliate-balkans-accommodation-768.webp",
+        "width": 768,
+        "bytes": 78686
+      }
+    ]
+  },
+  {
+    "route": "balkans-overland",
+    "category": "activities",
+    "file": "affiliate-balkans-activities",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-3ea192ee-d6e5-445a-957e-1ee4a7f5e036.png; quadrant 2",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Kayakers exploring Adriatic water · generated atmospheric illustration",
+    "decorative": false,
+    "context": "See the coast differently.",
+    "label": "The Balkans",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-balkans-activities-384.webp",
+        "width": 384,
+        "bytes": 24134
+      },
+      {
+        "src": "/journey/immersive/affiliate-balkans-activities-768.webp",
+        "width": 768,
+        "bytes": 71016
+      }
+    ]
+  },
+  {
+    "route": "balkans-overland",
+    "category": "transport",
+    "file": "affiliate-balkans-transport",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-3ea192ee-d6e5-445a-957e-1ee4a7f5e036.png; quadrant 3",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Regional bus on a Balkan coastal road · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Onward along the coast.",
+    "label": "The Balkans",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-balkans-transport-384.webp",
+        "width": 384,
+        "bytes": 16020
+      },
+      {
+        "src": "/journey/immersive/affiliate-balkans-transport-768.webp",
+        "width": 768,
+        "bytes": 48228
+      }
+    ]
+  },
+  {
+    "route": "balkans-overland",
+    "category": "connectivity",
+    "file": "affiliate-balkans-connectivity",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-3ea192ee-d6e5-445a-957e-1ee4a7f5e036.png; quadrant 4",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Traveller with a phone at a Balkan cafe · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Find your way, together.",
+    "label": "The Balkans",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-balkans-connectivity-384.webp",
+        "width": 384,
+        "bytes": 16536
+      },
+      {
+        "src": "/journey/immersive/affiliate-balkans-connectivity-768.webp",
+        "width": 768,
+        "bytes": 37782
+      }
+    ]
+  },
+  {
+    "route": "vietnam-cambodia",
+    "category": "accommodation",
+    "file": "affiliate-vietnam-accommodation",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-5e5aa186-7dea-4f62-ae35-fd2d2d2ab016.png; quadrant 1",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Vietnamese courtyard guesthouse · generated atmospheric illustration",
+    "decorative": false,
+    "context": "A leafy place to pause.",
+    "label": "Vietnam / Cambodia",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-vietnam-accommodation-384.webp",
+        "width": 384,
+        "bytes": 31662
+      },
+      {
+        "src": "/journey/immersive/affiliate-vietnam-accommodation-768.webp",
+        "width": 768,
+        "bytes": 92950
+      }
+    ]
+  },
+  {
+    "route": "vietnam-cambodia",
+    "category": "activities",
+    "file": "affiliate-vietnam-activities",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-5e5aa186-7dea-4f62-ae35-fd2d2d2ab016.png; quadrant 2",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Vietnamese market lane with lanterns · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Everyday life, up close.",
+    "label": "Vietnam / Cambodia",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-vietnam-activities-384.webp",
+        "width": 384,
+        "bytes": 29796
+      },
+      {
+        "src": "/journey/immersive/affiliate-vietnam-activities-768.webp",
+        "width": 768,
+        "bytes": 87668
+      }
+    ]
+  },
+  {
+    "route": "vietnam-cambodia",
+    "category": "transport",
+    "file": "affiliate-vietnam-transport",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-5e5aa186-7dea-4f62-ae35-fd2d2d2ab016.png; quadrant 3",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Regional coach on a Southeast Asian road · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Connect the next chapter.",
+    "label": "Vietnam / Cambodia",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-vietnam-transport-384.webp",
+        "width": 384,
+        "bytes": 22014
+      },
+      {
+        "src": "/journey/immersive/affiliate-vietnam-transport-768.webp",
+        "width": 768,
+        "bytes": 66060
+      }
+    ]
+  },
+  {
+    "route": "vietnam-cambodia",
+    "category": "connectivity",
+    "file": "affiliate-vietnam-connectivity",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-5e5aa186-7dea-4f62-ae35-fd2d2d2ab016.png; quadrant 4",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Traveller with a phone at a Cambodian-style cafe · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Keep your plans close.",
+    "label": "Vietnam / Cambodia",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-vietnam-connectivity-384.webp",
+        "width": 384,
+        "bytes": 19974
+      },
+      {
+        "src": "/journey/immersive/affiliate-vietnam-connectivity-768.webp",
+        "width": 768,
+        "bytes": 47912
+      }
+    ]
+  },
+  {
+    "route": "iceland-ring-road",
+    "category": "accommodation",
+    "file": "affiliate-iceland-accommodation",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-35cf450f-2bb3-4271-850f-67a38e8e97ae.png; quadrant 1",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Icelandic timber cabin overlooking mossy hills · generated atmospheric illustration",
+    "decorative": false,
+    "context": "A base beyond the ordinary.",
+    "label": "Iceland",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-iceland-accommodation-384.webp",
+        "width": 384,
+        "bytes": 18288
+      },
+      {
+        "src": "/journey/immersive/affiliate-iceland-accommodation-768.webp",
+        "width": 768,
+        "bytes": 53526
+      }
+    ]
+  },
+  {
+    "route": "iceland-ring-road",
+    "category": "activities",
+    "file": "affiliate-iceland-activities",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-35cf450f-2bb3-4271-850f-67a38e8e97ae.png; quadrant 2",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Hiker near an Icelandic waterfall · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Out into the landscape.",
+    "label": "Iceland",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-iceland-activities-384.webp",
+        "width": 384,
+        "bytes": 11318
+      },
+      {
+        "src": "/journey/immersive/affiliate-iceland-activities-768.webp",
+        "width": 768,
+        "bytes": 34168
+      }
+    ]
+  },
+  {
+    "route": "iceland-ring-road",
+    "category": "transport",
+    "file": "affiliate-iceland-transport",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-35cf450f-2bb3-4271-850f-67a38e8e97ae.png; quadrant 3",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Car on an Icelandic mountain road · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Room for the open road.",
+    "label": "Iceland",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-iceland-transport-384.webp",
+        "width": 384,
+        "bytes": 17674
+      },
+      {
+        "src": "/journey/immersive/affiliate-iceland-transport-768.webp",
+        "width": 768,
+        "bytes": 54524
+      }
+    ]
+  },
+  {
+    "route": "iceland-ring-road",
+    "category": "connectivity",
+    "file": "affiliate-iceland-connectivity",
+    "source": "OpenAI image generation, this Morrovia task, 2026-09-07; exec-35cf450f-2bb3-4271-850f-67a38e8e97ae.png; quadrant 4",
+    "rights": "Generated for this project; no third-party source image. Fictional atmospheric illustration, not provider inventory.",
+    "status": "generated-project-asset",
+    "alt": "Traveller with a phone overlooking an Icelandic harbour · generated atmospheric illustration",
+    "decorative": false,
+    "context": "Connected, even out here.",
+    "label": "Iceland",
+    "variants": [
+      {
+        "src": "/journey/immersive/affiliate-iceland-connectivity-384.webp",
+        "width": 384,
+        "bytes": 13230
+      },
+      {
+        "src": "/journey/immersive/affiliate-iceland-connectivity-768.webp",
+        "width": 768,
+        "bytes": 29472
+      }
+    ]
+  },
+  {
+    "route": null,
+    "category": null,
+    "file": "hero",
+    "source": "OpenAI image generation, this task, 2026-09-07; exec-6d64f76b-c769-45a2-871a-734f93501a38.png",
+    "prompt": "Original imagined Andean valley, green terraces and river, soft daylight, natural editorial photography. No landmarks, people, logos or UI.",
+    "rights": "Generated for this project; no third-party source image.",
+    "status": "generated-project-asset",
+    "alt": "",
+    "decorative": true,
+    "variants": [
+      {
+        "src": "/journey/immersive/hero-480.webp",
+        "width": 480,
+        "bytes": 27590
+      },
+      {
+        "src": "/journey/immersive/hero-768.webp",
+        "width": 768,
+        "bytes": 61040
+      },
+      {
+        "src": "/journey/immersive/hero-1536.webp",
+        "width": 1536,
+        "bytes": 178034
+      }
+    ]
+  },
+  {
+    "route": null,
+    "category": null,
+    "file": "closing",
+    "source": "OpenAI image generation, this task, 2026-09-07; exec-75e1c8b9-d96a-4320-aa99-9e88138cfc31.png",
+    "prompt": "Original imagined Atlantic coast inspired by Portugal, warm limestone cliffs, blue ocean, spacious hazy sky. No identifiable property, people, logos or UI.",
+    "rights": "Generated for this project; no third-party source image.",
+    "status": "generated-project-asset",
+    "alt": "",
+    "decorative": true,
+    "variants": [
+      {
+        "src": "/journey/immersive/closing-480.webp",
+        "width": 480,
+        "bytes": 34148
+      },
+      {
+        "src": "/journey/immersive/closing-768.webp",
+        "width": 768,
+        "bytes": 83278
+      },
+      {
+        "src": "/journey/immersive/closing-1536.webp",
+        "width": 1536,
+        "bytes": 293484
+      }
+    ]
+  }
+]

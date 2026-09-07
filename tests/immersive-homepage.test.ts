@@ -5,6 +5,8 @@ import { immersiveHomepageEnabled } from "../lib/easyt/immersive-homepage-config
 import { immersiveHomepageRoutes, initialImmersiveRouteIndex, nextHomepageRoute, routeScrollCorrection } from "../lib/easyt/immersive-homepage-routes.ts";
 import { isPublishedPublicRouteKey, publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { createHomepageDemo, homepageDemoReducer, homepageDemoDay } from "../lib/easyt/homepage-demo.ts";
+import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.ts";
+import { existsSync } from "node:fs";
 
 test("homepage switch fails closed, without browser-dependent routing", () => {
   for (const value of [undefined, "", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
@@ -70,4 +72,28 @@ test("demo has no account, storage, analytics or mutation dependency and lazy-lo
   const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
   assert.match(product, /dynamic\(\(\) => import\("\.\/demo-map"\)/);
   assert.ok(product.indexOf("styles.canvasNavigation") < product.indexOf("styles.productExamples"));
+});
+
+test("all sixteen affiliate states have provenance, distinct files and responsive variants", () => {
+  const files = new Set<string>();
+  for (const key of ["japan-slow", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"]) for (const category of ["accommodation", "activities", "transport", "connectivity"] as const) {
+    const image = homepageAffiliateImage(key, category);
+    assert.ok(image);
+    assert.equal(image.status, "generated-project-asset");
+    assert.match(image.source, /OpenAI image generation/);
+    assert.ok(image.alt && image.rights);
+    assert.equal(files.has(image.file), false);
+    files.add(image.file);
+    for (const variant of image.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
+  }
+  assert.equal(files.size, 16);
+  assert.equal(homepageAffiliateImage("not-a-route", "transport"), null);
+});
+
+test("affiliate chapter delegates clicks to canonical owner without writing readiness state", () => {
+  const source = readFileSync(new URL("../app/journey/home/immersive/affiliate-chapter.tsx", import.meta.url), "utf8");
+  assert.match(source, /getCurrentPartnerAction\(need.category\)/);
+  assert.match(source, /<MorroviaAffiliateLink/);
+  assert.doesNotMatch(source, /trackEvent|localStorage|setBooked|repository|fetch\(/);
+  assert.equal((source.match(/Partner links · Morrovia may earn/g) ?? []).length, 1);
 });
