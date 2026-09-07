@@ -2,17 +2,20 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
-  readWorkspaceOrientationState,
+  clearWorkspaceOrientationSeenVersion,
+  readWorkspaceOrientationSeenVersion,
+  resolveWorkspaceOrientationSeenVersion,
   shouldAutoStartWorkspaceOrientation,
-  WORKSPACE_ORIENTATION_VERSIONS,
+  WORKSPACE_ORIENTATION_VERSION,
   workspaceOrientationStorageKey,
-  writeWorkspaceOrientationState,
+  writeWorkspaceOrientationSeenVersion,
 } from "../lib/easyt/workspace-orientation.ts";
 
 class MemoryStorage {
   values = new Map<string, string>();
   getItem(key: string) { return this.values.get(key) ?? null; }
   setItem(key: string, value: string) { this.values.set(key, value); }
+  removeItem(key: string) { this.values.delete(key); }
 }
 
 const component = readFileSync(new URL("../components/easyt/workspace-orientation.tsx", import.meta.url), "utf8");
@@ -22,9 +25,12 @@ const map = readFileSync(new URL("../components/journey-map-planner-workspace.ts
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 const analytics = readFileSync(new URL("../lib/analytics.ts", import.meta.url), "utf8");
+const profileRoute = readFileSync(new URL("../app/api/easyt/profile/route.ts", import.meta.url), "utf8");
+const repository = readFileSync(new URL("../lib/easyt/repository.ts", import.meta.url), "utf8");
+const tripLayout = readFileSync(new URL("../app/journey/[tripId]/layout.tsx", import.meta.url), "utf8");
 
 const autoStart = (overrides: Partial<Parameters<typeof shouldAutoStartWorkspaceOrientation>[0]> = {}) => shouldAutoStartWorkspaceOrientation({
-  state: "unseen",
+  seenVersion: 0,
   ready: true,
   hasMeaningfulTargets: true,
   attentionRequired: false,
@@ -37,50 +43,92 @@ test("1 Overview first meaningful visit auto-starts", () => assert.equal(autoSta
 test("2 Overview does not auto-start during loading", () => assert.equal(autoStart({ ready: false }), false));
 test("3 Overview does not auto-start during recovery conflict", () => assert.equal(autoStart({ attentionRequired: true }), false));
 
-test("4 completion prevents repeat auto-start", () => {
+test("4 first automatic opening marks the one global version as seen", () => {
   const storage = new MemoryStorage();
-  writeWorkspaceOrientationState(storage, "owner-a", "overview", "completed");
-  assert.equal(readWorkspaceOrientationState(storage, "owner-a", "overview"), "completed");
-  assert.equal(autoStart({ state: "completed" }), false);
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a");
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-a"), 1);
+  assert.equal(autoStart({ seenVersion: 1 }), false);
+  assert.match(component, /source === "automatic"\) persistSeenVersion/);
 });
 
-test("5 dismissal prevents repeat auto-start", () => {
+test("5 dismissing an automatic guide remains seen across refresh or remount", () => {
   const storage = new MemoryStorage();
-  writeWorkspaceOrientationState(storage, "owner-a", "overview", "dismissed");
-  assert.equal(readWorkspaceOrientationState(storage, "owner-a", "overview"), "dismissed");
-  assert.equal(autoStart({ state: "dismissed" }), false);
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a");
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-a"), WORKSPACE_ORIENTATION_VERSION);
+  assert.equal(autoStart({ seenVersion: readWorkspaceOrientationSeenVersion(storage, "owner-a") }), false);
 });
 
 test("6 manual replay remains available", () => assert.match(component, /Show me around/));
-test("7 replay does not reset stored completion", () => assert.match(component, /if \(session\.source === "automatic"\) writeWorkspaceOrientationState/));
-
-test("8 Map state is independent from Overview", () => {
-  assert.notEqual(workspaceOrientationStorageKey("owner-a", "map"), workspaceOrientationStorageKey("owner-a", "overview"));
+test("7 replay neither clears nor rewrites persisted state", () => {
+  assert.match(component, /const replay = useCallback/);
+  assert.doesNotMatch(component, /source === "replay"[\s\S]{0,120}(?:clearWorkspaceOrientation|writeWorkspaceOrientation)/);
 });
 
-test("9 Itinerary state is independent from Map", () => {
-  assert.notEqual(workspaceOrientationStorageKey("owner-a", "itinerary"), workspaceOrientationStorageKey("owner-a", "map"));
+test("8 Overview, Map and Itinerary share one persistence key", () => {
+  assert.equal(workspaceOrientationStorageKey("owner-a"), workspaceOrientationStorageKey("owner-a"));
+  assert.doesNotMatch(workspaceOrientationStorageKey("owner-a"), /overview|map|itinerary/);
+});
+
+test("9 workspace navigation cannot re-enable an already seen guide", () => {
+  const storage = new MemoryStorage();
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a");
+  for (const workspace of ["overview", "map", "itinerary", "overview"]) {
+    assert.equal(autoStart({ seenVersion: readWorkspaceOrientationSeenVersion(storage, "owner-a") }), false, workspace);
+  }
 });
 
 test("10 owner A state does not suppress owner B", () => {
   const storage = new MemoryStorage();
-  writeWorkspaceOrientationState(storage, "owner-a", "overview", "completed");
-  assert.equal(readWorkspaceOrientationState(storage, "owner-b", "overview"), "unseen");
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a");
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-b"), 0);
 });
 
-test("11 guest state does not suppress authenticated state", () => {
+test("11 guest seen wins during the immediate account handoff", () => {
   const storage = new MemoryStorage();
-  writeWorkspaceOrientationState(storage, null, "overview", "completed");
-  assert.equal(readWorkspaceOrientationState(storage, "owner-a", "overview"), "unseen");
+  writeWorkspaceOrientationSeenVersion(storage, null);
+  const resolved = resolveWorkspaceOrientationSeenVersion({
+    accountVersion: 0,
+    ownerDeviceVersion: readWorkspaceOrientationSeenVersion(storage, "owner-a"),
+    guestDeviceVersion: readWorkspaceOrientationSeenVersion(storage, null),
+  });
+  assert.equal(resolved, 1);
+  assert.equal(autoStart({ seenVersion: resolved }), false);
+  assert.match(component, /workspaceGuideVersionSeen: version/);
+  assert.match(component, /response\.ok && claimGuest/);
 });
 
 test("12 account switch closes stale orientation", () => assert.match(component, /setSession\(null\);[\s\S]*setUserInteracted\(false\);[\s\S]*\[ownerId, workspace\]/));
 
-test("13 version increase re-enables only the relevant workspace guide", () => {
+test("13 seen version 1 suppresses v1 while another hypothetical version remains distinguishable", () => {
   const storage = new MemoryStorage();
-  writeWorkspaceOrientationState(storage, "owner-a", "overview", "completed", 1);
-  assert.equal(readWorkspaceOrientationState(storage, "owner-a", "overview", 2), "unseen");
-  assert.equal(WORKSPACE_ORIENTATION_VERSIONS.map, 1);
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a", 1);
+  const seenVersion = readWorkspaceOrientationSeenVersion(storage, "owner-a");
+  assert.equal(autoStart({ seenVersion, currentVersion: 1 }), false);
+  assert.equal(autoStart({ seenVersion, currentVersion: 2 }), true);
+  assert.equal(WORKSPACE_ORIENTATION_VERSION, 1);
+});
+
+test("13b existing section-scoped v1 completion migrates without repeating", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("morrovia:workspace-orientation:overview:v1:owner:owner-a", "dismissed");
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-a"), 1);
+});
+
+test("13c authenticated preference is loaded server-side and persisted without a schema migration", () => {
+  assert.match(repository, /workspaceGuideVersionSeen: number/);
+  assert.match(repository, /preferences \|\|/);
+  assert.match(profileRoute, /Unsupported workspace guide version/);
+  assert.match(tripLayout, /workspaceGuideVersionSeen=\{preferences\.workspaceGuideVersionSeen\}/);
+});
+
+test("13d a reconciled guest marker can be consumed without touching another account", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("morrovia:workspace-orientation:overview:v1:guest", "dismissed");
+  writeWorkspaceOrientationSeenVersion(storage, "owner-a");
+  clearWorkspaceOrientationSeenVersion(storage, null);
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, null), 0);
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-a"), 1);
+  assert.equal(readWorkspaceOrientationSeenVersion(storage, "owner-b"), 0);
 });
 
 test("14 Product Tour and workspace orientation never overlap", () => {
@@ -103,9 +151,10 @@ test("25 analytics started, completed and dismissed use one finalisation guard",
 test("26 orientation analytics is consent-gated by the shared owner", () => { assert.match(analytics, /if \(!hasAnalyticsConsent\(\)\) return/); assert.doesNotMatch(component, /trip_id|stop_id|notes|booking/); });
 
 test("27 storage failure does not break the workspace", () => {
-  const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } };
-  assert.equal(readWorkspaceOrientationState(broken, "owner-a", "overview"), "unseen");
-  assert.equal(writeWorkspaceOrientationState(broken, "owner-a", "overview", "completed"), false);
+  const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); }, removeItem: () => { throw new Error("blocked"); } };
+  assert.equal(readWorkspaceOrientationSeenVersion(broken, "owner-a"), 0);
+  assert.equal(writeWorkspaceOrientationSeenVersion(broken, "owner-a"), false);
+  assert.equal(clearWorkspaceOrientationSeenVersion(broken, "owner-a"), false);
 });
 
 test("28 cross-tab storage update closes an automatic guide", () => { assert.match(component, /addEventListener\("storage"/); assert.match(component, /session\?\.source === "automatic"/); });

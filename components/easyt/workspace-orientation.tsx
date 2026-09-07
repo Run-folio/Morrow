@@ -17,11 +17,13 @@ import {
 } from "react";
 import { trackEvent } from "@/lib/analytics";
 import {
-  readWorkspaceOrientationState,
+  clearWorkspaceOrientationSeenVersion,
+  readWorkspaceOrientationSeenVersion,
+  resolveWorkspaceOrientationSeenVersion,
   shouldAutoStartWorkspaceOrientation,
-  WORKSPACE_ORIENTATION_VERSIONS,
+  WORKSPACE_ORIENTATION_VERSION,
   workspaceOrientationStorageKey,
-  writeWorkspaceOrientationState,
+  writeWorkspaceOrientationSeenVersion,
   type WorkspaceOrientationSource,
   type WorkspaceOrientationWorkspace,
 } from "@/lib/easyt/workspace-orientation";
@@ -102,7 +104,7 @@ function anchoredPosition(element: HTMLElement): CSSProperties {
   return { left, top, width };
 }
 
-export function WorkspaceOrientationProvider({ ownerId, children, autoStart = true }: { ownerId: string | null; children: ReactNode; autoStart?: boolean }) {
+export function WorkspaceOrientationProvider({ ownerId, children, autoStart = true, accountVersionSeen = 0 }: { ownerId: string | null; children: ReactNode; autoStart?: boolean; accountVersionSeen?: number }) {
   const pathname = usePathname();
   const workspace = workspaceFromPathname(pathname);
   const targetsRef = useRef(new Map<WorkspaceOrientationTarget, Registration>());
@@ -114,12 +116,33 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
   const [userInteracted, setUserInteracted] = useState(false);
   const [position, setPosition] = useState<CSSProperties>({});
   const [mobile, setMobile] = useState(false);
+  const [seenVersion, setSeenVersion] = useState<number | null>(null);
   const launcherRef = useRef<HTMLElement | null>(null);
   const sessionFinalizedRef = useRef(false);
   const autoStartAttemptedRef = useRef<string | null>(null);
   const primaryActionRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const descriptionId = useId();
+
+  const saveAccountVersion = useCallback(async (version: number, claimGuest: boolean) => {
+    if (!ownerId) return;
+    try {
+      const response = await fetch("/api/easyt/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceGuideVersionSeen: version }),
+      });
+      if (response.ok && claimGuest) clearWorkspaceOrientationSeenVersion(window.localStorage, null);
+    } catch {
+      // The owner-scoped device cache suppresses repeats and a later mount retries the account save.
+    }
+  }, [ownerId]);
+
+  const persistSeenVersion = useCallback((version = WORKSPACE_ORIENTATION_VERSION) => {
+    writeWorkspaceOrientationSeenVersion(window.localStorage, ownerId, version);
+    setSeenVersion((current) => Math.max(current ?? 0, version));
+    if (ownerId) void saveAccountVersion(version, false);
+  }, [ownerId, saveAccountVersion]);
 
   const registerTarget = useCallback((target: WorkspaceOrientationTarget, targetWorkspace: WorkspaceOrientationWorkspace, element: HTMLElement | null) => {
     const current = targetsRef.current.get(target)?.element;
@@ -149,6 +172,7 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
   }), []);
 
   const begin = useCallback((source: WorkspaceOrientationSource, launcher: HTMLElement | null = null) => {
+    if (source === "automatic" && (seenVersion ?? 0) >= WORKSPACE_ORIENTATION_VERSION) return false;
     const competingAttention = blockersRef.current.size > 0
       || productTourOpen
       || Boolean(document.querySelector('[role="dialog"]:not([data-workspace-orientation-ui="true"]), [data-product-tour-prompt="true"]'));
@@ -160,12 +184,13 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
     setSession({ workspace, source, stepIndex: 0, available });
     trackEvent("workspace_orientation_started", {
       workspace,
-      orientation_version: WORKSPACE_ORIENTATION_VERSIONS[workspace],
+      orientation_version: WORKSPACE_ORIENTATION_VERSION,
       source,
       total_steps: available.length,
     });
+    if (source === "automatic") persistSeenVersion();
     return true;
-  }, [availableSteps, productTourOpen, workspace]);
+  }, [availableSteps, persistSeenVersion, productTourOpen, seenVersion, workspace]);
 
   const replay = useCallback((launcher: HTMLElement | null) => { begin("replay", launcher); }, [begin]);
 
@@ -174,6 +199,25 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
     setUserInteracted(false);
     autoStartAttemptedRef.current = null;
   }, [ownerId, workspace]);
+
+  useEffect(() => {
+    const ownerDeviceVersion = readWorkspaceOrientationSeenVersion(window.localStorage, ownerId);
+    const guestDeviceVersion = ownerId ? readWorkspaceOrientationSeenVersion(window.localStorage, null) : 0;
+    const resolvedVersion = resolveWorkspaceOrientationSeenVersion({
+      accountVersion: ownerId ? accountVersionSeen : 0,
+      ownerDeviceVersion,
+      guestDeviceVersion,
+    });
+    if (resolvedVersion > 0) writeWorkspaceOrientationSeenVersion(window.localStorage, ownerId, resolvedVersion);
+    setSeenVersion(resolvedVersion);
+    if (ownerId && resolvedVersion > accountVersionSeen) {
+      void saveAccountVersion(resolvedVersion, guestDeviceVersion > 0);
+    } else if (ownerId && guestDeviceVersion > 0) {
+      // The account already carries an equal or newer version, so the guest
+      // marker has been safely reconciled and must not leak to another account.
+      clearWorkspaceOrientationSeenVersion(window.localStorage, null);
+    }
+  }, [accountVersionSeen, ownerId, saveAccountVersion]);
 
   useEffect(() => {
     const onTourOpen = () => { setProductTourOpen(true); setSession(null); };
@@ -200,23 +244,23 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
   }, [session, workspace]);
 
   useEffect(() => {
-    if (!autoStart || session) return;
+    if (!autoStart || session || seenVersion === null) return;
     const readiness = readyRef.current.get(workspace) ?? { ready: false, attentionRequired: false };
-    const key = workspaceOrientationStorageKey(ownerId, workspace);
+    const key = workspaceOrientationStorageKey(ownerId);
     if (autoStartAttemptedRef.current === key) return;
     const available = availableSteps(workspace);
-    const state = readWorkspaceOrientationState(window.localStorage, ownerId, workspace);
     const competingDialog = Boolean(document.querySelector('[role="dialog"]:not([data-workspace-orientation-ui="true"])'));
     const productTourPromptVisible = Boolean(document.querySelector('[data-product-tour-prompt="true"]'));
-    if (!shouldAutoStartWorkspaceOrientation({ state, ready: readiness.ready, hasMeaningfulTargets: available.length > 0, attentionRequired: readiness.attentionRequired || blockersRef.current.size > 0 || competingDialog, productTourOpen: productTourOpen || productTourPromptVisible, userInteracted })) return;
+    if (!shouldAutoStartWorkspaceOrientation({ seenVersion, ready: readiness.ready, hasMeaningfulTargets: available.length > 0, attentionRequired: readiness.attentionRequired || blockersRef.current.size > 0 || competingDialog, productTourOpen: productTourOpen || productTourPromptVisible, userInteracted })) return;
     autoStartAttemptedRef.current = key;
     window.requestAnimationFrame(() => begin("automatic"));
-  }, [autoStart, availableSteps, begin, ownerId, productTourOpen, registryRevision, session, userInteracted, workspace]);
+  }, [autoStart, availableSteps, begin, ownerId, productTourOpen, registryRevision, seenVersion, session, userInteracted, workspace]);
 
   useEffect(() => {
-    const key = workspaceOrientationStorageKey(ownerId, workspace);
+    const key = workspaceOrientationStorageKey(ownerId);
     const onStorage = (event: StorageEvent) => {
       if (event.key !== key || !event.newValue) return;
+      setSeenVersion(readWorkspaceOrientationSeenVersion(window.localStorage, ownerId));
       if (session?.source === "automatic") setSession(null);
     };
     window.addEventListener("storage", onStorage);
@@ -270,10 +314,9 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
   const finish = useCallback((outcome: "completed" | "dismissed") => {
     if (!session || sessionFinalizedRef.current) return;
     sessionFinalizedRef.current = true;
-    if (session.source === "automatic") writeWorkspaceOrientationState(window.localStorage, ownerId, session.workspace, outcome);
     trackEvent(outcome === "completed" ? "workspace_orientation_completed" : "workspace_orientation_dismissed", {
       workspace: session.workspace,
-      orientation_version: WORKSPACE_ORIENTATION_VERSIONS[session.workspace],
+      orientation_version: WORKSPACE_ORIENTATION_VERSION,
       source: session.source,
       total_steps: session.available.length,
       last_step_reached: session.stepIndex + 1,
@@ -289,7 +332,7 @@ export function WorkspaceOrientationProvider({ ownerId, children, autoStart = tr
     }
     setSession(null);
     if (session.source === "replay") window.requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
-  }, [activeTarget, ownerId, session]);
+  }, [activeTarget, session]);
 
   useEffect(() => {
     if (!session || !activeStep) return;

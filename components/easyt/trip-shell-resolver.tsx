@@ -33,10 +33,12 @@ type Resolution =
 export default function TripShellResolver({
   tripId,
   ownerId,
+  workspaceGuideVersionSeen = 0,
   children,
 }: {
   tripId: string;
   ownerId?: string;
+  workspaceGuideVersionSeen?: number;
   children: ReactNode;
 }) {
   const searchParams = useSearchParams();
@@ -138,6 +140,6 @@ export default function TripShellResolver({
       detail={syncIssue === "auth" ? "Your session ended, but this trip remains saved on this device." : syncIssue === "conflict" ? "Morrovia kept the existing cloud copy and did not remove this device’s copy." : "Your trip is still safe on this device. Check your connection and try again."}
       actions={syncIssue === "failed" ? <EasyTButton size="small" variant="secondary" onClick={() => void resolveAndPromote()} loading={syncing}>Try again</EasyTButton> : syncIssue === "auth" ? <EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Sign in again</EasyTLinkButton> : <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(tripId)}>Open device copy</EasyTLinkButton>}
     /> : null}
-    <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict}>{children}</TripShell>
+    <TripShell trip={resolution.trip} cacheTrip={showingCanonicalConflict} workspaceGuideVersionSeen={workspaceGuideVersionSeen}>{children}</TripShell>
   </div>;
 }

@@ -7,7 +7,7 @@ import {
   useWorkspaceOrientationTarget,
   type WorkspaceOrientationTarget,
 } from "./workspace-orientation";
-import { writeWorkspaceOrientationState, type WorkspaceOrientationWorkspace } from "@/lib/easyt/workspace-orientation";
+import { writeWorkspaceOrientationSeenVersion, type WorkspaceOrientationWorkspace } from "@/lib/easyt/workspace-orientation";
 import styles from "./workspace-orientation.stories.module.css";
 
 const targets: Record<WorkspaceOrientationWorkspace, { id: WorkspaceOrientationTarget; title: string; detail: string }[]> = {
@@ -36,7 +36,7 @@ function Target({ workspace, target, title, detail }: { workspace: WorkspaceOrie
 function Fixture({ workspace, ownerId, missingFirst = false, autoReady = true, completed = false }: { workspace: WorkspaceOrientationWorkspace; ownerId: string; missingFirst?: boolean; autoReady?: boolean; completed?: boolean }) {
   useWorkspaceOrientationReady(workspace, autoReady);
   useEffect(() => {
-    if (completed) writeWorkspaceOrientationState(window.localStorage, ownerId, workspace, "completed");
+    if (completed) writeWorkspaceOrientationSeenVersion(window.localStorage, ownerId);
   }, [completed, ownerId, workspace]);
   const visibleTargets = missingFirst ? targets[workspace].slice(-1) : targets[workspace];
   return <div className={styles.canvas}>

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(request: Request) {
   try {
     const owner = await requireEasyTOwner();
-    const body = (await request.json()) as { language?: string; travelProfile?: unknown; travelReadinessProfile?: unknown };
+    const body = (await request.json()) as { language?: string; travelProfile?: unknown; travelReadinessProfile?: unknown; workspaceGuideVersionSeen?: unknown };
     if (body.language !== undefined && body.language !== "en" && body.language !== "es") {
       return NextResponse.json(
         { error: "Unsupported language." },
@@ -23,11 +23,16 @@ export async function PATCH(request: Request) {
     if (body.travelReadinessProfile !== undefined && !isTravelReadinessProfile(body.travelReadinessProfile)) {
       return NextResponse.json({ error: "Unsupported travel readiness profile." }, { status: 400 });
     }
+    if (body.workspaceGuideVersionSeen !== undefined
+      && (!Number.isSafeInteger(body.workspaceGuideVersionSeen) || Number(body.workspaceGuideVersionSeen) < 0)) {
+      return NextResponse.json({ error: "Unsupported workspace guide version." }, { status: 400 });
+    }
     await updateEasyTUserPreferences(owner.id, {
-      language: body.language === "es" ? "es" : "en",
+      ...(body.language ? { language: body.language } : {}),
       ...(body.travelProfile ? { travelProfile: body.travelProfile } : {}),
       ...(body.travelReadinessProfile ? { travelReadinessProfile: body.travelReadinessProfile } : {}),
-    } as Parameters<typeof updateEasyTUserPreferences>[1]);
+      ...(body.workspaceGuideVersionSeen !== undefined ? { workspaceGuideVersionSeen: Number(body.workspaceGuideVersionSeen) } : {}),
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message =

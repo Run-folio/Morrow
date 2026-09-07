@@ -21,7 +21,13 @@ import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } fr
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
 type TripDocumentRow = { document: unknown };
-export type EasyTUserPreferences = { language: "en" | "es"; travelProfile: TravelProfile; travelReadinessProfile: TravelReadinessProfile };
+export type EasyTUserPreferences = {
+  language: "en" | "es";
+  travelProfile: TravelProfile;
+  travelReadinessProfile: TravelReadinessProfile;
+  workspaceGuideVersionSeen: number;
+};
+export type EasyTUserPreferencesUpdate = Partial<EasyTUserPreferences>;
 
 export type EasyTEmailEvent = {
   id: string;
@@ -129,12 +135,16 @@ export async function getEasyTUserPreferences(
     language: rows[0]?.preferences?.language === "es" ? "es" : "en",
     travelProfile: travelProfile ?? defaultTravelProfile,
     travelReadinessProfile: isTravelReadinessProfile(rows[0]?.preferences?.travelReadinessProfile) ? rows[0].preferences.travelReadinessProfile : defaultTravelReadinessProfile,
+    workspaceGuideVersionSeen: Number.isSafeInteger(rows[0]?.preferences?.workspaceGuideVersionSeen)
+      && Number(rows[0]?.preferences?.workspaceGuideVersionSeen) >= 0
+      ? Number(rows[0]?.preferences?.workspaceGuideVersionSeen)
+      : 0,
   };
 }
 
 export async function updateEasyTUserPreferences(
   ownerId: string,
-  preferences: EasyTUserPreferences,
+  preferences: EasyTUserPreferencesUpdate,
 ) {
   const sql = getEasyTDatabase();
   await sql`

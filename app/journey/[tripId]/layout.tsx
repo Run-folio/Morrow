@@ -50,8 +50,8 @@ export default async function TripWorkspaceLayout({
         }}
       />
       {trip
-        ? <TripShell trip={trip}>{children}</TripShell>
-        : <TripShellResolver tripId={tripId} ownerId={session.user.id}>{children}</TripShellResolver>}
+        ? <TripShell trip={trip} workspaceGuideVersionSeen={preferences.workspaceGuideVersionSeen}>{children}</TripShell>
+        : <TripShellResolver tripId={tripId} ownerId={session.user.id} workspaceGuideVersionSeen={preferences.workspaceGuideVersionSeen}>{children}</TripShellResolver>}
     </main>
   );
 }
