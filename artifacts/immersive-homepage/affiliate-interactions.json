@@ -1,0 +1,38 @@
+[
+  {
+    "category": "Experiences",
+    "images": [
+      {
+        "alt": "Cultural lane and tea shop in Japan · generated atmospheric illustration",
+        "src": "/journey/immersive/affiliate-japan-activities-768.webp"
+      }
+    ]
+  },
+  {
+    "category": "Transport",
+    "images": [
+      {
+        "alt": "Japanese local train at a rural platform · generated atmospheric illustration",
+        "src": "/journey/immersive/affiliate-japan-transport-768.webp"
+      }
+    ]
+  },
+  {
+    "category": "Connectivity",
+    "images": [
+      {
+        "alt": "Traveller with a phone in a Japanese cafe · generated atmospheric illustration",
+        "src": "/journey/immersive/affiliate-japan-connectivity-768.webp"
+      }
+    ]
+  },
+  {
+    "category": "Stays",
+    "images": [
+      {
+        "alt": "Japanese-style guesthouse courtyard · generated atmospheric illustration",
+        "src": "/journey/immersive/affiliate-japan-accommodation-768.webp"
+      }
+    ]
+  }
+]

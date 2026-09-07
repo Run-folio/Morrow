@@ -29,3 +29,5 @@ export const MobileDock: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
   decorators: [(Story) => <div style={{ width: 390, maxWidth: "100%", minHeight: 760, position: "relative" }}><Story /></div>],
 };
+
+export const ImmersiveLanding: Story = { args: { current: "home", landing: true, deferPrefetch: true } };

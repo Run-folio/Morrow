@@ -37,7 +37,7 @@ test("hero composes real capture and current handoff owners", () => {
   const hero = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
   const capture = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
   assert.match(hero, /<HomeTripStarter \/>/);
-  assert.match(hero, /<EasyTNavigation current="home" landing \/>/);
+  assert.match(hero, /<EasyTNavigation current="home" landing deferPrefetch \/>/);
   assert.match(capture, /<MorroviaTripCapture/);
   assert.match(capture, /<JourneyEndpointsEditor/);
   assert.match(capture, /router\.push\("\/journey\/new\?homeDraft=1"\)/);
@@ -96,4 +96,27 @@ test("affiliate chapter delegates clicks to canonical owner without writing read
   assert.match(source, /<MorroviaAffiliateLink/);
   assert.doesNotMatch(source, /trackEvent|localStorage|setBooked|repository|fetch\(/);
   assert.equal((source.match(/Partner links · Morrovia may earn/g) ?? []).length, 1);
+});
+
+
+test("destination imagery is matched to canonical places with explicit source rights", () => {
+  for (const route of immersiveHomepageRoutes()) for (const [index, stop] of route.stops.entries()) {
+    const photo = route.photos[index];
+    assert.ok(photo, `Missing credited image for ${stop.name}`);
+    assert.equal(photo.place, stop.name);
+    assert.equal(photo.country, stop.country);
+    assert.ok(photo.author && photo.licenseUrl && photo.sourceUrl);
+    for (const variant of photo.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
+  }
+});
+
+test("quiet view stops scroll work and the final action focuses the original prompt", () => {
+  const route = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
+  const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
+  assert.match(route, /if \(quiet\) return/);
+  assert.match(route, /desktop.addEventListener\("change", listen\)/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+  assert.match(closing, /#start-building textarea/);
+  assert.match(closing, /focus\(\{ preventScroll: true \}\)/);
 });

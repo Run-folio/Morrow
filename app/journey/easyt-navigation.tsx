@@ -29,6 +29,8 @@ type EasyTNavigationProps = {
   account?: { id?: string; name?: string | null; email: string; language?: Language };
   storageOwnerId?: string | null;
   landing?: boolean;
+  /** Keep deferred destination bundles out of an immersive landing page’s first load. */
+  deferPrefetch?: boolean;
 };
 
 type Language = EasyTLanguage;
@@ -37,6 +39,7 @@ export default function EasyTNavigation({
   current,
   account,
   storageOwnerId,
+  deferPrefetch = false,
 }: EasyTNavigationProps) {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -134,7 +137,7 @@ export default function EasyTNavigation({
   return (
     <>
       <header className={`${styles.header} ${styles.landingHeader}`} data-easyt-app>
-      <Link
+      <Link prefetch={deferPrefetch ? false : undefined}
         className={styles.brand}
         href="/journey/home"
         aria-label="Morrovia home"
@@ -144,6 +147,7 @@ export default function EasyTNavigation({
 
       <nav className={styles.landingActions} aria-label="Morrovia navigation">
         <EasyTLinkButton
+          prefetch={deferPrefetch ? false : undefined}
           className={styles.primaryLink}
           href="/journey/new"
           icon={Plus}
@@ -152,10 +156,10 @@ export default function EasyTNavigation({
         >
           <span>{labels.newTrip}</span>
         </EasyTLinkButton>
-        <Link href="/journey/about" aria-current={current === "about" ? "page" : undefined}>{language === "es" ? "Acerca de" : "About"}</Link>
-        <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{language === "es" ? "Rutas" : "Routes"}</Link>
-        <Link href="/journey/stamped">{labels.stamped}</Link>
-        <Link href="/journey/passport">{language === "es" ? "Información de pasaporte" : "Passport info"}</Link>
+        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}>{language === "es" ? "Acerca de" : "About"}</Link>
+        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{language === "es" ? "Rutas" : "Routes"}</Link>
+        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/stamped">{labels.stamped}</Link>
+        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/passport">{language === "es" ? "Información de pasaporte" : "Passport info"}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
         <span className={styles.landingTour}>
           <EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen />
@@ -170,13 +174,13 @@ export default function EasyTNavigation({
               <strong>{activeAccount.name || labels.account}</strong>
               <span>{activeAccount.email}</span>
             </div>
-            <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
-            <Link className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
-            <Link className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy"><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
-            {isAdmin && <Link className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin"><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy"><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
+            {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin"><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
             <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
           </div>
-        </details> : <Link href="/journey/dashboard">{language === "es" ? "Iniciar sesión" : "Sign in"}</Link>}
+        </details> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard">{language === "es" ? "Iniciar sesión" : "Sign in"}</Link>}
         <label className={styles.landingLanguage}>
           <Languages aria-hidden="true" />
           <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
@@ -190,18 +194,18 @@ export default function EasyTNavigation({
             <span>{language === "es" ? "Menú" : "Menu"}</span>
           </summary>
           <div className={styles.compactPopover}>
-            <Link href="/journey/new" onClick={beginNewTrip}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
-            <Link href="/journey/about" aria-current={current === "about" ? "page" : undefined}><span>{language === "es" ? "Acerca de" : "About"}</span></Link>
-            <Link href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
-            <Link href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
-            <Link href="/journey/passport"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Información de pasaporte" : "Passport info"}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/new" onClick={beginNewTrip}><Plus aria-hidden="true" /><span>{labels.newTrip}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}><span>{language === "es" ? "Acerca de" : "About"}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}><span>{language === "es" ? "Rutas" : "Routes"}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/stamped"><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/passport"><ShieldCheck aria-hidden="true" /><span>{language === "es" ? "Información de pasaporte" : "Passport info"}</span></Link>
             <span className={styles.compactDivider} aria-hidden="true" />
             <span className={styles.compactTour}><EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen /></span>
             {activeAccount ? <>
-              <Link href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
-              <Link href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
+              <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
+              <Link prefetch={deferPrefetch ? false : undefined} href="/journey/profile"><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
               <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
-            </> : <Link href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{language === "es" ? "Iniciar sesión" : "Sign in"}</span></Link>}
+            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{language === "es" ? "Iniciar sesión" : "Sign in"}</span></Link>}
             <label className={styles.compactLanguage}>
               <Languages aria-hidden="true" />
               <span>{labels.language}</span>
@@ -215,32 +219,32 @@ export default function EasyTNavigation({
       </nav>
       </header>
       <nav className={styles.mobileDock} aria-label="Morrovia mobile navigation">
-          <Link
+          <Link prefetch={deferPrefetch ? false : undefined}
             className={current === "home" ? styles.dockCurrent : undefined}
             href="/journey/home"
           >
             <House aria-hidden="true" />
             <span>{labels.home}</span>
           </Link>
-          <Link
+          <Link prefetch={deferPrefetch ? false : undefined}
             className={current === "trips" ? styles.dockCurrent : undefined}
             href="/journey/dashboard"
           >
             <Map aria-hidden="true" />
             <span>{labels.trips}</span>
           </Link>
-          <Link className={styles.dockPrimary} href="/journey/new" onClick={beginNewTrip}>
+          <Link prefetch={deferPrefetch ? false : undefined} className={styles.dockPrimary} href="/journey/new" onClick={beginNewTrip}>
             <Plus aria-hidden="true" />
             <span>{labels.newTrip}</span>
           </Link>
-          <Link
+          <Link prefetch={deferPrefetch ? false : undefined}
             className={current === "stamped" ? styles.dockCurrent : undefined}
             href="/journey/stamped"
           >
             <Stamp aria-hidden="true" />
             <span>{labels.stamped}</span>
           </Link>
-          <Link
+          <Link prefetch={deferPrefetch ? false : undefined}
             className={current === "passport" || current === "profile" ? styles.dockCurrent : undefined}
             href={activeAccount ? "/journey/profile" : "/journey/passport"}
           >

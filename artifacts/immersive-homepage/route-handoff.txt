@@ -1,0 +1,123 @@
+- main:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - generic: Morrovia ✦
+  - navigation "Morrovia navigation":
+    - link "New trip":
+      - /url: /journey/new
+      - generic: New trip
+    - link "About":
+      - /url: /journey/about
+    - link "Routes":
+      - /url: /journey/discover
+    - link "Stamps":
+      - /url: /journey/stamped
+    - link "Passport info":
+      - /url: /journey/passport
+    - button "How it works"
+    - link "Sign in":
+      - /url: /journey/dashboard
+    - combobox "Language":
+      - option "EN" [selected]
+      - option "ES"
+  - navigation "Trip brief progress":
+    - button "01 Places":
+      - generic: "01"
+      - generic: Places
+    - button "02 Dates and nights":
+      - generic: "02"
+      - generic: Dates and nights
+  - paragraph: STEP 1 OF 2
+  - heading "Tell us the shape" [level=1]
+  - generic: Check what we understood and fill any gaps.
+  - region "Trip understood":
+    - text: TRIP UNDERSTOOD
+    - heading "Check what we understood." [level=2]
+    - region "YOUR JOURNEY":
+      - strong: YOUR JOURNEY
+      - generic: Starting from
+      - combobox "Starting from": Tokyo
+      - generic: Ending at
+      - combobox "Ending at": Kyoto
+      - button "Clear journey end":
+        - generic: Clear journey end
+      - group "Journey end options":
+        - button "Same as start"
+      - generic: Choose the ending place from the suggestions, or select Not sure yet.
+    - strong: Stops
+    - button "Add stop":
+      - text: Add stop
+    - generic "Confirmed stops":
+      - button "Remove Tokyo":
+        - text: 1. Tokyo
+      - button "Remove Takayama":
+        - text: 2. Takayama
+      - button "Remove Kyoto":
+        - text: 3. Kyoto
+    - region "Preferences picked up":
+      - strong: PREFERENCES WE PICKED UP
+      - generic: 10 days
+      - generic: Relaxed pace
+      - generic: Food
+      - generic: Culture
+    - region "Trip intent and constraints":
+      - button "Fixed plans · Add something that can’t move"
+  - complementary "Trip at a glance":
+    - generic: YOUR TRIP
+    - heading "Your trip at a glance" [level=2]
+    - strong: Dates next
+    - strong: 3 places selected
+    - strong: 2 travellers
+    - list:
+      - generic: "1"
+      - strong: Tokyo
+      - generic: Stop
+      - generic: "2"
+      - strong: Takayama
+      - generic: Stop
+      - generic: "3"
+      - strong: Kyoto
+      - generic: Stop
+    - generic: NEXT
+    - paragraph:
+      - generic: We’ll balance nights
+      - text: around travel time and what’s nearby.
+  - button "Back" [disabled]
+  - status:
+    - text: Changes saved on this device
+  - generic: Choose the ending place from the suggestions, or select Not sure yet.
+  - button "Set dates & nights →" [disabled]
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - text: Morrovia ✦
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: mailto:sw@shaunwhiting.com
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- alert: Morrovia · Travel your way
+- complementary "Cookie preferences":
+  - strong: Your privacy choices
+  - paragraph: Morrovia uses necessary browser technology to keep trips and accounts working. With your permission, we can also use product analytics and affiliate attribution.
+  - paragraph:
+    - link "Cookie notice":
+      - /url: /journey/cookies
+    - link "Privacy notice":
+      - /url: /journey/privacy
+  - button "Reject optional"
+  - button "Accept optional"
+  - link "Manage preferences":
+    - /url: /journey/cookies#cookie-settings

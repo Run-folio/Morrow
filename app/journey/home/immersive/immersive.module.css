@@ -3,7 +3,7 @@
 .page h1,.page h2,.page h3,.page p,.page figure { margin: 0; }
 .page h1,.page h2 { font-family: var(--morrovia-ui); font-weight: 500; letter-spacing: -.06em; line-height: 1; }
 .page em { display: block; font-family: var(--morrovia-display); font-weight: 400; }
-.page a { color: inherit; }
+.heroBottom a,.closingFoot a { color: inherit; }
 .page a:focus-visible,.page button:focus-visible,.page figure:focus-visible { outline: 3px solid var(--morrovia-signal); outline-offset: 4px; }
 .eyebrow { display: block; font: var(--morrovia-type-metadata); letter-spacing: .12em; text-transform: uppercase; }
 .skip { position: fixed; z-index: 300; top: 12px; left: 16px; padding: 14px; background: var(--morrovia-paper); color: var(--morrovia-ink)!important; transform: translateY(-180%); }
@@ -18,6 +18,7 @@
 .navigation :global(header[data-easyt-app]) { background: transparent; border-color: color-mix(in srgb,var(--morrovia-paper) 30%,transparent); }
 .navigation :global(header[data-easyt-app]) > a,.navigation :global(header[data-easyt-app]) > nav > a,.navigation :global(header[data-easyt-app]) > nav > button { color: var(--morrovia-paper); }
 .navigation :global(header[data-easyt-app]) > a > span { color: inherit; }
+.navigation :global([class*="landingTour"]) button { color: var(--morrovia-paper); }
 .heroBody { width: 92%; margin: auto; display: grid; grid-template-columns: minmax(0,1.12fr) minmax(440px,.88fr); gap: 4vw; align-items: center; padding: 64px 0; }
 .heroCopy h1 { font-size: clamp(86px,8.4vw,162px); margin: 32px 0; line-height: .97; }
 .heroCopy h1 em { max-width: 7ch; line-height: .97; }
@@ -49,7 +50,7 @@
   .planner :global([class*="attributeActions"]) button { padding-inline: 7px; font-size: 11px; min-height: 44px; }
 }
 .page[data-quiet="true"] *, .page[data-quiet="true"] *::before { animation: none!important; transition: none!important; }
-.page[data-quiet="true"] .landscape { transform: none; }
+.page[data-quiet="true"] .landscape { transform: none!important; }
 .product { padding: 100px 5vw; min-height: 100svh; }
 .chapterHeading { display: flex; align-items: end; justify-content: space-between; gap: 40px; margin-bottom: 40px; }
 .chapterHeading .eyebrow { color: var(--morrovia-signal); margin-bottom: 28px; }
@@ -71,7 +72,8 @@
 .stopChoices small { display: block; font: var(--morrovia-type-fine-print); color: var(--morrovia-muted); margin-top: 5px; }
 .stopChoices button[aria-pressed="true"],.productExamples button[aria-pressed="true"] { background: var(--morrovia-lilac-strong); color: var(--morrovia-action); }
 .mapCanvas { position: relative; min-width: 0; min-height: 600px; background: var(--morrovia-lilac); }
-.mapCanvas > div { height: 100%; min-height: 600px; }
+.mapCanvas > div { height: 100%; min-height: 600px; border: 0; border-radius: 0; }
+.mapCanvas :global(.planner-map__stop.is-preview.is-active) { background: var(--morrovia-signal); }
 .mapCaption { position: absolute; left: 16px; bottom: 30px; padding: 6px 10px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); pointer-events: none; }
 .mapLoading { min-height: 600px; background: var(--morrovia-lilac); display: grid; place-items: center; padding: 30px; }
 .builderDemo { display: grid; grid-template-columns: 1fr 1.2fr; gap: 6vw; padding: 60px 4vw; min-height: 600px; }
@@ -232,4 +234,4 @@
 .page[data-quiet="true"] .placesStage { position: relative; }
 .page[data-quiet="true"] .photos figure,.page[data-quiet="true"] .destinationPhoto { transform: none; }
 @media(prefers-reduced-motion:reduce) { .places { height: auto; --progress: 1!important; } .placesStage { position: relative; } .photos figure,.destinationPhoto { transform: none!important; } }
-@media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none; } }
+@media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none!important; } }

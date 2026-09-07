@@ -89,7 +89,7 @@ export function EasyTLinkButton({
   variant,
   fullWidth,
   ...props
-}: SharedControlProps & { href: string } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "className" | "href">) {
+}: SharedControlProps & { href: string; prefetch?: boolean | null } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "className" | "href">) {
   return (
     <Link
       {...props}

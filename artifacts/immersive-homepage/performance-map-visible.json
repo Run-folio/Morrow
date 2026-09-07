@@ -1,0 +1,241 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "lcp": {
+    "time": 788,
+    "element": "IMG",
+    "text": "",
+    "url": "http://127.0.0.1:8875/journey/immersive/hero-1536.webp"
+  },
+  "cls": 0,
+  "shifts": [],
+  "interaction": 104,
+  "bodyWidth": 1440,
+  "images": [
+    {
+      "url": "http://127.0.0.1:8875/journey/immersive/hero-1536.webp",
+      "bytes": 178034,
+      "duration": 5
+    },
+    {
+      "url": "http://127.0.0.1:8875/journey/immersive/place-kyoto-1536.webp",
+      "bytes": 125986,
+      "duration": 59
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/56/25.png",
+      "bytes": 0,
+      "duration": 5
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/56/24.png",
+      "bytes": 0,
+      "duration": 5
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/55/25.png",
+      "bytes": 0,
+      "duration": 5
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/57/25.png",
+      "bytes": 0,
+      "duration": 6
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/55/24.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/56/26.png",
+      "bytes": 0,
+      "duration": 6
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/57/24.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/55/26.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/57/26.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/54/25.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/58/25.png",
+      "bytes": 0,
+      "duration": 6
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/54/24.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/58/24.png",
+      "bytes": 0,
+      "duration": 7
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/54/26.png",
+      "bytes": 0,
+      "duration": 10
+    },
+    {
+      "url": "https://a.basemaps.cartocdn.com/light_all/6/58/26.png",
+      "bytes": 0,
+      "duration": 10
+    }
+  ],
+  "scripts": [
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js",
+      "bytes": 173025
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/1255-f5767ca0d1da046a.js",
+      "bytes": 174043
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/main-app-d2a210caa85b4d87.js",
+      "bytes": 572
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/9da6db1e-9e0a9630dbe1f00a.js",
+      "bytes": 254333
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/2619-04bc32f026a0d946.js",
+      "bytes": 8564
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/5542-f131f869ce55f651.js",
+      "bytes": 6761
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/1714-373d83dacf065e0e.js",
+      "bytes": 11744
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/layout-6d59f6fb71d0aa59.js",
+      "bytes": 5239
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/journey/error-acb9e9842e2ba7cd.js",
+      "bytes": 2241
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/journey/not-found-e43c209009d681f6.js",
+      "bytes": 190
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/journey/layout-e7918f0a7a5ff568.js",
+      "bytes": 6299
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/4736-1d6c60a1a783c355.js",
+      "bytes": 31450
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/2611-79e7fd7dc2f000d4.js",
+      "bytes": 12179
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/8333-c93b0c6cd2dc1b3b.js",
+      "bytes": 308196
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/1540-744009e67f47dca1.js",
+      "bytes": 46347
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/7478-4bdb53e6571838f6.js",
+      "bytes": 43335
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/5589-bd2dbbacba9db708.js",
+      "bytes": 10105
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/8507-01ff4ae316b11024.js",
+      "bytes": 8405
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/journey/home/page-212ade4d6277f368.js",
+      "bytes": 71953
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/e474d18f-ceb145d073fa9f25.js",
+      "bytes": 756548
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/ca4dcb09-14e92fa970c7dbcd.js",
+      "bytes": 560892
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+      "bytes": 410463
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/8cc6faea-06177138421f2356.js",
+      "bytes": 92965
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/d648eb28-05c9445a2e0b2734.js",
+      "bytes": 88036
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/296-1adcf679f9ba4569.js",
+      "bytes": 28287
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/7884.3afb3e618923137e.js",
+      "bytes": 8648
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/1581-245c7e50ff90f318.js",
+      "bytes": 7680
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/5215-bb2815f1529effb0.js",
+      "bytes": 9670
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/668-527261eaf21c3e84.js",
+      "bytes": 26947
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/3716-72d244f750a8cfed.js",
+      "bytes": 32614
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/5594-3b624d7a06f286d3.js",
+      "bytes": 49449
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/5823-d0580c0d323e5b5a.js",
+      "bytes": 114939
+    },
+    {
+      "url": "http://127.0.0.1:8875/_next/static/chunks/app/journey/new/page-ccc1c5a9d6ccb56a.js",
+      "bytes": 226957
+    },
+    {
+      "url": "http://127.0.0.1:8875/maplibre/maplibre-gl-shared.mjs",
+      "bytes": 479327
+    }
+  ]
+}

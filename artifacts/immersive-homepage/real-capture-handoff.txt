@@ -1,0 +1,137 @@
+- main:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - generic: Morrovia ✦
+  - navigation "Morrovia navigation":
+    - link "New trip":
+      - /url: /journey/new
+      - generic: New trip
+    - link "About":
+      - /url: /journey/about
+    - link "Routes":
+      - /url: /journey/discover
+    - link "Stamps":
+      - /url: /journey/stamped
+    - link "Passport info":
+      - /url: /journey/passport
+    - button "How it works"
+    - link "Sign in":
+      - /url: /journey/dashboard
+    - combobox "Language":
+      - option "EN" [selected]
+      - option "ES"
+  - navigation "Trip brief progress":
+    - button "01 Places":
+      - generic: "01"
+      - generic: Places
+    - button "02 Dates and nights":
+      - generic: "02"
+      - generic: Dates and nights
+  - paragraph: STEP 1 OF 2
+  - heading "Here’s what we understood" [level=1]
+  - generic: Check it, adjust anything that's wrong, and we'll build the best route.
+  - region "Trip understood":
+    - region "YOUR JOURNEY":
+      - strong: YOUR JOURNEY
+      - generic: Starting from
+      - combobox "Starting from"
+      - generic: Ending at
+      - combobox "Ending at"
+      - group "Journey end options":
+        - button "Same as start"
+      - generic: Start and end guide the route. They are not added as stops.
+    - strong: Stops (3)
+    - generic: Reorder or remove stops.
+    - button "Add stop":
+      - text: Add stop
+    - list "Confirmed stops":
+      - generic: "1"
+      - generic: Tokyo
+      - button "Remove Tokyo":
+      - generic: "2"
+      - generic: Takayama
+      - button "Remove Takayama":
+      - generic: "3"
+      - generic: Kyoto
+      - button "Remove Kyoto":
+    - region "Preferences picked up":
+      - strong: PREFERENCES WE PICKED UP
+      - generic: 10 days
+      - generic: Food
+      - generic: Culture
+    - region "Trip intent and constraints":
+      - button "Advanced Add fixed plans or anything we should consider.":
+        - generic: Advanced
+        - generic: Add fixed plans or anything we should consider.
+  - paragraph: ROUTE CHECK
+  - heading "3 major transfers need checking." [level=3]
+  - generic: The route is complete, but timing and live services are not yet confirmed.
+  - status:
+    - text: Keeping changes on this device…
+  - text: Add the city or airport you are leaving from.
+  - button "Set dates & nights" [disabled]:
+    - text: Set dates & nights
+  - complementary "Trip at a glance":
+    - generic: YOUR TRIP
+    - heading "Your trip at a glance" [level=2]
+    - strong: Dates next
+    - strong: 3 places selected · 1 area to shape
+    - strong: 2 travellers
+    - list:
+      - generic: "1"
+      - strong: Tokyo
+      - generic: Stop
+      - generic: "2"
+      - strong: Takayama
+      - generic: Stop
+      - generic: "3"
+      - strong: Kyoto
+      - generic: Stop
+    - generic: NEXT
+    - paragraph:
+      - generic: We’ll balance nights
+      - text: around travel time and what’s nearby.
+  - dialog "Choose places in Japan":
+    - paragraph: 1 of 1
+    - button "Close route shaping":
+      - generic: Close route shaping
+    - heading "Choose places in Japan" [active] [level=2]
+    - generic: Add one or more places you would like Morrovia to plan around in Japan.
+    - region "SUGGESTED PLACES":
+      - strong: SUGGESTED PLACES
+      - button "Fukuoka Japan · A compact, food-forward Kyushu opening.":
+        - generic: Fukuoka
+        - generic: Japan · A compact, food-forward Kyushu opening.
+      - button "Nikko Japan · A canonical route place within Japan.":
+        - generic: Nikko
+        - generic: Japan · A canonical route place within Japan.
+    - strong: Search within Japan
+    - combobox "Search within Japan"
+    - paragraph: Choose at least one place for Japan before completing it.
+    - button "Finish later"
+    - button "Finish shaping route" [disabled]:
+      - text: Finish shaping route
+    - button "Remove Japan from trip"
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - text: Morrovia ✦
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: mailto:sw@shaunwhiting.com
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- button "Open Next.js Dev Tools":
+- alert: Morrovia · Travel your way

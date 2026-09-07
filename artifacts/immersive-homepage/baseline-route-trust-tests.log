@@ -1,0 +1,89 @@
+(node:87016) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/tmp/morrovia-home-baseline-tests/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✖ japan-slow keeps curated evidence through handoff, save, and reload (16.795916ms)
+✖ andean-highlands keeps curated evidence through handoff, save, and reload (10.39925ms)
+✖ portugal-atlantic keeps curated evidence through handoff, save, and reload (6.239375ms)
+✔ a flexible-gateway curated-route reorder preserves matching base facts, downgrades coverage, and does not invent transfers (6.435584ms)
+✔ adding a stop outside the curated route says so without discarding retained evidence (5.405083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 2
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 167.219458
+
+✖ failing tests:
+
+test at ../../../../private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:39:3
+✖ japan-slow keeps curated evidence through handoff, save, and reload (16.795916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'curated-route'
+  - 'canonical-endpoint-identity'
+  
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:45:12)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'curated-route',
+    expected: 'canonical-endpoint-identity',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:39:3
+✖ andean-highlands keeps curated evidence through handoff, save, and reload (10.39925ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'curated-route'
+  - 'canonical-endpoint-identity'
+  
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:45:12)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'curated-route',
+    expected: 'canonical-endpoint-identity',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at ../../../../private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:39:3
+✖ portugal-atlantic keeps curated evidence through handoff, save, and reload (6.239375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'curated-route'
+  - 'canonical-endpoint-identity'
+  
+      at TestContext.<anonymous> (file:///private/tmp/morrovia-home-baseline-tests/tests/curated-route-trust.test.ts:45:12)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:787:18)
+      at Test.postRun (node:internal/test_runner/test:1247:19)
+      at Test.run (node:internal/test_runner/test:1175:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'curated-route',
+    expected: 'canonical-endpoint-identity',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

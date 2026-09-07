@@ -34,7 +34,8 @@ export default function RouteChapters({ routes, initialIndex, children, quiet }:
   const es = useHomepageLanguage() === "es";
   const route = routes[index];
   useEffect(() => {
-    if (quiet || matchMedia("(max-width:840px)").matches) return;
+    if (quiet) return;
+    const desktop = matchMedia("(min-width:841px)");
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -43,8 +44,17 @@ export default function RouteChapters({ routes, initialIndex, children, quiet }:
       places.current.style.setProperty("--progress", String(progress));
     };
     const tick = () => { if (!frame) frame = requestAnimationFrame(update); };
-    window.addEventListener("scroll", tick, { passive: true }); window.addEventListener("resize", tick); update();
-    return () => { window.removeEventListener("scroll", tick); window.removeEventListener("resize", tick); cancelAnimationFrame(frame); };
+    const listen = () => {
+      window.removeEventListener("scroll", tick);
+      window.removeEventListener("resize", tick);
+      cancelAnimationFrame(frame); frame = 0;
+      if (desktop.matches) {
+        window.addEventListener("scroll", tick, { passive: true });
+        window.addEventListener("resize", tick); update();
+      }
+    };
+    desktop.addEventListener("change", listen); listen();
+    return () => { desktop.removeEventListener("change", listen); window.removeEventListener("scroll", tick); window.removeEventListener("resize", tick); cancelAnimationFrame(frame); };
   }, [quiet]);
   if (!route) return null;
   const change = (next: number, chapter = "routes") => {
