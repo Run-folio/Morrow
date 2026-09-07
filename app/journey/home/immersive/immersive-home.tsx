@@ -7,6 +7,8 @@ import HomeTripStarter from "../home-trip-starter";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./immersive.module.css";
+import RouteChapters from "./route-chapters";
+import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 
 export function useHomepageLanguage() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
@@ -19,7 +21,7 @@ export function useHomepageLanguage() {
   return language;
 }
 
-export default function ImmersiveHome({ children }: { children?: ReactNode }) {
+export default function ImmersiveHome({ routes, initialIndex }: { routes: ImmersiveRoute[]; initialIndex: number }) {
   const language = useHomepageLanguage();
   const es = language === "es";
   const [quiet, setQuiet] = useState(false);
@@ -47,6 +49,6 @@ export default function ImmersiveHome({ children }: { children?: ReactNode }) {
       </div>
       <div className={styles.heroBottom}><span>{es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes"}</span><EasyTButton variant="quiet" icon={Pause} aria-pressed={quiet || systemQuiet} disabled={systemQuiet} onClick={() => setQuiet(!quiet)}>{systemQuiet ? (es ? "Movimiento reducido" : "Reduced motion") : (es ? "Vista tranquila" : "Quiet view")}</EasyTButton><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
     </section>
-    {children}
+    <RouteChapters routes={routes} initialIndex={initialIndex} />
   </main>;
 }

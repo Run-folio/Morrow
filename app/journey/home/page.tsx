@@ -8,12 +8,16 @@ import HomeBenefits from "./home-benefits";
 import { homepageEligibleRouteCards, selectHomepageRouteCards } from "@/lib/easyt/homepage-routes";
 import { immersiveHomepageEnabled } from "@/lib/easyt/immersive-homepage-config";
 import ImmersiveHome from "./immersive/immersive-home";
+import { immersiveHomepageRoutes, initialImmersiveRouteIndex } from "@/lib/easyt/immersive-homepage-routes";
 
 export const metadata = { title: "Travel your way" };
 export const dynamic = "force-dynamic";
 
 export default function EasyTHomePage() {
-  if (immersiveHomepageEnabled(process.env.IMMERSIVE_HOMEPAGE_V2)) return <ImmersiveHome />;
+  if (immersiveHomepageEnabled(process.env.IMMERSIVE_HOMEPAGE_V2)) {
+    const journeys = immersiveHomepageRoutes();
+    if (journeys.length) return <ImmersiveHome routes={journeys} initialIndex={initialImmersiveRouteIndex(journeys)} />;
+  }
   const routes = selectHomepageRouteCards(homepageEligibleRouteCards());
   return (
     <main className={styles.page}>
