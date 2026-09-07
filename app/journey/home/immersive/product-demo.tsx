@@ -8,7 +8,7 @@ import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-s
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import { createHomepageDemo, homepageDemoReducer, homepageDemoDay, type HomepageDemoState } from "@/lib/easyt/homepage-demo";
 import { DestinationPhoto } from "./route-chapters";
-import { useHomepageLanguage } from "./immersive-home";
+import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
 const DemoMap = dynamic(() => import("./demo-map"), { ssr: false, loading: () => <div className={styles.mapLoading} role="status">Opening the route map…</div> });

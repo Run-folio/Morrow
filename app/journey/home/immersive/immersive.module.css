@@ -16,7 +16,7 @@
 .hero:has(.planner:focus-within) .landscape { transform: scale(1.03); }
 .navigation { position: relative; z-index: var(--morrovia-layer-header); }
 .navigation :global(header[data-easyt-app]) { background: transparent; border-color: color-mix(in srgb,var(--morrovia-paper) 30%,transparent); }
-.navigation :global(header[data-easyt-app]) > a,.navigation :global(header[data-easyt-app]) > nav > a { color: var(--morrovia-paper); }
+.navigation :global(header[data-easyt-app]) > a,.navigation :global(header[data-easyt-app]) > nav > a,.navigation :global(header[data-easyt-app]) > nav > button { color: var(--morrovia-paper); }
 .navigation :global(header[data-easyt-app]) > a > span { color: inherit; }
 .heroBody { width: 92%; margin: auto; display: grid; grid-template-columns: minmax(0,1.12fr) minmax(440px,.88fr); gap: 4vw; align-items: center; padding: 64px 0; }
 .heroCopy h1 { font-size: clamp(86px,8.4vw,162px); margin: 32px 0; line-height: .97; }
@@ -113,6 +113,14 @@
 .partnerActions small { font: var(--morrovia-type-fine-print); color: var(--morrovia-ink-soft); }
 .partnerDisclosure { margin-top: 30px!important; font: var(--morrovia-type-fine-print); color: var(--morrovia-ink-soft); }
 .imageFallback { min-height: 100%; background: var(--morrovia-ink); }
+.closing { position: relative; isolation: isolate; min-height: 100svh; display: grid; align-content: center; padding: 110px 5vw; color: var(--morrovia-paper); background: var(--morrovia-ink); }
+.closing > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; }
+.closing::after { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb,var(--morrovia-ink) 48%,transparent); }
+.closingContent { text-align: center; }
+.closing h2 { font-size: clamp(82px,8.4vw,158px); margin: 40px 0; }
+.closingContent button { background: var(--morrovia-paper); color: var(--morrovia-ink); min-height: 56px; }
+.closingFoot { position: absolute; bottom: 35px; left: 5vw; right: 5vw; display: flex; justify-content: space-between; gap: 20px; font: var(--morrovia-type-fine-print); }
+@media(max-width:840px) { .closing { min-height: 85svh; padding: 90px 20px; } .closing h2 { font-size: clamp(50px,10vw,76px); } }
 @media(max-width:840px) {
  .booking { padding: 65px 18px; min-height: 0; }
  .booking .chapterHeading h2 { font-size: 44px; }
@@ -159,8 +167,12 @@
 .routeControls { position: absolute; right: 0; bottom: 0; display: flex; align-items: center; gap: 14px; }
 .routeControls > span { font: var(--morrovia-type-metadata); min-width: 34px; }
 .photos { display: grid; grid-template-columns: repeat(var(--count),minmax(0,1fr)); align-items: end; gap: 2vw; margin: auto 0; perspective: 1400px; }
-.photos figure { min-width: 0; transform: translateY(calc((1 - var(--progress))*var(--offset))) rotate(calc((1 - var(--progress))*var(--angle))) scale(calc(.96 + var(--progress)*.04)); transform-origin: 50% 90%; }
-.destinationPhoto { aspect-ratio: var(--ratio,.78); border-radius: var(--morrovia-radius); overflow: hidden; background: var(--morrovia-lilac-strong); transition: transform 180ms ease; }
+.photos figure { min-width: 0; width: 100%; max-width: 340px; justify-self: center; transform: translateY(calc((1 - var(--progress))*var(--offset))) rotate(calc((1 - var(--progress))*var(--angle))) scale(calc(.96 + var(--progress)*.04)); transform-origin: 50% 90%; }
+.destinationPhoto { position: relative; aspect-ratio: var(--ratio,.78); border-radius: var(--morrovia-radius); overflow: hidden; background: var(--morrovia-lilac-strong); transition: transform 180ms ease; }
+.destinationPhoto > img { width: 100%; height: 100%; object-fit: cover; }
+.photoCredit { position: absolute; bottom: 6px; left: 6px; right: 6px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); color: var(--morrovia-ink)!important; padding: 4px 6px; font: var(--morrovia-type-fine-print); opacity: 0; }
+.destinationPhoto:focus-within .photoCredit,.destinationPhoto:hover .photoCredit { opacity: 1; }
+.photoFallback { display: grid; place-items: center; background: var(--morrovia-lilac); color: var(--morrovia-ink); font: var(--morrovia-type-supporting-body); }
 .destinationPhoto > div { width: 100%; height: 100%; min-height: 0; border-radius: inherit; background-size: cover; background-position: center; }
 .photos .destinationPhoto { max-height: min(42svh,440px); }
 .photos figcaption { height: 90px; display: grid; grid-template-columns: 1fr; align-content: start; gap: 5px; padding: 14px 0; }
@@ -175,8 +187,19 @@
 .story { min-height: max(780px,100svh); padding: 100px 5vw; position: relative; isolation: isolate; color: var(--morrovia-paper); display: grid; grid-template-columns: minmax(0,3fr) minmax(180px,1fr); gap: 8vw; align-items: center; background: var(--morrovia-ink); }
 .storyPhoto,.storyShade { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
 .storyPhoto > div { width: 100%; height: 100%; border-radius: 0; background-size: cover; background-position: center; }
-/* Page-specific photographic scrim from the approved composition. */
-.storyShade { z-index: -1; background: linear-gradient(90deg,rgba(21,19,66,.64),rgba(31,31,87,.44) 53%,rgba(46,53,115,.23) 72%,rgba(24,24,68,.52)),linear-gradient(0deg,rgba(37,39,102,.20),rgba(83,94,162,.12)); }
+.storyShade { z-index: -1; background: linear-gradient(90deg,
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: localized readable text edge */
+ rgba(21,19,66,.64),
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: soft middle indigo */
+ rgba(31,31,87,.44) 53%,
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: clearer central photography */
+ rgba(46,53,115,.23) 72%,
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: readable alternative links */
+ rgba(24,24,68,.52)),linear-gradient(0deg,
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: lower indigo tint */
+ rgba(37,39,102,.20),
+ /* morrovia-ui-audit-allow-next-line raw-color -- approved photographic scrim: airy upper tint */
+ rgba(83,94,162,.12)); }
 .story h2 { font-size: clamp(66px,6.2vw,116px); margin: 28px 0; max-width: 15ch; }
 .story h2:focus { outline: none; }
 .theme { font: var(--morrovia-type-metadata); margin-bottom: 24px!important; }

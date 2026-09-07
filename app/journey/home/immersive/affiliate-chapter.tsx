@@ -7,7 +7,7 @@ import { MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { affiliateProviderLabel, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { homepageAffiliateImage } from "@/lib/easyt/homepage-affiliate-imagery";
-import { useHomepageLanguage } from "./immersive-home";
+import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
 const needs = [
