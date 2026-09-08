@@ -435,14 +435,14 @@
   },
   {
     "key": "myvatn",
-    "place": "Mývatn",
+    "place": "Reykjahlíð",
     "country": "Iceland",
     "author": "Pjt56 --- If you use the picture outside Wikipedia I would appreciate a short e-mail to pjt56@gmx.net or a message on my discussion page",
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:M%C3%BDvatn-pjt.jpg",
     "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
-    "alt": "Mývatn, Iceland",
+    "alt": "Mývatn landscape near the Reykjahlíð base, Iceland",
     "variants": [
       {
         "src": "/journey/immersive/place-myvatn-384.webp",
@@ -492,6 +492,68 @@
         "width": 1536,
         "bytes": 237760,
         "height": 1017
+      }
+    ]
+  },
+  {
+    "key": "osaka",
+    "place": "Osaka",
+    "country": "Japan",
+    "author": "663highland",
+    "license": "CC BY 2.5",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.5/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Osaka_Castle_03bs3200.jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the selected source licence.",
+    "alt": "Osaka Castle and city buildings, Japan",
+    "variants": [
+      {
+        "src": "/journey/immersive/place-osaka-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 22024
+      },
+      {
+        "src": "/journey/immersive/place-osaka-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 82912
+      },
+      {
+        "src": "/journey/immersive/place-osaka-1536.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 297006
+      }
+    ]
+  },
+  {
+    "key": "hofn",
+    "place": "Höfn",
+    "country": "Iceland",
+    "author": "Wolfgang Sauber",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:H%C3%B6fn_-_Schiff_im_Hafen_1.jpg",
+    "changes": "Resized and converted to WebP; display crops to fit. Derivatives retain the selected source licence.",
+    "alt": "Fishing boat in Höfn harbour, Iceland",
+    "variants": [
+      {
+        "src": "/journey/immersive/place-hofn-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 11174
+      },
+      {
+        "src": "/journey/immersive/place-hofn-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 40816
+      },
+      {
+        "src": "/journey/immersive/place-hofn-1536.webp",
+        "width": 1536,
+        "height": 1152,
+        "bytes": 154686
       }
     ]
   }

@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "japan-slow",
+    "status": 200,
+    "bytes": 110290,
+    "hasBuilderCTA": true,
+    "hasRouteIdentity": true,
+    "notFoundBoundary": false,
+    "noindex": false
+  },
+  {
+    "slug": "balkans-overland",
+    "status": 200,
+    "bytes": 18987,
+    "hasBuilderCTA": false,
+    "hasRouteIdentity": true,
+    "notFoundBoundary": true,
+    "noindex": true
+  },
+  {
+    "slug": "vietnam-cambodia",
+    "status": 200,
+    "bytes": 18945,
+    "hasBuilderCTA": false,
+    "hasRouteIdentity": true,
+    "notFoundBoundary": true,
+    "noindex": true
+  },
+  {
+    "slug": "iceland-ring-road",
+    "status": 200,
+    "bytes": 18946,
+    "hasBuilderCTA": false,
+    "hasRouteIdentity": true,
+    "notFoundBoundary": true,
+    "noindex": true
+  }
+]

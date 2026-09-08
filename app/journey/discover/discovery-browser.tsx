@@ -121,7 +121,7 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
     return () => { active = false; };
   }, [imageRoutes, imageStatus, liveImages, queueVersion]);
 
-  const imageFor = (route: RouteFamily) => liveImages[route.key]?.src ?? routeImages[route.key];
+  const imageFor = (route: RouteFamily) => routeImages[route.key] ?? liveImages[route.key]?.src;
   const resetVisibleCount = () => setVisibleCount(ROUTES_PER_PAGE);
   const openResults = () => {
     setShowAllRoutes(true);
@@ -208,6 +208,8 @@ export default function DiscoveryBrowser({ routes }: { routes: RouteFamily[] }) 
         {displayed.length > 0 ? <div className={styles.grid}>{displayed.map(routeCard)}</div> : <div className={styles.empty}><strong>Nothing matches that combination yet.</strong><span>Try a broader region or style.</span></div>}
         {displayed.length < filtered.length && <div className={styles.moreWrap}><EasyTButton variant="secondary" onClick={() => setVisibleCount((count) => count + ROUTES_PER_PAGE)}>See more routes</EasyTButton></div>}
       </section>}
+
+      <EasyTLinkButton href="/journey/immersive/credits.html" variant="quiet" size="small">Route photography credits</EasyTLinkButton>
 
       <section className={styles.bottomBanner}>
         <div><Sparkles className={styles.bottomIcon} aria-hidden="true" /><span><h2>Start building</h2><p>Build a flexible multi-stop trip that fits your pace, your way.</p></span></div>

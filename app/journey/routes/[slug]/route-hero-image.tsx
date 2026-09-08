@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
+import { routeImageCredit } from "@/lib/easyt/route-images";
 import styles from "./route-overview.module.css";
 
 type RouteHeroImageProps = {
@@ -38,12 +39,13 @@ export default function RouteHeroImage({ image, routeKey, query, fallbackQueries
   }, [fallbackQueries, image, query, routeKey]);
 
   const source = liveImage?.src ?? image;
+  const credit = liveImage ?? routeImageCredit(image);
   return <div className={`${styles.heroImage} ${!source ? styles.heroImagePending : ""}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? liveImage?.alt ?? alt : undefined}>
     <div>
       <p>{eyebrow}</p>
       <span>{duration}</span>
       {!source && <small>{status === "loading" ? "Finding a photograph…" : "Photography unavailable"}</small>}
     </div>
-    {liveImage && <a className={styles.heroImageCredit} href={liveImage.sourceUrl} target="_blank" rel="noreferrer">{liveImage.sourceLabel}</a>}
+    {credit && <a className={styles.heroImageCredit} href={credit.sourceUrl} target="_blank" rel="noreferrer">{credit.sourceLabel}</a>}
   </div>;
 }

@@ -1,7 +1,7 @@
 import type { RouteConfidence, RouteFamily } from "./route-catalog.ts";
 
 /** The only route families whose editorial facts are a beta planning contract. */
-export const BETA_CURATED_ROUTE_KEYS = ["japan-slow", "andean-highlands", "portugal-atlantic"] as const;
+export const BETA_CURATED_ROUTE_KEYS = ["japan-slow", "andean-highlands", "portugal-atlantic", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"] as const;
 
 export function isBetaCuratedRoute(routeKey: string): routeKey is (typeof BETA_CURATED_ROUTE_KEYS)[number] {
   return (BETA_CURATED_ROUTE_KEYS as readonly string[]).includes(routeKey);
@@ -78,7 +78,7 @@ export function curatedRouteKnowledgeFor(route: RouteFamily, stops: CuratedRoute
       country: stop.country,
       canonicalPlaceId: stopByName.get(stop.name)?.canonicalPlaceId,
       minimumNights: stop.minimumNights,
-      recommendedNights: Math.max(stop.minimumNights, stops[index]?.nights ?? stop.minimumNights),
+      recommendedNights: stop.recommendedNights ?? Math.max(stop.minimumNights, stops[index]?.nights ?? stop.minimumNights),
       reason: stop.reason,
       sourceIds,
     })),
@@ -89,7 +89,9 @@ export function curatedRouteKnowledgeFor(route: RouteFamily, stops: CuratedRoute
       planningMinutes: connection.planningMinutes,
       note: connection.note,
       confidence: connection.confidence,
-      sourceIds,
+      sourceIds: connection.sourceLabels?.length
+        ? sources.filter(source => connection.sourceLabels!.includes(source.label)).map(source => source.id)
+        : sourceIds,
     })),
     coverage: { state: "fully-supported", reason: "This trip still follows the reviewed route order and bases." },
   };

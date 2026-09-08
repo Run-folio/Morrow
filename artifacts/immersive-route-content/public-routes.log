@@ -1,0 +1,80 @@
+
+> morrovia@1.0.0 test:public-routes
+> node --experimental-strip-types --test tests/public-route.test.ts tests/public-route-presentation.test.ts tests/public-route-handoff.test.ts tests/public-route-seo.test.ts tests/curated-route-trust.test.ts tests/public-route-release.test.ts tests/homepage-routes.test.ts tests/route-discovery.test.ts
+
+(node:91165) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/curated-route-trust.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ japan-slow keeps curated evidence through handoff, save, and reload (24.247542ms)
+✔ andean-highlands keeps curated evidence through handoff, save, and reload (18.034417ms)
+✔ portugal-atlantic keeps curated evidence through handoff, save, and reload (13.643834ms)
+✔ a flexible-gateway curated-route reorder preserves matching base facts, downgrades coverage, and does not invent transfers (10.381208ms)
+✔ adding a stop outside the curated route says so without discarding retained evidence (5.996875ms)
+(node:91166) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/homepage-routes.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every homepage-eligible route resolves to published detail and a usable planner payload (333.133208ms)
+✔ unpublished Southeast Asia catalogue entries cannot leak onto the homepage (136.831416ms)
+✔ selection randomises once from immutable eligible data and remains deterministic under a supplied source (272.939ms)
+(node:91167) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/public-route-handoff.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Plan this route carries identity, order, duration, nights and structured intent (32.289916ms)
+✔ the reviewed Morocco route reaches Builder with canonical stops and no false Chefchaouen review (8.14625ms)
+(node:91168) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/public-route-presentation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ published Route Detail keeps its canonical production CSS owner connected (8.208375ms)
+✔ the production Route story composes the real owner at every protected review width and fallback (4.077583ms)
+✔ browser and MapLibre error events normalize to bounded Error values (0.543875ms)
+✔ Route map uses the bundled worker and handles provider errors at its boundary (1.047083ms)
+(node:91169) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/public-route-release.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ the supported beta route audit records real missing release metadata without changing route data (2.798833ms)
+✔ a fully reviewed route passes only with evidence-backed connection assumptions (0.447875ms)
+✔ an explicit connection unknown is visible as verification work rather than a fabricated reviewed fact (0.327458ms)
+✔ missing connection evidence cannot be upgraded to a reviewed practical claim (0.544459ms)
+(node:91170) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/public-route-seo.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ route metadata is specific, canonical and branded only by the layout (37.120583ms)
+✔ legacy, unknown and review-needed metadata have safe canonical/index behavior (11.604042ms)
+✔ metadata indexability cannot drift from sitemap eligibility (389.741667ms)
+(node:91171) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/public-route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy public slugs resolve to one canonical route (31.85525ms)
+✔ every catalog route derives without mutating curated data and preserves route order (345.7295ms)
+✔ Andean route reconciles the approved nine-day story to supported stays and facts (5.910208ms)
+✔ published route minima remain authoritative on the public allocation (4.007167ms)
+✔ unknown transfers and missing editorial data are omitted instead of fabricated (2.876083ms)
+✔ sitemap eligibility is canonical, unique and review-safe (132.582458ms)
+✔ every published Discover route resolves through detail and planner handoff (265.705458ms)
+✔ unpublished catalogue routes cannot leak into Discover, Route Detail or sitemap publication sets (196.372084ms)
+✔ every supported legacy slug redirects once to a published canonical route without collisions (7.820833ms)
+✔ previous hostile-audit routes have deliberate publication outcomes (274.617667ms)
+(node:91172) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/route-discovery.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ featured discovery journeys are drawn only from published routes (0.341416ms)
+✔ every surfaced wonder resolves to a real published route that includes that attraction (21.282083ms)
+✔ unsupported wonder mappings are omitted rather than linked to an unpublished route (0.099542ms)
+✔ travel styles are backed by the published route interest taxonomy (0.105042ms)
+✔ travel styles without a supporting route are not surfaced (0.367375ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1542.504084

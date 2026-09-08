@@ -98,7 +98,7 @@ export function checkPublicRouteRelease(route: RouteFamily): PublicRouteReleaseR
 
   if (!release?.explicitUnknowns) blockers.push({ code: "explicit-unknowns", detail: "The editor must explicitly record remaining unknowns, even when there are none." });
   if (!release?.editorialOwner?.trim()) blockers.push({ code: "editorial-owner", detail: "The route needs an editorial owner." });
-  if (!release?.editorialReviewer?.trim()) blockers.push({ code: "editorial-reviewer", detail: "The route needs an editorial reviewer." });
+  if (!release?.editorialReviewer?.trim() || release.editorialReviewer.trim().toLocaleLowerCase() === release.editorialOwner?.trim().toLocaleLowerCase()) blockers.push({ code: "editorial-reviewer", detail: "The route needs an independent editorial reviewer distinct from its author/owner." });
   const image = release?.image;
   if (!routeImages[route.key] || !image || image.asset !== routeImages[route.key] || !["owned", "licensed", "public-domain"].includes(image.rights) || (image.rights !== "owned" && (!image.attribution?.trim() || !image.sourceUrl || !validUrl(image.sourceUrl)))) blockers.push({ code: "image-rights", detail: "The published hero needs matching rights status and, when not owned, attribution and a source link." });
 

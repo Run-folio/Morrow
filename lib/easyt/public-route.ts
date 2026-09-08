@@ -1,3 +1,4 @@
+import { checkPublicRouteRelease } from "./public-route-release.ts";
 import { captureJourneyBrief } from "./journey-capture.ts";
 import { createDestinationKnowledgeStore } from "./destination-knowledge.ts";
 import { allocateTripNights, calendarDayAllocationsFromNights } from "./night-allocation.ts";
@@ -29,21 +30,7 @@ type PublicRouteEditorial = {
 };
 
 const publicRouteEditorial: Readonly<Record<string, PublicRouteEditorial>> = {
-  "japan-slow": {
-    eyebrow: "Asia · food and mountains",
-    summary: "A first-time Japan route that moves from Tokyo’s energy into a smaller mountain town, then ends with Kyoto at a human pace.",
-    durationDays: 10,
-    rhythm: "Unhurried",
-    bestTime: "March to May or October to November",
-    conditions: "Spring is mild with busy blossom periods. Autumn is cooler and usually comfortable for walking. Summer is hot and humid in the cities, while mountain conditions can change quickly.",
-    countryContext: "Tokyo, the Japanese Alps and Kyoto each have a distinct rhythm. The route works best when rail days stay light and each base has time beyond its headline sights.",
-    attractions: [
-      { name: "Meiji Shrine and Tokyo neighbourhoods", stopName: "Tokyo" },
-      { name: "Takayama old town and morning markets", stopName: "Takayama" },
-      { name: "Hida folk villages and alpine scenery", stopName: "Takayama" },
-      { name: "Kyoto temples and eastern hillside walks", stopName: "Kyoto" },
-    ],
-  },
+
   "portugal-atlantic": {
     eyebrow: "Europe · city to coast",
     summary: "Start with Lisbon’s colour and energy, ease into Comporta, then finish on the Algarve with nowhere to rush back from.",
@@ -329,7 +316,7 @@ export function publicRouteDetailFor(inputSlug: string): PublicRouteDetail | nul
       country: stop.country,
       required: true,
       fallbackMinimumNights: stop.minimumNights,
-      fallbackIdealNights: stop.minimumNights + 1,
+      fallbackIdealNights: stop.recommendedNights ?? stop.minimumNights + 1,
     })),
     // RouteFamily stay guidance is the public editorial contract. Destination
     // knowledge must not silently override it on this read-only surface.
@@ -382,7 +369,7 @@ export function publicRouteDetailFor(inputSlug: string): PublicRouteDetail | nul
     durationDays,
     totalNights,
     rhythm: editorial?.rhythm,
-    interestLabel: route.interests.slice(0, 2).map(titleCase).join(" · "),
+    interestLabel: route.character ?? route.interests.slice(0, 2).map(titleCase).join(" · "),
     countries,
     stops,
     reasons: route.stops.map((stop) => stop.reason).slice(0, 3),
@@ -412,6 +399,7 @@ export function publicRouteSitemapKeys() {
 export function publicRoutePublishedFamilies() {
   return Object.values(routeFamilyByKey).filter((route) => (
     isIndexablePublicRoute({ confidence: route.confidence, stops: route.stops, sources: route.sourceLinks })
+    && (!route.release || checkPublicRouteRelease(route).status !== "incomplete")
     && publicRouteDetailFor(route.key) !== null
   ));
 }
@@ -421,6 +409,7 @@ export function isPublishedPublicRouteKey(key: string) {
   return Boolean(
     route
     && isIndexablePublicRoute({ confidence: route.confidence, stops: route.stops, sources: route.sourceLinks })
+    && (!route.release || checkPublicRouteRelease(route).status !== "incomplete")
     && publicRouteDetailFor(key),
   );
 }

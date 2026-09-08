@@ -11,7 +11,7 @@ const betaRoutes = ["japan-slow", "andean-highlands", "portugal-atlantic"] as co
 
 function buildRouteTrip(routeKey: (typeof betaRoutes)[number]) {
   const detail = publicRouteDetailFor(routeKey);
-  assert.ok(detail, `${routeKey} should be a published curated route`);
+  assert.ok(detail, `${routeKey} should derive from canonical curated content`);
   const payload = routePlannerPayload(detail.planDraft, new Date(2026, 4, 10, 12));
   return tripFromBuilder({
     id: `trip-${routeKey}`,
@@ -40,9 +40,12 @@ for (const routeKey of betaRoutes) {
     const trip = buildRouteTrip(routeKey);
     assert.equal(trip.brief.curatedRoute?.coverage.state, "fully-supported");
     assert.equal(trip.brief.curatedRoute?.stops.length, trip.stops.length);
-    const arrivalLeg = trip.legs[0];
-    const curatedTransferLegs = trip.legs.slice(1);
-    assert.equal(arrivalLeg?.routeMetadata.source, "canonical-endpoint-identity");
+    // Each seed starts in its first overnight base. Canonical endpoint
+    // deduplication preserves that stay but emits no zero-distance arrival leg.
+    assert.equal(trip.brief.originCanonicalPlaceId, trip.stops[0]?.canonicalPlaceId);
+    const expectedPairs = trip.stops.slice(1).map((stop, index) => [trip.stops[index]!.id, stop.id]);
+    assert.deepEqual(trip.legs.map((leg) => [leg.fromStopId, leg.toStopId]), expectedPairs);
+    const curatedTransferLegs = trip.legs;
     assert.equal(curatedTransferLegs.length, trip.stops.length - 1);
     assert.equal(curatedTransferLegs.every((leg) => leg.routeMetadata.source === "curated-route"), true);
     assert.equal(curatedTransferLegs.every((leg) => {
@@ -53,8 +56,11 @@ for (const routeKey of betaRoutes) {
     assert.equal(reloaded.brief.curatedRoute.coverage.state, "fully-supported");
     assert.equal(reloaded.brief.originCanonicalPlaceId, trip.brief.originCanonicalPlaceId);
     assert.deepEqual(reloaded.brief.curatedRoute.canonicalStopIds, reloaded.stops.map((stop: { id: string }) => stop.id));
-    assert.equal(reloaded.legs[0]?.routeMetadata.source, "canonical-endpoint-identity");
-    assert.equal(reloaded.legs.slice(1).every((leg: { routeMetadata: { source?: string; curatedRouteTransfer?: { sourceIds?: string[] } } }) => (
+    const stopFacts = (stops: typeof trip.stops) => JSON.parse(JSON.stringify(stops.map(({ id: _id, ...facts }) => facts)));
+    assert.deepEqual(stopFacts(reloaded.stops), stopFacts(trip.stops));
+    const reloadedPairs = reloaded.stops.slice(1).map((stop: { id: string }, index: number) => [reloaded.stops[index].id, stop.id]);
+    assert.deepEqual(reloaded.legs.map((leg: { fromStopId: string; toStopId: string }) => [leg.fromStopId, leg.toStopId]), reloadedPairs);
+    assert.equal(reloaded.legs.every((leg: { routeMetadata: { source?: string; curatedRouteTransfer?: { sourceIds?: string[] } } }) => (
       leg.routeMetadata.source === "curated-route"
       && Boolean(leg.routeMetadata.curatedRouteTransfer?.sourceIds?.length)
     )), true);
@@ -80,7 +86,7 @@ test("a flexible-gateway curated-route reorder preserves matching base facts, do
       } : undefined,
     },
   };
-  const reordered = [trip.stops[0]!, trip.stops[2]!, trip.stops[1]!].map((stop, index) => ({
+  const reordered = [trip.stops[0]!, trip.stops[2]!, trip.stops[4]!, trip.stops[1]!, trip.stops[3]!].map((stop, index) => ({
     id: `day-${index + 1}`,
     stopId: stop.id,
     dayNumber: index + 1,

@@ -22,7 +22,7 @@ test("route chapters cannot publish prototype data or silently change canonical 
     assert.equal(route.href, `/journey/routes/${route.key}`);
     assert.equal(route.minimumNights.length, route.stops.length);
   }
-  assert.equal(immersiveHomepageRoutes().some((route) => route.key === "iceland-ring-road"), false);
+  assert.equal(immersiveHomepageRoutes().some((route) => route.key === "iceland-ring-road"), true);
 });
 test("random choice is injectable and stable, navigation wraps, scroll correction stays local", () => {
   const routes = immersiveHomepageRoutes();

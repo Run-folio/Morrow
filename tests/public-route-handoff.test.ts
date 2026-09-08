@@ -35,3 +35,19 @@ test("the reviewed Morocco route reaches Builder with canonical stops and no fal
   const stored = JSON.parse(JSON.stringify(payload)) as typeof payload;
   assert.deepEqual(stored.destinations.map((stop) => stop.canonicalPlaceId), payload.destinations.map((stop) => stop.canonicalPlaceId));
 });
+
+test('approved route handoffs carry a resolved ending base through JSON reload into Builder', async () => {
+  const { normalizeJourneyEnd, journeyEndpointIdentityIsCoherent } = await import('../lib/easyt/journey-endpoints.ts');
+  for (const key of ['japan-slow','balkans-overland','vietnam-cambodia','iceland-ring-road']) {
+    const detail = publicRouteDetailFor(key)!;
+    const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft)));
+    const end = normalizeJourneyEnd(payload.journeyEnd);
+    assert.equal(end.mode, 'explicit');
+    assert.ok(end.mode === 'explicit');
+    assert.equal(end.place.name, detail.stops.at(-1)!.name);
+    assert.equal(end.place.canonicalPlaceId, payload.destinations.at(-1).canonicalPlaceId);
+    assert.ok(journeyEndpointIdentityIsCoherent(end.place));
+    assert.deepEqual(end.place.coordinates, payload.destinations.at(-1).coordinates);
+    assert.equal(payload.datesExplicit, false);
+  }
+});

@@ -47,6 +47,8 @@ export type RouteFamilyStop = {
   minimumNights: number;
   /** Explicit reviewed preference; do not infer this from minimum nights at release time. */
   recommendedNights?: number;
+  /** Editorial pacing rationale; publication still requires independent review. */
+  nightGuidanceRationale?: string;
   reason: string;
 };
 
@@ -57,13 +59,14 @@ export type RouteFamily = {
   countries: string[];
   interests: RouteInterest[];
   bestFor: string;
+  character?: string;
   suggestedDays: { min: number; ideal: number; max: number };
   bases: string[];
   stops: RouteFamilyStop[];
   connections: RouteConnection[];
   seasonalNotes: string[];
   highlights?: string[];
-  sourceLinks: Array<{ label: string; url: string; covers: string }>;
+  sourceLinks: Array<{ label: string; url: string; covers: string; owner?: string; checkedAt?: string; limitations?: string }>;
   imageQuery?: string;
   confidence: RouteConfidence;
   reviewedAt: string;
@@ -75,30 +78,219 @@ const verify = "Verify current schedules, entry rules and opening hours before b
 
 const coreRouteFamilies: RouteFamily[] = [
   {
-    key: "japan-slow",
-    title: "Japan, one good day at a time",
-    region: "asia",
-    countries: ["Japan"],
-    interests: ["food", "culture", "rail"],
-    bestFor: "A first Japan trip with room for neighbourhoods, meals and slower mornings.",
-    suggestedDays: { min: 8, ideal: 10, max: 14 },
-    bases: ["Tokyo", "Takayama", "Kyoto"],
-    stops: [
-      { name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], minimumNights: 3, reason: "An energetic opening chapter with enough time to settle in." },
-      { name: "Takayama", country: "Japan", coordinates: [137.2523, 36.146], minimumNights: 2, reason: "A smaller mountain base that changes the rhythm between cities." },
-      { name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116], minimumNights: 3, reason: "A walkable cultural finish that rewards unplanned time." },
+    "key": "japan-slow",
+    "title": "Japan by rail, at your own pace",
+    "region": "asia",
+    "countries": [
+      "Japan"
     ],
-    connections: [
-      { from: "Tokyo", to: "Takayama", mode: "train", planningMinutes: 300, note: `Rail and regional connection allowance. ${verify}`, confidence: "medium" },
-      { from: "Takayama", to: "Kyoto", mode: "train", planningMinutes: 260, note: `Regional rail connection allowance. ${verify}`, confidence: "medium" },
+    "interests": [
+      "food",
+      "culture",
+      "rail"
     ],
-    seasonalNotes: ["Spring and autumn are popular and need earlier accommodation planning.", "Summer is hot and humid in cities; keep hiking days flexible."],
-    sourceLinks: [
-      { label: "Japan Travel", url: "https://www.japan.travel/en/", covers: "Official destination and regional context" },
-      { label: "Japan Railways", url: "https://www.japanrailpass-reservation.net/", covers: "Rail planning reference" },
+    "bestFor": "Five different bases connect Tokyo, Kanazawa, the Japanese Alps, Kyoto and Osaka. Keep rail days light and leave time within each place.",
+    "suggestedDays": {
+      "min": 13,
+      "ideal": 16,
+      "max": 22
+    },
+    "bases": [
+      "Tokyo",
+      "Kanazawa",
+      "Takayama",
+      "Kyoto",
+      "Osaka"
     ],
-    confidence: "medium",
-    reviewedAt: "2026-08-08",
+    "stops": [
+      {
+        "name": "Tokyo",
+        "country": "Japan",
+        "coordinates": [
+          139.6917,
+          35.6895
+        ],
+        "minimumNights": 3,
+        "reason": "An energetic opening chapter with enough time to settle in.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Arrival recovery and separate neighbourhood days."
+      },
+      {
+        "name": "Kanazawa",
+        "country": "Japan",
+        "coordinates": [
+          136.6562,
+          36.5613
+        ],
+        "minimumNights": 2,
+        "reason": "A compact cultural base between Tokyo and the mountains.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "One full cultural day between travel days."
+      },
+      {
+        "name": "Takayama",
+        "country": "Japan",
+        "coordinates": [
+          137.2523,
+          36.146
+        ],
+        "minimumNights": 2,
+        "reason": "A smaller mountain base that changes the rhythm between cities.",
+        "recommendedNights": 3,
+        "nightGuidanceRationale": "Two full days around the old town and mountain surroundings."
+      },
+      {
+        "name": "Kyoto",
+        "country": "Japan",
+        "coordinates": [
+          135.7681,
+          35.0116
+        ],
+        "minimumNights": 3,
+        "reason": "A cultural base for neighbourhood walks and separate temple days.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Separate cultural districts without stacking every sight into one day."
+      },
+      {
+        "name": "Osaka",
+        "country": "Japan",
+        "coordinates": [
+          135.5023,
+          34.6937
+        ],
+        "minimumNights": 2,
+        "reason": "A food-led city finish; onward travel is yours to choose.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "One full food/city day before onward departure."
+      }
+    ],
+    "connections": [
+      {
+        "from": "Tokyo",
+        "to": "Kanazawa",
+        "mode": "train",
+        "planningMinutes": null,
+        "note": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Kanazawa access"
+        ]
+      },
+      {
+        "from": "Kanazawa",
+        "to": "Takayama",
+        "mode": "train",
+        "planningMinutes": null,
+        "note": "Rail via Toyama or a bus alternative may work. Choose the connection and confirm reservations before booking; no direct train or duration is promised.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Kanazawa access"
+        ]
+      },
+      {
+        "from": "Takayama",
+        "to": "Kyoto",
+        "mode": "train",
+        "planningMinutes": null,
+        "note": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Hida Takayama guide"
+        ]
+      },
+      {
+        "from": "Kyoto",
+        "to": "Osaka",
+        "mode": "train",
+        "planningMinutes": null,
+        "note": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "JR West network"
+        ]
+      }
+    ],
+    "seasonalNotes": [
+      "Spring and autumn are popular and need earlier accommodation planning.",
+      "Summer is hot and humid in cities; keep hiking days flexible."
+    ],
+    "sourceLinks": [
+      {
+        "label": "Kanazawa access",
+        "url": "https://visitkanazawa.jp/en/getting-to-kanazawa",
+        "covers": "Rail access from Tokyo and via Toyama to Takayama; alternatives by bus.",
+        "owner": "Kanazawa City Tourism Association",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Hida Takayama guide",
+        "url": "https://www.hida.jp/english/library/4000097.html",
+        "covers": "Official destination guide and access context for Takayama.",
+        "owner": "Takayama City",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "JR West network",
+        "url": "https://www.westjr.co.jp/travel-information/en/plan-your-trip/routes-schedule/",
+        "covers": "Rail network and journey-planning tools for Kyoto and Osaka.",
+        "owner": "West Japan Railway Company",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Japan regional route",
+        "url": "https://www.japan.travel/en/au/guide/guide-takayama-shirakawa-go-kanazawa/",
+        "covers": "Regional connections and distinct Kanazawa/Takayama travel bases.",
+        "owner": "Japan National Tourism Organization",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      }
+    ],
+    "confidence": "medium",
+    "reviewedAt": "2026-09-07",
+    "character": "Rail + pacing",
+    "highlights": [
+      "Tokyo neighbourhoods",
+      "Kanazawa historic districts",
+      "Takayama old town",
+      "Kyoto cultural walks",
+      "Osaka food districts"
+    ],
+    "release": {
+      "routeOrderRationale": "Five different bases connect Tokyo, Kanazawa, the Japanese Alps, Kyoto and Osaka. Keep rail days light and leave time within each place.",
+      "editorialOwner": "Codex — route research and content preparation",
+      "editorialReviewer": "Shaun Whiting",
+      "explicitUnknowns": [
+        {
+          "kind": "connection",
+          "reference": "Tokyo → Kanazawa",
+          "reason": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date."
+        },
+        {
+          "kind": "connection",
+          "reference": "Kanazawa → Takayama",
+          "reason": "Rail via Toyama or a bus alternative may work. Choose the connection and confirm reservations before booking; no direct train or duration is promised."
+        },
+        {
+          "kind": "connection",
+          "reference": "Takayama → Kyoto",
+          "reason": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date."
+        },
+        {
+          "kind": "connection",
+          "reference": "Kyoto → Osaka",
+          "reason": "Rail likely · service details to confirm. Check changes, reservations and door-to-door access for your date."
+        }
+      ],
+      "image": {
+        "asset": "/journey/immersive/place-kyoto-1536.webp",
+        "rights": "licensed",
+        "attribution": "Kanchi1979 · CC BY-SA 4.0 · resized and converted to WebP; display crop.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:JP-Kyoto-Gion-Area-Street-Night-View.jpg"
+      }
+    }
   },
   {
     key: "taiwan-rail",
@@ -161,25 +353,182 @@ const coreRouteFamilies: RouteFamily[] = [
     reviewedAt: "2026-08-08",
   },
   {
-    key: "vietnam-cambodia",
-    title: "Vietnam to Angkor, without rushing",
-    region: "asia",
-    countries: ["Vietnam", "Cambodia"],
-    interests: ["food", "culture", "nature"],
-    bestFor: "A first Southeast Asia route with street food, river landscapes, and a strong cultural finish.",
-    suggestedDays: { min: 12, ideal: 16, max: 22 },
-    bases: ["Hanoi", "Hoi An", "Ho Chi Minh City", "Siem Reap"],
-    stops: [
-      { name: "Hanoi", country: "Vietnam", coordinates: [105.8342, 21.0278], minimumNights: 3, reason: "A lively, food-led opening with a walkable old quarter." },
-      { name: "Hoi An", country: "Vietnam", coordinates: [108.338, 15.88], minimumNights: 3, reason: "A slower central base for food, bicycles, and coast time." },
-      { name: "Ho Chi Minh City", country: "Vietnam", coordinates: [106.6297, 10.8231], minimumNights: 3, reason: "A high-energy southern chapter before the border crossing." },
-      { name: "Siem Reap", country: "Cambodia", coordinates: [103.8564, 13.3633], minimumNights: 3, reason: "A generous base for Angkor rather than a rushed day trip." },
+    "key": "vietnam-cambodia",
+    "title": "Vietnam to Angkor, without rushing",
+    "region": "asia",
+    "countries": [
+      "Vietnam",
+      "Cambodia"
     ],
-    connections: [{ from: "Hanoi", to: "Hoi An", mode: "flight", planningMinutes: 240, note: `Domestic flight allowance; compare overnight rail for a slower alternative. ${verify}`, confidence: "medium" }, { from: "Hoi An", to: "Ho Chi Minh City", mode: "flight", planningMinutes: 240, note: `Domestic flight allowance. ${verify}`, confidence: "medium" }, { from: "Ho Chi Minh City", to: "Siem Reap", mode: "flight", planningMinutes: 300, note: `Cross-border flight allowance; confirm entry requirements. ${verify}`, confidence: "needs-review" }],
-    seasonalNotes: ["Monsoon patterns vary by coast and region; avoid treating Vietnam as one weather season.", "Angkor is best with early starts and a protected recovery afternoon."],
-    sourceLinks: [{ label: "Vietnam Tourism", url: "https://vietnam.travel/", covers: "Official destination context" }, { label: "Visit Cambodia", url: "https://www.tourismcambodia.com/", covers: "Official tourism context" }, { label: "UNESCO Angkor", url: "https://whc.unesco.org/en/list/668/", covers: "Heritage context" }],
-    confidence: "needs-review",
-    reviewedAt: "2026-08-08",
+    "interests": [
+      "food",
+      "culture",
+      "nature"
+    ],
+    "bestFor": "Travel from Hanoi through Hoi An and Ho Chi Minh City to Siem Reap. Long distances and airport-to-base transfers make the travel days part of the planning.",
+    "suggestedDays": {
+      "min": 13,
+      "ideal": 17,
+      "max": 24
+    },
+    "bases": [
+      "Hanoi",
+      "Hoi An",
+      "Ho Chi Minh City",
+      "Siem Reap"
+    ],
+    "stops": [
+      {
+        "name": "Hanoi",
+        "country": "Vietnam",
+        "coordinates": [
+          105.8342,
+          21.0278
+        ],
+        "minimumNights": 3,
+        "reason": "A lively, food-led opening with a walkable old quarter.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Arrival recovery and neighbourhood/food days."
+      },
+      {
+        "name": "Hoi An",
+        "country": "Vietnam",
+        "coordinates": [
+          108.338,
+          15.88
+        ],
+        "minimumNights": 3,
+        "reason": "A slower central base for food, bicycles, and coast time.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Protect time in town after airport ground access."
+      },
+      {
+        "name": "Ho Chi Minh City",
+        "country": "Vietnam",
+        "coordinates": [
+          106.6297,
+          10.8231
+        ],
+        "minimumNights": 3,
+        "reason": "A high-energy southern chapter before the border crossing.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "City time and recovery between long transfers."
+      },
+      {
+        "name": "Siem Reap",
+        "country": "Cambodia",
+        "coordinates": [
+          103.8564,
+          13.3633
+        ],
+        "minimumNights": 3,
+        "reason": "A generous base for Angkor rather than a rushed day trip.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Separate Angkor visits and recovery from international travel."
+      }
+    ],
+    "connections": [
+      {
+        "from": "Hanoi",
+        "to": "Hoi An",
+        "mode": "flight",
+        "planningMinutes": null,
+        "note": "Flight option via Da Nang, then ground transfer to Hoi An. Confirm the full journey, airport access and service details.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Vietnam Hoi An access"
+        ]
+      },
+      {
+        "from": "Hoi An",
+        "to": "Ho Chi Minh City",
+        "mode": "flight",
+        "planningMinutes": null,
+        "note": "Ground transfer from Hoi An to Da Nang, then a flight option to Ho Chi Minh City. Confirm the full journey and service details.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Vietnam Hoi An access"
+        ]
+      },
+      {
+        "from": "Ho Chi Minh City",
+        "to": "Siem Reap",
+        "mode": "flight",
+        "planningMinutes": null,
+        "note": "International flight option plus airport ground access. Confirm operating dates, connections and entry documents; direct service is not guaranteed.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Vietnam Airlines route search"
+        ]
+      }
+    ],
+    "seasonalNotes": [
+      "Monsoon patterns vary by coast and region; avoid treating Vietnam as one weather season.",
+      "Angkor is best with early starts and a protected recovery afternoon."
+    ],
+    "sourceLinks": [
+      {
+        "label": "Vietnam Hoi An access",
+        "url": "https://vietnam.travel/places-to-go/central-vietnam/hoi-an",
+        "covers": "Hoi An uses Da Nang airport with an onward ground transfer; destination context.",
+        "owner": "Viet Nam National Authority of Tourism",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Vietnam Airlines route search",
+        "url": "https://www.vietnamairlines.com/en-vn/flights-from-ho-chi-minh-city-to-siem-reap",
+        "covers": "Operator markets the Ho Chi Minh City–Siem Reap city pair.",
+        "owner": "Vietnam Airlines",
+        "checkedAt": "2026-09-07",
+        "limitations": "Does not establish a direct flight, operating date, schedule, terminal or door-to-door allowance."
+      },
+      {
+        "label": "UNESCO Angkor",
+        "url": "https://whc.unesco.org/en/list/668/",
+        "covers": "Heritage context for the Siem Reap stay.",
+        "owner": "UNESCO World Heritage Centre",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      }
+    ],
+    "confidence": "medium",
+    "reviewedAt": "2026-09-07",
+    "character": "Distance + mixed transfers",
+    "highlights": [
+      "Hanoi old quarter",
+      "Hoi An old town",
+      "Ho Chi Minh City",
+      "Angkor from Siem Reap"
+    ],
+    "release": {
+      "routeOrderRationale": "Travel from Hanoi through Hoi An and Ho Chi Minh City to Siem Reap. Long distances and airport-to-base transfers make the travel days part of the planning.",
+      "editorialOwner": "Codex — route research and content preparation",
+      "editorialReviewer": "Shaun Whiting",
+      "explicitUnknowns": [
+        {
+          "kind": "connection",
+          "reference": "Hanoi → Hoi An",
+          "reason": "Flight option via Da Nang, then ground transfer to Hoi An. Confirm the full journey, airport access and service details."
+        },
+        {
+          "kind": "connection",
+          "reference": "Hoi An → Ho Chi Minh City",
+          "reason": "Ground transfer from Hoi An to Da Nang, then a flight option to Ho Chi Minh City. Confirm the full journey and service details."
+        },
+        {
+          "kind": "connection",
+          "reference": "Ho Chi Minh City → Siem Reap",
+          "reason": "International flight option plus airport ground access. Confirm operating dates, connections and entry documents; direct service is not guaranteed."
+        }
+      ],
+      "image": {
+        "asset": "/journey/immersive/place-hoi-an-1536.webp",
+        "rights": "licensed",
+        "attribution": "xiquinhosilva · CC BY 2.0 · resized and converted to WebP; display crop.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:10549-Hoi-An_(37621348460).jpg"
+      }
+    }
   },
   {
     key: "colombia-ecuador",
@@ -223,25 +572,420 @@ const coreRouteFamilies: RouteFamily[] = [
     reviewedAt: "2026-08-08",
   },
   {
-    key: "balkans-overland",
-    title: "The Balkans, one border at a time",
-    region: "europe",
-    countries: ["Croatia", "Montenegro", "Albania"],
-    interests: ["coast", "nature", "culture"],
-    bestFor: "A flexible Adriatic route for travellers who want coast, mountains, and fewer predictable city breaks.",
-    suggestedDays: { min: 10, ideal: 14, max: 21 },
-    bases: ["Dubrovnik", "Kotor", "Shkodër", "Tirana"],
-    stops: [
-      { name: "Dubrovnik", country: "Croatia", coordinates: [18.0944, 42.6507], minimumNights: 2, reason: "A dramatic coastal opening; use it as a base rather than a checklist." },
-      { name: "Kotor", country: "Montenegro", coordinates: [18.7712, 42.4247], minimumNights: 3, reason: "A mountain-and-bay pause with flexible day-trip options." },
-      { name: "Shkodër", country: "Albania", coordinates: [19.503, 42.0683], minimumNights: 2, reason: "A softer landing into northern Albania and the mountains." },
-      { name: "Tirana", country: "Albania", coordinates: [19.8187, 41.3275], minimumNights: 3, reason: "A lively finish with access to a wider range of day trips." },
+    "key": "balkans-overland",
+    "title": "The Balkans, one border at a time",
+    "region": "europe",
+    "countries": [
+      "Croatia",
+      "Montenegro",
+      "Albania"
     ],
-    connections: [{ from: "Dubrovnik", to: "Kotor", mode: "bus", planningMinutes: 180, note: `Border-crossing coach allowance; queues can change the day. ${verify}`, confidence: "needs-review" }, { from: "Kotor", to: "Shkodër", mode: "bus", planningMinutes: 240, note: `Cross-border road allowance. ${verify}`, confidence: "needs-review" }, { from: "Shkodër", to: "Tirana", mode: "bus", planningMinutes: 150, note: `Intercity coach allowance. ${verify}`, confidence: "medium" }],
-    seasonalNotes: ["Summer coast demand is high; shoulder season improves flexibility.", "Border crossings need buffer and should not be paired with a fixed timed activity."],
-    sourceLinks: [{ label: "Croatia Tourism", url: "https://croatia.hr/en-gb", covers: "Official destination context" }, { label: "Montenegro Travel", url: "https://www.montenegro.travel/en", covers: "Official destination context" }, { label: "Albania Tourism", url: "https://albania.al/", covers: "Official destination context" }],
-    confidence: "needs-review",
-    reviewedAt: "2026-08-08",
+    "interests": [
+      "coast",
+      "nature",
+      "culture"
+    ],
+    "bestFor": "Follow the Adriatic from Dubrovnik to Kotor, then continue through Shkodër to Tirana. Leave room for borders and arrange each ground connection before committing to timed plans.",
+    "suggestedDays": {
+      "min": 11,
+      "ideal": 13,
+      "max": 21
+    },
+    "bases": [
+      "Dubrovnik",
+      "Kotor",
+      "Shkodër",
+      "Tirana"
+    ],
+    "stops": [
+      {
+        "name": "Dubrovnik",
+        "country": "Croatia",
+        "coordinates": [
+          18.0944,
+          42.6507
+        ],
+        "minimumNights": 2,
+        "reason": "A dramatic coastal opening; use it as a base rather than a checklist.",
+        "recommendedNights": 3,
+        "nightGuidanceRationale": "Time within the old town after arrival."
+      },
+      {
+        "name": "Kotor",
+        "country": "Montenegro",
+        "coordinates": [
+          18.7712,
+          42.4247
+        ],
+        "minimumNights": 3,
+        "reason": "A mountain-and-bay pause with flexible day-trip options.",
+        "recommendedNights": 4,
+        "nightGuidanceRationale": "Bay exploration plus flexibility after the border journey."
+      },
+      {
+        "name": "Shkodër",
+        "country": "Albania",
+        "coordinates": [
+          19.503,
+          42.0683
+        ],
+        "minimumNights": 2,
+        "reason": "A softer landing into northern Albania and the mountains.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "One full local day before the next base."
+      },
+      {
+        "name": "Tirana",
+        "country": "Albania",
+        "coordinates": [
+          19.8187,
+          41.3275
+        ],
+        "minimumNights": 3,
+        "reason": "A lively finish with access to a wider range of day trips.",
+        "recommendedNights": 3,
+        "nightGuidanceRationale": "Two city days and onward departure flexibility."
+      }
+    ],
+    "connections": [
+      {
+        "from": "Dubrovnik",
+        "to": "Kotor",
+        "mode": "bus",
+        "planningMinutes": null,
+        "note": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Montenegro border connections"
+        ]
+      },
+      {
+        "from": "Kotor",
+        "to": "Shkodër",
+        "mode": "bus",
+        "planningMinutes": null,
+        "note": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Montenegro border connections"
+        ]
+      },
+      {
+        "from": "Shkodër",
+        "to": "Tirana",
+        "mode": "bus",
+        "planningMinutes": null,
+        "note": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date.",
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Albania Tourism"
+        ]
+      }
+    ],
+    "seasonalNotes": [
+      "Summer coast demand is high; shoulder season improves flexibility.",
+      "Border crossings need buffer and should not be paired with a fixed timed activity."
+    ],
+    "sourceLinks": [
+      {
+        "label": "Croatia Tourism",
+        "url": "https://croatia.hr/en-gb",
+        "covers": "Official destination context",
+        "owner": "Croatia Tourism",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination context only; does not verify transport schedules or night recommendations."
+      },
+      {
+        "label": "Montenegro Travel",
+        "url": "https://www.montenegro.travel/en",
+        "covers": "Official destination context",
+        "owner": "Montenegro Travel",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination context only; does not verify transport schedules or night recommendations."
+      },
+      {
+        "label": "Albania Tourism",
+        "url": "https://albania.al/",
+        "covers": "Official destination context",
+        "owner": "Albania Tourism",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination context only; does not verify transport schedules or night recommendations."
+      },
+      {
+        "label": "Montenegro border connections",
+        "url": "https://www.montenegro.travel/en/plan-your-stay-in-montenegro/how-can-you-journey-to-us/conditions-for-entering-montenegro",
+        "covers": "Road border crossings with Croatia and Albania; not passenger-specific entry eligibility.",
+        "owner": "National Tourism Organisation of Montenegro",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      }
+    ],
+    "confidence": "medium",
+    "reviewedAt": "2026-09-07",
+    "character": "Borders + ground connections",
+    "highlights": [
+      "Dubrovnik old town",
+      "Kotor bay",
+      "Shkodër and its surroundings",
+      "Tirana city life"
+    ],
+    "release": {
+      "routeOrderRationale": "Follow the Adriatic from Dubrovnik to Kotor, then continue through Shkodër to Tirana. Leave room for borders and arrange each ground connection before committing to timed plans.",
+      "editorialOwner": "Codex — route research and content preparation",
+      "editorialReviewer": "Shaun Whiting",
+      "explicitUnknowns": [
+        {
+          "kind": "connection",
+          "reference": "Dubrovnik → Kotor",
+          "reason": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date."
+        },
+        {
+          "kind": "connection",
+          "reference": "Kotor → Shkodër",
+          "reason": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date."
+        },
+        {
+          "kind": "connection",
+          "reference": "Shkodër → Tirana",
+          "reason": "Ground connection · details to confirm. Check the operator, pickup/drop-off, border documents and waiting buffer for your date."
+        }
+      ],
+      "image": {
+        "asset": "/journey/immersive/place-kotor-1536.webp",
+        "rights": "licensed",
+        "attribution": "User:Ggia · CC BY-SA 3.0 · resized and converted to WebP; display crop.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:20090719_Crkva_Gospa_od_Zdravlja_Kotor_Bay_Montenegro.jpg"
+      }
+    }
+  },
+  {
+    "key": "iceland-ring-road",
+    "title": "Iceland, south coast to the north",
+    "region": "europe",
+    "countries": [
+      "Iceland"
+    ],
+    "interests": [
+      "nature",
+      "coast",
+      "hiking"
+    ],
+    "bestFor": "A one-way road journey from Reykjavík through Vík and Höfn to the Mývatn area and Akureyri. Höfn breaks the eastward journey. This is part of the Ring Road, not a completed circuit; arrange your onward travel separately.",
+    "bases": [
+      "Reykjavík",
+      "Vík",
+      "Höfn",
+      "Reykjahlíð",
+      "Akureyri"
+    ],
+    "seasonalNotes": [
+      "This proposal is for a road trip with adequate daylight and open roads. It is not a winter driving recommendation.",
+      "Check road and weather guidance daily; delay travel or add an overnight stop when needed.",
+      "Akureyri is the finish. A return west and rental drop-off/one-way fees are not included."
+    ],
+    "highlights": [
+      "South Coast waterfalls",
+      "Jökulsárlón",
+      "Mývatn",
+      "Eastfjords"
+    ],
+    "imageQuery": "Iceland Ring Road black sand beach waterfall",
+    "confidence": "medium",
+    "suggestedDays": {
+      "min": 11,
+      "ideal": 13,
+      "max": 18
+    },
+    "stops": [
+      {
+        "name": "Reykjavík",
+        "country": "Iceland",
+        "coordinates": [
+          -21.9426,
+          64.1466
+        ],
+        "minimumNights": 2,
+        "reason": "A soft arrival before the road opens out.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "Arrival and road-trip preparation."
+      },
+      {
+        "name": "Vík",
+        "country": "Iceland",
+        "coordinates": [
+          -19.0083,
+          63.4189
+        ],
+        "minimumNights": 2,
+        "reason": "A south-coast base for waterfalls and black-sand beaches.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "A full south-coast day without immediately driving onward."
+      },
+      {
+        "name": "Höfn",
+        "country": "Iceland",
+        "coordinates": [
+          -15.2082,
+          64.2539
+        ],
+        "minimumNights": 2,
+        "reason": "A southeast overnight base that splits the long journey between Vík and the north.",
+        "recommendedNights": 2,
+        "nightGuidanceRationale": "A southeast pause that separates the long road stages."
+      },
+      {
+        "name": "Reykjahlíð",
+        "country": "Iceland",
+        "coordinates": [
+          -16.9123,
+          65.6421
+        ],
+        "minimumNights": 2,
+        "reason": "Stay in Reykjahlíð as the practical village base for the Mývatn area.",
+        "recommendedNights": 3,
+        "nightGuidanceRationale": "Two full area days after the eastward driving day."
+      },
+      {
+        "name": "Akureyri",
+        "country": "Iceland",
+        "coordinates": [
+          -18.0907,
+          65.6885
+        ],
+        "minimumNights": 2,
+        "reason": "Finish in Akureyri. Return to Reykjavík or onward flights require separate planning.",
+        "recommendedNights": 3,
+        "nightGuidanceRationale": "A town/rest day and room to arrange onward travel."
+      }
+    ],
+    "connections": [
+      {
+        "from": "Reykjavík",
+        "to": "Vík",
+        "mode": "road",
+        "planningMinutes": null,
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Iceland driving guidance"
+        ],
+        "note": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+      },
+      {
+        "from": "Vík",
+        "to": "Höfn",
+        "mode": "road",
+        "planningMinutes": null,
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Iceland driving guidance"
+        ],
+        "note": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+      },
+      {
+        "from": "Höfn",
+        "to": "Reykjahlíð",
+        "mode": "road",
+        "planningMinutes": null,
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Iceland driving guidance"
+        ],
+        "note": "Long driving day through the east toward Reykjahlíð. Keep the day free of timed activities; check weather, road closures, rest stops and daylight. Add another overnight stay if conditions or driver comfort require it."
+      },
+      {
+        "from": "Reykjahlíð",
+        "to": "Akureyri",
+        "mode": "road",
+        "planningMinutes": null,
+        "confidence": "needs-review",
+        "sourceLabels": [
+          "Iceland driving guidance"
+        ],
+        "note": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+      }
+    ],
+    "sourceLinks": [
+      {
+        "label": "South Iceland Höfn",
+        "url": "https://www.south.is/en/destinations/towns/hofn",
+        "covers": "Höfn as a southeast town and visitor base.",
+        "owner": "Visit South Iceland",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Mývatn visitor map",
+        "url": "https://www.visitmyvatn.is/static/files/map2022.pdf",
+        "covers": "Reykjahlíð village as a specific overnight base within the Mývatn area.",
+        "owner": "Visit Mývatn",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Visit Akureyri",
+        "url": "https://www.visitakureyri.is/en",
+        "covers": "Akureyri town, access and onward travel context.",
+        "owner": "Municipality of Akureyri",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Iceland driving guidance",
+        "url": "https://island.is/en/educational-material-for-car-rental-for-driving-foreign-drivers-in-iceland",
+        "covers": "Official transport authority guidance and Safetravel road/weather checks.",
+        "owner": "Icelandic Transport Authority",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      },
+      {
+        "label": "Visit Iceland Ring Road",
+        "url": "https://www.visiticeland.com/article/the-ring-road/",
+        "covers": "Road-trip context, not proof that this open route completes a circuit.",
+        "owner": "Business Iceland",
+        "checkedAt": "2026-09-07",
+        "limitations": "Destination/route context; not live availability or personalised night advice."
+      }
+    ],
+    "reviewedAt": "2026-09-07",
+    "character": "Driving + nightly pacing",
+    "release": {
+      "routeOrderRationale": "A one-way road journey from Reykjavík through Vík and Höfn to the Mývatn area and Akureyri. Höfn breaks the eastward journey. This is part of the Ring Road, not a completed circuit; arrange your onward travel separately.",
+      "editorialOwner": "Codex — route research and content preparation",
+      "editorialReviewer": "Shaun Whiting",
+      "explicitUnknowns": [
+        {
+          "kind": "connection",
+          "reference": "Reykjavík → Vík",
+          "reason": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+        },
+        {
+          "kind": "connection",
+          "reference": "Vík → Höfn",
+          "reason": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+        },
+        {
+          "kind": "connection",
+          "reference": "Höfn → Reykjahlíð",
+          "reason": "Long driving day through the east toward Reykjahlíð. Keep the day free of timed activities; check weather, road closures, rest stops and daylight. Add another overnight stay if conditions or driver comfort require it."
+        },
+        {
+          "kind": "connection",
+          "reference": "Reykjahlíð → Akureyri",
+          "reason": "Driving day · route/weather dependent. Confirm roads, daylight, stops and rental arrangements; no driving-time promise."
+        },
+        {
+          "kind": "route",
+          "reference": "Akureyri finish",
+          "reason": "Return to Reykjavík, one-way car arrangements and onward travel are not included. This is not a full Ring Road circuit."
+        }
+      ],
+      "image": {
+        "asset": "/journey/immersive/place-vik-1536.webp",
+        "rights": "licensed",
+        "attribution": "Andrea Schaffer · CC BY 2.0 · resized and converted to WebP; display crop.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:V%C3%ADk_%C3%AD_M%C3%BDrdal%2C_Iceland.jpg"
+      }
+    }
   },
 ];
 
@@ -351,7 +1095,6 @@ const globalRouteSeeds: RouteSeed[] = [
   { key: "caucasus-crossroads", title: "The Caucasus, mountains and table culture", region: "asia", countries: ["Georgia", "Armenia", "Azerbaijan"], interests: ["culture", "food", "nature"], bestFor: "Wine country, mountain roads and three distinct cultures, built with flexibility around changing border realities.", days: [12, 18, 26], bases: ["Tbilisi", "Yerevan", "Baku"], stops: [["Tbilisi", "Georgia", [44.793, 41.7151], 4, "A generous opening for food, wine and day trips."], ["Yerevan", "Armenia", [44.4991, 40.1792], 3, "A compact city base for temples and highland roads."], ["Baku", "Azerbaijan", [49.8671, 40.4093], 3, "A Caspian finish treated as a separately verified chapter."]], seasonalNotes: ["Do not assume a direct Armenia-Azerbaijan crossing. Build this as connected, independently verified legs via current official guidance."], highlights: ["Tbilisi old town", "Armenian highlands", "Baku old city"], imageQuery: "Tbilisi Georgia old town mountains", sources: [{ label: "Armenia travel planning", url: "https://armenia.travel/plan-your-trip/flights-visa/", covers: "Official entry and border context" }, { label: "Azerbaijan western route", url: "https://azerbaijan.travel/western-route", covers: "Official Azerbaijan route context" }], confidence: "needs-review" },
   { key: "central-america-southbound", title: "Central America, Guatemala to Panama", region: "central-america", countries: ["Guatemala", "Nicaragua", "Costa Rica", "Panama"], interests: ["nature", "coast", "culture"], bestFor: "Volcanoes, colonial cities and Caribbean water on the southbound stretch many long-term travellers shape around the weather.", days: [18, 28, 42], bases: ["Antigua Guatemala", "León", "La Fortuna", "Bocas del Toro"], stops: [["Antigua Guatemala", "Guatemala", [-90.7339, 14.5586], 3, "A compact first base with volcano and market days."], ["León", "Nicaragua", [-86.878, 12.4357], 3, "A colonial and volcano chapter with recovery time."], ["La Fortuna", "Costa Rica", [-84.6453, 10.4711], 3, "A rainforest base with room for wet-weather shifts."], ["Bocas del Toro", "Panama", [-82.244, 9.34], 4, "An island finish where buffers matter more than a rigid schedule."]], seasonalNotes: ["Treat border days as light days and verify country-specific entry requirements before travel."], highlights: ["Antigua", "Nicaragua volcanoes", "Arenal", "Bocas del Toro"], imageQuery: "Bocas del Toro Panama Caribbean island", sources: [{ label: "Mundo Maya", url: "https://www.mundomaya.travel/en", covers: "Central America destination context" }], confidence: "needs-review" },
   { key: "australia-east-coast", title: "Australia’s East Coast, Sydney to Cairns", region: "oceania", countries: ["Australia"], interests: ["coast", "nature", "wildlife"], bestFor: "Surf towns, reef days and a classic long-haul backpacker route that needs fewer stops than the map suggests.", days: [12, 18, 28], bases: ["Sydney", "Byron Bay", "Airlie Beach", "Cairns"], stops: [["Sydney", "Australia", [151.2093, -33.8688], 3, "A city-and-coast opening before the route turns north."], ["Byron Bay", "Australia", [153.602, -28.6474], 3, "A slower beach chapter with room to recover."], ["Airlie Beach", "Australia", [148.718, -20.2678], 3, "A practical Whitsundays base, not just a transfer night."], ["Cairns", "Australia", [145.7781, -16.9186], 4, "A tropical finish for reef and rainforest days."]], seasonalNotes: ["Distances and wet-season patterns should guide the direction and timing of the route."], highlights: ["Byron Bay", "Whitsundays", "Great Barrier Reef"], imageQuery: "Whitsundays Australia aerial beach", sources: [{ label: "Tourism Australia East Coast itinerary", url: "https://www.australia.com/en/trips-and-itineraries/sydney-and-surrounds/sydney-to-cairns-australia-east-coast-itinerary.html", covers: "Official Sydney-to-Cairns route context" }], confidence: "needs-review" },
-  { key: "iceland-ring-road", title: "Iceland’s Ring Road, slowly", region: "europe", countries: ["Iceland"], interests: ["nature", "coast", "hiking"], bestFor: "Waterfalls, black-sand beaches and long light, paced so the drive does not take over the whole trip.", days: [7, 10, 15], bases: ["Reykjavík", "Vík", "Mývatn", "Akureyri"], stops: [["Reykjavík", "Iceland", [-21.9426, 64.1466], 2, "A soft arrival before the road opens out."], ["Vík", "Iceland", [-19.0083, 63.4189], 2, "A south-coast base for waterfalls and black-sand beaches."], ["Mývatn", "Iceland", [-16.9969, 65.603], 2, "A northern volcanic landscape chapter."], ["Akureyri", "Iceland", [-18.0907, 65.6885], 2, "A slower north-coast finish before returning west."]], seasonalNotes: ["Road, weather and daylight conditions drive this route. Keep nightly stays flexible where possible."], highlights: ["South Coast waterfalls", "Jökulsárlón", "Mývatn", "Eastfjords"], imageQuery: "Iceland Ring Road black sand beach waterfall", sources: [{ label: "Visit Iceland Ring Road", url: "https://www.visiticeland.com/article/the-ring-road/", covers: "Official Ring Road context" }], confidence: "needs-review" },
   { key: "camino-frances", title: "Camino Francés, one town at a time", region: "europe", countries: ["France", "Spain"], interests: ["hiking", "culture", "heritage"], bestFor: "A major walking route for travellers who want a physical journey with a clear daily rhythm and no need to invent the spine.", days: [18, 35, 45], bases: ["Saint-Jean-Pied-de-Port", "Burgos", "León", "Santiago de Compostela"], stops: [["Saint-Jean-Pied-de-Port", "France", [-1.2378, 43.1638], 1, "A natural beginning before the Pyrenees."], ["Burgos", "Spain", [-3.6969, 42.3439], 2, "A recovery and heritage chapter on the central plateau."], ["León", "Spain", [-5.5703, 42.5987], 2, "A city pause before the final western stretch."], ["Santiago de Compostela", "Spain", [-8.5448, 42.8805], 2, "A finish that benefits from an unhurried arrival day."]], seasonalNotes: ["Accommodation, weather and daily walking capacity should drive the itinerary more than a fixed pace."], highlights: ["Pyrenees crossing", "Burgos Cathedral", "León", "Santiago de Compostela"], imageQuery: "Camino de Santiago Spain pilgrims trail", sources: [{ label: "Galicia Camino de Santiago", url: "https://www.camino.xacobeo.gal/en/routes", covers: "Official route context" }], confidence: "needs-review" },
   { key: "tour-du-mont-blanc", title: "Tour du Mont Blanc, three countries", region: "europe", countries: ["France", "Italy", "Switzerland"], interests: ["hiking", "nature", "culture"], bestFor: "An iconic alpine circuit with a meaningful cross-border shape, where weather and refuge availability set the real pace.", days: [8, 11, 15], bases: ["Les Houches", "Courmayeur", "Champex-Lac"], stops: [["Les Houches", "France", [6.7926, 45.89], 1, "A straightforward start and finish base near Chamonix."], ["Courmayeur", "Italy", [6.9705, 45.7926], 2, "A restorative Italian valley chapter."], ["Champex-Lac", "Switzerland", [7.1174, 46.0288], 1, "A quieter lake stop on the Swiss section."]], seasonalNotes: ["Snow, weather, refuge bookings and walking ability are core route inputs, not minor details."], highlights: ["Mont Blanc massif", "Courmayeur", "Swiss alpine valleys"], imageQuery: "Tour du Mont Blanc alpine trail France Italy Switzerland", sources: [{ label: "Tour du Mont Blanc official", url: "https://www.autourdumontblanc.com/en/", covers: "Official trek context" }], confidence: "needs-review" },
   { key: "inca-trail-sacred-valley", title: "Cusco, Sacred Valley and Machu Picchu", region: "south-america", countries: ["Peru"], interests: ["heritage", "hiking", "culture"], bestFor: "A more thoughtful Machu Picchu route that gives altitude, the Sacred Valley and the trek equal weight.", days: [7, 10, 14], bases: ["Cusco", "Ollantaytambo", "Aguas Calientes"], stops: [["Cusco", "Peru", [-71.9675, -13.5319], 3, "A protected altitude-adjustment opening."], ["Ollantaytambo", "Peru", [-72.264, -13.2586], 2, "A Sacred Valley base that takes pressure off the Machu Picchu day."], ["Aguas Calientes", "Peru", [-72.545, -13.154], 1, "A focused final night for a calmer early entry."]], seasonalNotes: ["Permits, altitude and seasonal trail conditions require early, verified planning."], highlights: ["Cusco", "Sacred Valley", "Machu Picchu"], imageQuery: "Machu Picchu Peru sunrise", sources: [{ label: "Peru Travel", url: "https://www.peru.travel/en", covers: "Official Peru destination context" }], confidence: "needs-review" },

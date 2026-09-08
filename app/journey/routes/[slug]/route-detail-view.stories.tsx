@@ -57,3 +57,9 @@ export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", i
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const Desktop1680: Story = { globals: { viewport: { value: "morrovia1680", isRotated: false } } };
+
+/** Canonical editorial candidates; Storybook does not publish these routes. */
+export const JapanFiveStopEditorialReview: Story = { args: { detail: publicRouteDetailFor("japan-slow")! } };
+export const BalkansEditorialReview: Story = { args: { detail: publicRouteDetailFor("balkans-overland")! } };
+export const VietnamCambodiaEditorialReview: Story = { args: { detail: publicRouteDetailFor("vietnam-cambodia")! } };
+export const IcelandEditorialReview: Story = { args: { detail: publicRouteDetailFor("iceland-ring-road")! } };

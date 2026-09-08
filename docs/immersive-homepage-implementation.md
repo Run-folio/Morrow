@@ -1,3 +1,9 @@
+> **Latest:** independent editorial approval recorded and four canonical routes published locally. [Post-publication verification](immersive-route-publication.md) is the current release status; older HOLD statements below are historical. Default flag remains OFF; no staging deployment.
+
+> Current content completion (2026-09-07): [four-route editorial approval pack](immersive-four-route-editorial-approval.md). Canonical content and imagery are complete; independent review and actual published acceptance remain pending. Default-OFF. The implementation measurements below are historical.
+
+> Route-content follow-up, 2026-09-07: see [current release decision](immersive-homepage-route-content.md). The three baseline trust failures are now classified and corrected; all four route-content releases remain HOLD. The historical measurements below are unchanged.
+
 # Immersive homepage implementation
 
 Status: **homepage-focused checks and builds pass, but the approved four-route experience is not release-ready. Keep the current homepage.** No staging deployment, publication change, main-branch change or production flag change was made.

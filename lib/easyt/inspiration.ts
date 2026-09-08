@@ -33,14 +33,13 @@ export const inspirationSeeds: InspirationSeed[] = [
   },
   {
     key: "japan-slow",
-    title: "Japan, one good day at a time",
+    title: routeFamilies.find(route => route.key === "japan-slow")!.title,
     origin: "Tokyo",
     originCoordinates: [139.6917, 35.6895],
-    stops: [
-      { id: "seed-tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895] },
-      { id: "seed-takayama", name: "Takayama", country: "Japan", coordinates: [137.2523, 36.146] },
-      { id: "seed-kyoto", name: "Kyoto", country: "Japan", coordinates: [135.7681, 35.0116] },
-    ],
+    stops: routeFamilies.find(route => route.key === "japan-slow")!.stops.map(stop => ({
+      id: `seed-${({ Tokyo: "tokyo", Kanazawa: "kanazawa", Takayama: "takayama", Kyoto: "kyoto", Osaka: "osaka" } as Record<string, string>)[stop.name]}`,
+      name: stop.name, country: stop.country, coordinates: stop.coordinates,
+    })),
     budget: "mid",
   },
   {
@@ -207,7 +206,9 @@ const catalogSeeds: InspirationSeed[] = routeFamilies
     origin: route.stops[0]?.name ?? route.bases[0] ?? "",
     originCoordinates: route.stops[0]?.coordinates ?? [0, 0],
     stops: route.stops.map((stop, index) => ({
-      id: `catalog-${route.key}-${index}`,
+      id: route.key === "iceland-ring-road"
+        ? ({ "Reykjavík": "catalog-iceland-ring-road-0", "Vík": "catalog-iceland-ring-road-1", "Höfn": "catalog-iceland-ring-road-hofn", "Reykjahlíð": "catalog-iceland-ring-road-2", "Akureyri": "catalog-iceland-ring-road-3" } as Record<string, string>)[stop.name]
+        : `catalog-${route.key}-${index}`,
       name: stop.name,
       country: stop.country,
       coordinates: stop.coordinates,
