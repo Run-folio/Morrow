@@ -157,9 +157,7 @@ test("every supported legacy slug redirects once to a published canonical route 
 test("previous hostile-audit routes have deliberate publication outcomes", () => {
   assert.equal(isPublishedPublicRouteKey("portugal-atlantic"), true);
   for (const key of [
-    "vietnam-cambodia",
     "colombia-ecuador",
-    "balkans-overland",
     "thailand-vietnam-cambodia",
   ]) {
     assert.ok(publicRouteDetailFor(key), `${key} remains a valid reviewable source route`);

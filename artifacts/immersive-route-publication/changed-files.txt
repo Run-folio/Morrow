@@ -1,0 +1,35 @@
+ M app/journey/discover/discovery-browser.tsx
+ M app/journey/routes/[slug]/route-detail-view.stories.tsx
+ M app/journey/routes/[slug]/route-hero-image.tsx
+ M app/journey/routes/[slug]/route-stop-image.tsx
+ M docs/immersive-homepage-implementation.md
+ M lib/easyt/curated-route-knowledge.ts
+ M lib/easyt/inspiration.ts
+ M lib/easyt/place-catalog.ts
+ M lib/easyt/public-route-handoff.ts
+ M lib/easyt/public-route-release.ts
+ M lib/easyt/public-route.ts
+ M lib/easyt/route-catalog.ts
+ M lib/easyt/route-images.ts
+ M public/journey/immersive/credits.html
+ M public/journey/immersive/destination-inventory.json
+ M tests/curated-route-trust.test.ts
+ M tests/immersive-homepage.test.ts
+ M tests/public-route-handoff.test.ts
+ M tests/public-route-release.test.ts
+ M tests/public-route-seo.test.ts
+ M tests/public-route.test.ts
+?? artifacts/immersive-route-completion/
+?? artifacts/immersive-route-content/
+?? artifacts/immersive-route-publication/
+?? docs/immersive-four-route-editorial-approval.md
+?? docs/immersive-homepage-route-content.md
+?? docs/immersive-route-imagery-audit.md
+?? docs/immersive-route-publication.md
+?? public/journey/immersive/place-hofn-1536.webp
+?? public/journey/immersive/place-hofn-384.webp
+?? public/journey/immersive/place-hofn-768.webp
+?? public/journey/immersive/place-osaka-1536.webp
+?? public/journey/immersive/place-osaka-384.webp
+?? public/journey/immersive/place-osaka-768.webp
+?? tests/immersive-route-content.test.ts

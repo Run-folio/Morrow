@@ -20,7 +20,7 @@ test("route metadata is specific, canonical and branded only by the layout", () 
 test("legacy, unknown and review-needed metadata have safe canonical/index behavior", () => {
   assert.deepEqual(publicRouteMetadataFor("portugal-coast").alternates, { canonical: "/journey/routes/portugal-atlantic" });
   assert.equal(robotsIndex(publicRouteMetadataFor("not-real")), false);
-  assert.equal(robotsIndex(publicRouteMetadataFor("vietnam-cambodia")), false);
+  assert.equal(robotsIndex(publicRouteMetadataFor("colombia-ecuador")), false);
 });
 
 test("metadata indexability cannot drift from sitemap eligibility", () => {

@@ -1,0 +1,107 @@
+(node:91188) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/canonical-place-route-regression.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Tikal → Flores and Lake Atitlán → San Pedro complete at the selected overnight locality (0.333292ms)
+✔ manual nearby search accepts a provider locality outside the curated suggestion catalogue (0.653416ms)
+✔ endpoint replacement drops every stale East Asian identity field (0.3985ms)
+✔ origin, overnight stops and return form one deduplicated travel sequence (4.046125ms)
+✔ Map ignores a stale saved leg snapshot and fits the canonical Cancún return (0.877167ms)
+✔ the persisted 21-night Cancún itinerary suppresses the generated same-place rows and retains every real transfer (19.117792ms)
+✔ origin and return survive persistence while legacy trips without return stay valid (0.651833ms)
+(node:91189) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/immersive-homepage.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ homepage switch fails closed, without browser-dependent routing (0.569042ms)
+✔ route chapters cannot publish prototype data or silently change canonical Japan (311.978375ms)
+✔ random choice is injectable and stable, navigation wraps, scroll correction stays local (386.629583ms)
+✔ hero composes real capture and current handoff owners (0.282875ms)
+✔ one night decision persists between demo views without changing catalogue data (130.574ms)
+✔ demo has no account, storage, analytics or mutation dependency and lazy-loads the map (0.366583ms)
+✔ all sixteen affiliate states have provenance, distinct files and responsive variants (0.238666ms)
+✔ affiliate chapter delegates clicks to canonical owner without writing readiness state (0.122333ms)
+✔ destination imagery is matched to canonical places with explicit source rights (132.37125ms)
+✔ quiet view stops scroll work and the final action focuses the original prompt (0.275458ms)
+(node:91190) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/immersive-route-content.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ japan-slow: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (32.002708ms)
+✔ balkans-overland: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (6.065334ms)
+✔ vietnam-cambodia: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (3.89275ms)
+✔ iceland-ring-road: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (6.09875ms)
+✔ five-stop Japan identities resolve independently; the unpublished proposal cannot masquerade as the current three-stop route (148.403041ms)
+✔ homepage stays default-off and excludes the three held families (136.927667ms)
+✔ destination photographs carry attribution and existing local variants; Osaka remains a release gap (0.557791ms)
+(node:91191) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/intercity-rail-evidence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ provider-backed Western Europe identities resolve all required directions to canonical rail (2.820667ms)
+✔ Builder-equivalent Paris to Amsterdam to Brussels uses the same rail mode as presentation (2.332916ms)
+✔ deterministic rail network evidence survives unavailable exact or live provider data (0.663958ms)
+✔ reviewed network evidence creates domestic and cross-border rail candidates without road calls (0.674208ms)
+✔ Brussels to Amsterdam proves the mechanism generalizes beyond the permanent benchmark routes (0.214375ms)
+✔ station or network access alone never creates a strong rail candidate (9.071417ms)
+✔ a shared domestic network cannot be used cross-border unless the evidence explicitly allows it (0.252666ms)
+✔ canonical rail legs remain persistence-compatible and feed existing Builder, Map and Itinerary presentation contracts (0.441583ms)
+(node:91192) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/journey-endpoints.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ canonical place equivalence uses strong identity evidence and stays symmetric (6.002458ms)
+✔ canonical place equivalence rejects weak name or proximity coincidences (4.700458ms)
+✔ 01 Start London / End London keeps Japan as the only overnight stops (2.958042ms)
+✔ 02 Start London / End Seoul creates terminal context without a Seoul stay (0.412917ms)
+✔ 03 Start London / End unknown has no fabricated terminal leg (0.304333ms)
+✔ 04 Same as start remains a relationship in canonical state (0.269458ms)
+✔ 05 changing Start while Same as start is active changes the resolved End (0.042667ms)
+✔ 06 an explicit End remains stable when Start changes (0.052208ms)
+✔ 07 clearing an explicit End normalizes to unknown (0.060958ms)
+✔ 08 natural language from London and back to London preserves Same as start (7.786ms)
+✔ 09 natural language fly into Tokyo and out of Osaka separates the endpoint (4.355375ms)
+✔ 10 natural language start Guatemala, finish Mexico City captures a fixed end (0.797958ms)
+✔ 11 natural language ending in Singapore does not turn Ending into geography (0.795084ms)
+✔ 12 natural language one way to Sydney captures Sydney as End only (0.580875ms)
+✔ 13 then home resolves safely when an explicit Start is known (1.412958ms)
+✔ 14 home without a known Start remains unknown and creates no false place (1.954292ms)
+✔ same-place origin, opening stay and return persist while movement skips the same-place transition (2.959291ms)
+✔ an explicit initial London stay survives without a London-to-London leg (2.364916ms)
+✔ round trips without an explicit origin stay do not invent one and different ends remain distinct (4.8985ms)
+✔ 15 an explicit Homepage control overrides prompt inference (0.640584ms)
+✔ 16 a prompt endpoint never becomes an overnight handoff stop (0.53075ms)
+✔ 17 an End equal to the final route stop is removed from the travel sequence (0.267875ms)
+✔ 18 the known End can change deterministic candidate ordering (3.35275ms)
+✔ 19 a hard explicit End participates in every candidate without being droppable (0.116709ms)
+✔ 20 unknown End does not block the authoritative Builder gate (0.572416ms)
+✔ 21 an unresolved explicit End remains actionable instead of being silently dropped (0.182625ms)
+✔ 22 broad Thailand scope remains separate from London start/end (1.142125ms)
+✔ 23 broad Thailand with Singapore End does not make Singapore a Thailand child stop (0.237875ms)
+✔ 24 curated route evidence survives external journey endpoints (0.376084ms)
+✔ 25 save/reload preserves canonical End identity (0.325291ms)
+✔ 26 local recovery preserves canonical End identity (0.564ms)
+✔ 27 route replan recomputes and preserves the endpoint leg (1.887333ms)
+✔ 28 endpoint edits preserve nights, activities, bookings and stable stop IDs (0.472583ms)
+✔ 29 a legacy trip with no End stays valid and normalizes to unknown (0.177208ms)
+✔ 30 Homepage to Builder draft handoff preserves explicit Start and End (0.531041ms)
+✔ 31 direct Builder entry writes End to brief, intent and canonical legs (0.117875ms)
+✔ 32 the production endpoint editor has a 390px stack state without horizontal layout (0.349333ms)
+✔ 33 shared canonical autocomplete retains keyboard navigation and selection (0.050416ms)
+✔ 34 canonical endpoints do not duplicate the End as a route stop (0.195708ms)
+✔ 35 the final endpoint leg stays unknown without transport/geographic evidence (0.494625ms)
+✔ 36 Flying home from Bangkok identifies Bangkok as the departure endpoint (0.7805ms)
+✔ 37 open jaw into Tokyo and out of Seoul preserves distinct endpoint intent (0.81625ms)
+✔ 38 account promotion preserves the selected endpoint (0.351125ms)
+✔ 39 a durable Homepage draft includes its canonical endpoint (0.653167ms)
+✔ 40 spreadsheet-style and other legacy documents do not infer End from their last stop (0.099125ms)
+✔ 41 start and end controls expose distinct labels and non-truncating place detail (0.126667ms)
+✔ 42 an external structured fixed end cannot become a missing route-stop constraint (1.034875ms)
+ℹ tests 79
+ℹ suites 0
+ℹ pass 79
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1173.468542

@@ -1,6 +1,7 @@
 import type { PublicRoutePlanDraft } from "./public-route.ts";
 import { mergeStructuredTripBrief } from "./structured-trip-brief.ts";
 import { normalizeTripInterests } from "./trip-interest.ts";
+import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 
 function localIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -15,6 +16,10 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
   end.setDate(end.getDate() + Math.max(0, draft.durationDays - 1));
   const startDate = localIsoDate(start);
   const endDate = localIsoDate(end);
+  const endConstraint = draft.structuredBrief.hardConstraints.find(item => item.type === "end-at");
+  const endingStop = endConstraint?.type === "end-at"
+    ? draft.destinations.find(stop => stop.name === endConstraint.value)
+    : undefined;
   return {
     sourceRouteKey: draft.routeKey,
     curatedRoute: draft.curatedRoute,
@@ -22,6 +27,7 @@ export function routePlannerPayload(draft: PublicRoutePlanDraft, start = new Dat
     originCoordinates: draft.originCoordinates,
     originCanonicalPlaceId: draft.originCanonicalPlaceId,
     originCountry: draft.originCountry,
+    journeyEnd: normalizeJourneyEnd(endingStop ? { mode: "explicit", place: endingStop } : undefined),
     destinations: draft.destinations,
     routeHints: draft.routeHints,
     regions: [] as string[],

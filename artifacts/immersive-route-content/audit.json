@@ -1,0 +1,2748 @@
+{
+  "auditedAt": "2026-09-07",
+  "reports": [
+    {
+      "key": "japan-slow",
+      "published": true,
+      "release": {
+        "routeKey": "japan-slow",
+        "status": "incomplete",
+        "blockers": [
+          {
+            "code": "recommended-nights",
+            "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+          },
+          {
+            "code": "route-order-rationale",
+            "detail": "The route needs an explicit rationale for its published order."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Tokyo → Takayama cannot be a reviewed medium-confidence assumption without linked provenance."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Takayama → Kyoto cannot be a reviewed medium-confidence assumption without linked provenance."
+          },
+          {
+            "code": "explicit-unknowns",
+            "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+          },
+          {
+            "code": "editorial-owner",
+            "detail": "The route needs an editorial owner."
+          },
+          {
+            "code": "editorial-reviewer",
+            "detail": "The route needs an editorial reviewer."
+          },
+          {
+            "code": "image-rights",
+            "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+          }
+        ],
+        "needsVerification": [],
+        "reviewedAssumptions": []
+      },
+      "canonicalStops": [
+        {
+          "name": "Tokyo",
+          "country": "Japan",
+          "coordinates": [
+            139.6917,
+            35.6895
+          ],
+          "minimumNights": 3,
+          "reason": "An energetic opening chapter with enough time to settle in.",
+          "canonicalPlaceId": "tokyo"
+        },
+        {
+          "name": "Takayama",
+          "country": "Japan",
+          "coordinates": [
+            137.2523,
+            36.146
+          ],
+          "minimumNights": 2,
+          "reason": "A smaller mountain base that changes the rhythm between cities.",
+          "canonicalPlaceId": "takayama"
+        },
+        {
+          "name": "Kyoto",
+          "country": "Japan",
+          "coordinates": [
+            135.7681,
+            35.0116
+          ],
+          "minimumNights": 3,
+          "reason": "A walkable cultural finish that rewards unplanned time.",
+          "canonicalPlaceId": "kyoto"
+        }
+      ],
+      "countries": [
+        "Japan"
+      ],
+      "reviewedAt": "2026-08-08",
+      "suggestedDays": {
+        "min": 8,
+        "ideal": 10,
+        "max": 14
+      },
+      "minimumCalendarDays": 9,
+      "sources": [
+        {
+          "label": "Japan Travel",
+          "url": "https://www.japan.travel/en/",
+          "covers": "Official destination and regional context"
+        },
+        {
+          "label": "Japan Railways",
+          "url": "https://www.japanrailpass-reservation.net/",
+          "covers": "Rail planning reference"
+        }
+      ],
+      "connections": [
+        {
+          "from": "Tokyo",
+          "to": "Takayama",
+          "mode": "train",
+          "planningMinutes": 300,
+          "note": "Rail and regional connection allowance. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "medium"
+        },
+        {
+          "from": "Takayama",
+          "to": "Kyoto",
+          "mode": "train",
+          "planningMinutes": 260,
+          "note": "Regional rail connection allowance. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "medium"
+        }
+      ],
+      "detailIssues": [],
+      "payload": {
+        "sourceRouteKey": "japan-slow",
+        "curatedRoute": {
+          "version": 1,
+          "routeKey": "japan-slow",
+          "routeTitle": "Japan, one good day at a time",
+          "confidence": "medium",
+          "reviewedAt": "2026-08-08",
+          "freshness": "reviewed",
+          "sources": [
+            {
+              "label": "Japan Travel",
+              "url": "https://www.japan.travel/en/",
+              "covers": "Official destination and regional context",
+              "id": "japan-slow:source:1"
+            },
+            {
+              "label": "Japan Railways",
+              "url": "https://www.japanrailpass-reservation.net/",
+              "covers": "Rail planning reference",
+              "id": "japan-slow:source:2"
+            }
+          ],
+          "canonicalStopIds": [
+            "seed-tokyo",
+            "seed-takayama",
+            "seed-kyoto"
+          ],
+          "stops": [
+            {
+              "stopId": "seed-tokyo",
+              "name": "Tokyo",
+              "country": "Japan",
+              "canonicalPlaceId": "tokyo",
+              "minimumNights": 3,
+              "recommendedNights": 3,
+              "reason": "An energetic opening chapter with enough time to settle in.",
+              "sourceIds": [
+                "japan-slow:source:1",
+                "japan-slow:source:2"
+              ]
+            },
+            {
+              "stopId": "seed-takayama",
+              "name": "Takayama",
+              "country": "Japan",
+              "canonicalPlaceId": "takayama",
+              "minimumNights": 2,
+              "recommendedNights": 3,
+              "reason": "A smaller mountain base that changes the rhythm between cities.",
+              "sourceIds": [
+                "japan-slow:source:1",
+                "japan-slow:source:2"
+              ]
+            },
+            {
+              "stopId": "seed-kyoto",
+              "name": "Kyoto",
+              "country": "Japan",
+              "canonicalPlaceId": "kyoto",
+              "minimumNights": 3,
+              "recommendedNights": 3,
+              "reason": "A walkable cultural finish that rewards unplanned time.",
+              "sourceIds": [
+                "japan-slow:source:1",
+                "japan-slow:source:2"
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromStopId": "seed-tokyo",
+              "toStopId": "seed-takayama",
+              "mode": "train",
+              "planningMinutes": 300,
+              "note": "Rail and regional connection allowance. Verify current schedules, entry rules and opening hours before booking.",
+              "confidence": "medium",
+              "sourceIds": [
+                "japan-slow:source:1",
+                "japan-slow:source:2"
+              ]
+            },
+            {
+              "fromStopId": "seed-takayama",
+              "toStopId": "seed-kyoto",
+              "mode": "train",
+              "planningMinutes": 260,
+              "note": "Regional rail connection allowance. Verify current schedules, entry rules and opening hours before booking.",
+              "confidence": "medium",
+              "sourceIds": [
+                "japan-slow:source:1",
+                "japan-slow:source:2"
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "fully-supported",
+            "reason": "This trip still follows the reviewed route order and bases."
+          }
+        },
+        "origin": "Tokyo",
+        "originCoordinates": [
+          139.6917,
+          35.6895
+        ],
+        "originCanonicalPlaceId": "tokyo",
+        "originCountry": "Japan",
+        "destinations": [
+          {
+            "id": "seed-tokyo",
+            "name": "Tokyo",
+            "country": "Japan",
+            "canonicalPlaceId": "tokyo",
+            "coordinates": [
+              139.6917,
+              35.6895
+            ]
+          },
+          {
+            "id": "seed-takayama",
+            "name": "Takayama",
+            "country": "Japan",
+            "canonicalPlaceId": "takayama",
+            "coordinates": [
+              137.2523,
+              36.146
+            ]
+          },
+          {
+            "id": "seed-kyoto",
+            "name": "Kyoto",
+            "country": "Japan",
+            "canonicalPlaceId": "kyoto",
+            "coordinates": [
+              135.7681,
+              35.0116
+            ]
+          }
+        ],
+        "routeHints": [
+          "An energetic opening chapter with enough time to settle in.",
+          "A smaller mountain base that changes the rhythm between cities.",
+          "A walkable cultural finish that rewards unplanned time."
+        ],
+        "regions": [],
+        "countries": [
+          "Japan"
+        ],
+        "startDate": "2026-09-07",
+        "endDate": "2026-09-16",
+        "datesExplicit": false,
+        "interests": [
+          "food",
+          "culture"
+        ],
+        "interestsExplicit": true,
+        "brief": "Japan, one good day at a time.",
+        "decisionSelections": {
+          "routeOrder": "entered",
+          "transportByLeg": {}
+        },
+        "structuredBrief": {
+          "version": 1,
+          "duration": {
+            "value": 10,
+            "unit": "days",
+            "precision": "approximate",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "destinations": [
+            {
+              "name": "Tokyo",
+              "canonicalPlaceId": "tokyo",
+              "placeMentionId": "place-tokyo-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Japan"
+              ],
+              "role": "arrival-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "seed-tokyo"
+            },
+            {
+              "name": "Takayama",
+              "canonicalPlaceId": "takayama",
+              "placeMentionId": "place-takayama-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Japan"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "seed-takayama"
+            },
+            {
+              "name": "Kyoto",
+              "canonicalPlaceId": "kyoto",
+              "placeMentionId": "place-kyoto-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Japan"
+              ],
+              "role": "departure-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "seed-kyoto"
+            }
+          ],
+          "mustVisit": [],
+          "countries": [
+            {
+              "value": "Japan",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "preferredRegions": [],
+          "dates": {
+            "start": {
+              "value": "2026-09-07",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "end": {
+              "value": "2026-09-16",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "fixed": {
+              "value": false,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          },
+          "pace": {
+            "value": "relaxed",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "interests": [
+            {
+              "value": "food",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "rail",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "start-at",
+              "value": "Tokyo",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "end-at",
+              "value": "Kyoto",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "pace",
+              "value": "relaxed",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "food",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "rail",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "10 days. Start in Tokyo, continue through Takayama, and finish in Kyoto.",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-tokyo-0",
+              "sourceText": "Tokyo",
+              "sourceTexts": [
+                "Tokyo"
+              ],
+              "normalizedPhrase": "tokyo",
+              "canonicalName": "Tokyo",
+              "canonicalPlaceId": "tokyo",
+              "aliases": [
+                "Tokio",
+                "HND",
+                "NRT"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:tokyo",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Tokyo.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:tokyo",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Tokyo.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Japan"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_start",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-takayama-0",
+              "sourceText": "Takayama",
+              "sourceTexts": [
+                "Takayama"
+              ],
+              "normalizedPhrase": "takayama",
+              "canonicalName": "Takayama",
+              "canonicalPlaceId": "takayama",
+              "aliases": [],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:takayama",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Takayama.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:takayama",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Takayama.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Japan"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-kyoto-0",
+              "sourceText": "Kyoto",
+              "sourceTexts": [
+                "Kyoto"
+              ],
+              "normalizedPhrase": "kyoto",
+              "canonicalName": "Kyoto",
+              "canonicalPlaceId": "kyoto",
+              "aliases": [
+                "Kioto"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:kyoto",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Kyoto.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:kyoto",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Kyoto.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Japan"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_end",
+              "order": 2,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": []
+        },
+        "nightAllocations": {
+          "seed-tokyo": 3,
+          "seed-takayama": 3,
+          "seed-kyoto": 3
+        }
+      }
+    },
+    {
+      "key": "balkans-overland",
+      "published": false,
+      "release": {
+        "routeKey": "balkans-overland",
+        "status": "incomplete",
+        "blockers": [
+          {
+            "code": "recommended-nights",
+            "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+          },
+          {
+            "code": "route-order-rationale",
+            "detail": "The route needs an explicit rationale for its published order."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Dubrovnik → Kotor is marked needs-review without source evidence or an explicit unknown."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Kotor → Shkodër is marked needs-review without source evidence or an explicit unknown."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Shkodër → Tirana cannot be a reviewed medium-confidence assumption without linked provenance."
+          },
+          {
+            "code": "explicit-unknowns",
+            "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+          },
+          {
+            "code": "editorial-owner",
+            "detail": "The route needs an editorial owner."
+          },
+          {
+            "code": "editorial-reviewer",
+            "detail": "The route needs an editorial reviewer."
+          },
+          {
+            "code": "image-rights",
+            "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+          }
+        ],
+        "needsVerification": [],
+        "reviewedAssumptions": []
+      },
+      "canonicalStops": [
+        {
+          "name": "Dubrovnik",
+          "country": "Croatia",
+          "coordinates": [
+            18.0944,
+            42.6507
+          ],
+          "minimumNights": 2,
+          "reason": "A dramatic coastal opening; use it as a base rather than a checklist.",
+          "canonicalPlaceId": "dubrovnik"
+        },
+        {
+          "name": "Kotor",
+          "country": "Montenegro",
+          "coordinates": [
+            18.7712,
+            42.4247
+          ],
+          "minimumNights": 3,
+          "reason": "A mountain-and-bay pause with flexible day-trip options.",
+          "canonicalPlaceId": "kotor"
+        },
+        {
+          "name": "Shkodër",
+          "country": "Albania",
+          "coordinates": [
+            19.503,
+            42.0683
+          ],
+          "minimumNights": 2,
+          "reason": "A softer landing into northern Albania and the mountains.",
+          "canonicalPlaceId": "shkoder"
+        },
+        {
+          "name": "Tirana",
+          "country": "Albania",
+          "coordinates": [
+            19.8187,
+            41.3275
+          ],
+          "minimumNights": 3,
+          "reason": "A lively finish with access to a wider range of day trips.",
+          "canonicalPlaceId": "tirana"
+        }
+      ],
+      "countries": [
+        "Croatia",
+        "Montenegro",
+        "Albania"
+      ],
+      "reviewedAt": "2026-08-08",
+      "suggestedDays": {
+        "min": 10,
+        "ideal": 14,
+        "max": 21
+      },
+      "minimumCalendarDays": 11,
+      "sources": [
+        {
+          "label": "Croatia Tourism",
+          "url": "https://croatia.hr/en-gb",
+          "covers": "Official destination context"
+        },
+        {
+          "label": "Montenegro Travel",
+          "url": "https://www.montenegro.travel/en",
+          "covers": "Official destination context"
+        },
+        {
+          "label": "Albania Tourism",
+          "url": "https://albania.al/",
+          "covers": "Official destination context"
+        }
+      ],
+      "connections": [
+        {
+          "from": "Dubrovnik",
+          "to": "Kotor",
+          "mode": "bus",
+          "planningMinutes": 180,
+          "note": "Border-crossing coach allowance; queues can change the day. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "needs-review"
+        },
+        {
+          "from": "Kotor",
+          "to": "Shkodër",
+          "mode": "bus",
+          "planningMinutes": 240,
+          "note": "Cross-border road allowance. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "needs-review"
+        },
+        {
+          "from": "Shkodër",
+          "to": "Tirana",
+          "mode": "bus",
+          "planningMinutes": 150,
+          "note": "Intercity coach allowance. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "medium"
+        }
+      ],
+      "detailIssues": [
+        "missing-attractions",
+        "missing-hero"
+      ],
+      "payload": {
+        "sourceRouteKey": "balkans-overland",
+        "origin": "Dubrovnik",
+        "originCoordinates": [
+          18.0944,
+          42.6507
+        ],
+        "originCanonicalPlaceId": "dubrovnik",
+        "originCountry": "Croatia",
+        "destinations": [
+          {
+            "id": "catalog-balkans-overland-0",
+            "name": "Dubrovnik",
+            "country": "Croatia",
+            "canonicalPlaceId": "dubrovnik",
+            "coordinates": [
+              18.0944,
+              42.6507
+            ]
+          },
+          {
+            "id": "catalog-balkans-overland-1",
+            "name": "Kotor",
+            "country": "Montenegro",
+            "canonicalPlaceId": "kotor",
+            "coordinates": [
+              18.7712,
+              42.4247
+            ]
+          },
+          {
+            "id": "catalog-balkans-overland-2",
+            "name": "Shkodër",
+            "country": "Albania",
+            "canonicalPlaceId": "shkoder",
+            "coordinates": [
+              19.503,
+              42.0683
+            ]
+          },
+          {
+            "id": "catalog-balkans-overland-3",
+            "name": "Tirana",
+            "country": "Albania",
+            "canonicalPlaceId": "tirana",
+            "coordinates": [
+              19.8187,
+              41.3275
+            ]
+          }
+        ],
+        "routeHints": [
+          "A dramatic coastal opening; use it as a base rather than a checklist.",
+          "A mountain-and-bay pause with flexible day-trip options.",
+          "A softer landing into northern Albania and the mountains.",
+          "A lively finish with access to a wider range of day trips."
+        ],
+        "regions": [],
+        "countries": [
+          "Croatia",
+          "Montenegro",
+          "Albania"
+        ],
+        "startDate": "2026-09-07",
+        "endDate": "2026-09-20",
+        "datesExplicit": false,
+        "interests": [
+          "beach",
+          "nature",
+          "culture"
+        ],
+        "interestsExplicit": true,
+        "brief": "The Balkans, one border at a time.",
+        "decisionSelections": {
+          "routeOrder": "entered",
+          "transportByLeg": {}
+        },
+        "structuredBrief": {
+          "version": 1,
+          "duration": {
+            "value": 14,
+            "unit": "days",
+            "precision": "approximate",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "destinations": [
+            {
+              "name": "Dubrovnik",
+              "canonicalPlaceId": "dubrovnik",
+              "placeMentionId": "place-dubrovnik-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Croatia"
+              ],
+              "role": "arrival-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-balkans-overland-0"
+            },
+            {
+              "name": "Kotor",
+              "canonicalPlaceId": "kotor",
+              "placeMentionId": "place-kotor-0",
+              "placeType": "town",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Montenegro"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-balkans-overland-1"
+            },
+            {
+              "name": "Shkodër",
+              "canonicalPlaceId": "shkoder",
+              "placeMentionId": "place-shkoder-0",
+              "placeType": "town",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Albania"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-balkans-overland-2"
+            },
+            {
+              "name": "Tirana",
+              "canonicalPlaceId": "tirana",
+              "placeMentionId": "place-tirana-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Albania"
+              ],
+              "role": "departure-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-balkans-overland-3"
+            }
+          ],
+          "mustVisit": [],
+          "countries": [
+            {
+              "value": "Croatia",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "Montenegro",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "Albania",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "preferredRegions": [],
+          "dates": {
+            "start": {
+              "value": "2026-09-07",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "end": {
+              "value": "2026-09-20",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "fixed": {
+              "value": false,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          },
+          "interests": [
+            {
+              "value": "coast",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "start-at",
+              "value": "Dubrovnik",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "end-at",
+              "value": "Tirana",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "interest",
+              "value": "coast",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "14 days. Start in Dubrovnik, continue through Kotor, Shkodër, and finish in Tirana.",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-dubrovnik-0",
+              "sourceText": "Dubrovnik",
+              "sourceTexts": [
+                "Dubrovnik"
+              ],
+              "normalizedPhrase": "dubrovnik",
+              "canonicalName": "Dubrovnik",
+              "canonicalPlaceId": "dubrovnik",
+              "aliases": [],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:dubrovnik",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Dubrovnik.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:dubrovnik",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Dubrovnik.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Croatia"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_start",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-kotor-0",
+              "sourceText": "Kotor",
+              "sourceTexts": [
+                "Kotor"
+              ],
+              "normalizedPhrase": "kotor",
+              "canonicalName": "Kotor",
+              "canonicalPlaceId": "kotor",
+              "aliases": [],
+              "placeType": "town",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:kotor",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Kotor.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:kotor",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Kotor.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Montenegro"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-shkoder-0",
+              "sourceText": "Shkodër",
+              "sourceTexts": [
+                "Shkodër"
+              ],
+              "normalizedPhrase": "shkoder",
+              "canonicalName": "Shkodër",
+              "canonicalPlaceId": "shkoder",
+              "aliases": [
+                "Shkoder"
+              ],
+              "placeType": "town",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:shkoder",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Shkodër.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:shkoder",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Shkodër.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Albania"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 2,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-tirana-0",
+              "sourceText": "Tirana",
+              "sourceTexts": [
+                "Tirana"
+              ],
+              "normalizedPhrase": "tirana",
+              "canonicalName": "Tirana",
+              "canonicalPlaceId": "tirana",
+              "aliases": [],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:tirana",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Tirana.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:tirana",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Tirana.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Albania"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_end",
+              "order": 3,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": []
+        },
+        "nightAllocations": {
+          "catalog-balkans-overland-0": 3,
+          "catalog-balkans-overland-1": 4,
+          "catalog-balkans-overland-2": 3,
+          "catalog-balkans-overland-3": 3
+        }
+      }
+    },
+    {
+      "key": "vietnam-cambodia",
+      "published": false,
+      "release": {
+        "routeKey": "vietnam-cambodia",
+        "status": "incomplete",
+        "blockers": [
+          {
+            "code": "recommended-nights",
+            "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+          },
+          {
+            "code": "route-order-rationale",
+            "detail": "The route needs an explicit rationale for its published order."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Hanoi → Hoi An cannot be a reviewed medium-confidence assumption without linked provenance."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Hoi An → Ho Chi Minh City cannot be a reviewed medium-confidence assumption without linked provenance."
+          },
+          {
+            "code": "connection-evidence",
+            "detail": "Ho Chi Minh City → Siem Reap is marked needs-review without source evidence or an explicit unknown."
+          },
+          {
+            "code": "explicit-unknowns",
+            "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+          },
+          {
+            "code": "editorial-owner",
+            "detail": "The route needs an editorial owner."
+          },
+          {
+            "code": "editorial-reviewer",
+            "detail": "The route needs an editorial reviewer."
+          },
+          {
+            "code": "image-rights",
+            "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+          }
+        ],
+        "needsVerification": [],
+        "reviewedAssumptions": []
+      },
+      "canonicalStops": [
+        {
+          "name": "Hanoi",
+          "country": "Vietnam",
+          "coordinates": [
+            105.8342,
+            21.0278
+          ],
+          "minimumNights": 3,
+          "reason": "A lively, food-led opening with a walkable old quarter.",
+          "canonicalPlaceId": "hanoi"
+        },
+        {
+          "name": "Hoi An",
+          "country": "Vietnam",
+          "coordinates": [
+            108.338,
+            15.88
+          ],
+          "minimumNights": 3,
+          "reason": "A slower central base for food, bicycles, and coast time.",
+          "canonicalPlaceId": "hoi-an"
+        },
+        {
+          "name": "Ho Chi Minh City",
+          "country": "Vietnam",
+          "coordinates": [
+            106.6297,
+            10.8231
+          ],
+          "minimumNights": 3,
+          "reason": "A high-energy southern chapter before the border crossing.",
+          "canonicalPlaceId": "ho-chi-minh-city"
+        },
+        {
+          "name": "Siem Reap",
+          "country": "Cambodia",
+          "coordinates": [
+            103.8564,
+            13.3633
+          ],
+          "minimumNights": 3,
+          "reason": "A generous base for Angkor rather than a rushed day trip.",
+          "canonicalPlaceId": "siem-reap"
+        }
+      ],
+      "countries": [
+        "Vietnam",
+        "Cambodia"
+      ],
+      "reviewedAt": "2026-08-08",
+      "suggestedDays": {
+        "min": 12,
+        "ideal": 16,
+        "max": 22
+      },
+      "minimumCalendarDays": 13,
+      "sources": [
+        {
+          "label": "Vietnam Tourism",
+          "url": "https://vietnam.travel/",
+          "covers": "Official destination context"
+        },
+        {
+          "label": "Visit Cambodia",
+          "url": "https://www.tourismcambodia.com/",
+          "covers": "Official tourism context"
+        },
+        {
+          "label": "UNESCO Angkor",
+          "url": "https://whc.unesco.org/en/list/668/",
+          "covers": "Heritage context"
+        }
+      ],
+      "connections": [
+        {
+          "from": "Hanoi",
+          "to": "Hoi An",
+          "mode": "flight",
+          "planningMinutes": 240,
+          "note": "Domestic flight allowance; compare overnight rail for a slower alternative. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "medium"
+        },
+        {
+          "from": "Hoi An",
+          "to": "Ho Chi Minh City",
+          "mode": "flight",
+          "planningMinutes": 240,
+          "note": "Domestic flight allowance. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "medium"
+        },
+        {
+          "from": "Ho Chi Minh City",
+          "to": "Siem Reap",
+          "mode": "flight",
+          "planningMinutes": 300,
+          "note": "Cross-border flight allowance; confirm entry requirements. Verify current schedules, entry rules and opening hours before booking.",
+          "confidence": "needs-review"
+        }
+      ],
+      "detailIssues": [
+        "missing-attractions",
+        "missing-hero"
+      ],
+      "payload": {
+        "sourceRouteKey": "vietnam-cambodia",
+        "origin": "Hanoi",
+        "originCoordinates": [
+          105.8342,
+          21.0278
+        ],
+        "originCanonicalPlaceId": "hanoi",
+        "originCountry": "Vietnam",
+        "destinations": [
+          {
+            "id": "catalog-vietnam-cambodia-0",
+            "name": "Hanoi",
+            "country": "Vietnam",
+            "canonicalPlaceId": "hanoi",
+            "coordinates": [
+              105.8342,
+              21.0278
+            ]
+          },
+          {
+            "id": "catalog-vietnam-cambodia-1",
+            "name": "Hoi An",
+            "country": "Vietnam",
+            "canonicalPlaceId": "hoi-an",
+            "coordinates": [
+              108.338,
+              15.88
+            ]
+          },
+          {
+            "id": "catalog-vietnam-cambodia-2",
+            "name": "Ho Chi Minh City",
+            "country": "Vietnam",
+            "canonicalPlaceId": "ho-chi-minh-city",
+            "coordinates": [
+              106.6297,
+              10.8231
+            ]
+          },
+          {
+            "id": "catalog-vietnam-cambodia-3",
+            "name": "Siem Reap",
+            "country": "Cambodia",
+            "canonicalPlaceId": "siem-reap",
+            "coordinates": [
+              103.8564,
+              13.3633
+            ]
+          }
+        ],
+        "routeHints": [
+          "A lively, food-led opening with a walkable old quarter.",
+          "A slower central base for food, bicycles, and coast time.",
+          "A high-energy southern chapter before the border crossing.",
+          "A generous base for Angkor rather than a rushed day trip."
+        ],
+        "regions": [],
+        "countries": [
+          "Vietnam",
+          "Cambodia"
+        ],
+        "startDate": "2026-09-07",
+        "endDate": "2026-09-22",
+        "datesExplicit": false,
+        "interests": [
+          "food",
+          "culture",
+          "nature"
+        ],
+        "interestsExplicit": true,
+        "brief": "Vietnam to Angkor, without rushing.",
+        "decisionSelections": {
+          "routeOrder": "entered",
+          "transportByLeg": {}
+        },
+        "structuredBrief": {
+          "version": 1,
+          "duration": {
+            "value": 16,
+            "unit": "days",
+            "precision": "approximate",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "destinations": [
+            {
+              "name": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "placeMentionId": "place-hanoi-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "arrival-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-vietnam-cambodia-0"
+            },
+            {
+              "name": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "placeMentionId": "place-hoi-an-0",
+              "placeType": "town",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-vietnam-cambodia-1"
+            },
+            {
+              "name": "Ho Chi Minh City",
+              "canonicalPlaceId": "ho-chi-minh-city",
+              "placeMentionId": "place-ho-chi-minh-city-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-vietnam-cambodia-2"
+            },
+            {
+              "name": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "placeMentionId": "place-siem-reap-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Cambodia"
+              ],
+              "role": "departure-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-vietnam-cambodia-3"
+            }
+          ],
+          "mustVisit": [],
+          "countries": [
+            {
+              "value": "Vietnam",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "Cambodia",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "preferredRegions": [],
+          "dates": {
+            "start": {
+              "value": "2026-09-07",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "end": {
+              "value": "2026-09-22",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "fixed": {
+              "value": false,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          },
+          "interests": [
+            {
+              "value": "food",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "start-at",
+              "value": "Hanoi",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "end-at",
+              "value": "Siem Reap",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "interest",
+              "value": "food",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "culture",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "16 days. Start in Hanoi, continue through Hoi An, Ho Chi Minh City, and finish in Siem Reap.",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-hanoi-0",
+              "sourceText": "Hanoi",
+              "sourceTexts": [
+                "Hanoi"
+              ],
+              "normalizedPhrase": "hanoi",
+              "canonicalName": "Hanoi",
+              "canonicalPlaceId": "hanoi",
+              "aliases": [
+                "HAN"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:hanoi",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Hanoi.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:hanoi",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Hanoi.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_start",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-hoi-an-0",
+              "sourceText": "Hoi An",
+              "sourceTexts": [
+                "Hoi An"
+              ],
+              "normalizedPhrase": "hoi an",
+              "canonicalName": "Hoi An",
+              "canonicalPlaceId": "hoi-an",
+              "aliases": [
+                "Hội An"
+              ],
+              "placeType": "town",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:hoi-an",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Hoi An.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:hoi-an",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Hoi An.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-ho-chi-minh-city-0",
+              "sourceText": "Ho Chi Minh City",
+              "sourceTexts": [
+                "Ho Chi Minh City"
+              ],
+              "normalizedPhrase": "ho chi minh city",
+              "canonicalName": "Ho Chi Minh City",
+              "canonicalPlaceId": "ho-chi-minh-city",
+              "aliases": [
+                "Ho Chi Minh",
+                "Saigon",
+                "SGN"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:ho-chi-minh-city",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Ho Chi Minh City.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:ho-chi-minh-city",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Ho Chi Minh City.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Vietnam"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 2,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-siem-reap-0",
+              "sourceText": "Siem Reap",
+              "sourceTexts": [
+                "Siem Reap"
+              ],
+              "normalizedPhrase": "siem reap",
+              "canonicalName": "Siem Reap",
+              "canonicalPlaceId": "siem-reap",
+              "aliases": [],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:siem-reap",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Siem Reap.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:siem-reap",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Siem Reap.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Cambodia"
+              ],
+              "coordinates": [
+                103.8552,
+                13.3633
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_end",
+              "order": 3,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": []
+        },
+        "nightAllocations": {
+          "catalog-vietnam-cambodia-0": 4,
+          "catalog-vietnam-cambodia-1": 4,
+          "catalog-vietnam-cambodia-2": 4,
+          "catalog-vietnam-cambodia-3": 3
+        }
+      }
+    },
+    {
+      "key": "iceland-ring-road",
+      "published": false,
+      "release": {
+        "routeKey": "iceland-ring-road",
+        "status": "incomplete",
+        "blockers": [
+          {
+            "code": "recommended-nights",
+            "detail": "Every stop needs an explicit reviewed recommended-night value at or above its minimum."
+          },
+          {
+            "code": "route-order-rationale",
+            "detail": "The route needs an explicit rationale for its published order."
+          },
+          {
+            "code": "connection-assumption",
+            "detail": "Reykjavík → Vík needs a reviewed connection assumption or an explicit unknown."
+          },
+          {
+            "code": "connection-assumption",
+            "detail": "Vík → Mývatn needs a reviewed connection assumption or an explicit unknown."
+          },
+          {
+            "code": "connection-assumption",
+            "detail": "Mývatn → Akureyri needs a reviewed connection assumption or an explicit unknown."
+          },
+          {
+            "code": "explicit-unknowns",
+            "detail": "The editor must explicitly record remaining unknowns, even when there are none."
+          },
+          {
+            "code": "editorial-owner",
+            "detail": "The route needs an editorial owner."
+          },
+          {
+            "code": "editorial-reviewer",
+            "detail": "The route needs an editorial reviewer."
+          },
+          {
+            "code": "image-rights",
+            "detail": "The published hero needs matching rights status and, when not owned, attribution and a source link."
+          }
+        ],
+        "needsVerification": [],
+        "reviewedAssumptions": []
+      },
+      "canonicalStops": [
+        {
+          "name": "Reykjavík",
+          "country": "Iceland",
+          "coordinates": [
+            -21.9426,
+            64.1466
+          ],
+          "minimumNights": 2,
+          "reason": "A soft arrival before the road opens out.",
+          "canonicalPlaceId": "reykjavik"
+        },
+        {
+          "name": "Vík",
+          "country": "Iceland",
+          "coordinates": [
+            -19.0083,
+            63.4189
+          ],
+          "minimumNights": 2,
+          "reason": "A south-coast base for waterfalls and black-sand beaches.",
+          "canonicalPlaceId": null
+        },
+        {
+          "name": "Mývatn",
+          "country": "Iceland",
+          "coordinates": [
+            -16.9969,
+            65.603
+          ],
+          "minimumNights": 2,
+          "reason": "A northern volcanic landscape chapter.",
+          "canonicalPlaceId": null
+        },
+        {
+          "name": "Akureyri",
+          "country": "Iceland",
+          "coordinates": [
+            -18.0907,
+            65.6885
+          ],
+          "minimumNights": 2,
+          "reason": "A slower north-coast finish before returning west.",
+          "canonicalPlaceId": null
+        }
+      ],
+      "countries": [
+        "Iceland"
+      ],
+      "reviewedAt": "2026-08-09",
+      "suggestedDays": {
+        "min": 7,
+        "ideal": 10,
+        "max": 15
+      },
+      "minimumCalendarDays": 9,
+      "sources": [
+        {
+          "label": "Visit Iceland Ring Road",
+          "url": "https://www.visiticeland.com/article/the-ring-road/",
+          "covers": "Official Ring Road context"
+        }
+      ],
+      "connections": [],
+      "detailIssues": [
+        "missing-hero",
+        "unknown-transfer"
+      ],
+      "payload": {
+        "sourceRouteKey": "iceland-ring-road",
+        "origin": "Reykjavík",
+        "originCoordinates": [
+          -21.9426,
+          64.1466
+        ],
+        "originCanonicalPlaceId": "reykjavik",
+        "originCountry": "Iceland",
+        "destinations": [
+          {
+            "id": "catalog-iceland-ring-road-0",
+            "name": "Reykjavík",
+            "country": "Iceland",
+            "canonicalPlaceId": "reykjavik",
+            "coordinates": [
+              -21.9426,
+              64.1466
+            ]
+          },
+          {
+            "id": "catalog-iceland-ring-road-1",
+            "name": "Vík",
+            "country": "Iceland",
+            "coordinates": [
+              -19.0083,
+              63.4189
+            ]
+          },
+          {
+            "id": "catalog-iceland-ring-road-2",
+            "name": "Mývatn",
+            "country": "Iceland",
+            "coordinates": [
+              -16.9969,
+              65.603
+            ]
+          },
+          {
+            "id": "catalog-iceland-ring-road-3",
+            "name": "Akureyri",
+            "country": "Iceland",
+            "coordinates": [
+              -18.0907,
+              65.6885
+            ]
+          }
+        ],
+        "routeHints": [
+          "A soft arrival before the road opens out.",
+          "A south-coast base for waterfalls and black-sand beaches.",
+          "A northern volcanic landscape chapter.",
+          "A slower north-coast finish before returning west."
+        ],
+        "regions": [],
+        "countries": [
+          "Iceland"
+        ],
+        "startDate": "2026-09-07",
+        "endDate": "2026-09-16",
+        "datesExplicit": false,
+        "interests": [
+          "nature",
+          "beach",
+          "hiking"
+        ],
+        "interestsExplicit": true,
+        "brief": "Iceland’s Ring Road, slowly.",
+        "decisionSelections": {
+          "routeOrder": "entered",
+          "transportByLeg": {}
+        },
+        "structuredBrief": {
+          "version": 1,
+          "duration": {
+            "value": 10,
+            "unit": "days",
+            "precision": "approximate",
+            "provenance": {
+              "source": "builder",
+              "kind": "explicit",
+              "confidence": "high"
+            }
+          },
+          "destinations": [
+            {
+              "name": "Reykjavík",
+              "canonicalPlaceId": "reykjavik",
+              "placeMentionId": "place-reykjavik-0",
+              "placeType": "city",
+              "resolutionStatus": "resolved",
+              "routability": "direct_destination",
+              "sourceLabel": "Morrovia curated place catalog",
+              "parentCountries": [
+                "Iceland"
+              ],
+              "role": "arrival-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-iceland-ring-road-0"
+            },
+            {
+              "name": "Vík",
+              "placeMentionId": "place-unresolved-vik-46",
+              "resolutionStatus": "unresolved",
+              "parentCountries": [
+                "Iceland"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-iceland-ring-road-1"
+            },
+            {
+              "name": "Mývatn",
+              "placeMentionId": "place-unresolved-myvatn-51",
+              "resolutionStatus": "unresolved",
+              "parentCountries": [
+                "Iceland"
+              ],
+              "role": "preferred",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-iceland-ring-road-2"
+            },
+            {
+              "name": "Akureyri",
+              "role": "departure-gateway",
+              "priority": "normal",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              },
+              "id": "catalog-iceland-ring-road-3",
+              "placeMentionId": "place-unresolved-akureyri-73",
+              "resolutionStatus": "unresolved",
+              "parentCountries": [
+                "Iceland"
+              ]
+            }
+          ],
+          "mustVisit": [],
+          "countries": [
+            {
+              "value": "Iceland",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "preferredRegions": [],
+          "dates": {
+            "start": {
+              "value": "2026-09-07",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "end": {
+              "value": "2026-09-16",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            "fixed": {
+              "value": false,
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          },
+          "interests": [
+            {
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "coast",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "value": "hiking",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "transportPreferences": [],
+          "accommodationPreferences": [],
+          "hardConstraints": [
+            {
+              "type": "start-at",
+              "value": "Reykjavík",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "end-at",
+              "value": "Akureyri",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "softPreferences": [
+            {
+              "type": "interest",
+              "value": "nature",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "coast",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            },
+            {
+              "type": "interest",
+              "value": "hiking",
+              "provenance": {
+                "source": "builder",
+                "kind": "explicit",
+                "confidence": "high"
+              }
+            }
+          ],
+          "source": {
+            "rawPrompt": "10 days. Start in Reykjavík, continue through Vík, Mývatn, and finish in Akureyri.",
+            "parserVersion": "place-intelligence-v1-deterministic",
+            "inputs": [
+              "prompt",
+              "builder"
+            ]
+          },
+          "confidence": "high",
+          "issues": [],
+          "placeMentions": [
+            {
+              "mentionId": "place-reykjavik-0",
+              "sourceText": "Reykjavík",
+              "sourceTexts": [
+                "Reykjavík"
+              ],
+              "normalizedPhrase": "reykjavik",
+              "canonicalName": "Reykjavík",
+              "canonicalPlaceId": "reykjavik",
+              "aliases": [
+                "Reykjavik",
+                "KEF"
+              ],
+              "placeType": "city",
+              "status": "resolved",
+              "confidence": {
+                "version": 1,
+                "state": "structured",
+                "level": "high",
+                "freshness": "reviewed",
+                "scope": "general-route",
+                "sources": [
+                  {
+                    "id": "morrovia-place-catalog:reykjavik",
+                    "label": "Morrovia curated place catalog",
+                    "kind": "curated",
+                    "supports": "Canonical identity, aliases, type and stable containment for Reykjavík.",
+                    "reviewedAt": "2026-08-23"
+                  }
+                ],
+                "reason": "The phrase matches Morrovia's curated canonical place data.",
+                "confirmation": {
+                  "needed": false,
+                  "reason": null
+                }
+              },
+              "provenance": [
+                {
+                  "id": "morrovia-place-catalog:reykjavik",
+                  "label": "Morrovia curated place catalog",
+                  "kind": "canonical",
+                  "supports": "Canonical identity, aliases, type and stable containment for Reykjavík.",
+                  "reviewedAt": "2026-08-23"
+                }
+              ],
+              "parentCountries": [
+                "Iceland"
+              ],
+              "routability": "direct_destination",
+              "directlyRoutable": true,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_start",
+              "order": 0,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-unresolved-vik-46",
+              "sourceText": "Vík",
+              "sourceTexts": [
+                "Vík"
+              ],
+              "normalizedPhrase": "vik",
+              "canonicalName": "Vík",
+              "aliases": [],
+              "placeType": "unknown",
+              "status": "unresolved",
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              },
+              "provenance": [
+                {
+                  "id": "unresolved:vik",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "parentCountries": [],
+              "routability": "non_routable_reference",
+              "directlyRoutable": false,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 1,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-unresolved-myvatn-51",
+              "sourceText": "Mývatn",
+              "sourceTexts": [
+                "Mývatn"
+              ],
+              "normalizedPhrase": "myvatn",
+              "canonicalName": "Mývatn",
+              "aliases": [],
+              "placeType": "unknown",
+              "status": "unresolved",
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              },
+              "provenance": [
+                {
+                  "id": "unresolved:myvatn",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "parentCountries": [],
+              "routability": "non_routable_reference",
+              "directlyRoutable": false,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "preferred",
+              "order": 2,
+              "candidates": []
+            },
+            {
+              "mentionId": "place-unresolved-akureyri-73",
+              "sourceText": "Akureyri.",
+              "sourceTexts": [
+                "Akureyri."
+              ],
+              "normalizedPhrase": "akureyri",
+              "canonicalName": "Akureyri.",
+              "aliases": [],
+              "placeType": "unknown",
+              "status": "unresolved",
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              },
+              "provenance": [
+                {
+                  "id": "unresolved:akureyri",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "parentCountries": [],
+              "routability": "non_routable_reference",
+              "directlyRoutable": false,
+              "requiresBaseSelection": false,
+              "isAnchor": false,
+              "role": "fixed_end",
+              "order": 3,
+              "candidates": []
+            }
+          ],
+          "placeIssues": [
+            {
+              "code": "unresolved_place",
+              "mentionId": "place-unresolved-vik-46",
+              "sourceText": "Vík",
+              "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+              "message": "Confirm Vík before Morrovia uses it in the route. Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+              "severity": "warning",
+              "blocksRoute": false,
+              "options": [],
+              "provenance": [
+                {
+                  "id": "unresolved:vik",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              }
+            },
+            {
+              "code": "unresolved_place",
+              "mentionId": "place-unresolved-myvatn-51",
+              "sourceText": "Mývatn",
+              "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+              "message": "Confirm Mývatn before Morrovia uses it in the route. Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+              "severity": "warning",
+              "blocksRoute": false,
+              "options": [],
+              "provenance": [
+                {
+                  "id": "unresolved:myvatn",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              }
+            },
+            {
+              "code": "unresolved_place",
+              "mentionId": "place-unresolved-akureyri-73",
+              "sourceText": "Akureyri.",
+              "reason": "The phrase was preserved but does not yet have a supported geographic identity.",
+              "message": "Confirm Akureyri. before Morrovia uses it in the route. Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.",
+              "severity": "warning",
+              "blocksRoute": false,
+              "options": [],
+              "provenance": [
+                {
+                  "id": "unresolved:akureyri",
+                  "label": "Traveller phrase",
+                  "kind": "unresolved",
+                  "supports": "The exact phrase was retained without claiming a geographic identity."
+                }
+              ],
+              "confidence": {
+                "version": 1,
+                "state": "unknown",
+                "level": "unknown",
+                "freshness": "unknown",
+                "scope": "unknown",
+                "sources": [],
+                "reason": "Morrovia retained this possible place phrase but could not resolve it.",
+                "confirmation": {
+                  "needed": true,
+                  "reason": "Morrovia retained this possible place phrase but could not resolve it."
+                }
+              }
+            }
+          ],
+          "placeSelections": [],
+          "completedPlanningAreaMentionIds": [],
+          "removedPlaceMentionIds": []
+        },
+        "nightAllocations": {
+          "catalog-iceland-ring-road-0": 3,
+          "catalog-iceland-ring-road-1": 2,
+          "catalog-iceland-ring-road-2": 2,
+          "catalog-iceland-ring-road-3": 2
+        }
+      }
+    }
+  ]
+}

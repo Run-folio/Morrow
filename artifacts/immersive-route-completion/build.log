@@ -1,0 +1,119 @@
+
+> morrovia@1.0.0 build:check
+> NEXT_DIST_DIR=.next-check next build
+
+   ▲ Next.js 15.5.21
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 6.9s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/43) ...
+   Generating static pages (10/43)
+   Generating static pages (21/43)
+   Generating static pages (32/43)
+ ✓ Generating static pages (43/43)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                                         Size  First Load JS
+┌ ○ /                                                                              252 B         103 kB
+├ ○ /_not-found                                                                     1 kB         104 kB
+├ ƒ /api/auth/[...all]                                                             252 B         103 kB
+├ ƒ /api/easyt/admin/access                                                        252 B         103 kB
+├ ƒ /api/easyt/admin/audit                                                         252 B         103 kB
+├ ƒ /api/easyt/admin/feedback/[feedbackId]                                         252 B         103 kB
+├ ƒ /api/easyt/admin/routes/[routeKey]                                             252 B         103 kB
+├ ƒ /api/easyt/admin/users/delete                                                  252 B         103 kB
+├ ƒ /api/easyt/booking-import                                                      252 B         103 kB
+├ ƒ /api/easyt/booking-import/[candidateId]                                        252 B         103 kB
+├ ƒ /api/easyt/email/inbound                                                       252 B         103 kB
+├ ƒ /api/easyt/email/webhook                                                       252 B         103 kB
+├ ƒ /api/easyt/feedback                                                            252 B         103 kB
+├ ƒ /api/easyt/gifts/[token]                                                       252 B         103 kB
+├ ƒ /api/easyt/profile                                                             252 B         103 kB
+├ ƒ /api/easyt/stamped                                                             252 B         103 kB
+├ ƒ /api/easyt/trips                                                               252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]                                                      252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot                                              252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-stop-nights/apply             252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/change-transport-preference/apply    252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/copilot/actions/set-trip-preference/apply            252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/gift                                                 252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/pdf                                                  252 B         103 kB
+├ ƒ /api/easyt/trips/[tripId]/promote                                              252 B         103 kB
+├ ƒ /api/health                                                                    252 B         103 kB
+├ ƒ /api/internal/openai-smoke                                                     252 B         103 kB
+├ ƒ /api/internal/viator-sandbox                                                   252 B         103 kB
+├ ƒ /api/journey-accommodation-search                                              252 B         103 kB
+├ ƒ /api/journey-activity-inventory                                                252 B         103 kB
+├ ƒ /api/journey-booking-readiness                                                 252 B         103 kB
+├ ƒ /api/journey-capture                                                           252 B         103 kB
+├ ƒ /api/journey-discover                                                          252 B         103 kB
+├ ƒ /api/journey-geocode                                                           252 B         103 kB
+├ ƒ /api/journey-local-search                                                      252 B         103 kB
+├ ƒ /api/journey-passport-requirements                                             252 B         103 kB
+├ ƒ /api/journey-place                                                             252 B         103 kB
+├ ƒ /api/journey-plan                                                              252 B         103 kB
+├ ƒ /api/journey-readiness                                                         252 B         103 kB
+├ ƒ /api/journey-road-routes                                                       252 B         103 kB
+├ ƒ /api/journey-route-image                                                       252 B         103 kB
+├ ƒ /api/journey-routes                                                            252 B         103 kB
+├ ƒ /api/journey-transfer-resolution                                               252 B         103 kB
+├ ● /case-study/[slug]                                                           3.44 kB         444 kB
+├   ├ /case-study/rio
+├   ├ /case-study/returns-kiosk
+├   ├ /case-study/returns-platform
+├   └ /case-study/farfetch
+├ ○ /icon.svg                                                                        0 B            0 B
+├ ○ /journey                                                                       332 B        1.02 MB
+├ ƒ /journey/[tripId]                                                            16.7 kB         902 kB
+├ ƒ /journey/[tripId]/itinerary                                                  4.79 kB         933 kB
+├ ƒ /journey/[tripId]/map                                                        3.09 kB        1.02 MB
+├ ƒ /journey/[tripId]/prep                                                         252 B         103 kB
+├ ○ /journey/about                                                               1.37 kB         309 kB
+├ ƒ /journey/admin                                                               2.62 kB         305 kB
+├ ƒ /journey/admin/audit                                                         2.61 kB         305 kB
+├ ƒ /journey/admin/emails                                                        2.61 kB         305 kB
+├ ƒ /journey/admin/feedback                                                      2.43 kB         305 kB
+├ ƒ /journey/admin/routes                                                        3.51 kB         306 kB
+├ ƒ /journey/admin/users                                                          4.5 kB         307 kB
+├ ○ /journey/affiliate-disclosure                                                1.22 kB         304 kB
+├ ○ /journey/cookies                                                              2.9 kB         306 kB
+├ ƒ /journey/dashboard                                                           18.1 kB         334 kB
+├ ƒ /journey/discover                                                             8.4 kB         311 kB
+├ ○ /journey/forgot-password                                                     3.31 kB         306 kB
+├ ƒ /journey/gift/[token]                                                        4.15 kB         307 kB
+├ ○ /journey/help                                                                9.16 kB         317 kB
+├ ƒ /journey/home                                                                25.1 kB         359 kB
+├ ƒ /journey/login                                                               5.02 kB         308 kB
+├ ○ /journey/new                                                                 73.9 kB        1.02 MB
+├ ○ /journey/new/import                                                           129 kB         431 kB
+├ ○ /journey/passport                                                            7.64 kB         315 kB
+├ ○ /journey/plan                                                                  348 B        1.02 MB
+├ ƒ /journey/plan-next                                                           6.94 kB         868 kB
+├ ƒ /journey/prep                                                                  252 B         103 kB
+├ ○ /journey/privacy                                                             14.3 kB         317 kB
+├ ƒ /journey/profile                                                             14.9 kB         318 kB
+├ ○ /journey/reset-password                                                      3.41 kB         306 kB
+├ ƒ /journey/routes/[slug]                                                       7.93 kB         327 kB
+├ ƒ /journey/stamped                                                             11.1 kB         552 kB
+├ ○ /journey/terms                                                               1.42 kB         304 kB
+├ ○ /journey/trip                                                                13.4 kB         316 kB
+├ ○ /manifest.webmanifest                                                          252 B         103 kB
+├ ○ /more-about-me                                                                 224 B         441 kB
+├ ○ /ornament                                                                    4.91 kB         296 kB
+├ ○ /photography                                                                 2.17 kB         443 kB
+├ ○ /rio                                                                         3.91 kB         295 kB
+├ ○ /robots.txt                                                                    252 B         103 kB
+└ ○ /sitemap.xml                                                                   252 B         103 kB
++ First Load JS shared by all                                                     103 kB
+  ├ chunks/1255-f5767ca0d1da046a.js                                                46 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js                                          54.2 kB
+  └ other shared chunks (total)                                                  2.89 kB
+
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand

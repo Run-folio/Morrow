@@ -1,6 +1,8 @@
-# Immersive homepage — staging implementation review
+# Immersive homepage implementation
 
-**Status: incomplete; do not deploy.** The implementation is local on `staging`. No push or deployment was performed. The immersive presentation is now the default; explicit `IMMERSIVE_HOMEPAGE_V2=false` restores the original homepage. This report supersedes the earlier feature-branch report.
+> **Current status, 2026-09-08:** the approved four-route homepage, canonical route publication, Builder `journeyEnd` repair and image-backed semantic footer are merged locally into `staging`. The switch remains default-OFF and `.env.staging.example` explicitly records `false`. No push, deployment or remote flag change was performed. See [route publication](immersive-route-publication.md) and [footer verification](immersive-footer-integration.md).
+
+The staging review below records the earlier incomplete state at commit `b5f6cd8` and is retained as historical implementation evidence. Its default-on setting, content blockers and acceptance totals have been superseded by the current reports above.
 
 ## 1. Starting SHA and branch
 
@@ -154,4 +156,4 @@ After the gaps above are resolved and the user explicitly requests deployment:
 
 No useful production capability was intentionally removed. Content publication and unverified acceptance cases are explicitly called out above rather than treated as completed parity.
 
-IMMERSIVE HOMEPAGE IMPLEMENTATION INCOMPLETE — DO NOT DEPLOY
+HISTORICAL STAGING REVIEW — SUPERSEDED BY THE 2026-09-08 LOCAL MERGE STATUS ABOVE

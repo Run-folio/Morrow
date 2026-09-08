@@ -1,0 +1,20 @@
+(node:91436) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/immersive-route-content.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ japan-slow: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (27.5285ms)
+✔ balkans-overland: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (7.302458ms)
+✔ vietnam-cambodia: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (4.755291ms)
+✔ iceland-ring-road: canonical draft preserves sequence, countries, coordinates and minimum nights without publishing (8.883916ms)
+✔ five-stop Japan identities resolve independently; the unpublished proposal cannot masquerade as the current three-stop route (154.083041ms)
+✔ homepage stays default-off and excludes the three held families (135.096417ms)
+✔ destination photographs carry attribution and existing local variants; Osaka remains a release gap (0.616167ms)
+✔ Paris → Brussels → Amsterdam retains rail through owner normalization and JSON reload (14.611375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 598.273541

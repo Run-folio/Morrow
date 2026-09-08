@@ -9,10 +9,9 @@ import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.
 import { homepageRouteView } from "../lib/easyt/homepage-navigation.ts";
 import { existsSync } from "node:fs";
 
-test("homepage defaults to the staging implementation with an explicit original-page fallback", () => {
-  for (const value of ["", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
+test("homepage switch fails closed, without browser-dependent routing", () => {
+  for (const value of [undefined, "", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
   assert.equal(immersiveHomepageEnabled("true"), true);
-  assert.equal(immersiveHomepageEnabled(undefined), true);
   const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
   assert.match(page, /process\.env\.IMMERSIVE_HOMEPAGE_V2/);
   assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
@@ -24,7 +23,7 @@ test("route chapters cannot publish prototype data or silently change canonical 
     assert.equal(route.href, `/journey/routes/${route.key}`);
     assert.equal(route.minimumNights.length, route.stops.length);
   }
-  assert.equal(immersiveHomepageRoutes().some((route) => route.key === "iceland-ring-road"), false);
+  assert.equal(immersiveHomepageRoutes().some((route) => route.key === "iceland-ring-road"), true);
 });
 test("random choice is injectable and stable, navigation wraps, scroll correction stays local", () => {
   const routes = immersiveHomepageRoutes();

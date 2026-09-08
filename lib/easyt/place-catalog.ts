@@ -60,6 +60,7 @@ export type PlaceCatalogMatch = {
 };
 
 type EntryOptions = {
+  reviewedAt?: string;
   parentRegionId?: string;
   ambiguityGroup?: string;
   coordinates?: readonly [number, number];
@@ -89,7 +90,7 @@ function place(
       label: "Morrovia curated place catalog",
       kind: aliases.length ? "curated" : "canonical",
       supports: `Canonical identity, aliases, type and stable containment for ${canonicalName}.`,
-      reviewedAt: REVIEWED_AT,
+      reviewedAt: options.reviewedAt ?? REVIEWED_AT,
     },
   };
 }
@@ -222,6 +223,10 @@ const legacyPlaces: PlaceCatalogEntry[] = [
   city("istanbul", "Istanbul", "Turkey", ["Estambul", "IST"]),
   city("marrakech", "Marrakech", "Morocco", ["Marrakesh", "Pachalik de Marrakech", "RAK"], { coordinates: [-7.5898, 31.6295] }),
   city("reykjavik", "Reykjavík", "Iceland", ["Reykjavik", "KEF"]),
+  town("vik", "Vík", "Iceland", ["Vik", "Vík í Mýrdal"], { coordinates: [-19.0083, 63.4189], reviewedAt: "2026-09-07" }),
+  town("hofn", "Höfn", "Iceland", ["Hofn", "Höfn í Hornafirði"], { coordinates: [-15.2082, 64.2539], reviewedAt: "2026-09-07" }),
+  town("reykjahlid", "Reykjahlíð", "Iceland", ["Reykjahlid"], { coordinates: [-16.9123, 65.6421], reviewedAt: "2026-09-07" }),
+  city("akureyri", "Akureyri", "Iceland", [], { coordinates: [-18.0907, 65.6885], reviewedAt: "2026-09-07" }),
   city("cape-town", "Cape Town", "South Africa", ["CPT"]),
   city("nairobi", "Nairobi", "Kenya", ["NBO"]),
   town("moshi", "Moshi", "Tanzania", ["JRO"]),

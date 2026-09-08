@@ -1,0 +1,126 @@
+[
+  {
+    "key": "japan-slow",
+    "status": 200,
+    "noindex": false,
+    "notFoundRendered": false,
+    "hasRouteHeading": true,
+    "stops": [
+      {
+        "name": "Tokyo",
+        "rendered": true
+      },
+      {
+        "name": "Kanazawa",
+        "rendered": true
+      },
+      {
+        "name": "Takayama",
+        "rendered": true
+      },
+      {
+        "name": "Kyoto",
+        "rendered": true
+      },
+      {
+        "name": "Osaka",
+        "rendered": true
+      }
+    ],
+    "startLink": true,
+    "canonical": "https://morrovia.com/journey/routes/japan-slow"
+  },
+  {
+    "key": "balkans-overland",
+    "status": 200,
+    "noindex": false,
+    "notFoundRendered": false,
+    "hasRouteHeading": true,
+    "stops": [
+      {
+        "name": "Dubrovnik",
+        "rendered": true
+      },
+      {
+        "name": "Kotor",
+        "rendered": true
+      },
+      {
+        "name": "Shkodër",
+        "rendered": true
+      },
+      {
+        "name": "Tirana",
+        "rendered": true
+      }
+    ],
+    "startLink": true,
+    "canonical": "https://morrovia.com/journey/routes/balkans-overland"
+  },
+  {
+    "key": "vietnam-cambodia",
+    "status": 200,
+    "noindex": false,
+    "notFoundRendered": false,
+    "hasRouteHeading": true,
+    "stops": [
+      {
+        "name": "Hanoi",
+        "rendered": true
+      },
+      {
+        "name": "Hoi An",
+        "rendered": true
+      },
+      {
+        "name": "Ho Chi Minh City",
+        "rendered": true
+      },
+      {
+        "name": "Siem Reap",
+        "rendered": true
+      }
+    ],
+    "startLink": true,
+    "canonical": "https://morrovia.com/journey/routes/vietnam-cambodia"
+  },
+  {
+    "key": "iceland-ring-road",
+    "status": 200,
+    "noindex": false,
+    "notFoundRendered": false,
+    "hasRouteHeading": true,
+    "stops": [
+      {
+        "name": "Reykjavík",
+        "rendered": true
+      },
+      {
+        "name": "Vík",
+        "rendered": true
+      },
+      {
+        "name": "Höfn",
+        "rendered": true
+      },
+      {
+        "name": "Reykjahlíð",
+        "rendered": true
+      },
+      {
+        "name": "Akureyri",
+        "rendered": true
+      }
+    ],
+    "startLink": true,
+    "canonical": "https://morrovia.com/journey/routes/iceland-ring-road"
+  },
+  {
+    "sitemap": [
+      "japan-slow",
+      "balkans-overland",
+      "vietnam-cambodia",
+      "iceland-ring-road"
+    ]
+  }
+]

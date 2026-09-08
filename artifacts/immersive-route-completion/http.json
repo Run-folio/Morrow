@@ -1,0 +1,48 @@
+[
+  {
+    "key": "japan-slow",
+    "status": 200,
+    "noindex": true,
+    "notFound": true,
+    "expected": "unpublished pending independent approval"
+  },
+  {
+    "key": "balkans-overland",
+    "status": 200,
+    "noindex": true,
+    "notFound": true,
+    "expected": "unpublished pending independent approval"
+  },
+  {
+    "key": "vietnam-cambodia",
+    "status": 200,
+    "noindex": true,
+    "notFound": true,
+    "expected": "unpublished pending independent approval"
+  },
+  {
+    "key": "iceland-ring-road",
+    "status": 200,
+    "noindex": true,
+    "notFound": true,
+    "expected": "unpublished pending independent approval"
+  },
+  {
+    "path": "/journey/discover",
+    "status": 200,
+    "routeLinks": [],
+    "immersiveMarkup": false
+  },
+  {
+    "path": "/sitemap.xml",
+    "status": 200,
+    "routeLinks": [],
+    "immersiveMarkup": false
+  },
+  {
+    "path": "/journey/home",
+    "status": 200,
+    "routeLinks": [],
+    "immersiveMarkup": false
+  }
+]
