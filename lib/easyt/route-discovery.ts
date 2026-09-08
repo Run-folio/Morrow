@@ -86,3 +86,49 @@ export function publishedDiscoveryStyles(routes: RouteFamily[]) {
     return matchingRoutes.length ? [{ ...style, route: matchingRoutes[0], matchingRoutes }] : [];
   });
 }
+
+export type DiscoveryFilters = {
+  search: string;
+  region: RouteFamily["region"] | "all" | "americas";
+  country: string;
+  style: RouteInterest | "all" | "slow";
+  length: "all" | "short" | "medium" | "long";
+  multi: boolean;
+};
+export const initialDiscoveryFilters: DiscoveryFilters = { search: "", region: "all", country: "all", style: "all", length: "all", multi: false };
+export const discoveryRegions = [["all", "Anywhere"], ["asia", "Asia"], ["europe", "Europe"], ["americas", "Americas"], ["africa", "Africa"], ["oceania", "Oceania"]] as const;
+export const discoveryStyles = [["all", "Any style"], ["food", "Food"], ["rail", "Rail"], ["nature", "Nature"], ["coast", "Coast"], ["culture", "Culture"], ["heritage", "Heritage"], ["slow", "Slow travel"]] as const;
+export const discoveryLengths = [["all", "Any duration"], ["short", "Up to 10 days"], ["medium", "10–21 days"], ["long", "21+ days"]] as const;
+
+type SearchableRoute = Pick<RouteFamily, "title" | "region" | "countries" | "interests" | "bestFor" | "suggestedDays"> & { stops: ReadonlyArray<{ name: string }> };
+export function normalizeDiscoveryText(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+}
+export function filterDiscoveryRoutes<T extends SearchableRoute>(routes: readonly T[], filters: DiscoveryFilters): T[] {
+  const terms = normalizeDiscoveryText(filters.search).split(/\s+/).filter(Boolean);
+  return routes.filter((route) => {
+    const text = normalizeDiscoveryText([route.title, route.region.replaceAll("-", " "), ...route.countries, ...route.stops.map((stop) => stop.name)].join(" "));
+    const region = filters.region === "all" || (filters.region === "americas" ? route.region.endsWith("america") : route.region === filters.region);
+    const style = filters.style === "all" || (filters.style === "slow" ? route.bestFor.toLowerCase().includes("slow") || route.suggestedDays.ideal >= 12 : route.interests.includes(filters.style));
+    const length = filters.length === "all" || (filters.length === "short" ? route.suggestedDays.min <= 10 : filters.length === "medium" ? route.suggestedDays.min <= 21 && route.suggestedDays.max >= 10 : route.suggestedDays.max >= 21);
+    return terms.every((term) => text.includes(term)) && region && style && length && (filters.country === "all" || route.countries.includes(filters.country)) && (!filters.multi || route.countries.length > 1);
+  });
+}
+export function resetDiscoveryFilter(filters: DiscoveryFilters, key: keyof DiscoveryFilters): DiscoveryFilters {
+  return { ...filters, [key]: initialDiscoveryFilters[key] };
+}
+export function discoverySequence(route: { stops: readonly { name: string }[] }) { return route.stops.map((stop) => stop.name).join(" → "); }
+export function discoveryShape(route: { stops: readonly unknown[]; countries: readonly string[] }) { return `${route.stops.length} stops · ${route.countries.length} ${route.countries.length === 1 ? "country" : "countries"}`; }
+export function discoveryDuration(route: { suggestedDays: { min: number; max: number } }) { return `${route.suggestedDays.min}–${route.suggestedDays.max} days`; }
+
+/** Presentation describes existing facts; it does not infer new transport feasibility. */
+export function discoveryCharacter(route: RouteFamily, rhythm?: string) {
+  if (rhythm === "Altitude-aware") return "Mountains + altitude";
+  if (route.connections.length && route.connections.every((connection) => connection.mode === "train")) return "Rail + pacing";
+  if (route.connections.some((connection) => connection.mode === "ferry")) return "Islands + ferries";
+  if (route.countries.length > 1) return "Borders + mixed connections";
+  if (route.connections.length && route.connections.every((connection) => connection.mode === "road")) return "Driving + nightly pacing";
+  if (route.interests.includes("coast")) return "Cities + coast";
+  if (route.interests.includes("food")) return "Food + city chapters";
+  return "Places + connections";
+}

@@ -43,6 +43,10 @@
 .photoFallback svg { width:24px; height:24px; }
 .photoFallback small { font:var(--morrovia-type-fine-print); }
 .heroPhoto .photoFallback { color:var(--morrovia-paper); justify-content:flex-end; align-items:flex-end; padding:80px 4vw; }
+.heroMissing { min-height:560px; }
+.chapterVisual:has(.photoMissing) { height:220px; align-self:center; }
+.chapter:nth-child(even) .chapterVisual:has(.photoMissing),.chapter:last-child .chapterVisual:has(.photoMissing) { height:220px; }
+.photoMissing .photoFallback { background:linear-gradient(135deg,var(--morrovia-lilac),var(--morrovia-paper)); }
 .intro { display:grid; grid-template-columns:1fr 1fr; gap:9%; padding-block:80px; }
 .intro h2 { font-size:42px; margin-top:22px; }
 .intro > div > p:not(.eyebrow) { font-size:18px; }
@@ -169,6 +173,7 @@
   .countryTransition { font-size:11px; flex-wrap:wrap; padding-bottom:17px; }
   .chapterContent,.chapter:nth-child(even) .chapterContent { display:flex; flex-direction:column; align-items:stretch; gap:28px; }
   .chapterVisual,.chapter:last-child .chapterVisual { height:370px; width:100%; }
+  .chapterVisual:has(.photoMissing),.chapter:nth-child(even) .chapterVisual:has(.photoMissing),.chapter:last-child .chapterVisual:has(.photoMissing) { height:180px; }
   .chapter:nth-child(even) .chapterVisual { width:86%; height:385px; margin:0 auto; }
   .chapterCopy,.chapter:nth-child(even) .chapterCopy { margin:0; max-width:none; }
   .chapterNumber { font-size:85px; left:-7px; bottom:-14px; }

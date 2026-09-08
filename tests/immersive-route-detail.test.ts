@@ -71,7 +71,7 @@ test("photography resolves only to licensed canonical destinations and preserves
   }
   const photo = read(owner + "route-detail-photo.tsx");
   assert.match(photo, /ResilientImage/);
-  assert.match(photo, /Photography unavailable/);
+  assert.match(photo, /Photography pending editorial review/);
   assert.match(photo, /fetchPriority=\{eager \? "high" : "auto"\}/);
   assert.doesNotMatch(photo, /findRoutePhotos|backgroundImage/);
 });

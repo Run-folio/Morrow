@@ -24,7 +24,7 @@ export default function RouteDetailView({ detail, activityAction, navigation, hi
   const release = visual.release;
   return <>
     <a className={styles.skipLink} href="#route-title">Skip to this route</a>
-    <section className={styles.hero} aria-labelledby="route-title">
+    <section className={`${styles.hero} ${visual.hero ? "" : styles.heroMissing}`} aria-labelledby="route-title">
       <RouteDetailPhoto photo={visual.hero} label={detail.title} eager landscape className={styles.heroPhoto} />
       <div className={styles.navigation}>{navigation ?? <EasyTNavigation current="routes" deferPrefetch />}</div>
       <div className={styles.heroCopy}>

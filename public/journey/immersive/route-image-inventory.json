@@ -1,0 +1,595 @@
+[
+  {
+    "key": "taiwan-rail",
+    "routeKeys": [
+      "taiwan-rail"
+    ],
+    "place": "Taipei",
+    "country": "Taiwan",
+    "author": "CEphoto, Uwe Aranas",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Taipei_Taiwan_Jiaozi-Restaurant-14th-avenue-03.jpg",
+    "alt": "Two cooks preparing food at a Taipei restaurant in Taiwan",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-taiwan-rail-384.webp",
+        "width": 384,
+        "height": 274,
+        "bytes": 15656
+      },
+      {
+        "src": "/journey/immersive/route-taiwan-rail-768.webp",
+        "width": 768,
+        "height": 548,
+        "bytes": 44588
+      },
+      {
+        "src": "/journey/immersive/route-taiwan-rail-1536.webp",
+        "width": 1536,
+        "height": 1097,
+        "bytes": 150340
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "andean-highlands",
+    "routeKeys": [
+      "andean-highlands"
+    ],
+    "place": "Cusco",
+    "country": "Peru",
+    "author": "W. Bulach",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:00_1566_Cusco_-_Plaza_de_Armas.jpg",
+    "alt": "Plaza de Armas and surrounding mountains in Cusco, Peru",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-andean-highlands-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 24032
+      },
+      {
+        "src": "/journey/immersive/route-andean-highlands-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 93174
+      },
+      {
+        "src": "/journey/immersive/route-andean-highlands-1536.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 466160
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "portugal-atlantic",
+    "routeKeys": [
+      "portugal-atlantic",
+      "portugal-spain"
+    ],
+    "place": "Lisbon",
+    "country": "Portugal",
+    "author": "Ввласенко",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tram_28_Lisbon_Portuguese.jpg",
+    "alt": "Tram 28 on a Lisbon street in Portugal",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-portugal-atlantic-384.webp",
+        "width": 384,
+        "height": 240,
+        "bytes": 24224
+      },
+      {
+        "src": "/journey/immersive/route-portugal-atlantic-768.webp",
+        "width": 768,
+        "height": 481,
+        "bytes": 90552
+      },
+      {
+        "src": "/journey/immersive/route-portugal-atlantic-1536.webp",
+        "width": 1536,
+        "height": 962,
+        "bytes": 454218
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "italy-table",
+    "routeKeys": [
+      "italy-table"
+    ],
+    "place": "Bologna",
+    "country": "Italy",
+    "author": "Ввласенко",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Bologna_Panorama.jpg",
+    "alt": "Rooftops and towers across Bologna, Italy",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-italy-table-384.webp",
+        "width": 384,
+        "height": 196,
+        "bytes": 16178
+      },
+      {
+        "src": "/journey/immersive/route-italy-table-768.webp",
+        "width": 768,
+        "height": 393,
+        "bytes": 61194
+      },
+      {
+        "src": "/journey/immersive/route-italy-table-1536.webp",
+        "width": 1536,
+        "height": 786,
+        "bytes": 284336
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "south-korea",
+    "routeKeys": [
+      "south-korea"
+    ],
+    "place": "Seoul",
+    "country": "South Korea",
+    "author": "Basile Morin",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Gyedong-gil_street_with_climbing_plants_at_golden_hour_in_Seoul_South_Korea.jpg",
+    "alt": "A quiet plant-lined street in Seoul, South Korea",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-south-korea-384.webp",
+        "width": 384,
+        "height": 228,
+        "bytes": 24908
+      },
+      {
+        "src": "/journey/immersive/route-south-korea-768.webp",
+        "width": 768,
+        "height": 457,
+        "bytes": 99758
+      },
+      {
+        "src": "/journey/immersive/route-south-korea-1536.webp",
+        "width": 1536,
+        "height": 914,
+        "bytes": 450770
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "malaysia-singapore",
+    "routeKeys": [
+      "malaysia-singapore"
+    ],
+    "place": "George Town",
+    "country": "Malaysia",
+    "author": "HundenvonPenang",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:George_Town,_Penang_city_centre.jpg",
+    "alt": "George Town skyline in Penang, Malaysia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-malaysia-singapore-384.webp",
+        "width": 384,
+        "height": 158,
+        "bytes": 12488
+      },
+      {
+        "src": "/journey/immersive/route-malaysia-singapore-768.webp",
+        "width": 768,
+        "height": 317,
+        "bytes": 47604
+      },
+      {
+        "src": "/journey/immersive/route-malaysia-singapore-1536.webp",
+        "width": 1536,
+        "height": 634,
+        "bytes": 220914
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "mexico-yucatan",
+    "routeKeys": [
+      "mexico-yucatan"
+    ],
+    "place": "Mérida",
+    "country": "Mexico",
+    "author": "diaper",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Merida_Yucatan_street_-_Untypical_-_No_traffic_-_Jan_2012.jpg",
+    "alt": "Colourful street in Mérida, Yucatán, Mexico",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-mexico-yucatan-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 10342
+      },
+      {
+        "src": "/journey/immersive/route-mexico-yucatan-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 35644
+      },
+      {
+        "src": "/journey/immersive/route-mexico-yucatan-1536.webp",
+        "width": 1536,
+        "height": 1152,
+        "bytes": 189212
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "costa-rica-wild",
+    "routeKeys": [
+      "costa-rica-wild"
+    ],
+    "place": "La Fortuna",
+    "country": "Costa Rica",
+    "author": "belemita@gmail.com",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Arenal_volcano_from_the_northeast_-_Costa_Rica_-_panoramio.jpg",
+    "alt": "Arenal Volcano and green fields near La Fortuna, Costa Rica",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-costa-rica-wild-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 18092
+      },
+      {
+        "src": "/journey/immersive/route-costa-rica-wild-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 83002
+      },
+      {
+        "src": "/journey/immersive/route-costa-rica-wild-1536.webp",
+        "width": 1536,
+        "height": 1152,
+        "bytes": 402838
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "spain-rail",
+    "routeKeys": [
+      "spain-rail"
+    ],
+    "place": "Seville",
+    "country": "Spain",
+    "author": "Diliff",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Plaza_Virgen_de_los_Reyes,_Seville,_Spain_-_Sep_2009.jpg",
+    "alt": "Plaza Virgen de los Reyes at dusk in Seville, Spain",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-spain-rail-384.webp",
+        "width": 384,
+        "height": 274,
+        "bytes": 12068
+      },
+      {
+        "src": "/journey/immersive/route-spain-rail-768.webp",
+        "width": 768,
+        "height": 549,
+        "bytes": 45812
+      },
+      {
+        "src": "/journey/immersive/route-spain-rail-1536.webp",
+        "width": 1536,
+        "height": 1098,
+        "bytes": 230030
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "france-south",
+    "routeKeys": [
+      "france-south"
+    ],
+    "place": "Avignon",
+    "country": "France",
+    "author": "Txllxt",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Avignon_-_Mont%C3%A9e_des_Canons_near_Avignon_Cathedral%27s_Calvary_-_Panorama_Overview_on_Place_du_Palais_06.jpg",
+    "alt": "Place du Palais seen from above in Avignon, France",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-france-south-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 16698
+      },
+      {
+        "src": "/journey/immersive/route-france-south-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 66324
+      },
+      {
+        "src": "/journey/immersive/route-france-south-1536.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 313618
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "scotland-islands",
+    "routeKeys": [
+      "scotland-islands"
+    ],
+    "place": "Isle of Skye",
+    "country": "United Kingdom",
+    "author": "Diliff",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Quiraing,_Isle_of_Skye,_Scotland_-_Diliff.jpg",
+    "alt": "The green Quiraing landscape on the Isle of Skye, Scotland",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-scotland-islands-384.webp",
+        "width": 384,
+        "height": 190,
+        "bytes": 11060
+      },
+      {
+        "src": "/journey/immersive/route-scotland-islands-768.webp",
+        "width": 768,
+        "height": 379,
+        "bytes": 45540
+      },
+      {
+        "src": "/journey/immersive/route-scotland-islands-1536.webp",
+        "width": 1536,
+        "height": 758,
+        "bytes": 242116
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "morocco-rail",
+    "routeKeys": [
+      "morocco-rail"
+    ],
+    "place": "Chefchaouen",
+    "country": "Morocco",
+    "author": "Indies1",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Morocco_-_View_of_Chefchaouen.jpg",
+    "alt": "Blue-washed Chefchaouen beneath the Rif Mountains in Morocco",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-morocco-rail-384.webp",
+        "width": 384,
+        "height": 247,
+        "bytes": 26994
+      },
+      {
+        "src": "/journey/immersive/route-morocco-rail-768.webp",
+        "width": 768,
+        "height": 495,
+        "bytes": 114250
+      },
+      {
+        "src": "/journey/immersive/route-morocco-rail-1536.webp",
+        "width": 1536,
+        "height": 990,
+        "bytes": 541936
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "usa-canada-west",
+    "routeKeys": [
+      "usa-canada-west"
+    ],
+    "place": "Banff",
+    "country": "Canada",
+    "author": "Tobias Alt",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Peyto_Lake-Banff_NP-Canada.jpg",
+    "alt": "Peyto Lake and mountain peaks in Banff National Park, Canada",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-usa-canada-west-384.webp",
+        "width": 384,
+        "height": 228,
+        "bytes": 18572
+      },
+      {
+        "src": "/journey/immersive/route-usa-canada-west-768.webp",
+        "width": 768,
+        "height": 456,
+        "bytes": 79466
+      },
+      {
+        "src": "/journey/immersive/route-usa-canada-west-1536.webp",
+        "width": 1536,
+        "height": 913,
+        "bytes": 433318
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "usa-southwest",
+    "routeKeys": [
+      "usa-southwest"
+    ],
+    "place": "Grand Canyon",
+    "country": "United States",
+    "author": "Tuxyso",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_Powell_Point_Evening_Light_02_2013.jpg",
+    "alt": "Evening light across the Grand Canyon in the United States",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-usa-southwest-384.webp",
+        "width": 384,
+        "height": 242,
+        "bytes": 14970
+      },
+      {
+        "src": "/journey/immersive/route-usa-southwest-768.webp",
+        "width": 768,
+        "height": 486,
+        "bytes": 60246
+      },
+      {
+        "src": "/journey/immersive/route-usa-southwest-1536.webp",
+        "width": 1536,
+        "height": 972,
+        "bytes": 291874
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "india-golden-triangle",
+    "routeKeys": [
+      "india-golden-triangle"
+    ],
+    "place": "Agra",
+    "country": "India",
+    "author": "Sonakshi Mittal",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:The_Taj_Mahal_situated_in_Agra,India.jpg",
+    "alt": "The Taj Mahal seen across the Yamuna River in Agra, India",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-india-golden-triangle-384.webp",
+        "width": 384,
+        "height": 244,
+        "bytes": 10262
+      },
+      {
+        "src": "/journey/immersive/route-india-golden-triangle-768.webp",
+        "width": 768,
+        "height": 489,
+        "bytes": 38094
+      },
+      {
+        "src": "/journey/immersive/route-india-golden-triangle-1536.webp",
+        "width": 1536,
+        "height": 978,
+        "bytes": 180962
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  },
+  {
+    "key": "italy-greece",
+    "routeKeys": [
+      "italy-greece"
+    ],
+    "place": "Naxos",
+    "country": "Greece",
+    "author": "Kondephy",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Naxos_Coastline.jpg",
+    "alt": "Naxos coastline and mountains in Greece",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/route-italy-greece-384.webp",
+        "width": 384,
+        "height": 255,
+        "bytes": 10882
+      },
+      {
+        "src": "/journey/immersive/route-italy-greece-768.webp",
+        "width": 768,
+        "height": 511,
+        "bytes": 38996
+      },
+      {
+        "src": "/journey/immersive/route-italy-greece-1536.webp",
+        "width": 1536,
+        "height": 1022,
+        "bytes": 165098
+      }
+    ],
+    "intendedUses": [
+      "Published route hero and visual-atlas discovery imagery"
+    ]
+  }
+]

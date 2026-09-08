@@ -32,7 +32,7 @@ export type LaunchAnalyticsEventMap = {
   workspace_orientation_started: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number };
   workspace_orientation_completed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
   workspace_orientation_dismissed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
-  route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" };
+  route_started: { route_id: string; stop_count: number; duration_days: number; placement: "hero" | "final" | "discovery" };
   homepage_route_viewed: { route_id: string; selection: "initial" | "change"; stop_count: number };
   homepage_prompt_started: { source: "homepage"; input_method: "text" | "voice"; is_authenticated: boolean };
   trip_generation_started: { trip_source: TripSource; has_dates: boolean; traveller_count: number; is_authenticated: boolean };

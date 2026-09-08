@@ -1,16 +1,15 @@
 import { routeFamilyByKey } from "../../../../lib/easyt/route-catalog.ts";
 import { publicRoutePublishedFamilies, type PublicRouteDetail } from "../../../../lib/easyt/public-route.ts";
-import { routeDestinationPhoto, routeImageCredit } from "../../../../lib/easyt/route-images.ts";
+import { routeDestinationPhoto, routePhotoForSource } from "../../../../lib/easyt/route-images.ts";
 
-export type RoutePhoto = NonNullable<ReturnType<typeof routeDestinationPhoto>>;
+export type RoutePhoto = NonNullable<ReturnType<typeof routePhotoForSource>>;
 export type RouteNightGuide = { minimum: number | null; recommended: number | null; rationale?: string };
 
 /** Presentation projection only. Never creates or edits planning facts. */
 export function routeDetailPresentation(detail: PublicRouteDetail) {
   const family = routeFamilyByKey[detail.key];
   const photos = detail.stops.map(stop => routeDestinationPhoto(stop.name, stop.country));
-  const heroCredit = routeImageCredit(detail.heroImage);
-  const hero = heroCredit ? photos.find(photo => photo?.variants.some(variant => variant.src === detail.heroImage)) ?? null : null;
+  const hero = routePhotoForSource(detail.heroImage);
   const closing = photos.find(photo => photo && photo.key !== hero?.key) ?? hero;
   const comma = detail.title.indexOf(",");
   return {
@@ -35,4 +34,3 @@ export function relatedRouteDetails(detail: PublicRouteDetail, hiddenKeys: reado
     .slice(0, 2)
     .map(({ route }) => ({ key: route.key, title: route.title, countries: [...new Set(route.stops.map(stop => stop.country))], stopCount: route.stops.length, href: `/journey/routes/${encodeURIComponent(route.key)}` }));
 }
-

@@ -1950,3 +1950,32 @@ Preserved approved immersive hierarchy, mixed sans/Georgia, alternate chapters, 
 Issues found and resolved: old CARTO key watermark (detail style now OpenFreeMap Positron); faint navigation tour label on hero (paper text); repeated same-hash map link (explicit existing-page anchor handling/focus); map resize fit; eager Builder prefetch pulling map chunks (disabled on canonical RoutePlanLink). Final keyboard stop/connection/reset and four-route Builder handoffs pass. Failed-image fixture renders stable place-name fallback. Production console error check returned no entries.
 
 Limitations: local CLS was zero in warm final samples, with an earlier 0.108 desktop first-load outlier retained in the performance report. Hosted staging field performance, native OS reduced-motion switching, analytics ingestion and a full screen-reader/WCAG audit were not performed. Reduced-motion CSS and instant map behavior were inspected; no scroll animation or hijacking is introduced. No unresolved blocking visual or interaction defect identified; no deployment performed.
+
+---
+
+## 2026-09-08 — Public Routes atlas and published-route imagery
+
+Source comparison: the recovered approved atlas at `/Users/shaun/.codex/visualizations/2026/09/07/01a07d56-027c-7723-9f18-07fb7e902935/morrovia-routes/prototype/` was compared with the production-backed `/journey/discover` implementation in the same default desktop and mobile states. The final page preserves the approved atlas composition and interaction model while using the live 21-route catalogue, production navigation, current Morrovia tokens and locally owned licensed imagery.
+
+The production owner is `app/journey/discover/page.tsx` with `discovery-browser.tsx` and `discover.module.css`. The approved work had remained uncommitted in the preserved `/private/tmp/morrovia-routes-staging` worktree, so it was never present in the staging branch that could be deployed. The recovered implementation now composes existing `EasyTButton`, `EasyTLinkButton`, `EasyTField`, `EasyTSelect`, `EasyTSegmentedControl`, `MorroviaStatusBanner`, `MorroviaMapLoading`, `ResilientImage`, `EasyTNavigation` and footer patterns. The route preview dialog and geographic atlas are page-specific exploration interactions. No new shared primitive was introduced.
+
+### Visual and responsive evidence
+
+- The default gallery was inspected at exact CSS widths 1440, 1024, 768 and 390 px. At every width the document width equalled the viewport width, all 14 visible images loaded, and no layout-shift performance entry was recorded.
+- The desktop and mobile default states were reviewed against the approved source in combined comparison inputs. Atlas hierarchy, search/filter placement, selected-route preview, map/gallery control, type, spacing and responsive stacking match the approved direction. Live route count, current navigation and licensed route photography are intentional production differences.
+- Mobile navigation opened and exposed Routes, Builder, product, account and language destinations, then closed normally. Italy search returned the two applicable routes; the Europe filter produced a visible active-filter state; preview opened as a scrollable native dialog with image credit, map, facts, stops and canonical actions.
+- The gallery/map switch was exercised with the full live catalogue. Route selection and detail navigation remained intact, and Builder links retained `/journey/new?homeDraft=1&inspire=<route-key>`.
+
+### Published-route visual readiness
+
+All 21 currently published routes now resolve a provenanced local hero through the shared route-image owner. Japan, Balkans, Vietnam–Cambodia and Iceland retain full destination photography and are `fully-visual`; the other 17 routes are `hero-ready` and use compact 220 px desktop / 180 px mobile editorial destination fallbacks. The full matrix is in `docs/published-route-visual-readiness.md`. Publication remains an editorial decision: readiness is validated and reported without automatically hiding routes.
+
+Japan, Balkans, Vietnam–Cambodia, Iceland, Italy–Greece, Andes, Portugal and South Korea were inspected at 1440 px. Every route loaded a local credited hero, kept the canonical Builder handoff, matched the viewport width and recorded zero local layout shift. The four canonical routes had no destination fallback. The four legacy samples used three restrained destination fallbacks each; none expanded into a hero-sized blank panel. Italy–Greece was also inspected at 390 px.
+
+### Checks and findings
+
+Focused discovery, detail, readiness and content tests passed 34/34; the public-routes aggregate passed 38/38; Storybook visual and route-presentation tests passed 12/12. Typecheck, production `build:check`, UI convergence audit and diff hygiene passed. Browser console review found no errors or hydration failures. The only warning was the existing global Next.js `scroll-behavior: smooth` advisory. Reduced-motion CSS and zero-duration map transitions are covered by source tests; native operating-system reduced-motion switching and hosted field CLS were not exercised in this local pass.
+
+No actionable P0, P1 or P2 visual, responsive, content, attribution or interaction issue remains. No deployment, push, merge or `main` change was performed.
+
+final result: passed

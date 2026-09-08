@@ -15,7 +15,7 @@ export default function RoutePlanLink({
   children = "Plan this route",
 }: {
   draft: PublicRoutePlanDraft;
-  placement: "hero" | "final";
+  placement: "hero" | "final" | "discovery";
   className?: string;
   children?: string;
 }) {

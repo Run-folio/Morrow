@@ -1,15 +1,13 @@
+import { discoveryCatalogue } from "@/lib/easyt/discovery-catalogue";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ShieldCheck } from "lucide-react";
 
 import DiscoveryBrowser from "@/app/journey/discover/discovery-browser";
 import PassportDestinationClient from "@/app/journey/passport/passport-destination-client";
-import { routeImages } from "@/lib/easyt/route-images";
-import { routeFamilies } from "@/lib/easyt/route-catalog";
 import type { TripPrepTask } from "@/lib/easyt/trip-prep";
 import EasyTTripCopilot from "../easyt-trip-copilot";
 import { TripPreparationTaskSection } from "../trip-preparation";
 
-const localImageRoutes = routeFamilies.filter((route) => Boolean(routeImages[route.key])).slice(0, 12);
 const preparationTasks: TripPrepTask[] = [
   { id: "traveller", title: "Passport and traveller details", detail: "Add nationality and residence to personalise entry guidance.", category: "must", status: "urgent", kind: "passport", action: { label: "Review details", opensTravellerDetails: true } },
   { id: "stay", title: "Accommodation in Cusco", detail: "Confirm a stay for 20–23 August.", category: "must", status: "in-progress", kind: "accommodation", action: { label: "Review stays", href: "/journey/storybook-trip/map?stop=cusco&mode=stay" } },
@@ -33,7 +31,7 @@ export const AIAndCopilot: Story = {
 
 export const RouteDiscoveryResults: Story = {
   parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/discover" } } },
-  render: () => <main className="morrovia-editorial-page"><DiscoveryBrowser routes={localImageRoutes} /></main>,
+  render: () => <main className="morrovia-editorial-page"><DiscoveryBrowser routes={discoveryCatalogue()} /></main>,
 };
 
 export const PassportWorkflow: Story = {
