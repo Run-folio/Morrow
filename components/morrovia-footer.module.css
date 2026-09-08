@@ -77,3 +77,23 @@
   .footer nav { justify-self: center; }
   .footer nav { justify-content: center; }
 }
+
+/* Shared footer on a photographic canvas; the parent owns the image/wash. */
+.overImage {
+  width: 100%;
+  color: var(--morrovia-paper);
+  font: var(--morrovia-type-fine-print);
+  padding: 30px 0 calc(40px + env(safe-area-inset-bottom));
+  border-top: 1px solid color-mix(in srgb, var(--morrovia-paper) 28%, transparent);
+}
+.overImage .brand,
+.overImage .brand::after,
+.overImage nav a { color: var(--morrovia-paper); }
+.overImage nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.overImage .brand:focus-visible,
+.overImage nav a:focus-visible { outline-color: var(--morrovia-paper); }
+@media (max-width: 840px) {
+  .overImage { grid-template-columns: 1fr; justify-items: center; gap: 14px; padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .overImage .brand,.overImage nav { justify-self: center; }
+  .overImage nav { justify-content: center; gap: 4px 18px; }
+}

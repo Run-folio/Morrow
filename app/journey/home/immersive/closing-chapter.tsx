@@ -2,6 +2,7 @@
 
 import { ArrowUpRight } from "lucide-react";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
+import MorroviaFooter from "@/components/morrovia-footer";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
@@ -17,5 +18,6 @@ export default function ClosingChapter() {
       prompt?.scrollIntoView({ block: "center", behavior: "instant" });
     }}>{es ? "Planificar mi viaje" : "Plan my trip"}</EasyTButton></div>
     <div className={styles.closingFoot}><span>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><a href="/journey/immersive/credits.html">{es ? "Créditos de imágenes" : "Image credits"}</a></div>
+    <MorroviaFooter overImage />
   </section>;
 }

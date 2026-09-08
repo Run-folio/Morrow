@@ -115,14 +115,16 @@
 .partnerActions small { font: var(--morrovia-type-fine-print); color: var(--morrovia-ink-soft); }
 .partnerDisclosure { margin-top: 30px!important; font: var(--morrovia-type-fine-print); color: var(--morrovia-ink-soft); }
 .imageFallback { min-height: 100%; background: var(--morrovia-ink); }
-.closing { position: relative; isolation: isolate; min-height: 100svh; display: grid; align-content: center; padding: 110px 5vw; color: var(--morrovia-paper); background: var(--morrovia-ink); }
+.closing { position: relative; isolation: isolate; min-height: 100svh; display: flex; flex-direction: column; padding: 0 5vw; color: var(--morrovia-paper); background: var(--morrovia-ink); }
 .closing > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; }
-.closing::after { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb,var(--morrovia-ink) 48%,transparent); }
-.closingContent { text-align: center; }
+.closing::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to bottom, color-mix(in srgb,var(--morrovia-ink) 48%,transparent) 0%, color-mix(in srgb,var(--morrovia-ink) 58%,transparent) 50%, color-mix(in srgb,var(--morrovia-ink) 88%,transparent) 78%, color-mix(in srgb,var(--morrovia-ink) 94%,transparent) 100%); }
+.closingContent { flex: 1; display: grid; align-content: center; justify-items: center; padding: 110px 0 90px; text-align: center; }
 .closing h2 { font-size: clamp(82px,8.4vw,158px); margin: 40px 0; }
 .closingContent button { background: var(--morrovia-paper); color: var(--morrovia-ink); min-height: 56px; }
-.closingFoot { position: absolute; bottom: 35px; left: 5vw; right: 5vw; display: flex; justify-content: space-between; gap: 20px; font: var(--morrovia-type-fine-print); }
-@media(max-width:840px) { .closing { min-height: 85svh; padding: 90px 20px; } .closing h2 { font-size: clamp(50px,10vw,76px); } }
+.closingFoot { position: relative; display: flex; align-items: center; padding: 0 0 20px; justify-content: space-between; gap: 20px; font: var(--morrovia-type-fine-print); }
+.closingFoot a { display: inline-flex; align-items: center; min-height: 44px; }
+.closing a:focus-visible,.closing button:focus-visible { outline: 2px solid var(--morrovia-paper); outline-offset: 4px; }
+@media(max-width:840px) { .closing { padding: 0 20px; } .closingContent { padding: 90px 0 70px; } .closing h2 { font-size: clamp(50px,10vw,76px); } }
 @media(max-width:840px) {
  .booking { padding: 65px 18px; min-height: 0; }
  .booking .chapterHeading h2 { font-size: 44px; }
@@ -235,3 +237,6 @@
 .page[data-quiet="true"] .photos figure,.page[data-quiet="true"] .destinationPhoto { transform: none; }
 @media(prefers-reduced-motion:reduce) { .places { height: auto; --progress: 1!important; } .placesStage { position: relative; } .photos figure,.destinationPhoto { transform: none!important; } }
 @media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none!important; } }
+
+/* The photographic footer owns dock clearance on this page. */
+@media(max-width:520px) { :global(body.easyt-mobile-shell):has(.page) { padding-bottom: 0; } }

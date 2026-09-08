@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
@@ -31,7 +32,8 @@ const copy = {
   },
 } as const;
 
-export default function MorroviaFooter() {
+export default function MorroviaFooter({ overImage = false, omitOnImmersiveHome = false }: { overImage?: boolean; omitOnImmersiveHome?: boolean }) {
+  const pathname = usePathname();
   const [language, setLanguage] = useState<EasyTLanguage>("en");
 
   useEffect(() => {
@@ -42,7 +44,8 @@ export default function MorroviaFooter() {
   }, []);
 
   const text = copy[language];
-  return <footer className={styles.footer}>
+  if (omitOnImmersiveHome && pathname === "/journey/home") return null;
+  return <footer role="contentinfo" className={`${styles.footer} ${overImage ? styles.overImage : ""}`}>
     <Link className={styles.brand} href="/journey/home" aria-label={`${morroviaLegalIdentity.productName} home`}>
       {morroviaLegalIdentity.productName}
     </Link>

@@ -1,3 +1,5 @@
+import immersiveStyles from "../app/journey/home/immersive/immersive.module.css";
+import ClosingChapter from "../app/journey/home/immersive/closing-chapter";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import MorroviaFooter from "./morrovia-footer";
 
@@ -26,4 +28,8 @@ export const Tablet768: Story = {
 
 export const Desktop: Story = {
   globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const ImmersiveClosing: Story = {
+  render: () => <main className={immersiveStyles.page}><ClosingChapter /></main>,
 };

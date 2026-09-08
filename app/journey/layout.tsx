@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import MorroviaFooter from "@/components/morrovia-footer";
+import { immersiveHomepageEnabled } from "@/lib/easyt/immersive-homepage-config";
+import { immersiveHomepageRoutes } from "@/lib/easyt/immersive-homepage-routes";
 import "./journey-design.css";
 
 export const metadata: Metadata = {
@@ -31,6 +33,6 @@ export const viewport: Viewport = {
 export default function JourneyLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <div className="morroviaProductShell">
     <div className="morroviaProductContent">{children}</div>
-    <MorroviaFooter />
+    <MorroviaFooter omitOnImmersiveHome={immersiveHomepageEnabled(process.env.IMMERSIVE_HOMEPAGE_V2) && immersiveHomepageRoutes().length > 0} />
   </div>;
 }
