@@ -1,0 +1,562 @@
+[
+  {
+    "name": "japan-390-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-map",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-selected-stop",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-transfer",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "balkans-1440-map",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "balkans-border-context",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-320-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 320,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-430-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 430.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-768-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 767.9948120117188,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-1024-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1023.9931030273438,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1920-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1080,
+      "width": 1920.0001220703125,
+      "x": 0,
+      "y": -140
+    },
+    "height": 800,
+    "scrollHeight": 1080,
+    "scrollWidth": 1920,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "image-failed-390",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "image-failed-390",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "map-unavailable",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-map",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-selected-stop",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-transfer",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-chapter",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-pacing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -200.00001525878903
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "balkans-country-transition",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "balkans-1440-map",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "balkans-border-context",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-map",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-transfer",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -21.666667938232425
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-320-pacing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 320,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "vietnam-768-country-transition",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 767.9948120117188,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "iceland-430-opening",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 931.99658203125,
+      "width": 430.0000305175781,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 932,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "unknown-mode-transfer",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": -22.22222328186035
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": 0,
+      "y": -200.00001525878903
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-1440-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 1000.0000610351562,
+      "width": 1440.0001220703125,
+      "x": -17.77777862548828,
+      "y": -100.00000762939452
+    },
+    "height": 800,
+    "scrollHeight": 1000,
+    "scrollWidth": 1440,
+    "width": 1422
+  },
+  {
+    "name": "japan-390-closing",
+    "dpr": 1.7999999523162842,
+    "frame": {
+      "height": 843.9931030273438,
+      "width": 390.0000305175781,
+      "x": 0,
+      "y": 0
+    },
+    "height": 800,
+    "scrollHeight": 844,
+    "scrollWidth": 1422,
+    "width": 1422
+  }
+]

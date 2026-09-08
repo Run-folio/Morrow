@@ -1,0 +1,262 @@
+{
+  "elapsed": 7001.5999999940395,
+  "viewport": [
+    1440,
+    1000
+  ],
+  "lcp": 504,
+  "cls": 0,
+  "paint": [
+    {
+      "name": "first-paint",
+      "time": 504
+    },
+    {
+      "name": "first-contentful-paint",
+      "time": 504
+    }
+  ],
+  "interactions": [],
+  "shifts": [],
+  "resources": [
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/33342f83c66c56c7.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 96040,
+      "duration": 1.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/003e5e588f1a3202.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 4657,
+      "duration": 2.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/fe8854a83e049bc2.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 70065,
+      "duration": 2.4000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/4f7937cf6e217a12.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 48167,
+      "duration": 2.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/d5cc12843cacf210.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 2158,
+      "duration": 2.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/84b5c9697d94b34e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 38428,
+      "duration": 2.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/ae0a16ee2c028b28.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 91435,
+      "duration": 2.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/db6d3ab7e1c54f2e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 23930,
+      "duration": 2.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/webpack-4f991cc1cae494e7.js",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 5376,
+      "duration": 3.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/main-app-d2a210caa85b4d87.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 572,
+      "duration": 4
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 173025,
+      "duration": 4
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1255-f5767ca0d1da046a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 174043,
+      "duration": 4.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/9da6db1e-9e0a9630dbe1f00a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 254333,
+      "duration": 4.299999982118607
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/2619-04bc32f026a0d946.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 8564,
+      "duration": 4.899999976158142
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5542-f131f869ce55f651.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6761,
+      "duration": 5.199999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/layout-56701ea76ae7d498.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 16911,
+      "duration": 5.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/error-acb9e9842e2ba7cd.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 2241,
+      "duration": 5.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4736-1d6c60a1a783c355.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 31450,
+      "duration": 5.799999982118607
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5589-b1aa754af166fbaf.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 10112,
+      "duration": 6.199999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1540-744009e67f47dca1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 46347,
+      "duration": 6.299999982118607
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4235-f5702e2b1839648b.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 14073,
+      "duration": 6.399999976158142
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/layout-c876b1cf1ac275db.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6863,
+      "duration": 7.0999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/routes/%5Bslug%5D/page-718c33afda8903da.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 19812,
+      "duration": 6.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/6258-b803dabc02d301c5.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 336130,
+      "duration": 6.399999976158142
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-kyoto-1536.webp",
+      "kind": "link",
+      "bytes": 300,
+      "encoded": 125986,
+      "duration": 5.299999982118607
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-tokyo-1536.webp",
+      "kind": "img",
+      "bytes": 300,
+      "encoded": 197920,
+      "duration": 2.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/api/auth/get-session",
+      "kind": "fetch",
+      "bytes": 304,
+      "encoded": 4,
+      "duration": 5.700000017881393
+    }
+  ],
+  "navigation": {
+    "name": "http://127.0.0.1:3101/journey/routes/japan-slow",
+    "entryType": "navigation",
+    "startTime": 0,
+    "duration": 460.60000002384186,
+    "navigationId": 4096,
+    "initiatorType": "navigation",
+    "deliveryType": "",
+    "nextHopProtocol": "http/1.1",
+    "renderBlockingStatus": "non-blocking",
+    "contentType": "text/html",
+    "contentEncoding": "",
+    "workerStart": 0,
+    "workerRouterEvaluationStart": 0,
+    "workerCacheLookupStart": 0,
+    "workerMatchedSourceType": "",
+    "workerFinalSourceType": "",
+    "redirectStart": 0,
+    "redirectEnd": 0,
+    "fetchStart": 1.2000000178813934,
+    "domainLookupStart": 1.2000000178813934,
+    "domainLookupEnd": 1.2000000178813934,
+    "connectStart": 1.2000000178813934,
+    "secureConnectionStart": 0,
+    "connectEnd": 1.2000000178813934,
+    "requestStart": 2,
+    "responseStart": 433.40000000596046,
+    "firstInterimResponseStart": 0,
+    "finalResponseHeadersStart": 433.40000000596046,
+    "responseEnd": 433.80000001192093,
+    "transferSize": 158252,
+    "encodedBodySize": 157952,
+    "decodedBodySize": 157952,
+    "responseStatus": 200,
+    "serverTiming": [],
+    "unloadEventStart": 0,
+    "unloadEventEnd": 0,
+    "domInteractive": 444.60000002384186,
+    "domContentLoadedEventStart": 444.60000002384186,
+    "domContentLoadedEventEnd": 444.60000002384186,
+    "domComplete": 460.60000002384186,
+    "loadEventStart": 460.60000002384186,
+    "loadEventEnd": 460.60000002384186,
+    "type": "navigate",
+    "redirectCount": 0,
+    "activationStart": 0,
+    "criticalCHRestart": 0,
+    "notRestoredReasons": null,
+    "confidence": null
+  }
+}

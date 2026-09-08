@@ -23,6 +23,7 @@ export default function RoutePlanLink({
   return <EasyTLinkButton
     className={className}
     href={href}
+    prefetch={false}
     icon={ArrowRight}
     size="large"
     onClick={() => {

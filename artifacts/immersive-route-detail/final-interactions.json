@@ -1,0 +1,813 @@
+{
+  "elapsed": 62002.09999999404,
+  "viewport": [
+    1440,
+    1000
+  ],
+  "lcp": 748,
+  "cls": 0.12153915747665273,
+  "paint": [
+    {
+      "name": "first-paint",
+      "time": 432
+    },
+    {
+      "name": "first-contentful-paint",
+      "time": 432
+    }
+  ],
+  "interactions": [
+    35,
+    29.399999976158142,
+    26.19999998807907,
+    28
+  ],
+  "shifts": [
+    {
+      "value": 0.10834876543209876,
+      "time": 708.8000000119209,
+      "sources": [
+        {
+          "node": "<footer role=\"contentinfo\" class=\"morrovia-footer_footer__egA3M \"><a class=\"morrovia-footer_brand__LyFRz\" aria-label=\"Morrovia home\" href=\"/journey/home\">Morrovia</a><div class=\"morrovia-footer_identi",
+          "previous": {
+            "x": 117,
+            "y": 781.2109375,
+            "width": 1062,
+            "height": 118.7890625,
+            "top": 781.2109375,
+            "right": 1179,
+            "bottom": 900,
+            "left": 117
+          },
+          "current": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.007518360373285389,
+      "time": 26546.40000000596,
+      "sources": [
+        {
+          "node": "<ol class=\"route-overview_mapStops__NBRLB\" aria-label=\"Ordered stops on Japan by rail, at your own pace\"><li><button id=\"route-map-stop-0\" aria-pressed=\"false\" type=\"button\" class=\"easyt-controls_cont",
+          "previous": {
+            "x": 939.59375,
+            "y": 465.4921875,
+            "width": 262.3125,
+            "height": 356.34375,
+            "top": 465.4921875,
+            "right": 1201.90625,
+            "bottom": 821.8359375,
+            "left": 939.59375
+          },
+          "current": {
+            "x": 939.59375,
+            "y": 551.3515625,
+            "width": 262.3125,
+            "height": 348.6484375,
+            "top": 551.3515625,
+            "right": 1201.90625,
+            "bottom": 900,
+            "left": 939.59375
+          }
+        },
+        {
+          "node": "<p class=\"route-overview_mapNote__gk3Ob\">The line shows the sequence between bases, not an exact road, rail or flight path.</p>",
+          "previous": {
+            "x": 72,
+            "y": 861.9296875,
+            "width": 1152,
+            "height": 15.6484375,
+            "top": 861.9296875,
+            "right": 1224,
+            "bottom": 877.578125,
+            "left": 72
+          },
+          "current": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "node": "<details class=\"maplibregl-ctrl maplibregl-ctrl-attrib\" open=\"\"><summary class=\"maplibregl-ctrl-attrib-button\" title=\"Toggle attribution\" aria-label=\"Toggle attribution\"></summary><div class=\"maplibre",
+          "previous": {
+            "x": 625.53125,
+            "y": 831.3828125,
+            "width": 291.96875,
+            "height": 15.6484375,
+            "top": 831.3828125,
+            "right": 917.5,
+            "bottom": 847.03125,
+            "left": 625.53125
+          },
+          "current": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.0031823431334569597,
+      "time": 26832.30000001192,
+      "sources": [
+        {
+          "node": "<section class=\"route-overview_judgement__7rdQe route-overview_wrap__G_bBo\" aria-labelledby=\"route-reasons-heading\"><div><p class=\"route-overview_eyebrow__UusUa\">The thinking behind the journey</p><h2",
+          "previous": {
+            "x": 72,
+            "y": 820.4296875,
+            "width": 1152,
+            "height": 79.5703125,
+            "top": 820.4296875,
+            "right": 1224,
+            "bottom": 900,
+            "left": 72
+          },
+          "current": {
+            "x": 72,
+            "y": 806.6171875,
+            "width": 1152,
+            "height": 93.3828125,
+            "top": 806.6171875,
+            "right": 1224,
+            "bottom": 900,
+            "left": 72
+          }
+        },
+        {
+          "node": "<div class=\"route-overview_mapActions__7_4xe\"><div><strong>A starting point, with room for you.</strong><p>Change the order. Adjust nights. Add a stop in Builder.</p></div><a class=\"easyt-controls_con",
+          "previous": {
+            "x": 71.5,
+            "y": 667.8359375,
+            "width": 1152.5,
+            "height": 73.3984375,
+            "top": 667.8359375,
+            "right": 1224,
+            "bottom": 741.234375,
+            "left": 71.5
+          },
+          "current": {
+            "x": 71.5,
+            "y": 654.0234375,
+            "width": 1152.5,
+            "height": 73.3984375,
+            "top": 654.0234375,
+            "right": 1224,
+            "bottom": 727.421875,
+            "left": 71.5
+          }
+        },
+        {
+          "node": "<ol class=\"route-overview_mapStops__NBRLB\" aria-label=\"Ordered stops on Japan by rail, at your own pace\"><li><button id=\"route-map-stop-0\" aria-pressed=\"false\" type=\"button\" class=\"easyt-controls_cont",
+          "previous": {
+            "x": 939.59375,
+            "y": 232.3515625,
+            "width": 262.3125,
+            "height": 356.34375,
+            "top": 232.3515625,
+            "right": 1201.90625,
+            "bottom": 588.6953125,
+            "left": 939.59375
+          },
+          "current": {
+            "x": 939.59375,
+            "y": 218.5390625,
+            "width": 262.3125,
+            "height": 356.34375,
+            "top": 218.5390625,
+            "right": 1201.90625,
+            "bottom": 574.8828125,
+            "left": 939.59375
+          }
+        },
+        {
+          "node": "<p class=\"route-overview_mapNote__gk3Ob\">The line shows the sequence between bases, not an exact road, rail or flight path.</p>",
+          "previous": {
+            "x": 72,
+            "y": 628.7890625,
+            "width": 1152,
+            "height": 15.6484375,
+            "top": 628.7890625,
+            "right": 1224,
+            "bottom": 644.4375,
+            "left": 72
+          },
+          "current": {
+            "x": 72,
+            "y": 614.9765625,
+            "width": 1152,
+            "height": 15.6484375,
+            "top": 614.9765625,
+            "right": 1224,
+            "bottom": 630.625,
+            "left": 72
+          }
+        },
+        {
+          "node": "<details class=\"maplibregl-ctrl maplibregl-ctrl-attrib\" open=\"\"><summary class=\"maplibregl-ctrl-attrib-button\" title=\"Toggle attribution\" aria-label=\"Toggle attribution\"></summary><div class=\"maplibre",
+          "previous": {
+            "x": 625.53125,
+            "y": 598.2421875,
+            "width": 291.96875,
+            "height": 1.8359375,
+            "top": 598.2421875,
+            "right": 917.5,
+            "bottom": 600.078125,
+            "left": 625.53125
+          },
+          "current": {
+            "x": 625.53125,
+            "y": 584.4296875,
+            "width": 291.96875,
+            "height": 15.6484375,
+            "top": 584.4296875,
+            "right": 917.5,
+            "bottom": 600.078125,
+            "left": 625.53125
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.002489688537811619,
+      "time": 27113,
+      "sources": [
+        {
+          "node": "<ol class=\"route-overview_mapStops__NBRLB\" aria-label=\"Ordered stops on Japan by rail, at your own pace\"><li><button id=\"route-map-stop-0\" aria-pressed=\"false\" type=\"button\" class=\"easyt-controls_cont",
+          "previous": {
+            "x": 939.59375,
+            "y": 773.0390625,
+            "width": 262.3125,
+            "height": 126.9609375,
+            "top": 773.0390625,
+            "right": 1201.90625,
+            "bottom": 900,
+            "left": 939.59375
+          },
+          "current": {
+            "x": 939.59375,
+            "y": 700.9921875,
+            "width": 262.3125,
+            "height": 199.0078125,
+            "top": 700.9921875,
+            "right": 1201.90625,
+            "bottom": 900,
+            "left": 939.59375
+          }
+        },
+        {
+          "node": "<button id=\"route-map-connection-2\" aria-label=\"Connection Takayama to Kyoto\" aria-pressed=\"false\" type=\"button\" class=\"easyt-controls_control__ZxOLJ easyt-controls_quiet__icP9t route-overview_mapConn",
+          "previous": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "current": {
+            "x": 939.59375,
+            "y": 898.1361694335938,
+            "width": 262.3125,
+            "height": 1.86383056640625,
+            "top": 898.1361694335938,
+            "right": 1201.90625,
+            "bottom": 900,
+            "left": 939.59375
+          }
+        },
+        {
+          "node": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"lucide lucid",
+          "previous": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "current": {
+            "x": 947.2890625,
+            "y": 831.921875,
+            "width": 15.296875,
+            "height": 15.296875,
+            "top": 831.921875,
+            "right": 962.5859375,
+            "bottom": 847.21875,
+            "left": 947.2890625
+          }
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/33342f83c66c56c7.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 96040,
+      "duration": 2.300000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/003e5e588f1a3202.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 4657,
+      "duration": 2.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/4f7937cf6e217a12.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 48167,
+      "duration": 2.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/fe8854a83e049bc2.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 70065,
+      "duration": 3.300000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/84b5c9697d94b34e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 38428,
+      "duration": 2.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/ae0a16ee2c028b28.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 91435,
+      "duration": 3.2000000178813934
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/db6d3ab7e1c54f2e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 23930,
+      "duration": 3.0999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/d5cc12843cacf210.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 2158,
+      "duration": 3
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/main-app-d2a210caa85b4d87.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 572,
+      "duration": 4.0999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/webpack-4f991cc1cae494e7.js",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 5376,
+      "duration": 4
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1255-f5767ca0d1da046a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 174043,
+      "duration": 5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 173025,
+      "duration": 5.4000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5542-f131f869ce55f651.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6761,
+      "duration": 4.4000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/2619-04bc32f026a0d946.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 8564,
+      "duration": 5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/layout-56701ea76ae7d498.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 16911,
+      "duration": 5.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/error-acb9e9842e2ba7cd.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 2241,
+      "duration": 6
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/9da6db1e-9e0a9630dbe1f00a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 254333,
+      "duration": 5.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5589-b1aa754af166fbaf.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 10112,
+      "duration": 6.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4736-1d6c60a1a783c355.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 31450,
+      "duration": 6.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1540-744009e67f47dca1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 46347,
+      "duration": 6.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4235-f5702e2b1839648b.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 14073,
+      "duration": 6.700000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/routes/%5Bslug%5D/page-718c33afda8903da.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 19812,
+      "duration": 7.200000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/layout-c876b1cf1ac275db.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6863,
+      "duration": 7.700000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/6258-b803dabc02d301c5.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 336130,
+      "duration": 7
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-kyoto-1536.webp",
+      "kind": "link",
+      "bytes": 300,
+      "encoded": 125986,
+      "duration": 5
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/home?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 3661,
+      "encoded": 3361,
+      "duration": 3.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/about?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 22167,
+      "encoded": 21867,
+      "duration": 4.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/help?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 11376,
+      "encoded": 11076,
+      "duration": 6.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/affiliate-disclosure?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 15259,
+      "encoded": 14959,
+      "duration": 11.099999994039536
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/terms?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 25803,
+      "encoded": 25503,
+      "duration": 12.599999994039536
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/privacy?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 11190,
+      "encoded": 10890,
+      "duration": 4.4000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1356-2ed480e29f4f7933.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 13604,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/about/page-6aa8abf03338586d.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 3346,
+      "duration": 0.8999999761581421
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/e416fa544c0d017a.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 8540,
+      "duration": 0.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/cookies?_rsc=NOxaMowErMSRxUlB#cookie-settings",
+      "kind": "fetch",
+      "bytes": 18802,
+      "encoded": 18502,
+      "duration": 4.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/not-found-e43c209009d681f6.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 190,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/c7aaf4d1958886af.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 9710,
+      "duration": 0.800000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/help/page-de6cd1d44c1acdcf.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 26346,
+      "duration": 0.9000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/03a51805e7467245.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 6311,
+      "duration": 1
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/privacy/page-66c7c01894ccb7a1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 41759,
+      "duration": 1
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/cookies/page-1347b5760734d6b6.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 8071,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/f7e3139f895231e2.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 7286,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/affiliate-disclosure/page-c99112a0fb3fccde.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 2956,
+      "duration": 0.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/terms/page-480c9ea95351e02e.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 3379,
+      "duration": 1.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/00d6ab3e20b1e0b6.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 1099,
+      "duration": 1.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-tokyo-1536.webp",
+      "kind": "img",
+      "bytes": 300,
+      "encoded": 197920,
+      "duration": 2.2999999821186066
+    },
+    {
+      "name": "http://127.0.0.1:3101/api/auth/get-session",
+      "kind": "fetch",
+      "bytes": 304,
+      "encoded": 4,
+      "duration": 3.399999976158142
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-kanazawa-1536.webp",
+      "kind": "img",
+      "bytes": 300,
+      "encoded": 289924,
+      "duration": 5
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-osaka-1536.webp",
+      "kind": "img",
+      "bytes": 300,
+      "encoded": 297006,
+      "duration": 5.299999982118607
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/e919c1aa-4ba5daa1c31d082f.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 410463,
+      "duration": 2.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/ca4dcb09-14e92fa970c7dbcd.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 560892,
+      "duration": 3.0999999940395355
+    },
+    {
+      "name": "https://tiles.openfreemap.org/styles/positron",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 1.199999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/maplibre/maplibre-gl-worker.mjs",
+      "kind": "other",
+      "bytes": 300,
+      "encoded": 19108,
+      "duration": -4.4000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/maplibre/maplibre-gl-shared.mjs",
+      "kind": "script",
+      "bytes": 300,
+      "encoded": 479327,
+      "duration": 3.5
+    },
+    {
+      "name": "https://tiles.openfreemap.org/planet",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 0.7999999821186066
+    },
+    {
+      "name": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm@2x.json",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 1.0999999940395355
+    },
+    {
+      "name": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm@2x.png",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 1.4000000059604645
+    },
+    {
+      "name": "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Italic/0-255.pbf",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 2.0999999940395355
+    },
+    {
+      "name": "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/256-511.pbf",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 1.899999976158142
+    },
+    {
+      "name": "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/0-255.pbf",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 2
+    },
+    {
+      "name": "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Bold/0-255.pbf",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 3
+    },
+    {
+      "name": "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Italic/1024-1279.pbf",
+      "kind": "fetch",
+      "bytes": 0,
+      "encoded": 0,
+      "duration": 2.9000000059604645
+    }
+  ],
+  "navigation": {
+    "name": "http://127.0.0.1:3101/journey/routes/japan-slow",
+    "entryType": "navigation",
+    "startTime": 0,
+    "duration": 403.90000000596046,
+    "navigationId": 2494,
+    "initiatorType": "navigation",
+    "deliveryType": "",
+    "nextHopProtocol": "http/1.1",
+    "renderBlockingStatus": "non-blocking",
+    "contentType": "text/html",
+    "contentEncoding": "",
+    "workerStart": 0,
+    "workerRouterEvaluationStart": 0,
+    "workerCacheLookupStart": 0,
+    "workerMatchedSourceType": "",
+    "workerFinalSourceType": "",
+    "redirectStart": 0,
+    "redirectEnd": 0,
+    "fetchStart": 1.4000000059604645,
+    "domainLookupStart": 1.4000000059604645,
+    "domainLookupEnd": 1.4000000059604645,
+    "connectStart": 1.4000000059604645,
+    "secureConnectionStart": 0,
+    "connectEnd": 1.4000000059604645,
+    "requestStart": 2.0999999940395355,
+    "responseStart": 381.59999999403954,
+    "firstInterimResponseStart": 0,
+    "finalResponseHeadersStart": 381.59999999403954,
+    "responseEnd": 381.80000001192093,
+    "transferSize": 158252,
+    "encodedBodySize": 157952,
+    "decodedBodySize": 157952,
+    "responseStatus": 200,
+    "serverTiming": [],
+    "unloadEventStart": 0,
+    "unloadEventEnd": 0,
+    "domInteractive": 394.80000001192093,
+    "domContentLoadedEventStart": 394.80000001192093,
+    "domContentLoadedEventEnd": 394.80000001192093,
+    "domComplete": 403.90000000596046,
+    "loadEventStart": 403.90000000596046,
+    "loadEventEnd": 403.90000000596046,
+    "type": "navigate",
+    "redirectCount": 0,
+    "activationStart": 0,
+    "criticalCHRestart": 0,
+    "notRestoredReasons": null,
+    "confidence": null
+  }
+}

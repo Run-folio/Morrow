@@ -1935,3 +1935,18 @@ No actionable P0, P1, or P2 differences remain.
 - P3: the isolated Storybook runtime's Next.js `next/config` deprecation warning is repository-wide and unrelated to this Dashboard pass.
 
 final result: passed
+
+
+## 2026-09-08 — Immersive Route Detail production implementation
+
+**Final result: passed local visual/integration review, with the non-blocking measurement limits recorded below.**
+
+Source: approved Route Detail prototype and review in `/Users/shaun/.codex/visualizations/2026/09/07/01a07d5b-63e4-7980-9471-3985ecbcde71/morrovia-route-detail/`. Implementation: real production build on staging, `/journey/routes/[slug]`. Full report: [26-point implementation report](docs/immersive-route-detail-implementation.md). Evidence: [gallery](artifacts/immersive-route-detail/review.html).
+
+Compared approved and production openings at 1440×1000; inspected focused destination chapter, Croatia→Montenegro→Albania transition, pacing, full map, selected stop/connection, explicit unknown mode, photo failure, map unavailability and closing. Verified opening geometry at 320/390/430/768/1024/1440/1920. Real iframe viewport widths, document scroll widths and screenshot metadata are retained. In-app raster capture uses a scaled content area, normalized back to CSS dimensions; raw JPGs remain available, and the images are not high-density pixel-perfect exports.
+
+Preserved approved immersive hierarchy, mixed sans/Georgia, alternate chapters, natural practical sections and large map/closing. Canonical full title, five-stop Japan data, current licensed photography, attribution, live production navigation and actual geographic map are intentional differences. No extra design concept. Reused current shared controls/status/navigation/footer/ResilientImage/affiliate/CTA. New page-specific compositions do not establish parallel primitives.
+
+Issues found and resolved: old CARTO key watermark (detail style now OpenFreeMap Positron); faint navigation tour label on hero (paper text); repeated same-hash map link (explicit existing-page anchor handling/focus); map resize fit; eager Builder prefetch pulling map chunks (disabled on canonical RoutePlanLink). Final keyboard stop/connection/reset and four-route Builder handoffs pass. Failed-image fixture renders stable place-name fallback. Production console error check returned no entries.
+
+Limitations: local CLS was zero in warm final samples, with an earlier 0.108 desktop first-load outlier retained in the performance report. Hosted staging field performance, native OS reduced-motion switching, analytics ingestion and a full screen-reader/WCAG audit were not performed. Reduced-motion CSS and instant map behavior were inspected; no scroll animation or hijacking is introduced. No unresolved blocking visual or interaction defect identified; no deployment performed.

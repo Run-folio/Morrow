@@ -1,0 +1,122 @@
+- main:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - generic: Morrovia ✦
+  - navigation "Morrovia navigation":
+    - link "New trip":
+      - /url: /journey/new
+      - generic: New trip
+    - link "About":
+      - /url: /journey/about
+    - link "Routes":
+      - /url: /journey/discover
+    - link "Stamps":
+      - /url: /journey/stamped
+    - link "Passport info":
+      - /url: /journey/passport
+    - button "How it works"
+    - link "Sign in":
+      - /url: /journey/dashboard
+    - combobox "Language":
+      - option "EN" [selected]
+      - option "ES"
+  - navigation "Trip brief progress":
+    - button "01 Places":
+      - generic: "01"
+      - generic: Places
+    - button "02 Dates and nights":
+      - generic: "02"
+      - generic: Dates and nights
+  - paragraph: STEP 1 OF 2
+  - heading "Tell us the shape" [level=1]
+  - generic: Check what we understood and fill any gaps.
+  - region "Trip understood":
+    - text: TRIP UNDERSTOOD
+    - heading "Check what we understood." [level=2]
+    - region "YOUR JOURNEY":
+      - strong: YOUR JOURNEY
+      - generic: Starting from
+      - combobox "Starting from": Reykjavík
+      - generic: Ending at
+      - combobox "Ending at": Akureyri
+      - button "Clear journey end":
+        - generic: Clear journey end
+      - group "Journey end options":
+        - button "Same as start"
+      - generic: Start and end guide the route. They are not added as stops.
+    - strong: Stops
+    - button "Add stop":
+      - text: Add stop
+    - generic "Confirmed stops":
+      - button "Remove Reykjavík":
+        - text: 1. Reykjavík
+      - button "Remove Vík":
+        - text: 2. Vík
+      - button "Remove Höfn":
+        - text: 3. Höfn
+      - button "Remove Reykjahlíð":
+        - text: 4. Reykjahlíð
+      - button "Remove Akureyri":
+        - text: 5. Akureyri
+    - region "Preferences picked up":
+      - strong: PREFERENCES WE PICKED UP
+      - generic: 13 days
+      - generic: Nature
+      - generic: Beach
+      - generic: Hiking
+    - region "Trip intent and constraints":
+      - button "Fixed plans · Add something that can’t move"
+  - paragraph: ROUTE CHECK
+  - heading "Your route already flows well." [level=3]
+  - complementary "Trip at a glance":
+    - generic: YOUR TRIP
+    - heading "Your trip at a glance" [level=2]
+    - strong: Dates next
+    - strong: 5 places selected
+    - strong: 2 travellers
+    - list:
+      - generic: "1"
+      - strong: Reykjavík
+      - generic: Stop
+      - generic: "2"
+      - strong: Vík
+      - generic: Stop
+      - generic: "3"
+      - strong: Höfn
+      - generic: Stop
+      - generic: "4"
+      - strong: Reykjahlíð
+      - generic: Stop
+      - generic: "5"
+      - strong: Akureyri
+      - generic: Stop
+    - generic: NEXT
+    - paragraph:
+      - generic: We’ll balance nights
+      - text: around travel time and what’s nearby.
+  - button "Back" [disabled]
+  - status:
+    - text: Changes saved on this device
+  - button "Set dates & nights →"
+- contentinfo:
+  - link "Morrovia home":
+    - /url: /journey/home
+    - text: Morrovia ✦
+  - paragraph: © 2026 Morrovia. All rights reserved.
+  - paragraph: Operated by Shaun Whiting Limited
+  - navigation "Company and legal information":
+    - link "About":
+      - /url: /journey/about
+    - link "Help":
+      - /url: /journey/help
+    - link "Contact":
+      - /url: mailto:sw@shaunwhiting.com
+    - link "Affiliate disclosure":
+      - /url: /journey/affiliate-disclosure
+    - link "Terms":
+      - /url: /journey/terms
+    - link "Privacy":
+      - /url: /journey/privacy
+    - link "Cookie settings":
+      - /url: /journey/cookies#cookie-settings
+- alert: Morrovia · Travel your way

@@ -1,0 +1,401 @@
+{
+  "elapsed": 20001.80000001192,
+  "viewport": [
+    1440,
+    1000
+  ],
+  "lcp": 836,
+  "cls": 0.10834876543209876,
+  "paint": [
+    {
+      "name": "first-paint",
+      "time": 516
+    },
+    {
+      "name": "first-contentful-paint",
+      "time": 516
+    }
+  ],
+  "interactions": [],
+  "resources": [
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/33342f83c66c56c7.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 96040,
+      "duration": 7.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/003e5e588f1a3202.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 4657,
+      "duration": 7.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/fe8854a83e049bc2.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 70065,
+      "duration": 8.400000005960464
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/4f7937cf6e217a12.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 48167,
+      "duration": 8.200000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/d5cc12843cacf210.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 2158,
+      "duration": 8.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/84b5c9697d94b34e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 38428,
+      "duration": 8.900000005960464
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/ae0a16ee2c028b28.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 91435,
+      "duration": 9.300000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/db6d3ab7e1c54f2e.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 23930,
+      "duration": 9.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4bd1b696-100b9d70ed4e49c1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 173025,
+      "duration": 10.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-kyoto-1536.webp",
+      "kind": "link",
+      "bytes": 300,
+      "encoded": 125986,
+      "duration": 13.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/main-app-d2a210caa85b4d87.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 572,
+      "duration": 10.300000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/9da6db1e-9e0a9630dbe1f00a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 254333,
+      "duration": 11
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1255-f5767ca0d1da046a.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 174043,
+      "duration": 10.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/2619-04bc32f026a0d946.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 8564,
+      "duration": 11.900000005960464
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/layout-56701ea76ae7d498.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 16911,
+      "duration": 12.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5542-f131f869ce55f651.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6761,
+      "duration": 12.700000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/error-acb9e9842e2ba7cd.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 2241,
+      "duration": 13.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4736-1d6c60a1a783c355.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 31450,
+      "duration": 13.700000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1540-744009e67f47dca1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 46347,
+      "duration": 15
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/5589-b1aa754af166fbaf.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 10112,
+      "duration": 14.400000005960464
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/4235-f5702e2b1839648b.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 14073,
+      "duration": 15.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/layout-c876b1cf1ac275db.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 6863,
+      "duration": 15.600000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/6258-b803dabc02d301c5.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 336130,
+      "duration": 15.200000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/webpack-4f991cc1cae494e7.js",
+      "kind": "link",
+      "bytes": 5676,
+      "encoded": 5376,
+      "duration": 19.100000023841858
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/routes/%5Bslug%5D/page-718c33afda8903da.js",
+      "kind": "script",
+      "bytes": 20112,
+      "encoded": 19812,
+      "duration": 20.200000017881393
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/home?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 3661,
+      "encoded": 3361,
+      "duration": 5.9000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/about?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 22167,
+      "encoded": 21867,
+      "duration": 188.69999998807907
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/help?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 11376,
+      "encoded": 11076,
+      "duration": 183.2000000178814
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/affiliate-disclosure?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 15259,
+      "encoded": 14959,
+      "duration": 185.80000001192093
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/terms?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 25803,
+      "encoded": 25503,
+      "duration": 192.7000000178814
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/privacy?_rsc=NOxaMowErMSRxUlB",
+      "kind": "fetch",
+      "bytes": 11190,
+      "encoded": 10890,
+      "duration": 188.59999999403954
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/not-found-e43c209009d681f6.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 190,
+      "duration": 0.9000000059604645
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/c7aaf4d1958886af.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 9710,
+      "duration": 1.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/1356-2ed480e29f4f7933.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 13604,
+      "duration": 1.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/help/page-de6cd1d44c1acdcf.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 26346,
+      "duration": 2
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/cookies?_rsc=NOxaMowErMSRxUlB#cookie-settings",
+      "kind": "fetch",
+      "bytes": 18802,
+      "encoded": 18502,
+      "duration": 11.599999994039536
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/f7e3139f895231e2.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 7286,
+      "duration": 0.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/affiliate-disclosure/page-c99112a0fb3fccde.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 2956,
+      "duration": 0.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/about/page-6aa8abf03338586d.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 3346,
+      "duration": 0.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/e416fa544c0d017a.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 8540,
+      "duration": 0.699999988079071
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/terms/page-480c9ea95351e02e.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 3379,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/00d6ab3e20b1e0b6.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 1099,
+      "duration": 0.5
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/css/03a51805e7467245.css",
+      "kind": "link",
+      "bytes": 0,
+      "encoded": 6311,
+      "duration": 0.6000000238418579
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/privacy/page-66c7c01894ccb7a1.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 41759,
+      "duration": 0.5999999940395355
+    },
+    {
+      "name": "http://127.0.0.1:3101/_next/static/chunks/app/journey/cookies/page-1347b5760734d6b6.js",
+      "kind": "script",
+      "bytes": 0,
+      "encoded": 8071,
+      "duration": 0.7000000178813934
+    },
+    {
+      "name": "http://127.0.0.1:3101/journey/immersive/place-tokyo-1536.webp",
+      "kind": "img",
+      "bytes": 300,
+      "encoded": 197920,
+      "duration": 3.300000011920929
+    },
+    {
+      "name": "http://127.0.0.1:3101/api/auth/get-session",
+      "kind": "fetch",
+      "bytes": 304,
+      "encoded": 4,
+      "duration": 28.099999994039536
+    }
+  ],
+  "navigation": {
+    "name": "http://127.0.0.1:3101/journey/routes/japan-slow",
+    "entryType": "navigation",
+    "startTime": 0,
+    "duration": 499.59999999403954,
+    "navigationId": 8948,
+    "initiatorType": "navigation",
+    "deliveryType": "",
+    "nextHopProtocol": "http/1.1",
+    "renderBlockingStatus": "non-blocking",
+    "contentType": "text/html",
+    "contentEncoding": "",
+    "workerStart": 0,
+    "workerRouterEvaluationStart": 0,
+    "workerCacheLookupStart": 0,
+    "workerMatchedSourceType": "",
+    "workerFinalSourceType": "",
+    "redirectStart": 0,
+    "redirectEnd": 0,
+    "fetchStart": 1,
+    "domainLookupStart": 1,
+    "domainLookupEnd": 1,
+    "connectStart": 1,
+    "secureConnectionStart": 0,
+    "connectEnd": 1,
+    "requestStart": 1.7999999821186066,
+    "responseStart": 464.5,
+    "firstInterimResponseStart": 0,
+    "finalResponseHeadersStart": 464.5,
+    "responseEnd": 464.7999999821186,
+    "transferSize": 158073,
+    "encodedBodySize": 157773,
+    "decodedBodySize": 157773,
+    "responseStatus": 200,
+    "serverTiming": [],
+    "unloadEventStart": 0,
+    "unloadEventEnd": 0,
+    "domInteractive": 485.59999999403954,
+    "domContentLoadedEventStart": 485.59999999403954,
+    "domContentLoadedEventEnd": 485.59999999403954,
+    "domComplete": 499.59999999403954,
+    "loadEventStart": 499.59999999403954,
+    "loadEventEnd": 499.59999999403954,
+    "type": "navigate",
+    "redirectCount": 0,
+    "activationStart": 0,
+    "criticalCHRestart": 0,
+    "notRestoredReasons": null,
+    "confidence": null
+  }
+}

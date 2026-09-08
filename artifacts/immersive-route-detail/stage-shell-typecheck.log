@@ -1,0 +1,5 @@
+
+> morrovia@1.0.0 typecheck
+> tsc --noEmit --incremental false
+
+app/journey/routes/[slug]/route-detail-view.tsx(80,101): error TS2322: Type 'Element' is not assignable to type 'string'.

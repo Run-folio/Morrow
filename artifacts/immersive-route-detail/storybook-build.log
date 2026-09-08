@@ -1,0 +1,377 @@
+
+> morrovia@1.0.0 build-storybook
+> npm run storybook:inventory && storybook build
+
+
+> morrovia@1.0.0 storybook:inventory
+> node scripts/generate-storybook-visual-inventory.mjs
+
+Generated components/easyt/storybook/morrovia-visual-inventory.generated.json.
+
+┌  Building storybook v10.5.5
+│
+◇  Cleaning outputDir: storybook-static
+│
+◇  Loading presets
+│
+◇  Building manager..
+│
+●  Building open services..
+│
+●  Building preview..
+│  Vite vite v8.1.5 building client environment for production...
+│
+●  Copying static files: public at storybook-static
+[2Ktransforming...✓ 2541 modules transformed.
+rendering chunks...
+computing gzip size...
+│  Vite storybook-static/iframe.html
+│  19.13 kB │ gzip:   5.31 kB
+│  storybook-static/assets/partner-promotion-Zga8sy3o.css
+│  0.14 kB │ gzip:   0.12 kB
+│  storybook-static/assets/partner-promotion-Clf2xTio.css
+│  0.61 kB │ gzip:   0.28 kB
+│  storybook-static/assets/workspace-orientation-DVFztiSv.css
+│  0.73 kB │ gzip:   0.34 kB
+│  storybook-static/assets/trip-itinerary-workspace-BWv49k62.css
+│  0.79 kB │ gzip:   0.35 kB
+│  storybook-static/assets/home-footer-BK3GGimk.css
+│  0.91 kB │ gzip:   0.34 kB
+│  storybook-static/assets/journey-endpoints-editor-C72uqyer.css
+│  1.28 kB │ gzip:   0.54 kB
+│  storybook-static/assets/workspace-orientation-4dIv45Ht.css
+│  2.13 kB │ gzip:   0.85 kB
+│  storybook-static/assets/live-activity-inventory-DEWZT-RM.css
+│  2.32 kB │ gzip:   0.73 kB
+│  storybook-static/assets/canonical-place-autocomplete-8joxXfJE.css
+│  2.40 kB │ gzip:   0.84 kB
+│  storybook-static/assets/privacy-consent-CUqjjXaH.css
+│  3.15 kB │ gzip:   1.03 kB
+│  storybook-static/assets/journey-trip-quality-ylGhTiAW.css
+│  3.22 kB │ gzip:   0.97 kB
+│  storybook-static/assets/destination-accommodation-module-dmEqSUEj.css
+│  3.67 kB │ gzip:   0.94 kB
+│  storybook-static/assets/trip-preparation-Byf7cYNd.css
+│  3.70 kB │ gzip:   1.09 kB
+│  storybook-static/assets/imported-bookings-BgI0QNiN.css
+│  4.11 kB │ gzip:   1.10 kB
+│  storybook-static/assets/easyt-controls-CJGKPp4q.css
+│  5.43 kB │ gzip:   1.51 kB
+│  storybook-static/assets/trip-authored-day-state-VplEbr7I.css
+│  5.93 kB │ gzip:   1.38 kB
+│  storybook-static/assets/morrovia-trip-capture-C_Ub8vZG.css
+│  6.46 kB │ gzip:   1.71 kB
+│  storybook-static/assets/trip-shell-B3cCJ1kQ.css
+│  7.53 kB │ gzip:   2.08 kB
+│  storybook-static/assets/morrovia-loading-states-DywNP_dO.css
+│  7.68 kB │ gzip:   1.92 kB
+│  storybook-static/assets/easyt-product-tour-VP_RgT7h.css
+│  7.95 kB │ gzip:   2.07 kB
+│  storybook-static/assets/builder-clarification-dialog-DA24rw_5.css
+│  7.96 kB │ gzip:   1.86 kB
+│  storybook-static/assets/about-BjNJe6Xv.css
+│  8.11 kB │ gzip:   1.96 kB
+│  storybook-static/assets/rich-itinerary-day-planner-BaGN8UqW.css
+│  8.81 kB │ gzip:   2.15 kB
+│  storybook-static/assets/easyt-trip-copilot-Bh3cqWuT.css
+│  9.01 kB │ gzip:   2.02 kB
+│  storybook-static/assets/morrovia-storybook-catalogue-KajgsTEo.css
+│  9.10 kB │ gzip:   2.02 kB
+│  storybook-static/assets/help-3XS-Dwtq.css
+│  9.52 kB │ gzip:   2.19 kB
+│  storybook-static/assets/morrovia-feedback-CKk15ryj.css
+│  9.55 kB │ gzip:   2.01 kB
+│  storybook-static/assets/morrovia-feedback-CgqTg50C.css
+│  10.64 kB │ gzip:   2.41 kB
+│  storybook-static/assets/morrovia-quantity-selector-B_LBIVbz.css
+│  10.95 kB │ gzip:   2.42 kB
+│  storybook-static/assets/morrovia-loading-states-DzSagw5j.css
+│  12.64 kB │ gzip:   2.70 kB
+│  storybook-static/assets/easyt-navigation-lahvimja.css
+│  13.24 kB │ gzip:   2.76 kB
+│  storybook-static/assets/spreadsheet-import-review-DQJP_cdj.css
+│  13.61 kB │ gzip:   2.68 kB
+│  storybook-static/assets/dashboard-client-CL6fgIl8.css
+│  13.63 kB │ gzip:   3.18 kB
+│  storybook-static/assets/trip-overview-workspace-BBxlZEoK.css
+│  17.08 kB │ gzip:   3.65 kB
+│  storybook-static/assets/stamped-experience-CeaeDBk5.css
+│  20.33 kB │ gzip:   4.63 kB
+│  storybook-static/assets/route-overview-C21yXdm5.css
+│  20.48 kB │ gzip:   4.35 kB
+│  storybook-static/assets/morrovia-footer-Dil7shyv.css
+│  23.84 kB │ gzip:   5.12 kB
+│  storybook-static/assets/morrovia-product-pattern-catalogue-uU7EJjur.css
+│  28.66 kB │ gzip:   5.64 kB
+│  storybook-static/assets/trip-itinerary-workspace-BSdvOm0q.css
+│  31.86 kB │ gzip:   5.79 kB
+│  storybook-static/assets/account-D9-4RCqj.css
+│  41.98 kB │ gzip:   7.46 kB
+│  storybook-static/assets/iframe-BRBOn31g.css
+│  51.03 kB │ gzip:   9.88 kB
+│  storybook-static/assets/home-C6C5AkLe.css
+│  66.63 kB │ gzip:  12.16 kB
+│  storybook-static/assets/trip-map-workspace-Bdd6_SJ_.css
+│  89.92 kB │ gzip:  14.16 kB
+│  storybook-static/assets/trip-builder-NzFB63sk.css
+│  141.21 kB │ gzip:  22.31 kB
+│  storybook-static/assets/journey-BLjZ77YF.css
+│  171.93 kB │ gzip:  26.36 kB
+│  storybook-static/assets/morrovia-legal-identity-CTf9Uu9p.js
+│  0.39 kB │ gzip:   0.28 kB
+│  storybook-static/assets/private-browser-context-CseP9eMf.js
+│  0.50 kB │ gzip:   0.32 kB
+│  storybook-static/assets/trip-display-DSv4QiCF.js
+│  0.64 kB │ gzip:   0.40 kB
+│  storybook-static/assets/travel-profile-CCjHzNNB.js
+│  0.71 kB │ gzip:   0.41 kB
+│  storybook-static/assets/trip-shell.module-B47Ggp08.js
+│  0.86 kB │ gzip:   0.46 kB
+│  storybook-static/assets/resilient-image-DhYyuNm1.js
+│  0.86 kB │ gzip:   0.55 kB
+│  storybook-static/assets/link-CZkiUIsd.js
+│  1.39 kB │ gzip:   0.80 kB
+│  storybook-static/assets/accommodation-CJwYg56B.js
+│  1.42 kB │ gzip:   0.68 kB
+│  storybook-static/assets/route-detail-photo.stories-DFG2q0KZ.js
+│  1.44 kB │ gzip:   0.69 kB
+│  storybook-static/assets/trip-workspace-links-CqM2Zo6q.js
+│  1.51 kB │ gzip:   0.72 kB
+│  storybook-static/assets/cancun-return-trip.fixture-CT2xvxbS.js
+│  1.58 kB │ gzip:   0.80 kB
+│  storybook-static/assets/abortable-effect-CQ7vTL8m.js
+│  1.74 kB │ gzip:   0.95 kB
+│  storybook-static/assets/partner-promotion.stories-xI5CFsc2.js
+│  1.95 kB │ gzip:   0.85 kB
+│  storybook-static/assets/route-detail-photo-Cbpb0Jn6.js
+│  1.95 kB │ gzip:   0.96 kB
+│  storybook-static/assets/partner-promotion-DRAxgbWz.js
+│  2.11 kB │ gzip:   1.12 kB
+│  storybook-static/assets/morrovia-foundation-catalogue.stories-SNV4FkSv.js
+│  2.21 kB │ gzip:   0.67 kB
+│  storybook-static/assets/easyt-navigation.stories-DdSrUWSM.js
+│  2.31 kB │ gzip:   0.85 kB
+│  storybook-static/assets/preload-helper-CmHZQJgV.js
+│  2.55 kB │ gzip:   1.31 kB
+│  storybook-static/assets/trip-overview-workspace.module-CuwRvDuL.js
+│  2.65 kB │ gzip:   1.09 kB
+│  storybook-static/assets/live-activity-inventory.stories-oHpgI1vS.js
+│  2.68 kB │ gzip:   1.22 kB
+│  storybook-static/assets/route-overview.module-CpGHZjvT.js
+│  2.69 kB │ gzip:   1.21 kB
+│  storybook-static/assets/home-trip-handoff-CsydITow.js
+│  3.00 kB │ gzip:   1.31 kB
+│  storybook-static/assets/morrovia-audit-catalogue.stories-CdpoCp18.js
+│  3.47 kB │ gzip:   0.89 kB
+│  storybook-static/assets/easyt-trip-copilot.stories-C88hSigT.js
+│  3.65 kB │ gzip:   1.60 kB
+│  storybook-static/assets/journey-readiness-and-decisions.stories-DFqOYw_s.js
+│  3.74 kB │ gzip:   1.31 kB
+│  storybook-static/assets/i18n-DnmB_J3T.js
+│  3.81 kB │ gzip:   1.71 kB
+│  storybook-static/assets/trip-facts-Cx53Shk-.js
+│  3.96 kB │ gzip:   1.64 kB
+│  storybook-static/assets/journey-endpoints-editor.stories-C7VW7qwG.js
+│  4.06 kB │ gzip:   1.43 kB
+│  storybook-static/assets/trip-shell-v6snI8z_.js
+│  4.10 kB │ gzip:   1.44 kB
+│  storybook-static/assets/trip-mutation-persistence-DmLncUZ8.js
+│  4.13 kB │ gzip:   1.73 kB
+│  storybook-static/assets/home-trip-starter.stories-CF-wWnUX.js
+│  4.47 kB │ gzip:   2.10 kB
+│  storybook-static/assets/morrovia-structure-catalogue.stories-BzBL6QrU.js
+│  4.61 kB │ gzip:   1.43 kB
+│  storybook-static/assets/trip-itinerary-workspace.module-NdX-jT-_.js
+│  4.72 kB │ gzip:   1.88 kB
+│  storybook-static/assets/journey-endpoints-B-dgEVWT.js
+│  4.83 kB │ gzip:   1.89 kB
+│  storybook-static/assets/journey-endpoints-editor-KOzraSC5.js
+│  5.18 kB │ gzip:   1.67 kB
+│  storybook-static/assets/account.module-CQRa4jL8.js
+│  5.19 kB │ gzip:   2.04 kB
+│  storybook-static/assets/itinerary-ideas-Bmc8QW6H.js
+│  5.92 kB │ gzip:   1.87 kB
+│  storybook-static/assets/journey-trip-quality-RiSG3s9q.js
+│  6.00 kB │ gzip:   2.24 kB
+│  storybook-static/assets/tour-trip.fixture-DIu9Oi1S.js
+│  6.07 kB │ gzip:   2.36 kB
+│  storybook-static/assets/home.module-1DUBys3O.js
+│  6.23 kB │ gzip:   2.24 kB
+│  storybook-static/assets/trip-shell.stories-xmsDYIVP.js
+│  6.36 kB │ gzip:   1.80 kB
+│  storybook-static/assets/trip-DFqB5vo_.js
+│  6.43 kB │ gzip:   2.33 kB
+│  storybook-static/assets/privacy-consent.stories-D231OJFG.js
+│  6.52 kB │ gzip:   2.34 kB
+│  storybook-static/assets/affiliate-link-DwhVHSxz.js
+│  6.61 kB │ gzip:   2.59 kB
+│  storybook-static/assets/trip-shell-client-Dz0Ut3eE.js
+│  6.72 kB │ gzip:   2.76 kB
+│  storybook-static/assets/morrovia-foundations.stories-NBh6e9zi.js
+│  6.91 kB │ gzip:   1.78 kB
+│  storybook-static/assets/morrovia-status-catalogue.stories-UpMyV1E0.js
+│  6.97 kB │ gzip:   2.25 kB
+│  storybook-static/assets/trip-preparation-CBDTSWmI.js
+│  7.04 kB │ gzip:   2.50 kB
+│  storybook-static/assets/home-footer.stories-CqJrW_pm.js
+│  7.15 kB │ gzip:   2.88 kB
+│  storybook-static/assets/react-DvZPL8cA.js
+│  7.44 kB │ gzip:   2.87 kB
+│  storybook-static/assets/workspace-orientation.stories-C3JFeBwQ.js
+│  7.60 kB │ gzip:   2.08 kB
+│  storybook-static/assets/easyt-controls.stories-DN1MYENR.js
+│  7.75 kB │ gzip:   2.10 kB
+│  storybook-static/assets/destination-accommodation-module.stories-iAYfIOgP.js
+│  8.19 kB │ gzip:   2.31 kB
+│  storybook-static/assets/morrovia-loading-states-CBkHD_hL.js
+│  8.37 kB │ gzip:   2.51 kB
+│  storybook-static/assets/morrovia-footer.stories-C2BRId3Y.js
+│  8.41 kB │ gzip:   3.24 kB
+│  storybook-static/assets/morrovia-trip-capture.stories-r8f2x-uW.js
+│  8.92 kB │ gzip:   2.56 kB
+│  storybook-static/assets/map-spatial-context-Bpb9hux7.js
+│  9.02 kB │ gzip:   3.71 kB
+│  storybook-static/assets/about.stories-D9Ik2dw-.js
+│  9.18 kB │ gzip:   3.09 kB
+│  storybook-static/assets/easyt-controls-CFpU1sM5.js
+│  9.37 kB │ gzip:   2.29 kB
+│  storybook-static/assets/canonical-place-autocomplete-BgftcReH.js
+│  9.95 kB │ gzip:   3.47 kB
+│  storybook-static/assets/easyt-product-tour-DyDFjuqx.js
+│  10.64 kB │ gzip:   3.78 kB
+│  storybook-static/assets/itinerary-day-composition-BkV1n5z1.js
+│  10.66 kB │ gzip:   3.48 kB
+│  storybook-static/assets/journey.module-B9j7HD-_.js
+│  10.84 kB │ gzip:   3.84 kB
+│  storybook-static/assets/morrovia-form-controls.stories-BKkpbwDL.js
+│  11.08 kB │ gzip:   2.58 kB
+│  storybook-static/assets/easyt-navigation-PKjerRp1.js
+│  11.38 kB │ gzip:   3.16 kB
+│  storybook-static/assets/travel-readiness-BLFf0dqo.js
+│  12.12 kB │ gzip:   4.88 kB
+│  storybook-static/assets/morrovia-feedback-D-tMOVvq.js
+│  12.13 kB │ gzip:   3.33 kB
+│  storybook-static/assets/workspace-orientation-CEqwE0Al.js
+│  13.38 kB │ gzip:   4.92 kB
+│  storybook-static/assets/live-activity-inventory-BPg9gQ8t.js
+│  13.43 kB │ gzip:   5.21 kB
+│  storybook-static/assets/morrovia-quantity-selector-BVILxH7o.js
+│  13.51 kB │ gzip:   4.69 kB
+│  storybook-static/assets/rich-itinerary-day-planner.stories-nJdf96Dk.js
+│  14.79 kB │ gzip:   4.14 kB
+│  storybook-static/assets/trip-builder.module-4-etOhky.js
+│  14.84 kB │ gzip:   5.19 kB
+│  storybook-static/assets/profile-form.stories-C0M7Gsdh.js
+│  15.17 kB │ gzip:   4.98 kB
+│  storybook-static/assets/easyt-trip-copilot-BC0Iu5SA.js
+│  15.21 kB │ gzip:   5.82 kB
+│  storybook-static/assets/route-images-Li6GxEZo.js
+│  15.44 kB │ gzip:   2.88 kB
+│  storybook-static/assets/image-Cg8-HnCg.js
+│  15.67 kB │ gzip:   5.95 kB
+│  storybook-static/assets/imported-bookings.stories-C5Tk02Zm.js
+│  15.98 kB │ gzip:   5.63 kB
+│  storybook-static/assets/destination-accommodation-module-3i0QNiQV.js
+│  15.99 kB │ gzip:   5.56 kB
+│  storybook-static/assets/builder-clarification-dialog-DYMgdN8i.js
+│  16.35 kB │ gzip:   3.78 kB
+│  storybook-static/assets/rich-itinerary-day-planner-0oS19YUm.js
+│  16.82 kB │ gzip:   4.98 kB
+│  storybook-static/assets/morrovia-trip-capture-RtrewbLF.js
+│  18.07 kB │ gzip:   6.63 kB
+│  storybook-static/assets/help.stories-C3h9rTUh.js
+│  21.96 kB │ gzip:   7.36 kB
+│  storybook-static/assets/structured-trip-brief-C3pRqicg.js
+│  22.60 kB │ gzip:   7.43 kB
+│  storybook-static/assets/storage-B3bL98TS.js
+│  23.32 kB │ gzip:   7.32 kB
+│  storybook-static/assets/morrovia-feedback.stories-DAvuie4G.js
+│  24.42 kB │ gzip:   6.77 kB
+│  storybook-static/assets/src-DWOicgKn.js
+│  24.48 kB │ gzip:   9.41 kB
+│  storybook-static/assets/journey-DeGxYGFb.js
+│  24.99 kB │ gzip:   7.65 kB
+│  storybook-static/assets/morrovia-loading-states.stories-B52oLh3u.js
+│  25.64 kB │ gzip:   6.82 kB
+│  storybook-static/assets/trip-builder-review.stories-DR-jIZ-f.js
+│  27.06 kB │ gzip:   5.39 kB
+│  storybook-static/vite-inject-mocker-entry.js
+│  27.81 kB │ gzip:   9.63 kB
+│  storybook-static/assets/matchers-JIUQ3HVY-j_F81Mde.js
+│  28.76 kB │ gzip:   9.66 kB
+│  storybook-static/assets/builder-clarification-dialog.stories-Cq0l5o1Q.js
+│  31.70 kB │ gzip:   5.71 kB
+│  storybook-static/assets/lucide-react-Dm7WK6YS.js
+│  33.45 kB │ gzip:  11.17 kB
+│  storybook-static/assets/morrovia-product-pattern-catalogue.stories-CBn_OLls.js
+│  35.43 kB │ gzip:  11.47 kB
+│  storybook-static/assets/review-DJIF3Ipj.js
+│  37.77 kB │ gzip:  11.20 kB
+│  storybook-static/assets/spreadsheet-import-review.stories-_lZZFlZj.js
+│  38.96 kB │ gzip:  11.60 kB
+│  storybook-static/assets/route-detail-view.stories-CeE1-z90.js
+│  39.40 kB │ gzip:  10.72 kB
+│  storybook-static/assets/stamped-experience.stories-BWmPL0NO.js
+│  39.85 kB │ gzip:  11.71 kB
+│  storybook-static/assets/dashboard-client.stories-BlwqZRsF.js
+│  40.06 kB │ gzip:  13.02 kB
+│  storybook-static/assets/public-route-handoff-D6grN3FV.js
+│  40.19 kB │ gzip:  13.15 kB
+│  storybook-static/assets/trip-overview-workspace.stories-D39sV5aM.js
+│  46.87 kB │ gzip:  13.75 kB
+│  storybook-static/assets/trip-itinerary-workspace.stories-DhnftWg2.js
+│  50.37 kB │ gzip:  10.49 kB
+│  storybook-static/assets/trip-authored-day-state-2SW5eWq8.js
+│  56.17 kB │ gzip:  12.98 kB
+│  storybook-static/assets/trip-itinerary-workspace-BW4ifbTa.js
+│  60.08 kB │ gzip:  17.87 kB
+│  storybook-static/assets/trip-legs-C-P8YJoi.js
+│  78.63 kB │ gzip:  22.60 kB
+│  storybook-static/assets/place-intelligence-DVka00yt.js
+│  158.73 kB │ gzip:  47.48 kB
+│  storybook-static/assets/journey-patterns.stories-11PFTvJ-.js
+│  165.78 kB │ gzip:  51.02 kB
+│  storybook-static/assets/react-18-bcZPpijR.js
+│  177.29 kB │ gzip:  55.89 kB
+│  storybook-static/assets/morrovia-storybook-catalogue-C_bwL8hx.js
+│  189.13 kB │ gzip:  28.27 kB
+│  storybook-static/assets/journey-planner-map-DjK35LHa.js
+│  203.68 kB │ gzip:  62.24 kB
+│  storybook-static/assets/analytics-C6M_pN7B.js
+│  256.19 kB │ gzip:  86.04 kB
+│  storybook-static/assets/trip-map-workspace.stories-DHgNYlsW.js
+│  324.14 kB │ gzip:  99.59 kB
+│  storybook-static/assets/axe-0JpjV3b2.js
+│  579.35 kB │ gzip: 158.45 kB
+│  storybook-static/assets/countries-50m-BPC_0WnR.js
+│  758.19 kB │ gzip: 243.74 kB
+│  storybook-static/assets/maplibre-gl-DBejxHeB.js
+│  972.05 kB │ gzip: 252.16 kB
+│  storybook-static/assets/iframe-CA5YAW-T.js
+│  1,289.48 kB │ gzip: 362.92 kB
+
+│
+▲  Vite [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins.
+│  Here is a breakdown:
+│  - storybook:project-annotations-plugin (40%)
+│  - storybook:mock-loader (33%)
+│  - vite-plugin-storybook-nextjs-dynamic (8%)
+│  - vite-plugin-storybook-nextjs-swc (5%)
+│  - plugin-csf (5%)
+│  See ]8;;https://rolldown.rs/reference/InputOptions.checks#plugintimingshttps://rolldown.rs/reference/InputOptions.checks#plugintimings]8;;
+│  for more details.
+
+│
+▲  Vite [plugin builtin:vite-reporter]
+│  (!) Some chunks are larger than 500 kB after minification. Consider:
+│  - Using dynamic import() to code-split the application
+│  - Use build.rolldownOptions.output.codeSplitting to improve chunking:
+│  ]8;;https://rolldown.rs/reference/OutputOptions.codeSplittinghttps://rolldown.rs/reference/OutputOptions.codeSplitting]8;;
+│  - Adjust chunk size limit for this warning via
+│  build.chunkSizeWarningLimit.
+│  Vite ✓ built in 10.64s
+│
+◇  Output directory: /Users/shaun/Documents/Morrovia/storybook-static
+│
+└  Storybook build completed successfully
+

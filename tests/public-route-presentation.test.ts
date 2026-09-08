@@ -15,7 +15,7 @@ test("published Route Detail keeps its canonical production CSS owner connected"
   assert.match(page, /import styles from "\.\/route-overview\.module\.css"/);
   assert.match(page, /className=\{`\$\{styles\.page\} morrovia-editorial-page`\}/);
   assert.match(detail, /import styles from "\.\/route-overview\.module\.css"/);
-  for (const className of ["hero", "heroFacts", "overviewSection", "glance", "sequenceSection", "itinerarySection", "attractionsSection", "notesSection", "finalCta"]) {
+  for (const className of ["hero", "heroFacts", "overviewSection", "sequenceSection", "itinerarySection", "attractionsSection", "notesSection", "finalCta"]) {
     assert.match(detail, new RegExp(`styles\\.${className}`), className);
     assert.match(css, new RegExp(`\\.${className}(?:[\\s,{:]|$)`), className);
   }

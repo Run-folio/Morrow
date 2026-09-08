@@ -46,7 +46,6 @@ export default async function RouteOverviewPage({ params }: { params: Promise<{ 
   }
 
   return <main className={`${styles.page} morrovia-editorial-page`}>
-    <EasyTNavigation current="routes" account={session?.user ? { id: session.user.id, name: session.user.name, email: session.user.email, language: preferences?.language } : undefined} />
-    <RouteDetailView detail={detail} />
+    <RouteDetailView detail={detail} hiddenRouteKeys={controls.filter(control => control.published === false).map(control => control.routeKey)} navigation={<EasyTNavigation current="routes" deferPrefetch account={session?.user ? { id: session.user.id, name: session.user.name, email: session.user.email, language: preferences?.language } : undefined} />} />
   </main>;
 }

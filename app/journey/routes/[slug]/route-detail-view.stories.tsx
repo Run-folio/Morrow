@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import EasyTNavigation from "../../easyt-navigation";
 import { publicRouteDetailFor, type PublicRouteDetail } from "@/lib/easyt/public-route";
 import RouteDetailView from "./route-detail-view";
 import { affiliatePartners, getActivityBookingAction } from "@/lib/easyt/booking-readiness";
@@ -35,7 +34,7 @@ const meta = {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/routes/andean-highlands" } },
   },
-  decorators: [(Story) => <main className={`${styles.page} morrovia-editorial-page`}><EasyTNavigation current="routes" /><Story /></main>],
+  decorators: [(Story) => <main className={`${styles.page} morrovia-editorial-page`}><Story /></main>],
   args: { detail: andean },
 } satisfies Meta<typeof RouteDetailView>;
 
@@ -63,3 +62,12 @@ export const JapanFiveStopEditorialReview: Story = { args: { detail: publicRoute
 export const BalkansEditorialReview: Story = { args: { detail: publicRouteDetailFor("balkans-overland")! } };
 export const VietnamCambodiaEditorialReview: Story = { args: { detail: publicRouteDetailFor("vietnam-cambodia")! } };
 export const IcelandEditorialReview: Story = { args: { detail: publicRouteDetailFor("iceland-ring-road")! } };
+
+export const SelectedJapanStop: Story = { args: { detail: publicRouteDetailFor("japan-slow")!, initialMapSelection: { type: "stop", index: 2 } } };
+export const SelectedBalkansConnection: Story = { args: { detail: publicRouteDetailFor("balkans-overland")!, initialMapSelection: { type: "connection", index: 0 } } };
+export const UnknownSelectedTransfer: Story = { args: { detail: unknownTransfers, initialMapSelection: { type: "connection", index: 0 } } };
+export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const Desktop1920: Story = {
+  parameters: { viewport: { options: { morrovia1920: { name: "1920", styles: { width: "1920px", height: "1080px" } } } } },
+  globals: { viewport: { value: "morrovia1920", isRotated: false } },
+};
