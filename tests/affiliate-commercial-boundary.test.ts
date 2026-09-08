@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 test("one canonical nearby disclosure covers commission and the third-party booking boundary", () => {
   const shared = read("components/easyt/affiliate-link.tsx");
   const renderers = [
-    "app/journey/home/home-footer.tsx",
+    "app/journey/home/immersive/affiliate-chapter.tsx",
     "components/easyt/destination-accommodation-module.tsx",
     "components/easyt/trip-itinerary-workspace.tsx",
     "components/easyt/trip-overview-workspace.tsx",
@@ -83,13 +83,10 @@ test("affiliate economics are absent from route and recommendation ranking", () 
 });
 
 test("commercial Storybook coverage includes public, signed-in, 390px and desktop states", () => {
-  const home = read("app/journey/home/home-footer.stories.tsx");
   const overview = read("components/easyt/trip-overview-workspace.stories.tsx");
   const itinerary = read("components/easyt/trip-itinerary-workspace.stories.tsx");
   const map = read("components/easyt/trip-map-workspace.stories.tsx");
 
-  assert.match(home, /Mobile390/);
-  assert.match(home, /Desktop1440/);
   assert.match(overview, /ownerId: "storybook-traveller"/);
   assert.match(overview, /ProviderUnavailable/);
   assert.match(overview, /Mobile390/);

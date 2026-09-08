@@ -1,6 +1,6 @@
 # Immersive homepage implementation
 
-> **Current status, 2026-09-08:** the approved four-route homepage, canonical route publication, Builder `journeyEnd` repair and image-backed semantic footer are merged locally into `staging`. The switch remains default-OFF and `.env.staging.example` explicitly records `false`. No push, deployment or remote flag change was performed. See [route publication](immersive-route-publication.md) and [footer verification](immersive-footer-integration.md).
+> **Current status, 2026-09-08:** the approved four-route homepage, canonical route publication, Builder `journeyEnd` repair and image-backed semantic footer are on `staging`. The immersive composition is now the canonical `/journey/home` implementation and needs no environment selection. This cleanup has not been pushed or deployed. See [route publication](immersive-route-publication.md) and [footer verification](immersive-footer-integration.md).
 
 The staging review below records the earlier incomplete state at commit `b5f6cd8` and is retained as historical implementation evidence. Its default-on setting, content blockers and acceptance totals have been superseded by the current reports above.
 
@@ -118,8 +118,8 @@ After the gaps above are resolved and the user explicitly requests deployment:
 2. Re-run the focused suites, `npm run test:public-routes`, `npm run typecheck`, `npm run build:check`, `npm run audit:ui`, `npm run build-storybook`, `npm run release:gate` and `git diff --check`.
 3. Verify the existing isolated staging deploy and its environment against [staging-e2e.md](staging-e2e.md). Confirm the staging-only host/database/auth configuration and `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=preview`. No provider secrets or production environment values should be copied as part of this homepage change.
 4. Only with explicit deployment authorization, `git push origin staging`, then trigger/confirm the existing protected staging branch deployment at the reviewed SHA. Repository documentation specifies a Netlify staging deployment; this task did not verify a live site ID or change host configuration.
-5. Run `npm run staging:preflight` using staging-only configuration, then the homepage functional/consent/device matrix at `https://staging.morrovia.com/journey/home`. Confirm default immersive presentation and explicit-false fallback. Do not seed/reset data unless that separate QA workflow is authorized.
-6. Record deployed SHA, checks and screenshots for review. Rollback: set `IMMERSIVE_HOMEPAGE_V2=false` on the staging deployment and redeploy its approved SHA. Do not merge to main or deploy production as part of this staging step.
+5. Run `npm run staging:preflight` using staging-only configuration, then the homepage functional/consent/device matrix at `https://staging.morrovia.com/journey/home`. Confirm the canonical immersive presentation. Do not seed/reset data unless that separate QA workflow is authorized.
+6. Record deployed SHA, checks and screenshots for review. Roll back by redeploying the last approved staging SHA. Do not merge to main or deploy production as part of this staging step.
 
 ## Capability parity checklist
 

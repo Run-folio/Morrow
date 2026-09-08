@@ -5,7 +5,7 @@ import { affiliateClickEventForAction } from "../lib/easyt/affiliate-click.ts";
 import { affiliatePartners, getCurrentPartnerAction } from "../lib/easyt/booking-readiness.ts";
 
 test("the homepage Saily handoff is attributable, disclosed and privacy-safe", () => {
-  const home = readFileSync("app/journey/home/home-footer.tsx", "utf8");
+  const home = readFileSync("app/journey/home/immersive/affiliate-chapter.tsx", "utf8");
   const link = readFileSync("components/easyt/affiliate-link.tsx", "utf8");
   const event = readFileSync("lib/easyt/affiliate-click.ts", "utf8");
   const action = getCurrentPartnerAction("connectivity");
@@ -24,9 +24,10 @@ test("the homepage Saily handoff is attributable, disclosed and privacy-safe", (
       destination_count: undefined,
     },
   });
-  assert.match(home, /getCurrentPartnerAction\(category\)/);
-  assert.match(home, /<MorroviaAffiliateLink action=\{action\} context=\{\{ placement \}\}/);
-  assert.match(home, /<small className=\{styles\.partnerDisclosure\}>\{affiliateDisclosure\}<\/small>/);
+  assert.match(home, /getCurrentPartnerAction\(need\.category\)/);
+  assert.match(home, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta:/);
+  assert.match(home, /context=\{\{ placement: need\.placement \}\}/);
+  assert.match(home, /styles\.partnerDisclosure[^]*affiliateDisclosure/);
   assert.match(link, /target="_blank"/);
   assert.match(link, /rel="sponsored noopener noreferrer"/);
   assert.match(link, /Partner link · Morrovia may earn a commission at no extra cost to you/);

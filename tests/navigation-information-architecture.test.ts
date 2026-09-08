@@ -25,13 +25,13 @@ test("global desktop and compact navigation consolidate About and the existing T
   assert.match(tour, /dispatchOpen\) \{ window\.dispatchEvent\(new Event\(PRODUCT_TOUR_OPEN_EVENT\)\); return; \}/);
 });
 
-test("the homepage process section and its in-content Discover link remain intact", () => {
-  const proof = read("app/journey/home/home-proof.tsx");
+test("the canonical homepage route story and its reciprocal Discover link remain intact", () => {
+  const routes = read("app/journey/home/immersive/route-chapters.tsx");
   const discovery = read("app/journey/discover/page.tsx");
 
-  assert.match(proof, /id="how-it-works"/);
-  assert.match(proof, /A clearer path from idea to itinerary/);
-  assert.match(discovery, /href="\/journey\/home#how-it-works"/);
+  assert.match(routes, /id="routes"/);
+  assert.match(routes, /href="\/journey\/discover"/);
+  assert.match(discovery, /href="\/journey\/home#routes"/);
 });
 
 test("the navigation Storybook fixture exercises the App Router and active About state", () => {

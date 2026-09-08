@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { immersiveHomepageEnabled } from "../lib/easyt/immersive-homepage-config.ts";
 import { immersiveHomepageRoutes, initialImmersiveRouteIndex, nextHomepageRoute, routeScrollCorrection } from "../lib/easyt/immersive-homepage-routes.ts";
 import { isPublishedPublicRouteKey, publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { createHomepageDemo, homepageDemoReducer, homepageDemoDay } from "../lib/easyt/homepage-demo.ts";
@@ -9,12 +8,24 @@ import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.
 import { homepageRouteView } from "../lib/easyt/homepage-navigation.ts";
 import { existsSync } from "node:fs";
 
-test("homepage switch fails closed, without browser-dependent routing", () => {
-  for (const value of [undefined, "", "false", "1", "TRUE"]) assert.equal(immersiveHomepageEnabled(value), false);
-  assert.equal(immersiveHomepageEnabled("true"), true);
+test("journey homepage renders the immersive composition without runtime selection", () => {
   const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
-  assert.match(page, /process\.env\.IMMERSIVE_HOMEPAGE_V2/);
+  const loading = readFileSync(new URL("../app/journey/home/loading.tsx", import.meta.url), "utf8");
+  const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
+  assert.match(page, /<ImmersiveHome routes=\{journeys\}/);
   assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
+  assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled|HomeBenefits|InspirationExplorer/);
+  assert.doesNotMatch(loading, /process\.env|immersiveHomepageEnabled/);
+  assert.match(layout, /<MorroviaFooter omitOnImmersiveHome \/>/);
+  assert.doesNotMatch(layout, /process\.env|immersiveHomepageEnabled/);
+});
+
+test("server-selected route index hydrates without client rerandomisation", () => {
+  const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
+  assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
+  assert.match(client, /useState\(initialIndex\)/);
+  assert.doesNotMatch(client, /Math\.random/);
 });
 test("route chapters cannot publish prototype data or silently change canonical Japan", () => {
   for (const route of immersiveHomepageRoutes()) {
@@ -96,7 +107,8 @@ test("affiliate chapter delegates clicks to canonical owner without writing read
   assert.match(source, /getCurrentPartnerAction\(need.category\)/);
   assert.match(source, /<MorroviaAffiliateLink/);
   assert.doesNotMatch(source, /trackEvent|localStorage|setBooked|repository|fetch\(/);
-  assert.equal((source.match(/Partner links · Morrovia may earn/g) ?? []).length, 1);
+  assert.equal((source.match(/styles\.partnerDisclosure/g) ?? []).length, 1);
+  assert.match(source, /affiliateDisclosure/);
 });
 
 

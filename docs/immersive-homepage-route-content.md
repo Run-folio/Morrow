@@ -2,7 +2,7 @@
 
 # Immersive homepage route-content decision — 2026-09-07
 
-**All four approved journeys remain HOLD. Feature default-OFF. No publication, push, deployment or staging enablement.** The three reported trust failures are stale endpoint assertions, now corrected with stronger ordered-transfer and persistence checks. No route engine repair was necessary. This report supersedes the unresolved trust classification in the homepage implementation report, but does not replace its visual acceptance work.
+**Historical pre-publication review:** all four journeys were held at this point and no publication, push or deployment occurred. The three reported trust failures were stale endpoint assertions, corrected with stronger ordered-transfer and persistence checks. No route engine repair was necessary. This report superseded the unresolved trust classification in the homepage implementation report, but does not replace its visual acceptance work.
 
 ## 1. Starting state
 
@@ -94,7 +94,7 @@ These are **structural draft** checks. Allocated nights come from the current al
 
 ## 13. Route Detail HTTP/render
 
-Local optimized default-off server, `/journey/routes/<key>`:
+Historical local optimized review server, `/journey/routes/<key>`:
 
 - Japan: HTTP 200, real route identity and Builder CTA, no not-found marker; existing three-stop content only. Legacy hero rights remain a release gap.
 - Balkans, Vietnam/Cambodia, Iceland: streamed HTTP 200 containing `NEXT_HTTP_ERROR_FALLBACK;404`, `noindex`, and no Builder CTA. These are **not-found pages**, not successful published details. The distinction is captured in `http-results.json`.
@@ -126,7 +126,7 @@ All four are HOLD under the release contract. Required reviewer and night guidan
 
 ## 20. Configuration/migration
 
-No migration, dependency, environment or publication-control change. Default-off implementation unchanged: only literal `"true"` enables the feature. Local preview explicitly sets `IMMERSIVE_HOMEPAGE_V2=false`. Staging branch preserved. No push/deploy.
+This historical content pass made no migration, dependency, environment or publication-control change. Its temporary homepage gating has since been removed. Staging branch was preserved and no push/deploy occurred during that pass.
 
 ## 21. Readiness
 

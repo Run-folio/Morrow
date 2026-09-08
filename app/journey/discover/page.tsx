@@ -39,7 +39,7 @@ export default async function DiscoveryPage() {
           <p>Thoughtfully routed multi-stop trips to iconic places and unforgettable regions.</p>
           <div className={styles.heroActions}>
             <EasyTLinkButton className={styles.primaryAction} href="#discover-routes" icon={ArrowRight}>Explore routes</EasyTLinkButton>
-            <Link className={styles.secondaryAction} href="/journey/home#how-it-works">How it works</Link>
+            <Link className={styles.secondaryAction} href="/journey/home#routes">How it works</Link>
           </div>
         </div>
         {featured && <article className={styles.featuredCard}>

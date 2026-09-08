@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BedDouble, Compass, Route, Wifi } from "lucide-react";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
-import { MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
+import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { affiliateProviderLabel, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { homepageAffiliateImage } from "@/lib/easyt/homepage-affiliate-imagery";
@@ -47,6 +47,6 @@ export default function AffiliateChapter({ routeKey }: { routeKey: string }) {
       const Icon = need.icon;
       return <div key={need.category} data-active={active === index} onPointerEnter={() => setActive(index)} onFocusCapture={() => setActive(index)}><Icon aria-hidden="true" /><div><EasyTButton variant="quiet" className={styles.needSelect} aria-pressed={active === index} onClick={() => setActive(index)}>{es ? need.es : need.label}</EasyTButton>{action ? <><MorroviaAffiliateLink action={{ ...action, cta: es ? need.ctaEs : need.cta }} context={{ placement: need.placement }} variant="quiet" /><small>{affiliateProviderLabel(action.provider)}{need.category === "transport" ? (es ? " · cobertura según ruta" : " · coverage varies by route") : ""}</small></> : <p>{es ? "Opciones no disponibles" : "Options currently unavailable"}</p>}</div></div>;
     })}</div></div>
-    <p className={styles.partnerDisclosure}>{es ? "Enlaces de socios · Morrovia puede recibir una comisión sin coste adicional para ti." : "Partner links · Morrovia may earn a commission at no extra cost to you."}</p>
+    <p className={styles.partnerDisclosure}>{es ? "Enlaces de socios · Morrovia puede recibir una comisión sin coste adicional para ti." : affiliateDisclosure}</p>
   </section>;
 }

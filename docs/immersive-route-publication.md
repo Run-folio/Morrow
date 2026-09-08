@@ -4,7 +4,7 @@
 
 Shaun Whiting explicitly approved the four candidates in this task as independent editorial reviewer, including minimum/recommended nights, duration ranges, source limitations, transport unknowns and licensed image associations. Codex remains researcher/content preparer. The [approval pack](immersive-four-route-editorial-approval.md) preserves the approved proposal and preceding historical audit.
 
-Publication is local only on `codex/immersive-homepage`, starting SHA `846f3f3e1ff20bd30dbe7ad0fa6120080056b582`. No push, deployment, staging branch change or staging flag enablement. The application flag still defaults OFF. An explicit `IMMERSIVE_HOMEPAGE_V2=true` override was used only on the local acceptance server at port 8873.
+Publication was originally completed locally on `codex/immersive-homepage`, starting SHA `846f3f3e1ff20bd30dbe7ad0fa6120080056b582`, without a push or deployment. The temporary runtime selection used by that acceptance server has since been removed; deployment of code containing the immersive homepage now selects it directly.
 
 ## Published records
 

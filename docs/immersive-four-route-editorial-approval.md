@@ -2,7 +2,7 @@
 
 # Four-route editorial approval pack
 
-2026-09-07 · Starting SHA: `846f3f3e1ff20bd30dbe7ad0fa6120080056b582` · Branch: `codex/immersive-homepage`. Staging remains at `b5f6cd8`; no push, deployment or flag enablement.
+2026-09-07 · Starting SHA: `846f3f3e1ff20bd30dbe7ad0fa6120080056b582` · Branch: `codex/immersive-homepage`. Staging remained at `b5f6cd8`; no push or deployment.
 
 **FOUR ROUTES CONTENT-COMPLETE — AWAITING EDITORIAL SIGN-OFF**
 
@@ -28,7 +28,7 @@ Duration is calendar days (nights + one); values are minimum / proposed default 
 - For Iceland specifically, approve adding Höfn, using Reykjahlíð as the Mývatn overnight base, renaming the route **Iceland, south coast to the north**, and ending in Akureyri without an included return to Reykjavík. The existing slug stays unchanged; this is not a full Ring Road circuit. The rename was reported before finalization.
 - Accept each explicit transport unknown and source limitation. No exact journey time, direct service, border clearance, live availability or winter feasibility is certified.
 - Approve the licensed imagery associations and retained attribution/licence/change notices in the [imagery audit](immersive-route-imagery-audit.md).
-- Confirm Shaun as the independent editorial reviewer, distinct from Codex as researcher/content preparer, and authorize local publication of these four canonical candidates. Staging deployment/flag enablement is a separate next step.
+- Confirm Shaun as the independent editorial reviewer, distinct from Codex as researcher/content preparer, and authorize local publication of these four canonical candidates. Staging deployment is a separate next step.
 
 Until that approval, each independent-review field is **READY FOR SHAUN EDITORIAL SIGN-OFF**. The field is intentionally absent in the runtime record, so publication cannot occur through a confidence change alone.
 
@@ -265,6 +265,6 @@ Hero: `/journey/immersive/place-vik-1536.webp`; Andrea Schaffer · CC BY 2.0 · 
 27. **Tests:** public-route aggregate **37/37**; immersive/homepage/content **20/20**; rail/endpoint/place controls **62/62**. Logs are in `artifacts/immersive-route-completion/`. The aggregate includes trust, release, detail/presentation, handoff, SEO, homepage routes and discovery.
 28. **Static/build/UI:** typecheck, final production build, strict UI audit, Storybook build and `git diff --check` pass. Existing RouteHeroImage/RouteStopImage attribution treatments and EasyTLinkButton reused; four editorial stories added; no new shared primitive, style token, typography or homepage composition. Local Storybook visual review covers canonical images/copy on desktop and 390px previews. Some CARTO basemap tiles show the provider's API-key-required watermark in Storybook; route geometry/labels are present. This external basemap/configuration limitation is not fixed or certified by this content task and should be checked in staging acceptance.
 29. **Remaining human approval:** approve the exact six-item checklist above. Night guidance is authored, not independently reviewed yet. Publication/reviewer metadata will be recorded only after explicit approval.
-30. **Staging flag:** **do not enable yet**. After editorial approval, record the real reviewer, publish through the existing release boundary, rerun actual Route Detail/catalogue/sitemap and four-route browser acceptance, then request/perform staging enablement only when authorized. No staging flag was enabled in this task.
+30. **Staging deployment:** **do not deploy yet**. After editorial approval, record the real reviewer, publish through the existing release boundary, rerun actual Route Detail/catalogue/sitemap and four-route browser acceptance, then request/perform staging deployment only when authorized. No staging deployment occurred in this task.
 
 **FOUR ROUTES CONTENT-COMPLETE — AWAITING EDITORIAL SIGN-OFF**

@@ -105,8 +105,8 @@ test("homepage handoff presents a concise interpreted review without changing di
   const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(page, /MorroviaFooter/,
     "the Builder page should not mount a duplicate page-local footer");
-  assert.match(layout, /<MorroviaFooter \/>/,
-    "the shared Journey shell should provide the normal Morrovia footer");
+  assert.match(layout, /<MorroviaFooter omitOnImmersiveHome \/>/,
+    "the shared Journey shell should provide the normal footer outside the canonical homepage");
   assert.match(builder, /className=\{styles\.handoffContext\}><AlertTriangle/,
     "blocking context should have a visible icon rather than relying on red text");
 
@@ -153,20 +153,20 @@ test("Builder spacing and healthy route copy use the focused production treatmen
     "an actionable transport constraint warning should remain visible");
 });
 
-test("the Journey shell owns one production footer and Storybook renders that component", () => {
+test("the Journey shell and immersive closing share one production footer owner", () => {
   const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
   const shellStyles = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
-  const homeFooter = readFileSync(new URL("../app/journey/home/home-footer.tsx", import.meta.url), "utf8");
+  const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
   const story = readFileSync(new URL("../components/morrovia-footer.stories.tsx", import.meta.url), "utf8");
 
-  assert.equal(layout.match(/<MorroviaFooter \/>/g)?.length, 1,
-    "the shared Journey layout should mount exactly one canonical footer");
+  assert.equal(layout.match(/<MorroviaFooter omitOnImmersiveHome \/>/g)?.length, 1,
+    "the shared Journey layout should mount the canonical footer for non-home routes");
   assert.match(shellStyles, /\.morroviaProductShell\s*\{[\s\S]*?display:\s*flex[\s\S]*?min-height:\s*100svh[\s\S]*?flex-direction:\s*column/,
     "the production page shell should push short-page footers to the viewport bottom");
   assert.match(shellStyles, /\.morroviaProductContent\s*\{[\s\S]*?flex:\s*1 0 auto/,
     "long page content should keep its natural scroll height");
-  assert.doesNotMatch(homeFooter, /MorroviaFooter|<footer/,
-    "the homepage closing content should not duplicate or nest the canonical footer");
+  assert.equal(closing.match(/<MorroviaFooter overImage \/>/g)?.length, 1,
+    "the immersive closing chapter should reuse the canonical footer exactly once");
   assert.match(story, /import MorroviaFooter from "\.\/morrovia-footer"/);
   assert.match(story, /component: MorroviaFooter/,
     "Storybook should render the exact production footer component");

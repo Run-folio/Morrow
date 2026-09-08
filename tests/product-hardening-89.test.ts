@@ -60,13 +60,13 @@ test("workspace landmarks and tab panels keep valid, distinguishable semantics",
   assert.match(mapStory, /decorators: \[\(Story\) => <div className="morrovia-editorial-page"/);
 });
 
-test("the large closing illustration is lazy, low-priority and pre-optimized", () => {
-  const footer = read("app/journey/home/home-footer.tsx");
+test("the immersive closing image is lazy and uses pre-optimized responsive variants", () => {
+  const footer = read("app/journey/home/immersive/closing-chapter.tsx");
 
-  assert.match(footer, /src="\/journey\/illustrations\/home-closing-banner-v2\.webp"/);
-  assert.match(footer, /width="1942"/);
-  assert.match(footer, /height="809"/);
+  assert.match(footer, /src="\/journey\/immersive\/closing-1536\.webp"/);
+  assert.match(footer, /closing-480\.webp 480w, \/journey\/immersive\/closing-768\.webp 768w, \/journey\/immersive\/closing-1536\.webp 1536w/);
+  assert.match(footer, /width=\{1536\}/);
+  assert.match(footer, /height=\{1024\}/);
   assert.match(footer, /loading="lazy"/);
   assert.match(footer, /decoding="async"/);
-  assert.match(footer, /fetchPriority="low"/);
 });

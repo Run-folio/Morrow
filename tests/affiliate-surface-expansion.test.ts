@@ -41,7 +41,7 @@ test("new surfaces reuse one outbound owner without trip or booking mutation", (
   const itinerary = readFileSync("components/easyt/trip-itinerary-workspace.tsx", "utf8");
   const map = readFileSync("components/journey-itinerary-refinement.tsx", "utf8");
   const route = readFileSync("app/journey/routes/[slug]/route-detail-view.tsx", "utf8");
-  const home = readFileSync("app/journey/home/home-footer.tsx", "utf8");
+  const home = readFileSync("app/journey/home/immersive/affiliate-chapter.tsx", "utf8");
 
   assert.match(link, /target="_blank"/);
   assert.match(link, /rel="sponsored noopener noreferrer"/);
@@ -53,9 +53,8 @@ test("new surfaces reuse one outbound owner without trip or booking mutation", (
   assert.doesNotMatch(itinerary.match(/experienceHandoff[\s\S]*?<\/section>/)?.[0] ?? "", /mutateTrip|onSchedule|setSelectedIndex/);
   assert.match(map, /Explore more on map[\s\S]*map_see_experiences/);
   assert.doesNotMatch(map.match(/experienceHandoff[\s\S]*?<\/section>/)?.[0] ?? "", /onSelectionChange|setMapMode|mutate/);
-  assert.equal((route.match(/<RoutePlanLink/g) ?? []).length, 2);
+  assert.equal((route.match(/<RoutePlanLink/g) ?? []).length, 4);
   assert.equal((route.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
-  assert.match(home, /Start my trip/);
   assert.match(home, /homepage_stays[\s\S]*homepage_experiences[\s\S]*homepage_transport[\s\S]*homepage_connectivity/);
 });
 
@@ -64,19 +63,23 @@ test("each affiliate context renders one nearby disclosure and provider-neutral 
     "components/easyt/trip-itinerary-workspace.tsx",
     "components/journey-itinerary-refinement.tsx",
     "app/journey/routes/[slug]/route-detail-view.tsx",
-    "app/journey/home/home-footer.tsx",
+    "app/journey/home/immersive/affiliate-chapter.tsx",
   ];
   files.forEach((file) => {
     const source = readFileSync(file, "utf8");
-    const expectedDisclosureContexts = file === "components/easyt/trip-itinerary-workspace.tsx" ? 2 : 1;
-    assert.equal((source.match(/\{affiliateDisclosure\}/g) ?? []).length, expectedDisclosureContexts, file);
+    if (file === "app/journey/home/immersive/affiliate-chapter.tsx") {
+      assert.equal((source.match(/styles\.partnerDisclosure/g) ?? []).length, 1, file);
+      assert.match(source, /affiliateDisclosure/, file);
+    } else {
+      const expectedDisclosureContexts = file === "components/easyt/trip-itinerary-workspace.tsx" ? 2 : 1;
+      assert.equal((source.match(/\{affiliateDisclosure\}/g) ?? []).length, expectedDisclosureContexts, file);
+    }
     assert.match(source, /affiliateProviderLabel/);
   });
 });
 
 test("Storybook covers provider fallback, unavailable, and responsive affiliate states", () => {
   const storyFiles = [
-    "app/journey/home/home-footer.stories.tsx",
     "components/easyt/trip-itinerary-workspace.stories.tsx",
     "components/easyt/trip-map-workspace.stories.tsx",
     "app/journey/routes/[slug]/route-detail-view.stories.tsx",

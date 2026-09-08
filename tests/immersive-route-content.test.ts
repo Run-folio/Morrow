@@ -7,7 +7,6 @@ import { routePlannerPayload } from '../lib/easyt/public-route-handoff.ts';
 import { checkPublicRouteRelease } from '../lib/easyt/public-route-release.ts';
 import { immersiveHomepageRoutes, immersiveRouteKeys } from '../lib/easyt/immersive-homepage-routes.ts';
 import { matchCatalogPlace } from '../lib/easyt/place-catalog.ts';
-import { immersiveHomepageEnabled } from '../lib/easyt/immersive-homepage-config.ts';
 
 const sequences = {
   'japan-slow': ['Tokyo', 'Kanazawa', 'Takayama', 'Kyoto', 'Osaka'],
@@ -57,10 +56,11 @@ test('five-stop Japan identities resolve independently; the approved canonical r
   assert.ok(places.every(place => place?.parentCountries[0] === 'Japan'));
   assert.deepEqual(publicRouteDetailFor('japan-slow')?.stops.map(stop => stop.name), sequences['japan-slow']);
 });
-test('homepage stays default-off while admitting all four approved families', () => {
-  assert.equal(immersiveHomepageEnabled(undefined), false);
-  assert.equal(immersiveHomepageEnabled('false'), false);
+test('canonical homepage admits all four approved route families without runtime selection', () => {
+  const page = readFileSync(new URL('../app/journey/home/page.tsx', import.meta.url), 'utf8');
   assert.deepEqual(immersiveHomepageRoutes().map(route => route.key), [...immersiveRouteKeys]);
+  assert.equal(immersiveHomepageRoutes().length, 4);
+  assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled/);
 });
 test('destination photographs carry attribution and existing local variants; Osaka and Höfn are production-mapped', () => {
   const inventory = JSON.parse(readFileSync(new URL('../public/journey/immersive/destination-inventory.json', import.meta.url), 'utf8'));

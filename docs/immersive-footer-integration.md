@@ -1,10 +1,10 @@
 # Immersive homepage footer integration — 2026-09-07
 
-The closing CTA and shared semantic footer now occupy one continuous photographic chapter. Ready for staging enablement; nothing pushed, enabled remotely or deployed.
+The closing CTA and shared semantic footer now occupy one continuous photographic chapter. Ready for staging review; nothing was pushed or deployed during this refinement.
 
 ## Structure and presentation
 
-Previously the Journey layout rendered the shared footer after the homepage, on a pale background. The closing chapter now composes the same `MorroviaFooter` with an `overImage` treatment. The layout omits its footer only when the immersive homepage actually renders. Other Journey pages retain their standard footer. Browser checks confirmed one semantic footer on the homepage and one standard footer after navigating to Terms.
+Previously the Journey layout rendered the shared footer after the homepage, on a pale background. The closing chapter now composes the same `MorroviaFooter` with an `overImage` treatment. The layout omits its outer footer on the canonical homepage. Other Journey pages retain their standard footer. Browser checks confirmed one semantic footer on the homepage and one standard footer after navigating to Terms.
 
 The photograph, CTA wording and action are unchanged. The chapter uses `min-height: 100svh` and natural height, with a continuous indigo gradient (48% at the top, 58% halfway, 88% at 78%, 94% at the bottom). No opaque panel or new animation was added. Desktop retains wordmark / identity / navigation columns; up to 840px the footer stacks. All seven links, copyright and operator identity remain intact. Image credits remain in a separate 44px-high utility action above the footer and were opened successfully.
 
