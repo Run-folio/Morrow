@@ -47,6 +47,19 @@ test("continue and Stamped summaries expose truthful labelled metadata", () => {
   assert.match(dashboard, /<TripRoutePreview trip=\{featuredTrip\}/);
 });
 
+test("mobile current journeys bound long titles and reject non-photographic hero media", () => {
+  assert.match(dashboard, /if \(!credit\) return null/,
+    "unknown itinerary media must fall through instead of becoming a Trips hero");
+  assert.match(dashboardStyles, /@media \(max-width: 520px\)[\s\S]*?\.currentIdentity h2 \{[\s\S]*?-webkit-line-clamp: 4/,
+    "the mobile editorial title must have a bounded line count");
+  assert.match(dashboardStyles, /\.currentMedia \{ height: auto; overflow: visible; margin-bottom: 0/,
+    "the card should reserve the title's actual flow height rather than a fixed spacer");
+  assert.match(dashboardStories, /LongCurrentJourneyMobile390/);
+  assert.match(dashboardStories, /InvalidHeroMediaMobile390/);
+  assert.match(dashboardStories, /map-workspace-mobile\.png/,
+    "the invalid-media story should exercise rejection of a product screenshot");
+});
+
 test("Storybook covers trip volume, card breakpoints and keyboard focus", () => {
   for (const story of [
     "ZeroTrips",
@@ -57,6 +70,8 @@ test("Storybook covers trip volume, card breakpoints and keyboard focus", () => 
     "UpcomingCardsDesktop",
     "UpcomingCardsTablet768",
     "UpcomingCardsMobile390",
+    "LongCurrentJourneyMobile390",
+    "InvalidHeroMediaMobile390",
     "ClickableCardKeyboardFocus",
   ]) assert.match(dashboardStories, new RegExp(`export const ${story}`));
   assert.match(dashboardStories, /title: "Portugal \+ Spain"/);

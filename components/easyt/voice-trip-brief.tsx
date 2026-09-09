@@ -37,9 +37,10 @@ type VoiceTripBriefProps = {
   language: "en" | "es";
   onTranscript: (transcript: string) => void;
   className?: string;
+  compact?: boolean;
 };
 
-export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripBriefProps) {
+export function VoiceTripBrief({ language, onTranscript, className, compact = false }: VoiceTripBriefProps) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const onTranscriptRef = useRef(onTranscript);
   const disclosureId = useId();
@@ -150,11 +151,11 @@ export function VoiceTripBrief({ language, onTranscript, className }: VoiceTripB
     start();
   };
 
-  return <div className={`${styles.voice} ${className ?? ""}`}>
+  return <div className={`${styles.voice} ${compact ? styles.compact : ""} ${className ?? ""}`}>
     <div className={styles.voiceActions}>
       <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null} onClick={requestStart}>
         {listening ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />}
-        <span>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
+        <span className={compact ? "sr-only" : undefined}>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
       </button>
       <MorroviaContextualDisclosure
         id={disclosureId}

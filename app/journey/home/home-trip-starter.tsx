@@ -100,6 +100,7 @@ export default function HomeTripStarter() {
 
   return <MorroviaTripCapture
     formId="start-building"
+    progressiveDetails
     language={language}
     value={brief}
     onValueChange={(value) => { setBrief(value); setCaptureError(""); }}

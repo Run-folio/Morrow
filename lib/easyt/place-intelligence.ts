@@ -210,9 +210,16 @@ export function reconcileSelfBasePlaceState(
       // was resolved as a direct route destination.
       routability: "direct_destination",
     });
-    const sameIdentity = Boolean(mention.canonicalPlaceId && mention.canonicalPlaceId === selection.selectedCanonicalPlaceId)
-      || normalizePlacePhrase(mention.canonicalName) === normalizePlacePhrase(selection.selectedName)
-      || normalizePlacePhrase(mention.sourceText) === normalizePlacePhrase(selection.selectedName);
+    const hasCanonicalPair = Boolean(mention.canonicalPlaceId && selection.selectedCanonicalPlaceId);
+    const fallbackTypeCompatible = !selection.selectedPlaceType
+      || mention.placeType === "unknown"
+      || mention.placeType === selection.selectedPlaceType;
+    const sameIdentity = hasCanonicalPair
+      ? mention.canonicalPlaceId === selection.selectedCanonicalPlaceId
+      : fallbackTypeCompatible && (
+        normalizePlacePhrase(mention.canonicalName) === normalizePlacePhrase(selection.selectedName)
+        || normalizePlacePhrase(mention.sourceText) === normalizePlacePhrase(selection.selectedName)
+      );
     if (directType && sameIdentity) collapsedMentionIds.add(mention.mentionId);
   }
   return {
@@ -396,7 +403,8 @@ export function recognizedHigherOrderGeographySignificance(evidence: {
 /** A comma-qualified entity type is explicit traveller context, not part of
  * the provider place name. Keep the vocabulary generic and compact. */
 export function providerLookupRequest(phrase: string, context: PlaceResolutionContext) {
-  const qualifier = phrase.match(/^(.*?),\s*(country|state|province|region)\s*$/i);
+  const qualifier = phrase.match(/^(.*?),\s*(country|state|province|region)\s*$/i)
+    ?? phrase.match(/^(.*?)\s+(state|province|region)\s*$/i);
   if (!qualifier?.[1] || !qualifier[2]) return { phrase, context };
   const placeType: PlaceType = qualifier[2].toLocaleLowerCase() === "country" ? "country" : "region";
   return {
@@ -1442,6 +1450,25 @@ export function guidedPlanningAreaSuggestions(
     .map(({ score: _score, ...suggestion }) => suggestion);
 }
 
+/** Provider/model suggestions may be useful ranking input, but the selected
+ * planning parent remains the containment authority. Sub-country suggestions
+ * without positive hierarchy or bounds evidence fail closed. */
+export function planningAreaSuggestionsWithinParent<T extends GuidedPlanningAreaSuggestion>(
+  suggestions: readonly T[],
+  parent: PlanningParentConstraint,
+) {
+  return suggestions.filter((suggestion) => placeCandidateWithinPlanningParent({
+    canonicalName: suggestion.name,
+    placeType: suggestion.placeType,
+    parentCountries: [suggestion.country],
+    // The suggestion's parent key records which modal produced it; it is not
+    // independent administrative-containment evidence.
+    parentRegionId: undefined,
+    coordinates: suggestion.coordinates,
+    routability: "direct_destination",
+  }, parent));
+}
+
 const routeInterestMatches = (route: RouteFamily, interests: readonly string[]) => {
   const aliases: Record<string, string[]> = {
     beach: ["coast"],
@@ -2068,7 +2095,8 @@ function decisiveProviderCandidate(
   const ranked = [...candidates].sort((left, right) => {
     const leftScore = (left as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0;
     const rightScore = (right as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0;
-    return rightScore - leftScore;
+    return rightScore - leftScore
+      || left.canonicalPlaceId.localeCompare(right.canonicalPlaceId);
   });
   const normalized = normalizePlacePhrase(phrase);
   const exact = ranked.filter((candidate) => {
@@ -2139,6 +2167,21 @@ function decisiveProviderCandidate(
     && (!hasDistinctExactGeographicScope || exactRouteDestinations.length > 1)) return rankedExactContext[0];
   const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "continent" || candidate.placeType === "country"
     || ((candidate as PlaceResolutionCandidate & { geographicSignificance?: number }).geographicSignificance ?? 0) >= 0.72);
+  const explicitBroadType = explicitPlaceTypes.has("region") || explicitPlaceTypes.has("sub_region")
+    || /\b(?:state|province|region)\b/i.test(phrase);
+  const strongExactCities = exactSameNameRoutes.filter((candidate) => candidate.placeType === "city"
+    && ((candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality ?? "exact") === "exact"
+    && ((candidate as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0) >= 120);
+  const exactCountriesOrContinents = recognizedExactGeographies.filter((candidate) => candidate.placeType === "country" || candidate.placeType === "continent");
+  // For an unqualified route stop, one strong exact city is better evidence
+  // than its same-name first-order administrative parent. Explicit geographic
+  // wording still selects the broader entity, and sovereign names retain the
+  // existing major-geography guard.
+  if (context.travelIntent === "route-stop" && !explicitBroadType
+    && strongExactCities.length === 1 && exactCountriesOrContinents.length === 0
+    && recognizedExactGeographies.every((candidate) => candidate.placeType === "region" || candidate.placeType === "sub_region")) {
+    return strongExactCities[0];
+  }
   // Entity identity precedes route-node suitability. A single provider-backed
   // major geography wins a bare exact name, while coextensive city-states keep
   // their direct endpoint and multiple major geographies still fail closed.

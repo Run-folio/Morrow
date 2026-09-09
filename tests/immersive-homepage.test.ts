@@ -56,9 +56,29 @@ test("hero composes real capture and current handoff owners", () => {
   assert.match(hero, /<HomeTripStarter \/>/);
   assert.match(hero, /<EasyTNavigation current="home" landing deferPrefetch \/>/);
   assert.match(capture, /<MorroviaTripCapture/);
+  assert.match(capture, /progressiveDetails/);
   assert.match(capture, /<JourneyEndpointsEditor/);
   assert.match(capture, /router\.push\("\/journey\/new\?homeDraft=1"\)/);
   assert.doesNotMatch(hero, /capture-receipt|setSubmitted|Math\.random|Voice\.jsx/);
+});
+
+test("homepage trip capture progressively discloses canonical details without changing Builder defaults", () => {
+  const capture = readFileSync(new URL("../components/easyt/morrovia-trip-capture.tsx", import.meta.url), "utf8");
+  const homepage = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const stories = readFileSync(new URL("../components/easyt/morrovia-trip-capture.stories.tsx", import.meta.url), "utf8");
+  assert.match(capture, /homepageLabel: "Start your plan"/);
+  assert.match(capture, /homepagePlaceholder: "Where would you like to go, for how long\?"/);
+  assert.match(capture, /showDetails: "Add trip details"/);
+  assert.match(capture, /aria-expanded=\{detailsOpen\}/);
+  assert.match(capture, /\(!progressiveDetails \|\| detailsOpen\)/);
+  assert.match(capture, /compact=\{progressiveDetails\}/);
+  assert.match(capture, /!progressiveDetails \? <MorroviaContextualDisclosure/);
+  assert.match(homepage, /progressiveDetails/);
+  assert.doesNotMatch(builder, /progressiveDetails/);
+  assert.match(stories, /HomepageCollapsed/);
+  assert.match(stories, /HomepageExpanded/);
+  assert.match(stories, /Mobile390/);
 });
 
 test("one night decision persists between demo views without changing catalogue data", () => {

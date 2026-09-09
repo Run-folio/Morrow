@@ -150,10 +150,6 @@
 .calendarGrid button:disabled { color: color-mix(in srgb, var(--morrovia-muted) 50%, white); cursor: not-allowed; }
 .calendarDayInRange { border-radius: 6px !important; background: var(--morrovia-lilac) !important; }
 .calendarDaySelected { border-color: var(--morrovia-signal) !important; background: var(--morrovia-signal) !important; color: #fff !important; font-weight: 800 !important; }
-.calendarRangeStart::before,
-.calendarRangeEnd::before { position: absolute; top: 2px; color: currentColor; font-size: 7px; line-height: 1; }
-.calendarRangeStart::before { left: 4px; content: "S"; }
-.calendarRangeEnd::before { right: 4px; content: "E"; }
 
 .calendarFooter {
   display: grid;

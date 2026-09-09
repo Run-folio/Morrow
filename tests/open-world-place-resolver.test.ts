@@ -436,3 +436,66 @@ test("a hanging source is bounded while a healthy fallback still resolves", asyn
   assert.equal(candidates[0]?.canonicalName, "Salta");
   assert.ok(Date.now() - startedAt < 100);
 });
+
+test("unqualified Salta is deterministic across provider timing and explicit province wording stays broad", async () => {
+  const prompt = "cuzco, uyunui, la paz, lima, huacachina, salta";
+  const diagnostics: Array<{ run: number; candidates: string[]; selected?: string; type?: string; status?: string }> = [];
+  for (let run = 0; run < 10; run += 1) {
+    const citySource: OpenWorldPlaceSource = {
+      id: "city-source",
+      label: "City source",
+      async search(phrase) {
+        const key = phrase.toLocaleLowerCase();
+        if (key === "uyunui") return [{ ...candidate("uyuni-city", "Uyuni", "Bolivia", "city", [-66.8239, -20.4628], 145), aliases: ["uyunui"], matchQuality: "alias", parentRegionId: "Potosí" }];
+        if (key === "huacachina") return [{ ...candidate("huacachina-town", "Huacachina", "Peru", "town", [-75.7618, -14.0876], 145), parentRegionId: "Department of Ica" }];
+        if (key !== "salta") return [];
+        await new Promise((resolve) => setTimeout(resolve, run % 2 ? 3 : 0));
+        return [{ ...candidate("salta-city", "Salta", "Argentina", "city", [-65.4232, -24.7821], 145), providerImportance: 0.72, parentRegionId: "Salta" }];
+      },
+    };
+    const provinceSource: OpenWorldPlaceSource = {
+      id: "province-source",
+      label: "Province source",
+      async search(phrase) {
+        if (phrase.toLocaleLowerCase() !== "salta") return [];
+        await new Promise((resolve) => setTimeout(resolve, run % 2 ? 0 : 3));
+        return [{ ...candidate("salta-province", "Salta Province", "Argentina", "region", [-65.3, -24.3], 110), aliases: ["Salta"], routability: "planning_area", geographicSignificance: 0.9, administrativeLevel: 4, providerRank: 0, parentRegionId: "Argentina" }];
+      },
+    };
+    const provider = createOpenWorldPlaceProvider({
+      cache: new Map(),
+      sources: run % 2 ? [provinceSource, citySource] : [citySource, provinceSource],
+      sourceTimeoutMs: 50,
+    });
+    const capture = await captureJourneyBriefFromSemanticIntent(
+      prompt,
+      routeStopIntent(["cuzco", "uyunui", "la paz", "lima", "huacachina", "salta"]),
+      provider,
+    );
+    const candidates = await provider.lookup("Salta", { travelIntent: "route-stop" });
+    const selected = capture.mentions.find((mention) => mention.sourceText === "salta");
+    diagnostics.push({ run: run + 1, candidates: candidates.map((item) => `${item.providerSourceId}:${item.placeType}:${item.rankScore}`), selected: selected?.canonicalPlaceId, type: selected?.placeType, status: selected?.status });
+    assert.equal(selected?.canonicalName, "Salta", `${prompt}; run ${run + 1}`);
+    assert.equal(selected?.placeType, "city", `${prompt}; run ${run + 1}`);
+    assert.equal(selected?.status, "resolved", `${prompt}; run ${run + 1}`);
+
+    const explicit = await resolveExplicitPlaceMentionsWithProvider(
+      [{ sourceText: "Salta Province", role: "preferred", travelIntent: "route-stop" }],
+      provider,
+    );
+    assert.equal(explicit.mentions[0]?.placeType, "region");
+    assert.equal(explicit.mentions[0]?.requiresBaseSelection, true);
+  }
+  assert.equal(new Set(diagnostics.map((item) => `${item.selected}:${item.type}:${item.status}`)).size, 1, JSON.stringify(diagnostics, null, 2));
+});
+
+test("natural broad phrases are not mistaken for entity-type qualifiers", async () => {
+  const calls: string[] = [];
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), sources: [source({}, calls)] });
+  await resolveExplicitPlaceMentionsWithProvider(
+    [{ sourceText: "wine country", role: "preferred", travelIntent: "planning-area" }],
+    provider,
+  );
+  assert.equal(calls.includes("wine"), false);
+  assert.equal(calls.includes("wine country"), true);
+});

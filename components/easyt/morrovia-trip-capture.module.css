@@ -19,11 +19,24 @@
   box-shadow: 0 16px 36px color-mix(in srgb, var(--morrovia-ink) 7%, transparent);
 }
 
+.detailsCollapsed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.detailsCollapsed > .label,
+.detailsCollapsed > .promptField { grid-column: 1 / -1; }
+.detailsCollapsed > .detailsToggle { grid-column: 1; grid-row: 3; }
+.detailsCollapsed > .footer { grid-column: 2; grid-row: 3; padding-top: 0; }
+
 .label {
   color: var(--morrovia-signal);
   font: 700 10px var(--morrovia-meta);
   letter-spacing: .14em;
   text-transform: uppercase;
+}
+
+.homepageLabel {
+  color: var(--morrovia-ink);
+  font: 700 13px/1.2 var(--morrovia-ui);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .promptField {
@@ -80,6 +93,24 @@
 
 .voiceInput { position: absolute; right: 10px; bottom: 8px; left: auto; z-index: 1; }
 
+.detailsToggle {
+  min-height: 32px;
+  width: fit-content;
+  justify-self: start;
+  padding-inline: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.detailsToggle:hover:not(:disabled) { background: transparent; color: var(--morrovia-action); }
+.detailsToggle svg { order: 2; width: 14px; height: 14px; transition: transform 180ms ease; }
+.detailsToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.detailsPanel { display: grid; gap: 9px; animation: revealDetails 180ms ease-out; }
+
+@keyframes revealDetails {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .attributes { display: grid; gap: 8px; }
 .attributeActions { display: flex; flex-wrap: wrap; gap: 7px; }
 
@@ -127,7 +158,7 @@
 .action { position: static; flex: 0 0 auto; }
 .action button { white-space: nowrap; }
 .actionCluster { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 5px; }
-.actionCluster > div:first-child > button { padding-inline: 8px; color: var(--morrovia-muted); }
+.actionCluster > div:first-child:not(.action) > button { padding-inline: 8px; color: var(--morrovia-muted); }
 .error { margin: 8px 0 0; color: var(--morrovia-danger); font-size: 12px; }
 
 @media (max-width: 720px) {
@@ -139,6 +170,11 @@
   .action { width: 100%; }
   .action button { width: 100%; }
   .voiceInput { right: 8px; bottom: 8px; }
+  .detailsCollapsed { grid-template-columns: 1fr; }
+  .detailsCollapsed > .label,
+  .detailsCollapsed > .promptField,
+  .detailsCollapsed > .detailsToggle,
+  .detailsCollapsed > .footer { grid-column: 1; grid-row: auto; }
 }
 
 @media (max-width: 430px) {
@@ -152,6 +188,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .detailsPanel { animation: none; }
+  .detailsToggle svg { transition: none; }
   .attributeActions button,
   .interestPanel button { transition: none; }
 }

@@ -7,17 +7,23 @@ export type PlaceAutocompleteKeyResult = {
 export type PlaceAutocompleteIdentity = {
   name: string;
   canonicalPlaceId?: string;
+  placeType?: string;
 };
 
-/** Treat a canonical ID as authoritative, with normalized names as the safe fallback. */
+/** Treat canonical identity as authoritative. Display text is only a fallback
+ * for legacy identities that have no IDs, and then only within the same type. */
 export function isDuplicatePlaceIdentity(
   existing: PlaceAutocompleteIdentity[],
   candidate: PlaceAutocompleteIdentity,
 ): boolean {
   const candidateName = candidate.name.trim().toLocaleLowerCase();
-  return existing.some((place) => (
-    Boolean(candidate.canonicalPlaceId) && place.canonicalPlaceId === candidate.canonicalPlaceId
-  ) || place.name.trim().toLocaleLowerCase() === candidateName);
+  return existing.some((place) => {
+    if (candidate.canonicalPlaceId && place.canonicalPlaceId) {
+      return place.canonicalPlaceId === candidate.canonicalPlaceId;
+    }
+    const sameType = !candidate.placeType || !place.placeType || candidate.placeType === place.placeType;
+    return sameType && place.name.trim().toLocaleLowerCase() === candidateName;
+  });
 }
 
 /** Pure keyboard state transition shared by origin and stop autocomplete. */

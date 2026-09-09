@@ -29,6 +29,23 @@ test("calendar month grids retain every valid date exactly once", () => {
   assert.equal(february[0], "2028-02-01");
   assert.equal(february.at(-1), "2028-02-29");
   assert.equal(new Set(february).size, february.length);
+  assert.equal(addLocalMonths("2026-09-23", 1), "2026-10-01", "cross-month navigation remains calendar-local");
+});
+
+test("date range endpoints use accessible labels without visible generated S/E markers", () => {
+  const picker = read("components/easyt/morrovia-date-picker.tsx");
+  const styles = read("components/easyt/morrovia-date-picker.module.css");
+
+  assert.match(picker, /rangeStart: "Range start"/);
+  assert.match(picker, /rangeEnd: "Range end"/);
+  assert.match(picker, /aria-label=\{`\$\{formatLocalDate\(day/);
+  assert.match(picker, /aria-selected=\{selected \|\| inRange\}/);
+  assert.match(picker, /event\.key === "ArrowLeft"/);
+  assert.match(picker, /event\.key === "PageDown"/);
+  assert.doesNotMatch(styles, /content:\s*["']S["']/);
+  assert.doesNotMatch(styles, /content:\s*["']E["']/);
+  assert.match(styles, /\.calendarDaySelected \{/);
+  assert.match(styles, /\.calendarDayInRange \{/);
 });
 
 test("major planning surfaces use the canonical date and quantity controls", () => {

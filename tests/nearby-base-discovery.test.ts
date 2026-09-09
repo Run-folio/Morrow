@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { withProviderTimeout } from "../lib/easyt/provider-timeout.ts";
+import { captureJourneyBriefWithProvider } from "../lib/easyt/journey-capture.ts";
+import { createAbortableEffectScope } from "../lib/easyt/abortable-effect.ts";
 
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, type OpenWorldPlaceSource, type OpenWorldTravelCandidate } from "../lib/easyt/open-world-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "../lib/easyt/openstreetmap-nearby-place.server.ts";
@@ -179,6 +182,57 @@ test("provider failure does not become an empty cached success", async () => {
   };
   const provider = createOpenWorldPlaceProvider({ sources: [source], cache: new Map(), sourceTimeoutMs: 50 });
   await assert.rejects(() => searchOpenWorldNearbyBaseSuggestions(anchor(), {}, provider), /unavailable/);
+});
+
+test("a stalled nearby request reaches a bounded failure while manual recovery remains wired", async () => {
+  const started = Date.now();
+  await assert.rejects(() => withProviderTimeout({
+    label: "Nearby base discovery",
+    timeoutMs: 5,
+    request: async () => new Promise<never>(() => {}),
+  }), (error: Error) => error.name === "TimeoutError");
+  assert.ok(Date.now() - started < 100);
+
+  const builder = await readFile(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const autocomplete = await readFile(new URL("../components/easyt/canonical-place-autocomplete.tsx", import.meta.url), "utf8");
+  assert.match(builder, /timeoutMs: 7_000/);
+  assert.match(builder, /status: "unavailable"/);
+  assert.match(builder, /Retry nearby search/);
+  assert.match(builder, /search=\{clarificationNeedsSearch/);
+  assert.match(autocomplete, /createAbortableEffectScope\("canonical place autocomplete"\)/);
+  assert.match(autocomplete, /scope\.commit\(\(\) => setProviderSuggestions/);
+});
+
+test("a stale nearby or search response cannot overwrite the current modal request", () => {
+  const stale = createAbortableEffectScope("stale modal request");
+  const current = createAbortableEffectScope("current modal request");
+  const committed: string[] = [];
+  stale.dispose();
+  stale.commit(() => committed.push("stale"));
+  current.commit(() => committed.push("current"));
+  assert.deepEqual(committed, ["current"]);
+});
+
+test("the full Central America prompt preserves Tikal visit identity across ten resolver runs", async () => {
+  const prompt = "cancun, tulum, belize, tikal, antigua, lake atitlan, starting from London. Prefer nature.";
+  const diagnostics = [];
+  for (let run = 0; run < 10; run += 1) {
+    const capture = await captureJourneyBriefWithProvider(prompt, {
+      id: `timing-fixture-${run}`,
+      label: "Timing fixture",
+      timeoutMs: 30,
+      lookup: async () => {
+        await new Promise((resolve) => setTimeout(resolve, run % 3));
+        return [];
+      },
+    });
+    const tikal = capture.mentions.find((mention) => mention.canonicalPlaceId === "tikal");
+    diagnostics.push({ run: run + 1, input: prompt, selected: tikal?.canonicalPlaceId, type: tikal?.placeType, routability: tikal?.routability, status: tikal?.status, providerFallback: tikal?.provenance.map((item) => item.kind) });
+    assert.equal(tikal?.placeType, "landmark");
+    assert.equal(tikal?.routability, "anchor_or_poi");
+    assert.equal(tikal?.status, "resolved");
+  }
+  assert.equal(new Set(diagnostics.map((item) => `${item.selected}:${item.type}:${item.routability}:${item.status}`)).size, 1, JSON.stringify(diagnostics, null, 2));
 });
 
 test("the open-world boundary prefixes source identity and returns a bounded shortlist", async () => {

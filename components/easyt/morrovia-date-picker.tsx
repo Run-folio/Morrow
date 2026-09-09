@@ -59,7 +59,9 @@ const copy = {
     dateFormat: "Date (YYYY-MM-DD)",
     nextMonth: "Next month",
     previousMonth: "Previous month",
+    rangeEnd: "Range end",
     rangeHelp: "Choose the start date, then the end date.",
+    rangeStart: "Range start",
     selected: "Selected",
     today: "Today",
     typeIt: "Or type it",
@@ -70,7 +72,9 @@ const copy = {
     dateFormat: "Fecha (AAAA-MM-DD)",
     nextMonth: "Mes siguiente",
     previousMonth: "Mes anterior",
+    rangeEnd: "Fin del intervalo",
     rangeHelp: "Elige la fecha de salida y después la fecha de regreso.",
+    rangeStart: "Inicio del intervalo",
     selected: "Seleccionada",
     today: "Hoy",
     typeIt: "O escríbela",
@@ -84,6 +88,7 @@ function isWithin(value: string, min?: string, max?: string) {
 function CalendarPanel({
   activeBoundary,
   endValue,
+  isRange,
   locale,
   max,
   min,
@@ -94,6 +99,7 @@ function CalendarPanel({
 }: {
   activeBoundary: DateBoundary;
   endValue: string;
+  isRange: boolean;
   locale: "en" | "es";
   max?: string;
   min?: string;
@@ -164,6 +170,9 @@ function CalendarPanel({
         const disabled = !isWithin(day, min, max);
         const selected = day === startValue || day === endValue;
         const inRange = Boolean(startValue && endValue && day > startValue && day < endValue);
+        const selectionDescription = isRange
+          ? [day === startValue ? copy[locale].rangeStart : "", day === endValue ? copy[locale].rangeEnd : ""].filter(Boolean).join(", ")
+          : selected ? copy[locale].selected : "";
         const focusValue = activeBoundary === "end" ? endValue || startValue : startValue;
         return <button
           type="button"
@@ -173,7 +182,7 @@ function CalendarPanel({
           disabled={disabled}
           tabIndex={day === focusValue || (!focusValue && day === today) ? 0 : -1}
           aria-current={day === today ? "date" : undefined}
-          aria-label={`${formatLocalDate(day, locale, { dateStyle: "full" })}${selected ? `, ${copy[locale].selected}` : ""}`}
+          aria-label={`${formatLocalDate(day, locale, { dateStyle: "full" })}${selectionDescription ? `, ${selectionDescription}` : ""}`}
           aria-selected={selected || inRange}
           className={`${selected ? styles.calendarDaySelected : ""} ${inRange ? styles.calendarDayInRange : ""} ${day === startValue ? styles.calendarRangeStart : ""} ${day === endValue ? styles.calendarRangeEnd : ""}`}
           onClick={() => onPick(day)}
@@ -349,6 +358,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
       </div>
       <CalendarPanel
         activeBoundary={activeBoundary}
+        isRange={isRange}
         startValue={currentStart}
         endValue={currentEnd}
         locale={locale}

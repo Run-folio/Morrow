@@ -12,6 +12,7 @@ import {
   type PlanningParentConstraint,
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction } from "@/lib/easyt/place-autocomplete";
+import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { EasyTButton } from "./easyt-controls";
 import styles from "./canonical-place-autocomplete.module.css";
 
@@ -101,10 +102,12 @@ export function CanonicalPlaceAutocomplete({
   useEffect(() => {
     const query = deferredValue.trim();
     if (query.length < 2) { setProviderSuggestions([]); setProviderSearching(false); setProviderFailed(false); return; }
-    const controller = new AbortController();
+    const scope = createAbortableEffectScope("canonical place autocomplete");
     const timer = window.setTimeout(() => {
-      setProviderSearching(true);
-      setProviderFailed(false);
+      scope.commit(() => {
+        setProviderSearching(true);
+        setProviderFailed(false);
+      });
       const country = parentConstraint?.parentCountries.length === 1
         ? parentConstraint.parentCountries[0]
         : contextCountries?.length === 1 ? contextCountries[0] : undefined;
@@ -133,7 +136,7 @@ export function CanonicalPlaceAutocomplete({
         params.set("anchorLon", String(nearbyAnchor.coordinates[0]));
         params.set("anchorLat", String(nearbyAnchor.coordinates[1]));
       }
-      fetch(`/api/journey-geocode?${params}`, { signal: controller.signal })
+      fetch(`/api/journey-geocode?${params}`, { signal: scope.signal })
         .then(async (response) => {
           if (!response.ok) throw new Error("place search unavailable");
           return response.json() as Promise<{ candidates?: Array<{
@@ -150,54 +153,58 @@ export function CanonicalPlaceAutocomplete({
             routability?: CanonicalPlaceSuggestion["routability"];
           }> }>;
         })
-        .then((payload) => setProviderSuggestions((payload.candidates ?? []).map((candidate) => {
-          const kind = (candidate.kind ?? "").toLocaleLowerCase();
-          const placeType = candidate.placeType ?? (/continent/.test(kind) ? "continent" as const
-            : /country/.test(kind) ? "country" as const
-              : /city/.test(kind) ? "city" as const
-                : /town|village|hamlet|municipality/.test(kind) ? "town" as const
-                  : /island/.test(kind) ? "island" as const
-                    : /lake|park|reserve/.test(kind) ? "natural_area" as const
-                      : /attraction|historic|monument|museum|archaeological/.test(kind) ? "landmark" as const
-                        : /state|province|region|county|administrative/.test(kind) ? "region" as const
-                          : "unknown" as const);
-          const canonicalPlaceId = candidate.canonicalPlaceId ?? (candidate.providerId ? `open-world:${candidate.providerId}` : `provider:${candidate.country}:${candidate.name}`);
-          return {
-            canonicalPlaceId,
-            name: candidate.name,
-            label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
-            country: candidate.country,
-            region: candidate.region,
-            placeType,
-            coordinates: candidate.coordinates,
-            bounds: candidate.bounds,
-            routability: candidate.routability,
-            provenance: [{ id: canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: "Global place-search candidate selected by the traveller." }],
-          };
-        }).filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
-          .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {
-            providerId: suggestion.canonicalPlaceId,
-            canonicalName: suggestion.name,
-            placeType: suggestion.placeType,
-            parentCountries: [suggestion.country],
-            parentRegionId: suggestion.region,
-            coordinates: suggestion.coordinates,
-            routability: suggestion.routability ?? "direct_destination",
-          })))))
-        .catch((error) => {
-          if ((error as { name?: string }).name === "AbortError") return;
-          setProviderSuggestions([]);
-          setProviderFailed(true);
+        .then((payload) => {
+          const nextSuggestions = (payload.candidates ?? []).map((candidate) => {
+            const kind = (candidate.kind ?? "").toLocaleLowerCase();
+            const placeType = candidate.placeType ?? (/continent/.test(kind) ? "continent" as const
+              : /country/.test(kind) ? "country" as const
+                : /city/.test(kind) ? "city" as const
+                  : /town|village|hamlet|municipality/.test(kind) ? "town" as const
+                    : /island/.test(kind) ? "island" as const
+                      : /lake|park|reserve/.test(kind) ? "natural_area" as const
+                        : /attraction|historic|monument|museum|archaeological/.test(kind) ? "landmark" as const
+                          : /state|province|region|county|administrative/.test(kind) ? "region" as const
+                            : "unknown" as const);
+            const canonicalPlaceId = candidate.canonicalPlaceId ?? (candidate.providerId ? `open-world:${candidate.providerId}` : `provider:${candidate.country}:${candidate.name}`);
+            return {
+              canonicalPlaceId,
+              name: candidate.name,
+              label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
+              country: candidate.country,
+              region: candidate.region,
+              placeType,
+              coordinates: candidate.coordinates,
+              bounds: candidate.bounds,
+              routability: candidate.routability,
+              provenance: [{ id: canonicalPlaceId, label: candidate.providerSourceLabel ?? "Global place provider", kind: "provider" as const, supports: "Global place-search candidate selected by the traveller." }],
+            };
+          }).filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
+            .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {
+              providerId: suggestion.canonicalPlaceId,
+              canonicalName: suggestion.name,
+              placeType: suggestion.placeType,
+              parentCountries: [suggestion.country],
+              parentRegionId: suggestion.region,
+              coordinates: suggestion.coordinates,
+              routability: suggestion.routability ?? "direct_destination",
+            })));
+          scope.commit(() => setProviderSuggestions(nextSuggestions));
         })
-        .finally(() => setProviderSearching(false));
+        .catch((error) => {
+          if (scope.isCancellation(error)) return;
+          scope.commit(() => {
+            setProviderSuggestions([]);
+            setProviderFailed(true);
+          });
+        })
+        .finally(() => scope.commit(() => setProviderSearching(false)));
     }, 220);
-    return () => { window.clearTimeout(timer); controller.abort(); };
+    return () => { window.clearTimeout(timer); scope.dispose(); };
   }, [allowedTypeKey, contextCountries, deferredValue, nearbyAnchorKey, parentConstraintKey, retryNonce, searchIntent]);
 
   const suggestions = useMemo(() => [...catalogSuggestions, ...providerSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
-    .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId
-      || (candidate.name.toLocaleLowerCase() === suggestion.name.toLocaleLowerCase() && candidate.country === suggestion.country)) === index)
+    .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
     .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {

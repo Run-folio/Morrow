@@ -1625,7 +1625,7 @@
   .dayNavigation button:last-child { grid-column: 2; grid-row: 2; }
   .contextSection { padding: 14px 12px; }
   .contextSection > summary { min-height: 44px; }
-  .contextRail { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .contextRail { padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom))); }
   .ideasSectionFocused {
     position: fixed;
     z-index: 42;

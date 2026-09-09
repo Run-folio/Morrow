@@ -7,12 +7,14 @@ import {
 } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import type { EasyTTrip, TripLeg } from "./trip.ts";
+import { findCatalogPlaceById, matchCatalogPlace } from "./place-catalog.ts";
 
 export type RoadFallbackSkipReason =
   | "already_resolved"
   | "explicit_or_unsupported_source"
   | "missing_coordinates"
   | "cross_border"
+  | "land_separation"
   | "same_place"
   | "distance_out_of_scope"
   | "provider_failure"
@@ -59,6 +61,14 @@ function endpointIdentity(endpoint: NonNullable<TripLeg["fromEndpoint"]>) {
     || `${normalizedIdentity(endpoint.country)}:${normalizedIdentity(endpoint.name)}`;
 }
 
+function endpointRequiresNonRoadCrossing(endpoint: NonNullable<TripLeg["fromEndpoint"]>) {
+  const entry = (endpoint.canonicalPlaceId ? findCatalogPlaceById(endpoint.canonicalPlaceId) : undefined)
+    ?? matchCatalogPlace(endpoint.name);
+  if (!entry || !["island", "archipelago"].includes(entry.placeType)) return false;
+  return !endpoint.country || !entry.parentCountries.length
+    || entry.parentCountries.some((country) => normalizedIdentity(country) === normalizedIdentity(endpoint.country));
+}
+
 function roadFallbackEligible(leg: TripLeg) {
   const metadata = leg.routeMetadata as { source?: unknown; roadFallbackEligible?: unknown; decisionOption?: unknown };
   return metadata.source === "morrovia-planner"
@@ -89,6 +99,12 @@ export async function resolveCanonicalRoadFallback(
   }
   if (!from.country || !to.country || normalizedIdentity(from.country) !== normalizedIdentity(to.country)) {
     return { leg, outcome: "unchanged", reason: "cross_border" };
+  }
+  // A driving provider may legally include a ferry edge while still returning
+  // a generic car profile. Without explicit ferry/multimodal evidence that is
+  // not enough to tell travellers an island crossing is a direct road leg.
+  if (endpointRequiresNonRoadCrossing(from) || endpointRequiresNonRoadCrossing(to)) {
+    return { leg, outcome: "unchanged", reason: "land_separation" };
   }
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
   if (straightLineDistanceKm === null || straightLineDistanceKm < 1) return { leg, outcome: "unchanged", reason: "same_place" };

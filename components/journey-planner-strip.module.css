@@ -52,4 +52,5 @@
   .integrated .stopTrack{grid-row:1;width:100%}
   .integrated .actions{grid-row:2;width:100%;justify-content:flex-end;margin:0;padding-top:4px}
   .integrated .wholeRoute{width:auto;min-width:0;padding:0 10px;font-size:9px}
+  .integrated .fullTrip[aria-pressed="true"]:not(.wholeRoute){width:auto;min-width:0;padding:0 10px;font-size:9px}
 }

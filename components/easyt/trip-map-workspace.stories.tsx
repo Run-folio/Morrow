@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import TripShell from "./trip-shell";
@@ -410,7 +411,10 @@ const meta = {
     layout: "fullscreen",
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/cusco-sacred-valley-arequipa/map" } },
   },
-  decorators: [(Story) => <div className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></div>],
+  decorators: [(Story) => {
+    setStorybookAuthOwner("storybook-traveller");
+    return <div className="morrovia-editorial-page" style={{ minHeight: "100vh", paddingTop: 1 }}><Story /></div>;
+  }],
   args: { storyTrip: trip },
 } satisfies Meta<typeof TripMapStory>;
 
@@ -644,6 +648,16 @@ export const Mobile390Restoration: Story = {
 export const Mobile390Overview: Story = {
   ...GoldenTriangle,
   parameters: { ...GoldenTriangle.parameters },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile390SelectedTransfer: Story = {
+  args: { storyTrip: trip, storyState: { mapMode: "overview", selectedRouteLegId: "valley-arequipa" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile390FullscreenOverview: Story = {
+  args: { storyTrip: trip, storyState: { mapMode: "overview", expandedMap: true } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 

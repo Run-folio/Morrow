@@ -131,6 +131,18 @@ function compatibleLocalityFacts(left: PlaceProviderCandidate, right: PlaceProvi
     && (right.placeType === "city" || right.placeType === "town");
 }
 
+function compareCanonicalCandidateEvidence(left: PlaceProviderCandidate, right: PlaceProviderCandidate) {
+  const matchWeight = (quality: PlaceProviderCandidate["matchQuality"]) => quality === "exact" ? 3 : quality === "alias" ? 2 : quality === "partial" ? 1 : 0;
+  return (right.rankScore ?? 0) - (left.rankScore ?? 0)
+    || matchWeight(right.matchQuality) - matchWeight(left.matchQuality)
+    || (right.providerImportance ?? 0) - (left.providerImportance ?? 0)
+    || (right.geographicSignificance ?? 0) - (left.geographicSignificance ?? 0)
+    || (left.providerRank ?? Number.MAX_SAFE_INTEGER) - (right.providerRank ?? Number.MAX_SAFE_INTEGER)
+    || left.canonicalName.localeCompare(right.canonicalName)
+    || left.placeType.localeCompare(right.placeType)
+    || left.providerId.localeCompare(right.providerId);
+}
+
 function sameCanonicalFact(left: PlaceProviderCandidate, right: PlaceProviderCandidate) {
   // Nominatim and Photon expose the same OSM feature with different type
   // spellings (node/N, way/W, relation/R) and occasionally different localized
@@ -153,9 +165,14 @@ function sameCanonicalFact(left: PlaceProviderCandidate, right: PlaceProviderCan
   const leftRegion = normalized(left.parentRegionId ?? "");
   const rightRegion = normalized(right.parentRegionId ?? "");
   const sameRegion = Boolean(leftRegion && rightRegion && leftRegion === rightRegion);
-  const directAndAdministrative = (compatibleLocalityFacts(left, right)
-    || (left.routability === "direct_destination" && right.routability === "planning_area")
-    || (right.routability === "direct_destination" && left.routability === "planning_area"));
+  const administrativeCandidate = left.routability === "planning_area" ? left : right.routability === "planning_area" ? right : undefined;
+  const administrativeIsLocal = administrativeCandidate
+    ? (administrativeCandidate.administrativeLevel ?? 99) >= 7
+      && (administrativeCandidate.geographicSignificance ?? 0) < 0.72
+    : false;
+  const directAndAdministrative = compatibleLocalityFacts(left, right)
+    || (administrativeIsLocal && ((left.routability === "direct_destination" && right.routability === "planning_area")
+      || (right.routability === "direct_destination" && left.routability === "planning_area")));
   return sameRegion && directAndAdministrative && distance <= 50;
 }
 
@@ -201,7 +218,7 @@ function rankCanonicalCandidates(
       rankScore: (candidate.rankScore ?? 0) + explicitContextBoost + explicitTypeBoost + geographyBoost,
       normalizationReason: `${candidate.normalizationReason ?? "provider travel entity"}${explicitContextBoost ? "; explicit country context" : ""}${explicitTypeBoost ? "; explicit entity type" : ""}${geographyBoost ? "; exact canonical geography prior" : ""}`,
     };
-  }).sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0));
+  }).sort(compareCanonicalCandidateEvidence);
 }
 
 /** Shared provider-neutral boundary for automatic capture and Builder Search.
@@ -259,7 +276,7 @@ export function createOpenWorldPlaceProvider(options: {
       })));
       const deduplicated = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
         .filter((candidate, index, all) => all.findIndex((other) => other.providerId === candidate.providerId) === index)
-        .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0))
+        .sort(compareCanonicalCandidateEvidence)
         .filter((candidate, index, all) => !all.slice(0, index).some((prior) => sameCanonicalFact(prior, candidate)));
       const candidates = rankCanonicalCandidates(deduplicated, request.context);
       // A provider outage or a transient empty response must not poison later
@@ -309,7 +326,7 @@ export function createOpenWorldPlaceProvider(options: {
       })));
       if (!settled.some((result) => result.status === "fulfilled")) throw new Error("Nearby place providers unavailable");
       const candidates = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
-        .sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0))
+        .sort(compareCanonicalCandidateEvidence)
         .filter((candidate, index, all) => !all.slice(0, index).some((prior) => sameCanonicalFact(prior, candidate)));
       if (candidates.length) {
         cache.set(key, { expiresAt: Date.now() + cacheTtlMs, candidates: cloneCandidates(candidates) });

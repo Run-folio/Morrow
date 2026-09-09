@@ -23,6 +23,7 @@ export type TransferEvidenceKind =
   | "intercity_rail_network"
   | "direct_rail_connectivity"
   | "routed_road"
+  | "canonical_gateway_access"
   | "direct_air_connectivity"
   | "legacy_flight_estimate"
   | "air_gateway_composition";
@@ -61,6 +62,7 @@ export type TransferEvidenceProvider = Pick<DestinationKnowledgeStore, "findTran
 export const MULTIMODAL_SELECTION_RULES = {
   minimumIntercityRailKm: 80,
   maximumInferredRailKm: 1_000,
+  minimumUnverifiedInternationalFlightKm: 1_200,
   inferredRailStationAllowanceMinutes: 30,
   inferredRailSpeedKmh: 200,
   maximumCandidates: 8,
@@ -68,6 +70,7 @@ export const MULTIMODAL_SELECTION_RULES = {
     exactTransfer: 100,
     directRailConnectivity: 86,
     airGatewayComposition: 82,
+    canonicalGatewayAccess: 80,
     routedRoad: 76,
     directAirConnectivity: 78,
     legacyFlightEstimate: 68,
@@ -99,6 +102,62 @@ function gatewayEndpoint(gateway: DestinationAirGateway): CanonicalRouteEndpoint
     canonicalPlaceId: gateway.canonicalId,
     coordinates: gateway.coordinates,
   };
+}
+
+function sameEndpointIdentity(left: CanonicalRouteEndpoint, right: CanonicalRouteEndpoint) {
+  return normalized(endpointIdentity(left)) === normalized(endpointIdentity(right));
+}
+
+function gatewayAccessPlanningMinutes(distanceKm: number) {
+  return roundPlanningMinutes(45 + (distanceKm / 55) * 60);
+}
+
+function inferredGatewayAccessSegment(
+  from: CanonicalRouteEndpoint,
+  to: CanonicalRouteEndpoint,
+): TransferSegment | null {
+  const distanceKm = haversineKm(from.coordinates ?? undefined, to.coordinates ?? undefined);
+  if (distanceKm === null || distanceKm < 1 || distanceKm > 700) return null;
+  return segment({
+    mode: "road",
+    fromEndpoint: from,
+    toEndpoint: to,
+    distanceKm,
+    durationMinutes: gatewayAccessPlanningMinutes(distanceKm),
+    provider: "Canonical air-gateway access relationship; conservative Morrovia ground-transfer estimate, verify the live service.",
+    provenance: "planning_estimate",
+    confidence: "medium",
+    scheduleNeedsChecking: true,
+  });
+}
+
+function gatewayAccessCandidate(
+  leg: TripLeg,
+  fromKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
+  toKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
+): TransferJourneyCandidate | null {
+  const from = leg.fromEndpoint;
+  const to = leg.toEndpoint;
+  if (!from || !to || !sameCountry(from, to)) return null;
+  const fromGateways = fromKnowledge.airGateways.status === "known" ? fromKnowledge.airGateways.value : [];
+  const toGateways = toKnowledge.airGateways.status === "known" ? toKnowledge.airGateways.value : [];
+  const relationship = fromGateways.some((gateway) => sameEndpointIdentity(gatewayEndpoint(gateway), to))
+    || toGateways.some((gateway) => sameEndpointIdentity(gatewayEndpoint(gateway), from));
+  if (!relationship) return null;
+  const accessSegment = inferredGatewayAccessSegment(from, to);
+  if (!accessSegment || accessSegment.durationMinutes === null) return null;
+  return candidate({
+    id: "road:canonical-gateway-access",
+    summaryMode: "road",
+    segments: [accessSegment],
+    totalDurationMinutes: accessSegment.durationMinutes,
+    distanceKm: accessSegment.distanceKm,
+    confidence: "medium",
+    provenance: "planning_estimate",
+    evidence: "canonical_gateway_access",
+    baseScore: MULTIMODAL_SELECTION_RULES.scores.canonicalGatewayAccess,
+    reasons: ["A reviewed canonical gateway relationship establishes ground access between these endpoints.", "The duration is a conservative planning estimate because live road routing is unavailable."],
+  });
 }
 
 function segment(input: Omit<TransferSegment, "id">, index = 0): TransferSegment {
@@ -260,8 +319,15 @@ function directFlightCandidate(
   const originRequiresGateway = fromKnowledge.airGateways.status === "known" && fromKnowledge.airGateways.value.length > 0;
   if (destinationRequiresGateway || originRequiresGateway) return null;
   const directEvidence = hasDirectConnectivity(fromKnowledge, "air") && hasDirectConnectivity(toKnowledge, "air");
+  const international = !sameCountry(leg.fromEndpoint, leg.toEndpoint);
+  const distanceKm = leg.straightLineDistanceKm ?? leg.distanceKm;
+  if (!directEvidence && international
+    && (distanceKm === null || distanceKm < MULTIMODAL_SELECTION_RULES.minimumUnverifiedInternationalFlightKm)) return null;
   const flightSegment = segmentFromLeg(leg);
   if (!flightSegment || flightSegment.durationMinutes === null) return null;
+  if (!directEvidence) {
+    flightSegment.provider = "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.";
+  }
   return candidate({
     id: directEvidence ? "flight:direct-connectivity" : "flight:legacy-estimate",
     summaryMode: "flight",
@@ -294,7 +360,8 @@ async function routeGatewayAccess(
     routeMetadata: { source: "morrovia-planner", roadFallbackEligible: true },
   };
   const resolved = await resolveCanonicalRoadFallback(temporary, { provider });
-  return resolved.leg.mode === "road" ? segmentFromLeg(resolved.leg) : null;
+  if (resolved.leg.mode === "road") return segmentFromLeg(resolved.leg);
+  return inferredGatewayAccessSegment(from, to);
 }
 
 async function mixedGatewayCandidate(
@@ -305,7 +372,7 @@ async function mixedGatewayCandidate(
 ): Promise<TransferJourneyCandidate | null> {
   const from = leg.fromEndpoint;
   const to = leg.toEndpoint;
-  if (!from || !to || !provider) return null;
+  if (!from || !to) return null;
   const originGateway = fromKnowledge.airGateways.status === "known" ? fromKnowledge.airGateways.value[0] : undefined;
   const destinationGateway = toKnowledge.airGateways.status === "known" ? toKnowledge.airGateways.value[0] : undefined;
   if (!originGateway && !destinationGateway) return null;
@@ -349,7 +416,12 @@ async function mixedGatewayCandidate(
     provenance: "planning_estimate",
     evidence: "air_gateway_composition",
     baseScore: MULTIMODAL_SELECTION_RULES.scores.airGatewayComposition,
-    reasons: ["Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.", "Provider-routed ground access completes the journey to the actual stop."],
+    reasons: [
+      "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
+      segments.some((item) => item.mode === "road" && item.provenance !== "routing_engine")
+        ? "The reviewed gateway relationship supplies a conservative ground-access fallback because routed evidence is unavailable."
+        : "Provider-routed ground access completes the journey to the actual stop.",
+    ],
   });
 }
 
@@ -397,7 +469,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
       sources: [{ id: "morrovia:multimodal-resolution-v1", label: "Morrovia multimodal resolver", kind: "curated", supports: "Aggregated segment planning duration." }],
     },
     international: Boolean(leg.fromEndpoint && leg.toEndpoint && !sameCountry(leg.fromEndpoint, leg.toEndpoint)),
-    connectionCount: Math.max(0, selected.segments.length - 1),
+    connectionCount: selected.evidence === "legacy_flight_estimate" ? null : Math.max(0, selected.segments.length - 1),
   });
   const onlySegment = selected.segments.length === 1 ? selected.segments[0] : null;
   return {
@@ -454,6 +526,7 @@ export async function resolveCanonicalTransferJourney(
   const rail = excludedModes.has("train") ? null : railCandidate(leg, fromKnowledge, toKnowledge, railNetworkEvidence);
   const directFlight = excludedModes.has("flight") ? null : directFlightCandidate(leg, fromKnowledge, toKnowledge);
   const mixed = excludedModes.has("flight") || excludedModes.has("road") ? null : await mixedGatewayCandidate(leg, fromKnowledge, toKnowledge, options.provider);
+  const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
   const candidates = [exact, rail, mixed, directFlight]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
     .filter((item) => candidateAllowed(item, excludedModes))
@@ -464,6 +537,7 @@ export async function resolveCanonicalTransferJourney(
   if (!hasStrongCandidate && !excludedModes.has("road")) {
     const road = await roadCandidate(leg, options.provider);
     if (road) candidates.push(withPreferenceScore(road, preferredModes));
+    else if (canonicalGatewayAccess) candidates.push(withPreferenceScore(canonicalGatewayAccess, preferredModes));
     else diagnostic.rejected.push("No plausible provider-routed road candidate was available.");
   } else if (rail) {
     diagnostic.rejected.push("Road provider comparison skipped because strong rail evidence already resolves the journey.");
@@ -476,7 +550,8 @@ export async function resolveCanonicalTransferJourney(
     const gatewayContradictsDirectFlight = leg.mode === "flight"
       && (fromKnowledge.airGateways.status === "known" || toKnowledge.airGateways.status === "known");
     const unsupportedPlannerRoad = leg.mode === "road" && source === "morrovia-planner";
-    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad) {
+    const unsupportedPlannerFlight = leg.mode === "flight" && source === "morrovia-planner" && !directFlight;
+    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight) {
       return {
         leg: {
           ...leg,
@@ -487,13 +562,15 @@ export async function resolveCanonicalTransferJourney(
           usableDayLoss: null,
           provider: gatewayContradictsDirectFlight
             ? "A flight gateway is known, but its ground access could not be resolved."
+            : unsupportedPlannerFlight
+              ? "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey."
             : "A plausible road route could not be established.",
           provenance: "unknown",
           confidence: "unknown",
           scheduleNeedsChecking: true,
           routeGeometry: undefined,
           segments: undefined,
-          routeMetadata: { ...leg.routeMetadata, multimodalResolution: diagnostic },
+          routeMetadata: { ...leg.routeMetadata, source: "multimodal-resolver", multimodalResolution: diagnostic },
         },
         outcome: "unresolved",
         diagnostic,

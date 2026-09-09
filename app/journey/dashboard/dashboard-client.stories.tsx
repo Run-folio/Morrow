@@ -72,6 +72,22 @@ const currentJapan = storyTrip({
   ],
 });
 
+const longCurrentJourney = storyTrip({
+  id: "storybook-long-current-11",
+  title: "London, Tulum, Cancún, Antigua Guatemala, Guatemala City & Mexico City",
+  status: "planned",
+  startDate: "2026-09-03",
+  endDate: "2026-09-24",
+  image: "/journey/product-shots/tour/map-workspace-mobile.png",
+  stops: [
+    { name: "Tulum", country: "Mexico", latitude: 20.2114, longitude: -87.4654, nights: 3 },
+    { name: "Cancún", country: "Mexico", latitude: 21.1619, longitude: -86.8515, nights: 3 },
+    { name: "Antigua Guatemala", country: "Guatemala", latitude: 14.5586, longitude: -90.7295, nights: 4 },
+    { name: "Guatemala City", country: "Guatemala", latitude: 14.6349, longitude: -90.5069, nights: 3 },
+    { name: "Mexico City", country: "Mexico", latitude: 19.4326, longitude: -99.1332, nights: 8 },
+  ],
+});
+
 const upcomingAntigua = storyTrip({
   id: "storybook-upcoming-2", title: "From the Caribbean to Antigua", status: "planned", startDate: "2027-01-08", endDate: "2027-01-29", image: "/journey/immersive/route-mexico-yucatan-1536.webp",
   stops: [
@@ -154,6 +170,8 @@ export const ActiveTrips: Story = { args: { trips: allTrips, stamps: populatedSt
 export const OneTrip: Story = { args: { trips: [currentJapan], stamps: populatedStamps } };
 export const SixPlusPastJourneys: Story = { args: { trips: [currentJapan, ...pastTrips, { ...pastTrips[0]!, id: "storybook-past-9", title: "A return to the Atlantic" }, { ...pastTrips[1]!, id: "storybook-past-10", title: "Southern Spain remembered" }], stamps: populatedStamps } };
 export const Mobile390: Story = { args: { trips: allTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const LongCurrentJourneyMobile390: Story = { args: { trips: [longCurrentJourney], stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const InvalidHeroMediaMobile390: Story = { args: { trips: [{ ...longCurrentJourney, id: "storybook-invalid-media", stops: longCurrentJourney.stops.map((stop) => ({ ...stop, name: "Unreviewed place" })) }], stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const UpcomingCardsDesktop: Story = { render: renderCardGrid };
 export const UpcomingCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const UpcomingCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };

@@ -522,7 +522,6 @@ export function JourneyPlannerMap({
           </span>
         </>);
         element.addEventListener("click", (event) => { event.stopPropagation(); onLegSelectRef.current?.(leg); });
-        element.addEventListener("focus", () => onLegSelectRef.current?.(leg));
         element.addEventListener("mouseenter", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], leg.id]); });
         element.addEventListener("mouseleave", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], ""]); });
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(legMidpoint(leg)).addTo(map);

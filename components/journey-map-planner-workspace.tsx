@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDays, Castle, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BedDouble, Binoculars, Building2, CalendarDays, Castle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Flower2, House, Landmark, MapPin, Menu, Mountain, PawPrint, PersonStanding, Plane, Torus, Trash2, WalletCards, Waves, X, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { JourneyGlobe, type JourneyMapPlace } from "@/components/journey-globe";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -17,6 +17,7 @@ import { JourneyWeather } from "@/components/journey-weather";
 import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyCalendar, journeyDayMedia, journeyDetails, journeyMedia, march2027Journey, type JourneyCalendarDay, type JourneyLeg, type JourneyRestaurant, type JourneyStop, type RestaurantMeal } from "@/lib/journey";
@@ -323,6 +324,7 @@ export type JourneyMapPlannerWorkspaceProps = {
     shapeDayTab?: "plan" | "stay" | "eat" | "see";
     localPlaces?: JourneyLocalPlace[];
     selectedLocalPlaceId?: string;
+    selectedRouteLegId?: string;
   };
 };
 
@@ -404,7 +406,8 @@ export function JourneyMapPlannerWorkspace({
   const [mapMode, setMapMode] = useState<"overview" | "detail">(() => storyState?.mapMode ?? (providedTrip ? initialMapCameraMode(providedTrip, searchParams) : "overview"));
   const [mapDetailScope, setMapDetailScope] = useState<"stop" | "day">("stop");
   const [isExpandedMap, setIsExpandedMap] = useState(Boolean(storyState?.expandedMap));
-  const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
+  const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(storyState?.selectedRouteLegId ?? null);
+  const [transferDetailsExpanded, setTransferDetailsExpanded] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [mobileShapeDayOpen, setMobileShapeDayOpen] = useState(() => Boolean(initialMapTarget && initialMapTarget.mode !== "plan"));
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
@@ -770,10 +773,14 @@ export function JourneyMapPlannerWorkspace({
     });
   }, []);
   const clearSelectedRouteLeg = useCallback(() => {
-    const id = selectedRouteLegId;
     setSelectedRouteLegId(null);
-    restoreMapMarkerFocus("routeLegId", id);
-  }, [restoreMapMarkerFocus, selectedRouteLegId]);
+    setTransferDetailsExpanded(false);
+    setMobileShapeDayOpen(false);
+    setMapDetailScope("stop");
+    setMapMode("overview");
+    setDestinationExpanded(false);
+    window.requestAnimationFrame(() => workspaceRef.current?.querySelector<HTMLButtonElement>("[data-map-route-reset]")?.focus());
+  }, []);
   const clearSelectedLocalPlace = useCallback(() => {
     const id = selectedLocalPlaceId;
     setSelectedLocalPlaceId(null);
@@ -1698,10 +1705,10 @@ export function JourneyMapPlannerWorkspace({
     setShapeDayTab(target.mode);
     setLocalFinderKind(target.mode === "stay" ? "stay" : "restaurant");
     setSelectedLocalPlaceId(null);
-    setSelectedRouteLegId(null);
+    if (storyState?.selectedRouteLegId === undefined) setSelectedRouteLegId(null);
     setMapDetailScope(target.dayNumber ? "day" : "stop");
     setMapMode(initialMapCameraMode(customTrip, searchParams));
-  }, [customTrip, isShellPresentation, searchParams]);
+  }, [customTrip, isShellPresentation, searchParams, storyState?.selectedRouteLegId]);
 
   useEffect(() => {
     if (!storyState || !planHydrated || !customTrip) return;
@@ -1908,7 +1915,7 @@ export function JourneyMapPlannerWorkspace({
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
               onLocalPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); }}
-              onLegSelect={(leg) => { setMobileShapeDayOpen(false); setSelectedRouteLegId(leg.id); setSelectedLocalPlaceId(null); setSelectedPlannerPin(null); setPinPlacementMode(false); setDestinationExpanded(false); }}
+              onLegSelect={(leg) => { setMobileShapeDayOpen(false); setSelectedRouteLegId(leg.id); setTransferDetailsExpanded(false); setSelectedLocalPlaceId(null); setSelectedPlannerPin(null); setPinPlacementMode(false); setDestinationExpanded(false); }}
               onSelect={(id) => {
                 const firstItem = customTrip?.planItems.filter((item) => item.stopId === id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
                 if (!customTrip) return;
@@ -2111,6 +2118,13 @@ export function JourneyMapPlannerWorkspace({
             <p>A place you saved to this trip. Its current access, opening and booking details still need checking.</p>
             <dl className={styles.mapContextFacts}><div><dt>Category</dt><dd>{pinCategoryLabel(selectedPlannerPin.category)}</dd></div><div><dt>Day</dt><dd>{selectedPlannerPin.dayNumber ? `Day ${selectedPlannerPin.dayNumber}` : "Trip-wide"}</dd></div></dl>
           </div> : selectedRouteLeg ? <div className={styles.mapLegDetail}>
+            <dl className={styles.mapTransferPrimary}>
+              <div><dt>Mode</dt><dd>{selectedRouteLeg.modeLabel}</dd></div>
+              <div><dt>Total</dt><dd>{formatMapDuration(selectedRouteLeg.doorToDoorMinutes)}</dd></div>
+              <div><dt>Status</dt><dd>{selectedRouteLeg.confidence ? `${selectedRouteLeg.confidence.level} confidence` : "Needs confirmation"}</dd></div>
+            </dl>
+            <EasyTButton variant="quiet" size="small" className={styles.mapTransferDetailToggle} aria-expanded={transferDetailsExpanded} aria-controls="selected-transfer-details" onClick={() => setTransferDetailsExpanded((expanded) => !expanded)}>{transferDetailsExpanded ? "Hide details" : "Details"}<ChevronDown aria-hidden="true" /></EasyTButton>
+            <div id="selected-transfer-details" className={styles.mapTransferSecondary} data-expanded={transferDetailsExpanded ? "true" : "false"}>
             <p className={styles.mapContextCopy}>Approximate planning connection. This line is not a live or navigable route.</p>
             <dl className={styles.mapContextFacts}>
               <div><dt>Journey</dt><dd>{tripLegClassificationLabel(selectedRouteLeg.classification)}</dd></div>
@@ -2123,6 +2137,7 @@ export function JourneyMapPlannerWorkspace({
             {selectedRouteLeg.planningNote ? <p className={styles.mapLegNote}>{selectedRouteLeg.planningNote}</p> : null}
             {selectedRouteLeg.warnings.map((warning) => <p key={warning} className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> {warning}</p>)}
             {selectedRouteLeg.scheduleNeedsChecking ? <p className={styles.mapScheduleCheck}><Clock3 aria-hidden="true" /> Exact schedules and current operating details still need checking.</p> : null}
+            </div>
           </div> : mapMode === "overview" ? <>
             <p className={styles.mapContextCopy}>The complete route is fitted to the map. Select a transport marker or stop for spatial detail.</p>
             <dl className={styles.mapContextFacts}>

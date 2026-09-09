@@ -77,6 +77,9 @@ const lima = stop("lima", 1, "Lima", "Peru", [-77.0428, -12.0464]);
 const hiroshima = stop("hiroshima", 0, "Hiroshima", "Japan", [132.4553, 34.3853]);
 const kyoto = stop("kyoto", 1, "Kyoto", "Japan", [135.7681, 35.0116]);
 const laPaz = stop("la-paz", 0, "La Paz", "Bolivia", [-68.1193, -16.4897]);
+const athens = stop("athens", 0, "Athens", "Greece", [23.7275, 37.9838]);
+const naxos = stop("naxos", 1, "Naxos", "Greece", [25.376, 37.1036]);
+const paros = stop("paros", 1, "Paros", "Greece", [25.1503, 37.085]);
 
 test("Huacachina to Lima selects one routed road journey and no unknown marker state", async () => {
   const provider = new FixtureRoadProvider();
@@ -148,6 +151,20 @@ test("a short land journey selects road rather than flight", async () => {
   assert.equal(resolved.leg.durationMinutes, 45);
 });
 
+test("catalogued island endpoints cannot become direct road legs without crossing evidence", async () => {
+  const provider = new FixtureRoadProvider((input) => roadResult(input, 175, 210));
+  const mainlandToIsland = await resolveCanonicalTransferJourney(baseline(athens, naxos), { provider });
+  const islandToMainland = await resolveCanonicalTransferJourney(baseline(naxos, athens), { provider });
+  const islandToIsland = await resolveCanonicalTransferJourney(baseline(naxos, paros), { provider });
+
+  for (const resolved of [mainlandToIsland, islandToMainland, islandToIsland]) {
+    assert.equal(resolved.leg.mode, "unknown");
+    assert.equal(resolved.leg.durationMinutes, null);
+    assert.match(resolved.leg.provider ?? "", /plausible road route could not be established/i);
+  }
+  assert.equal(provider.calls.length, 0, "semantic land separation should reject the car-only candidate before provider work");
+});
+
 test("exact supported ferry evidence can resolve without inventing a service", async () => {
   const source: KnowledgeSource = { id: "test:ferry", label: "Test ferry evidence", kind: "curated", supports: "Exact fixture ferry." };
   const transfer: DestinationTransferKnowledge = {
@@ -175,7 +192,7 @@ test("exact supported ferry evidence can resolve without inventing a service", a
   assert.equal(resolved.leg.durationMinutes, 120);
 });
 
-test("island/no-route and provider outage degrade without fabricating road or direct flight", async () => {
+test("island/no-route stays unresolved while reviewed gateway access survives an unavailable provider", async () => {
   const noRoute = new FixtureRoadProvider(() => new RoadRoutingError("no_route"));
   const islandA = stop("unsupported-island-a", 0, "Unsupported Island A", "Archipelago", [0, 0]);
   const islandB = stop("unsupported-island-b", 1, "Unsupported Island B", "Archipelago", [0.5, 0]);
@@ -183,10 +200,10 @@ test("island/no-route and provider outage degrade without fabricating road or di
   assert.equal(unresolvedIsland.leg.mode, "unknown");
   assert.equal(unresolvedIsland.leg.durationMinutes, null);
 
-  const unresolvedGateway = await resolveCanonicalTransferJourney(baseline(laPaz, huacachina));
-  assert.equal(unresolvedGateway.leg.mode, "unknown");
-  assert.equal(unresolvedGateway.leg.toEndpoint?.name, "Huacachina");
-  assert.equal(unresolvedGateway.leg.segments, undefined);
+  const resolvedGateway = await resolveCanonicalTransferJourney(baseline(laPaz, huacachina));
+  assert.equal(resolvedGateway.leg.mode, "mixed");
+  assert.equal(resolvedGateway.leg.toEndpoint?.name, "Huacachina");
+  assert.deepEqual(resolvedGateway.leg.segments?.map((segment) => segment.mode), ["flight", "road"]);
 });
 
 test("explicit confirmed transport is preserved and legacy persisted legs remain readable", async () => {
@@ -212,4 +229,28 @@ test("missing coordinates remain unresolved without a provider call", async () =
   const resolved = await resolveCanonicalTransferJourney(baseline(missing, lima), { provider });
   assert.equal(resolved.leg.mode, "unknown");
   assert.equal(provider.calls.length, 0);
+});
+
+test("an unsupported planner flight records the resolver-owned unresolved normalization", async () => {
+  const from = stop("regional-a", 0, "Regional A", "Country A", [0, 0]);
+  const to = stop("regional-b", 1, "Regional B", "Country B", [4, 0]);
+  const plannerFlight: TripLeg = {
+    ...baseline(from, to),
+    mode: "flight",
+    durationMinutes: 240,
+    headlineMinutes: 240,
+    doorToDoorMinutes: 240,
+    provenance: "planning_estimate",
+    routeMetadata: { source: "morrovia-planner" },
+  };
+
+  const resolved = await resolveCanonicalTransferJourney(plannerFlight, {
+    provider: new FixtureRoadProvider(() => new RoadRoutingError("no_route")),
+  });
+
+  assert.equal(resolved.outcome, "unresolved");
+  assert.equal(resolved.leg.mode, "unknown");
+  assert.equal(resolved.leg.durationMinutes, null);
+  assert.equal(resolved.leg.routeMetadata.source, "multimodal-resolver");
+  assert.equal((resolved.leg.routeMetadata.multimodalResolution as { version?: number }).version, 1);
 });

@@ -41,7 +41,7 @@ import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, rankAttractionVisitTargets, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -63,6 +63,8 @@ import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripI
 import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
+import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 
 /* ---------------------------------------------------------------- data */
 
@@ -585,6 +587,7 @@ function TripBuilderDocument() {
   const [clarificationAutoOpened, setClarificationAutoOpened] = useState(false);
   const [clarificationDismissed, setClarificationDismissed] = useState(false);
   const [nearbyBaseDiscovery, setNearbyBaseDiscovery] = useState<NearbyBaseDiscoveryState | null>(null);
+  const [nearbyBaseRetryNonce, setNearbyBaseRetryNonce] = useState(0);
   const [expandedNearbyBaseMentionIds, setExpandedNearbyBaseMentionIds] = useState<string[]>([]);
   const [productTourOpen, setProductTourOpen] = useState(false);
   const clarificationResumeRef = useRef<HTMLButtonElement>(null);
@@ -1220,7 +1223,7 @@ function TripBuilderDocument() {
       if (!activeNearbyBaseAnchor) setNearbyBaseDiscovery(null);
       return;
     }
-    const controller = new AbortController();
+    const scope = createAbortableEffectScope("nearby base discovery");
     const anchor = activeNearbyBaseAnchor;
     const params = new URLSearchParams({
       nearbyBases: "1",
@@ -1235,26 +1238,30 @@ function TripBuilderDocument() {
     setNearbyBaseDiscovery((current) => current?.mentionId === activeClarificationMention.mentionId && current.status === "ready"
       ? current
       : { mentionId: activeClarificationMention.mentionId, status: "loading", suggestions: [] });
-    fetch(`/api/journey-geocode?${params}`, { signal: controller.signal })
+    withProviderTimeout({
+      label: "Nearby base discovery",
+      timeoutMs: 7_000,
+      signal: scope.signal,
+      request: (signal) => fetch(`/api/journey-geocode?${params}`, { signal }),
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error("nearby base discovery unavailable");
         return response.json() as Promise<{ candidates?: NearbyBaseSuggestion[]; status?: string }>;
       })
       .then((payload) => {
-        if (controller.signal.aborted) return;
         const suggestions = payload.candidates ?? [];
-        setNearbyBaseDiscovery({
+        scope.commit(() => setNearbyBaseDiscovery({
           mentionId: activeClarificationMention.mentionId,
           status: suggestions.length ? "ready" : "empty",
           suggestions,
-        });
+        }));
       })
       .catch((error) => {
-        if ((error as { name?: string }).name === "AbortError") return;
-        setNearbyBaseDiscovery({ mentionId: activeClarificationMention.mentionId, status: "unavailable", suggestions: [] });
+        if (scope.isCancellation(error)) return;
+        scope.commit(() => setNearbyBaseDiscovery({ mentionId: activeClarificationMention.mentionId, status: "unavailable", suggestions: [] }));
       });
-    return () => controller.abort();
-  }, [activeClarificationMention?.mentionId, activeNearbyBaseAnchorKey, clarificationOpen]);
+    return () => scope.dispose();
+  }, [activeClarificationMention?.mentionId, activeNearbyBaseAnchorKey, clarificationOpen, nearbyBaseRetryNonce]);
 
   useEffect(() => {
     const scope = `${activeBrowserOwnerId ?? "guest"}:${tripId}`;
@@ -3198,8 +3205,11 @@ function TripBuilderDocument() {
     }).filter((suggestion) => !stops.some((stop) => stop.canonicalPlaceId === suggestion.canonicalPlaceId))
     : [];
   const clarificationModelSuggestions = activeClarificationMention
-    ? planningSuggestions.filter((suggestion) => suggestion.mentionId === activeClarificationMention.mentionId
-      && !isDuplicatePlaceIdentity(stops, { name: suggestion.name, canonicalPlaceId: suggestion.canonicalPlaceId }))
+    ? (clarificationUsesNearbyBases
+      ? planningSuggestions
+      : planningAreaSuggestionsWithinParent(planningSuggestions, planningParentForMention(activeClarificationMention)))
+      .filter((suggestion) => suggestion.mentionId === activeClarificationMention.mentionId
+        && !isDuplicatePlaceIdentity(stops, { name: suggestion.name, canonicalPlaceId: suggestion.canonicalPlaceId }))
     : [];
   const activeNearbyDiscovery = nearbyBaseDiscovery?.mentionId === activeClarificationMention?.mentionId ? nearbyBaseDiscovery : null;
   const nearbySuggestions = clarificationUsesNearbyBases
@@ -4057,9 +4067,11 @@ function TripBuilderDocument() {
           ? language === "es" ? "LUGARES CERCANOS SUGERIDOS" : "SUGGESTED NEARBY PLACES"
           : undefined}
         suggestionsStatus={clarificationSuggestionsStatus}
-        suggestionsActionLabel={clarificationUsesNearbyBases && nearbySuggestions.length > 3 && !nearbyExpanded
-          ? language === "es" ? "Ver más lugares cercanos" : "See more nearby places"
-          : undefined}
+        suggestionsActionLabel={clarificationUsesNearbyBases && activeNearbyDiscovery?.status === "unavailable"
+          ? language === "es" ? "Reintentar búsqueda cercana" : "Retry nearby search"
+          : clarificationUsesNearbyBases && nearbySuggestions.length > 3 && !nearbyExpanded
+            ? language === "es" ? "Ver más lugares cercanos" : "See more nearby places"
+            : undefined}
         choices={clarificationChoices}
         routeShapes={clarificationRouteShapes}
         applyingShapeId={applyingAreaShapeId}
@@ -4163,6 +4175,10 @@ function TripBuilderDocument() {
           if (guided) void addGuidedPlanningPlace(activeClarificationMention, guided);
         }}
         onSuggestionsAction={clarificationUsesNearbyBases && activeClarificationMention ? () => {
+          if (activeNearbyDiscovery?.status === "unavailable") {
+            setNearbyBaseRetryNonce((current) => current + 1);
+            return;
+          }
           setExpandedNearbyBaseMentionIds((current) => [...new Set([...current, activeClarificationMention.mentionId])]);
         } : undefined}
         onChoose={(choice) => {

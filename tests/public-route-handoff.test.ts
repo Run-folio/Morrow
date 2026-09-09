@@ -51,3 +51,17 @@ test('approved route handoffs carry a resolved ending base through JSON reload i
     assert.equal(payload.datesExplicit, false);
   }
 });
+
+test("reviewed route handoffs never promote generated connective prose into place intent", () => {
+  for (const key of ["iceland-ring-road", "japan-slow", "vietnam-cambodia", "balkans-overland"]) {
+    for (let run = 0; run < 10; run += 1) {
+      const detail = publicRouteDetailFor(key)!;
+      const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft)));
+      const routeIds = new Set(payload.destinations.flatMap((destination: { canonicalPlaceId?: string }) => destination.canonicalPlaceId ?? []));
+      const mentions = payload.structuredBrief.placeMentions ?? [];
+      assert.equal(mentions.every((mention: { canonicalPlaceId?: string }) => Boolean(mention.canonicalPlaceId && routeIds.has(mention.canonicalPlaceId))), true, `${key} run ${run + 1}`);
+      assert.equal(mentions.some((mention: { sourceText: string }) => /^(?:continue|then|through|around|explore|follow|before|after|onward|via)$/i.test(mention.sourceText)), false, `${key} run ${run + 1}`);
+      assert.equal(payload.structuredBrief.placeIssues?.some((issue: { sourceText: string }) => issue.sourceText.toLocaleLowerCase() === "continue"), false);
+    }
+  }
+});

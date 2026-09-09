@@ -57,7 +57,7 @@ test("workspace landmarks and tab panels keep valid, distinguishable semantics",
   assert.doesNotMatch(itinerary, /<article\s+className=\{styles\.dayPanel\}\s+role="tabpanel"/);
   assert.match(map, /aria-label="Selected map context" aria-live="polite"/);
   assert.match(stamps, /<h2>\{selectedCountry\.name\}<\/h2>/);
-  assert.match(mapStory, /decorators: \[\(Story\) => <div className="morrovia-editorial-page"/);
+  assert.match(mapStory, /decorators: \[\(Story\) => \{[\s\S]*?className="morrovia-editorial-page"/);
 });
 
 test("the immersive closing image is lazy and uses pre-optimized responsive variants", () => {

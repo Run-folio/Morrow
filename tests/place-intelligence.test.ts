@@ -5,6 +5,8 @@ import {
   canonicalPlaceSuggestionFor,
   canonicalPlaceSuggestionsForQuery,
   placeMentionsNeedingReview,
+  planningAreaSuggestionsWithinParent,
+  reconcileSelfBasePlaceState,
   regionalBaseSuggestions,
   resolveExplicitPlaceMentions,
   resolveExplicitPlaceMentionsWithProvider,
@@ -61,6 +63,79 @@ test("canonical autocomplete returns contextual route identities and supports ke
   ), true);
   assert.equal(isDuplicatePlaceIdentity([{ name: "Fes" }], { name: " fes " }), true);
   assert.equal(isDuplicatePlaceIdentity([{ name: "Fes" }], { name: "Faro", canonicalPlaceId: "faro" }), false);
+  assert.equal(isDuplicatePlaceIdentity(
+    [{ name: "Salta", canonicalPlaceId: "salta-province", placeType: "region" }],
+    { name: "Salta", canonicalPlaceId: "salta-city", placeType: "city" },
+  ), false);
+  for (const [name, parentId, childId] of [
+    ["Oaxaca", "oaxaca-state", "oaxaca-city"],
+    ["New York", "new-york-state", "new-york-city"],
+    ["Guatemala", "guatemala-country", "guatemala-city"],
+    ["Panama", "panama-country", "panama-city"],
+    ["Quebec", "quebec-province", "quebec-city"],
+  ]) {
+    assert.equal(isDuplicatePlaceIdentity(
+      [{ name, canonicalPlaceId: parentId, placeType: "region" }],
+      { name, canonicalPlaceId: childId, placeType: "city" },
+    ), false, `${name} parent and city must stay distinct`);
+  }
+});
+
+test("same-name parent and child retain distinct canonical shaping state", () => {
+  const parent = {
+    mentionId: "salta-parent",
+    sourceText: "Salta",
+    sourceTexts: ["Salta"],
+    normalizedPhrase: "salta",
+    canonicalPlaceId: "open-world:salta-province",
+    canonicalName: "Salta",
+    aliases: [],
+    placeType: "region" as const,
+    status: "resolved" as const,
+    confidence: {} as never,
+    provenance: [],
+    parentCountries: ["Argentina"],
+    routability: "planning_area" as const,
+    directlyRoutable: false,
+    requiresBaseSelection: true,
+    isAnchor: true,
+    role: "preferred" as const,
+    order: 0,
+    candidates: [],
+  };
+  const citySelection = {
+    mentionId: parent.mentionId,
+    kind: "base" as const,
+    selectedCanonicalPlaceId: "open-world:salta-city",
+    selectedName: "Salta",
+    selectedPlaceType: "city" as const,
+    selectedParentCountries: ["Argentina"],
+    routeStopId: "salta-stop",
+    provenance: { id: "test", label: "Test", kind: "builder" as const, supports: "Explicit child selection" },
+  };
+  const reconciled = reconcileSelfBasePlaceState([parent], [citySelection]);
+  assert.deepEqual(reconciled.selections, [citySelection]);
+  assert.equal(reconciled.collapsedMentionIds.size, 0);
+
+  const scoped = planningAreaSuggestionsWithinParent([{
+    mentionId: parent.mentionId,
+    regionCanonicalPlaceId: parent.canonicalPlaceId,
+    canonicalPlaceId: "buenos-aires",
+    name: "Buenos Aires",
+    country: "Argentina",
+    placeType: "city" as const,
+    coordinates: [-58.3816, -34.6037] as [number, number],
+    reason: "Country-level fallback",
+    provenance: [],
+    anchorMatched: false,
+  }], {
+    canonicalPlaceId: parent.canonicalPlaceId,
+    canonicalName: "Salta",
+    placeType: "region",
+    parentCountries: ["Argentina"],
+    bounds: { south: -26.4, west: -68.6, north: -22.0, east: -62.3 },
+  });
+  assert.deepEqual(scoped, []);
 });
 
 test("geography review omits confident route destinations and retains only attention states", () => {

@@ -1602,3 +1602,57 @@
   .timeStep .stepHero .stepHeroTitle { font-size: clamp(29px, 8.8vw, 34px); }
   .routeTimeRow { padding-inline: 9px; }
 }
+
+/* The mobile Builder action remains fixed above the canonical Morrovia dock.
+   Its document reserves the same measured height so Route Check, warnings and
+   recovery truth can always scroll completely clear of both persistent layers. */
+@media (max-width: 520px) {
+  .shellWide {
+    --morrovia-builder-action-height: 82px;
+    padding-bottom: calc(var(--morrovia-builder-action-height) + 16px);
+  }
+
+  .wizardFoot {
+    position: fixed;
+    z-index: calc(var(--morrovia-layer-dock, 90) - 1);
+    right: 12px;
+    bottom: calc(var(--morrovia-mobile-dock-offset) + 8px);
+    left: 12px;
+    min-height: var(--morrovia-builder-action-height);
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--morrovia-radius);
+    background: var(--morrovia-paper);
+    box-shadow: var(--morrovia-shadow-overlay);
+    backdrop-filter: blur(18px);
+  }
+
+  .wizardFoot .footRight {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 10px;
+  }
+
+  .wizardFoot .saveState,
+  .wizardFoot .gate {
+    grid-column: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .wizardFoot .primary {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    min-height: 48px;
+    padding-inline: 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 340px) {
+  .wizardFoot { right: 8px; left: 8px; padding-inline: 9px; }
+  .wizardFoot .primary { padding-inline: 10px; font-size: 12px; }
+  .wizardFoot .saveState { font-size: 9px; }
+}

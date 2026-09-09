@@ -34,6 +34,14 @@ const tripMapWorkspaceStylesSource = readFileSync(
   new URL("../components/easyt/trip-map-workspace.module.css", import.meta.url),
   "utf8",
 );
+const navigationStylesSource = readFileSync(
+  new URL("../app/journey/easyt-navigation.module.css", import.meta.url),
+  "utf8",
+);
+const mapStoriesSource = readFileSync(
+  new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url),
+  "utf8",
+);
 
 test("the normal Map workspace breaks out from the readable trip shell", () => {
   assert.match(tripMapWorkspaceStylesSource, /width: min\(2200px, calc\(100vw - 32px\)\)/);
@@ -151,15 +159,35 @@ test("authenticated Map mutations use the account persistence queue", () => {
 });
 
 test("map overlays expose keyboard-equivalent controls and predictable Escape cleanup", () => {
-  assert.match(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelect/);
   assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\); onLegSelectRef\.current\?\.\(leg\); \}\)/);
+  assert.doesNotMatch(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelectRef\.current\?\.\(leg\)\)/);
   assert.match(mapSource, /element\.addEventListener\("mouseenter",/);
   assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\); onSelectRef\.current\(stop\.id\); \}\)/);
   assert.match(mapSource, /element\.addEventListener\("focus", \(\) => previewStop\(stop\.id\)\)/);
   assert.match(mapSource, /data\.routeLegId|dataset\.routeLegId/);
   assert.match(mapWorkspaceSource, /event\.key !== "Escape"/);
+  assert.match(mapWorkspaceSource, /setSelectedRouteLegId\(null\);[\s\S]*setMapMode\("overview"\)/,
+    "closing a transfer should return to the whole-route camera state");
+  assert.match(mapWorkspaceSource, /aria-label="Close transfer details"/);
   assert.match(mapWorkspaceSource, /restoreMapMarkerFocus/);
+  assert.match(mapWorkspaceSource, /querySelector<HTMLButtonElement>\("\[data-map-route-reset\]"\)\?\.focus\(\)/);
   assert.match(copilotSource, /aria-label=\{open \?/);
+});
+
+test("mobile transfer context progressively discloses evidence without hiding uncertainty", () => {
+  assert.match(mapWorkspaceSource, /className=\{styles\.mapTransferPrimary\}/);
+  assert.match(mapWorkspaceSource, /aria-controls="selected-transfer-details"/);
+  assert.match(mapWorkspaceSource, /selectedRouteLeg\.confidence/);
+  assert.match(mapStylesSource, /\.mapTransferSecondary\[data-expanded="true"\]/);
+  assert.match(mapStylesSource, /\.mapTransferDetailToggle\{display:flex;min-height:44px/);
+  assert.match(mapStoriesSource, /Mobile390SelectedTransfer/);
+});
+
+test("mobile fullscreen removes dock obstruction and keeps explicit Map exit coverage", () => {
+  assert.match(navigationStylesSource, /morrovia-map-expanded[\s\S]*\.mobileDock[\s\S]*display: none/);
+  assert.match(mapWorkspaceSource, /isExpandedMap \? "Exit fullscreen" : "Fullscreen map"/);
+  assert.match(mapStylesSource, /\.shellPlannerExpanded \.finderDock\{bottom:0!important/);
+  assert.match(mapStoriesSource, /Mobile390FullscreenOverview/);
 });
 
 test("a server-resolved TripShell map remains readable after session expiry", () => {

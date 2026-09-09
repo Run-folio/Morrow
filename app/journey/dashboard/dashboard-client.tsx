@@ -84,13 +84,18 @@ function storedTripPhoto(trip: EasyTTrip): TripPhoto | null {
   const src = trip.planItems.find((item) => item.image)?.image ?? null;
   if (!src) return null;
   const credit = routeImageCredit(src);
+  // Trip plans can contain maps, provider thumbnails and other useful media.
+  // A dashboard hero is a narrower role: only the reviewed photographic
+  // inventory is allowed to occupy it. Unknown media falls through to a
+  // canonical destination photo or the neutral fallback below.
+  if (!credit) return null;
   return {
     src,
-    alt: credit?.alt ?? "",
-    creditHref: credit?.sourceUrl ?? null,
-    creditLabel: credit?.sourceLabel ?? null,
-    licenseHref: credit?.licenseUrl ?? null,
-    fullCreditHref: credit?.fullCreditUrl ?? null,
+    alt: credit.alt,
+    creditHref: credit.sourceUrl,
+    creditLabel: credit.sourceLabel,
+    licenseHref: credit.licenseUrl,
+    fullCreditHref: credit.fullCreditUrl,
     place: null,
   };
 }

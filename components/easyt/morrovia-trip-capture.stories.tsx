@@ -43,6 +43,7 @@ function ControlledCapture(props: Partial<MorroviaTripCaptureProps>) {
     loading={props.loading}
     disabled={props.disabled}
     error={props.error}
+    progressiveDetails={props.progressiveDetails}
   />;
 }
 
@@ -71,6 +72,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const FirstVisit: Story = {};
+export const HomepageCollapsed: Story = { args: { progressiveDetails: true } };
+export const HomepageExpanded: Story = {
+  args: {
+    progressiveDetails: true,
+    value: "Japan for two weeks",
+    endpointEntry: endpointEntry("London, United Kingdom", "", "unknown"),
+    interests: ["nature", "food"],
+  },
+  play: async ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-controls]')?.click();
+  },
+};
 export const EmptyPromptValidation: Story = {
   play: async ({ canvasElement }) => {
     const submit = Array.from(canvasElement.querySelectorAll("button"))
@@ -120,6 +133,6 @@ export const TourCuscoTrip: Story = {
 };
 export const Loading: Story = { args: { value: "Two weeks through Japan.", loading: true } };
 export const Error: Story = { args: { value: "Two weeks through Japan.", error: "We couldn't understand your trip. Please try again." } };
-export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile390: Story = { args: { progressiveDetails: true }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };

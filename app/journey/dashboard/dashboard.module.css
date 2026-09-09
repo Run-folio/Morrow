@@ -532,11 +532,31 @@
   .pageIntro { margin: 36px 0 30px; }
   .pageIntro h1 span { font-size: 3rem; }
   .pageIntro h1 em { font-size: 2.55rem; }
-  .currentMedia { height: 242px; overflow: visible; margin-bottom: 150px; border-radius: var(--morrovia-radius); background: transparent; }
-  .currentMedia > img { height: 242px; border-radius: var(--morrovia-radius); filter: brightness(.82) saturate(.9); }
+  .currentMedia { height: auto; overflow: visible; margin-bottom: 0; border-radius: var(--morrovia-radius); background: transparent; }
+  .currentMedia > img { display: block; height: 242px; border-radius: var(--morrovia-radius); filter: brightness(.82) saturate(.9); }
   .currentIdentity { position: relative; left: auto; bottom: auto; display: grid; width: auto; padding: 24px 0 0; color: var(--morrovia-ink); }
   .currentIdentity .eyebrow { color: var(--morrovia-signal); }
-  .currentIdentity h2 { margin: 10px 0 8px; color: var(--morrovia-ink); font-size: clamp(2.8rem, 14vw, 4.1rem); }
+  .currentIdentity h2 {
+    display: -webkit-box;
+    max-width: none;
+    margin: 10px 0 8px;
+    overflow: hidden;
+    color: var(--morrovia-ink);
+    font-size: clamp(2.25rem, 10.5vw, 3.1rem);
+    line-height: .91;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+  .currentIdentity h2 span,
+  .currentIdentity h2 em { display: inline; }
+  .currentIdentity h2 span + em::before { content: " "; }
+  .currentIdentity > p:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   .currentDetails { padding-top: 18px; }
   .currentActions { position: relative; align-items: stretch; flex-direction: column; }
   .currentActions > a:first-child { width: 100%; justify-content: center; }
@@ -573,8 +593,9 @@
 @media (max-width: 340px) {
   .pageIntro h1 span { font-size: 2.72rem; }
   .pageIntro h1 em { font-size: 2.26rem; }
-  .currentMedia { height: 220px; margin-bottom: 144px; }
+  .currentMedia { height: auto; margin-bottom: 0; }
   .currentMedia > img { height: 220px; }
+  .currentIdentity h2 { font-size: clamp(2rem, 10.5vw, 2.4rem); }
   .workspaceLinks { gap: 10px; }
   .currentFacts { display: grid; gap: 3px; }
   .currentFacts > *::after { display: none; }

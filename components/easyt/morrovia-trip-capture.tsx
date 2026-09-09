@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CalendarDays, Heart, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, Heart, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { journeyCaptureValidationMessage, validateJourneyCaptureSubmission, type JourneyCaptureValidationIssue } from "@/lib/easyt/journey-capture-client";
@@ -18,6 +18,10 @@ const copy = {
   en: {
     briefLabel: "TELL US ABOUT YOUR TRIP",
     briefPlaceholder: "Where would you like to go and for how long?\nAny must see places to base the trip around?",
+    homepageLabel: "Start your plan",
+    homepagePlaceholder: "Where would you like to go, for how long?",
+    showDetails: "Add trip details",
+    hideDetails: "Hide trip details",
     continue: "Plan my trip",
     checking: "Understanding your trip…",
     travelStyle: "YOUR TRAVEL STYLE",
@@ -36,6 +40,10 @@ const copy = {
   es: {
     briefLabel: "CUÉNTANOS SOBRE TU VIAJE",
     briefPlaceholder: "¿Adónde te gustaría ir y durante cuánto tiempo?\n¿Hay algún lugar imprescindible alrededor del que organizar el viaje?",
+    homepageLabel: "Empieza tu plan",
+    homepagePlaceholder: "¿Adónde te gustaría ir y por cuánto tiempo?",
+    showDetails: "Añadir detalles del viaje",
+    hideDetails: "Ocultar detalles del viaje",
     continue: "Planificar mi viaje",
     checking: "Entendiendo tu viaje…",
     travelStyle: "TU ESTILO DE VIAJE",
@@ -82,6 +90,7 @@ export type MorroviaTripCaptureProps = {
   interests: TripInterest[];
   language: EasyTLanguage;
   loading?: boolean;
+  progressiveDetails?: boolean;
   onDatesChange: (range: { end: string; start: string }) => void;
   onInterestsChange: (interests: TripInterest[]) => void;
   onPromptStarted?: (inputMethod: "text" | "voice", value: string) => void;
@@ -105,6 +114,7 @@ export function MorroviaTripCapture({
   interests,
   language,
   loading = false,
+  progressiveDetails = false,
   onDatesChange,
   onInterestsChange,
   onPromptStarted,
@@ -119,9 +129,11 @@ export function MorroviaTripCapture({
   value,
 }: MorroviaTripCaptureProps) {
   const [attributePanel, setAttributePanel] = useState<"dates" | "travellers" | "interests" | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [aiDisclosureOpen, setAiDisclosureOpen] = useState(false);
   const [validationIssue, setValidationIssue] = useState<JourneyCaptureValidationIssue | null>(null);
   const promptErrorId = useId();
+  const detailsId = useId();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const text = copy[language];
   const promptError = validationIssue ? journeyCaptureValidationMessage(validationIssue, language) : "";
@@ -149,20 +161,20 @@ export function MorroviaTripCapture({
     // morrovia-ui-audit-allow-next-line native-control -- the voice overlay requires the Homepage prompt textarea to remain one composite control
     <textarea
       ref={textareaRef}
-      aria-label={text.briefLabel}
+      aria-label={progressiveDetails ? text.homepageLabel : text.briefLabel}
       aria-describedby={promptError ? promptErrorId : undefined}
       aria-invalid={promptError ? true : undefined}
       value={value}
       onChange={(event) => updateValue(event.target.value, "text")}
       maxLength={600}
-      placeholder={text.briefPlaceholder}
+      placeholder={progressiveDetails ? text.homepagePlaceholder : text.briefPlaceholder}
       disabled={disabled || loading}
     />
   );
 
   return <form id={formId} className={styles.root} onSubmit={submit}>
-    <div className={styles.card}>
-      <span className={styles.label}>{text.briefLabel}</span>
+    <div className={`${styles.card}${progressiveDetails && !detailsOpen ? ` ${styles.detailsCollapsed}` : ""}`}>
+      <span className={`${styles.label}${progressiveDetails ? ` ${styles.homepageLabel}` : ""}`}>{progressiveDetails ? text.homepageLabel : text.briefLabel}</span>
       <div className={`${styles.promptField}${promptError ? ` ${styles.promptFieldError}` : ""}`} onMouseDown={(event) => {
         if (event.target === event.currentTarget) textareaRef.current?.focus();
       }}>
@@ -172,18 +184,29 @@ export function MorroviaTripCapture({
           {promptTextarea}
           <VoiceTripBrief
             className={styles.voiceInput}
+            compact={progressiveDetails}
             language={language}
             onTranscript={(transcript) => updateValue(appendVoiceTranscript(value, transcript), "voice")}
           />
         </div>
         {promptError ? <p id={promptErrorId} className={styles.promptError} role="alert">{promptError}</p> : null}
       </div>
-      {endpointEntry ? <div className={styles.endpointEntry}>{endpointEntry}</div> : null}
-      {manualEntry ? <section className={styles.manualEntry} aria-label={language === "es" ? "Entrada manual del viaje" : "Manual trip entry"}>
-        <div className={styles.manualDivider}><span>{language === "es" ? "o introdúcelo manualmente" : "or enter it manually"}</span></div>
-        {manualEntry}
-      </section> : null}
-      <div className={styles.attributes}>
+      {progressiveDetails ? <EasyTButton
+        className={styles.detailsToggle}
+        variant="quiet"
+        size="small"
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
+        icon={ChevronDown}
+        onClick={() => setDetailsOpen((current) => !current)}
+      >{detailsOpen ? text.hideDetails : text.showDetails}</EasyTButton> : null}
+      {(!progressiveDetails || detailsOpen) ? <div className={progressiveDetails ? styles.detailsPanel : undefined} id={progressiveDetails ? detailsId : undefined}>
+        {endpointEntry ? <div className={styles.endpointEntry}>{endpointEntry}</div> : null}
+        {manualEntry ? <section className={styles.manualEntry} aria-label={language === "es" ? "Entrada manual del viaje" : "Manual trip entry"}>
+          <div className={styles.manualDivider}><span>{language === "es" ? "o introdúcelo manualmente" : "or enter it manually"}</span></div>
+          {manualEntry}
+        </section> : null}
+        <div className={styles.attributes}>
         <div className={styles.attributeActions}>
           <EasyTButton variant="secondary" size="small" icon={CalendarDays} aria-expanded={attributePanel === "dates"} onClick={() => setAttributePanel((current) => current === "dates" ? null : "dates")}>{text.dates}</EasyTButton>
           <EasyTButton variant="secondary" size="small" icon={UsersRound} aria-expanded={attributePanel === "travellers"} onClick={() => setAttributePanel((current) => current === "travellers" ? null : "travellers")}>{travellers} {text.travellers.toLowerCase()}</EasyTButton>
@@ -221,14 +244,19 @@ export function MorroviaTripCapture({
             onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}
           >{tripInterestLabels[language][interest]}</EasyTButton>)}</div>
         </div> : null}
-      </div>
+        </div>
+        {progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+          <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
+          <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
+        </section> : null}
+      </div> : null}
       <div className={styles.footer}>
-        {travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
+        {!progressiveDetails && travelProfile ? <section className={styles.travelStyle} aria-label={text.travelStyle}>
           <div className={styles.travelStyleHead}><span>{text.travelStyle}</span><a href="/journey/profile">{text.edit}</a></div>
           <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
         </section> : null}
         <div className={styles.actionCluster}>
-          <MorroviaContextualDisclosure
+          {!progressiveDetails ? <MorroviaContextualDisclosure
             open={aiDisclosureOpen}
             onOpenChange={setAiDisclosureOpen}
             title={text.aiTitle}
@@ -236,7 +264,7 @@ export function MorroviaTripCapture({
             linkHref="/journey/privacy#ai-and-speech"
             linkLabel={text.privacy}
             triggerLabel={text.aiLabel}
-          />
+          /> : null}
           <div className={styles.action}><EasyTButton type="submit" size="large" loading={loading} disabled={disabled}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton></div>
         </div>
       </div>

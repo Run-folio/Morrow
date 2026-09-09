@@ -162,7 +162,7 @@ test("24 area search rejects candidates outside the canonical parent", () => {
 });
 
 test("25 provider search failure preserves parent intent and selections", () => {
-  const failed = autocomplete.slice(autocomplete.indexOf(".catch((error)"), autocomplete.indexOf(".finally(() => setProviderSearching"));
+  const failed = autocomplete.slice(autocomplete.indexOf(".catch((error)"), autocomplete.indexOf(".finally("));
   assert.match(failed, /setProviderSuggestions\(\[\]\)/);
   assert.match(failed, /setProviderFailed\(true\)/);
   assert.doesNotMatch(failed, /onChange|onSelect|placeSelections|removedPlaceMentionIds/);
@@ -303,4 +303,11 @@ test("44 preserved children shed a removed parent relationship without losing th
   assert.match(builder, /const priorParentWasRemoved/);
   assert.match(builder, /placeMentionId: selection\?\.mentionId \?\? \(priorParentWasRemoved \? undefined : prior\?\.placeMentionId\)/);
   assert.match(builder, /removePlanningArea\(activeClarificationMention, activeClarificationRemovalPlan\)/);
+});
+
+test("45 a retained same-name child stays visible and enables shaping completion", () => {
+  assert.match(builder, /const clarificationSelected = activeClarificationMention[\s\S]*?selection\.mentionId === activeClarificationMention\.mentionId/);
+  assert.match(builder, /selectedPlaces=\{clarificationSelectedPlaces\}/);
+  assert.match(builder, /doneDisabled=\{!clarificationSelected\.length\}/);
+  assert.match(builder, /if \(!activeClarificationMention \|\| !clarificationSelected\.length\) return/);
 });

@@ -17,6 +17,17 @@
 .voiceActions > button:first-child:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
 .voiceActions > button:first-child:disabled { cursor: wait; opacity: .65; }
 .voiceActions > button:first-child svg { width: 14px; height: 14px; }
+.compact .voiceActions > button:first-child {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+}
+.compact .voiceActions > button:first-child svg { width: 17px; height: 17px; }
+.compact .voiceActions > div > button { width: 30px; min-width: 30px; min-height: 36px; }
 .voiceActions > .listening { border-color: var(--morrovia-signal); background: var(--morrovia-tint); color: var(--morrovia-signal); }
 .voiceActions > div > button { width: 32px; min-width: 32px; padding: 0; }
 .status { max-width: 260px; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); font-weight: 600; }
+.compact .status:empty { display: none; }

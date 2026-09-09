@@ -509,6 +509,10 @@
     outline: none;
     box-shadow: var(--morrovia-focus-shadow);
   }
+
+  :global(body):has(:global(.morrovia-map-expanded)) .mobileDock {
+    display: none;
+  }
 }
 
 /* Keep the public landing header on the same 1180px visual grid as its content. */

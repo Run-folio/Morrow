@@ -288,6 +288,12 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "mobile night and usable-time values should retain visible field labels");
   assert.match(mobileRepair, /\.wizardFoot > \.ghost \{ display: none; \}/,
     "the mobile action bar should not repeat Back when the Places step is already the back affordance");
+  assert.match(styles, /--morrovia-builder-action-height: 82px/,
+    "the fixed Builder action should expose one measured mobile height");
+  assert.match(styles, /padding-bottom: calc\(var\(--morrovia-builder-action-height\) \+ 16px\)/,
+    "Builder content must reserve enough space to scroll above its action bar");
+  assert.match(styles, /bottom: calc\(var\(--morrovia-mobile-dock-offset\) \+ 8px\)/,
+    "the Builder action should stack above the canonical mobile dock offset");
   assert.match(mobileRepair, /\.steps:before,[\s\S]*display: none/,
     "the mobile stepper should not retain the legacy connector line");
   assert.match(mobileRepair, /\.stepHeroTitle,[\s\S]*font-size: clamp\(30px, 8\.6vw, 36px\)/,

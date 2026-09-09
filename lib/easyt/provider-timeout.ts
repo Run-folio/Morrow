@@ -6,12 +6,16 @@
 export async function withProviderTimeout<T>(options: {
   label: string;
   timeoutMs: number;
+  signal?: AbortSignal;
   request: (signal: AbortSignal) => Promise<T>;
 }): Promise<T> {
   const controller = new AbortController();
   const timeoutError = new Error(`${options.label} timed out.`);
   timeoutError.name = "TimeoutError";
   let timeout: ReturnType<typeof setTimeout> | undefined;
+  const cancelFromCaller = () => controller.abort(options.signal?.reason);
+  if (options.signal?.aborted) cancelFromCaller();
+  else options.signal?.addEventListener("abort", cancelFromCaller, { once: true });
   const timeoutBoundary = new Promise<never>((_resolve, reject) => {
     timeout = setTimeout(() => {
       controller.abort(timeoutError);
@@ -22,5 +26,6 @@ export async function withProviderTimeout<T>(options: {
     return await Promise.race([options.request(controller.signal), timeoutBoundary]);
   } finally {
     if (timeout) clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", cancelFromCaller);
   }
 }

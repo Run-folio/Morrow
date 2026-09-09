@@ -1048,6 +1048,8 @@
 .mapScheduleCheck{display:flex;align-items:flex-start;gap:6px;margin:0;padding:9px;border-radius:8px;background:var(--mist);color:var(--accent);font-size:9px;font-weight:650;line-height:1.4}
 .mapScheduleCheck svg{flex:0 0 14px;width:14px;height:14px;color:var(--signal)}
 .mapLegDetail,.mapPlaceDetail{display:grid;gap:9px}
+.mapTransferPrimary,.mapTransferDetailToggle{display:none}
+.mapTransferSecondary{display:grid;gap:9px}
 .mapPlanningKey{display:flex;align-items:center;gap:7px;margin:0;color:var(--morrovia-muted);font-size:8px;line-height:1.4}
 .mapPlanningKey span{width:25px;border-top:3px dashed var(--signal)}
 .mapExternalActions{display:flex;flex-wrap:wrap;gap:6px}
@@ -1060,10 +1062,23 @@
 @media(max-width:720px){
   .shellPlanner .mapAssistant{right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 12px)!important}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail),.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription){top:auto!important;right:12px!important;bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 68px)!important;left:12px!important;width:auto!important;max-width:none!important;max-height:min(52%,390px)!important;padding:15px!important;overflow-y:auto!important;border-radius:15px!important;box-shadow:var(--workspace-shadow)!important}
+  .shellPlanner .mapTransferContext{bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 8px)!important;max-height:calc(100% - var(--morrovia-mobile-dock-offset,82px) - 104px)!important}
+  .shellPlanner:has(.mapTransferContext) .mapAssistant{display:none!important}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextPanel,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextPanel{gap:9px}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextPanel h2,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextPanel h2{font:600 21px/1.05 var(--morrovia-display);letter-spacing:-.035em}
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapLegDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapContextFacts,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextCopy,.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription) .mapContextFacts{display:grid}
   .mapDestinationImage{height:92px}
+  .mapTransferPrimary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;border-top:1px solid var(--hairline)}
+  .mapTransferPrimary div{display:grid;gap:3px;min-width:0;padding:10px 7px 3px 0}
+  .mapTransferPrimary div+div{padding-left:8px;border-left:1px solid var(--hairline)}
+  .mapTransferPrimary dt{color:var(--morrovia-muted);font:700 7px var(--morrovia-meta);letter-spacing:.08em;text-transform:uppercase}
+  .mapTransferPrimary dd{margin:0;overflow-wrap:anywhere;color:var(--accent);font-size:11px;font-weight:750;line-height:1.3}
+  .mapTransferDetailToggle{display:flex;min-height:44px;align-items:center;justify-content:space-between;padding:0 4px;border:0;background:transparent;color:var(--accent);font:750 10px var(--morrovia-ui);cursor:pointer}
+  .mapTransferDetailToggle svg{width:16px;height:16px;transition:transform .18s ease}
+  .mapTransferDetailToggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+  .mapTransferDetailToggle:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
+  .mapTransferSecondary{display:none;padding-top:2px;border-top:1px solid var(--hairline)}
+  .mapTransferSecondary[data-expanded="true"]{display:grid;gap:9px}
   .journey :global(.planner-map__destination-card){bottom:50px;width:150px;grid-template-columns:58px minmax(0,1fr)}
   .journey :global(.planner-map__destination-card img){width:58px;height:50px}
 }
@@ -1073,6 +1088,14 @@
   .shellPlanner .canonicalPlannerStatus:has(.mapLegDetail),.shellPlanner .canonicalPlannerStatus:has(.mapPlaceDetail),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage),.shellPlanner .canonicalPlannerStatus:has(.mapDestinationDescription){max-height:min(42%,300px)!important}
   .shellPlanner .canonicalPlannerStatus:has(.mapDestinationImage) .mapDestinationImage{height:68px}
   .shellPlanner .mapDestinationContext .mapDestinationDescription{display:none}
+}
+
+@media(max-width:720px){
+  .shellPlanner:not(.shellPlannerExpanded) .mapDayControl{bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 10px)}
+  .shellPlannerExpanded .mapDayControl{bottom:max(10px,env(safe-area-inset-bottom))}
+  .shellPlannerExpanded .mapTransferContext{bottom:max(10px,env(safe-area-inset-bottom))!important;max-height:calc(100% - 104px)!important}
+  .shellPlannerExpanded .finderDock{bottom:0!important;max-height:calc(100svh - 96px)!important;padding-bottom:calc(18px + env(safe-area-inset-bottom))!important}
+  .shellPlannerExpanded .mapAssistant{bottom:max(10px,env(safe-area-inset-bottom))!important}
 }
 
 /* Map restoration: keep the planning workspace persistent and make route

@@ -420,6 +420,26 @@ test("Build equivalence accepts only marked repository transfer enrichment", () 
   const enriched = { ...base, legs: [enrichedLeg] };
 
   assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, enriched, "owner-a"), true);
+  const unresolved = {
+    ...base,
+    legs: [{
+      ...enrichedLeg,
+      mode: "unknown" as const,
+      durationMinutes: null,
+      headlineMinutes: null,
+      doorToDoorMinutes: null,
+      provider: "No complete route evidence.",
+      provenance: "unknown" as const,
+      confidence: "unknown" as const,
+      segments: undefined,
+      routeMetadata: {
+        transportConstraints: { preferredModes: ["train"] },
+        source: "multimodal-resolver",
+        multimodalResolution: { version: 1, selected: "unresolved", candidates: [], rejected: ["No complete route evidence."] },
+      },
+    }],
+  };
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, unresolved, "owner-a"), true);
   assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
     ...enriched,
     legs: [{ ...enrichedLeg, toEndpoint: { ...enrichedLeg.toEndpoint!, name: "Lyon" } }],
