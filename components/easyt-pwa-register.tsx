@@ -8,7 +8,7 @@ export function EasyTPwaRegister() {
       return;
     }
 
-    void navigator.serviceWorker.register("/easyt-sw.js", { scope: "/journey/" });
+    void navigator.serviceWorker.register("/easyt-sw.js", { scope: "/" });
   }, []);
 
   return null;

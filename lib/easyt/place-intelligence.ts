@@ -499,6 +499,7 @@ const UNKNOWN_CANDIDATE = /\b(?:the\s+)?[A-ZÀ-ÖØ-Þ][\p{L}'’.-]*(?:\s+(?:de
 const LOWERCASE_TYPO_CANDIDATE = /\b[\p{Ll}][\p{L}'’.-]{3,}\b/gu;
 const DELIMITED_UNKNOWN_CANDIDATE = /(?:^|[,;])\s*([\p{L}'’.-]+(?:\s+[\p{L}'’.-]+){0,3})\s*(?=,|;|$)/gu;
 const EXPLICIT_ORIGIN_CANDIDATE = /\b(?:fly(?:ing)?|depart(?:ing)?|leav(?:e|ing))?\s*from\s+([\p{L}'’.-]+(?:\s+(?!(?:to|through|via|then|and|drive|fly|take|travel|go)\b)[\p{L}'’.-]+){0,3})/giu;
+const EXPLICIT_VISIT_CANDIDATE = /\b(?:a\s+visit\s+to|visit(?:ing)?(?:\s+to)?)\s+([\p{L}'’.-]+(?:\s+(?!(?:and|then|with|for|from|to|through|via|on|during)\b)[\p{L}'’.-]+){0,3})/giu;
 const BROAD_PLANNING_CANDIDATE = /\b(?:the\s+)?(?:fjords?|alps|highlands|coast|wine\s+country|islands?|desert|patagonia|riviera|lake\s+district)\b/giu;
 const NON_PLACE_PHRASES = new Set([
   "a", "about", "add", "avoid", "avoiding", "begin", "by", "days", "do", "drive", "easter", "five", "flight", "flights", "fly", "flying", "finish", "finishing", "food", "for", "four", "from", "home", "i", "is", "it",
@@ -1192,6 +1193,44 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     const normalized = normalizePlacePhrase(sourceText);
     if (!normalized || normalized.split(" ").some((word) => NON_PLACE_PHRASES.has(word))) continue;
     candidates.push({ sourceText, start, end: start + sourceText.length, reviewOnly: true, forcedRole: "origin" });
+  }
+  // Retain an explicit visit phrase even when it is lower-case or misspelled.
+  // If the complete phrase is one safe edit from a curated identity, resolve
+  // that identity; otherwise keep the original phrase for traveller review.
+  for (const match of prompt.matchAll(EXPLICIT_VISIT_CANDIDATE)) {
+    const sourceText = match[1]?.trim() ?? "";
+    const relativeStart = match[0].lastIndexOf(match[1] ?? "");
+    const start = (match.index ?? 0) + Math.max(0, relativeStart);
+    const end = start + sourceText.length;
+    if (!sourceText || intersectsKnownRange(start, end)) continue;
+    const normalized = normalizePlacePhrase(sourceText);
+    if (!normalized || normalized.split(" ").some((word) => NON_PLACE_PHRASES.has(word))) continue;
+    const fuzzy = fuzzyMatchFor(normalized, 4);
+    candidates.push({ sourceText, start, end, fuzzy, reviewOnly: !fuzzy, forcedRole: fuzzy ? undefined : "anchor" });
+  }
+  // In an otherwise recognised place sequence, an uncovered lower-case token
+  // between two known places is still explicit traveller geography. Preserve
+  // it for provider resolution instead of requiring punctuation or title case.
+  // Multi-word gaps are left to the explicit/list extractors so ordinary prose
+  // between two places does not become a fabricated destination.
+  if (occupied.length >= 2) {
+    const orderedRanges = [...occupied].sort((left, right) => left.start - right.start || left.end - right.end);
+    for (let index = 1; index < orderedRanges.length; index += 1) {
+      const previous = orderedRanges[index - 1];
+      const next = orderedRanges[index];
+      const gap = prompt.slice(previous.end, next.start);
+      const leading = gap.match(/^\s*(?:(?:[,;:]|→|->)|\b(?:and|then|to|through|via)\b\s*)*/iu)?.[0].length ?? 0;
+      const trailing = gap.match(/(?:\s*(?:\b(?:and|then|to|through|via)\b|[,;:]|→|->))?\s*$/iu)?.[0].length ?? 0;
+      const sourceText = gap.slice(leading, Math.max(leading, gap.length - trailing)).trim();
+      const start = previous.end + gap.indexOf(sourceText);
+      const end = start + sourceText.length;
+      const normalized = normalizePlacePhrase(sourceText);
+      const words = normalized.split(" ").filter(Boolean);
+      if (!sourceText || words.length !== 1 || intersectsKnownRange(start, end)) continue;
+      if (["and", "then", "to", "through", "via", "or", "in", "at", "y", "o", "en", "a", "de"].includes(words[0] ?? "")) continue;
+      if (words.some((word) => NON_PLACE_PHRASES.has(word)) || /\d/.test(normalized)) continue;
+      candidates.push({ sourceText, start, end, fuzzy: fuzzyMatchFor(normalized, 4), reviewOnly: true, forcedRole: "preferred" });
+    }
   }
   for (const match of prompt.matchAll(UNKNOWN_CANDIDATE)) {
     const sourceText = match[0].trim();
@@ -2031,13 +2070,18 @@ function decisiveProviderCandidate(
     const rightScore = (right as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0;
     return rightScore - leftScore;
   });
-  if (ranked.length === 1) return ranked[0];
   const normalized = normalizePlacePhrase(phrase);
   const exact = ranked.filter((candidate) => {
     const quality = (candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality;
-    return quality === "exact" || (!quality && [candidate.canonicalName, ...candidate.aliases]
-      .some((label) => normalizePlacePhrase(label) === normalized));
+    const nameMatches = [candidate.canonicalName, ...candidate.aliases].some((label) => {
+      const candidateName = normalizePlacePhrase(label);
+      return candidateName === normalized
+        || candidateName.startsWith(`${normalized} `)
+        || candidateName.endsWith(` ${normalized}`);
+    });
+    return nameMatches && (quality === "exact" || quality === "alias" || !quality);
   });
+  if (ranked.length === 1) return exact.length === 1 ? ranked[0] : undefined;
   const intentCompatible = (candidate: PlaceResolutionCandidate) => context.travelIntent === "route-stop"
     ? candidate.routability === "direct_destination"
     : context.travelIntent === "anchor"
@@ -2091,6 +2135,8 @@ function decisiveProviderCandidate(
         - ((rankedExplicitContext[1] as PlaceResolutionCandidate & { rankScore?: number }).rankScore ?? 0)) >= 12)) {
     return rankedExplicitContext[0];
   }
+  if (contextCountries.size > 0 && hasDecisiveExactContext
+    && (!hasDistinctExactGeographicScope || exactRouteDestinations.length > 1)) return rankedExactContext[0];
   const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "continent" || candidate.placeType === "country"
     || ((candidate as PlaceResolutionCandidate & { geographicSignificance?: number }).geographicSignificance ?? 0) >= 0.72);
   // Entity identity precedes route-node suitability. A single provider-backed
@@ -2421,8 +2467,13 @@ async function resolveProviderMentionsInTwoPass(
     const fallbackCandidates = !sourceIsDecisive && fallbackRequest
       ? await lookup(fallbackRequest.phrase, fallbackRequest.context)
       : [];
-    const appliedContext = sourceIsDecisive || !fallbackCandidates.length ? primaryRequest.context : fallbackRequest?.context ?? primaryRequest.context;
-    return applyProviderCandidatesToMention(mention, sourceIsDecisive || !fallbackCandidates.length ? primaryCandidates : fallbackCandidates, appliedContext, spec);
+    const appliedRequest = sourceIsDecisive || !fallbackCandidates.length ? primaryRequest : fallbackRequest ?? primaryRequest;
+    return applyProviderCandidatesToMention(
+      mention,
+      sourceIsDecisive || !fallbackCandidates.length ? primaryCandidates : fallbackCandidates,
+      appliedRequest.context,
+      { ...spec, lookupText: appliedRequest.phrase },
+    );
   }));
 
   const initialContext = providerContextFromMentions(context, mentions);

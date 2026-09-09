@@ -9,12 +9,10 @@ export const metadata: Metadata = {
   },
   description:
     "Shape thoughtful trips, find useful places nearby, and keep the memories that matter.",
-  alternates: { canonical: "/journey/home" },
   openGraph: {
     title: "Morrovia · Travel your way",
     description:
       "A flexible trip planner for routes with room to breathe, useful local finds, and memories worth keeping.",
-    url: "/journey/home",
     siteName: "Morrovia",
     type: "website",
   },

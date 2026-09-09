@@ -23,6 +23,20 @@ test("Map stay finder always uses the central generic Trip.com accommodation lin
   assert.equal((finder.match(/trackEvent\("affiliate_click"/g) ?? []).length, 1, "one outbound click emits one event");
   assert.doesNotMatch(finder, /bookingUrl|booking\.com/);
   assert.match(mapWorkspace, /JourneyLocalFinder[^\n]*tripId=\{customTrip\?\.id\} stopId=\{selectedTripStop\?\.id\}/);
+  assert.match(mapWorkspace, /coordinates=\{localFinderKind === "stay" \? selectedBaseCoordinates/);
+  assert.match(mapWorkspace, /city=\{localFinderKind === "stay" \? selectedTripStop\?\.name/);
+  assert.match(mapWorkspace, /adults: Math\.max\(1, customTrip\?\.travellers \?\? 1\)/);
+  assert.match(mapWorkspace, /currency: customTrip\?\.currency/);
+});
+
+test("Stay results keep mapped fallbacks visible and report live-provider failures without dismissing the panel", () => {
+  const finder = readFileSync("components/journey-local-finder.tsx", "utf8");
+  assert.match(finder, /type AccommodationInventoryStatus = "not-requested" \| "loading" \| "live" \| "empty" \| "unconfigured" \| "unavailable"/);
+  assert.match(finder, /Live accommodation availability is temporarily unavailable\. Showing mapped stays/);
+  assert.match(finder, /Live room availability is not configured here\. Showing mapped stays/);
+  assert.match(finder, /title="Stay options are unavailable"/);
+  assert.match(finder, /setChosen\(candidates\[0\]\.place\)/);
+  assert.doesNotMatch(finder, /if \(kind !== "stay"[^\n]+choosePlace\(candidates\[0\]\.place\)/);
 });
 
 test("Map planning-preview accommodation keeps one disclosed, attributable, state-neutral handoff", () => {

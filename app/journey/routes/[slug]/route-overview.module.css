@@ -370,3 +370,16 @@
   .mapShell { height:360px; min-height:360px; }
   .experienceCard .photo,.experienceCard:nth-child(1) .photo,.experienceCard:nth-child(2) .photo { height:270px; }
 }
+
+/* Experience photography keeps the base and the pictured subject explicit. */
+.editorialCaption { margin: 12px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.experienceHeading h2 { font-size: clamp(36px, 4vw, 58px); line-height: 1.05; }
+.experienceGrid { gap: 48px 28px; }
+.experienceCopy { padding-top: 20px; }
+.experienceCopy h3 { font-size: clamp(24px, 2.5vw, 34px); }
+.experienceCopy p { color: var(--morrovia-signal); }
+.experienceCopy small { max-width: 460px; font: var(--morrovia-type-supporting-body); color: var(--morrovia-ink-soft); }
+@media (max-width: 620px) {
+ .experienceCard { margin-top: 38px; }
+ .experienceHeading h2 { font-size: 36px; }
+}

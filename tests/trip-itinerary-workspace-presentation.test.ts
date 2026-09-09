@@ -16,7 +16,7 @@ test("the itinerary redesign stays below TripShell and composes the three worksp
   assert.match(itinerary, /className=\{styles\.rail\}/);
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
   assert.match(itinerary, /className=\{styles\.contextRail\}/);
-  assert.match(styles, /grid-template-columns: minmax\(270px, 310px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
+  assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
   assert.doesNotMatch(itinerary, /Edit trip brief/);
 });
 
@@ -126,7 +126,7 @@ test("tablet and mobile layouts collapse instead of squeezing three columns", ()
 
 test("long canonical and provider content stays inside the timeline and planning rail", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
-  assert.match(styles, /grid-template-columns: minmax\(270px, 310px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
+  assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
   assert.match(styles, /\.rowSelect \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.logisticsCard,[\s\S]*\.savedIdeas > button \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.discoveryCopy > strong \{[\s\S]*-webkit-line-clamp: 2/);

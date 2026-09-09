@@ -32,7 +32,9 @@ function fixtureProvider(lookup: (phrase: string) => PlaceProviderCandidate[]): 
 
 test("trusted city, rural town, island and natural-area identities gain only validated coordinates and provenance", async () => {
   const deterministic = resolveExplicitPlaceMentions(inputs);
-  assert.equal(deterministic.mentions.every((mention) => mention.status === "resolved" && !mention.coordinates), true);
+  assert.equal(deterministic.mentions.every((mention) => mention.status === "resolved"), true);
+  assert.deepEqual(deterministic.mentions[0]?.coordinates, [-86.8515, 21.1619], "reviewed canonical coordinates remain authoritative");
+  assert.equal(deterministic.mentions.slice(1).every((mention) => !mention.coordinates), true);
 
   const enriched = await resolveExplicitPlaceMentionsWithProvider(inputs, fixtureProvider((phrase) => candidates[phrase] ?? []));
   assert.deepEqual(enriched.mentions.map((mention) => mention.canonicalPlaceId), deterministic.mentions.map((mention) => mention.canonicalPlaceId));
@@ -43,7 +45,7 @@ test("trusted city, rural town, island and natural-area identities gain only val
     [-86.8515, 21.1619], [-99.1332, 19.4326], [-72.263, -13.258], [115.1889, -8.4095], [6.155, 45.86],
   ]);
   assert.equal(enriched.mentions.every((mention, index) => mention.confidence.state === deterministic.mentions[index]?.confidence.state), true);
-  assert.equal(enriched.mentions.every((mention) => mention.provenance.some((source) => source.kind === "provider" && source.supports.includes("canonical name, type and containment remain unchanged"))), true);
+  assert.equal(enriched.mentions.slice(1).every((mention) => mention.provenance.some((source) => source.kind === "provider" && source.supports.includes("canonical name, type and containment remain unchanged"))), true);
 });
 
 test("coordinate-rich canonical records remain stable and do not trigger provider work", async () => {
@@ -63,7 +65,7 @@ test("ambiguous duplicate names and conflicting provider coordinates fail closed
     ambiguousCalls += 1;
     return candidates["Cancún"] ?? [];
   }));
-  assert.equal(ambiguousCalls, 0);
+  assert.ok(ambiguousCalls > 0, "provider evidence may be consulted but cannot override unresolved identity");
   assert.equal(ambiguous.mentions[0]?.status, "ambiguous");
   assert.equal(ambiguous.mentions[0]?.coordinates, undefined);
 
@@ -72,7 +74,7 @@ test("ambiguous duplicate names and conflicting provider coordinates fail closed
     { ...candidates["Cancún"]![0]!, providerId: "cancun-namesake", coordinates: [-100.3, 25.7], rankScore: 149 },
   ]));
   assert.equal(conflicting.mentions[0]?.canonicalName, "Cancún");
-  assert.equal(conflicting.mentions[0]?.coordinates, undefined);
+  assert.deepEqual(conflicting.mentions[0]?.coordinates, [-86.8515, 21.1619], "conflicting provider coordinates cannot replace reviewed canonical coordinates");
   assert.equal(conflicting.mentions[0]?.provenance.some((source) => source.kind === "provider"), false);
 });
 

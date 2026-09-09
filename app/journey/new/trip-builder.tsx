@@ -62,6 +62,7 @@ import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preserva
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
+import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 
 /* ---------------------------------------------------------------- data */
 
@@ -1059,6 +1060,10 @@ function TripBuilderDocument() {
     })),
     placeSelections,
   ), [activeCapturedPlaceMentions, placeSelections, stops]);
+  const projectedFixedCommitments = useMemo(() => projectFixedCommitmentsToStops(
+    effectiveIntent.hardConstraints.fixedCommitments,
+    stops,
+  ), [effectiveIntent.hardConstraints.fixedCommitments, stops]);
   const effectiveStructuredBrief = useMemo(() => mergeStructuredTripBrief(capturedStructuredBrief, {
     ...(datesManuallyEdited ? { duration: { value: totalDays, unit: "days" as const, precision: "exact" as const } } : {}),
     destinations: [
@@ -1114,12 +1119,12 @@ function TripBuilderDocument() {
     ...(interestsManuallyEdited ? { interests: effectiveIntent.preferences.interests } : {}),
     ...(transportManuallyEdited ? { transportPreferences: effectiveIntent.preferences.transportModes } : {}),
     ...(hasSavedTravelProfile || showBudgetOverride ? { budget } : {}),
-    fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({ label: commitment.label, date: commitment.date })),
+    fixedCommitments: projectedFixedCommitments.map(({ id: _id, ...commitment }) => commitment),
     avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
     placeSelections: effectivePlaceSelections,
     completedPlanningAreaMentionIds,
     removedPlaceMentionIds,
-  }), [capturedStructuredBrief, totalDays, origin, originCanonicalPlaceId, originCountry, originCoordinates, routeJourneyEnd, stops, effectiveIntent, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride, effectivePlaceSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds]);
+  }), [capturedStructuredBrief, totalDays, origin, originCanonicalPlaceId, originCountry, originCoordinates, routeJourneyEnd, stops, effectiveIntent, projectedFixedCommitments, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride, effectivePlaceSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds]);
   const structuredRouteConstraints = useMemo(() => routeConstraintsFromStructuredTripBrief(effectiveStructuredBrief, stops.map((stop) => stop.id)), [effectiveStructuredBrief, stops]);
   const structuredScoringPreferences = useMemo(() => routeScoringPreferencesFromStructuredBrief(effectiveStructuredBrief), [effectiveStructuredBrief]);
   const intentReady = Boolean(originCoordinates && stops.length && effectiveIntent.travellers >= 1);
@@ -1397,7 +1402,7 @@ function TripBuilderDocument() {
     availableDays: totalDays,
     constraints: {
       ...structuredRouteConstraints,
-      fixedCommitments: effectiveIntent.hardConstraints.fixedCommitments,
+      fixedCommitments: projectedFixedCommitments,
       transportModes: structuredRouteConstraints.transportModes.length ? structuredRouteConstraints.transportModes : effectiveIntent.preferences.transportModes,
       optionalStopIds: effectiveIntent.hardConstraints.optionalStopIds,
     },
@@ -1409,7 +1414,7 @@ function TripBuilderDocument() {
       avoidFlights: structuredScoringPreferences.avoidFlights,
       interests: effectiveIntent.preferences.interests,
     },
-  }), [origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, structuredRouteConstraints, structuredScoringPreferences]);
+  }), [origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, projectedFixedCommitments, structuredRouteConstraints, structuredScoringPreferences]);
   const routeKey = stops.map((stop) => stop.id).join("|");
   const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
   const routeAnalyticsKey = `${tripId}:${routeKey}:${startDate}:${endDate}:${effectiveIntent.hardConstraints.fixedCommitments.length}:${effectiveIntent.hardConstraints.avoidDriving}`;
@@ -1561,10 +1566,11 @@ function TripBuilderDocument() {
       };
     });
   }, [stops, structuredRouteConstraints, effectiveIntent, effectiveStructuredBrief.destinations, builderCanonicalLegs, scheduleLocks, dayAllocations, manualNightStopIds, minimumNights, recommendedNights, effectivePicks, sourceRouteKey, currentCuratedRoute]);
-  const fixedAllocationCommitments = useMemo(() => effectiveIntent.hardConstraints.fixedCommitments.map((commitment) => ({
+  const fixedAllocationCommitments = useMemo(() => projectedFixedCommitments.map((commitment) => ({
     label: commitment.label,
     date: commitment.date,
-  })), [effectiveIntent.hardConstraints.fixedCommitments]);
+    stopId: commitment.stopId,
+  })), [projectedFixedCommitments]);
   const manualNightRebalance = useMemo(() => manualNightStopIds.length ? rebalanceTripNights({
     totalNights,
     stops: nightAllocationStops,
@@ -2478,7 +2484,19 @@ function TripBuilderDocument() {
   const addFixedCommitment = () => {
     const label = fixedCommitmentLabel.trim();
     if (!label) return;
-    const commitment: FixedTripCommitment = { id: `fixed-${Date.now()}`, label, date: fixedCommitmentDate || undefined };
+    const suggestion = canonicalPlaceSuggestionFor(label);
+    const commitment: FixedTripCommitment = {
+      id: `fixed-${Date.now()}`,
+      label,
+      date: fixedCommitmentDate || undefined,
+      commitmentType: "fixed-date",
+      place: suggestion ? {
+        name: suggestion.name,
+        canonicalPlaceId: suggestion.canonicalPlaceId,
+        country: suggestion.country,
+        coordinates: suggestion.coordinates,
+      } : { name: label },
+    };
     setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: [...current.hardConstraints.fixedCommitments, commitment] } }));
     setFixedCommitmentLabel("");
     setFixedCommitmentDate("");
@@ -2668,7 +2686,13 @@ function TripBuilderDocument() {
         })),
       } : undefined,
       routeAssessment: routeIntelligenceForPersistence(routeIntelligence),
-      intent: effectiveIntent,
+      intent: {
+        ...effectiveIntent,
+        hardConstraints: {
+          ...effectiveIntent.hardConstraints,
+          fixedCommitments: projectedFixedCommitments,
+        },
+      },
       structuredBrief: effectiveStructuredBrief,
       scheduleLocks,
       decisionSelections,
@@ -2676,7 +2700,7 @@ function TripBuilderDocument() {
     const hydratedCanonical = hydratedCanonicalTripRef.current?.id === built.id ? hydratedCanonicalTripRef.current : null;
     const reconciled = preserveBuilderCanonicalState(hydratedCanonical, { ...built, ownerId: tripOwnerId, legs: builderCanonicalLegs });
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
-  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
+  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
 
   const canonicalTransferReviewCount = activeTripDocument.legs.filter((leg) => (leg.classification === "arrival" || leg.classification === "international" || (leg.distanceKm ?? 0) >= 150)
     && (leg.scheduleNeedsChecking || leg.mode === "unknown" || leg.durationMinutes === null || Boolean(leg.warnings?.length))).length;
@@ -3702,7 +3726,7 @@ function TripBuilderDocument() {
                       <button type="button" className={effectiveIntent.timing.flexibility === "flexible" ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, timing: { ...current.timing, flexibility: "flexible" } }))}>{language === "es" ? "Duración flexible" : "Flexible duration"}</button>
                     </div>
                     <div className={styles.fixedCommitment}>
-                      <label><span>{language === "es" ? "FECHA O RESERVA FIJA" : "FIXED DATE OR BOOKING"}</span><input value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. boda en Kioto" : "e.g. wedding in Kyoto"} /></label>
+                      <label><span>{language === "es" ? "LUGAR DEL PLAN FIJO" : "FIXED PLAN PLACE"}</span><input value={fixedCommitmentLabel} onChange={(event) => setFixedCommitmentLabel(event.target.value)} placeholder={language === "es" ? "Ej. Oaxaca" : "e.g. Oaxaca"} /></label>
                       <MorroviaDatePicker
                         className={styles.fixedCommitmentDate}
                         mode="single"
@@ -3911,6 +3935,22 @@ function TripBuilderDocument() {
                 />
                 <section className={`${styles.timeControl} ${styles.budgetControl}`} aria-label={language === "es" ? "Presupuesto" : "Budget"}><span>{language === "es" ? "Presupuesto (opcional)" : "Budget (optional)"}</span><div className={styles.budgetValue}><p>{language === "es" ? "Usando tu preferencia habitual" : "Using your usual preference"}</p><button type="button" onClick={() => setShowBudgetOverride((current) => !current)}>{showBudgetOverride ? (language === "es" ? "Listo" : "Done") : (language === "es" ? "Cambiar" : "Change")}</button></div>{showBudgetOverride && <div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div>}</section>
               </div>
+              {projectedFixedCommitments.length > 0 && <section className={styles.timeCommitments} aria-labelledby="fixed-commitments-title">
+                <header><span>{language === "es" ? "PLANES FIJOS" : "FIXED COMMITMENTS"}</span><strong id="fixed-commitments-title">{language === "es" ? "Se mantienen durante toda la planificación." : "Protected throughout planning."}</strong></header>
+                <div>{projectedFixedCommitments.map((commitment) => {
+                  const suggestion = commitment.place ? canonicalPlaceSuggestionFor(commitment.place.name) : null;
+                  const represented = Boolean(commitment.stopId);
+                  return <article key={commitment.id}>
+                    <CalendarDays aria-hidden="true" />
+                    <span><strong>{fixedCommitmentDisplayLabel(commitment)}</strong><small>{represented ? (language === "es" ? "Condición fija representada en la ruta" : "Fixed commitment represented in the route") : (language === "es" ? "Todavía no está representado en la ruta" : "Not yet represented in the route")}</small></span>
+                    {represented
+                      ? <span className={styles.commitmentProtected}><Lock aria-hidden="true" />{language === "es" ? "Protegido" : "Protected"}</span>
+                      : suggestion
+                        ? <EasyTButton size="small" variant="secondary" onClick={() => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}>{language === "es" ? `Añadir ${suggestion.name} a la ruta` : `Add ${suggestion.name} to route`}</EasyTButton>
+                        : <EasyTButton size="small" variant="secondary" onClick={() => openSummaryEditor("constraints")}>{language === "es" ? "Cambiar o quitar" : "Change or remove"}</EasyTButton>}
+                  </article>;
+                })}</div>
+              </section>}
               <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>{language === "es" ? "NOCHES" : "NIGHTS"}</span><p><CheckCircle2 aria-hidden="true" /> <strong>{totalNights} {language === "es" ? "en total" : "total"}</strong><span aria-hidden="true">•</span><b>{allNightsAllocated ? (language === "es" ? "Todas asignadas" : "All allocated") : (language === "es" ? `${allocatedNights} de ${totalNights} asignadas` : `${allocatedNights} of ${totalNights} allocated`)}</b></p></div>
               {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
               <section className={styles.routeTimePlanner} aria-labelledby="day-allocation-title" role="table">

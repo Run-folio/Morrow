@@ -11,13 +11,13 @@ import { MorroviaSectionStatus, MorroviaSkeleton } from "@/components/easyt/morr
 import ResilientImage from "@/components/easyt/resilient-image";
 import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
-import type { ItineraryDayPart, ItineraryIdea } from "@/lib/easyt/trip";
+import type { ItineraryIdea } from "@/lib/easyt/trip";
 import styles from "./journey-itinerary-refinement.module.css";
 
 type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number };
 const filters = ["All", "Food", "Nature", "Cities", "Beach"];
 
-export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange, onExploreMap, onSaveInventoryIdea, onScheduleInventoryIdea, compact = false, activityAction, initialActivityInventory }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; onSelectionChange: (stopId: string, place: Place | string, selected: boolean) => void; onExploreMap: () => void; onSaveInventoryIdea?: (idea: ItineraryIdea) => boolean; onScheduleInventoryIdea?: (idea: ItineraryIdea, dayPart?: ItineraryDayPart) => boolean; compact?: boolean; activityAction?: ResolvedAffiliateAction | null; initialActivityInventory?: ActivityInventoryItem[] }) {
+export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange, onExploreMap, onSaveInventoryIdea, onScheduleInventoryIdea, onRemoveInventoryIdea, compact = false, activityAction, initialActivityInventory }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; onSelectionChange: (stopId: string, place: Place | string, selected: boolean) => void; onExploreMap: () => void; onSaveInventoryIdea?: (idea: ItineraryIdea) => boolean; onScheduleInventoryIdea?: (idea: ItineraryIdea) => boolean; onRemoveInventoryIdea?: (idea: ItineraryIdea) => boolean; compact?: boolean; activityAction?: ResolvedAffiliateAction | null; initialActivityInventory?: ActivityInventoryItem[] }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
@@ -90,6 +90,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange,
       initialItems={initialActivityInventory}
       onSave={onSaveInventoryIdea}
       onSchedule={onScheduleInventoryIdea}
+      onRemove={onRemoveInventoryIdea}
       fallback={genericExperienceHandoff}
     /> : genericExperienceHandoff}
   </section>;

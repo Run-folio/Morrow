@@ -6,7 +6,7 @@ const meta = {
   component: HomeTripStarter,
   parameters: {
     layout: "fullscreen",
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/home" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/" } },
   },
   decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "48px 24px" }}><div style={{ maxWidth: 720, margin: "0 auto" }}><Story /></div></main>],
 } satisfies Meta<typeof HomeTripStarter>;

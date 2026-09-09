@@ -32,6 +32,7 @@ import {
   type RouteScoringPreferences,
 } from "./route-scoring.ts";
 import { canonicalPlaceFactsMatch } from "./place-intelligence.ts";
+import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
 
 export type PlannerPlace = {
   title: string;
@@ -140,7 +141,7 @@ export type RouteIntelligenceAssessment = {
 };
 
 export type RoutePlanningConstraints = {
-  fixedCommitments?: Array<{ label: string; date?: string }>;
+  fixedCommitments?: FixedCommitmentConstraint[];
   fixedStartStopId?: string;
   fixedEndStopId?: string;
   requiredStopIds?: string[];

@@ -299,7 +299,7 @@ const meta = {
   title: "Morrovia/03 Status & Feedback/Loading and progress",
   parameters: {
     layout: "fullscreen",
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/home" } },
+    nextjs: { appDirectory: true, navigation: { pathname: "/" } },
   },
 } satisfies Meta;
 

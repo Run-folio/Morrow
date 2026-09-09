@@ -1,0 +1,157 @@
+[
+  {
+    "key": "glacier-lagoon",
+    "place": "Jökulsárlón",
+    "country": "Iceland",
+    "author": "Eric Kilby",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Glacier_Lagoon_-_Pano.jpg",
+    "alt": "Icebergs across Jökulsárlón glacier lagoon, Iceland",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-glacier-lagoon-384.webp",
+        "width": 384,
+        "height": 159,
+        "bytes": 13420
+      },
+      {
+        "src": "/journey/immersive/moment-glacier-lagoon-768.webp",
+        "width": 768,
+        "height": 319,
+        "bytes": 46300
+      },
+      {
+        "src": "/journey/immersive/moment-glacier-lagoon-1536.webp",
+        "width": 1536,
+        "height": 638,
+        "bytes": 169548
+      }
+    ]
+  },
+  {
+    "key": "thingvellir",
+    "place": "Þingvellir",
+    "country": "Iceland",
+    "author": "Someone35",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Thingvellir,_Iceland_landscape.jpg",
+    "alt": "Rift landscape in Þingvellir National Park, Iceland",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-thingvellir-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 17648
+      },
+      {
+        "src": "/journey/immersive/moment-thingvellir-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 73478
+      },
+      {
+        "src": "/journey/immersive/moment-thingvellir-1536.webp",
+        "width": 1536,
+        "height": 1152,
+        "bytes": 298572
+      }
+    ]
+  },
+  {
+    "key": "skogafoss",
+    "place": "Skógafoss",
+    "country": "Iceland",
+    "author": "Martin Falbisoner",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sk%C3%B3gafoss_July_2014.JPG",
+    "alt": "Skógafoss waterfall beneath green cliffs, Iceland",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-skogafoss-384.webp",
+        "width": 384,
+        "height": 205,
+        "bytes": 11164
+      },
+      {
+        "src": "/journey/immersive/moment-skogafoss-768.webp",
+        "width": 768,
+        "height": 410,
+        "bytes": 45894
+      },
+      {
+        "src": "/journey/immersive/moment-skogafoss-1536.webp",
+        "width": 1536,
+        "height": 821,
+        "bytes": 198372
+      }
+    ]
+  },
+  {
+    "key": "trang-an",
+    "place": "Tràng An",
+    "country": "Vietnam",
+    "author": "VN.NguyenDucDuy",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Trang_An_Landscape_Complex_in_Ninh_Binh.jpg",
+    "alt": "Limestone peaks and waterways at Tràng An, Ninh Bình, Vietnam",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-trang-an-384.webp",
+        "width": 384,
+        "height": 512,
+        "bytes": 41738
+      },
+      {
+        "src": "/journey/immersive/moment-trang-an-768.webp",
+        "width": 768,
+        "height": 1024,
+        "bytes": 153904
+      },
+      {
+        "src": "/journey/immersive/moment-trang-an-1536.webp",
+        "width": 960,
+        "height": 1280,
+        "bytes": 222460
+      }
+    ]
+  },
+  {
+    "key": "angkor-wat",
+    "place": "Angkor Wat",
+    "country": "Cambodia",
+    "author": "Satdeep Gill",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Angkor_Wat_with_its_reflection.jpg",
+    "alt": "Angkor Wat reflected in the water, Cambodia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-angkor-wat-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 14854
+      },
+      {
+        "src": "/journey/immersive/moment-angkor-wat-768.webp",
+        "width": 768,
+        "height": 513,
+        "bytes": 55104
+      },
+      {
+        "src": "/journey/immersive/moment-angkor-wat-1536.webp",
+        "width": 1536,
+        "height": 1026,
+        "bytes": 218754
+      }
+    ]
+  }
+]

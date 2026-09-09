@@ -79,11 +79,14 @@ test("simple production controls compose the canonical controls without replacin
   assert.doesNotMatch(passport, /<(?:button|select)\b/);
 
   const discover = read("app/journey/discover/discovery-browser.tsx");
-  assert.match(discover, /EasyTSegmentedControl<DiscoveryRegion>/);
-  assert.match(discover, /fieldClassName=\{styles\.compactSelect\}/);
+  assert.match(discover, /EasyTSegmentedControl as Segments/);
+  assert.match(discover, /<Segments ariaLabel="Catalogue view"/);
+  assert.match(discover, /<Select label="Region"/);
+  assert.match(discover, /<Select label="Country"/);
+  assert.match(discover, /<Select label="Travel style"/);
 
   const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
-  assert.match(dashboard, /EasyTSegmentedControl<TripStatus>/);
+  assert.match(dashboard, /EasyTSegmentedControl<LibraryView>/);
   assert.match(dashboard, /EasyTTextArea fieldClassName=\{accountStyles\.field\}/);
   assert.match(dashboard, /controls: "dashboard-trip-grid"/);
 });

@@ -1,6 +1,6 @@
 import type { StyleSpecification, LineLayerSpecification } from "maplibre-gl";
 import { feature } from "topojson-client";
-import worldTopology from "world-atlas/countries-50m.json";
+import worldTopology from "world-atlas/countries-50m.json" with { type: "json" };
 
 const topology = worldTopology as unknown as { objects: { countries: object } };
 const morroviaCountries = feature(

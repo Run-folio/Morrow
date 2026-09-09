@@ -3,13 +3,13 @@
 import { CheckCircle2, Clock3, MapPin, Star } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
-import { EasyTButton, EasyTSelect } from "./easyt-controls";
+import { EasyTButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
 import { itineraryInterestReason } from "@/lib/easyt/itinerary-day-context";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
-import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
+import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -20,7 +20,8 @@ type LiveActivityInventoryProps = {
   workspace: "itinerary" | "map";
   fallback?: ReactNode;
   onSave: (idea: ItineraryIdea) => boolean;
-  onSchedule: (idea: ItineraryIdea, dayPart?: ItineraryDayPart) => boolean;
+  onSchedule: (idea: ItineraryIdea) => boolean;
+  onRemove?: (idea: ItineraryIdea) => boolean;
   isPending?: (idea: ItineraryIdea) => boolean;
   initialItems?: ActivityInventoryItem[];
 };
@@ -39,10 +40,9 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, isPending = () => false, initialItems }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems }: LiveActivityInventoryProps) {
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(initialItems ? "ready" : "loading");
-  const [periods, setPeriods] = useState<Record<string, ItineraryDayPart>>({});
   const interests = tripIntentForTrip(trip).preferences.interests;
   const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
 
@@ -82,17 +82,19 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
   }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency]);
 
   const ranked = useMemo(() => rankActivityInventory(items, interests).slice(0, 4), [interests, items]);
-  if (status === "loading") return <section className={styles.group}><h4>Bookable experiences</h4><MorroviaSectionStatus title="Checking live experiences" detail={`Keeping ${stop.name} and your day unchanged while Viator inventory loads.`} /></section>;
+  if (status === "loading") return <section className={styles.group}><h4>Things to do</h4><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
   if (!ranked.length) return <>{fallback}</>;
 
   return <section className={styles.group} aria-labelledby={`${workspace}-live-experiences-${stop.id}`}>
-    <header><div><h4 id={`${workspace}-live-experiences-${stop.id}`}>Bookable experiences</h4><p>Live Viator inventory for {stop.name}. Add only what belongs in your plan.</p></div><span>Provided by Viator</span></header>
+    <header><h4 id={`${workspace}-live-experiences-${stop.id}`}>Things to do</h4></header>
     <div className={styles.list}>{ranked.map((item) => {
       const identity = activityInventoryIdentity(item);
       const idea = itineraryIdeaForActivityInventory(stop.id, item, interests);
       const state = ideaStateForPlace(trip, stop.id, identity);
       const pending = isPending(idea);
-      const interestReason = itineraryInterestReason({ title: item.title, type: "Experience", tags: item.tags ?? [], description: "" }, interests);
+      const interestReason = idea.reasons.includes("interest-relevance")
+        ? itineraryInterestReason({ title: item.title, type: "Experience", tags: item.tags ?? [], description: "" }, interests)
+        : null;
       const duration = durationLabel(item.duration);
       const price = priceLabel(item.price);
       const action = item.productUrl ? { provider: "viator", category: "activities", href: item.productUrl, cta: "View on Viator", affiliate: true } as const : null;
@@ -104,17 +106,15 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
           {price ? <span>{price}</span> : null}
         </div>{interestReason ? <p>{interestReason}</p> : null}</div>
         <div className={styles.actions}>
-          {state.state === "planned" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : <>
-            <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => onSchedule(idea, periods[identity])}>Add to Day {day.dayNumber}</EasyTButton>
-            <EasyTSelect fieldClassName={styles.period} label={`Period for ${item.title}`} value={periods[identity] ?? ""} onChange={(event) => setPeriods((current) => ({ ...current, [identity]: event.target.value as ItineraryDayPart }))}>
-              <option value="">Auto period</option><option value="morning">Morning</option><option value="midday">Midday</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option>
-            </EasyTSelect>
-          </>}
-          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => onSave(idea)}>Save</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved</span> : null}
+          {state.state === "planned" ? <>
+            <span className={styles.state}><CheckCircle2 aria-hidden="true" />Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${state.idea.dayPart[0]!.toUpperCase()}${state.idea.dayPart.slice(1)}` : " · Placement to review"}</span>
+            {onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => onRemove(state.idea)}>Remove</EasyTButton> : null}
+          </> : <EasyTButton size="small" variant="secondary" disabled={pending} onClick={() => onSchedule(idea)}>Add to Day {day.dayNumber}</EasyTButton>}
+          {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => onSave(idea)}>Save for later</EasyTButton> : state.state === "saved" ? <span className={styles.state}><CheckCircle2 aria-hidden="true" />Saved for later</span> : null}
           {action ? <MorroviaAffiliateLink action={action} context={{ placement, tripId: trip.id, stopId: stop.id, workspaceView: workspace }} variant="quiet" /> : null}
         </div>
       </article>;
     })}</div>
-    <small className={styles.disclosure}>{affiliateDisclosure}</small>
+    <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small>
   </section>;
 }

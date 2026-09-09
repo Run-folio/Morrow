@@ -198,14 +198,25 @@ function semanticPlaceMentions(
   // reduce the traveller's route.
   for (const mention of deterministicMentions) {
     const normalized = mention.normalizedPhrase;
-    const existing = inputs.find((input) => semanticJourneyRole(input.role) === semanticJourneyRole(mention.role)
+    const sameRoleExisting = inputs.find((input) => semanticJourneyRole(input.role) === semanticJourneyRole(mention.role)
       && (sameRawPlaceSpan(input.sourceText, mention.sourceText)
         || (input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText))));
+    // Explicit visit language is a deterministic role fact. Preserve it when a
+    // semantic provider classifies the same source span as an overnight stop;
+    // otherwise the provider can replace a curated landmark identity with a
+    // similarly named planning area and force the wrong Builder interaction.
+    const explicitVisitExisting = mention.role === "anchor"
+      ? inputs.find((input) => sameRawPlaceSpan(input.sourceText, mention.sourceText)
+        || Boolean(input.lookupText && sameRawPlaceSpan(input.lookupText, mention.sourceText)))
+      : undefined;
+    const existing = sameRoleExisting ?? explicitVisitExisting;
     if (existing) {
       if (["origin", "fixed_start"].includes(mention.role) && !["origin", "fixed_start"].includes(existing.role)) existing.role = "origin";
       if (["fixed_end", "excluded"].includes(mention.role)) existing.role = mention.role;
       if (["required", "optional"].includes(mention.role)) existing.role = mention.role;
+      if (mention.role === "anchor") existing.role = "anchor";
       if (!existing.travelIntent) existing.travelIntent = mention.role === "anchor" ? "anchor" : "route-stop";
+      if (mention.role === "anchor") existing.travelIntent = "anchor";
       continue;
     }
     if (normalized) inputs.push({

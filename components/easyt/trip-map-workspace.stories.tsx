@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import TripShell from "./trip-shell";
 import TripMapWorkspace from "./trip-map-workspace";
 import { JourneyMapPlannerWorkspace, type JourneyMapPlannerWorkspaceProps } from "@/components/journey-map-planner-workspace";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
-import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
+import { defaultTripIntent, type EasyTTrip, type PlanItem } from "@/lib/easyt/trip";
 import { affiliatePartners, getActivityBookingAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
@@ -69,6 +70,31 @@ const trip: EasyTTrip = {
   recommendations: [],
   createdAt: "2026-08-01T10:00:00.000Z",
   updatedAt: "2026-08-01T10:00:00.000Z",
+};
+
+const dubrovnikIntent = defaultTripIntent({ stopIds: ["dubrovnik"], durationDays: 3 });
+const dubrovnikTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-dubrovnik-shape-day",
+  title: "Dubrovnik",
+  startDate: "2026-09-14",
+  endDate: "2026-09-16",
+  currency: "GBP",
+  brief: {
+    ...trip.brief,
+    origin: "London",
+    mustDo: "Dubrovnik old town and the coast",
+    bookings: [],
+    selectedPlaces: {},
+    intent: { ...dubrovnikIntent, preferences: { ...dubrovnikIntent.preferences, interests: ["culture", "beach"] } },
+  },
+  stops: [{ id: "dubrovnik", canonicalPlaceId: "dubrovnik", order: 0, name: "Dubrovnik", country: "Croatia", countryCode: "HR", latitude: 42.6507, longitude: 18.0944, arrivalDate: "2026-09-14", departureDate: "2026-09-17", nights: 3 }],
+  legs: [],
+  planItems: [
+    { ...day(1, "dubrovnik", "Arrive in Dubrovnik", "arrival"), date: "2026-09-14" },
+    { ...day(2, "dubrovnik", "Old town and city walls"), date: "2026-09-15" },
+    { ...day(3, "dubrovnik", "Coast and a slower finish"), date: "2026-09-16" },
+  ],
 };
 
 const roadResolvedTrip: EasyTTrip = {
@@ -202,6 +228,71 @@ const providerPlaces = {
     provider: "openstreetmap",
   },
 } satisfies Record<string, JourneyLocalPlace>;
+
+const dubrovnikPlaces = {
+  hotel: {
+    id: "booking-dubrovnik-harbour",
+    name: "Harbour House Dubrovnik",
+    address: "Gruž, Dubrovnik, Croatia",
+    category: "available stay",
+    coordinates: [18.0912, 42.6584],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Harbour%20House%20Dubrovnik",
+    distanceKm: 1.1,
+    availability: "available",
+    provider: "booking-demand",
+    rating: 8.8,
+    price: { total: 182, currency: "GBP" },
+  },
+  mappedHotel: {
+    id: "osm-dubrovnik-lapad",
+    name: "Lapad Garden Hotel",
+    address: "Lapad, Dubrovnik, Croatia",
+    category: "hotel",
+    coordinates: [18.0737, 42.6555],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Lapad%20Garden%20Hotel",
+    distanceKm: 2.3,
+    availability: "check",
+    provider: "openstreetmap",
+  },
+  restaurant: {
+    id: "google-dubrovnik-pantarul",
+    name: "Pantarul",
+    address: "Lapad, Dubrovnik, Croatia",
+    category: "restaurant",
+    coordinates: [18.0779, 42.6551],
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Pantarul%20Dubrovnik",
+    distanceKm: 2.1,
+    operational: true,
+    provider: "google-places",
+    rating: 4.6,
+  },
+} satisfies Record<string, JourneyLocalPlace>;
+
+let dubrovnikSuggestionFixtureInstalled = false;
+
+function installDubrovnikSuggestionFixture() {
+  if (typeof window === "undefined" || dubrovnikSuggestionFixtureInstalled) return;
+  dubrovnikSuggestionFixtureInstalled = true;
+  const fetchFromStory = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const value = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const url = new URL(value, window.location.origin);
+    if (url.pathname === "/api/journey-local-search") {
+      const places = url.searchParams.get("kind") === "stay" ? [dubrovnikPlaces.mappedHotel] : [dubrovnikPlaces.restaurant];
+      return new Response(JSON.stringify({ places, source: places[0]?.provider }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/api/journey-accommodation-search") {
+      return new Response(JSON.stringify({ properties: [dubrovnikPlaces.hotel], configured: true, source: "Booking.com Demand API" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/api/journey-discover") {
+      return new Response(JSON.stringify({ places: [{ id: "dubrovnik-walls", title: "Dubrovnik city walls", area: "Old town", type: "Culture", tags: ["Culture", "Cities"], description: "A high-level circuit around the historic centre.", coordinates: [18.1102, 42.6426], qualityScore: 10 }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/api/journey-activity-inventory") {
+      return new Response(JSON.stringify({ activities: [{ provider: "viator", source: "viator", providerProductId: "DBV-KAYAK", title: "Dubrovnik sea-kayak and old-town views", destination: { canonicalPlaceId: "dubrovnik", label: "Dubrovnik" }, tags: ["beach", "culture"], rating: 4.9, reviewCount: 842, duration: { fixedMinutes: 180 }, price: { amount: 42, currency: "GBP" }, productUrl: "https://www.viator.com/tours/Dubrovnik/DBV-KAYAK?pid=storybook", provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-09T12:00:00.000Z" } }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return fetchFromStory(input, init);
+  };
+}
 
 let goldenTrianglePlaceFixtureInstalled = false;
 
@@ -372,6 +463,44 @@ export const GoldenTriangle: Story = {
   parameters: {
     nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map" } },
   },
+};
+
+const dubrovnikSuggestionParameters = {
+  nextjs: {
+    appDirectory: true,
+    navigation: {
+      pathname: "/journey/storybook-dubrovnik-shape-day/map",
+      query: { stop: "dubrovnik", day: "1" },
+    },
+  },
+};
+
+const dubrovnikDecorator = (Story: () => ReactNode) => {
+  installDubrovnikSuggestionFixture();
+  return <Story />;
+};
+
+export const DubrovnikStay: Story = {
+  args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "stay" } },
+  decorators: [dubrovnikDecorator],
+  parameters: dubrovnikSuggestionParameters,
+};
+
+export const DubrovnikEat: Story = {
+  args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "eat" } },
+  decorators: [dubrovnikDecorator],
+  parameters: dubrovnikSuggestionParameters,
+};
+
+export const DubrovnikSee: Story = {
+  args: { storyTrip: dubrovnikTrip, storyState: { mapMode: "detail", shapeDayTab: "see" } },
+  decorators: [dubrovnikDecorator],
+  parameters: dubrovnikSuggestionParameters,
+};
+
+export const DubrovnikSeeMobile390: Story = {
+  ...DubrovnikSee,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const StayDeepLink: Story = {

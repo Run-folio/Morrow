@@ -11,7 +11,7 @@ test("Viator Overview CTAs retain central link semantics and one nearby disclosu
   assert.match(prep, /task\.action\?\.affiliate === true/);
   assert.match(prep, /target="_blank" rel=\{action\.affiliate \? "sponsored noopener noreferrer" : "noopener noreferrer"\}/);
   assert.match(prep, /partner: "viator",[\s\S]*placement: "overview_before_you_go",[\s\S]*tripId,[\s\S]*stopId: action\.stopId/);
-  assert.match(prep, /import \{ affiliateDisclosure \} from "\.\/affiliate-link"/);
+  assert.match(prep, /import \{ affiliateDisclosureForProvider, MorroviaAffiliateLink \} from "\.\/affiliate-link"/);
   assert.match(link, /Partner link · Morrovia may earn a commission at no extra cost to you/);
-  assert.match(prep, /showsAffiliateDisclosure \? <small className=\{styles\.affiliateDisclosure\}>\{affiliateDisclosure\}<\/small>/);
+  assert.match(prep, /showsAffiliateDisclosure \? <small className=\{styles\.affiliateDisclosure\}>\{affiliateDisclosureForProvider\(task\.action\?\.provider \?\? ""\)\}<\/small>/);
 });

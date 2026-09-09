@@ -105,8 +105,23 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   assert.match(inventory, /placeType:\s*placeMention\?\.placeType/);
   assert.doesNotMatch(inventory, /productUrl\s*\+|searchParams\.set|affiliate_click/);
   assert.doesNotMatch(inventory, /rawPrompt|traveller|notes|bookingReference|full itinerary/i);
+  assert.doesNotMatch(inventory, /Auto period|EasyTSelect|Provided by Viator|Live Viator inventory/);
+  assert.match(inventory, /onClick=\{\(\) => onSchedule\(idea\)\}/);
+  assert.match(inventory, /Save for later/);
+  assert.match(inventory, /onRemove\(state\.idea\)/);
+  assert.match(inventory, /Day \{state\.day\.dayNumber\}[\s\S]*state\.idea\.dayPart/);
+  assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
+  assert.match(itinerary, /onRemove=\{\(idea\) => \{[\s\S]*removeItineraryIdea\(current, idea\.id\)/);
   assert.match(route, /count:\s*4/);
   assert.doesNotMatch(route, /while\s*\(|for\s*\(.*start|database|repository/);
+});
+
+test("Map live inventory uses the same automatic day-part owner and remove mutation as Itinerary", () => {
+  const workspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /onScheduleInventoryIdea=\{\(idea: ItineraryIdea\) =>/);
+  assert.match(workspace, /preferredItineraryDayPart\(trip, selectedPlanItem\.id, idea\.category\)/);
+  assert.match(workspace, /onRemoveInventoryIdea=\{\(idea: ItineraryIdea\) => \{[\s\S]*removeItineraryIdea\(trip, idea\.id\)/);
+  assert.doesNotMatch(workspace, /onScheduleInventoryIdea=\{\(idea: ItineraryIdea, dayPart/);
 });
 
 test("missing optional commercial fields remain missing and no unsupported availability copy is introduced", () => {

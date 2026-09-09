@@ -5,6 +5,7 @@ import { mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, rout
 import { buildCanonicalTripLegs } from "./trip-legs.ts";
 import { normalizeJourneyEnd } from "./journey-endpoints.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
+import type { FixedCommitmentPlace, FixedCommitmentType } from "./fixed-commitment.ts";
 
 export const EASYT_TRIP_SCHEMA_VERSION = 1 as const;
 
@@ -15,7 +16,14 @@ export type BudgetBand = "value" | "mid" | "high";
 
 export type TripIntentPace = "relaxed" | "balanced" | "packed";
 export type TripTransportMode = "flight" | "train" | "drive";
-export type FixedTripCommitment = { id: string; label: string; date?: string };
+export type FixedTripCommitment = {
+  id: string;
+  label: string;
+  date?: string;
+  commitmentType?: FixedCommitmentType;
+  place?: FixedCommitmentPlace;
+  stopId?: string;
+};
 export type JourneyEndpointPlace = {
   name: string;
   canonicalPlaceId?: string;
@@ -96,7 +104,14 @@ export function tripIntentForTrip(trip: Pick<EasyTTrip, "startDate" | "endDate" 
   if (!structured) return compatible;
   const routePreferences = routePreferencesFromStructuredBrief(structured);
   const fixedCommitments = structured.hardConstraints.flatMap((constraint) => constraint.type === "fixed-commitment"
-    ? [{ id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`, label: constraint.value, date: constraint.date }]
+    ? [{
+        id: `structured-${constraint.date ?? "open"}-${constraint.value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        label: constraint.value,
+        date: constraint.date,
+        commitmentType: constraint.commitmentType,
+        place: constraint.place,
+        stopId: constraint.stopId,
+      }]
     : []);
   return {
     ...compatible,
@@ -231,7 +246,9 @@ export type ItineraryIdea = {
   area?: string;
   placeType?: string;
   description?: string;
-  source: "destination-highlight" | "personalised-recommendation" | "live-provider-inventory";
+  source: "destination-highlight" | "personalised-recommendation" | "live-provider-inventory" | "traveller-visit-intent";
+  /** Links an itinerary activity back to the traveller's durable place mention. */
+  explicitVisitMentionId?: string;
   reasons: Array<"destination-significance" | "interest-relevance">;
   provider?: "viator";
   providerProductId?: string;

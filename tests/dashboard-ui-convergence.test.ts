@@ -13,62 +13,54 @@ const storybookConfig = read(".storybook/main.ts");
 const storybookAuth = read(".storybook/auth-client.mock.ts");
 const storybookPreview = read(".storybook/preview.ts");
 
-test("trip and continuation cards use an independent accessible stretched link", () => {
-  assert.match(dashboard, /className=\{styles\.cardOverlay\}[\s\S]*?aria-label=\{`\$\{language === "es" \? "Abrir viaje" : "Open trip"\}: \$\{title\}`\}/);
-  assert.match(dashboard, /className=\{styles\.cardOverlay\}[\s\S]*?href=\{tripWorkspaceHref\(featuredTrip\.id\)\}/);
-  assert.match(dashboard, /<EasyTLinkButton className=\{styles\.editAction\}[\s\S]*?href=\{`\/journey\/new\?trip=/);
+test("trip cards keep navigation separate from their action menus", () => {
+  assert.match(dashboard, /<Link className=\{styles\.cardMedia\} href=\{primaryHref\}/);
+  assert.match(dashboard, /<h3><Link href=\{primaryHref\}/);
+  assert.match(dashboard, /<EasyTLinkButton className=\{styles\.openAction\}[\s\S]*?href=\{primaryHref\}/);
   assert.match(dashboard, /<details className=\{styles\.tripMenu\}>/);
-  assert.match(dashboardStyles, /\.cardOverlay \{[\s\S]*?position: absolute;[\s\S]*?z-index: 1;[\s\S]*?inset: 0;/);
-  assert.match(dashboardStyles, /\.tripCardActions,[\s\S]*?\.stampsAction \{ position: relative; z-index: 2; \}/);
-  assert.match(dashboardStyles, /\.cardOverlay:focus-visible[\s\S]*?var\(--morrovia-focus-ring\)/);
-  assert.equal([...dashboard.matchAll(/<Link\s+className=\{styles\.cardOverlay\}[\s\S]*?\/>/g)].length, 3, "all full-card links are self-closing siblings rather than wrappers around actions");
+  assert.match(dashboardStyles, /\.tripMenu summary:focus-visible[^}]*var\(--morrovia-focus-shadow\)/);
+  assert.match(dashboard, /tabIndex=\{working \? -1 : undefined\}/);
 });
 
 test("dashboard filters and compact fields use canonical controls", () => {
-  assert.match(dashboard, /EasyTSegmentedControl<TripStatus>/);
+  assert.match(dashboard, /EasyTSegmentedControl<LibraryView>/);
   assert.match(dashboard, /controls: "dashboard-trip-grid"/);
   assert.match(dashboard, /<EasyTSelect fieldClassName=\{styles\.sortControl\}/);
   assert.match(dashboard, /<EasyTField fieldClassName=\{styles\.searchControl\}/);
   assert.doesNotMatch(dashboardStyles, /\.statusFilters/);
-  assert.doesNotMatch(dashboardStyles, /\.sortControl select/);
-  assert.doesNotMatch(dashboardStyles, /\.searchControl input/);
 });
 
-test("lifecycle chips are non-danger while blocked route truth remains danger", () => {
-  assert.match(dashboard, /styles\.lifecycleActive/);
-  assert.match(dashboard, /styles\.lifecyclePlanned/);
-  assert.match(dashboard, /styles\.lifecycleArchived/);
-  assert.match(dashboardStyles, /\.lifecycleActive[^\n]*var\(--morrovia-action\)/);
-  assert.match(dashboardStyles, /\.lifecyclePlanned[^\n]*var\(--morrovia-ink-soft\)/);
-  assert.match(dashboardStyles, /\.lifecycleArchived[^\n]*var\(--morrovia-muted\)/);
-  assert.match(dashboard, /signal\.blocked \? styles\.blockedStage/);
-  assert.match(dashboardStyles, /\.blockedStage > span[^\n]*var\(--morrovia-danger\)/);
+test("lifecycle state selects truthful journey sections and readiness copy", () => {
+  assert.match(dashboard, /trip\.status === "draft" \? "idea" : trip\.status === "archived" \? "past" : "upcoming"/);
+  assert.match(dashboard, /const upcomingTrips = useMemo/);
+  assert.match(dashboard, /const ideaTrips = useMemo/);
+  assert.match(dashboard, /const pastTrips = useMemo/);
+  assert.match(dashboard, /staySignal && resolvedKind !== "past"/);
+  assert.match(dashboardStyles, /\.readinessLine \{[\s\S]*?var\(--morrovia-muted\)/);
 });
 
 test("continue and Stamped summaries expose truthful labelled metadata", () => {
-  assert.match(dashboard, /<b>\{featuredTrip\.stops\.length\}<\/b>\{isSpanish \? "paradas" : "stops"\}/);
+  assert.match(dashboard, /<span>\{featuredTrip\.stops\.length\} \{isSpanish \? "paradas" : "stops"\}<\/span>/);
   assert.match(dashboard, /const stampSummary = summarizeStampRows\(stamps\)/);
-  assert.match(dashboard, /<Globe2 aria-hidden="true" \/>/);
-  assert.match(dashboard, /<MapPin aria-hidden="true" \/>/);
-  assert.match(dashboard, /Countries seen/);
-  assert.match(dashboard, /Want to visit/);
-  assert.match(dashboard, /\/journey\/illustrations\/global-route-confirm\.png/);
+  assert.match(dashboard, /\{visitedCount\} \{isSpanish \? "visitados" : "visited"\}/);
+  assert.match(dashboard, /\{wantCount\} \{isSpanish \? "deseados" : "want to go"\}/);
+  assert.match(dashboard, /<TripRoutePreview trip=\{featuredTrip\}/);
 });
 
-test("Storybook covers lifecycle, long-content, missing-image, Stamped and mobile states", () => {
+test("Storybook covers trip volume, card breakpoints and keyboard focus", () => {
   for (const story of [
     "ZeroTrips",
     "ActiveTrips",
-    "PlannedTrips",
-    "ArchivedTrips",
-    "StampedEmptySummary",
-    "ActiveCardsDesktop",
-    "ActiveCardsTablet768",
-    "ActiveCardsMobile390",
+    "OneTrip",
+    "SixPlusPastJourneys",
+    "Mobile390",
+    "UpcomingCardsDesktop",
+    "UpcomingCardsTablet768",
+    "UpcomingCardsMobile390",
     "ClickableCardKeyboardFocus",
   ]) assert.match(dashboardStories, new RegExp(`export const ${story}`));
-  assert.match(dashboardStories, /Gatwick, Santiago, Easter Island, Puerto de Punta Arenas & Tierra del Fuego/);
-  assert.match(dashboardStories, /cardTrip\("storybook-trip-3", "Lisbon, Seville & Barcelona", null\)/);
+  assert.match(dashboardStories, /title: "Portugal \+ Spain"/);
+  assert.match(dashboardStories, /image\?: string \| null/);
   assert.match(dashboardStories, /morrovia390/);
   assert.match(controlStories, /export const SegmentedMobile390/);
   assert.match(controlStyles, /@media \(max-width: 520px\)[\s\S]*?\.segment \{[\s\S]*?min-height: 44px/);

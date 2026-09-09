@@ -42,12 +42,16 @@ test("stable OSM identity collapses provider-specific display labels", async () 
 
 test("genuinely distinct namesakes and broad intent continue to fail closed", async () => {
   const summary = await runOpenWorldEngineGauntlet();
-  for (const id of ["springfield-control", "cambridge-control", "city-region-collision"]) {
+  for (const id of ["springfield-control", "cambridge-control"]) {
     const mention = summary.results.find((result) => result.id === id)?.mentions[0];
     assert.equal(mention?.builderState, "review", id);
     assert.equal(mention?.confirmationRequired, true, id);
     assert.equal(mention?.selected, null, id);
   }
+  const country = summary.results.find((result) => result.id === "city-region-collision")?.mentions[0];
+  assert.equal(country?.selected?.type, "country");
+  assert.equal(country?.builderState, "review");
+  assert.equal(country?.confirmationRequired, true);
   const broad = summary.results.find((result) => result.id === "generic-regional-intent")
     ?.mentions.find((mention) => mention.sourceText === "wine country");
   assert.equal(broad?.builderState, "review");
@@ -63,4 +67,3 @@ test("known South America baseline remains six resolved and zero to confirm", as
   assert.equal(fixture?.mentions.some((mention) => mention.confirmationRequired), false);
   assert.deepEqual(fixture?.mentions.map((mention) => mention.selected?.name), ["Cusco", "Uyuni", "La Paz", "Lima", "Huacachina", "Salta"]);
 });
-

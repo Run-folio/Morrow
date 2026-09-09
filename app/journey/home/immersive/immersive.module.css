@@ -250,3 +250,100 @@
 
 /* The photographic footer owns dock clearance on this page. */
 @media(max-width:520px) { :global(body.easyt-mobile-shell):has(.page) { padding-bottom: 0; } }
+
+/* Product sample: production controls inside an editorial, read-only journey. */
+.canvasNavigation { justify-content: space-between; align-items: center; gap: 20px; padding: 22px 28px; }
+.demoIdentity { display: flex; align-items: center; gap: 12px; }
+.demoIdentity > svg { width: 22px; color: var(--morrovia-signal); }
+.demoIdentity strong { font: 500 20px/1.2 var(--morrovia-ui); }
+.demoIdentity > span { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.demoNotice:empty { min-height: 0; padding: 0; }
+.mapDemo { grid-template-columns: minmax(280px, 29%) minmax(0, 1fr); }
+.mapInfo { padding: 34px 24px; }
+.mapInfo h3 { font: 36px/1.1 var(--morrovia-ui); letter-spacing: -.04em; margin: 18px 0 24px; }
+.stopChoices { gap: 0; }
+.stopChoices button { width: 100%; padding: 13px 10px; }
+.stopChoices button > span:last-child { text-align: right; }
+.stopNumber { display: inline-grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); font: var(--morrovia-type-metadata); color: var(--morrovia-signal); }
+.railConnection { border-left: 1px solid var(--morrovia-line); margin: 0 0 0 22px; padding: 9px 0 9px 22px; font: var(--morrovia-type-fine-print); color: var(--morrovia-muted); }
+.mapInfo > button { margin-top: 22px; }
+.mapCanvas .mapPlacePreview { position: absolute; left: 24px; bottom: 66px; width: min(300px, calc(100% - 48px)); min-height: 0; height: auto; background: var(--morrovia-paper); border-radius: var(--morrovia-control-radius); overflow: hidden; display: grid; grid-template-columns: 96px 1fr; }
+.mapPlacePreview .destinationPhoto { height: 110px; border-radius: 0; }
+.mapPlacePreview > div:last-child { padding: 17px 14px; }
+.mapPlacePreview strong { display: block; margin: 6px 0; font: 500 21px/1.1 var(--morrovia-ui); }
+.mapPlacePreview span,.mapPlacePreview small { font: var(--morrovia-type-fine-print); color: var(--morrovia-ink-soft); }
+.builderDemo { grid-template-columns: minmax(0,.9fr) minmax(0,1.25fr); gap: 6%; padding: 42px; }
+.builderDemo h3 { font: 38px/1.08 var(--morrovia-ui); letter-spacing: -.04em; margin: 18px 0 26px; }
+.builderDemo h3 em { display: block; font-family: var(--morrovia-display); font-weight: 400; }
+.builderSelectedPhoto { position: relative; height: 210px; overflow: hidden; border-radius: var(--morrovia-radius); }
+.builderSelectedPhoto .destinationPhoto { width: 100%; height: 100%; }
+.builderSelectedPhoto > span { position: absolute; left: 18px; bottom: 20px; color: var(--morrovia-paper); background: var(--morrovia-ink); padding: 7px 12px; border-radius: var(--morrovia-control-radius); font: var(--morrovia-type-control); }
+.usableTime { display: flex; gap: 12px; align-items: flex-start; margin: 24px 0 18px; }
+.usableTime > svg { width: 20px; color: var(--morrovia-signal); }
+.usableTime p { margin: 0; }
+.usableTime strong { display: block; font: 500 18px/1.25 var(--morrovia-ui); }
+.usableTime span { display: block; margin-top: 6px; font: var(--morrovia-type-fine-print); color: var(--morrovia-muted); }
+.nightLedgerDemo > header { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--morrovia-line); padding-bottom: 20px; }
+.nightLedgerDemo > header > span { font: var(--morrovia-type-supporting-body); }
+.nightLedgerDemo > header > strong { font: 500 26px/1 var(--morrovia-ui); }
+.nightRow { border: 0; padding: 20px 0; gap: 12px; }
+.nightRow > div:first-child { min-width: 0; }
+.nightRow > div:first-child > button { font: 500 21px/1.15 var(--morrovia-ui); padding: 6px 0; justify-content: start; white-space: normal; text-align: left; }
+.nightRow > div:first-child > button[aria-pressed="true"] { color: var(--morrovia-action); }
+.nightRow > div:first-child > small { display: block; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); margin: 7px 0 0 38px; }
+.demoTransfer { display: flex; align-items: center; gap: 12px; background: var(--morrovia-lilac); border-radius: var(--morrovia-control-radius); padding: 10px 14px; font: var(--morrovia-type-control); color: var(--morrovia-ink-soft); }
+.demoTransfer > svg { width: 15px; color: var(--morrovia-signal); }
+.demoTransfer small { display: block; font: var(--morrovia-type-fine-print); margin-top: 5px; color: var(--morrovia-muted); }
+.demoTransfer > span:last-child { margin-left: auto; }
+.demoLedgerNote { font: var(--morrovia-type-fine-print); color: var(--morrovia-muted); margin-top: 22px; }
+.itineraryDemo { grid-template-columns: 1fr 1fr; }
+.itineraryPhoto { min-height: 780px; }
+.itineraryPhotoCopy { position: absolute; inset: auto 0 0; padding: 90px 36px 60px; color: var(--morrovia-paper); background: linear-gradient(transparent, var(--morrovia-photo-ink)); pointer-events: none; }
+.itineraryPhotoCopy > span { font: var(--morrovia-type-metadata); }
+.itineraryPhotoCopy h3 { font: 52px/1.05 var(--morrovia-ui); letter-spacing: -.04em; margin: 16px 0; }
+.itineraryPhotoCopy em { display: block; font-family: var(--morrovia-display); font-weight: 400; }
+.itineraryPhotoCopy p { max-width: 340px; font: var(--morrovia-type-body); }
+.itineraryDay { padding: 28px 36px; }
+.dayHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.itineraryDay h3 { font: 32px/1.15 var(--morrovia-display); margin: 18px 0 22px; }
+.sampleDayParts { list-style: none; margin: 20px 0 0; padding: 0; }
+.sampleDayParts li { display: grid; grid-template-columns: 20px 1fr; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--morrovia-line); }
+.sampleDayParts li > svg { width: 18px; height: 18px; color: var(--morrovia-signal); }
+.sampleDayParts li span { display: block; font: var(--morrovia-type-metadata); color: var(--morrovia-muted); margin-bottom: 7px; }
+.sampleDayParts li strong { font: 500 17px/1.35 var(--morrovia-ui); }
+.sampleDayParts li small { margin: 5px 0 0; }
+.sampleDayParts .sampleTonight { border-bottom: 0; background: var(--morrovia-lilac); padding: 16px; margin-top: 16px; border-radius: var(--morrovia-control-radius); }
+@media (max-width: 1080px) {
+ .builderDemo { padding: 28px; gap: 30px; grid-template-columns: .8fr 1.2fr; }
+ .nightRow { flex-wrap: wrap; }
+ .nightRow > div:first-child > small { margin-left: 0; }
+ .demoIdentity > span { display: none; }
+}
+@media (max-width: 840px) {
+ .canvasNavigation { flex-wrap: wrap; justify-content: center; padding: 18px; }
+ .demoIdentity { width: 100%; justify-content: center; }
+ .mapDemo,.builderDemo,.itineraryDemo { grid-template-columns: 1fr; }
+ .mapInfo { padding: 22px; }
+ .mapInfo h3 { font-size: 30px; }
+ .mapCanvas,.mapCanvas > div { min-height: 440px; }
+ .mapCanvas .mapPlacePreview { min-height: 0; }
+ .builderDemo { padding: 24px; gap: 32px; }
+ .builderSelectedPhoto { height: 230px; }
+ .builderDemo h3 { font-size: 34px; }
+ .nightRow { flex-wrap: nowrap; }
+ .nightRow > div:first-child > button { font-size: 19px; }
+ .itineraryPhoto { min-height: 400px; }
+ .itineraryPhotoCopy { padding: 70px 24px 42px; }
+ .itineraryPhotoCopy h3 { font-size: 42px; }
+ .itineraryDay { padding: 24px; }
+}
+@media (max-width: 430px) {
+ .nightRow { flex-wrap: wrap; }
+ .nightRow > div:first-child { width: 100%; }
+ .demoTransfer { font-size: 12px; }
+ .builderDemo,.itineraryDay { padding: 20px; }
+ .mapCaption { max-width: calc(100% - 32px); }
+ .dayHeading { flex-wrap: wrap; }
+}
+.photoSubject { position: absolute; top: 12px; left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 24px); background: var(--morrovia-paper); color: var(--morrovia-ink); padding: 6px 9px; border-radius: var(--morrovia-control-radius); font: var(--morrovia-type-fine-print); }
+.mapPlacePreview .photoSubject { display: none; }

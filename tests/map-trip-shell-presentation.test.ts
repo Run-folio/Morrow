@@ -30,6 +30,18 @@ const plannerStripStylesSource = readFileSync(
   new URL("../components/journey-planner-strip.module.css", import.meta.url),
   "utf8",
 );
+const tripMapWorkspaceStylesSource = readFileSync(
+  new URL("../components/easyt/trip-map-workspace.module.css", import.meta.url),
+  "utf8",
+);
+
+test("the normal Map workspace breaks out from the readable trip shell", () => {
+  assert.match(tripMapWorkspaceStylesSource, /width: min\(2200px, calc\(100vw - 32px\)\)/);
+  assert.match(tripMapWorkspaceStylesSource, /margin-left: 50%/);
+  assert.match(tripMapWorkspaceStylesSource, /transform: translateX\(-50%\)/);
+  assert.match(tripMapWorkspaceStylesSource, /@media \(max-width: 980px\)[\s\S]*width: 100vw/);
+  assert.match(tripMapWorkspaceStylesSource, /:has\(:global\(\.morrovia-map-expanded\)\)[\s\S]*transform: none/);
+});
 
 test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /initialMapCameraMode\(customTrip, searchParams\)/);

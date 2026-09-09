@@ -25,13 +25,14 @@ test("global desktop and compact navigation consolidate About and the existing T
   assert.match(tour, /dispatchOpen\) \{ window\.dispatchEvent\(new Event\(PRODUCT_TOUR_OPEN_EVENT\)\); return; \}/);
 });
 
-test("the canonical homepage route story and its reciprocal Discover link remain intact", () => {
+test("the canonical homepage route story and global home links remain intact", () => {
   const routes = read("app/journey/home/immersive/route-chapters.tsx");
-  const discovery = read("app/journey/discover/page.tsx");
+  const navigation = read("app/journey/easyt-navigation.tsx");
 
   assert.match(routes, /id="routes"/);
   assert.match(routes, /href="\/journey\/discover"/);
-  assert.match(discovery, /href="\/journey\/home#routes"/);
+  assert.equal((navigation.match(/href="\/"/g) ?? []).length, 2, "desktop brand and mobile Home point at the canonical root");
+  assert.doesNotMatch(navigation, /href="\/journey\/home/);
 });
 
 test("the navigation Storybook fixture exercises the App Router and active About state", () => {

@@ -83,6 +83,8 @@ import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-plann
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
+import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
+import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
@@ -1080,6 +1082,27 @@ export default function TripItineraryWorkspace({
       </div>
 
       {hasContextRail ? <aside className={styles.contextRail} aria-label="Selected day planning context">
+        <TripExplicitPlans
+          trip={workingTrip}
+          variant="itinerary"
+          pending={(key) => mutation.isPending(key)}
+          onSchedule={(mentionId, dayId) => {
+            const key = `explicit-visit-${mentionId}`;
+            const changed = mutation.mutateTrip((current) => scheduleExplicitVisitIntent(current, mentionId, dayId), key);
+            if (changed) setNotice("Requested visit added to the itinerary");
+            return changed;
+          }}
+          onRemoveVisit={(mentionId) => {
+            const changed = mutation.mutateTrip((current) => removeExplicitVisitIntent(current, mentionId), `explicit-visit-remove-${mentionId}`);
+            if (changed) setNotice("Requested visit removed");
+            return changed;
+          }}
+          onRemoveCommitment={(commitmentId) => {
+            const changed = mutation.mutateTrip((current) => removeFixedCommitment(current, commitmentId), `fixed-commitment-remove-${commitmentId}`);
+            if (changed) setNotice("Fixed commitment removed");
+            return changed;
+          }}
+        />
         {mapContext.stops.length || mapContext.pins.length ? <details className={styles.contextSection} open>
           <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
           <div
@@ -1172,10 +1195,15 @@ export default function TripItineraryWorkspace({
             isPending={(idea) => mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
             onSave={(idea) => {
               const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
-              if (accepted) setNotice("Idea saved");
+              if (accepted) setNotice("Saved for later");
               return accepted;
             }}
-            onSchedule={(idea, dayPart) => scheduleIdea(idea, active.id, dayPart)}
+            onSchedule={(idea) => scheduleIdea(idea, active.id)}
+            onRemove={(idea) => {
+              const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`);
+              if (accepted) setNotice("Activity removed");
+              return accepted;
+            }}
             fallback={experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`${active.id}-experience-handoff`}>
             <div>
               <strong id={`${active.id}-experience-handoff`}>{language === "es" ? "¿Quieres más opciones?" : "Want more options?"}</strong>

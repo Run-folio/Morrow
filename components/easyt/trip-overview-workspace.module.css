@@ -5,10 +5,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(310px, .9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 420px);
   grid-template-areas:
     "next health"
     "progress progress"
+    "plans plans"
     "before before"
     "route route";
   gap: 16px;
@@ -670,7 +671,7 @@
   box-shadow: var(--morrovia-focus-shadow);
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .progressGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .progressItem,
   .progressItem:first-child,
@@ -693,7 +694,7 @@
   .orientation ul{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "next" "health" "progress" "before" "route";
+    grid-template-areas: "next" "health" "progress" "plans" "before" "route";
   }
   .nextAction { min-height: 0; }
   .healthCard,

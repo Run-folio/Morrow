@@ -83,9 +83,9 @@ test("photography resolves only to licensed canonical destinations and preserves
 
 test("experience imagery uses only canonical destination assets and exposes honest gaps", () => {
   const japan = routeDetailPresentation(publicRouteDetailFor("japan-slow")!);
-  assert.equal(japan.experiences.length, 5);
-  assert.equal(japan.experiences.at(-1)?.photo?.place, "Osaka");
-  assert.match(japan.experiences.at(-1)?.photoQualification ?? "", /subject-specific photo.*pending editorial review/i);
+  assert.equal(japan.experiences.length, 3);
+  assert.equal(japan.experiences.at(-1)?.photo?.place, "Kyoto");
+  assert.match(japan.experiences.at(-1)?.photoQualification ?? "", /Leave room between/);
 
   const andes = routeDetailPresentation(publicRouteDetailFor("andean-highlands")!);
   assert.equal(andes.experiences.length, 4);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
 import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import { nextHomepageRoute, routeScrollCorrection, homepageJourneyLabel } from "@/lib/easyt/homepage-navigation";
 import RoutePlanLink from "../../routes/[slug]/route-plan-link";
@@ -18,10 +19,12 @@ const titles: Record<string, [string, string]> = {
   "iceland-ring-road": ["Iceland’s", "open road."],
 };
 
-export function DestinationPhoto({ route, index, landscape = false }: { route: ImmersiveRoute; index: number; landscape?: boolean }) {
+function photoBaseContext(name: string) { return `from the ${name} base`; }
+
+export function DestinationPhoto({ route, index, landscape = false, sizes }: { route: ImmersiveRoute; index: number; landscape?: boolean; sizes?: string }) {
   const stop = route.stops[index];
   const photo = route.photos[index];
-  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={landscape ? "100vw" : "(max-width:840px) 45vw, 23vw"} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} /><MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
+  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} />{photo.place !== stop.name && <span className={styles.photoSubject}>{photo.place} · {photoBaseContext(stop.name)}</span>}<MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
 }
 
 export default function RouteChapters({ routes, index, onChange, children, quiet }: {
@@ -70,6 +73,8 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
   };
   const title = titles[route.key] ?? [route.title, ""];
   const story = homepageJourneyLabel(route.key, route.title);
+  const editorialPhotoIndex = route.photos.findIndex(photo => photo?.key === routeEditorialImagery[route.key]?.hero);
+  const storyPhotoIndex = editorialPhotoIndex >= 0 ? editorialPhotoIndex : route.stops.length - 1;
   return <>
     <section id="routes" ref={places} className={styles.places} aria-label={es ? "Lugares del viaje" : "Places along the journey"}>
       <div className={styles.placesStage}>
@@ -94,7 +99,7 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
       </div>
     </section>
     <section id="route-story" className={styles.story}>
-      <div className={styles.storyPhoto}><DestinationPhoto route={route} index={route.stops.length - 1} landscape /></div>
+      <div className={styles.storyPhoto}><DestinationPhoto route={route} index={storyPhotoIndex} landscape /></div>
       <div className={styles.storyShade} />
       <div className={styles.storyMain}><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2 tabIndex={-1}>{story.title}<em>{story.line}</em></h2><p className={styles.theme}>{story.theme || route.interestLabel}</p><p className={styles.storyIdea}>{route.summary}</p><p className={styles.sequence}>{route.stops.map((stop) => stop.name).join(" → ")}</p><p className={styles.note}>{es ? "Las noches son una guía. Confirma conexiones y horarios antes de reservar." : "Nights are a planning guide. Confirm connections and schedules before booking."}</p><div className={styles.storyActions}><RoutePlanLink draft={route.planDraft} placement="hero">{es ? "Empezar con esta ruta" : "Start with this route"}</RoutePlanLink><EasyTLinkButton href="#product" variant="quiet" icon={ArrowDown}>{es ? "Ver todo el viaje" : "See whole journey"}</EasyTLinkButton></div></div>
       <aside className={styles.alternatives}><span className={styles.eyebrow}>{es ? "Otra forma de viajar" : "Another way to go"}</span>{routes.map((other, i) => i === index ? null : <EasyTButton key={other.key} variant="quiet" icon={ArrowRight} onClick={() => change(i, "route-story")}>{homepageJourneyLabel(other.key, other.title).short}</EasyTButton>)}<EasyTLinkButton href="/journey/discover" variant="quiet">{es ? "Ver todas las rutas" : "View all routes"}</EasyTLinkButton></aside>

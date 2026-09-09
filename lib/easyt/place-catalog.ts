@@ -243,7 +243,7 @@ const legacyPlaces: PlaceCatalogEntry[] = [
   place("everest-base-camp", "Everest Base Camp", [], "landmark", "anchor_or_poi", ["Nepal"], { parentRegionId: "kathmandu" }),
   place("taj-mahal", "Taj Mahal", [], "landmark", "anchor_or_poi", ["India"], { parentRegionId: "agra", coordinates: [78.0421, 27.1751] }),
   place("colosseum", "Colosseum", ["the Colosseum", "Coliseum"], "landmark", "anchor_or_poi", ["Italy"], { parentRegionId: "rome", coordinates: [12.4922, 41.8902] }),
-  place("chichen-itza", "Chichén Itzá", ["Chichen Itza", "Chichén Itza"], "landmark", "anchor_or_poi", ["Mexico"], { parentRegionId: "yucatan", coordinates: [-88.5678, 20.6843] }),
+  place("chichen-itza", "Chichén Itzá", ["Chichen Itza", "Chichén Itza", "Chitchen Itza"], "landmark", "anchor_or_poi", ["Mexico"], { parentRegionId: "yucatan", coordinates: [-88.5678, 20.6843] }),
   place("petra", "Petra", [], "landmark", "anchor_or_poi", ["Jordan"], { parentRegionId: "wadi-musa", coordinates: [35.4444, 30.3285] }),
   place("grand-canyon", "Grand Canyon", ["Grand Canyon National Park"], "landmark", "anchor_or_poi", ["United States"], { parentRegionId: "grand-canyon-village", coordinates: [-112.1129, 36.1069] }),
 ];

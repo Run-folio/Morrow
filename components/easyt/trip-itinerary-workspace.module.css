@@ -2,7 +2,7 @@
   width: 100%;
   max-width: 100%;
   display: grid;
-  grid-template-columns: minmax(270px, 310px) minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(280px, 320px);
   min-height: 650px;
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
@@ -11,7 +11,7 @@
 }
 
 .workspaceWithoutContext {
-  grid-template-columns: minmax(270px, 310px) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr);
 }
 
 .rail {

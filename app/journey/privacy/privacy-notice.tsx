@@ -134,7 +134,7 @@ export default function PrivacyNotice() {
       <section id="retention" className={styles.section} aria-labelledby="retention-title"><p className={styles.kicker}>RETENTION</p><h2 id="retention-title">{t.retention}</h2><p>{t.retentionText}</p><p>{t.retentionDetail}</p></section>
       <section id="your-rights" className={`${styles.card} ${styles.rights}`} aria-labelledby="rights-title"><div><p className={styles.kicker}>YOUR RIGHTS</p><h2 id="rights-title">{t.rights}</h2><p>{t.rightsText}</p><ol className={styles.factList}>{t.rightsSteps.map((item) => <li key={item}>{item}</li>)}</ol><p>{t.correction}</p><p>{t.complaint}</p></div><div className={styles.rightsActions}><a className={styles.primaryAction} href={rightsMailto}>{t.rightsContact} <Mail aria-hidden="true" /></a><a href={icoComplaintUrl} target="_blank" rel="noopener noreferrer">{t.complaintAction} <ExternalLink aria-hidden="true" /></a></div></section>
       <article className={`${styles.card} ${styles.unresolved}`}><Cookie aria-hidden="true" /><h2>{t.unresolved}</h2><p>{t.unresolvedText}</p></article>
-      <Link className={styles.back} href="/journey/home"><ChevronLeft aria-hidden="true" />{t.back}</Link>
+      <Link className={styles.back} href="/"><ChevronLeft aria-hidden="true" />{t.back}</Link>
     </section>
   </div>;
 }

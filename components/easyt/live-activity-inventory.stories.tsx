@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { defaultTripIntent, type EasyTTrip } from "@/lib/easyt/trip";
-import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { itineraryIdeaForActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
+import { scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import LiveActivityInventory from "./live-activity-inventory";
 
 const intent = defaultTripIntent({ stopIds: ["paris-stop"], durationDays: 1 });
@@ -28,3 +30,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Desktop: Story = {};
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+const plannedIdea = itineraryIdeaForActivityInventory("paris-stop", inventory[0]!, ["food", "culture"]);
+const plannedTrip = scheduleItineraryIdea(trip, plannedIdea, "day-1", preferredItineraryDayPart(trip, "day-1", plannedIdea.category));
+
+export const AddedState: Story = { args: { trip: plannedTrip, onRemove: () => true } };
+export const AddedStateMobile390: Story = { args: { trip: plannedTrip, onRemove: () => true }, globals: { viewport: { value: "morrovia390", isRotated: false } } };

@@ -44,9 +44,9 @@ export default function MorroviaFooter({ overImage = false, omitOnImmersiveHome 
   }, []);
 
   const text = copy[language];
-  if (omitOnImmersiveHome && pathname === "/journey/home") return null;
+  if (omitOnImmersiveHome && (pathname === "/" || pathname === "/journey/home")) return null;
   return <footer role="contentinfo" className={`${styles.footer} ${overImage ? styles.overImage : ""}`}>
-    <Link className={styles.brand} href="/journey/home" aria-label={`${morroviaLegalIdentity.productName} home`}>
+    <Link className={styles.brand} href="/" aria-label={`${morroviaLegalIdentity.productName} home`}>
       {morroviaLegalIdentity.productName}
     </Link>
     <div className={styles.identity}>

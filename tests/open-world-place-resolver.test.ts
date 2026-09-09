@@ -140,6 +140,7 @@ test("real Homepage capture resolves the staging South America fixture into six 
   const manualUyuni = await provider.lookup("uyunui", { travelIntent: "route-stop", countryNames: ["Bolivia"] });
   const manualHuacachina = await provider.lookup("huacachina", { travelIntent: "route-stop", countryNames: ["Peru"] });
   assert.equal(manualUyuni[0]?.canonicalName, "Uyuni");
+  assert.deepEqual(manualUyuni[0]?.coordinates, [-66.8239, -20.4628]);
   assert.deepEqual(manualUyuni[0]?.coordinates, capture.mentions[1]?.coordinates);
   assert.equal(manualHuacachina[0]?.canonicalName, "Huacachina");
   assert.deepEqual(manualHuacachina[0]?.coordinates, capture.mentions[4]?.coordinates);

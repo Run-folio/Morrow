@@ -365,7 +365,7 @@ const coreRouteFamilies: RouteFamily[] = [
       "culture",
       "nature"
     ],
-    "bestFor": "Travel from Hanoi through Hoi An and Ho Chi Minh City to Siem Reap. Long distances and airport-to-base transfers make the travel days part of the planning.",
+    "bestFor": "From Hanoi’s food lanes and an optional Ninh Bình landscape day to Hoi An’s slower coast, southern city life and the temples of Angkor. Four generous bases keep long-distance travel from taking over the journey.",
     "suggestedDays": {
       "min": 13,
       "ideal": 17,
@@ -386,7 +386,7 @@ const coreRouteFamilies: RouteFamily[] = [
           21.0278
         ],
         "minimumNights": 3,
-        "reason": "A lively, food-led opening with a walkable old quarter.",
+        "reason": "A food-led opening, with room to choose a full Ninh Bình landscape excursion alongside the Old Quarter.",
         "recommendedNights": 4,
         "nightGuidanceRationale": "Arrival recovery and neighbourhood/food days."
       },
@@ -502,7 +502,7 @@ const coreRouteFamilies: RouteFamily[] = [
       "Angkor from Siem Reap"
     ],
     "release": {
-      "routeOrderRationale": "Travel from Hanoi through Hoi An and Ho Chi Minh City to Siem Reap. Long distances and airport-to-base transfers make the travel days part of the planning.",
+      "routeOrderRationale": "From Hanoi’s food lanes and an optional Ninh Bình landscape day to Hoi An’s slower coast, southern city life and the temples of Angkor. Four generous bases keep long-distance travel from taking over the journey.",
       "editorialOwner": "Codex — route research and content preparation",
       "editorialReviewer": "Shaun Whiting",
       "explicitUnknowns": [
@@ -523,10 +523,10 @@ const coreRouteFamilies: RouteFamily[] = [
         }
       ],
       "image": {
-        "asset": "/journey/immersive/place-hoi-an-1536.webp",
+        "asset": "/journey/immersive/moment-angkor-wat-1536.webp",
         "rights": "licensed",
-        "attribution": "xiquinhosilva · CC BY 2.0 · resized and converted to WebP; display crop.",
-        "sourceUrl": "https://commons.wikimedia.org/wiki/File:10549-Hoi-An_(37621348460).jpg"
+        "attribution": "Satdeep Gill · CC BY-SA 4.0 · Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Angkor_Wat_with_its_reflection.jpg"
       }
     }
   },
@@ -585,7 +585,7 @@ const coreRouteFamilies: RouteFamily[] = [
       "nature",
       "culture"
     ],
-    "bestFor": "Follow the Adriatic from Dubrovnik to Kotor, then continue through Shkodër to Tirana. Leave room for borders and arrange each ground connection before committing to timed plans.",
+    "bestFor": "Adriatic stone and blue water give way to Kotor’s mountain-framed bay, northern Albania and a lively Tirana finish. Four bases, three cultures, and space around each border crossing.",
     "suggestedDays": {
       "min": 11,
       "ideal": 13,
@@ -630,7 +630,7 @@ const coreRouteFamilies: RouteFamily[] = [
           42.0683
         ],
         "minimumNights": 2,
-        "reason": "A softer landing into northern Albania and the mountains.",
+        "reason": "A northern Albanian pause for local culture and the lake. A Theth mountain extension needs extra nights and separately arranged transport.",
         "recommendedNights": 2,
         "nightGuidanceRationale": "One full local day before the next base."
       },
@@ -730,7 +730,7 @@ const coreRouteFamilies: RouteFamily[] = [
       "Tirana city life"
     ],
     "release": {
-      "routeOrderRationale": "Follow the Adriatic from Dubrovnik to Kotor, then continue through Shkodër to Tirana. Leave room for borders and arrange each ground connection before committing to timed plans.",
+      "routeOrderRationale": "Adriatic stone and blue water give way to Kotor’s mountain-framed bay, northern Albania and a lively Tirana finish. Four bases, three cultures, and space around each border crossing.",
       "editorialOwner": "Codex — route research and content preparation",
       "editorialReviewer": "Shaun Whiting",
       "explicitUnknowns": [
@@ -980,10 +980,10 @@ const coreRouteFamilies: RouteFamily[] = [
         }
       ],
       "image": {
-        "asset": "/journey/immersive/place-vik-1536.webp",
+        "asset": "/journey/immersive/moment-glacier-lagoon-1536.webp",
         "rights": "licensed",
-        "attribution": "Andrea Schaffer · CC BY 2.0 · resized and converted to WebP; display crop.",
-        "sourceUrl": "https://commons.wikimedia.org/wiki/File:V%C3%ADk_%C3%AD_M%C3%BDrdal%2C_Iceland.jpg"
+        "attribution": "Eric Kilby · CC BY-SA 2.0 · Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+        "sourceUrl": "https://commons.wikimedia.org/wiki/File:Glacier_Lagoon_-_Pano.jpg"
       }
     }
   },

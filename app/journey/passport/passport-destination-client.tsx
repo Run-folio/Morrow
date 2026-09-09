@@ -228,7 +228,7 @@ export default function PassportDestinationClient() {
       <section className={styles.prepHandoff}>
         <Route aria-hidden="true" />
         <div><p>{t.prepEyebrow}</p><h2>{t.prepTitle}</h2><span>{t.prepCopy}</span></div>
-        <div className={styles.prepActions}>{session?.user ? <Link href="/journey/dashboard">{t.prepAction}<ArrowRight aria-hidden="true" /></Link> : null}<Link href="/journey/home#start-building">{t.buildAction}<ArrowRight aria-hidden="true" /></Link></div>
+        <div className={styles.prepActions}>{session?.user ? <Link href="/journey/dashboard">{t.prepAction}<ArrowRight aria-hidden="true" /></Link> : null}<Link href="/#start-building">{t.buildAction}<ArrowRight aria-hidden="true" /></Link></div>
       </section>
     </div> : null}
   </main>;

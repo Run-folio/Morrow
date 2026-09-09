@@ -505,6 +505,20 @@ function authoredActivitySchedule(trip: EasyTTrip) {
   return entries.length ? entries : undefined;
 }
 
+function travellerStructuredIntent(trip: EasyTTrip) {
+  const structured = trip.brief.structuredBrief;
+  if (!structured) return undefined;
+  return {
+    destinations: structured.destinations.map(({ id, name, canonicalPlaceId, placeMentionId, role, priority }) => ({ id, name, canonicalPlaceId, placeMentionId, role, priority })),
+    mustVisit: structured.mustVisit.map(({ id, name, canonicalPlaceId, placeMentionId, role, priority }) => ({ id, name, canonicalPlaceId, placeMentionId, role, priority })),
+    hardConstraints: structured.hardConstraints,
+    placeMentions: (structured.placeMentions ?? []).map(({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role }) => ({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role })),
+    placeSelections: structured.placeSelections,
+    completedPlanningAreaMentionIds: [...(structured.completedPlanningAreaMentionIds ?? [])].sort(),
+    removedPlaceMentionIds: [...(structured.removedPlaceMentionIds ?? [])].sort(),
+  };
+}
+
 /**
  * The recovery boundary protects deliberate traveller decisions, not every
  * field returned by planners and providers. Keep this projection explicit so
@@ -543,6 +557,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       customActivities: nonEmptyRecord(brief.customActivities),
       activitySchedule: authoredActivitySchedule(trip),
       itineraryIdeas: sortedById(nonEmptyArray(brief.itineraryIdeas)),
+      structuredIntent: travellerStructuredIntent(trip),
       mapPins: sortedById(nonEmptyArray(brief.mapPins)),
       bookings: sortedById(nonEmptyArray(brief.bookings)),
       checklist: sortedById(nonEmptyArray(brief.checklist)),

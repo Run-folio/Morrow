@@ -57,7 +57,7 @@ test('five-stop Japan identities resolve independently; the approved canonical r
   assert.deepEqual(publicRouteDetailFor('japan-slow')?.stops.map(stop => stop.name), sequences['japan-slow']);
 });
 test('canonical homepage admits all four approved route families without runtime selection', () => {
-  const page = readFileSync(new URL('../app/journey/home/page.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../components/easyt/morrovia-homepage.tsx', import.meta.url), 'utf8');
   assert.deepEqual(immersiveHomepageRoutes().map(route => route.key), [...immersiveRouteKeys]);
   assert.equal(immersiveHomepageRoutes().length, 4);
   assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled/);

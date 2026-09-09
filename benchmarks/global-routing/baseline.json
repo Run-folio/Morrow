@@ -2,8 +2,8 @@
   "version": "global-routing/v1",
   "fixtureCount": 51,
   "outcomes": {
-    "PASS": 2,
-    "PASS WITH EXPECTED UNCERTAINTY": 49,
+    "PASS": 1,
+    "PASS WITH EXPECTED UNCERTAINTY": 50,
     "WARNING": 0,
     "HARD FAILURE": 0
   },
@@ -35,8 +35,8 @@
     }
   },
   "p0RegressionFailures": [],
-  "unknownTransferCount": 57,
-  "unresolvedPlaceCount": 58,
+  "unknownTransferCount": 55,
+  "unresolvedPlaceCount": 62,
   "results": [
     {
       "id": "p0-london-mexico-guatemala-belize",
@@ -193,7 +193,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 1,
-      "unresolvedPlaceCount": 1,
+      "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "Panama City",
         "Bocas del Toro"
@@ -233,7 +233,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 1,
+      "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "Guatemala City",
         "Caye Caulker"
@@ -673,7 +673,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 1,
-      "unresolvedPlaceCount": 2,
+      "unresolvedPlaceCount": 3,
       "routeEndpoints": [
         "Milan",
         "Como",
@@ -725,7 +725,7 @@
     },
     {
       "id": "greek-island-ferries",
-      "outcome": "PASS",
+      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
       "scores": {
         "semantic-understanding": {
           "earned": 4,
@@ -756,7 +756,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 0,
+      "unresolvedPlaceCount": 1,
       "routeEndpoints": [
         "Athens",
         "Naxos",
@@ -964,7 +964,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 2,
+      "unknownTransferCount": 0,
       "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "London",

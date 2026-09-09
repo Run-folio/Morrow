@@ -122,6 +122,6 @@ test("Trip Health summary is the single count, status and copy projection used b
   const openIssues = summary.health.issues.filter((issue) => issue.status === "open");
   assert.equal(summary.issueCount, openIssues.length);
   assert.equal(summary.health.openIssueCount, openIssues.length);
-  assert.equal(summary.status, "needs-review");
+  assert.equal(summary.status, "blocked");
   assert.equal(summary.headline, `${openIssues.length} ${openIssues.length === 1 ? "thing" : "things"} to review`);
 });

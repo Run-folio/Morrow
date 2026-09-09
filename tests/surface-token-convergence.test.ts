@@ -24,12 +24,12 @@ test("selected Builder and shared-owner families use semantic radii without flat
 
   assert.match(builder, /\.routeStep \.filters\{[^}]*border-radius:var\(--morrovia-radius\)/);
   assert.match(builder, /\.routeTimePlanner \{[^}]*border-radius: var\(--morrovia-control-radius\)/);
-  assert.match(dashboard, /\.cardReadiness \{[\s\S]*?border-radius: var\(--morrovia-control-radius\)/);
+  assert.match(dashboard, /\.cardMedia \{[\s\S]*?border-radius: var\(--morrovia-radius\)/);
   assert.match(datePicker, /\.calendarGrid button \{[\s\S]*?border-radius: var\(--morrovia-control-radius\)/);
   assert.match(copilot, /\.copilot\{[^}]*border-radius:var\(--morrovia-radius\)/);
 
   assert.match(builder, /border-radius:999px/, "pill controls should remain pills");
-  assert.match(dashboard, /\.continueImage \{[\s\S]*?border-radius: 14px/, "media curvature should remain product-owned");
+  assert.match(dashboard, /\.currentMap \{[\s\S]*?border-radius: 14px/, "map inset curvature should remain product-owned");
 });
 
 test("Storybook scaffolds derive editorial gutters from the canonical page width", () => {
@@ -45,5 +45,5 @@ test("Storybook scaffolds derive editorial gutters from the canonical page width
   const builder = read("app/journey/new/trip-builder.module.css");
   const dashboard = read("app/journey/dashboard/dashboard.module.css");
   assert.match(builder, /max-width:1180px/, "the documented Builder workflow boundary should remain local");
-  assert.match(dashboard, /@media \(max-width: 1180px\)/, "the Dashboard breakpoint is not a page-width token consumer");
+  assert.match(dashboard, /@media \(max-width: 1024px\)/, "the Dashboard breakpoint is not a page-width token consumer");
 });

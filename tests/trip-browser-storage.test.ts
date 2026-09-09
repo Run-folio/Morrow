@@ -641,6 +641,11 @@ test("semantic comparison ignores canonical/provider metadata but protects every
     { ...base, brief: { ...base.brief, mapPins: [{ ...base.brief.mapPins![0], longitude: 3 }] } },
     { ...base, brief: { ...base.brief, bookings: [] } },
     { ...base, brief: { ...base.brief, checklist: [] } },
+    { ...base, brief: { ...base.brief, structuredBrief: {
+      version: 1,
+      destinations: [], mustVisit: [], countries: [], preferredRegions: [], dates: {}, interests: [], transportPreferences: [], accommodationPreferences: [], hardConstraints: [], softPreferences: [], source: { inputs: ["saved"] }, confidence: "high", issues: [],
+      removedPlaceMentionIds: ["requested-visit"],
+    } } },
   ];
   meaningfulVariants.forEach((variant) => assert.equal(tripDocumentsCanonicalEquivalent(variant, base), false));
 });
@@ -1427,7 +1432,7 @@ test("service worker advances public documents online and reopens the planner sh
   const listeners = new Map<string, (event: unknown) => void>();
   const plannerShell = '<!doctype html><div>offline planner shell</div><link rel="stylesheet" href="/_next/static/css/planner.css"><script src="/_next/static/chunks/planner.js"></script>';
   const cachedResponses = new Map([
-    ["/journey/home", '<!doctype html><script src="/_next/static/chunks/home.js"></script>'],
+    ["/", '<!doctype html><script src="/_next/static/chunks/home.js"></script>'],
     ["/journey/plan", plannerShell],
   ]);
   const previousCachedResponses = new Map([
@@ -1473,7 +1478,7 @@ test("service worker advances public documents online and reopens the planner sh
         const previous = previousCachedResponses.get(key);
         return previous === undefined ? undefined : new Response(previous, { status: 200 });
       },
-      keys: async () => ["easyt-public-shell-v4", "easyt-public-shell-v5", "analytics-unrelated-cache"],
+      keys: async () => ["easyt-public-shell-v5", "easyt-public-shell-v6", "analytics-unrelated-cache"],
       delete: async (key: string) => { deletedCaches.push(key); return true; },
     },
     fetch: async () => {
@@ -1504,7 +1509,7 @@ test("service worker advances public documents online and reopens the planner sh
   activateHandler({ waitUntil: (promise: Promise<unknown>) => { activatePromise = promise; } });
   assert.ok(activatePromise);
   await activatePromise;
-  assert.deepEqual(deletedCaches, ["easyt-public-shell-v4"], "activation retains one previous hashed graph for already-open clients");
+  assert.deepEqual(deletedCaches, ["easyt-public-shell-v5"], "activation retains one previous hashed graph for already-open clients");
 
   let responsePromise: Promise<Response> | null = null;
   const handler = listeners.get("fetch");

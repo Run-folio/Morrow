@@ -1,3 +1,4 @@
+import { routeEditorialImagery } from "../lib/easyt/route-editorial-imagery.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
@@ -8,12 +9,16 @@ import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.
 import { homepageRouteView } from "../lib/easyt/homepage-navigation.ts";
 import { existsSync } from "node:fs";
 
-test("journey homepage renders the immersive composition without runtime selection", () => {
-  const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
+test("canonical homepage renders the immersive composition without runtime selection", () => {
+  const root = readFileSync(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../components/easyt/morrovia-homepage.tsx", import.meta.url), "utf8");
+  const legacy = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
   const loading = readFileSync(new URL("../app/journey/home/loading.tsx", import.meta.url), "utf8");
   const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
+  assert.match(root, /<MorroviaHomepage \/>/);
   assert.match(page, /<ImmersiveHome routes=\{journeys\}/);
   assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
+  assert.match(legacy, /permanentRedirect\("\/"\)/);
   assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled|HomeBenefits|InspirationExplorer/);
   assert.doesNotMatch(loading, /process\.env|immersiveHomepageEnabled/);
   assert.match(layout, /<MorroviaFooter omitOnImmersiveHome \/>/);
@@ -21,7 +26,7 @@ test("journey homepage renders the immersive composition without runtime selecti
 });
 
 test("server-selected route index hydrates without client rerandomisation", () => {
-  const page = readFileSync(new URL("../app/journey/home/page.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../components/easyt/morrovia-homepage.tsx", import.meta.url), "utf8");
   const client = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
   assert.match(page, /initialIndex=\{initialImmersiveRouteIndex\(journeys\)\}/);
   assert.match(client, /useState\(initialIndex\)/);
@@ -116,7 +121,9 @@ test("destination imagery is matched to canonical places with explicit source ri
   for (const route of immersiveHomepageRoutes()) for (const [index, stop] of route.stops.entries()) {
     const photo = route.photos[index];
     assert.ok(photo, `Missing credited image for ${stop.name}`);
-    assert.equal(photo.place, stop.name);
+    const editorial = routeEditorialImagery[route.key]?.bases[stop.name];
+    if (editorial) { assert.equal(photo.key, editorial.photoKey); assert.ok(editorial.caption); }
+    else assert.equal(photo.place, stop.name);
     assert.equal(photo.country, stop.country);
     assert.ok(photo.author && photo.licenseUrl && photo.sourceUrl);
     for (const variant of photo.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));

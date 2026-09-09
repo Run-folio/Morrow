@@ -270,7 +270,7 @@ export default function SpreadsheetImportClient() {
     </section> : <>
       {sheets.length > 1 ? <section className={styles.sheetChoice}>
         <MorroviaStatusBanner tone="warning" title={`${sheets.length} plausible worksheets found`} detail="Choose one worksheet. Morrovia does not merge unrelated sheets in V1." />
-        <EasyTSelect label="Worksheet" value={String(sheetIndex)} onChange={(event) => chooseSheet(Number(event.target.value))}>{sheets.map((sheet, index) => <option value={index} key={sheet.name}>{sheet.name} — {sheet.rows.length} rows</option>)}</EasyTSelect>
+        <EasyTSelect label="Worksheet" value={String(sheetIndex)} onChange={(event) => chooseSheet(Number(event.target.value))}>{sheets.map((sheet, index) => <option value={index} key={sheet.name}>{sheet.name} · {sheet.rows.length} rows</option>)}</EasyTSelect>
       </section> : null}
       {proposal ? <SpreadsheetImportReview
         proposal={proposal}

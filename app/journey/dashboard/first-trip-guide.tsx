@@ -41,7 +41,7 @@ export default function FirstTripGuide({ trips }: { trips: EasyTTrip[] }) {
       { icon: Stamp, title: text.stamps, detail: text.stampsDetail, done: false, href: "/journey/stamped" },
     ]
     : [
-      { icon: CircleDot, title: text.start, detail: text.startDetail, done: false, href: "/journey/home#start-building" },
+      { icon: CircleDot, title: text.start, detail: text.startDetail, done: false, href: "/#start-building" },
       { icon: Map, title: text.choose, detail: text.chooseDetail, done: false, href: "/journey/new" },
       { icon: SlidersHorizontal, title: text.shape, detail: text.shapeDetail, done: false, href: "/journey/new" },
       { icon: Stamp, title: text.stamps, detail: text.stampsDetail, done: false, href: "/journey/stamped" },

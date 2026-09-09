@@ -617,7 +617,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
           <h2>{isSpanish ? "Empieza con un viaje que ya tienes en mente." : "Start with a trip you’ve been thinking about."}</h2>
           <p>{isSpanish ? "Describe los lugares, el tiempo y el estilo de viaje." : "Describe the places, time and travel style. Morrovia will help shape the route."}</p>
-          <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+          <EasyTLinkButton href="/#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </article>
       )}
 
@@ -654,7 +654,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               <Globe2 aria-hidden="true" />
               <h3>{query ? (isSpanish ? "Ningún viaje coincide." : "No trips match that search.") : view === "archived" ? copy.emptyArchived : view === "planned" ? (isSpanish ? "Aún no hay viajes planificados." : "No planned trips yet.") : copy.emptyActive}</h3>
               <p>{query ? (isSpanish ? "Prueba otro destino o título." : "Try another destination or title.") : view === "archived" ? copy.archivedHint : copy.activeHint}</p>
-              {view !== "archived" && !query ? <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
+              {view !== "archived" && !query ? <EasyTLinkButton href="/#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
             </div>
           ) : null}
         </div>
@@ -665,7 +665,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
         <div className={styles.closingContent}>
           <p className={styles.eyebrow}>{isSpanish ? "Otro lugar que te llama" : "Another way to go"}</p>
           <h2 id="closing-invitation-title"><span>{isSpanish ? "¿Algún otro lugar" : "Somewhere else"}</span><em>{isSpanish ? "en mente?" : "on your mind?"}</em></h2>
-          <EasyTLinkButton variant="secondary" href="/journey/home#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+          <EasyTLinkButton variant="secondary" href="/#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
         </div>
         {closingPhoto ? <MorroviaPhotoCredit photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
       </section>

@@ -125,7 +125,7 @@ export default function TermsOfUsePage() {
           <Link href="/journey/affiliate-disclosure">Affiliate and Commercial Disclosure</Link>
         </nav>
         <p className={styles.review}>These Terms are an implementation draft matched to the current product. They have not received formal legal approval.</p>
-        <Link className={readingStyles.back} href="/journey/home">Back to Morrovia</Link>
+        <Link className={readingStyles.back} href="/">Back to Morrovia</Link>
       </article>
     </div>
   </main>;

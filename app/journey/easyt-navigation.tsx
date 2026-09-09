@@ -139,7 +139,7 @@ export default function EasyTNavigation({
       <header className={`${styles.header} ${styles.landingHeader}`} data-easyt-app>
       <Link prefetch={deferPrefetch ? false : undefined}
         className={styles.brand}
-        href="/journey/home"
+        href="/"
         aria-label="Morrovia home"
       >
         <span className={styles.brandName}>Morrovia</span>
@@ -221,7 +221,7 @@ export default function EasyTNavigation({
       <nav className={styles.mobileDock} aria-label="Morrovia mobile navigation">
           <Link prefetch={deferPrefetch ? false : undefined}
             className={current === "home" ? styles.dockCurrent : undefined}
-            href="/journey/home"
+            href="/"
           >
             <House aria-hidden="true" />
             <span>{labels.home}</span>

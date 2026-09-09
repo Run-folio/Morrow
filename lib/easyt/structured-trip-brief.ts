@@ -19,6 +19,7 @@ import {
   type PlanningConfidence,
 } from "./planning-confidence.ts";
 import { normalizeTripInterests } from "./trip-interest.ts";
+import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
 
 export const STRUCTURED_TRIP_BRIEF_VERSION = 1 as const;
 
@@ -65,7 +66,7 @@ export type TripBriefHardConstraint =
   | { type: "no-flying"; value: true; provenance: TripBriefProvenance }
   | { type: "maximum-stops"; value: number; provenance: TripBriefProvenance }
   | { type: "maximum-transfer-time"; value: number; unit: "minutes"; provenance: TripBriefProvenance }
-  | { type: "fixed-commitment"; value: string; date?: string; provenance: TripBriefProvenance };
+  | ({ type: "fixed-commitment"; value: string; provenance: TripBriefProvenance } & Omit<FixedCommitmentConstraint, "label">);
 export type TripBriefSoftPreference = {
   type: "transport" | "pace" | "interest" | "accommodation" | "budget" | "region";
   value: string;
@@ -144,7 +145,7 @@ export type StructuredTripBriefBuilderInput = {
   maximumStops?: number;
   maximumTransferMinutes?: number;
   excludedDestinations?: string[];
-  fixedCommitments?: Array<{ label: string; date?: string }>;
+  fixedCommitments?: FixedCommitmentConstraint[];
   avoidDriving?: boolean;
   avoidFlying?: boolean;
   placeSelections?: PlaceSelection[];
@@ -568,7 +569,16 @@ export function mergeStructuredTripBrief(base: StructuredTripBrief, input: Struc
   else if (priorMaximumTransfer) hardConstraints.push(priorMaximumTransfer);
   if (input.excludedDestinations) input.excludedDestinations.forEach((value) => hardConstraints.push({ type: "excluded-destination", value, provenance: builderExplicit() }));
   else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "excluded-destination" && !removedNames.has(normalize(constraint.value))));
-  if (input.fixedCommitments) input.fixedCommitments.forEach((item) => hardConstraints.push({ type: "fixed-commitment", value: item.label, date: item.date, provenance: builderExplicit() }));
+  if (input.fixedCommitments) input.fixedCommitments.forEach((item) => hardConstraints.push({
+    type: "fixed-commitment",
+    value: item.label,
+    date: item.date,
+    commitmentType: item.commitmentType,
+    place: item.place,
+    stopId: item.stopId,
+    fixedNights: item.fixedNights,
+    provenance: builderExplicit(),
+  }));
   else hardConstraints.push(...base.hardConstraints.filter((constraint) => constraint.type === "fixed-commitment"));
 
   const pace = input.pace ? fact(input.pace) : base.pace;
@@ -729,7 +739,26 @@ export function routeConstraintsFromStructuredTripBrief(brief: StructuredTripBri
   const maximumTransfer = brief.hardConstraints.find((constraint): constraint is Extract<TripBriefHardConstraint, { type: "maximum-transfer-time" }> => constraint.type === "maximum-transfer-time");
   const fixedCommitments = brief.hardConstraints
     .filter((constraint): constraint is Extract<TripBriefHardConstraint, { type: "fixed-commitment" }> => constraint.type === "fixed-commitment")
-    .map((constraint) => ({ label: constraint.value, date: constraint.date }));
+    .map((constraint) => {
+      const explicitStopId = constraint.stopId && (!activeRouteStopIds || activeRouteStopIds.has(constraint.stopId))
+        ? constraint.stopId
+        : undefined;
+      const matchedStopId = constraint.place ? brief.destinations.find((destination) => destination.id
+        && destination.role !== "arrival-gateway"
+        && destination.role !== "departure-gateway"
+        && destination.role !== "excluded"
+        && (!activeRouteStopIds || activeRouteStopIds.has(destination.id))
+        && (Boolean(constraint.place?.canonicalPlaceId) && destination.canonicalPlaceId === constraint.place?.canonicalPlaceId
+          || normalize(destination.name) === normalize(constraint.place!.name)))?.id : undefined;
+      return {
+        label: constraint.value,
+        ...(constraint.date ? { date: constraint.date } : {}),
+        ...(constraint.commitmentType ? { commitmentType: constraint.commitmentType } : {}),
+        ...(constraint.place ? { place: constraint.place } : {}),
+        ...(explicitStopId || matchedStopId ? { stopId: explicitStopId ?? matchedStopId } : {}),
+        ...(constraint.fixedNights !== undefined ? { fixedNights: constraint.fixedNights } : {}),
+      };
+    });
   const requiredStopIds = brief.hardConstraints
     .filter((constraint): constraint is TripBriefHardConstraint & { type: "must-visit"; value: string } => constraint.type === "must-visit")
     .flatMap((constraint) => activeStayId(constraint.value) ?? []);

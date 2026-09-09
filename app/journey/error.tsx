@@ -16,7 +16,7 @@ export default function JourneyError({ error, reset }: { error: Error & { digest
         <p style={{ margin: "0 auto 24px", maxWidth: 380, color: "var(--morrovia-muted)", fontSize: 16, lineHeight: 1.55 }}>Try the page again first. Any trip already saved on this device will still be here.</p>
         <div className="morrovia-error-actions" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
           <button type="button" onClick={() => reset()} style={{ border: 0, borderRadius: "var(--morrovia-control-radius)", padding: "13px 20px", background: "var(--morrovia-ink)", color: "#fff", fontWeight: 700, cursor: "pointer" }}>Try again</button>
-          <Link href="/journey/home" style={{ border: "1px solid var(--morrovia-line)", borderRadius: "var(--morrovia-control-radius)", padding: "12px 20px", color: "var(--morrovia-ink)", textDecoration: "none", fontWeight: 700 }}>Go home</Link>
+          <Link href="/" style={{ border: "1px solid var(--morrovia-line)", borderRadius: "var(--morrovia-control-radius)", padding: "12px 20px", color: "var(--morrovia-ink)", textDecoration: "none", fontWeight: 700 }}>Go home</Link>
         </div>
       </section>
       <style>{`.morrovia-error-actions button:focus-visible,.morrovia-error-actions a:focus-visible{outline:2px solid var(--morrovia-signal);outline-offset:3px}`}</style>

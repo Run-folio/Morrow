@@ -46,7 +46,7 @@ export function JourneyPlannerStrip({
 }) {
   return (
     <header ref={containerRef} className={`${styles.strip} ${presentation === "integrated" ? styles.integrated : ""}`}>
-      {presentation === "focused" ? <Link className={styles.brand} href="/journey/home" aria-label="Morrovia home">
+      {presentation === "focused" ? <Link className={styles.brand} href="/" aria-label="Morrovia home">
         Morrovia
       </Link> : null}
 

@@ -162,7 +162,7 @@ export const OPEN_WORLD_ENGINE_GAUNTLET: OpenWorldGauntletFixture[] = [
       ],
       flores: [candidate({ id: "node:51004", name: "Flores", country: "Guatemala", type: "town", coordinates: [-89.897, 16.929], score: 146 })],
     },
-    expected: [resolved("Belize City", "Belize City", "Belize", "city"), resolved("San Pedro", "San Pedro", "Belize", "town", "trusted route coordinates distinguish the Belize locality from the Chile namesake"), resolved("Flores", "Flores", "Guatemala", "city")],
+    expected: [resolved("Belize City", "Belize City", "Belize", "city"), resolved("San Pedro", "San Pedro Town", "Belize", "town", "reviewed canonical identity distinguishes the Belize locality from the Chile namesake"), resolved("Flores", "Flores", "Guatemala", "town")],
   },
   {
     id: "central-america-two-contextual-names",
@@ -288,7 +288,7 @@ export const OPEN_WORLD_ENGINE_GAUNTLET: OpenWorldGauntletFixture[] = [
         candidate({ id: "relation:61002", name: "Panama", country: "Panama", type: "country", coordinates: [-80.0, 8.5], score: 143, routability: "planning_area" }),
       ],
     },
-    expected: [review("Panama", undefined, undefined, undefined, "city-versus-country scope is genuinely ambiguous without stronger wording")],
+    expected: [review("Panama", "Panama", "Panama", "country", "the country is retained as a planning area that still requires a route-base choice")],
   },
   {
     id: "springfield-control",

@@ -1,10 +1,10 @@
 /* EasyT only keeps public app-shell files offline. It never stores account,
  * dashboard, profile, API, or user-specific trip responses in Cache Storage. */
 const CACHE_PREFIX = "easyt-public-shell-";
-const CACHE_NAME = `${CACHE_PREFIX}v6`;
-const PREVIOUS_CACHE_NAME = `${CACHE_PREFIX}v5`;
+const CACHE_NAME = `${CACHE_PREFIX}v7`;
+const PREVIOUS_CACHE_NAME = `${CACHE_PREFIX}v6`;
 const PUBLIC_SHELL = [
-  "/journey/home",
+  "/",
   "/journey/new",
   "/journey/plan",
   "/easyt-icon.svg",
@@ -19,7 +19,7 @@ async function precachePublicShell() {
   // public-only cache, so the first offline planner reopen can hydrate even if
   // that route was never previously visited under service-worker control.
   const dependencies = new Set();
-  for (const pathname of PUBLIC_SHELL.filter((entry) => entry.startsWith("/journey/"))) {
+  for (const pathname of PUBLIC_SHELL.filter((entry) => entry === "/" || entry.startsWith("/journey/"))) {
     const response = await cache.match(pathname);
     if (!response) continue;
     const html = await response.clone().text();
@@ -98,7 +98,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request).catch(async () => {
         const cache = await caches.open(CACHE_NAME);
-        return (await cache.match("/journey/home")) || Response.error();
+        return (await cache.match("/")) || Response.error();
       }),
     );
   }

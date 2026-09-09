@@ -6,6 +6,7 @@ import {
   type StructuredTripBrief,
 } from "./structured-trip-brief.ts";
 import { transferDoorToDoorMinutes } from "./transfer-impact.ts";
+import { fixedCommitmentDisplayLabel, type FixedCommitmentConstraint } from "./fixed-commitment.ts";
 
 export type PlanValidationIssueCode =
   | "hard-constraint-violation"
@@ -64,12 +65,7 @@ export type PlanValidationIssue = {
   relatedTripHealthFindingIds: string[];
 };
 
-export type FinalPlanFixedCommitment = {
-  label: string;
-  date?: string;
-  stopId?: string;
-  fixedNights?: number;
-};
+export type FinalPlanFixedCommitment = FixedCommitmentConstraint;
 
 export type FinalPlanConstraints = Omit<RoutePlanningConstraints, "fixedCommitments"> & {
   fixedCommitments?: FinalPlanFixedCommitment[];
@@ -592,20 +588,31 @@ export function validateFinalPlan(input: ValidateFinalPlanInput): PlanValidation
     if (!commitment.date || !validDate(commitment.date) || !validDate(stop.arrivalDate ?? undefined) || !validDate(stop.departureDate ?? undefined)) return false;
     return commitment.date < (stop.arrivalDate as string) || commitment.date >= (stop.departureDate as string);
   });
+  const unrepresentedCommitments = commitments.filter((commitment) => commitment.place && !commitment.stopId);
   const lockConflicts = Object.entries(plan.scheduleLocks?.arrivalDates ?? {}).filter(([stopId, date]) => {
     const stop = plan.stops.find((item) => item.id === stopId);
     return !stop || !validDate(date) || (Boolean(stop.arrivalDate) && stop.arrivalDate !== date);
   });
   const fixedNightMismatches = plan.stops.filter((stop) => stop.fixedNights !== undefined && stop.nights !== stop.fixedNights);
-  if (outOfRange.length || invalidDates.length || linkedCommitmentConflicts.length || lockConflicts.length || fixedNightMismatches.length) {
+  if (outOfRange.length || invalidDates.length || linkedCommitmentConflicts.length || unrepresentedCommitments.length || lockConflicts.length || fixedNightMismatches.length) {
+    const namedConflict = unrepresentedCommitments[0]
+      ? `${fixedCommitmentDisplayLabel(unrepresentedCommitments[0])} is not represented in the route. Add ${unrepresentedCommitments[0].place!.name} to the route, choose an appropriate nearby base, or change/remove the fixed commitment.`
+      : linkedCommitmentConflicts[0]
+        ? `${fixedCommitmentDisplayLabel(linkedCommitmentConflicts[0])} falls outside its linked stay.`
+        : outOfRange[0]
+          ? `${fixedCommitmentDisplayLabel(outOfRange[0])} falls outside the trip date range.`
+          : invalidDates[0]
+            ? `${invalidDates[0].place?.name || invalidDates[0].label} has an invalid fixed date.`
+            : "A protected arrival or fixed stay conflicts with the final trip calendar.";
     issues.push(issue({
       code: "fixed-date-conflict", severity: "error", hardConstraint: true, repairability: "manual",
-      message: "A fixed commitment or protected arrival conflicts with the final trip calendar.",
+      message: namedConflict,
       stopIds: unique([...linkedCommitmentConflicts.flatMap((item) => item.stopId ? [item.stopId] : []), ...lockConflicts.map(([stopId]) => stopId)]), legIndexes: [],
       evidence: {
-        outOfRangeCommitments: outOfRange.map((item) => item.label),
-        invalidCommitments: invalidDates.map((item) => item.label),
-        conflictingLinkedCommitments: linkedCommitmentConflicts.map((item) => item.label),
+        outOfRangeCommitments: outOfRange.map(fixedCommitmentDisplayLabel),
+        invalidCommitments: invalidDates.map(fixedCommitmentDisplayLabel),
+        conflictingLinkedCommitments: linkedCommitmentConflicts.map(fixedCommitmentDisplayLabel),
+        unrepresentedCommitments: unrepresentedCommitments.map(fixedCommitmentDisplayLabel),
         conflictingArrivalLocks: lockConflicts.map(([stopId]) => stopId),
         fixedNightMismatches: fixedNightMismatches.map((stop) => stop.id),
       },

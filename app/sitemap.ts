@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     {
       url: siteUrl,
       lastModified: now,
-      changeFrequency: "monthly",
+      changeFrequency: "weekly",
       priority: 1,
     },
     {
@@ -38,12 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
-    },
-    {
-      url: `${siteUrl}/journey/home`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
     },
     {
       url: `${siteUrl}/journey/discover`,

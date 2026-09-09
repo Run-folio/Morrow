@@ -1,7 +1,10 @@
-import destinationInventory from "../../public/journey/immersive/destination-inventory.json";
-import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json";
+import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
+import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
 
-export type RoutePhotoRecord = (typeof destinationInventory)[number] | (typeof routeImageInventory)[number];
+import editorialInventory from "../../public/journey/immersive/editorial-image-inventory.json" with { type: "json" };
+import { routeEditorialImagery } from "./route-editorial-imagery.ts";
+
+export type RoutePhotoRecord = (typeof destinationInventory)[number] | (typeof routeImageInventory)[number] | (typeof editorialInventory)[number];
 
 const canonicalRouteImages: Record<string, string> = {
   "japan-slow": "/journey/immersive/place-kyoto-1536.webp",
@@ -10,10 +13,18 @@ const canonicalRouteImages: Record<string, string> = {
   "iceland-ring-road": "/journey/immersive/place-vik-1536.webp",
 };
 
+export function routeEditorialPhoto(key: string): RoutePhotoRecord | null {
+  return [...editorialInventory, ...destinationInventory, ...routeImageInventory].find(photo => photo.key === key) ?? null;
+}
+
 /** One licensed, locally served hero for every published route with visual coverage. */
 export const routeImages: Record<string, string> = {
   ...canonicalRouteImages,
   ...Object.fromEntries(routeImageInventory.flatMap(photo => photo.routeKeys.map(routeKey => [routeKey, photo.variants.at(-1)!.src]))),
+  ...Object.fromEntries(Object.entries(routeEditorialImagery).flatMap(([key, visual]) => {
+    const photo = routeEditorialPhoto(visual.hero);
+    return photo ? [[key, photo.variants.at(-1)!.src]] : [];
+  })),
 };
 
 /** Licensed canonical destination photographs shared by homepage and detail. */
@@ -23,6 +34,8 @@ export function routeDestinationPhoto(place: string, country: string) {
 
 /** Licensed route-level photograph, used when destination coverage is incomplete. */
 export function routeImagePhoto(routeKey: string): RoutePhotoRecord | null {
+  const editorial = routeEditorialImagery[routeKey];
+  if (editorial) return routeEditorialPhoto(editorial.hero);
   const routePhoto = routeImageInventory.find(image => image.routeKeys.includes(routeKey));
   if (routePhoto) return routePhoto;
   const source = canonicalRouteImages[routeKey];
@@ -30,7 +43,7 @@ export function routeImagePhoto(routeKey: string): RoutePhotoRecord | null {
 }
 
 export function routePhotoForSource(image: string): RoutePhotoRecord | null {
-  return [...destinationInventory, ...routeImageInventory].find(photo => photo.variants.some(variant => variant.src === image)) ?? null;
+  return [...editorialInventory, ...destinationInventory, ...routeImageInventory].find(photo => photo.variants.some(variant => variant.src === image)) ?? null;
 }
 
 export function routeImageCredit(image: string) {

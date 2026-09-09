@@ -35,6 +35,7 @@ const preview: Preview = {
         morrovia1024: { name: "Morrovia 1024", styles: { width: "1024px", height: "900px" } },
         morrovia1440: { name: "Morrovia 1440", styles: { width: "1440px", height: "1000px" } },
         morrovia1680: { name: "Morrovia 1680", styles: { width: "1680px", height: "1050px" } },
+        morrovia1920: { name: "Morrovia 1920", styles: { width: "1920px", height: "1080px" } },
       },
     },
   },

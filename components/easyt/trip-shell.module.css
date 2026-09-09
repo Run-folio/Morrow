@@ -1,5 +1,10 @@
+.workspace,
+.resolverNotice {
+  --morrovia-trip-width: min(1680px, calc(100% - 48px));
+}
+
 .workspace {
-  width: min(1460px, calc(100% - 48px));
+  width: var(--morrovia-trip-width);
   min-height: calc(100vh - 76px);
   margin: 0 auto;
   padding: 18px 0 48px;
@@ -16,7 +21,7 @@
 }
 
 .resolverStack { display: grid; gap: 12px; }
-.resolverNotice { width: min(1460px, calc(100% - 48px)); margin: 18px auto 0; }
+.resolverNotice { width: var(--morrovia-trip-width); margin: 18px auto 0; }
 
 .shell {
   overflow: hidden;
@@ -329,9 +334,9 @@
 }
 
 @media (max-width: 760px) {
-  .resolverNotice { width: min(100% - 24px, 1460px); margin-top: 12px; }
+  .resolverNotice { width: calc(100% - 24px); margin-top: 12px; }
   .workspace {
-    width: min(100% - 24px, 1460px);
+    width: calc(100% - 24px);
     padding-top: 12px;
   }
 

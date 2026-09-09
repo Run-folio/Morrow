@@ -54,6 +54,7 @@ import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
+import TripExplicitPlans from "./trip-explicit-plans";
 
 type OverviewAction = {
   title: string;
@@ -497,6 +498,8 @@ export default function TripOverviewWorkspace({
             })}
           </div>
         </section>
+
+        <TripExplicitPlans trip={trip} variant="overview" />
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
           <div className={styles.sectionHeading}>

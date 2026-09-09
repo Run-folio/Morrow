@@ -423,3 +423,13 @@ Routes retains its page-specific collage and editorial spread. `DiscoveryPhoto` 
 `components/easyt/morrovia-map-presentation.ts` owns the canonical Trip Map basemap and route paints for both Trip Map and Routes. Its CSS module owns stop markers, zoom controls and attribution typography. MapLibre paint literals and the circular geographic marker are narrow documented audit exceptions. Planning state, trip edits and route selection stay in their respective existing owners.
 
 CARTO now requires a browser-safe Basemaps key. `NEXT_PUBLIC_CARTO_BASEMAP_KEY` enables the same detailed tiles; without it the shared presentation keeps local Natural Earth land and borders visible at every zoom and sends no CARTO requests. This avoids the provider’s unauthenticated watermark. Route geometry, stop identity and planning logic are unchanged. Detailed street tiles require that optional key; never use a private CARTO account credential here.
+
+### Trip workspace width
+
+`TripShell` owns `--morrovia-trip-width` in `trip-shell.module.css`: a 1680px
+maximum with the existing 24px desktop side gutters and compact mobile gutters.
+The header, trip navigation, Overview and Itinerary share this container.
+Itinerary caps the day rail at 270px and context rail at 320px so the selected
+day receives the extra space. Overview caps Trip Health at 420px.
+Map intentionally retains its independent 2200px viewport breakout and existing
+mobile sheets; shared TripShell width changes must not constrain that canvas.

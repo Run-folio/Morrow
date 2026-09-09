@@ -6,6 +6,15 @@ const distDir = process.env.NEXT_DIST_DIR ?? ".next";
 const nextConfig: NextConfig = {
   distDir,
   ...(staticExport ? { output: "export" as const } : {}),
+  async redirects() {
+    return [
+      {
+        source: "/journey/home",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     ...(staticExport ? { unoptimized: true } : {}),
     remotePatterns: [

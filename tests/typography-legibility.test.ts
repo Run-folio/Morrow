@@ -20,21 +20,22 @@ test("the canonical typography foundation separates readable prose from compact 
 test("Route Detail explanatory content consumes readable semantic roles", () => {
   const css = read("app/journey/routes/[slug]/route-overview.module.css");
   for (const selector of [
-    ".heroSummary",
-    ".mapNote",
-    ".glanceList dd",
-    ".whyPanel li",
-    ".warningPanel li",
-    ".stopCopy p",
-    ".itineraryList li > p",
-    ".notesGrid p",
-    ".finalCta > ul li",
+    ".routeOrder",
+    ".heroMeta",
+    ".editable",
+    ".sectionHeading > p:last-child:not(.eyebrow)",
+    ".minimum",
+    ".transfer",
+    ".nightLedger p",
+    ".disclosure > p",
+    ".mapActions p",
+    ".mapStatus",
   ]) {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(css, new RegExp(`${escaped}\\s*\\{[^}]*var\\(--morrovia-type-(?:body|supporting-body)\\)`, "s"), selector);
   }
 
-  for (const selector of [".provenance > div:first-child", ".sourceLinks small"]) {
+  for (const selector of [".mapNote", ".photoFallback small", ".sourceLink small"]) {
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(css, new RegExp(`${escaped}\\s*\\{[^}]*var\\(--morrovia-type-fine-print\\)`, "s"), selector);
   }
