@@ -7,6 +7,11 @@ import { affiliateProviderLabel, type ResolvedAffiliateAction } from "@/lib/easy
 import { EasyTLinkButton } from "./easyt-controls";
 
 export const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.";
+export const worldNomadsAffiliateDisclosure = "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.";
+
+export function affiliateDisclosureForProvider(provider: string) {
+  return provider === "world-nomads" ? worldNomadsAffiliateDisclosure : affiliateDisclosure;
+}
 
 export function MorroviaAffiliateLink({
   action,
@@ -15,6 +20,7 @@ export function MorroviaAffiliateLink({
   size = "small",
   variant = "secondary",
   fullWidth = false,
+  iconOnly = false,
 }: {
   action: ResolvedAffiliateAction;
   context: AffiliateClickContext;
@@ -22,6 +28,7 @@ export function MorroviaAffiliateLink({
   size?: "small" | "medium" | "large";
   variant?: "primary" | "secondary" | "quiet" | "danger";
   fullWidth?: boolean;
+  iconOnly?: boolean;
 }) {
   const providerLabel = affiliateProviderLabel(action.provider);
   const onClick = () => {
@@ -39,6 +46,7 @@ export function MorroviaAffiliateLink({
     size={size}
     variant={variant}
     fullWidth={fullWidth}
+    iconOnly={iconOnly}
     data-affiliate-provider={action.provider}
     onClick={onClick}
   >{action.cta}</EasyTLinkButton>;

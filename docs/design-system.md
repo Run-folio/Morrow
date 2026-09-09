@@ -165,6 +165,7 @@ Use only components that actually exist:
 | Contextual disclosure | `MorroviaContextualDisclosure` in the same file | `Morrovia/03 Status & Feedback/Confirmation and recovery — ContextualTransparencyDisclosure` |
 | Loading/progress | `MorroviaSkeleton`, `MorroviaSectionStatus`, `MorroviaPlanningProgress`, `MorroviaMapLoading` in `components/easyt/morrovia-loading-states.tsx` | `Morrovia/03 Status & Feedback/Loading and progress` |
 | Privacy choices | `PrivacyConsent` and `CookiePreferences` in `components/` | `Morrovia/03 Status & Feedback/Privacy choices` |
+| Editorial photo credit | `MorroviaPhotoCredit` in `components/easyt/morrovia-photo-credit.tsx` | `Morrovia/02 Controls/Photo credit` |
 
 Native elements inside these canonical components are implementation detail,
 not permission to reproduce their styling page-locally.
@@ -414,3 +415,11 @@ not an implied product-wide redesign programme. Address it only in reviewed,
 focused tickets. Mechanical enforcement improves by lowering the checked-in
 baseline as verified cleanup lands, never by raising the baseline or creating a
 second design-system source of truth.
+
+### Routes atlas and shared map presentation
+
+Routes retains its page-specific collage and editorial spread. `DiscoveryPhoto` owns resilient licensed photography and composes the shared `MorroviaPhotoCredit` keyboard/touch disclosure; the neutral `--morrovia-photo-ink` scrim is confined to overlaid copy. The same disclosure owns eligible homepage, Route Detail and dashboard editorial-photo provenance. `RouteItem` owns both Gallery rows and image-led Map rail cards. Stories live in `Morrovia/05 Product Patterns/Routes Discovery`, including narrow Map, multi-country and unavailable-image specimens.
+
+`components/easyt/morrovia-map-presentation.ts` owns the canonical Trip Map basemap and route paints for both Trip Map and Routes. Its CSS module owns stop markers, zoom controls and attribution typography. MapLibre paint literals and the circular geographic marker are narrow documented audit exceptions. Planning state, trip edits and route selection stay in their respective existing owners.
+
+CARTO now requires a browser-safe Basemaps key. `NEXT_PUBLIC_CARTO_BASEMAP_KEY` enables the same detailed tiles; without it the shared presentation keeps local Natural Earth land and borders visible at every zoom and sends no CARTO requests. This avoids the provider’s unauthenticated watermark. Route geometry, stop identity and planning logic are unchanged. Detailed street tiles require that optional key; never use a private CARTO account credential here.

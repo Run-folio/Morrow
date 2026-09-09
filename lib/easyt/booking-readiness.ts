@@ -3,8 +3,8 @@ import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
 
-export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport";
-export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer";
+export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
+export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
 export type BookingReadinessAction = {
   id: string;
   category: BookingCategory;
@@ -55,6 +55,10 @@ export const affiliatePartners = {
     provider: "saily",
     connectivityUrl: "https://go.saily.site/aff_c?offer_id=101&aff_id=16085",
   },
+  worldNomads: {
+    provider: "world-nomads",
+    insuranceUrl: "https://www.tkqlhce.com/click-101860495-15403748",
+  },
 } as const;
 
 export type AccommodationBookingUrlInput = {
@@ -88,7 +92,7 @@ export type ResolvedBookingAction = {
   affiliate: true;
 };
 
-export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "connectivity";
+export type CurrentPartnerCategory = "accommodation" | "activities" | "transport" | "connectivity" | "travel_insurance";
 export type ResolvedAffiliateAction = {
   provider: string;
   category: CurrentPartnerCategory;
@@ -152,11 +156,18 @@ export function getCurrentPartnerAction(
     cta: "Explore transport",
     affiliate: true,
   });
-  return validApprovedAffiliateAction({
+  if (category === "connectivity") return validApprovedAffiliateAction({
     provider: affiliatePartners.saily.provider,
     category,
     href: affiliatePartners.saily.connectivityUrl,
     cta: "Get an eSIM",
+    affiliate: true,
+  });
+  return validApprovedAffiliateAction({
+    provider: affiliatePartners.worldNomads.provider,
+    category,
+    href: affiliatePartners.worldNomads.insuranceUrl,
+    cta: "Get a travel insurance quote",
     affiliate: true,
   });
 }
@@ -166,6 +177,7 @@ export function affiliateProviderLabel(provider: string) {
   if (provider === "viator") return "Viator";
   if (provider === "omio") return "Omio";
   if (provider === "saily") return "Saily";
+  if (provider === "world-nomads") return "World Nomads";
   return provider;
 }
 

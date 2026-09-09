@@ -1,9 +1,24 @@
 import { routeFamilyByKey } from "../../../../lib/easyt/route-catalog.ts";
 import { publicRoutePublishedFamilies, type PublicRouteDetail } from "../../../../lib/easyt/public-route.ts";
+import { discoveryCatalogue } from "../../../../lib/easyt/discovery-catalogue.ts";
 import { routeDestinationPhoto, routePhotoForSource } from "../../../../lib/easyt/route-images.ts";
 
 export type RoutePhoto = NonNullable<ReturnType<typeof routePhotoForSource>>;
 export type RouteNightGuide = { minimum: number | null; recommended: number | null; rationale?: string };
+export type RouteExperience = PublicRouteDetail["attractions"][number] & {
+  photo: RoutePhoto | null;
+  photoQualification: string | null;
+};
+
+function attractionStopIndex(detail: PublicRouteDetail, stopName?: string, attractionName = "") {
+  const named = stopName?.toLocaleLowerCase();
+  if (named) {
+    const exact = detail.stops.findIndex(stop => stop.name.toLocaleLowerCase() === named);
+    if (exact >= 0) return exact;
+  }
+  const normalized = attractionName.toLocaleLowerCase();
+  return detail.stops.findIndex(stop => normalized.includes(stop.name.toLocaleLowerCase()));
+}
 
 /** Presentation projection only. Never creates or edits planning facts. */
 export function routeDetailPresentation(detail: PublicRouteDetail) {
@@ -22,15 +37,27 @@ export function routeDetailPresentation(detail: PublicRouteDetail) {
       return { minimum: source?.minimumNights ?? null, recommended: source?.recommendedNights ?? null, rationale: source?.nightGuidanceRationale } satisfies RouteNightGuide;
     }),
     release: family?.release,
+    experiences: detail.attractions.slice(0, 6).map(attraction => {
+      const stopIndex = attractionStopIndex(detail, attraction.stopName, attraction.name);
+      const destinationPhoto = stopIndex >= 0 ? photos[stopIndex] : null;
+      const stop = stopIndex >= 0 ? detail.stops[stopIndex] : null;
+      const heroFallback = !destinationPhoto && stop && hero?.place === stop.name ? hero : null;
+      const photo = destinationPhoto ?? heroFallback;
+      const photoQualification = photo && /food/i.test(attraction.name) && !/food|market|restaurant|cuisine/i.test(photo.alt)
+        ? `Destination context pictured; a subject-specific photo for ${attraction.name} is pending editorial review.`
+        : null;
+      return { ...attraction, photo, photoQualification } satisfies RouteExperience;
+    }),
   };
 }
 
 export function relatedRouteDetails(detail: PublicRouteDetail, hiddenKeys: readonly string[] = []) {
   const source = routeFamilyByKey[detail.key];
-  return publicRoutePublishedFamilies()
+  const relatedFamilies = publicRoutePublishedFamilies()
     .filter(route => route.key !== detail.key && !hiddenKeys.includes(route.key))
     .map(route => ({ route, score: Number(route.region === source?.region) * 2 + route.interests.filter(interest => source?.interests.includes(interest)).length }))
     .sort((a, b) => b.score - a.score || a.route.key.localeCompare(b.route.key))
     .slice(0, 2)
-    .map(({ route }) => ({ key: route.key, title: route.title, countries: [...new Set(route.stops.map(stop => stop.country))], stopCount: route.stops.length, href: `/journey/routes/${encodeURIComponent(route.key)}` }));
+    .map(({ route }) => route);
+  return discoveryCatalogue(relatedFamilies);
 }

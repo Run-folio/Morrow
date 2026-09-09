@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ArrowRight, ArrowUpRight, Compass, Search, SlidersHorizontal, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EasyTButton as Button, EasyTLinkButton as LinkButton, EasyTField as Field, EasyTSelect as Select, EasyTSegmentedControl as Segments } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import { MorroviaMapLoading } from "@/components/easyt/morrovia-loading-states";
@@ -18,10 +18,10 @@ type Shortcut = { label: string; interest?: DiscoveryFilters["style"]; routeKey?
 export type DiscoveryBrowserProps = { routes: DiscoveryRoute[]; shortcuts?: Shortcut[]; unavailable?: boolean; initialFilters?: DiscoveryFilters; initialSelected?: string; initialView?: "gallery" | "map"; imageUnavailable?: boolean };
 
 export function RouteItem({ route, index, onSelect, featured = false, compact = false, active = false, imageUnavailable = false }: { route: DiscoveryRoute; index: number; onSelect: (route: DiscoveryRoute) => void; featured?: boolean; compact?: boolean; active?: boolean; imageUnavailable?: boolean }) {
-  return <article className={`${featured ? styles["route-story"] : styles["route-row"]} ${active ? styles.active : ""} ${compact ? styles.compact : ""}`}>
-    {!compact && <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "100px"} unavailable={imageUnavailable} />}
+  return <article className={`${featured ? styles["route-story"] : styles["route-row"]} ${active ? styles.active : ""}`}>
+    <DiscoveryPhoto route={route} className={styles.itemPhoto} sizes={featured ? "(max-width:700px) 100vw, 55vw" : "100px"} unavailable={imageUnavailable} />
     {featured && <span className={styles["story-wash"]} />}
-    <Button variant="quiet" className={styles.itemSelect} aria-label={`Preview ${route.title}`} aria-pressed={compact ? active : undefined} onClick={() => onSelect(route)}>
+    <Button variant="quiet" className={styles.itemSelect} aria-label={`${compact ? "Show on map:" : "Preview"} ${route.title}`} aria-pressed={compact ? active : undefined} onClick={() => onSelect(route)}>
       <span className={styles["row-number"]}>{String(index + 1).padStart(2, "0")}</span>
       <span className={featured ? styles["story-copy"] : styles["row-copy"]}>
         <small>{route.countries.join(" → ")}</small><strong>{route.title}</strong>
@@ -30,10 +30,39 @@ export function RouteItem({ route, index, onSelect, featured = false, compact = 
         <span className={styles.character}>{route.character}</span>
       </span><ArrowUpRight aria-hidden="true" />
     </Button>
-    {!compact && <Link className={styles.itemExplore} prefetch={false} href={route.href} aria-label={`Explore route: ${route.title}`}>Explore route <ArrowUpRight aria-hidden="true" /></Link>}
+    <Link className={styles.itemExplore} prefetch={false} href={route.href} aria-label={`Explore route: ${route.title}`}>Explore route <ArrowUpRight aria-hidden="true" /></Link>
   </article>;
 }
 export default function DiscoveryBrowser({ routes, shortcuts = [], unavailable = false, initialFilters = initialDiscoveryFilters, initialSelected, initialView = "gallery", imageUnavailable = false }: DiscoveryBrowserProps) {
+  const openingRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const element = openingRef.current;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!element) return;
+    let frame = 0;
+    let visible = false;
+    const paint = () => {
+      frame = 0;
+      const progress = Math.min(1, Math.max(0, -element.getBoundingClientRect().top / 280));
+      element.style.setProperty("--atlas-drift", `${progress * 14}px`);
+      element.style.setProperty("--atlas-settle", `${progress * 1.2}deg`);
+    };
+    const schedule = () => { if (visible && !motion.matches && !frame) frame = requestAnimationFrame(paint); };
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      window.removeEventListener("scroll", schedule);
+      if (visible && !motion.matches) { window.addEventListener("scroll", schedule, { passive: true }); schedule(); }
+      else { cancelAnimationFrame(frame); frame = 0; }
+    });
+    const preference = () => {
+      window.removeEventListener("scroll", schedule);
+      cancelAnimationFrame(frame); frame = 0;
+      element.style.removeProperty("--atlas-drift"); element.style.removeProperty("--atlas-settle");
+      if (visible && !motion.matches) { window.addEventListener("scroll", schedule, { passive: true }); schedule(); }
+    };
+    observer.observe(element); motion.addEventListener("change", preference);
+    return () => { observer.disconnect(); motion.removeEventListener("change", preference); window.removeEventListener("scroll", schedule); cancelAnimationFrame(frame); };
+  }, []);
   const [filters, setFilters] = useState(initialFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState(initialView);
@@ -56,7 +85,7 @@ export default function DiscoveryBrowser({ routes, shortcuts = [], unavailable =
   const filterLabel = (key: keyof DiscoveryFilters, value: unknown) => key === "search" ? `Search: ${value}` : key === "multi" ? "Multi-country" : key === "region" ? discoveryRegions.find(([id]) => id === value)?.[1] ?? String(value) : key === "style" ? discoveryStyles.find(([id]) => id === value)?.[1] ?? String(value) : key === "length" ? discoveryLengths.find(([id]) => id === value)?.[1] ?? String(value) : String(value);
 
   return <>
-    <section className={styles.opening} aria-labelledby="routes-title">
+    <section ref={openingRef} className={styles.opening} aria-labelledby="routes-title">
       <div className={styles["opening-copy"]}><p className={styles.eyebrow}>ROUTES WITH A POINT OF VIEW</p><h1 id="routes-title">Find a way<br />through.<br /><em>Make it yours.</em></h1><p>Considered journeys. Open possibilities.<br />Find your starting point, then change anything.</p></div>
       {opening && <div className={styles["opening-photos"]}>
         <div className={styles["opening-main"]}><DiscoveryPhoto route={opening} priority unavailable={imageUnavailable} /><Button variant="quiet" className={styles.openingSelect} onClick={() => setSelected(opening)} aria-label={`Preview ${opening.title}`}><small>{opening.countries.join(" → ")}</small><strong>Room for each place.<br /><em>And what’s between.</em></strong><ArrowUpRight aria-hidden="true" /></Button></div>
@@ -80,11 +109,15 @@ export default function DiscoveryBrowser({ routes, shortcuts = [], unavailable =
       </div>}
       {!!active.length && <div className={styles.activeFilters} aria-label="Active filters">{active.map(([key, value]) => <Button key={key} variant="secondary" size="small" icon={X} aria-label={`Remove ${filterLabel(key as keyof DiscoveryFilters, value)}`} onClick={() => { setFilters((current) => resetDiscoveryFilter(current, key as keyof DiscoveryFilters)); setCount(12); }}>{filterLabel(key as keyof DiscoveryFilters, value)}</Button>)}<Button variant="quiet" size="small" onClick={reset}>Reset all</Button></div>}
     </div>
+    {opening && !unavailable && view === "gallery" && !active.length && <section className={styles.editorial} aria-labelledby="editorial-route-title">
+      <div className={styles.editorialCopy}><p className={styles.eyebrow}>ONE WAY THROUGH · {opening.countries.join(" → ")}</p><h2 id="editorial-route-title">{opening.title}</h2><p>{opening.bestFor}</p><p className={styles.editorialSequence}>{discoverySequence(opening)}</p><p className={styles.editorialMeta}>{discoveryDuration(opening)} · {discoveryShape(opening)}<br />{opening.character}</p><LinkButton href={opening.href} prefetch={false} variant="secondary" icon={ArrowUpRight}>Explore route</LinkButton></div>
+      <DiscoveryPhoto route={opening} sizes="(max-width:980px) 100vw, 45vw" unavailable={imageUnavailable} />
+    </section>}
     <section className={styles["catalogue-content"]} aria-label="Route catalogue" id="all-routes">
       <div className={styles["catalogue-heading"]}><div><span className={styles.eyebrow}>THE FULL ROUTE CATALOGUE</span><h2>{active.length ? "Find your kind of journey." : "Different ways to go."}</h2></div><div className={styles["result-count"]} role="status" aria-live="polite"><strong>{results.length}</strong><span>{active.length ? `matching ${results.length === 1 ? "route" : "routes"}` : routes.length === 1 ? "starting point" : "starting points"}</span></div></div>
       {unavailable ? <MorroviaStatusBanner tone="warning" title="Routes are temporarily unavailable" detail="We couldn’t check the current catalogue. Please try again shortly." actions={<><LinkButton href="/journey/discover" variant="secondary">Try again</LinkButton><LinkButton href="/journey/new">Start your own trip</LinkButton></>} /> : !routes.length ? <MorroviaStatusBanner title="New routes are on their way" detail="There are no public routes to browse right now. You can still start with your own idea." actions={<LinkButton href="/journey/new">Start your own trip</LinkButton>} /> : !results.length ? <div className={styles["empty-state"]}><Compass aria-hidden="true" /><h2>No routes match just yet.</h2><p>Try fewer filters, another country or a broader search.</p><div><Button onClick={reset}>Clear filters</Button><LinkButton variant="secondary" href="/journey/new">Start your own trip</LinkButton></div></div> : view === "map" ? <div className={styles["map-mode"]}>
-        <div className={styles["map-list"]} aria-label="Routes on the map">{results.map((route, index) => <RouteItem compact key={route.key} route={route} index={index} onSelect={selectMap} active={!overview && route.key === mapRoute.key} />)}</div>
-        <div className={styles["map-stage"]}><div className={styles["map-mode-toolbar"]}><span className={styles.eyebrow}>{overview ? "EVERY JOURNEY HAS A SHAPE" : mapRoute.countries.join(" → ")}</span><Button size="small" variant="secondary" onClick={() => setOverview(!overview)}>{overview ? "Focus selected route" : "Show all routes"}</Button></div><DiscoveryMap routes={results} route={mapRoute} overview={overview} selectedStop={mapStop} onStop={setMapStop} onRoute={selectMap} /><div className={styles["map-selection"]}><div><small>{mapRoute.character}</small><h3>{mapRoute.title}</h3><p>{discoverySequence(mapRoute)}</p><span>{discoveryDuration(mapRoute)} · {discoveryShape(mapRoute)}</span></div><Button variant="secondary" onClick={() => setSelected(mapRoute)}>Open route</Button></div></div>
+        <div className={styles["map-list"]} aria-label="Routes on the map">{results.map((route, index) => <RouteItem compact key={route.key} route={route} index={index} onSelect={selectMap} active={!overview && route.key === mapRoute.key} imageUnavailable={imageUnavailable} />)}</div>
+        <div className={styles["map-stage"]}><div className={styles["map-mode-toolbar"]}><span className={styles.eyebrow}>{overview ? "EVERY JOURNEY HAS A SHAPE" : mapRoute.countries.join(" → ")}</span><Button size="small" variant="secondary" onClick={() => setSelected(mapRoute)}>Open route</Button><Button size="small" variant="secondary" onClick={() => setOverview(!overview)}>{overview ? "Focus selected route" : "Show all routes"}</Button></div><DiscoveryMap routes={results} route={mapRoute} overview={overview} selectedStop={mapStop} onStop={setMapStop} onRoute={selectMap} /></div>
       </div> : <>
         {!!featured.length && <div className={styles["featured-stories"]}>{featured.map((route, index) => <RouteItem key={route.key} featured route={route} index={index} onSelect={setSelected} imageUnavailable={imageUnavailable} />)}</div>}
         {!!featured.length && <div className={styles["browse-heading"]}><h3>Keep your options open.</h3><p>Suggested ranges · every stop is yours to change</p></div>}

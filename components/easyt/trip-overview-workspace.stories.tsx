@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import type { BookingReadinessAction } from "@/lib/easyt/booking-readiness";
+import { affiliatePartners, type BookingReadinessAction } from "@/lib/easyt/booking-readiness";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
 import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
@@ -117,8 +117,11 @@ const prepActions: BookingReadinessAction[] = [{
 const prepReadinessCards: ReadinessCard[] = [{
   id: "insurance",
   priority: "useful",
-  title: "Travel insurance",
-  detail: "Compare medical cover, cancellation protection and activity exclusions before you travel.",
+  title: "Insurance",
+  detail: "Consider whether you need cover for your trip.",
+  href: affiliatePartners.worldNomads.insuranceUrl,
+  cta: "Get a travel insurance quote",
+  partner: "world-nomads",
 }];
 
 const meta = {
@@ -181,6 +184,8 @@ export const ReadyTrip: Story = {
 export const AllPreparationIncomplete: Story = {
   args: { trip: { ...baseTrip, brief: { ...baseTrip.brief, bookings: [], checklist: [] } }, initialPrepProfile: prepProfile },
 };
+
+export const InsuranceQuoteHandoff: Story = {};
 
 export const AccommodationPartlyComplete: Story = {};
 

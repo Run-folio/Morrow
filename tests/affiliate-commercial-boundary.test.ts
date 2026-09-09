@@ -25,7 +25,7 @@ test("one canonical nearby disclosure covers commission and the third-party book
 
 test("the full disclosure names providers, ranking independence, payment and click boundaries", () => {
   const source = read("app/journey/affiliate-disclosure/page.tsx");
-  for (const provider of ["Trip.com", "Viator", "Omio", "Saily", "Booking.com"]) assert.match(source, new RegExp(provider.replace(".", "\\.")));
+  for (const provider of ["Trip.com", "Viator", "Omio", "Saily", "World Nomads", "Booking.com"]) assert.match(source, new RegExp(provider.replace(".", "\\.")));
   assert.match(source, /Affiliate commission does not determine route ranking/);
   assert.match(source, /Opening a partner link is not a booking/);
   assert.match(source, /Morrovia does not currently accept payment/);

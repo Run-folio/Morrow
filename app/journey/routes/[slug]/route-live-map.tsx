@@ -2,16 +2,13 @@
 
 import type { ErrorEvent as MapLibreErrorEvent, Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
+import { mapRouteCasing, mapRouteLine, mapRoutePlanning, morroviaMapStyle } from "@/components/easyt/morrovia-map-presentation";
+import mapPresentation from "@/components/easyt/morrovia-map-presentation.module.css";
 import { normalizeRouteMapFailure } from "@/lib/easyt/route-map-runtime";
 import type { RouteMapSelection } from "./route-map-selection";
 import styles from "./route-overview.module.css";
 
 type RouteStop = { id: string; name: string; coordinates: [number, number] };
-
-// Public detail keeps the production MapLibre/worker owner. The old keyless
-// CARTO raster endpoint now returns an API-key watermark; Positron retains the
-// quiet geographic treatment with source-provided attribution and no key.
-const mapStyle = "https://tiles.openfreemap.org/styles/positron";
 
 export default function RouteLiveMap({ title, stops, className, selected = null, onSelect, resetVersion = 0 }: {
   title: string; stops: RouteStop[]; className?: string; selected?: RouteMapSelection;
@@ -59,7 +56,7 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
       const initialBounds = mappedStops.reduce((bounds, stop) => bounds.extend(stop.coordinates), new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates));
       map = new maplibregl.Map({
         container,
-        style: mapStyle,
+        style: morroviaMapStyle,
         attributionControl: false,
         center: mappedStops[0].coordinates,
         zoom: 7,
@@ -74,11 +71,14 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
         const index = stop.index;
         const marker = document.createElement("button");
         marker.type = "button";
-        marker.className = "route-overview-map__marker";
+        marker.className = "planner-map__stop route-overview-map__marker";
         marker.setAttribute("aria-label", `Stop ${index + 1}: ${stop.name}`);
         const number = document.createElement("span");
+        number.className = "planner-map__stop-number";
         number.textContent = String(index + 1);
         const label = document.createElement("b");
+        const easternmostLongitude = Math.max(...mappedStops.map(candidate => candidate.coordinates[0]));
+        label.dataset.side = stop.coordinates[0] === easternmostLongitude ? "left" : "right";
         label.textContent = stop.name;
         marker.append(number, label);
         marker.setAttribute("aria-pressed", "false");
@@ -92,7 +92,6 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
       const drawRoute = () => {
         if (!map || map.getSource("route-overview-line")) return;
         const colors = getComputedStyle(container);
-        const lineColor = colors.getPropertyValue("--morrovia-signal").trim();
         const selectedColor = colors.getPropertyValue("--morrovia-action").trim();
         map.addSource("route-overview-line", {
           type: "geojson",
@@ -106,7 +105,9 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
             }),
           },
         });
-        map.addLayer({ id: "route-overview-line", type: "line", source: "route-overview-line", paint: { "line-color": lineColor, "line-width": 3, "line-opacity": .85, "line-dasharray": [2, 2] } });
+        map.addLayer({ id: "route-overview-casing", type: "line", source: "route-overview-line", paint: mapRouteCasing });
+        map.addLayer({ id: "route-overview-line", type: "line", source: "route-overview-line", paint: mapRouteLine });
+        map.addLayer({ id: "route-overview-planning", type: "line", source: "route-overview-line", paint: mapRoutePlanning });
         map.addLayer({ id: "route-overview-selected", type: "line", source: "route-overview-line", filter: ["==", ["get", "index"], -1], paint: { "line-color": selectedColor, "line-width": 5 } });
         map.addLayer({ id: "route-overview-hit", type: "line", source: "route-overview-line", paint: { "line-color": selectedColor, "line-width": 28, "line-opacity": 0 } });
         map.on("click", "route-overview-hit", (event) => {
@@ -169,8 +170,8 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
     };
   }, [stops, title]);
 
-  return <div className={`${className ?? ""} ${styles.mapShell}`} role="region" aria-label={`Interactive map of ${title}`}>
+  return <div className={`${className ?? ""} ${styles.mapShell} ${mapPresentation.surface}`} role="region" aria-label={`Interactive map of ${title}`}>
     <div ref={containerRef} className={styles.mapCanvas} />
-    {status !== "ready" && <p className={styles.mapStatus}>{status === "unavailable" ? "The live map is unavailable. The ordered route remains listed below." : status === "waiting" ? "The geographic map opens as you reach this section." : "Loading route map…"}</p>}
+    {status !== "ready" && <p className={styles.mapStatus}>{status === "unavailable" ? "The live map is unavailable. Use the route sequence and map selector for the ordered geography." : status === "waiting" ? "The geographic map opens as you reach this section." : "Loading route map…"}</p>}
   </div>;
 }

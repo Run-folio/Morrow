@@ -47,13 +47,15 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapSource, /source: "trip-route"/);
   assert.match(mapSource, /source: "trip-route-legs"/);
   assert.match(mapSource, /trip-route-hit/);
-  assert.match(mapSource, /line-dasharray/);
+  const presentation = readFileSync(new URL("../components/easyt/morrovia-map-presentation.ts", import.meta.url), "utf8");
+  assert.match(presentation, /line-dasharray/);
   assert.match(mapSource, /planner-map__leg/);
   assert.equal((mapSource.match(/new maplibregl\.Map\(/g) ?? []).length, 1);
-  assert.match(mapSource, /"morrovia-countries"/);
-  assert.match(mapSource, /id: "morrovia-land"/);
-  assert.match(mapSource, /id: "morrovia-borders"/);
-  assert.match(mapSource, /"raster-opacity": \["interpolate", \["linear"\], \["zoom"\]/);
+  assert.match(mapSource, /style: morroviaMapStyle/);
+  assert.match(readFileSync(new URL("../components/easyt/morrovia-map-presentation.ts", import.meta.url), "utf8"), /"morrovia-countries"/);
+  assert.match(presentation, /id: "morrovia-land"/);
+  assert.match(presentation, /id: "morrovia-borders"/);
+  assert.match(presentation, /"raster-opacity": \["interpolate", \["linear"\], \["zoom"\]/);
 });
 
 test("the route-first map restores progressive spatial intelligence", () => {

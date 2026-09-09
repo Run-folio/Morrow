@@ -53,7 +53,10 @@ test("new surfaces reuse one outbound owner without trip or booking mutation", (
   assert.doesNotMatch(itinerary.match(/experienceHandoff[\s\S]*?<\/section>/)?.[0] ?? "", /mutateTrip|onSchedule|setSelectedIndex/);
   assert.match(map, /Explore more on map[\s\S]*map_see_experiences/);
   assert.doesNotMatch(map.match(/experienceHandoff[\s\S]*?<\/section>/)?.[0] ?? "", /onSelectionChange|setMapMode|mutate/);
-  assert.equal((route.match(/<RoutePlanLink/g) ?? []).length, 4);
+  assert.equal((route.match(/<RoutePlanLink/g) ?? []).length, 3);
+  assert.equal((route.match(/placement="hero">Start with this route<\/RoutePlanLink>/g) ?? []).length, 1);
+  assert.equal((route.match(/placement="hero">Shape the nights in Builder<\/RoutePlanLink>/g) ?? []).length, 1);
+  assert.equal((route.match(/placement="final">Start with this route<\/RoutePlanLink>/g) ?? []).length, 1);
   assert.equal((route.match(/<MorroviaAffiliateLink/g) ?? []).length, 1);
   assert.match(home, /homepage_stays[\s\S]*homepage_experiences[\s\S]*homepage_transport[\s\S]*homepage_connectivity/);
 });

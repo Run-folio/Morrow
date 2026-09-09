@@ -41,15 +41,10 @@ export default async function EasyTDashboardPage() {
         }}
       />
       <section className={styles.dashboard}>
-        <div className={styles.dashTop}>
-          <div>
-            <p className={styles.eyebrow}>Your travel workspace</p>
-            <h1>Trips<span className={dashboardStyles.titleDot}>.</span></h1>
-            <p className={styles.userLine}>
-              Plan, revisit and travel with every journey from one place.
-            </p>
-          </div>
-        </div>
+        <header className={dashboardStyles.pageIntro}>
+          <p className={dashboardStyles.eyebrow}>Your personal journey library</p>
+          <h1><span>Your journeys.</span><em>Ready when you are.</em></h1>
+        </header>
         <DashboardClient key={session.user.id} trips={trips} stamps={stamps} ownerId={session.user.id} />
       </section>
     </main>

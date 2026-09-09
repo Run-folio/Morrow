@@ -15,7 +15,7 @@
    controls; this layer gives the three decisions one visual language. */
 .shellWide{--signal:var(--morrovia-signal);--ink:var(--morrovia-ink);--line:var(--morrovia-line);--tint:var(--morrovia-lilac);--muted:var(--morrovia-muted);max-width:1180px;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
 .steps{position:relative;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;padding:30px 15% 27px;border-bottom:1px solid var(--line);background:transparent}
-.steps:before{content:"";position:absolute;top:50%;left:calc(15% + 22px);right:calc(15% + 22px);height:1px;background:var(--line);pointer-events:none}.stepTab{position:relative;z-index:1;justify-content:center;padding:0;background:var(--morrovia-paper);color:var(--muted);font-size:16px}.stepTab>span{grid-template-columns:auto auto;align-items:center;gap:7px}.stepTab small{grid-column:2;text-align:left}.stepTabOn{color:var(--ink)}.stepTabOn>b{border-color:var(--signal);background:var(--signal);color:#fff}.stepTabDone>b{border-color:var(--signal);background:var(--signal);color:#fff}
+.steps:before{display:none}.stepTab{position:relative;z-index:1;justify-content:center;padding:0;background:var(--morrovia-paper);color:var(--muted);font-size:16px}.stepTab>span{grid-template-columns:auto auto;align-items:center;gap:7px}.stepTab small{grid-column:2;text-align:left}.stepTabOn{color:var(--ink)}.stepTabOn>b{border-color:var(--signal);background:var(--signal);color:#fff}.stepTabDone>b{border-color:var(--signal);background:var(--signal);color:#fff}
 .confirmHero{max-width:1180px;margin:0 auto;padding:56px 5% 26px;background:transparent}.confirmHero h1,.stepHero h2{font-family:var(--morrovia-display);font-weight:600;letter-spacing:-.055em}.confirmHero h1{font-size:clamp(48px,6vw,82px)}.wizardBody{grid-template-columns:minmax(0,1.75fr) minmax(300px,.78fr);border:1px solid var(--line);background:rgba(255,255,255,.58);box-shadow:0 16px 45px rgba(23,16,111,.05)}.pane{padding:30px 5% 40px}.confirmAside{padding:42px 12% 34px;border-left:1px solid var(--line);background:linear-gradient(150deg,#fcfbff,#f1efff)}.confirmAside h2{font-family:var(--morrovia-display);font-size:30px;font-weight:600}.confirmIllustration{max-height:220px;margin:0 auto 12px}.card,.intakeReview,.intentPanel:has(.detailsToggle + *){border-color:var(--line);border-radius:var(--morrovia-radius);box-shadow:none}.intakeReview{background:rgba(255,255,255,.78)}.intakeReview h2{font-family:var(--morrovia-display);font-weight:600}.routeCheck{border-color:var(--line);background:#fff}.primary,.confirmDatesButton{background:var(--ink)!important;border-color:var(--ink)!important}.primary:hover,.confirmDatesButton:hover{background:var(--signal)!important;border-color:var(--signal)!important}
 .routeStep{display:grid;gap:22px}.routeStep .stepHero{margin-bottom:0}.routeDecisionStage{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(280px,.88fr);gap:18px;padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff}.routeIllustratedMap{position:relative;min-height:250px;overflow:hidden;border-radius:12px;background:var(--morrovia-lilac)}.routeIllustratedMap img{width:100%;height:100%;object-fit:cover;opacity:.78}.routeIllustratedMap ol{position:absolute;inset:auto 18px 16px;display:flex;gap:8px;margin:0;padding:0;list-style:none}.routeIllustratedMap li{display:flex;align-items:center;gap:5px;color:var(--ink);font-size:11px;font-weight:700}.routeIllustratedMap b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font:700 10px var(--morrovia-meta)}.routeChoices{display:grid;gap:10px;align-content:center}.routeChoices button{display:grid;gap:7px;padding:17px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}.routeChoices button:hover{border-color:var(--signal)}.routeChoices small{color:var(--signal);font:800 9px var(--morrovia-meta);letter-spacing:.1em}.routeChoices strong{font-size:17px;line-height:1.2}.routeChoices span{color:var(--muted);font-size:12px;line-height:1.4}.routeRecommended{border-color:#aaa6f5!important;background:linear-gradient(145deg,#fff,#f4f2ff)!important}.routeRecommended:disabled{cursor:default;opacity:1}.routeAlternative{background:#fcfbff!important}
 .timeStep .allocationPanel{border-color:var(--line);border-radius:18px;overflow:hidden}.timeStep .allocationHead{background:#fcfbff}.timeStep .allocationRow{grid-template-columns:minmax(160px,.9fr) minmax(120px,1.4fr) 76px;padding:20px 0}.timeStep .allocationRow strong{font-family:var(--morrovia-display);font-size:29px}.rail{background:linear-gradient(160deg,#fff,#f3f1ff);border-left-color:var(--line)}
@@ -48,7 +48,6 @@
 .stepTabDone { color: #000; }
 .stepTabOn { background: transparent; color: var(--ink); }
 .stepTabOn small { color: var(--signal); }
-.builderReassurance{display:none}
 .confirmHero{padding:42px 5% 20px;border-bottom:0;background:linear-gradient(105deg,#fff 0%,#faf9ff 100%)}.confirmHero p{margin:0 0 20px;color:var(--signal);font:800 11px var(--morrovia-meta);letter-spacing:.14em}.confirmHero h1{max-width:690px;margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:clamp(48px,6vw,82px);font-weight:600;line-height:.94;letter-spacing:-.055em}.confirmHero span{display:block;margin-top:17px;color:var(--muted);font-size:17px}
 
 /* ------------------------------------------------------------- layout */
@@ -362,7 +361,6 @@
   .decisionAlternatives{grid-template-columns:1fr}
   .intentGrid{grid-template-columns:1fr}
   .steps { grid-template-columns: repeat(2, 1fr); }
-  .builderReassurance{align-items:flex-start;flex-direction:column;gap:2px;padding:14px 24px 11px;font-size:12px}.builderReassurance strong{font-size:14px}
 }
 @media (max-width: 620px){.placeCard{grid-template-columns:82px 24px minmax(0,1fr);align-items:start}.placeThumb,.placeThumbFallback,.placeThumbImage{width:82px;min-height:82px}.placeCost{grid-column:3;margin:0}.dayImage{height:220px}.allocationRow{grid-template-columns:1fr 44px;gap:8px}.allocationRow input{grid-column:1 / -1;grid-row:2}.allocationRow > b{grid-column:2;grid-row:1}.intentFacts{grid-template-columns:1fr}.fixedCommitment{grid-template-columns:1fr 110px}.fixedCommitment>button{grid-column:1 / -1}.intentFieldRow{grid-template-columns:1fr}}
 @media (max-width: 420px){.wizardFoot{align-items:stretch;padding:14px 20px}.footRight{width:100%;min-width:0;justify-content:space-between;gap:10px}.saveState{min-width:0;font-size:10px}.gate{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.primary{flex:0 0 auto;justify-content:center;padding-inline:16px;font-size:14px}}
@@ -438,11 +436,11 @@
 /* Final Time step: a compact, transfer-aware route editor. */
 .timeControls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:stretch}
 .timeControls .dateConfirmSection{grid-column:span 2;padding:0}.timeControls .dateRow{height:100%;gap:12px}.timeControls .dateConfirmSection .card{min-height:0;height:100%;padding:15px 16px;border-radius:var(--morrovia-control-radius)}.timeControls .cardLabel{width:auto;height:auto;border:0;background:transparent;color:var(--muted);font:700 10px var(--morrovia-meta);letter-spacing:.06em}.timeControls .cardLabel svg{width:16px;height:16px;color:var(--signal)}.timeControls .cardValue{min-height:27px}.timeControls .cardValue strong{font-family:var(--morrovia-display);font-size:20px}.timeControl{position:relative;display:grid;align-content:start;gap:6px;padding:15px 16px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:#fff}.timeControl>span{color:var(--muted);font:700 10px var(--morrovia-meta);letter-spacing:.06em}.timeControl>svg{position:absolute;left:16px;bottom:18px;width:17px;height:17px;color:var(--signal)}.timeControl input{width:100%;min-height:28px;padding:0 0 0 27px;border:0;background:transparent;color:var(--ink);font:700 18px var(--morrovia-display);outline:0}.budgetControl p{margin:0;color:var(--muted);font-size:12px;line-height:1.3}.budgetControl>button{justify-self:start;padding:0;border:0;background:transparent;color:var(--ink);font:700 12px var(--morrovia-ui);text-decoration:underline;cursor:pointer}.timeAllocationState{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin:2px 0 0;color:var(--ink);font-size:13px}.timeAllocationState svg{width:16px;color:var(--signal)}.timeAllocationState b{font-weight:700}.allocationComplete{color:#199c72}.allocationIncomplete{color:#a25329}
-.routeTimePlanner{overflow:hidden;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:#fff}.routeTimePlanner>header{display:grid;gap:5px;padding:17px 20px;border-bottom:1px solid var(--line)}.routeTimePlanner h3{margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:23px;font-weight:600;letter-spacing:-.035em}.routeTimePlanner header p{margin:0;color:var(--muted);font-size:13px}.routeTimeColumns,.routeTimeRow{display:grid;grid-template-columns:1.15fr 1.2fr .65fr .65fr;gap:16px;align-items:center;padding:0 20px}.routeTimeColumns{min-height:42px;padding-left:68px;border-bottom:1px solid var(--line);color:var(--muted);font:700 9px var(--morrovia-meta);letter-spacing:.06em}.routeTimeRows{display:grid}.routeTimeRow{position:relative;min-height:78px;border-bottom:1px solid var(--line)}.routeTimeRow:last-child{border-bottom:0}.routeTimeRowDragging{opacity:.55}.routeGrip{position:absolute;left:17px;display:grid;place-items:center;width:32px;height:44px;padding:0;border:0;background:transparent;color:#5d57b5;cursor:grab}.routeGrip:active{cursor:grabbing}.routeGrip svg{width:18px}.routeStopName{display:flex;align-items:center;gap:10px;min-width:0}.routeStopName>b{display:grid;place-items:center;flex:none;width:29px;height:29px;border:1px solid #e3e2ee;border-radius:50%;background:#f6f5ff;color:var(--ink);font:700 14px var(--morrovia-display)}.routeStopName span,.routeTransferSummary span{display:grid;gap:2px;min-width:0}.routeStopName strong{overflow:hidden;color:var(--ink);font-family:var(--morrovia-display);font-size:18px;font-weight:600;letter-spacing:-.025em;text-overflow:ellipsis;white-space:nowrap}.routeStopName small,.routeTransferSummary small{color:var(--muted);font-size:11px}.routeTransferSummary{display:flex;align-items:center;gap:8px;min-width:0}.routeTransferSummary>svg{width:16px;height:16px;color:#5853b6}.routeTransferSummary strong{color:var(--ink);font-size:12px}.nightsControl{display:grid;grid-template-columns:28px 24px 28px;grid-template-rows:auto auto;justify-content:start;align-items:center;gap:5px}.nightsControl button{display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid #e4e3ef;border-radius:50%;background:#fff;color:var(--ink);font-size:17px;cursor:pointer}.nightsControl button:hover:not(:disabled){border-color:var(--morrovia-action);color:var(--morrovia-action)}.nightsControl button:disabled{opacity:.35;cursor:not-allowed}.nightsControl strong{text-align:center;font-size:16px}.nightsControl small{grid-column:1/-1;color:var(--muted);font-size:10px}.usableTime{display:flex;align-items:center;gap:5px;color:var(--ink);font-size:13px}.usableTimeWarning{color:#ad6524}.usableTime svg{width:15px;height:15px}.routeMoveButtons{display:none}.tripTimingNotice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid #dcd7fb;border-radius:8px;background:#f6f4ff;color:#49448c}.tripTimingNotice svg{flex:none;width:18px;color:#5b40c8}.tripTimingNotice p{margin:0;font-size:12px;line-height:1.45}.routeRestoreNotice{margin:0;color:var(--muted);font-size:12px}.routeRestoreNotice button{margin-left:6px;padding:0;border:0;background:transparent;color:var(--morrovia-action);font:700 12px var(--morrovia-ui);text-decoration:underline;cursor:pointer}
+.routeTimePlanner{overflow:hidden;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:#fff}.routeTimePlanner>header{display:grid;gap:5px;padding:17px 20px;border-bottom:1px solid var(--line)}.routeTimePlanner h3{margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:23px;font-weight:600;letter-spacing:-.035em}.routeTimePlanner header p{margin:0;color:var(--muted);font-size:13px}.routeTimeColumns,.routeTimeRow{display:grid;grid-template-columns:1.15fr 1.2fr .65fr .65fr;gap:16px;align-items:center;padding:0 20px}.routeTimeColumns{min-height:42px;padding-left:68px;border-bottom:1px solid var(--line);color:var(--muted);font:700 9px var(--morrovia-meta);letter-spacing:.06em}.routeTimeRows{display:grid}.routeTimeRow{position:relative;min-height:78px;border-bottom:1px solid var(--line)}.routeTimeRow:last-child{border-bottom:0}.routeTimeRowDragging{opacity:.55}.routeGrip{position:absolute;left:17px;display:grid;place-items:center;width:32px;height:44px;padding:0;border:0;background:transparent;color:#5d57b5;cursor:grab}.routeGrip:active{cursor:grabbing}.routeGrip svg{width:18px}.routeStopName{display:flex;align-items:center;gap:10px;min-width:0}.routeStopName>b{display:grid;place-items:center;flex:none;width:29px;height:29px;border:1px solid #e3e2ee;border-radius:50%;background:#f6f5ff;color:var(--ink);font:700 14px var(--morrovia-display)}.routeStopName span,.routeTransferSummary span{display:grid;gap:2px;min-width:0}.routeStopName strong{overflow:hidden;color:var(--ink);font-family:var(--morrovia-display);font-size:18px;font-weight:600;letter-spacing:-.025em;text-overflow:ellipsis;white-space:nowrap}.routeStopName small,.routeTransferSummary small{color:var(--muted);font-size:11px}.routeTransferSummary{display:flex;align-items:center;gap:8px;min-width:0}.routeTransferSummary>svg{width:16px;height:16px;color:#5853b6}.routeTransferSummary strong{color:var(--ink);font-size:12px}.nightsControl{display:grid;grid-template-columns:28px 24px 28px;grid-template-rows:auto auto;justify-content:start;align-items:center;gap:5px}.nightsControl button{display:grid;place-items:center;width:28px;height:28px;padding:0;border:1px solid #e4e3ef;border-radius:50%;background:#fff;color:var(--ink);font-size:17px;cursor:pointer}.nightsControl button:hover:not(:disabled){border-color:var(--morrovia-action);color:var(--morrovia-action)}.nightsControl button:disabled{opacity:.35;cursor:not-allowed}.nightsControl strong{text-align:center;font-size:16px}.nightsControl small{grid-column:1/-1;color:var(--muted);font-size:10px}.usableTime{display:flex;align-items:center;gap:5px;color:var(--ink);font-size:13px}.usableTimeWarning{color:#ad6524}.usableTime svg{width:15px;height:15px}.tripTimingNotice{display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border:1px solid #dcd7fb;border-radius:8px;background:#f6f4ff;color:#49448c}.tripTimingNotice svg{flex:none;width:18px;color:#5b40c8}.tripTimingNotice p{margin:0;font-size:12px;line-height:1.45}.routeRestoreNotice{margin:0;color:var(--muted);font-size:12px}.routeRestoreNotice button{margin-left:6px;padding:0;border:0;background:transparent;color:var(--morrovia-action);font:700 12px var(--morrovia-ui);text-decoration:underline;cursor:pointer}
 .timeSummaryRail{align-content:start;padding:58px 9%;background:#fff}.timingSummary{gap:16px;padding:0 0 24px}.timingSummary h2{font-size:25px}.timingSummary p{color:var(--ink);font-family:var(--morrovia-display);font-size:17px;font-weight:600}.timingSummary strong{display:flex;align-items:center;gap:8px;color:#199c72}.timingSummary strong svg{width:18px}.specificTimingWarning{display:flex;gap:10px;padding:16px 0;border-top:1px solid var(--line)}.specificTimingWarning>svg{flex:none;width:20px;color:#d99226}.specificTimingWarning h3{margin:1px 0 7px;color:var(--ink);font-size:14px}.specificTimingWarning p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
 .mobileTimingWarning{display:none}
 @media(max-width:840px){.timeControls{grid-template-columns:repeat(2,minmax(0,1fr))}.timeControls .dateConfirmSection{grid-column:span 2}.timeSummaryRail{padding:30px 24px}}
-@media(max-width:700px){.timeSummaryRail{display:none}.timeControls{grid-template-columns:1fr}.timeControls .dateConfirmSection{grid-column:auto}.timeControls .dateRow{grid-template-columns:1fr}.timeControls .dateConfirmSection .card{min-height:76px}.timeAllocationState{grid-column:auto;order:4}.routeTimePlanner>header{padding:14px}.routeTimePlanner h3{font-size:18px}.routeTimeColumns{display:none}.routeTimeRow{grid-template-columns:28px minmax(0,1fr) 69px;grid-template-areas:"grip stop nights" "grip transfer usable";gap:4px 10px;min-height:0;padding:13px 12px}.routeGrip{position:static;grid-area:grip;align-self:center;width:28px;height:34px}.routeStopName{grid-area:stop}.routeStopName strong{font-size:15px}.routeTransferSummary{grid-area:transfer}.routeTransferSummary small{font-size:10px}.nightsControl{grid-area:nights;grid-template-columns:22px 20px 22px;gap:3px;justify-self:end}.nightsControl button{width:22px;height:22px;font-size:14px}.nightsControl strong{font-size:14px}.nightsControl small{justify-self:end}.usableTime{grid-area:usable;justify-self:end;font-size:11px}.routeMoveButtons{display:flex;grid-area:transfer;justify-self:end;gap:3px}.routeMoveButtons button{display:grid;place-items:center;width:24px;height:24px;padding:0;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}.routeMoveButtons svg{width:13px}.tripTimingNotice{padding:11px 12px}.wizardFoot{position:sticky;bottom:0;z-index:8}}
+@media(max-width:700px){.timeSummaryRail{display:none}.timeControls{grid-template-columns:1fr}.timeControls .dateConfirmSection{grid-column:auto}.timeControls .dateRow{grid-template-columns:1fr}.timeControls .dateConfirmSection .card{min-height:76px}.timeAllocationState{grid-column:auto;order:4}.routeTimePlanner>header{padding:14px}.routeTimePlanner h3{font-size:18px}.routeTimeColumns{display:none}.routeTimeRow{grid-template-columns:28px minmax(0,1fr) 69px;grid-template-areas:"grip stop nights" "grip transfer usable";gap:4px 10px;min-height:0;padding:13px 12px}.routeGrip{position:static;grid-area:grip;align-self:center;width:28px;height:34px}.routeStopName{grid-area:stop}.routeStopName strong{font-size:15px}.routeTransferSummary{grid-area:transfer}.routeTransferSummary small{font-size:10px}.nightsControl{grid-area:nights;grid-template-columns:22px 20px 22px;gap:3px;justify-self:end}.nightsControl button{width:22px;height:22px;font-size:14px}.nightsControl strong{font-size:14px}.nightsControl small{justify-self:end}.usableTime{grid-area:usable;justify-self:end;font-size:11px}.tripTimingNotice{padding:11px 12px}.wizardFoot{position:sticky;bottom:0;z-index:8}}
 
 /* A light connector lets the numbered stops read as one journey. */
 .routeStopName>b{position:relative}.routeTimeRow:not(:last-child) .routeStopName>b:after{content:"";position:absolute;top:29px;left:50%;height:42px;border-left:1px solid #d9d7ec;transform:translateX(-50%)}
@@ -519,7 +517,7 @@
   .routeTimePlanner>header{gap:4px;padding:12px}
   .routeTimePlanner h3{font-size:17px}
   .routeTimePlanner header p{font-size:12px;line-height:1.35}
-  .routeTimeRow{grid-template-columns:30px minmax(0,1fr) 72px;grid-template-areas:"grip stop nights" "grip transfer moves" "grip usable usable";gap:5px 8px;padding:12px 10px;min-height:0}
+  .routeTimeRow{grid-template-columns:30px minmax(0,1fr) 72px;grid-template-areas:"grip stop nights" "grip transfer usable";gap:5px 8px;padding:12px 10px;min-height:0}
   .routeGrip{position:static;grid-area:grip;align-self:start;width:26px;height:30px;border-radius:6px}
   .routeStopName{gap:8px}
   .routeStopName>b{width:27px;height:27px;font-size:13px}
@@ -534,8 +532,6 @@
   .nightsControl strong{font-size:14px}
   .nightsControl small{font-size:9px}
   .usableTime{justify-self:start;font-size:11px}
-  .routeMoveButtons{grid-area:moves;justify-self:end;align-self:center}
-  .routeMoveButtons button{width:23px;height:23px}
   .routeTimeRow:not(:last-child) .routeStopName>b:after{height:51px;top:27px}
   .mobileTimingWarning{padding:11px 12px}
   .wizardFoot{min-height:64px;padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
@@ -582,16 +578,13 @@
   .routeTimeRow{grid-template-columns:28px minmax(0,1fr) 68px;padding-inline:8px}
   .routeGrip{width:24px}
   .routeStopName strong{font-size:15px}
-  .routeMoveButtons{gap:2px}
 }
 
 /* Places is a compact confirmation stage: one editable workspace and one
    state-only desktop summary. Existing builder mutations remain unchanged. */
 .wizardBody:has(.placesSummaryRail){grid-template-columns:minmax(0,1.62fr) minmax(284px,.58fr)}
 .tripUnderstood{display:grid;gap:0;overflow:hidden;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.88)}
-.tripUnderstoodHead{display:grid;gap:7px;padding:21px 24px 17px;border-bottom:1px solid var(--line)}
-.tripUnderstoodHead>span,.pickedPreferences>strong,.unresolvedPlaces>strong,.placesSummaryRail>span,.placesSummaryNext>span{display:flex;align-items:center;gap:6px;color:var(--signal);font:800 10px var(--morrovia-meta);letter-spacing:.11em}
-.tripUnderstoodHead>span svg{width:15px;height:15px}.tripUnderstoodHead h2{margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:29px;font-weight:600;letter-spacing:-.04em}
+.pickedPreferences>strong,.unresolvedPlaces>strong,.placesSummaryRail>span,.placesSummaryNext>span{display:flex;align-items:center;gap:6px;color:var(--signal);font:800 10px var(--morrovia-meta);letter-spacing:.11em}
 .placesSection{display:grid;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);scroll-margin-top:40px}
 .placesSection:last-of-type{border-bottom:0}.placesSectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.placesSectionHead>strong{color:var(--ink);font-size:15px}.placesSectionHead>button,.inlineEditor>button{display:inline-flex;align-items:center;gap:6px;justify-content:center;min-height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:700 12px var(--morrovia-ui);cursor:pointer}.placesSectionHead>button:hover,.inlineEditor>button:hover{border-color:var(--morrovia-action);color:var(--morrovia-action)}.placesSectionHead svg{width:14px;height:14px}
 .originChip{display:inline-flex;align-items:center;justify-self:start;gap:8px;min-height:38px;padding:0 12px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:#fff;color:var(--ink);font:650 14px var(--morrovia-ui)}.originChip svg{width:16px;color:var(--morrovia-action)}.missingPlace{margin:0;color:var(--muted);font-size:13px}
@@ -611,8 +604,8 @@
 .guidedAreaShapes,.guidedAreaQuestion{display:grid;gap:7px}.guidedAreaShapes>strong,.guidedAreaQuestion>strong{color:var(--morrovia-ink-soft);font:800 9px var(--morrovia-meta);letter-spacing:.09em}.guidedAreaShapes>div{display:grid;gap:6px}.guidedAreaShapes section{overflow:hidden;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper)}.guidedAreaShapes section>button{display:grid;grid-template-columns:minmax(0,1fr) 15px;align-items:center;gap:8px;width:100%;min-height:58px;padding:9px 10px;border:0;background:transparent;color:var(--ink);text-align:left;cursor:pointer}.guidedAreaShapes section>button:hover{background:var(--morrovia-lilac)}.guidedAreaShapes section>button:focus-visible{position:relative;outline:3px solid var(--morrovia-focus-ring);outline-offset:-3px}.guidedAreaShapes section>button>span{display:grid;gap:2px;min-width:0}.guidedAreaShapes section>button b{font-size:11px}.guidedAreaShapes section>button small{overflow:hidden;color:var(--morrovia-ink-soft);font-size:10px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.guidedAreaShapes section>button em{color:var(--muted);font-size:9px;font-style:normal;line-height:1.35}.guidedAreaShapes section>button svg{width:14px;color:var(--morrovia-action);transition:transform .15s ease}.guidedAreaShapeReviewing>button svg{transform:rotate(90deg)}.guidedAreaShapeReview{display:grid;gap:8px;padding:10px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--morrovia-lilac) 42%,var(--morrovia-paper))}.guidedAreaShapeReview p{margin:0;color:var(--muted);font-size:10px;line-height:1.4}.guidedAreaShapeReview ul{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}.guidedAreaShapeReview li{display:grid;gap:1px;min-height:34px;padding:5px 8px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:700 10px var(--morrovia-ui)}.guidedAreaShapeReview li span{color:var(--muted);font-size:8px;font-weight:500}.guidedAreaShapeReview>div{display:flex;flex-wrap:wrap;gap:5px}.guidedAreaQuestion>div{display:flex;flex-wrap:wrap;gap:5px}.guidedAreaQuestion>div button{min-height:31px;padding:0 9px;border:1px solid var(--line);border-radius:var(--morrovia-control-radius);background:var(--morrovia-paper);color:var(--ink);font:650 10px var(--morrovia-ui);cursor:pointer}.guidedAreaQuestion>div button:hover{border-color:var(--morrovia-action);color:var(--morrovia-action)}.guidedAreaQuestion>div button:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}.guidedAreaMore,.guidedAreaSelected>.guidedAreaMore{justify-self:start;width:auto;height:auto;min-height:28px;padding:0;border:0;background:transparent;color:var(--morrovia-action);font:700 10px var(--morrovia-ui);text-decoration:underline;text-underline-offset:2px;cursor:pointer}.guidedAreaMore:focus-visible,.guidedAreaSelected>.guidedAreaMore:focus-visible{outline:3px solid var(--morrovia-focus-ring);outline-offset:2px}
 .tripUnderstood .intentPanel{gap:10px;padding:16px 24px;border:0;border-radius:0;background:transparent}.tripUnderstood .intentPanel:has(.detailsToggle + *){border-top:1px solid var(--line);background:#fcfbff}.tripUnderstood .detailsToggle{font-weight:700}.tripUnderstood .fixedCommitment{max-width:620px}.tripUnderstood .commitmentChips{max-width:620px}
 .placesSummaryRail{display:grid;align-content:start;gap:16px;padding:36px 32px;border-left:1px solid var(--line);background:linear-gradient(165deg,#fff 0%,#faf9ff 100%)}.placesSummaryStat{display:flex;align-items:flex-start;gap:11px;color:var(--ink)}.placesSummaryStat>svg{flex:none;width:18px;height:18px;padding:8px;border-radius:50%;background:var(--morrovia-lilac);color:var(--morrovia-action)}.placesSummaryStat>div{display:grid;gap:3px;min-width:0;padding-top:2px}.placesSummaryStat b{font-size:14px}.placesSummaryStat small{overflow:hidden;color:var(--muted);font-size:12px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.placesSummaryStops{display:grid;gap:0;margin:3px 0 0;padding:15px 0 0;list-style:none;border-top:1px solid var(--line)}.placesSummaryStops li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:10px 0}.placesSummaryStops li>b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--morrovia-lilac);color:var(--ink);font:700 14px var(--morrovia-display)}.placesSummaryStops li>div{display:grid;gap:2px;min-width:0}.placesSummaryStops strong{overflow:hidden;color:var(--ink);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.placesSummaryStops small{color:var(--muted);font-size:11px}.placesSummaryNext{display:grid;gap:10px;margin-top:6px;padding:16px;border-radius:10px;background:var(--morrovia-lilac)}.placesSummaryNext>div{display:flex;align-items:flex-start;gap:10px}.placesSummaryNext svg{flex:none;width:17px;color:var(--morrovia-action)}.placesSummaryNext p{display:grid;gap:2px;margin:0;color:var(--muted);font-size:12px;line-height:1.4}.placesSummaryNext b{color:var(--ink);font-size:13px}
-@media(max-width:840px){.wizardBody:has(.placesSummaryRail){grid-template-columns:1fr}.placesSummaryRail{display:none}.tripUnderstoodHead{padding:19px 20px 15px}.placesSection,.pickedPreferences,.recognizedPlaces{padding-inline:20px}.unresolvedPlaces{padding-inline:20px}}
-@media(max-width:520px){.tripUnderstood{border-radius:12px}.tripUnderstoodHead h2{font-size:25px}.placesSection{padding:15px 16px}.pickedPreferences,.recognizedPlaces{padding:15px 16px}.recognizedPlaces>div,.guidedAreaSuggestions>div{grid-template-columns:1fr}.unresolvedPlaces{padding:13px 16px}.inlineEditor{grid-template-columns:1fr}.inlineEditor>button{justify-self:start}.placesSectionHead>button{min-height:32px;padding-inline:8px;font-size:11px}.tripUnderstood .intentPanel{padding:14px 16px}.tripUnderstood .fixedCommitment{grid-template-columns:1fr}.tripUnderstood .fixedCommitment>button{grid-column:auto}}
+@media(max-width:840px){.wizardBody:has(.placesSummaryRail){grid-template-columns:1fr}.placesSummaryRail{display:none}.placesSection,.pickedPreferences,.recognizedPlaces{padding-inline:20px}.unresolvedPlaces{padding-inline:20px}}
+@media(max-width:520px){.tripUnderstood{border-radius:12px}.placesSection{padding:15px 16px}.pickedPreferences,.recognizedPlaces{padding:15px 16px}.recognizedPlaces>div,.guidedAreaSuggestions>div{grid-template-columns:1fr}.unresolvedPlaces{padding:13px 16px}.inlineEditor{grid-template-columns:1fr}.inlineEditor>button{justify-self:start}.placesSectionHead>button{min-height:32px;padding-inline:8px;font-size:11px}.tripUnderstood .intentPanel{padding:14px 16px}.tripUnderstood .fixedCommitment{grid-template-columns:1fr}.tripUnderstood .fixedCommitment>button{grid-column:auto}}
 @media(max-width:520px){.inlinePlanningSearch{grid-template-columns:1fr}.inlinePlanningSearch>button{justify-self:start}.inlinePlanningIdentity{grid-template-columns:1fr}.inlinePlanningIdentity span{grid-row:2}.inlinePlanningIdentity p{grid-row:3}}
 @media(max-width:620px){.manualCaptureFields{grid-template-columns:1fr}.manualDestinationEditor{grid-template-columns:1fr}.manualDestinationEditor>button{justify-self:start}}
 
@@ -1129,8 +1122,6 @@
 .timeSummaryStops li > div { display: grid; gap: 3px; }
 .timeSummaryStops strong { color: var(--ink); font-size: 12px; }
 .timeSummaryStops small { color: var(--morrovia-action); font-size: 10px; }
-.timeSummaryAllocation { display: flex; align-items: center; gap: 9px; margin: 0; color: var(--morrovia-action); font-size: 11px; font-weight: 650; }
-.timeSummaryAllocation svg { width: 17px; height: 17px; }
 
 @media(max-width:1024px){
   .wizardBody:has(.timeSummaryRail) { grid-template-columns: minmax(0, 1fr) 286px; }
@@ -1153,7 +1144,6 @@
   .timingSummary > h2 { grid-column: 1 / -1; }
   .timeSummaryStats { border-bottom: 0; }
   .timeSummaryStops { grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 0; }
-  .timeSummaryAllocation { grid-column: 1 / -1; padding-top: 15px; border-top: 1px solid var(--line); }
 }
 
 @media(max-width:700px){
@@ -1171,15 +1161,13 @@
   .budgetControl { border-top: 0; border-bottom: 0; }
   .budgetControl .budgetChoices { position: static; min-width: 0; box-shadow: none; }
   .timeAllocationState { order: 0; flex-wrap: wrap; font-size: 12px; }
-  .routeTimeRow { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "grip stop stop" "transfer transfer transfer" "nights nights usable" "moves moves moves"; gap: 9px 10px; padding: 13px 12px; }
+  .routeTimeRow { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "grip stop stop" "transfer transfer transfer" "nights nights usable"; gap: 9px 10px; padding: 13px 12px; }
   .routeGrip { grid-area: grip; position: static; align-self: center; width: 44px; height: 44px; }
   .routeStopName { grid-area: stop; }
   .routeTransferSummary { grid-area: transfer; padding-left: 54px; }
   .nightsControl { grid-area: nights; grid-template-columns: 44px 24px 44px; gap: 5px; }
   .nightsControl button { width: 44px; height: 44px; }
   .usableTime { grid-area: usable; align-self: center; justify-self: end; }
-  .routeMoveButtons { grid-area: moves; justify-self: end; gap: 6px; }
-  .routeMoveButtons button { width: 44px; height: 44px; border-radius: 8px; }
   .routeInsightContent { grid-template-columns: 1fr; }
   .routeInsightContent article:last-of-type { grid-column: auto; }
   .timingWarningContent { grid-template-columns: 1fr; }
@@ -1303,4 +1291,297 @@
   .resolvedPlaces article > button { grid-column: 2; justify-self: start; padding: 0; }
   .completedAreaSummaries { display: grid; grid-template-columns: 1fr; }
   .completedAreaSummaries > span { justify-content: space-between; }
+}
+
+/* Approved Builder visual elevation. Above the tablet breakpoint the Builder
+   becomes a continuous planning workspace with measured page gutters. The
+   existing 1024px-and-smaller layout remains the responsive baseline. */
+@media (min-width: 1025px) {
+  .shellWide,
+  .homepageHandoff {
+    --builder-rail-width: clamp(300px, 22vw, 340px);
+    width: calc(100% - 96px);
+    max-width: 1700px;
+    margin: 0 auto 32px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .steps,
+  .homepageHandoff .steps {
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
+    gap: 40px;
+    min-height: 0;
+    padding: 8px 0 24px;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+  }
+
+  .steps:before,
+  .homepageHandoff .steps:before { display: none; }
+
+  .stepTab,
+  .homepageHandoff .stepTab {
+    display: flex;
+    grid-template-rows: none;
+    justify-content: flex-start;
+    justify-items: start;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0;
+    text-align: left;
+  }
+
+  .homepageHandoff .stepTab > b { width: 32px; height: 32px; }
+  .homepageHandoff .stepTab > span { text-align: left; }
+  .homepageHandoff .stepTab > span > span { font-size: 14px; font-weight: 650; }
+
+  .wizardBody,
+  .wizardBody:has(.placesSummaryRail),
+  .wizardBody:has(.timeSummaryRail),
+  .homepageHandoff .wizardBody,
+  .homepageHandoff .wizardBody:has(.placesSummaryRail) {
+    grid-template-columns: minmax(0, 1fr) var(--builder-rail-width);
+    column-gap: clamp(16px, calc(10vw - 124px), 68px);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .pane,
+  .wizardBody:has(.timeSummaryRail) > .pane,
+  .homepageHandoff .pane {
+    min-width: 0;
+    padding: 30px 0 0;
+  }
+
+  .stepHero,
+  .homepageHandoff .stepHero { gap: 8px; margin-bottom: 22px; }
+
+  .stepHero h1,
+  .stepHero h2,
+  .homepageHandoff .stepHero h1 {
+    max-width: none;
+    font-family: var(--morrovia-ui);
+    font-size: clamp(42px, 3vw, 52px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -.045em;
+  }
+
+  .initialCapture {
+    max-width: none;
+    margin: 0;
+  }
+
+  .initialCapture > form { width: 100%; }
+
+  .homepageHandoff .tripUnderstood { gap: 0; }
+  .homepageHandoff .placesSection {
+    gap: 14px;
+    padding: 18px 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .homepageHandoff .pickedPreferences { min-height: 48px; margin: 0; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .homepageHandoff .tripUnderstood .intentPanel { margin-top: 16px; }
+  .homepageHandoff .routeCheck {
+    min-height: 76px;
+    margin-top: 16px;
+    padding: 14px 18px;
+    border: 0;
+    border-left: 3px solid var(--morrovia-action);
+    border-radius: 0;
+    background: var(--morrovia-lilac);
+  }
+
+  .homepageHandoff .handoffActions {
+    min-height: 76px;
+    margin: 24px 0 0;
+    padding: 12px 0;
+    background: transparent;
+  }
+
+  .placesSummaryRail,
+  .timeSummaryRail,
+  .builderSummaryRail,
+  .homepageHandoff .placesSummaryRail,
+  .homepageHandoff .builderSummaryRail {
+    width: var(--builder-rail-width);
+    min-height: 100%;
+    padding: 34px 0 30px 32px;
+    border-left: 1px solid var(--line);
+    background: transparent;
+  }
+
+  .placesSummaryNext { padding: 16px 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+
+  .routeTimePlanner { width: 100%; }
+  .routeTimeColumns,
+  .routeTimeRow {
+    grid-template-columns: minmax(150px, 1fr) minmax(200px, 1.3fr) minmax(110px, .55fr) minmax(130px, .7fr);
+    gap: 24px;
+    padding-right: 24px;
+    padding-left: 60px;
+  }
+
+  .routeTimeRow { min-height: 58px; }
+  .routeGrip { left: 12px; }
+  .routeStopName strong { font-size: 15px; }
+  .routeTransferSummary strong { font-size: 13px; }
+  .usableTime { font-size: 13px; }
+  .wizardFoot { padding-inline: 0; }
+}
+
+/* Primary Builder moments use the same eyebrow, sans and serif hierarchy as
+   Morrovia's public surfaces, scaled for a working planning interface. */
+.stepHeroTitle {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.stepHeroTitlePrimary,
+.stepHeroTitleFinish { display: block; }
+
+.stepHero .stepHeroTitle .stepHeroTitlePrimary {
+  color: inherit;
+  font-family: var(--morrovia-ui);
+  font-size: inherit;
+  font-style: normal;
+  font-weight: 700;
+  line-height: inherit;
+}
+
+.stepHeroTitleFinish {
+  font-family: var(--morrovia-display);
+  font-style: italic;
+  font-weight: 400;
+  line-height: .96;
+  letter-spacing: -.045em;
+}
+
+.routeTimePlanner { overflow: visible; }
+.reorderControl { position: absolute; left: 12px; display: grid; place-items: center; }
+.reorderControl .routeGrip { position: static; }
+.reorderMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 12;
+  display: grid;
+  min-width: 152px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--morrovia-control-radius);
+  background: #fff;
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+.reorderMenu > button { justify-content: flex-start; min-height: 44px; }
+.mobileFieldLabel { display: none; }
+
+/* Mobile Dates & Nights repair. The canonical data and controls stay intact;
+   only their responsive composition changes. */
+@media (max-width: 700px) {
+  .steps,
+  .homepageHandoff .steps {
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
+    align-items: center;
+    gap: 16px;
+    min-height: 0;
+    padding: 8px 16px 16px;
+    border-bottom: 0;
+    background: transparent;
+  }
+  .steps:before,
+  .homepageHandoff .steps:before { display: none; }
+  .stepTab,
+  .homepageHandoff .stepTab {
+    display: flex;
+    grid-template-rows: none;
+    justify-content: flex-start;
+    justify-items: start;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0;
+    text-align: left;
+  }
+  .stepTab > b,
+  .homepageHandoff .stepTab > b { width: 28px; height: 28px; }
+  .stepTab > span,
+  .homepageHandoff .stepTab > span { display: block; font-size: 14px; font-weight: 650; text-align: left; }
+
+  .stepHeroTitle,
+  .timeStep .stepHero .stepHeroTitle {
+    max-width: none;
+    font-size: clamp(30px, 8.6vw, 36px);
+    line-height: 1;
+    letter-spacing: -.035em;
+  }
+
+  .stepHeroTitleFinish { font-size: 1.06em; }
+  .timeStep .stepHero { margin-bottom: 2px; }
+
+  .timeControls { min-height: 0; }
+  .timeControls .dateRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .timeControls .builderDatePicker > div:first-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0;
+  }
+  .timeControls .builderDatePicker > div:first-child > button {
+    min-height: 56px;
+    border-bottom: 1px solid var(--line);
+  }
+  .timeControls .builderDatePicker > div:first-child > button + button {
+    border-left: 1px solid var(--line);
+  }
+  .timeControls .dateConfirmSection .card,
+  .timeControl { min-height: 56px; padding: 8px 10px; }
+  .timeControls .dateConfirmSection .card:first-child { border-radius: var(--morrovia-control-radius) 0 0 0; }
+  .timeControls .dateConfirmSection .card:nth-child(2) { border-left: 1px solid var(--line); }
+  .timeControls .cardTrigger { min-height: 44px; gap: 4px; }
+  .timeControls .cardValue { gap: 5px; }
+  .timeTraveller { min-height: 0; padding: 4px 8px; gap: 2px; }
+  .budgetControl { min-height: 52px; padding-block: 5px; gap: 3px; }
+
+  .routeTimeRow {
+    grid-template-columns: minmax(0, 1fr) minmax(104px, auto);
+    grid-template-areas:
+      "identity identity"
+      "transfer transfer"
+      "nights usable";
+    gap: 10px 12px;
+    padding: 14px 12px;
+  }
+
+  .reorderControl { position: relative; left: auto; grid-area: identity; align-self: start; justify-self: start; z-index: 2; }
+  .reorderControl .routeGrip { width: 44px; height: 44px; touch-action: pan-y; }
+  .reorderMenu { top: 48px; }
+  .routeStopName { grid-area: identity; min-height: 44px; padding-left: 54px; }
+  .routeStopName strong { overflow: visible; text-overflow: clip; white-space: normal; }
+  .routeTransferSummary { grid-area: transfer; padding-left: 0; }
+  .nightsControl { grid-area: nights; grid-template-columns: 44px 24px 44px; grid-template-rows: auto 44px; align-self: start; gap: 5px; }
+  .nightsControl button { width: 44px; height: 44px; }
+  .nightsControl > strong { align-self: center; }
+  .usableTime { grid-area: usable; display: grid; min-width: 0; align-self: start; justify-items: end; gap: 8px; padding-top: 0; text-align: right; }
+  .mobileFieldLabel { display: block; grid-column: 1 / -1; color: var(--muted); font: 800 9px var(--morrovia-meta); letter-spacing: .08em; text-transform: uppercase; }
+  .usableTime .mobileFieldLabel { justify-self: end; }
+  .wizardFoot > .ghost { display: none; }
+  .wizardFoot .footRight { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 390px) {
+  .stepHeroTitle,
+  .timeStep .stepHero .stepHeroTitle { font-size: clamp(29px, 8.8vw, 34px); }
+  .routeTimeRow { padding-inline: 9px; }
 }

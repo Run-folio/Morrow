@@ -70,6 +70,7 @@ function bookingTask(action: BookingReadinessAction, status: TripPrepTaskStatus)
     connectivity: { category: "good", kind: "connectivity" },
     "ground-transport": { category: "good", kind: "transport" },
     transport: { category: "good", kind: "transport" },
+    insurance: { category: "must", kind: "insurance" },
   };
   return {
     id: action.id,
@@ -196,7 +197,15 @@ export function deriveTripPrepTasks({
       category: "must",
       status: checklistStatus(insuranceChecklist) ?? "to-do",
       kind: "insurance",
-      ...(insurance.href && insurance.cta ? { action: { label: insurance.cta, href: insurance.href, external: true, affiliate: Boolean(insurance.partner), provider: insurance.partner } } : {}),
+      ...(insurance.href && insurance.cta ? { action: {
+        label: insurance.cta,
+        href: insurance.href,
+        external: true,
+        affiliate: Boolean(insurance.partner),
+        provider: insurance.partner,
+        bookingCategory: "insurance",
+        affiliateCategory: "travel_insurance",
+      } } : {}),
     });
   }
 
@@ -207,6 +216,7 @@ export function deriveTripPrepTasks({
     "car-rental": /transport|transfer|car|drive/i,
     "ground-transport": /transport|transfer|train|ferry/i,
     transport: /transport|transfer|train|ferry|flight|bus|coach/i,
+    insurance: /insurance|cover/i,
   };
   bookingActions.filter((action) => action.category !== "accommodation" && !(avoidDriving && action.category === "car-rental")).forEach((action) => {
     const pattern = actionPatterns[action.category];

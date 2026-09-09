@@ -21,7 +21,7 @@ import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import type { TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
-import { affiliateDisclosure } from "./affiliate-link";
+import { affiliateDisclosureForProvider, MorroviaAffiliateLink } from "./affiliate-link";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
 import styles from "./trip-preparation.module.css";
 
@@ -59,6 +59,22 @@ function TaskAction({
     return <EasyTButton className={styles.taskAction} icon={ArrowRight} iconOnly size="small" variant="secondary" onClick={onOpenTravellerDetails}>{action.label}</EasyTButton>;
   }
   if (!action.href) return null;
+
+  if (action.affiliate && action.provider === "world-nomads") {
+    return <MorroviaAffiliateLink
+      action={{
+        provider: action.provider,
+        category: "travel_insurance",
+        href: action.href,
+        cta: action.label,
+        affiliate: true,
+      }}
+      context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }}
+      className={`${styles.taskAction} ${styles.insuranceAction}`}
+      size="small"
+      variant="secondary"
+    />;
+  }
 
   const onClick = () => {
     if (task.kind === "accommodation" && action.stopId) {
@@ -118,7 +134,7 @@ function TripPreparationTaskRow({
       <span className={styles.statusChip}>{statusLabel[task.status]}</span>
     </div>
     <TaskAction task={task} tripId={tripId} onOpenTravellerDetails={onOpenTravellerDetails} />
-    {showsAffiliateDisclosure ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
+    {showsAffiliateDisclosure ? <small className={styles.affiliateDisclosure}>{affiliateDisclosureForProvider(task.action?.provider ?? "")}</small> : null}
     <MorroviaPartnerPromotion className={styles.partnerPromotion} action={task.action} />
   </article>;
 }

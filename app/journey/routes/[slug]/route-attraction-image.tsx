@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import styles from "./route-overview.module.css";
 
 type RouteAttractionImageProps = { routeKey: string; attraction: string; stop?: string; country: string; index: number; fallbackImage?: string };
@@ -38,6 +39,6 @@ export default function RouteAttractionImage({ routeKey, attraction, stop, count
   }, [attraction, cacheKey, country, shouldLoad, stop]);
   const source = photo?.src ?? fallbackImage;
   return <div ref={containerRef} className={`${styles.attractionImage} ${source ? "" : styles.attractionImagePending}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? photo?.alt ?? attraction : undefined}>
-    {photo && <a href={photo.sourceUrl} target="_blank" rel="noreferrer">{photo.sourceLabel}</a>}
+    {photo ? <MorroviaPhotoCredit photoLabel={photo.alt ?? attraction} credit={photo.sourceLabel} sourceHref={photo.sourceUrl} /> : null}
   </div>;
 }

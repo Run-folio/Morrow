@@ -12,9 +12,9 @@ type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
 
-export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "configured_partner" | "unknown_legacy";
+export type CommercialOutboundPartner = "booking_com" | "trip_com" | "saily" | "omio" | "viator" | "world_nomads" | "configured_partner" | "unknown_legacy";
 export type CommercialOutboundPlacement = "home_footer" | "homepage_stays" | "homepage_experiences" | "homepage_transport" | "homepage_connectivity" | "trip_readiness" | "booking_readiness" | "trip_prep_accommodation" | "itinerary_accommodation" | "itinerary_transfer" | "itinerary_day_experiences" | "overview_next_action" | "overview_before_you_go" | "map_stay_finder" | "map_see_experiences" | "route_detail_experiences" | "unknown_legacy";
-export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activities" | "car_rental" | "airport_transfer" | "flight" | "other";
+export type CommercialOutboundCategory = "accommodation" | "connectivity" | "transport" | "ground_transport" | "activities" | "car_rental" | "airport_transfer" | "flight" | "travel_insurance" | "other";
 export type CommercialOutboundClick = {
   canonical_event: "commercial_outbound_click";
   source_event: "affiliate_click" | "affiliate_link_clicked";
@@ -151,7 +151,8 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
       : sourcePartner === "saily" ? "saily"
         : sourcePartner === "omio" ? "omio"
           : sourcePartner === "viator" ? "viator"
-            : sourcePartner ? "configured_partner" : "unknown_legacy";
+            : sourcePartner === "world-nomads" ? "world_nomads"
+              : sourcePartner ? "configured_partner" : "unknown_legacy";
   const sourcePlacement = String(properties.placement ?? "").trim();
   const placement: CommercialOutboundPlacement = sourcePlacement === "home_footer" ? "home_footer"
     : sourcePlacement === "homepage_stays" ? "homepage_stays"
@@ -181,7 +182,9 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
                 : sourceCategory === "activity" || sourceCategory === "activities" ? "activities"
                   : sourceCategory === "car-rental" || sourceCategory === "car_rental" ? "car_rental"
                     : sourceCategory === "airport-transfer" || sourceCategory === "airport_transfer" ? "airport_transfer"
-                      : sourceCategory === "flight" ? "flight" : "other";
+                      : sourceCategory === "flight" ? "flight"
+                        : sourceCategory === "travel_insurance" ? "travel_insurance"
+                          : "other";
   const stringProperty = (snake: string, camel: string) => {
     const value = properties[snake] ?? properties[camel];
     return typeof value === "string" && value ? value : undefined;

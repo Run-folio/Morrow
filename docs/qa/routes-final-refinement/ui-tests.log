@@ -1,0 +1,34 @@
+
+> morrovia@1.0.0 test:ui-convergence
+> node --test tests/ui-convergence-enforcement.test.mjs && node --experimental-strip-types --test tests/ui-convergence.test.ts
+
+✔ a representative raw token violation fails and its canonical correction passes (16.616292ms)
+✔ token-aware typography and shadow rules ignore canonical values without overlooking raw declarations (3.43475ms)
+✔ page-local font roles and retired UI owners cannot be introduced (3.68525ms)
+✔ a narrow exception needs a substantive reason and applies only to the next matching line (3.308583ms)
+✔ Google provider colours have exact mark-only exceptions while Login and other files stay strict (7.398958ms)
+✔ per-file baselines cannot offset new drift and accepted debt can only be lowered (13.037375ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 180.74775
+(node:42011) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/shaun/Documents/Morrovia/tests/ui-convergence.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/shaun/Documents/Morrovia/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ persistent account and recovery truth uses the canonical status banner (11.984792ms)
+✔ Storybook covers every persistent status tone at desktop and mobile widths (0.761334ms)
+✔ the convergence guard audits production and shared component roots (6.348958ms)
+✔ Account uses the canonical paper token and Google branding is narrowly documented (2.541792ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 257.291375

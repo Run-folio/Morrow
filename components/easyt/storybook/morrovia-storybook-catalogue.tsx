@@ -126,7 +126,7 @@ export function ProductionTypographyComparison() {
   return <Section title="Production usage comparison" detail="These specimens use the production CSS module selectors directly so small differences remain visible instead of being normalised in Storybook.">
     <div className={styles.productionTypeGrid}>
       <article className={`${styles.productionTypeSample} ${styles.homeType} ${homeStyles.hero}`}><small>Homepage · .hero h1</small><h1>Complex trips, made simple.</h1></article>
-      <article className={`${styles.productionTypeSample} ${styles.builderType} ${builderStyles.stepHero}`}><small>Builder · .stepHero h2</small><h2>Where do you want to go?</h2></article>
+      <article className={`${styles.productionTypeSample} ${styles.builderType} ${builderStyles.stepHero}`}><small>Builder · primary step heading</small><h2 className={builderStyles.stepHeroTitle}><span className={builderStyles.stepHeroTitlePrimary}>Make the time</span>{" "}<em className={builderStyles.stepHeroTitleFinish}>feel right.</em></h2></article>
       <article className={`${styles.productionTypeSample} ${styles.tripType} ${shellStyles.tripIdentity}`}><small>TripShell · .tripIdentity h1</small><h1>Kuala Lumpur, Penang &amp; Singapore</h1></article>
       <article className={`${styles.productionTypeSample} ${styles.overviewType} ${overviewStyles.sectionHeading}`}><small>Overview · .sectionHeading h2</small><h2>Planning progress</h2></article>
       <article className={`${styles.productionTypeSample} ${styles.itineraryType} ${itineraryStyles.dayHeader}`}><small>Itinerary · .dayHeader h2</small><h2>Rome</h2></article>

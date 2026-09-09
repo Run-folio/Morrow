@@ -261,6 +261,7 @@ test("commercial clicks remain consent-gated", () => {
   const restore = installAnalyticsWindow("declined", calls);
   try {
     trackEvent("affiliate_click", { category: "connectivity", provider: "saily", placement: "home_footer" });
+    trackEvent("affiliate_click", { category: "travel_insurance", provider: "world-nomads", placement: "overview_before_you_go", trip_id: "opaque-trip", workspace_view: "overview" });
   } finally {
     restore();
   }

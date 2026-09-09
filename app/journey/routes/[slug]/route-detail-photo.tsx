@@ -1,5 +1,6 @@
 import { ImageOff } from "lucide-react";
 import ResilientImage from "@/components/easyt/resilient-image";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import type { RoutePhoto } from "./route-detail-presentation";
 import styles from "./route-overview.module.css";
 
@@ -14,6 +15,6 @@ export default function RouteDetailPhoto({ photo, label, eager = false, landscap
       width={768} height={1024} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : "auto"}
       decoding="async" alt={photo?.alt ?? ""}
       fallback={<div className={styles.photoFallback}><ImageOff aria-hidden="true" /><span>{label}</span><small>Photography pending editorial review</small></div>} />
-    {photo && <figcaption><a href={`/journey/immersive/credits.html#${photo.key}`} target="_blank" rel="noreferrer">{photo.author} · {photo.license}</a></figcaption>}
+    {photo ? <MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /> : null}
   </figure>;
 }

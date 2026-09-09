@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { resolveOptionalAffiliateConfiguration, warnOptionalAffiliateConfiguration } from "@/lib/easyt/affiliate-configuration";
+import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { buildTripReadiness, defaultTravelReadinessProfile, isTravelReadinessProfile } from "@/lib/easyt/travel-readiness";
 
 export const dynamic = "force-dynamic";
 
 const optionalAffiliateConfiguration = resolveOptionalAffiliateConfiguration();
 warnOptionalAffiliateConfiguration(optionalAffiliateConfiguration);
+const worldNomadsAction = getCurrentPartnerAction("travel_insurance");
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +21,7 @@ export async function POST(request: Request) {
       avoidDriving: body.avoidDriving === true,
       profile,
       sailyHref: optionalAffiliateConfiguration.urls.sailyUrl,
+      insuranceAction: worldNomadsAction,
       language: body.language === "es" ? "es" : "en",
     }) });
   } catch {

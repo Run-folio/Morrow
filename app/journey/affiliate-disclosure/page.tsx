@@ -16,7 +16,7 @@ export default function AffiliateDisclosurePage() {
         <p>Affiliate and commercial disclosure</p>
         <h1 id="affiliate-title">How partner links and travel bookings work.</h1>
         <span>Morrovia helps you plan, then hands booking and payment to the named third-party provider.</span>
-        <small>Last updated 1 September 2026</small>
+        <small>Last updated 8 September 2026</small>
       </section>
       <article id="affiliate-content" className={styles.content} tabIndex={-1}>
         <section className={styles.section} aria-labelledby="operator-title">
@@ -25,7 +25,7 @@ export default function AffiliateDisclosurePage() {
         </section>
         <section className={styles.section} aria-labelledby="relationships-title">
           <h2 id="relationships-title">Affiliate relationships</h2>
-          <p>Morrovia may receive an affiliate commission or referral fee if you follow an eligible partner link and later make a qualifying purchase. Current or recent named partners include Trip.com, Viator, Omio and Saily. Booking.com may also supply accommodation discovery results where that service is configured. Morrovia can use other clearly identified, configured partners.</p>
+          <p>Morrovia may receive an affiliate commission or referral fee if you follow an eligible partner link and later make a qualifying purchase or request a quote. Current or recent named partners include Trip.com, Viator, Omio, Saily and World Nomads. Booking.com may also supply accommodation discovery results where that service is configured. Morrovia can use other clearly identified, configured partners.</p>
         </section>
         <section className={styles.section} aria-labelledby="cost-title">
           <h2 id="cost-title">What this costs you</h2>
@@ -37,9 +37,9 @@ export default function AffiliateDisclosurePage() {
         </section>
         <section className={styles.section} aria-labelledby="third-party-title">
           <h2 id="third-party-title">Booking and payment stay with the provider</h2>
-          <p>Opening a partner link is not a booking. Travel booking, checkout and payment take place with the named third-party provider, not with Morrovia. Morrovia does not currently accept payment for flights, accommodation, activities, transport, connectivity or other travel services.</p>
+          <p>Opening a partner link is not a booking or an insurance purchase. Travel booking, quotes, checkout and payment take place with the named third-party provider, not with Morrovia. Morrovia does not currently accept payment for flights, accommodation, activities, transport, connectivity, insurance or other travel services.</p>
           <p>The provider’s current prices, availability, inventory, contract terms, privacy notice, cancellation and refund rules apply. Verify the final details with that provider before paying.</p>
-          <p>Morrovia does not mark a stay, activity or transport service as booked, or a readiness task as complete, just because a partner link was opened. Completion is shown only when booking evidence is later added to the trip’s saved booking record.</p>
+          <p>Morrovia does not mark a stay, activity or transport service as booked, or a readiness task as complete, just because a partner link was opened. An insurance quote click also leaves Insurance unresolved. Completion is shown only from the traveller’s existing saved checklist or when booking evidence is later added to the trip’s saved booking record.</p>
         </section>
         <section className={styles.summary} aria-labelledby="nearby-title">
           <div><h2 id="nearby-title">Disclosure near commercial links</h2><p>A dedicated page is not a substitute for clear context. Where a Morrovia link is commercial or affiliate-supported, the product should provide a concise nearby notice, such as: “Morrovia may earn a commission from this link.”</p></div>

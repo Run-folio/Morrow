@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
 import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-images";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import styles from "./route-overview.module.css";
 
 type RouteStopImageProps = { routeKey: string; stop: string; country: string; index: number; fallbackImage?: string };
@@ -50,6 +51,6 @@ export default function RouteStopImage({ routeKey, stop, country, index, fallbac
   const selectedPhoto = canonicalPhoto ?? photo;
   const source = selectedPhoto?.src ?? fallbackImage;
   return <div ref={containerRef} className={`${styles.stopImage} ${source ? "" : styles.stopImagePending}`} style={source ? { backgroundImage: `url(${source})` } : undefined} role={source ? "img" : undefined} aria-label={source ? selectedPhoto?.alt ?? `${stop}, ${country}` : undefined}>
-    {selectedPhoto && <a href={selectedPhoto.sourceUrl} target="_blank" rel="noreferrer">{selectedPhoto.sourceLabel}</a>}
+    {selectedPhoto ? <MorroviaPhotoCredit photoLabel={selectedPhoto.alt ?? `${stop}, ${country}`} credit={selectedPhoto.sourceLabel} sourceHref={selectedPhoto.sourceUrl} licenseHref={"licenseUrl" in selectedPhoto ? selectedPhoto.licenseUrl : null} fullCreditHref={"fullCreditUrl" in selectedPhoto ? selectedPhoto.fullCreditUrl : null} /> : null}
   </div>;
 }

@@ -1,0 +1,296 @@
+{
+  "selections": [
+    {
+      "markers": [
+        "Select stop 1: Tokyo",
+        "Select stop 2: Kanazawa",
+        "Select stop 3: Takayama",
+        "Select stop 4: Kyoto",
+        "Select stop 5: Osaka"
+      ],
+      "selected": "Show on map: Japan by rail, at your own pace"
+    },
+    {
+      "markers": [
+        "Select stop 1: Cusco",
+        "Select stop 2: Sacred Valley",
+        "Select stop 3: Arequipa"
+      ],
+      "selected": "Show on map: Andean highlands, gently"
+    },
+    {
+      "markers": [
+        "Select stop 1: Lisbon",
+        "Select stop 2: Comporta",
+        "Select stop 3: Lagos"
+      ],
+      "selected": "Show on map: The Atlantic reset"
+    },
+    {
+      "markers": [
+        "Select stop 1: Bologna",
+        "Select stop 2: Florence",
+        "Select stop 3: Rome"
+      ],
+      "selected": "Show on map: Italy between tables"
+    },
+    {
+      "markers": [
+        "Select stop 1: Hanoi",
+        "Select stop 2: Hoi An",
+        "Select stop 3: Ho Chi Minh City",
+        "Select stop 4: Siem Reap"
+      ],
+      "selected": "Show on map: Vietnam to Angkor, without rushing"
+    },
+    {
+      "markers": [
+        "Select stop 1: Dubrovnik",
+        "Select stop 2: Kotor",
+        "Select stop 3: Shkodër",
+        "Select stop 4: Tirana"
+      ],
+      "selected": "Show on map: The Balkans, one border at a time"
+    },
+    {
+      "markers": [
+        "Select stop 1: Reykjavík",
+        "Select stop 2: Vík",
+        "Select stop 3: Höfn",
+        "Select stop 4: Reykjahlíð",
+        "Select stop 5: Akureyri"
+      ],
+      "selected": "Show on map: Iceland, south coast to the north"
+    },
+    {
+      "markers": [
+        "Select stop 1: Seoul",
+        "Select stop 2: Gyeongju",
+        "Select stop 3: Busan"
+      ],
+      "selected": "Show on map: South Korea by rail"
+    },
+    {
+      "markers": [
+        "Select stop 1: Las Vegas",
+        "Select stop 2: Grand Canyon",
+        "Select stop 3: Moab"
+      ],
+      "selected": "Show on map: American Southwest icons"
+    }
+  ],
+  "map": [
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:JP-Kyoto-Gion-Area-Street-Night-View.jpg",
+      "image": "/journey/immersive/place-kyoto-1536.webp",
+      "text": "01JapanJapan by rail, at your own paceTokyo → Kanazawa → Takayama → Kyoto → Osaka13–22 days · 5 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:00_1566_Cusco_-_Plaza_de_Armas.jpg",
+      "image": "/journey/immersive/route-andean-highlands-1536.webp",
+      "text": "02PeruAndean highlands, gentlyCusco → Sacred Valley → Arequipa9–18 days · 3 stops · 1 countryMountains + altitude"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Tram_28_Lisbon_Portuguese.jpg",
+      "image": "/journey/immersive/route-portugal-atlantic-1536.webp",
+      "text": "03PortugalThe Atlantic resetLisbon → Comporta → Lagos6–12 days · 3 stops · 1 countryDriving + nightly pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Bologna_Panorama.jpg",
+      "image": "/journey/immersive/route-italy-table-1536.webp",
+      "text": "04ItalyItaly between tablesBologna → Florence → Rome8–18 days · 3 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Taipei_Taiwan_Jiaozi-Restaurant-14th-avenue-03.jpg",
+      "image": "/journey/immersive/route-taiwan-rail-1536.webp",
+      "text": "05TaiwanTaiwan by trainTaipei → Taichung → Tainan6–12 days · 3 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:10549-Hoi-An_(37621348460).jpg",
+      "image": "/journey/immersive/place-hoi-an-1536.webp",
+      "text": "06Vietnam → CambodiaVietnam to Angkor, without rushingHanoi → Hoi An → Ho Chi Minh City → Siem Reap13–24 days · 4 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:20090719_Crkva_Gospa_od_Zdravlja_Kotor_Bay_Montenegro.jpg",
+      "image": "/journey/immersive/place-kotor-1536.webp",
+      "text": "07Croatia → Montenegro → AlbaniaThe Balkans, one border at a timeDubrovnik → Kotor → Shkodër → Tirana11–21 days · 4 stops · 3 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:V%C3%ADk_%C3%AD_M%C3%BDrdal%2C_Iceland.jpg",
+      "image": "/journey/immersive/place-vik-1536.webp",
+      "text": "08IcelandIceland, south coast to the northReykjavík → Vík → Höfn → Reykjahlíð → Akureyri11–18 days · 5 stops · 1 countryDriving + nightly pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Gyedong-gil_street_with_climbing_plants_at_golden_hour_in_Seoul_South_Korea.jpg",
+      "image": "/journey/immersive/route-south-korea-1536.webp",
+      "text": "09South KoreaSouth Korea by railSeoul → Gyeongju → Busan8–16 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:George_Town,_Penang_city_centre.jpg",
+      "image": "/journey/immersive/route-malaysia-singapore-1536.webp",
+      "text": "10Malaysia → SingaporeMalaysia to Singapore, by appetiteKuala Lumpur → Penang → Singapore8–16 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Merida_Yucatan_street_-_Untypical_-_No_traffic_-_Jan_2012.jpg",
+      "image": "/journey/immersive/route-mexico-yucatan-1536.webp",
+      "text": "11MexicoYucatán, cenotes to coastMérida → Valladolid → Tulum8–18 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Arenal_volcano_from_the_northeast_-_Costa_Rica_-_panoramio.jpg",
+      "image": "/journey/immersive/route-costa-rica-wild-1536.webp",
+      "text": "12Costa RicaCosta Rica, a softer loopLa Fortuna → Monteverde → Santa Teresa10–20 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Plaza_Virgen_de_los_Reyes,_Seville,_Spain_-_Sep_2009.jpg",
+      "image": "/journey/immersive/route-spain-rail-1536.webp",
+      "text": "13SpainSpain, a rail-shaped appetiteMadrid → Seville → Barcelona10–20 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Avignon_-_Mont%C3%A9e_des_Canons_near_Avignon_Cathedral%27s_Calvary_-_Panorama_Overview_on_Place_du_Palais_06.jpg",
+      "image": "/journey/immersive/route-france-south-1536.webp",
+      "text": "14FranceFrance, markets and the southParis → Avignon → Nice10–20 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Quiraing,_Isle_of_Skye,_Scotland_-_Diliff.jpg",
+      "image": "/journey/immersive/route-scotland-islands-1536.webp",
+      "text": "15United KingdomScotland, road and weatherEdinburgh → Isle of Skye → Glasgow8–18 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Morocco_-_View_of_Chefchaouen.jpg",
+      "image": "/journey/immersive/route-morocco-rail-1536.webp",
+      "text": "16MoroccoMorocco, medinas to mountainsMarrakech → Fes → Chefchaouen9–19 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Peyto_Lake-Banff_NP-Canada.jpg",
+      "image": "/journey/immersive/route-usa-canada-west-1536.webp",
+      "text": "17Canada → United StatesThe western parks, two countriesCalgary → Banff → Yellowstone14–26 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_Powell_Point_Evening_Light_02_2013.jpg",
+      "image": "/journey/immersive/route-usa-southwest-1536.webp",
+      "text": "18United StatesAmerican Southwest iconsLas Vegas → Grand Canyon → Moab8–18 days · 3 stops · 1 countryPlaces + connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:The_Taj_Mahal_situated_in_Agra,India.jpg",
+      "image": "/journey/immersive/route-india-golden-triangle-1536.webp",
+      "text": "19IndiaIndia’s golden triangleDelhi → Agra → Jaipur7–15 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Naxos_Coastline.jpg",
+      "image": "/journey/immersive/route-italy-greece-1536.webp",
+      "text": "20Italy → GreeceItaly to Greece, ancient and aliveRome → Athens → Naxos12–22 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Tram_28_Lisbon_Portuguese.jpg",
+      "image": "/journey/immersive/route-portugal-atlantic-1536.webp",
+      "text": "21Portugal → SpainIberia by rail and coastLisbon → Seville → Barcelona12–22 days · 3 stops · 2 countriesBorders + mixed connections"
+    }
+  ],
+  "gallery": [
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:JP-Kyoto-Gion-Area-Street-Night-View.jpg",
+      "image": "/journey/immersive/place-kyoto-1536.webp",
+      "text": "01JapanJapan by rail, at your own paceTokyo → Kanazawa → Takayama → Kyoto → Osaka13–22 days · 5 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:00_1566_Cusco_-_Plaza_de_Armas.jpg",
+      "image": "/journey/immersive/route-andean-highlands-1536.webp",
+      "text": "02PeruAndean highlands, gentlyCusco → Sacred Valley → Arequipa9–18 days · 3 stops · 1 countryMountains + altitude"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Tram_28_Lisbon_Portuguese.jpg",
+      "image": "/journey/immersive/route-portugal-atlantic-1536.webp",
+      "text": "03PortugalThe Atlantic resetLisbon → Comporta → Lagos6–12 days · 3 stops · 1 countryDriving + nightly pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Bologna_Panorama.jpg",
+      "image": "/journey/immersive/route-italy-table-1536.webp",
+      "text": "04ItalyItaly between tablesBologna → Florence → Rome8–18 days · 3 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Taipei_Taiwan_Jiaozi-Restaurant-14th-avenue-03.jpg",
+      "image": "/journey/immersive/route-taiwan-rail-1536.webp",
+      "text": "05TaiwanTaiwan by trainTaipei → Taichung → Tainan6–12 days · 3 stops · 1 countryRail + pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:10549-Hoi-An_(37621348460).jpg",
+      "image": "/journey/immersive/place-hoi-an-1536.webp",
+      "text": "06Vietnam → CambodiaVietnam to Angkor, without rushingHanoi → Hoi An → Ho Chi Minh City → Siem Reap13–24 days · 4 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:20090719_Crkva_Gospa_od_Zdravlja_Kotor_Bay_Montenegro.jpg",
+      "image": "/journey/immersive/place-kotor-1536.webp",
+      "text": "07Croatia → Montenegro → AlbaniaThe Balkans, one border at a timeDubrovnik → Kotor → Shkodër → Tirana11–21 days · 4 stops · 3 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:V%C3%ADk_%C3%AD_M%C3%BDrdal%2C_Iceland.jpg",
+      "image": "/journey/immersive/place-vik-1536.webp",
+      "text": "08IcelandIceland, south coast to the northReykjavík → Vík → Höfn → Reykjahlíð → Akureyri11–18 days · 5 stops · 1 countryDriving + nightly pacing"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Gyedong-gil_street_with_climbing_plants_at_golden_hour_in_Seoul_South_Korea.jpg",
+      "image": "/journey/immersive/route-south-korea-1536.webp",
+      "text": "09South KoreaSouth Korea by railSeoul → Gyeongju → Busan8–16 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:George_Town,_Penang_city_centre.jpg",
+      "image": "/journey/immersive/route-malaysia-singapore-1536.webp",
+      "text": "10Malaysia → SingaporeMalaysia to Singapore, by appetiteKuala Lumpur → Penang → Singapore8–16 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Merida_Yucatan_street_-_Untypical_-_No_traffic_-_Jan_2012.jpg",
+      "image": "/journey/immersive/route-mexico-yucatan-1536.webp",
+      "text": "11MexicoYucatán, cenotes to coastMérida → Valladolid → Tulum8–18 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Arenal_volcano_from_the_northeast_-_Costa_Rica_-_panoramio.jpg",
+      "image": "/journey/immersive/route-costa-rica-wild-1536.webp",
+      "text": "12Costa RicaCosta Rica, a softer loopLa Fortuna → Monteverde → Santa Teresa10–20 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Plaza_Virgen_de_los_Reyes,_Seville,_Spain_-_Sep_2009.jpg",
+      "image": "/journey/immersive/route-spain-rail-1536.webp",
+      "text": "13SpainSpain, a rail-shaped appetiteMadrid → Seville → Barcelona10–20 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Avignon_-_Mont%C3%A9e_des_Canons_near_Avignon_Cathedral%27s_Calvary_-_Panorama_Overview_on_Place_du_Palais_06.jpg",
+      "image": "/journey/immersive/route-france-south-1536.webp",
+      "text": "14FranceFrance, markets and the southParis → Avignon → Nice10–20 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Quiraing,_Isle_of_Skye,_Scotland_-_Diliff.jpg",
+      "image": "/journey/immersive/route-scotland-islands-1536.webp",
+      "text": "15United KingdomScotland, road and weatherEdinburgh → Isle of Skye → Glasgow8–18 days · 3 stops · 1 countryCities + coast"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Morocco_-_View_of_Chefchaouen.jpg",
+      "image": "/journey/immersive/route-morocco-rail-1536.webp",
+      "text": "16MoroccoMorocco, medinas to mountainsMarrakech → Fes → Chefchaouen9–19 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Peyto_Lake-Banff_NP-Canada.jpg",
+      "image": "/journey/immersive/route-usa-canada-west-1536.webp",
+      "text": "17Canada → United StatesThe western parks, two countriesCalgary → Banff → Yellowstone14–26 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_Powell_Point_Evening_Light_02_2013.jpg",
+      "image": "/journey/immersive/route-usa-southwest-1536.webp",
+      "text": "18United StatesAmerican Southwest iconsLas Vegas → Grand Canyon → Moab8–18 days · 3 stops · 1 countryPlaces + connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:The_Taj_Mahal_situated_in_Agra,India.jpg",
+      "image": "/journey/immersive/route-india-golden-triangle-1536.webp",
+      "text": "19IndiaIndia’s golden triangleDelhi → Agra → Jaipur7–15 days · 3 stops · 1 countryFood + city chapters"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Naxos_Coastline.jpg",
+      "image": "/journey/immersive/route-italy-greece-1536.webp",
+      "text": "20Italy → GreeceItaly to Greece, ancient and aliveRome → Athens → Naxos12–22 days · 3 stops · 2 countriesBorders + mixed connections"
+    },
+    {
+      "href": "https://commons.wikimedia.org/wiki/File:Tram_28_Lisbon_Portuguese.jpg",
+      "image": "/journey/immersive/route-portugal-atlantic-1536.webp",
+      "text": "21Portugal → SpainIberia by rail and coastLisbon → Seville → Barcelona12–22 days · 3 stops · 2 countriesBorders + mixed connections"
+    }
+  ]
+}

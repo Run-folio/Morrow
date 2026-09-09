@@ -19,6 +19,9 @@
   --morrovia-type-eyebrow: 800 10px/1.2 var(--morrovia-meta);
   --morrovia-type-fine-print: 400 12px/1.45 var(--morrovia-ui);
   --morrovia-page: min(1180px, calc(100% - 48px));
+  /* Neutral photograph scrims preserve licensed imagery’s natural colour. */
+  --morrovia-photo-ink: #000;
+  --morrovia-map-marker-shadow: 0 5px 14px rgba(23,16,111,.18);
   --morrovia-radius: 14px;
   --morrovia-control-radius: 10px;
   --morrovia-shadow-overlay: 0 28px 80px rgba(23, 16, 111, .22);

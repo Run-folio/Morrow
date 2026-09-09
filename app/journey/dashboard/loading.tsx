@@ -11,8 +11,8 @@ export default function DashboardLoading() {
         <p className={styles.srOnly} role="status">Loading your trips…</p>
         <header className={styles.loadingHeading}>
           <MorroviaSkeleton width={150} height={12} />
-          <MorroviaSkeleton width={210} height={64} radius="card" />
-          <MorroviaSkeleton width="min(440px, 100%)" height={18} />
+          <MorroviaSkeleton width="min(680px, 100%)" height={80} radius="card" />
+          <MorroviaSkeleton width="min(540px, 90%)" height={64} radius="card" />
         </header>
         <section className={styles.loadingHero} aria-hidden="true">
           <article><MorroviaSkeleton width={118} height={11} /><MorroviaSkeleton width="62%" height={38} radius="card" /><MorroviaSkeleton width="82%" height={15} /><MorroviaSkeleton width="45%" height={44} /></article>

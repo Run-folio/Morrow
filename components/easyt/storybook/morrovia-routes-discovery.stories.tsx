@@ -26,3 +26,8 @@ export const FourStops: Story = {args:{routes:[specimen(4)],initialSelected:"lay
 export const FiveStops: Story = {args:{routes:[specimen(5)],initialSelected:"layout-specimen-5"}};
 export const EightStops: Story = {args:{routes:[specimen(8)],initialSelected:"layout-specimen-8"}};
 export const At390: Story = {globals:{viewport:{value:"morrovia390",isRotated:false}}};
+
+// The same catalogue cards retain imagery and full identity in the Map rail.
+export const MapAt390: Story = {args:{initialView:"map"},globals:{viewport:{value:"morrovia390",isRotated:false}}};
+export const MapMultiCountry: Story = {args:{initialView:"map",initialFilters:{...initialDiscoveryFilters,multi:true}}};
+export const MapImageUnavailable: Story = {args:{initialView:"map",imageUnavailable:true}};

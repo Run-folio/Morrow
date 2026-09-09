@@ -48,8 +48,8 @@ test("Builder workspace height, capture width and step divider remain content-dr
 
   assert.match(builder, /<div className=\{styles\.initialCapture\}><MorroviaTripCapture/,
     "direct entry should give the canonical capture a Builder-owned wide layout wrapper");
-  assert.match(styles, /\.initialCapture\{[^}]*width:100%[^}]*max-width:800px[^}]*margin:12px auto 0/,
-    "the fresh capture should be centered and wider only inside the left Builder workspace");
+  assert.match(styles, /@media \(min-width: 1025px\)[\s\S]*\.initialCapture \{[\s\S]*max-width: none;[\s\S]*margin: 0;/,
+    "the fresh capture should use the full elevated desktop task column");
   assert.match(styles, /\.initialCapture>form\{[^}]*max-width:none/,
     "the local wrapper should release the Homepage component's compact max width");
 
@@ -68,17 +68,47 @@ test("Builder workspace height, capture width and step divider remain content-dr
     "the right summary rail must remain a separate grid column");
 });
 
+test("desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints", () => {
+  const pageStyles = readFileSync(new URL("../app/journey/new/new-trip.module.css", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+  const desktopStart = styles.lastIndexOf("@media (min-width: 1025px)");
+  const desktop = styles.slice(desktopStart, styles.indexOf("/* Primary Builder moments", desktopStart));
+
+  assert.match(pageStyles, /@media\(min-width:1025px\)\{\.page\{padding-inline:0\}\}/,
+    "the desktop page should let the Builder canvas own its measured gutters");
+  assert.match(desktop, /width: calc\(100% - 96px\)/,
+    "desktop should keep approximately 48px gutters");
+  assert.match(desktop, /max-width: 1700px/,
+    "wide displays should retain a useful maximum line length");
+  assert.match(desktop, /grid-template-columns: minmax\(0, 1fr\) var\(--builder-rail-width\)/,
+    "the main task and context rail should share one wide workspace grid");
+  assert.match(desktop, /column-gap: clamp\(16px, calc\(10vw - 124px\), 68px\)/,
+    "wide desktop should give the task area most of the additional width");
+  assert.match(desktop, /grid-template-columns: minmax\(150px, 1fr\) minmax\(200px, 1\.3fr\) minmax\(110px, \.55fr\) minmax\(130px, \.7fr\)/,
+    "the nights table should allocate useful width to transfer and usable-time details");
+  assert.doesNotMatch(desktop, /@media\s*\(max-width:/,
+    "the visual elevation must not rewrite the existing tablet or mobile rules");
+});
+
 test("homepage handoff presents a concise interpreted review without changing direct entry", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
 
   assert.match(builder, /const isHomepagePromptHandoff = arrivedFromHomepage && !sourceRouteKey/,
     "the approved layout should follow shared handoff state rather than a route-only CSS selector");
-  assert.match(builder, /Here’s what we understood/);
-  assert.match(builder, /Check it, adjust anything that's wrong, and we'll build the best route\./);
+  assert.match(builder, /Here’s what/);
+  assert.match(builder, /we understood\./);
   assert.match(builder, /Starting point/);
   assert.match(builder, /Stops \(\$\{stops\.length\}\)/);
-  assert.match(builder, /Reorder or remove stops\./);
+  for (const removedCopy of [
+    /Check it, adjust anything that's wrong/,
+    /Check what we understood and fill any gaps/,
+    /Start and end guide the route/,
+    /Reorder or remove stops/,
+    /TRIP UNDERSTOOD/,
+    /ALREADY BOOKED/,
+    /Keep what cannot move visible/,
+  ]) assert.doesNotMatch(builder, removedCopy, "redundant Builder guidance should stay removed");
 
   assert.match(builder, /const \[showTripDetails, setShowTripDetails\] = useState\(false\)/,
     "Advanced should remain collapsed on first render");
@@ -181,10 +211,13 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
 
   assert.match(builder, /\["Places", "Dates and nights"\]/,
     "the active step label should match the approved Dates and nights copy");
-  assert.match(timeStep, /<h2>Make the time feel right<\/h2>/);
-  assert.match(timeStep, /Set your dates, then adjust nights around the route\./);
-  assert.doesNotMatch(timeStep, /Make the time feel right\./,
-    "the approved heading has no final period");
+  assert.match(timeStep, /<h2 className=\{styles\.stepHeroTitle\}><span className=\{styles\.stepHeroTitlePrimary\}>Make the time<\/span>\{" "\}<em className=\{styles\.stepHeroTitleFinish\}>feel right\.<\/em><\/h2>/);
+  assert.doesNotMatch(timeStep, /Set your dates, then adjust nights around the route\./,
+    "the controls should carry the Step 2 instruction without repeating it below the heading");
+  assert.match(styles, /\.stepHeroTitlePrimary[\s\S]*font-family: var\(--morrovia-ui\)/,
+    "the primary Builder heading line should use the Morrovia sans family");
+  assert.match(styles, /\.stepHeroTitleFinish[\s\S]*font-family: var\(--morrovia-display\)[\s\S]*font-style: italic/,
+    "the expressive Builder heading finish should use the Morrovia serif family");
 
   assert.match(builder, /const \[routeInsightsOpen, setRouteInsightsOpen\] = useState\(true\)/,
     "route insights should be expanded on first render");
@@ -208,8 +241,15 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "flight totals should expose their calculation basis to assistive technology");
   assert.match(timeStep, /Remove one night from \$\{stop\.name\}; \$\{days\} nights currently/);
   assert.match(timeStep, /Add one night to \$\{stop\.name\}; \$\{days\} nights currently/);
-  assert.match(timeStep, /Use the arrow keys to move this stop/,
-    "the drag control should also support keyboard reordering");
+  assert.match(builder, /function StopReorderControl/,
+    "the single reorder handle should own the compact move menu");
+  assert.match(builder, /aria-haspopup="menu"/);
+  assert.match(builder, /role="menuitem"[\s\S]*Move up/);
+  assert.match(builder, /role="menuitem"[\s\S]*Move down/);
+  assert.match(builder, /requestAnimationFrame\(\(\) => triggerRef\.current\?\.focus\(\)\)/,
+    "reorder menu actions should restore focus to their destination handle");
+  assert.doesNotMatch(timeStep, /routeMoveButtons/,
+    "persistent mobile move-button pairs should stay removed");
 
   assert.match(builder, /candidate\?\.constraintsSatisfied \|\| score\?\.state !== "scored"/,
     "warning alternatives must come from scored, constraint-safe route candidates");
@@ -221,24 +261,37 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "the Review route fallback should return to the shared Places step with state intact");
 
   assert.match(builder, /Your trip at a glance/);
-  assert.match(builder, /All \$\{totalNights\} nights allocated/,
+  assert.match(timeStep, /All allocated/,
     "allocation completeness should not be described as overall trip readiness");
-  assert.match(timeStep, /NIGHTS ALLOCATED/);
+  assert.match(timeStep, /NIGHTS/);
   assert.match(builder, /const highlyCompressedTrip = stops\.length >= 4/,
     "very short multi-stop trips should receive a deterministic strong caution");
   assert.match(builder, /\$\{stops\.length\} stops in \$\{totalDays\} days is very fast-paced\./);
-  assert.match(timeStep, /Mode and timing still need checking/,
+  assert.match(timeStep, /Unknown transport/,
     "unknown canonical transfers should remain calm and explicit");
   assert.doesNotMatch(timeStep, /<Image/,
     "the Time step should not include decorative illustration");
   const summaryRail = builder.slice(builder.indexOf("function BuilderSummaryRail"), builder.indexOf("/* ------------------------------------------------------------- main */"));
   assert.doesNotMatch(summaryRail, /specificTimingWarning/,
     "the warning should not be duplicated in the right rail");
+  assert.doesNotMatch(summaryRail, /nights allocated|All allocated/,
+    "allocation completion should have one owner above the nights table");
 
   assert.match(styles, /@media\(max-width:700px\)[\s\S]*\.nightsControl button \{ width: 44px; height: 44px;/,
     "night controls should keep 44px mobile targets");
-  assert.match(styles, /@media\(max-width:700px\)[\s\S]*grid-template-areas: "grip stop stop" "transfer transfer transfer" "nights nights usable" "moves moves moves"/,
-    "mobile rows should stack without horizontal overflow");
+  const mobileRepair = styles.slice(styles.lastIndexOf("@media (max-width: 700px)"));
+  assert.match(mobileRepair, /\.timeControls \.builderDatePicker > div:first-child \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
+    "mobile dates should remain side by side instead of doubling the control slab height");
+  assert.match(mobileRepair, /grid-template-areas:\s*"identity identity"\s*"transfer transfer"\s*"nights usable"/,
+    "mobile rows should keep identity, transfer, nights and usable time in a compact three-line composition");
+  assert.match(mobileRepair, /\.mobileFieldLabel \{ display: block/,
+    "mobile night and usable-time values should retain visible field labels");
+  assert.match(mobileRepair, /\.wizardFoot > \.ghost \{ display: none; \}/,
+    "the mobile action bar should not repeat Back when the Places step is already the back affordance");
+  assert.match(mobileRepair, /\.steps:before,[\s\S]*display: none/,
+    "the mobile stepper should not retain the legacy connector line");
+  assert.match(mobileRepair, /\.stepHeroTitle,[\s\S]*font-size: clamp\(30px, 8\.6vw, 36px\)/,
+    "mobile primary headings should stay at product scale");
   assert.match(builder, /if \(step === 0\)[\s\S]*setStep\(1\)[\s\S]*buildTrip\(\);/,
     "the existing Continue and Build trip handoff should remain authoritative");
 });

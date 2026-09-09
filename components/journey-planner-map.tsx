@@ -1,12 +1,12 @@
 "use client";
 
 import * as maplibregl from "maplibre-gl";
-import type { GeoJSONSource, StyleSpecification } from "maplibre-gl";
+import type { GeoJSONSource } from "maplibre-gl";
 import { BedDouble, CarFront, CircleHelp, Footprints, Plane, Route, Ship, TrainFront, type LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { feature } from "topojson-client";
-import worldTopology from "world-atlas/countries-50m.json";
+import { morroviaMapStyle, mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
+import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
@@ -110,67 +110,6 @@ function effectiveOverviewPadding(
 const overviewFitOffset = (): [number, number] => window.innerWidth <= 980 ? [0, -32] : [0, -72];
 const overviewMaxZoom = 5.2;
 
-const topology = worldTopology as unknown as { objects: { countries: object } };
-const morroviaCountries = feature(
-  topology as never,
-  topology.objects.countries as never,
-) as unknown as GeoJSON.FeatureCollection;
-
-// CARTO raster tiles are deliberately used instead of their remote GL style:
-// the latter can load controls but fail to load map layers in some browsers.
-const mapStyle: StyleSpecification = {
-  version: 8,
-  sources: {
-    "morrovia-countries": {
-      type: "geojson",
-      data: morroviaCountries,
-    },
-    carto: {
-      type: "raster",
-      tiles: ["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      maxzoom: 20,
-      attribution: "© CARTO, © OpenStreetMap contributors",
-    },
-  },
-  layers: [
-    {
-      id: "morrovia-ocean",
-      type: "background",
-      paint: { "background-color": "#f2f4f6" },
-    },
-    {
-      id: "carto-light",
-      type: "raster",
-      source: "carto",
-      paint: {
-        "raster-saturation": -0.22,
-        "raster-contrast": -0.06,
-        "raster-brightness-max": 0.98,
-        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0, 7.1, 0.24, 8.35, 0.94],
-      },
-    },
-    {
-      id: "morrovia-land",
-      type: "fill",
-      source: "morrovia-countries",
-      paint: {
-        "fill-color": "#fffefe",
-        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 1, 7.2, 0.72, 8.35, 0],
-      },
-    },
-    {
-      id: "morrovia-borders",
-      type: "line",
-      source: "morrovia-countries",
-      paint: {
-        "line-color": "#c9cae2",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.75, 6, 1.15, 8.35, 0.4],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0.92, 7.2, 0.58, 8.35, 0],
-      },
-    },
-  ],
-};
 
 export function JourneyPlannerMap({
   stops,
@@ -265,7 +204,7 @@ export function JourneyPlannerMap({
         ?? [-90.5069, 14.6349];
       const map = new maplibregl.Map({
         container: containerRef.current,
-        style: mapStyle,
+        style: morroviaMapStyle,
         center: firstStop,
         zoom: 9,
         interactive: !previewMode,
@@ -412,7 +351,7 @@ export function JourneyPlannerMap({
           type: "line",
           source: "trip-route",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "rgba(255,255,255,.98)", "line-width": 10, "line-opacity": 0.98 },
+          paint: mapRouteCasing,
         });
       }
       if (!map.getLayer("trip-route-line")) {
@@ -421,11 +360,7 @@ export function JourneyPlannerMap({
           type: "line",
           source: "trip-route",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": "#f42b7a",
-            "line-width": 6,
-            "line-opacity": 0.94,
-          },
+          paint: mapRouteLine,
         });
       }
       if (!map.getLayer("trip-route-planning")) {
@@ -434,12 +369,7 @@ export function JourneyPlannerMap({
           type: "line",
           source: "trip-route",
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": "rgba(255,255,255,.94)",
-            "line-width": 1.8,
-            "line-opacity": 0.9,
-            "line-dasharray": [0.7, 1.35],
-          },
+          paint: mapRoutePlanning,
         });
       }
       if (!map.getLayer("trip-route-hover")) {
@@ -826,5 +756,5 @@ export function JourneyPlannerMap({
     map.easeTo({ center: place.coordinates, zoom: Math.max(map.getZoom(), 14), offset, duration: 420 });
   }, [focusOffset, localPlaces, selectedLocalPlaceId]);
 
-  return <div ref={containerRef} className="planner-map" aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"} />;
+  return <div ref={containerRef} className={`planner-map ${mapPresentation.surface}`} aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"} />;
 }

@@ -2,6 +2,7 @@
 
 import { Compass } from "lucide-react";
 import ResilientImage from "@/components/easyt/resilient-image";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import type { DiscoveryImage, DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import styles from "./discover.module.css";
 
@@ -15,6 +16,6 @@ export default function DiscoveryPhoto({ route, image = route.image, priority = 
       srcSet={image?.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes={sizes}
       width={image?.variants.at(-1)?.width ?? 768} height={image?.variants.at(-1)?.height ?? 512}
       alt={image?.alt ?? ""} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" />
-    {source && <a className={styles.photoCredit} href={image?.sourceUrl} target="_blank" rel="noreferrer">{image?.credit}</a>}
+    {source && image ? <MorroviaPhotoCredit placement="top-right" photoLabel={image.alt} credit={image.credit} sourceHref={image.sourceUrl} licenseHref={image.licenseUrl} fullCreditHref="/journey/immersive/credits.html" /> : null}
   </div>;
 }

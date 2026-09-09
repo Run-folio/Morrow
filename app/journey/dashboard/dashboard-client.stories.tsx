@@ -4,92 +4,144 @@ import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
 
-function cardTrip(id: string, title: string, image: string | null, status: EasyTTrip["status"] = "draft"): EasyTTrip {
-  const stops = [
-    { id: `${id}-lisbon`, order: 0, name: "Lisbon", country: "Portugal", latitude: 38.72, longitude: -9.14, arrivalDate: "2026-08-25", departureDate: "2026-08-30", nights: 5 },
-    { id: `${id}-seville`, order: 1, name: "Seville", country: "Spain", latitude: 37.39, longitude: -5.98, arrivalDate: "2026-08-30", departureDate: "2026-09-04", nights: 5 },
-    { id: `${id}-barcelona`, order: 2, name: "Barcelona", country: "Spain", latitude: 41.39, longitude: 2.17, arrivalDate: "2026-09-04", departureDate: "2026-09-09", nights: 5 },
-  ];
+type StoryStop = { name: string; country: string; latitude: number; longitude: number; nights: number };
+
+function storyTrip({ id, title, status, startDate, endDate, stops, image }: {
+  id: string;
+  title: string;
+  status: EasyTTrip["status"];
+  startDate: string;
+  endDate: string;
+  stops: StoryStop[];
+  image?: string | null;
+}): EasyTTrip {
+  const tripStops = stops.map((stop, index) => ({
+    id: `${id}-stop-${index + 1}`,
+    order: index,
+    name: stop.name,
+    country: stop.country,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+    arrivalDate: startDate,
+    departureDate: endDate,
+    nights: stop.nights,
+  }));
   return {
     schemaVersion: 1,
     id,
     ownerId: "storybook-first-traveller",
     title,
     status,
-    startDate: "2026-08-25",
-    endDate: "2026-09-09",
+    startDate,
+    endDate,
     travellers: 2,
     currency: "GBP",
     brief: { origin: "London", mustDo: "", pace: "slow", hotelChanges: "few", budgetBand: "mid", selectedPlaces: {} },
-    stops,
+    stops: tripStops,
     legs: [],
-    planItems: Array.from({ length: 16 }, (_, index) => ({
+    planItems: tripStops.map((stop, index) => ({
       id: `${id}-day-${index + 1}`,
-      stopId: stops[Math.min(2, Math.floor(index / 5))]!.id,
+      stopId: stop.id,
       dayNumber: index + 1,
-      date: new Date(Date.UTC(2026, 7, 25 + index)).toISOString().slice(0, 10),
+      date: startDate,
       type: "activity" as const,
-      title: `Day ${index + 1}`,
+      title: `A day in ${stop.name}`,
       reason: "Planned",
       notes: [],
       startsAt: null,
       endsAt: null,
       bookingUrl: null,
-      latitude: null,
-      longitude: null,
-      image: index === 0 ? image : null,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+      image: index === 0 ? image ?? null : null,
     })),
     recommendations: [],
-    createdAt: "2026-08-25T12:00:00.000Z",
-    updatedAt: `2026-08-25T12:0${id.slice(-1)}:00.000Z`,
+    createdAt: "2026-07-12T12:00:00.000Z",
+    updatedAt: `2026-09-0${(Number(id.at(-1)) || 1) % 9 + 1}T12:00:00.000Z`,
   };
 }
 
-const cardTrips = [
-  cardTrip("storybook-trip-1", "Lisbon, Seville & Barcelona", "/journey/portugal-atlantic-route.jpg"),
-  cardTrip("storybook-trip-2", "Gatwick, Santiago, Easter Island, Puerto de Punta Arenas & Tierra del Fuego", "/journey/peru-sacred-valley-route.jpg"),
-  cardTrip("storybook-trip-3", "Lisbon, Seville & Barcelona", null),
-  cardTrip("storybook-trip-4", "Lisbon, Seville & Barcelona", "/journey/portugal-atlantic-route.jpg"),
+const currentJapan = storyTrip({
+  id: "storybook-current-1", title: "Japan, your way", status: "planned", startDate: "2026-09-01", endDate: "2026-09-18", image: "/journey/immersive/place-kyoto-1536.webp",
+  stops: [
+    { name: "Tokyo", country: "Japan", latitude: 35.6762, longitude: 139.6503, nights: 4 },
+    { name: "Kanazawa", country: "Japan", latitude: 36.5613, longitude: 136.6562, nights: 3 },
+    { name: "Takayama", country: "Japan", latitude: 36.1461, longitude: 137.2522, nights: 3 },
+    { name: "Kyoto", country: "Japan", latitude: 35.0116, longitude: 135.7681, nights: 5 },
+    { name: "Osaka", country: "Japan", latitude: 34.6937, longitude: 135.5023, nights: 2 },
+  ],
+});
+
+const upcomingAntigua = storyTrip({
+  id: "storybook-upcoming-2", title: "From the Caribbean to Antigua", status: "planned", startDate: "2027-01-08", endDate: "2027-01-29", image: "/journey/immersive/route-mexico-yucatan-1536.webp",
+  stops: [
+    { name: "Cancún", country: "Mexico", latitude: 21.1619, longitude: -86.8515, nights: 4 },
+    { name: "Tulum", country: "Mexico", latitude: 20.2114, longitude: -87.4654, nights: 3 },
+    { name: "Caye Caulker", country: "Belize", latitude: 17.7361, longitude: -88.0325, nights: 4 },
+    { name: "Flores", country: "Guatemala", latitude: 16.9297, longitude: -89.8917, nights: 3 },
+    { name: "Antigua", country: "Guatemala", latitude: 14.5586, longitude: -90.7295, nights: 7 },
+  ],
+});
+
+const upcomingBalkans = storyTrip({
+  id: "storybook-upcoming-3", title: "The Balkans", status: "planned", startDate: "2027-05-10", endDate: "2027-05-21", image: "/journey/immersive/place-kotor-1536.webp",
+  stops: [
+    { name: "Dubrovnik", country: "Croatia", latitude: 42.6507, longitude: 18.0944, nights: 3 },
+    { name: "Kotor", country: "Montenegro", latitude: 42.4247, longitude: 18.7712, nights: 3 },
+    { name: "Shkodër", country: "Albania", latitude: 42.0693, longitude: 19.5033, nights: 2 },
+    { name: "Tirana", country: "Albania", latitude: 41.3275, longitude: 19.8187, nights: 3 },
+  ],
+});
+
+const ideaIberia = storyTrip({
+  id: "storybook-idea-4", title: "Portugal + Spain", status: "draft", startDate: "2027-09-03", endDate: "2027-09-18",
+  stops: [
+    { name: "Lisbon", country: "Portugal", latitude: 38.7223, longitude: -9.1393, nights: 5 },
+    { name: "Seville", country: "Spain", latitude: 37.3891, longitude: -5.9845, nights: 4 },
+    { name: "Barcelona", country: "Spain", latitude: 41.3874, longitude: 2.1686, nights: 6 },
+  ],
+});
+
+const pastTrips = [
+  storyTrip({ id: "storybook-past-5", title: "A week by the Atlantic", status: "archived", startDate: "2026-06-06", endDate: "2026-06-13", image: "/journey/portugal-atlantic-route.jpg", stops: [
+    { name: "Lisbon", country: "Portugal", latitude: 38.7223, longitude: -9.1393, nights: 3 },
+    { name: "Comporta", country: "Portugal", latitude: 38.3806, longitude: -8.7861, nights: 2 },
+    { name: "Lagos", country: "Portugal", latitude: 37.1028, longitude: -8.6730, nights: 2 },
+  ] }),
+  storyTrip({ id: "storybook-past-6", title: "Iberia, slowly", status: "archived", startDate: "2025-09-10", endDate: "2025-09-25", image: "/journey/immersive/route-spain-rail-1536.webp", stops: [
+    { name: "Lisbon", country: "Portugal", latitude: 38.7223, longitude: -9.1393, nights: 5 },
+    { name: "Seville", country: "Spain", latitude: 37.3891, longitude: -5.9845, nights: 5 },
+    { name: "Barcelona", country: "Spain", latitude: 41.3874, longitude: 2.1686, nights: 5 },
+  ] }),
+  storyTrip({ id: "storybook-past-7", title: "Mexico City to Oaxaca", status: "archived", startDate: "2025-02-02", endDate: "2025-02-14", image: "/journey/immersive/route-mexico-yucatan-1536.webp", stops: [
+    { name: "Mexico City", country: "Mexico", latitude: 19.4326, longitude: -99.1332, nights: 6 },
+    { name: "Puebla", country: "Mexico", latitude: 19.0414, longitude: -98.2063, nights: 2 },
+    { name: "Oaxaca", country: "Mexico", latitude: 17.0732, longitude: -96.7266, nights: 4 },
+  ] }),
+  storyTrip({ id: "storybook-past-8", title: "Northern Italy by train", status: "archived", startDate: "2024-05-04", endDate: "2024-05-16", image: "/journey/immersive/route-italy-table-1536.webp", stops: [
+    { name: "Milan", country: "Italy", latitude: 45.4642, longitude: 9.1900, nights: 4 },
+    { name: "Bologna", country: "Italy", latitude: 44.4949, longitude: 11.3426, nights: 4 },
+    { name: "Venice", country: "Italy", latitude: 45.4408, longitude: 12.3155, nights: 4 },
+  ] }),
 ];
 
+const allTrips = [currentJapan, upcomingAntigua, upcomingBalkans, ideaIberia, ...pastTrips];
 const populatedStamps = [
   { countryId: "portugal", status: "visited" as const },
   { countryId: "spain", status: "visited" as const },
   { countryId: "japan", status: "want" as const },
 ];
+const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore: "Restore", archive: "Archive", duplicate: "Duplicate", gift: "Share", delete: "Delete" };
 
-const cardCopy = {
-  routeWaiting: "Route to confirm",
-  edit: "Edit trip",
-  restore: "Restore",
-  archive: "Archive",
-  duplicate: "Duplicate",
-  gift: "Share",
-  delete: "Delete",
-};
-
-const renderCardGrid = () => <div className={styles.tripGrid}>{cardTrips.map((trip) => <TripCard
-  key={trip.id}
-  trip={trip}
-  language="en"
-  copy={cardCopy}
-  working={false}
-  workingAction={null}
-  onAction={() => undefined}
-  onGift={() => undefined}
-  onRemove={() => undefined}
-/>)}</div>;
+const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trips dashboard",
   component: DashboardClient,
-  parameters: {
-    layout: "fullscreen",
-    nextjs: { appDirectory: true, navigation: { pathname: "/journey/dashboard" } },
-  },
+  parameters: { layout: "fullscreen", nextjs: { appDirectory: true, navigation: { pathname: "/journey/dashboard" } } },
   decorators: [(Story) => {
     setStorybookAuthOwner("storybook-first-traveller");
-    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "28px 24px" }}><div style={{ maxWidth: 1180, margin: "0 auto" }}><Story /></div></main>;
+    return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", overflow: "hidden" }}><div style={{ width: "min(1320px, calc(100% - 40px))", margin: "0 auto 80px" }}><header className={styles.pageIntro}><p className={styles.eyebrow}>Your personal journey library</p><h1><span>Your journeys.</span><em>Ready when you are.</em></h1></header><Story /></div></main>;
   }],
   args: { trips: [], stamps: [], ownerId: "storybook-first-traveller" },
 } satisfies Meta<typeof DashboardClient>;
@@ -98,17 +150,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ZeroTrips: Story = {};
-export const ActiveTrips: Story = { args: { trips: cardTrips, stamps: populatedStamps } };
-export const PlannedTrips: Story = { args: { trips: cardTrips.slice(0, 3).map((trip) => ({ ...trip, status: "planned" as const })), stamps: populatedStamps } };
-export const ArchivedTrips: Story = { args: { trips: cardTrips.slice(0, 2).map((trip) => ({ ...trip, status: "archived" as const })), stamps: populatedStamps } };
-export const StampedEmptySummary: Story = { args: { trips: cardTrips.slice(0, 1), stamps: [] } };
-export const Mobile390: Story = { args: { trips: cardTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
-export const ActiveCardsDesktop: Story = { render: renderCardGrid };
-export const ActiveCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
-export const ActiveCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };
-export const ClickableCardKeyboardFocus: Story = {
-  render: renderCardGrid,
-  play: async ({ canvasElement }) => {
-    canvasElement.querySelector<HTMLAnchorElement>('a[aria-label^="Open trip:"]')?.focus();
-  },
-};
+export const ActiveTrips: Story = { args: { trips: allTrips, stamps: populatedStamps } };
+export const OneTrip: Story = { args: { trips: [currentJapan], stamps: populatedStamps } };
+export const SixPlusPastJourneys: Story = { args: { trips: [currentJapan, ...pastTrips, { ...pastTrips[0]!, id: "storybook-past-9", title: "A return to the Atlantic" }, { ...pastTrips[1]!, id: "storybook-past-10", title: "Southern Spain remembered" }], stamps: populatedStamps } };
+export const Mobile390: Story = { args: { trips: allTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const UpcomingCardsDesktop: Story = { render: renderCardGrid };
+export const UpcomingCardsTablet768: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const UpcomingCardsMobile390: Story = { render: renderCardGrid, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const ClickableCardKeyboardFocus: Story = { render: renderCardGrid, play: async ({ canvasElement }) => { canvasElement.querySelector<HTMLAnchorElement>("article a")?.focus(); } };

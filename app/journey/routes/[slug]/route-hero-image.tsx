@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { findRoutePhotos, readRoutePhoto, saveRoutePhoto, trackRoutePhoto, type CachedRoutePhoto } from "@/lib/easyt/route-photo-cache";
 import { routeImageCredit } from "@/lib/easyt/route-images";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import styles from "./route-overview.module.css";
 
 type RouteHeroImageProps = {
@@ -46,6 +47,6 @@ export default function RouteHeroImage({ image, routeKey, query, fallbackQueries
       <span>{duration}</span>
       {!source && <small>{status === "loading" ? "Finding a photograph…" : "Photography unavailable"}</small>}
     </div>
-    {credit && <a className={styles.heroImageCredit} href={credit.sourceUrl} target="_blank" rel="noreferrer">{credit.sourceLabel}</a>}
+    {credit ? <MorroviaPhotoCredit photoLabel={credit.alt ?? alt} credit={credit.sourceLabel} sourceHref={credit.sourceUrl} licenseHref={"licenseUrl" in credit ? credit.licenseUrl : null} fullCreditHref={"fullCreditUrl" in credit ? credit.fullCreditUrl : null} /> : null}
   </div>;
 }

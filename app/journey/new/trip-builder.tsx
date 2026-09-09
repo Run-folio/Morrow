@@ -14,7 +14,7 @@ import {
   Check, Clock, FileSpreadsheet, GripVertical, Info, Lock, MapPin, Pencil, Plane, Plus, Route, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
@@ -317,6 +317,96 @@ function RadioGroup<T extends string>({ label, help, value, options, onChange }:
   );
 }
 
+function StopReorderControl({
+  stop,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  onDragStart,
+  onDragEnd,
+}: {
+  stop: Stop;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDragStart: (event: ReactDragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const menuId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const draggedRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    const closeOnPointerDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node) || triggerRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnPointerDown);
+    return () => document.removeEventListener("pointerdown", closeOnPointerDown);
+  }, [open]);
+
+  const closeAndRestoreFocus = () => {
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
+  return <div className={styles.reorderControl}>
+    <EasyTButton
+      ref={triggerRef}
+      className={styles.routeGrip}
+      icon={GripVertical}
+      iconOnly
+      size="small"
+      variant="quiet"
+      draggable={canMoveUp || canMoveDown}
+      disabled={!canMoveUp && !canMoveDown}
+      aria-label={`Reorder ${stop.name}`}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      aria-controls={open ? menuId : undefined}
+      onClick={() => {
+        if (draggedRef.current) { draggedRef.current = false; return; }
+        setOpen((current) => !current);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          setOpen(true);
+        }
+        if (event.key === "Escape") setOpen(false);
+      }}
+      onDragStart={(event) => { draggedRef.current = true; setOpen(false); onDragStart(event); }}
+      onDragEnd={() => { onDragEnd(); window.requestAnimationFrame(() => { draggedRef.current = false; }); }}
+    >Reorder {stop.name}</EasyTButton>
+    {open ? <div
+      ref={menuRef}
+      id={menuId}
+      className={styles.reorderMenu}
+      role="menu"
+      aria-label={`Reorder ${stop.name}`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") { event.preventDefault(); closeAndRestoreFocus(); return; }
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+        event.preventDefault();
+        const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+        const current = items.indexOf(document.activeElement as HTMLButtonElement);
+        items[(current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+      }}
+    >
+      <EasyTButton role="menuitem" icon={ArrowUp} size="small" variant="quiet" disabled={!canMoveUp} onClick={() => { onMoveUp(); setAnnouncement(`${stop.name} moved up.`); closeAndRestoreFocus(); }}>Move up</EasyTButton>
+      <EasyTButton role="menuitem" icon={ArrowDown} size="small" variant="quiet" disabled={!canMoveDown} onClick={() => { onMoveDown(); setAnnouncement(`${stop.name} moved down.`); closeAndRestoreFocus(); }}>Move down</EasyTButton>
+    </div> : null}
+    <span className="sr-only" role="status" aria-live="polite">{announcement}</span>
+  </div>;
+}
+
 function BuilderSummaryRail({
   step,
   language,
@@ -324,7 +414,6 @@ function BuilderSummaryRail({
   travellers,
   totalDays,
   totalNights,
-  allocatedNights,
   areasToShapeCount,
   identitiesToConfirmCount,
 }: {
@@ -334,7 +423,6 @@ function BuilderSummaryRail({
   travellers: number;
   totalDays: number;
   totalNights: number;
-  allocatedNights: number;
   areasToShapeCount: number;
   identitiesToConfirmCount: number;
 }) {
@@ -346,19 +434,16 @@ function BuilderSummaryRail({
   ].filter(Boolean).join(" · ");
   return <aside className={styles.builderSummaryRail} aria-label={language === "es" ? "Viaje de un vistazo" : "Trip at a glance"}>
     <section className={styles.timingSummary}>
-      <small>{language === "es" ? "TU VIAJE" : "YOUR TRIP"}</small>
       <h2>{language === "es" ? "Tu viaje de un vistazo" : "Your trip at a glance"}</h2>
       <div className={styles.timeSummaryStats}>
         <div><CalendarDays aria-hidden="true" /><strong>{step === 0 ? (language === "es" ? "Fechas después" : "Dates next") : `${totalDays} ${dayLabel}`}</strong></div>
         <div><MapPin aria-hidden="true" /><strong>{placeStatus}</strong></div>
         <div><Users aria-hidden="true" /><strong>{travellers} {language === "es" ? (travellers === 1 ? "viajero" : "viajeros") : (travellers === 1 ? "traveller" : "travellers")}</strong></div>
       </div>
-      {stops.length ? <ol className={styles.timeSummaryStops}>{stops.map((stop, index) => <li key={stop.id}><b>{index + 1}</b><div><strong>{stop.name}</strong><small>{language === "es" ? "Parada" : "Stop"}</small></div></li>)}</ol> : null}
+      {stops.length ? <ol className={styles.timeSummaryStops}>{stops.map((stop, index) => <li key={stop.id}><b>{index + 1}</b><strong>{stop.name}</strong></li>)}</ol> : null}
       {step === 0
         ? <div className={styles.placesSummaryNext}><span>{language === "es" ? "SIGUIENTE" : "NEXT"}</span><div><Clock aria-hidden="true" /><p><b>{language === "es" ? "Equilibraremos las noches" : "We’ll balance nights"}</b>{language === "es" ? "según el tiempo de viaje y lo que haya cerca." : "around travel time and what’s nearby."}</p></div></div>
-        : <p className={styles.timeSummaryAllocation}><CheckCircle2 aria-hidden="true" /> {allocatedNights === totalNights
-          ? (language === "es" ? `${totalNights} noches asignadas` : `All ${totalNights} nights allocated`)
-          : (language === "es" ? `${allocatedNights} de ${totalNights} noches asignadas` : `${allocatedNights} of ${totalNights} nights allocated`)}</p>}
+        : null}
     </section>
   </aside>;
 }
@@ -1281,16 +1366,6 @@ function TripBuilderDocument() {
   const stepLabels = language === "es"
     ? ["Lugares", "Fechas y noches"]
     : ["Places", "Dates and nights"];
-  const stepNotes = ["", ""];
-  const stepGuidance = language === "es"
-    ? [
-      ["Elige los lugares.", "Morrovia ya ha recogido lo que pudo de tu idea. Corrige solo lo necesario."],
-      ["Define el tiempo.", "Elige las fechas y ajusta las noches antes de crear el viaje."],
-    ]
-    : [
-      ["Choose the places.", "We’ve picked up what we can from your idea. Correct only what needs it."],
-      ["Set the time.", "Set your dates, then adjust nights before we build your trip."],
-    ];
   const pickedUpPreferences = useMemo(() => {
     const labels: string[] = [];
     if (effectiveStructuredBrief.duration) labels.push(`${effectiveStructuredBrief.duration.value} ${effectiveStructuredBrief.duration.unit}`);
@@ -2319,10 +2394,15 @@ function TripBuilderDocument() {
     }
   };
 
-  const moveStop = (from: number, to: number) => {
-    if (from === to || from < 0 || to < 0 || from >= stops.length || to >= stops.length) return;
+  const canMoveStop = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= stops.length || to >= stops.length) return false;
     const moved = stops[from];
-    if (scheduleLocks.stopIds.includes(moved.id) || stops.slice(Math.min(from, to), Math.max(from, to) + 1).some((stop) => scheduleLocks.stopIds.includes(stop.id))) return;
+    return !scheduleLocks.stopIds.includes(moved.id)
+      && !stops.slice(Math.min(from, to), Math.max(from, to) + 1).some((stop) => scheduleLocks.stopIds.includes(stop.id));
+  };
+
+  const moveStop = (from: number, to: number) => {
+    if (!canMoveStop(from, to)) return;
     rememberStructuralChange("reorder_stop", Math.abs(from - to) + 1);
     setStops((current) => {
       const next = [...current];
@@ -2690,9 +2770,6 @@ function TripBuilderDocument() {
     : canonicalTimingComplete && (routeIntelligence.route.improvementMinutes ?? 0) >= 90
       ? (language === "es" ? "Reduce el tiempo estimado de traslado y deja más tiempo en los destinos." : "It reduces estimated transfer time, leaving more of the trip for your destinations.")
       : (language === "es" ? "Mantiene el viaje avanzando en una dirección geográfica más clara." : "It keeps the trip moving in a clearer geographic direction.");
-  const routeInsightSummary = language === "es"
-    ? "Flujo, tiempo aprovechable y regresos."
-    : "Flow, usable time and backtracking.";
   const showTimingWarning = Boolean(gateConflict || highlyCompressedTrip || longJourneyIssue || tripTimingNotice);
   const timingWarningTitle = gateConflict
     ? (language === "es" ? "Revisa esto antes de crear el viaje" : "Review this before building")
@@ -3318,28 +3395,23 @@ function TripBuilderDocument() {
           }} aria-current={i === step ? "step" : undefined}
             className={`${styles.stepTab} ${i === step ? styles.stepTabOn : ""} ${i < step ? styles.stepTabDone : ""}`}>
             <b>{i < step ? "✓" : pad(i + 1)}</b>
-            <span><span>{label}</span><small>{stepNotes[i]}</small></span>
+            <span>{label}</span>
           </button>
           );
         })}
       </nav>
 
-      <p className={styles.builderReassurance}>
-        <strong>{stepGuidance[step][0]}</strong>
-        <span>{stepGuidance[step][1]}</span>
-      </p>
       <div className={styles.wizardBody}>
         <div className={styles.pane}>
           {step === 0 && (
             <div className={styles.stack}>
               <header className={styles.stepHero}>
                 <p>{language === "es" ? "PASO 1 DE 2" : "STEP 1 OF 2"}</p>
-                <h1>{isHomepagePromptHandoff
-                  ? (language === "es" ? "Esto es lo que entendimos" : "Here’s what we understood")
-                  : (language === "es" ? "Cuéntanos la forma" : "Tell us the shape")}</h1>
-                <span>{isHomepagePromptHandoff
-                  ? (language === "es" ? "Compruébalo, corrige lo que no esté bien y construiremos la mejor ruta." : "Check it, adjust anything that's wrong, and we'll build the best route.")
-                  : (language === "es" ? "Comprueba lo que entendimos y completa cualquier detalle." : "Check what we understood and fill any gaps.")}</span>
+                <h1 className={styles.stepHeroTitle}>{isHomepagePromptHandoff ? (
+                  <><span className={styles.stepHeroTitlePrimary}>{language === "es" ? "Esto es lo que" : "Here’s what"}</span>{" "}<em className={styles.stepHeroTitleFinish}>{language === "es" ? "entendimos." : "we understood."}</em></>
+                ) : (
+                  <><span className={styles.stepHeroTitlePrimary}>{language === "es" ? "Cuéntanos la forma" : "Tell us the shape"}</span>{" "}<em className={styles.stepHeroTitleFinish}>{language === "es" ? "de tu viaje." : "of your trip."}</em></>
+                )}</h1>
               </header>
               {!hasPromptContext && hydrated && <div className={styles.initialCapture}><MorroviaTripCapture
                 language={language}
@@ -3351,7 +3423,7 @@ function TripBuilderDocument() {
                   startValue={manualOriginInput}
                   endValue={journeyEndInput}
                   endSelection={journeyEnd}
-                  hint={language === "es" ? "El inicio y el final son contexto de ruta, no paradas añadidas." : "Start and end guide the route. They are not added as stops."}
+                  showHint={false}
                   onStartChange={(value) => { setManualOriginInput(value); setManualOriginCaptureText(""); setManualOriginSuggestion(undefined); setTripBriefCaptureError(""); }}
                   onStartSelect={(suggestion) => { setManualOriginInput(suggestion.name); setManualOriginCaptureText(suggestion.name); setManualOriginSuggestion(suggestion); setTripBriefCaptureError(""); }}
                   onEndChange={changeJourneyEndInput}
@@ -3398,10 +3470,6 @@ function TripBuilderDocument() {
                 <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
               </section>}
               {hasPromptContext && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
-                {!isHomepagePromptHandoff && <header className={styles.tripUnderstoodHead}>
-                  <span><Sparkles /> {language === "es" ? "VIAJE ENTENDIDO" : "TRIP UNDERSTOOD"}</span>
-                  <h2>{language === "es" ? "Comprueba lo que entendimos." : "Check what we understood."}</h2>
-                </header>}
                 <section id="builder-origin" className={`${styles.placesSection} ${isHomepagePromptHandoff ? styles.handoffOrigin : ""} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
                   <JourneyEndpointsEditor
                     language={language}
@@ -3413,7 +3481,8 @@ function TripBuilderDocument() {
                     endInvalid={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
                     hint={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates
                       ? (language === "es" ? "Elige el lugar de llegada de las sugerencias o selecciona Aún no lo sé." : "Choose the ending place from the suggestions, or select Not sure yet.")
-                      : (language === "es" ? "El inicio y el final orientan la ruta. No se añaden como paradas." : "Start and end guide the route. They are not added as stops.")}
+                      : undefined}
+                    showHint={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
                     onStartChange={(value) => { replaceJourneyOrigin({ name: value }); setOriginTouched(true); setOriginError(""); }}
                     onStartSelect={(suggestion) => { void selectOriginSuggestion(suggestion); }}
                     onEndChange={changeJourneyEndInput}
@@ -3468,7 +3537,7 @@ function TripBuilderDocument() {
                           areasToShapeCount ? `${areasToShapeCount} ${language === "es" ? (areasToShapeCount === 1 ? "área por definir" : "áreas por definir") : (areasToShapeCount === 1 ? "area to shape" : "areas to shape")}` : "",
                           identitiesToConfirmCount ? `${identitiesToConfirmCount} ${language === "es" ? (identitiesToConfirmCount === 1 ? "identidad por confirmar" : "identidades por confirmar") : (identitiesToConfirmCount === 1 ? "identity to confirm" : "identities to confirm")}` : "",
                         ].filter(Boolean).join(" · ")
-                        : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong><small>{language === "es" ? "Reordena o elimina paradas." : "Reorder or remove stops."}</small></div>
+                        : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
                     <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>
                   </div>
@@ -3611,12 +3680,11 @@ function TripBuilderDocument() {
                   })}</div>
                 </section>}
 
-                {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias recogidas" : "Preferences picked up"}><strong>{language === "es" ? "PREFERENCIAS RECOGIDAS" : "PREFERENCES WE PICKED UP"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
+                {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias" : "Preferences"}><strong>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
               <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
-                <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}>{isHomepagePromptHandoff ? <><span><b>{language === "es" ? "Avanzado" : "Advanced"}</b><small>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} plan fijo guardado` : `${effectiveIntent.hardConstraints.fixedCommitments.length} fixed plan${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"} saved`) : (language === "es" ? "Añade planes fijos o cualquier cosa que debamos considerar." : "Add fixed plans or anything we should consider.")}</small></span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</> : showTripDetails ? (language === "es" ? "Ocultar planes fijos" : "Hide fixed plans") : (effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Planes fijos" : "Fixed plans") : (language === "es" ? "Planes fijos · Añade algo que no pueda moverse" : "Fixed plans · Add something that can’t move"))}</button>
+                <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}><span><b>{language === "es" ? "Planes fijos" : "Fixed plans"}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? <small>{language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} guardado${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : `${effectiveIntent.hardConstraints.fixedCommitments.length} saved`}</small> : null}</span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</button>
                 {showTripDetails && <div id={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} className={isHomepagePromptHandoff ? styles.advancedContent : undefined}>
-                <header><p>{language === "es" ? "YA RESERVADO" : "ALREADY BOOKED"}</p><h3>{language === "es" ? "Mantén visible lo que no puede cambiar." : "Keep what cannot move visible."}</h3><span>{language === "es" ? "Añade una fecha o reserva fija y la protegeremos mientras se construye la ruta." : "Add a fixed date or booking and we’ll protect it while we build the route."}</span></header>
                 <div className={styles.intentGrid}>
                   <section className={styles.intentHard}>
                     <p>{language === "es" ? "DEBE MANTENERSE" : "MUST KEEP"}</p>
@@ -3815,7 +3883,7 @@ function TripBuilderDocument() {
 
           {step === 1 && (
             <div className={`${styles.stack} ${styles.timeStep}`}>
-              <header className={styles.stepHero}><p>STEP 2 OF 2</p><h2>Make the time feel right</h2><span>Set your dates, then adjust nights around the route.</span></header>
+              <header className={styles.stepHero}><p>STEP 2 OF 2</p><h2 className={styles.stepHeroTitle}><span className={styles.stepHeroTitlePrimary}>Make the time</span>{" "}<em className={styles.stepHeroTitleFinish}>feel right.</em></h2></header>
               <div className={styles.timeControls}>
                 <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
                   <MorroviaDatePicker
@@ -3843,7 +3911,7 @@ function TripBuilderDocument() {
                 />
                 <section className={`${styles.timeControl} ${styles.budgetControl}`} aria-label={language === "es" ? "Presupuesto" : "Budget"}><span>{language === "es" ? "Presupuesto (opcional)" : "Budget (optional)"}</span><div className={styles.budgetValue}><p>{language === "es" ? "Usando tu preferencia habitual" : "Using your usual preference"}</p><button type="button" onClick={() => setShowBudgetOverride((current) => !current)}>{showBudgetOverride ? (language === "es" ? "Listo" : "Done") : (language === "es" ? "Cambiar" : "Change")}</button></div>{showBudgetOverride && <div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div>}</section>
               </div>
-              <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>{language === "es" ? "NOCHES ASIGNADAS" : "NIGHTS ALLOCATED"}</span><p><CheckCircle2 aria-hidden="true" /> <strong>{totalNights} {language === "es" ? "noches en total" : "nights total"}</strong><span aria-hidden="true">•</span><b>{allNightsAllocated ? (language === "es" ? "Todas las noches asignadas" : "All nights allocated") : (language === "es" ? `${allocatedNights} de ${totalNights} noches asignadas` : `${allocatedNights} of ${totalNights} nights allocated`)}</b></p></div>
+              <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>{language === "es" ? "NOCHES" : "NIGHTS"}</span><p><CheckCircle2 aria-hidden="true" /> <strong>{totalNights} {language === "es" ? "en total" : "total"}</strong><span aria-hidden="true">•</span><b>{allNightsAllocated ? (language === "es" ? "Todas asignadas" : "All allocated") : (language === "es" ? `${allocatedNights} de ${totalNights} asignadas` : `${allocatedNights} of ${totalNights} allocated`)}</b></p></div>
               {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
               <section className={styles.routeTimePlanner} aria-labelledby="day-allocation-title" role="table">
                 <header><h3 id="day-allocation-title">{language === "es" ? "Noches por parada" : "Nights per stop"}</h3></header>
@@ -3860,13 +3928,13 @@ function TripBuilderDocument() {
                     const TransferIcon = leg?.mode === "flight" ? Plane : leg?.mode === "train" ? Train : leg?.mode === "ferry" ? Ship : leg?.mode === "road" ? CarFront : leg?.mode === "mixed" ? Route : AlertTriangle;
                     const includesFlight = leg?.mode === "flight" || leg?.segments?.some((segment) => segment.mode === "flight");
                     const startsAtOrigin = index === 0 && stopMatchesPlace(stop, journeyStartPlace);
-                    return <div key={stop.id} role="row" draggable className={`${styles.routeTimeRow} ${dragId === stop.id ? styles.routeTimeRowDragging : ""}`} onDragStart={(event) => { setDragId(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); moveStop(stops.findIndex((item) => item.id === (dragId ?? event.dataTransfer.getData("text/plain"))), index); setDragId(null); }} onDragEnd={() => setDragId(null)}>
-                      <button type="button" className={styles.routeGrip} aria-label={`Reorder ${stop.name}. Use the arrow keys to move this stop.`} onKeyDown={(event) => { if (event.key === "ArrowUp") { event.preventDefault(); moveStop(index, index - 1); } if (event.key === "ArrowDown") { event.preventDefault(); moveStop(index, index + 1); } }}><GripVertical aria-hidden="true" /></button>
+                    const locked = scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id]);
+                    return <div key={stop.id} role="row" className={`${styles.routeTimeRow} ${dragId === stop.id ? styles.routeTimeRowDragging : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); moveStop(stops.findIndex((item) => item.id === (dragId ?? event.dataTransfer.getData("text/plain"))), index); setDragId(null); }}>
+                      <StopReorderControl stop={stop} canMoveUp={!locked && canMoveStop(index, index - 1)} canMoveDown={!locked && canMoveStop(index, index + 1)} onMoveUp={() => moveStop(index, index - 1)} onMoveDown={() => moveStop(index, index + 1)} onDragStart={(event) => { setDragId(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }} onDragEnd={() => setDragId(null)} />
                       <div className={styles.routeStopName} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong>{index === 0 && <small>{language === "es" ? "Primera estancia" : "First overnight stop"}</small>}</span></div>
-                      <div className={styles.routeTransferSummary} role="cell">{leg ? <><TransferIcon aria-hidden="true" /><span><span className={styles.transferDurationLine}><strong>{durationLabel(transferMinutes)}{includesFlight && transferMinutes !== null ? " total" : ""}</strong>{includesFlight && transferMinutes !== null && <span className={styles.transferDurationHelp}><button type="button" aria-label={language === "es" ? "El total estimado puerta a puerta incluye el traslado al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce, y el traslado hasta tu alojamiento. Morrovia usa este total para calcular el tiempo aprovechable." : "The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Morrovia uses this total to calculate usable time."}><Info aria-hidden="true" /></button><span className={styles.transferDurationTooltip} role="tooltip" aria-hidden="true">{language === "es" ? "Total estimado puerta a puerta: acceso al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce y traslado hasta tu alojamiento. Se usa para calcular el tiempo aprovechable." : "Estimated door-to-door total: airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Used to calculate usable time."}</span></span>}</span><small>{leg.classification === "arrival" ? `From ${origin} · ${transferJourneyModeLabel(leg)}` : transferJourneyModeLabel(leg)}</small></span></> : startsAtOrigin ? <span><strong>{language === "es" ? "Empieza aquí" : "Starts here"}</strong><small>{language === "es" ? "Sin traslado de llegada" : "No arrival transfer"}</small></span> : <span><strong>{language === "es" ? "Traslado por confirmar" : "Transfer to confirm"}</strong><small>{language === "es" ? "Modo y horario por comprobar" : "Mode and timing still need checking"}</small></span>}</div>
-                      <div className={styles.nightsControl} role="cell"><button type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id])} onClick={() => updateAllocatedDays(stop.id, days - 1)}>−</button><strong aria-label={`${days} nights`}>{days}</strong><button type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || scheduleLocks.stopIds.includes(stop.id) || Boolean(scheduleLocks.arrivalDates[stop.id])} onClick={() => updateAllocatedDays(stop.id, days + 1)}>+</button></div>
-                      <div className={`${styles.usableTime} ${compressed ? styles.usableTimeWarning : ""}`} role="cell"><strong>{usableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>{compressed && <AlertTriangle aria-label="Compressed stop" />}</div>
-                      <div className={styles.routeMoveButtons}><button type="button" aria-label={`Move ${stop.name} up`} disabled={index === 0} onClick={() => moveStop(index, index - 1)}><ArrowUp /></button><button type="button" aria-label={`Move ${stop.name} down`} disabled={index === stops.length - 1} onClick={() => moveStop(index, index + 1)}><ArrowDown /></button></div>
+                      <div className={styles.routeTransferSummary} role="cell">{leg ? <><TransferIcon aria-hidden="true" /><span><span className={styles.transferDurationLine}><strong>{durationLabel(transferMinutes)}{includesFlight && transferMinutes !== null ? " total" : ""}</strong>{includesFlight && transferMinutes !== null && <span className={styles.transferDurationHelp}><button type="button" aria-label={language === "es" ? "El total estimado puerta a puerta incluye el traslado al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce, y el traslado hasta tu alojamiento. Morrovia usa este total para calcular el tiempo aprovechable." : "The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Morrovia uses this total to calculate usable time."}><Info aria-hidden="true" /></button><span className={styles.transferDurationTooltip} role="tooltip" aria-hidden="true">{language === "es" ? "Total estimado puerta a puerta: acceso al aeropuerto, facturación y seguridad, espera, vuelo, frontera o conexión cuando se conoce y traslado hasta tu alojamiento. Se usa para calcular el tiempo aprovechable." : "Estimated door-to-door total: airport access, check-in and security, departure buffer, flight time, border or connection time where known, and transfer to your stay. Used to calculate usable time."}</span></span>}</span><small>{leg.classification === "arrival" ? `From ${origin} · ${transferJourneyModeLabel(leg)}` : transferJourneyModeLabel(leg)}</small></span></> : startsAtOrigin ? <span><strong>{language === "es" ? "Empieza aquí" : "Starts here"}</strong><small>{language === "es" ? "Sin traslado de llegada" : "No arrival transfer"}</small></span> : <span><strong>{language === "es" ? "Traslado por confirmar" : "Transfer to confirm"}</strong><small>{language === "es" ? "Transporte desconocido" : "Unknown transport"}</small></span>}</div>
+                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><button type="button" aria-label={`Remove one night from ${stop.name}; ${days} nights currently`} disabled={days <= 0 || locked} onClick={() => updateAllocatedDays(stop.id, days - 1)}>−</button><strong aria-label={`${days} nights`}>{days}</strong><button type="button" aria-label={`Add one night to ${stop.name}; ${days} nights currently`} disabled={days >= totalNights || locked} onClick={() => updateAllocatedDays(stop.id, days + 1)}>+</button></div>
+                      <div className={`${styles.usableTime} ${compressed ? styles.usableTimeWarning : ""}`} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Tiempo útil" : "Usable time"}</span><strong>{usableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>{compressed && <AlertTriangle aria-label="Compressed stop" />}</div>
                     </div>;
                   })}
                   {routeJourneyEnd ? (() => {
@@ -3875,19 +3943,18 @@ function TripBuilderDocument() {
                     const transferMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
                     const ReturnIcon = leg.mode === "flight" ? Plane : leg.mode === "train" ? Train : leg.mode === "ferry" ? Ship : leg.mode === "road" ? CarFront : Route;
                     return <div className={styles.routeTimeRow} role="row" key={routeJourneyEnd.id}>
-                      <span className={styles.routeGrip} aria-hidden="true" />
+                      <span className={styles.reorderControl} aria-hidden="true" />
                       <div className={styles.routeStopName} role="cell"><b>↩</b><span><strong>{routeJourneyEnd.name}</strong><small>{language === "es" ? "Final del viaje" : "Journey return"}</small></span></div>
                       <div className={styles.routeTransferSummary} role="cell"><ReturnIcon aria-hidden="true" /><span><strong>{durationLabel(transferMinutes)}</strong><small>{transferJourneyModeLabel(leg)}</small></span></div>
-                      <div className={styles.nightsControl} role="cell"><strong aria-label="Zero nights">0</strong></div>
-                      <div className={styles.usableTime} role="cell"><strong>{language === "es" ? "Solo traslado" : "Travel only"}</strong></div>
-                      <span className={styles.routeMoveButtons} aria-hidden="true" />
+                      <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><strong aria-label="Zero nights">0</strong></div>
+                      <div className={styles.usableTime} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Tiempo útil" : "Usable time"}</span><strong>{language === "es" ? "Solo traslado" : "Travel only"}</strong></div>
                     </div>;
                   })() : null}
                 </div>
               </section>
               {routeIntelligence.route.state !== "insufficient-data" && (routeIntelligence.route.reasons.length > 0 || routeIntelligence.route.summary) ? <section className={styles.routeInsights} aria-labelledby="route-insights-title">
                 <button type="button" className={styles.disclosureHead} aria-expanded={routeInsightsOpen} aria-controls="route-insights-content" onClick={() => setRouteInsightsOpen((current) => !current)}>
-                  <Sparkles aria-hidden="true" /><span><strong id="route-insights-title">{language === "es" ? "Ideas sobre la ruta" : "Route insights"}</strong><small>{routeInsightSummary}</small></span><ChevronRight aria-hidden="true" />
+                  <Sparkles aria-hidden="true" /><span><strong id="route-insights-title">{language === "es" ? "Ideas sobre la ruta" : "Route insights"}</strong></span><ChevronRight aria-hidden="true" />
                 </button>
                 {routeInsightsOpen && <div id="route-insights-content" className={styles.routeInsightContent}>
                   <article><Sparkles aria-hidden="true" /><div><strong>{language === "es" ? "Flujo geográfico" : "Geographic flow"}</strong><small>{averageTransferMinutes === null ? (language === "es" ? "Traslados por confirmar" : "Transfers to confirm") : `${durationLabel(averageTransferMinutes)} ${language === "es" ? "por traslado de media" : "average transfer"}`}</small></div></article>
@@ -3933,7 +4000,7 @@ function TripBuilderDocument() {
           </div>}
         </div>
 
-        <BuilderSummaryRail step={step} language={language} stops={stops} travellers={effectiveIntent.travellers} totalDays={totalDays} totalNights={totalNights} allocatedNights={allocatedNights} areasToShapeCount={areasToShapeCount} identitiesToConfirmCount={identitiesToConfirmCount} />
+        <BuilderSummaryRail step={step} language={language} stops={stops} travellers={effectiveIntent.travellers} totalDays={totalDays} totalNights={totalNights} areasToShapeCount={areasToShapeCount} identitiesToConfirmCount={identitiesToConfirmCount} />
       </div>
 
       <BuilderClarificationDialog

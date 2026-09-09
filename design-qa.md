@@ -756,6 +756,40 @@ final result: passed
 
 ---
 
+# Trips final visual direction — design QA
+
+Review date: 2026-09-08
+
+## Visual comparison
+
+- Approved source: `http://127.0.0.1:8784/` and its final review pack at `/review.html`.
+- Implementation surface: the production `DashboardClient` rendered with the real shared controls, `ResilientImage`, lifecycle helpers, trip actions and `JourneyPlannerMap` in Storybook.
+- The approved top-of-page state and the production implementation were captured at the same browser viewport and placed side by side in one comparison view. The comparison found and resolved an oversized first-pass intro before the final capture.
+- Focused browser review covered the current journey, upcoming cards with route insets, route-led idea, three-card past section and the Tokyo blue-hour closing. The full-page browser stitching duplicated a dynamic map region, so it was rejected as evidence; stable focused captures were used instead.
+
+## Result
+
+- The intro uses the product-wide pink eyebrow, direct sans statement and meaningful Georgia continuation without filler copy.
+- The current journey retains its owned actions and metadata, replaces the overused Kyoto image with canonical Takayama photography, and uses the shared truth map as a compact supplement.
+- Upcoming journeys are photography-led with small shared map insets. Ideas use the shared route map as the primary unfinished visual. Past journeys use quieter photography and support one, two, three and larger archives without invented production records.
+- The editorial closing uses existing canonical Tokyo photography, a mixed heading and the existing new-trip destination.
+- Storybook viewport review covered 320, 390, 430, 768, 1024 and 1440; the direct browser surface covered the wide 1920 state. Content stayed within each viewport, maps remained clipped to their containers and mobile resolved to image, identity, metadata, action and map in that order.
+- The final Storybook runtime rendered without a hydration failure or component error. The initial WebKit JSON-import syntax failure was resolved with bundler-compatible JSON imports; only the existing Next.js runtime-config warning remained.
+
+## Verification
+
+- TypeScript: passed.
+- Production `build:check`: passed.
+- Storybook production build: passed.
+- Trips lifecycle, readiness, Trip Map and public route presentation checks: 25/25 passed.
+- Persistence/recovery suite: 111/111 passed.
+- UI convergence checks and strict UI audit: passed with the dashboard's prior raw-token debt reduced.
+- `git diff --check`: passed.
+
+final result: passed
+
+---
+
 # Product Tour landscape-proof QA
 
 ## 2026-08-31 focused presentation repair
@@ -1977,5 +2011,73 @@ Japan, Balkans, Vietnam–Cambodia, Iceland, Italy–Greece, Andes, Portugal and
 Focused discovery, detail, readiness and content tests passed 34/34; the public-routes aggregate passed 38/38; Storybook visual and route-presentation tests passed 12/12. Typecheck, production `build:check`, UI convergence audit and diff hygiene passed. Browser console review found no errors or hydration failures. The only warning was the existing global Next.js `scroll-behavior: smooth` advisory. Reduced-motion CSS and zero-duration map transitions are covered by source tests; native operating-system reduced-motion switching and hosted field CLS were not exercised in this local pass.
 
 No actionable P0, P1 or P2 visual, responsive, content, attribution or interaction issue remains. No deployment, push, merge or `main` change was performed.
+
+final result: passed
+
+---
+
+# Route Detail approved middle — design QA
+
+Review date: 2026-09-08
+
+## Visual truth and implementation
+
+- Approved source: `http://127.0.0.1:8782/review.html`
+- Source evidence: `morrovia-route-middle-review/evidence/japan-pacing-detail.png`, `japan-map-desktop.png`, `japan-experiences-detail.png`, `mobile-experiences-detail.png`, and `three-way-comparison.png`
+- Implementation: `http://127.0.0.1:3000/journey/routes/japan-slow`
+- Additional routes: `andean-highlands` and `balkans-overland`
+- Comparison state: public, signed-out Route Detail with default whole-route map; a separate deep-link check selected `#route-map-connection-1`
+
+The approved pacing reference and the production implementation were rendered in one same-origin comparison page at the same 1440 × 1110 CSS viewport and viewed side by side in a 1910 × 1074 browser capture. The post-fix comparison used the same page state, scale, and device density.
+
+## Fidelity surfaces
+
+| Surface | Visible comparison | Result |
+| --- | --- | --- |
+| Pace | Editorial lead, large total, Builder action, numbered spine, night hierarchy, transfer rhythm | Passed after restoring the pacing Builder action |
+| Geography | Large map, compact route facts, warning, selector, and supporting route reasons | Passed after moving the easternmost map label to the safe side |
+| Experiences | Asymmetric desktop editorial grid and single-column mobile cards with source credits | Passed; Osaka is explicitly qualified and Andes gaps are visibly pending |
+| Practical and provenance | Four scannable topics followed by one restrained Sources & review disclosure | Passed after removing duplicate seasonal copy |
+| Related and closing | Canonical image-led Discovery cards flow into the unchanged immersive closing | Passed |
+
+## Findings resolved
+
+| Priority | Finding | Resolution |
+| --- | --- | --- |
+| P1 | First implementation omitted the pacing-level “Shape the nights in Builder” handoff that the approved target retained | Restored the existing `RoutePlanLink` with the canonical draft and behavior |
+| P2 | Tokyo, the easternmost Japan marker, could clip its map label at the right edge | The easternmost label now opens to the left while retaining the shared marker owner |
+| P2 | Japan’s first seasonal note appeared in both “When to go” and “Worth knowing” | The second topic now uses the remaining seasonal context when structured fields are absent |
+
+No unresolved P0, P1, or P2 visual issue remained in the reviewed states.
+
+## Responsive evidence
+
+The real production page was rendered inside fixed-width same-origin browser frames so layout used the requested CSS viewport rather than a scaled desktop approximation.
+
+| Width | Route and focus | Result |
+| --- | --- | --- |
+| 320 | Japan pace | Single-column lead and spine, readable transfer links, full-width Builder action, no horizontal overflow; mobile dock clears content |
+| 390 | Japan experiences | One-column image-led cards with readable credits and headings, no clipping or dead columns |
+| 390 | Andes experiences | Cusco uses its valid matching hero; the next missing asset is a clear photography-pending state |
+| 430 | Japan geography | Map stacks over facts, controls remain usable, route line and markers stay legible, no horizontal overflow |
+| 768 | Japan practical | Four topics form a balanced two-by-two grid; Sources & review remains immediately inspectable |
+
+## Functional visual checks
+
+- Pace transfer links retain destination hashes and map focus targets.
+- The live map loads lazily, preserves attribution, and renders shared route/marker presentation.
+- The map’s native select exposes whole-route, stop, and connection states to keyboard and assistive technology users.
+- Experience images retain visible provenance; missing imagery stays explicit.
+- Affiliate action remains secondary to route content and keeps the production disclosure.
+- Related cards retain their canonical preview and explore interactions.
+- The opening destination story and final immersive CTA remain visually and structurally unchanged.
+
+## Residual content limitations
+
+- The canonical keyless shared map intentionally uses the sparse Natural Earth presentation already owned by the Trip Map system.
+- Osaka has destination-level city imagery but no subject-specific food-district image.
+- Andes lacks three subject-specific experience images and reviewed recommendation values; both gaps remain visible and truthfully labelled.
+- Browser full-page stitching repeated the fixed hero and was rejected as visual evidence. QA therefore used stable focused captures at exact CSS widths, including the required full desktop width states and each changed chapter.
+- Route Detail tests, public-route tests, image/provenance tests, affiliate/privacy tests, map presentation tests, UI convergence, TypeScript, production build, and Storybook build passed. The strict UI audit passed against this Route Detail implementation before a concurrent dashboard redesign added unrelated raw-color debt; the current audit output identifies only `app/journey/dashboard/dashboard.module.css`. That concurrent work was left untouched. An isolated build also confirmed the Route Detail changes were independently sound while the dashboard work was in flight.
 
 final result: passed

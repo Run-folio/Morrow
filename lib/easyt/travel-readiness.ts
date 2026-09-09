@@ -1,4 +1,5 @@
 import { countryFor } from "./country-registry.ts";
+import type { ResolvedAffiliateAction } from "./booking-readiness.ts";
 
 export type TravelReadinessProfile = {
   nationalities: string[];
@@ -34,7 +35,7 @@ export type ReadinessCard = {
   note?: string;
   href?: string;
   cta?: string;
-  partner?: "saily";
+  partner?: "saily" | "world-nomads";
   sources?: EntrySource[];
 };
 
@@ -116,6 +117,7 @@ type ReadinessInput = {
   avoidDriving?: boolean;
   profile: TravelReadinessProfile;
   sailyHref?: string;
+  insuranceAction?: ResolvedAffiliateAction;
   language?: "en" | "es";
 };
 
@@ -156,9 +158,12 @@ const adviceSourceFor = (residence: string) => {
   return undefined;
 };
 
-export const buildTripReadiness = ({ countries, startDate, avoidDriving = false, profile, sailyHref, language = "en" }: ReadinessInput): ReadinessCard[] => {
+export const buildTripReadiness = ({ countries, startDate, avoidDriving = false, profile, sailyHref, insuranceAction, language = "en" }: ReadinessInput): ReadinessCard[] => {
   const destinations = [...new Set(countries.map(canonicalCountry).filter(Boolean))];
   if (!destinations.length) return [];
+  const resolvedInsuranceAction = insuranceAction?.provider === "world-nomads" && insuranceAction.category === "travel_insurance"
+    ? insuranceAction
+    : undefined;
   const advice = adviceSourceFor(profile.residenceCountry);
   const entrySources = entrySourcesFor(destinations);
   const uncovered = entrySources.filter((source) => source.coverage === "needs-source");
@@ -196,8 +201,13 @@ export const buildTripReadiness = ({ countries, startDate, avoidDriving = false,
   }, {
     id: "insurance",
     priority: "useful",
-    title: "Travel insurance",
-    detail: "Compare medical cover, cancellation protection, activities and any destination-specific exclusions before you travel.",
+    title: "Insurance",
+    detail: "Consider whether you need cover for your trip.",
+    ...(resolvedInsuranceAction ? {
+      href: resolvedInsuranceAction.href,
+      cta: resolvedInsuranceAction.cta,
+      partner: "world-nomads" as const,
+    } : {}),
   });
 
   if (destinations.some((country) => country.toLowerCase() === "china")) cards.push({

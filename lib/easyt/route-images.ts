@@ -1,5 +1,5 @@
-import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
-import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
+import destinationInventory from "../../public/journey/immersive/destination-inventory.json";
+import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json";
 
 export type RoutePhotoRecord = (typeof destinationInventory)[number] | (typeof routeImageInventory)[number];
 
@@ -35,5 +35,12 @@ export function routePhotoForSource(image: string): RoutePhotoRecord | null {
 
 export function routeImageCredit(image: string) {
   const record = routePhotoForSource(image);
-  return record ? { src: image, alt: record.alt, sourceUrl: `/journey/immersive/credits.html#${record.key}`, sourceLabel: `${record.author} · ${record.license}` } : null;
+  return record ? {
+    src: image,
+    alt: record.alt,
+    sourceUrl: record.sourceUrl,
+    licenseUrl: record.licenseUrl,
+    fullCreditUrl: `/journey/immersive/credits.html#${record.key}`,
+    sourceLabel: `${record.author} · ${record.license}`,
+  } : null;
 }

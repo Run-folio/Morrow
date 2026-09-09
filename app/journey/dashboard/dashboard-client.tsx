@@ -6,14 +6,12 @@ import {
   ArrowRight,
   CalendarCheck2,
   Copy,
-  Edit3,
   Gift,
   Globe2,
   Grid2X2,
   MapPin,
   MoreHorizontal,
   RotateCcw,
-  Stamp,
   Trash2,
   X,
 } from "lucide-react";
@@ -25,6 +23,9 @@ import { EasyTFeedback } from "@/components/easyt/easyt-feedback";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl, EasyTTextArea } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
+import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import type { JourneyStop } from "@/lib/journey";
 import {
   cacheCanonicalTrip,
   EasyTTripAuthError,
@@ -55,19 +56,73 @@ import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { dashboardHeroTrip, tripStartDateSortKey } from "@/lib/easyt/trip-status";
 import { tripReadinessSummary } from "@/lib/easyt/trip-readiness-summary";
+import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
+import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-images";
 import accountStyles from "../account.module.css";
 import styles from "./dashboard.module.css";
 
 type StampSummary = { countryId: string; status: "visited" | "want" };
 type SortMode = "updated" | "upcoming" | "title";
+type LibraryView = "all" | TripStatus;
+
+type TripPhoto = {
+  src: string;
+  alt: string;
+  creditHref: string | null;
+  creditLabel: string | null;
+  licenseHref: string | null;
+  fullCreditHref: string | null;
+  place: string | null;
+};
 
 function timestamp(value: string | null | undefined) {
   const parsed = value ? Date.parse(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function tripImage(trip: EasyTTrip) {
-  return trip.planItems.find((item) => item.image)?.image ?? null;
+function storedTripPhoto(trip: EasyTTrip): TripPhoto | null {
+  const src = trip.planItems.find((item) => item.image)?.image ?? null;
+  if (!src) return null;
+  const credit = routeImageCredit(src);
+  return {
+    src,
+    alt: credit?.alt ?? "",
+    creditHref: credit?.sourceUrl ?? null,
+    creditLabel: credit?.sourceLabel ?? null,
+    licenseHref: credit?.licenseUrl ?? null,
+    fullCreditHref: credit?.fullCreditUrl ?? null,
+    place: null,
+  };
+}
+
+function canonicalTripPhotos(trip: EasyTTrip): TripPhoto[] {
+  return [...trip.stops]
+    .sort((left, right) => left.order - right.order)
+    .flatMap((stop) => {
+      const photo = routeDestinationPhoto(stop.name, stop.country);
+      const src = photo?.variants.at(-1)?.src;
+      if (!photo || !src) return [];
+      return [{
+        src,
+        alt: photo.alt,
+        creditHref: photo.sourceUrl,
+        creditLabel: `${photo.author} · ${photo.license}`,
+        licenseHref: photo.licenseUrl,
+        fullCreditHref: `/journey/immersive/credits.html#${photo.key}`,
+        place: photo.place,
+      }];
+    });
+}
+
+function tripPhoto(trip: EasyTTrip): TripPhoto | null {
+  return storedTripPhoto(trip) ?? canonicalTripPhotos(trip)[0] ?? null;
+}
+
+function featuredTripPhoto(trip: EasyTTrip): TripPhoto | null {
+  const stored = storedTripPhoto(trip);
+  const canonical = canonicalTripPhotos(trip);
+  const japanAlternate = canonical.find((photo) => photo.place === "Takayama");
+  return japanAlternate ?? stored ?? canonical[0] ?? null;
 }
 
 function routeLabel(trip: EasyTTrip, fallback: string) {
@@ -84,6 +139,54 @@ function formatTripDates(trip: EasyTTrip, language: EasyTLanguage) {
 
 function featuredTripFrom(trips: EasyTTrip[]) {
   return dashboardHeroTrip(trips);
+}
+
+function featuredTitleParts(title: string) {
+  const comma = title.indexOf(",");
+  if (comma < 0) return { direct: title, expressive: "" };
+  return { direct: title.slice(0, comma + 1), expressive: title.slice(comma + 1).trim() };
+}
+
+function totalNights(trip: EasyTTrip) {
+  return trip.stops.reduce((total, stop) => total + Math.max(0, stop.nights ?? 0), 0);
+}
+
+function tripMapStops(trip: EasyTTrip): JourneyStop[] {
+  return [...trip.stops].sort((left, right) => left.order - right.order).map((stop) => ({
+    id: stop.id,
+    city: stop.name,
+    country: stop.country,
+    date: stop.arrivalDate ?? "",
+    coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : null,
+    theme: "city",
+    marker: "town",
+    description: "",
+    highlights: [],
+    aiPrompt: "",
+  }));
+}
+
+function TripRoutePreview({ trip, label, compact = false }: { trip: EasyTTrip; label: string; compact?: boolean }) {
+  const stops = tripMapStops(trip);
+  if (stops.filter((stop) => stop.coordinates).length < 2) {
+    return <div className={styles.routePreviewFallback}><MapPin aria-hidden="true" /><span>{trip.stops.length} {trip.stops.length === 1 ? "place" : "places"} selected</span></div>;
+  }
+  return <JourneyPlannerMap
+    stops={stops}
+    legs={mapRouteLegsFromTrip(trip)}
+    selectedId=""
+    plannerPins={[]}
+    focusCoordinates={null}
+    draftPinCoordinates={null}
+    pinPlacementMode={false}
+    overviewMode
+    previewMode
+    previewLabel={label}
+    overviewPadding={compact ? { top: 14, right: 14, bottom: 14, left: 14 } : { top: 28, right: 28, bottom: 28, left: 28 }}
+    onMapPinDrop={() => undefined}
+    onPlannerPinSelect={() => undefined}
+    onSelect={() => undefined}
+  />;
 }
 
 function statusLabel(status: TripStatus, language: EasyTLanguage) {
@@ -105,7 +208,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const authenticatedOwnerRef = useRef<string | null>(ownerId);
   if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
   const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);
-  const [view, setView] = useState<TripStatus>(() => trips.some((trip) => trip.status === "draft") ? "draft" : trips.some((trip) => trip.status === "planned") ? "planned" : "archived");
+  const [view, setView] = useState<LibraryView>("all");
   const [sort, setSort] = useState<SortMode>("updated");
   const [query, setQuery] = useState("");
   const [working, setWorking] = useState<string | null>(null);
@@ -298,7 +401,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const featuredTrip = useMemo(() => featuredTripFrom(trips), [trips]);
   const visibleTrips = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    const result = trips.filter((trip) => trip.status === view).filter((trip) => {
+    const result = trips.filter((trip) => view === "all" || trip.status === view).filter((trip) => {
       if (!normalizedQuery) return true;
       return `${tripDisplayTitle(trip)} ${routeLabel(trip, "")}`.toLocaleLowerCase().includes(normalizedQuery);
     });
@@ -308,6 +411,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       return timestamp(b.updatedAt) - timestamp(a.updatedAt);
     });
   }, [query, sort, trips, view]);
+  const secondaryTrips = useMemo(() => visibleTrips.filter((trip) => trip.id !== featuredTrip?.id), [featuredTrip?.id, visibleTrips]);
+  const upcomingTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "planned"), [secondaryTrips]);
+  const ideaTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "draft"), [secondaryTrips]);
+  const pastTrips = useMemo(() => secondaryTrips.filter((trip) => trip.status === "archived"), [secondaryTrips]);
 
   const runAction = async (id: string, action: "archive" | "restore" | "duplicate") => {
     if (actionInFlightRef.current) return;
@@ -436,6 +543,10 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const visitedCount = stampSummary.visited;
   const wantCount = stampSummary.want;
   const isSpanish = language === "es";
+  const featuredPhoto = featuredTrip ? featuredTripPhoto(featuredTrip) : null;
+  const featuredTitle = featuredTrip ? featuredTitleParts(tripDisplayTitle(featuredTrip)) : null;
+  const closingPhoto = routeDestinationPhoto("Tokyo", "Japan");
+  const closingPhotoSrc = closingPhoto?.variants.at(-1)?.src;
   const conflictActions = syncIssue ? tripConflictResolutionActions(syncIssue.tripId) : null;
   const cloudConflictAvailable = conflictHasCloudCopy(syncIssue?.conflictReason);
 
@@ -456,116 +567,91 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
             <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(syncIssue.tripId)}>{isSpanish ? "Abrir copia del dispositivo" : conflictActions!.openDeviceLabel}</EasyTLinkButton>
           </>}
         </>} /> : null}
-      <section className={`${styles.dashboardHero} ${trips.length ? "" : styles.dashboardHeroEmpty}`}>
-        {featuredTrip ? (
-          <article className={`${styles.continueCard} ${styles.interactiveCard}`}>
-            <Link
-              className={styles.cardOverlay}
-              href={tripWorkspaceHref(featuredTrip.id)}
-              aria-label={`${isSpanish ? "Abrir viaje" : "Open trip"}: ${tripDisplayTitle(featuredTrip)}`}
-              onClick={() => trackTripReopened(featuredTrip)}
-            />
-            <div className={styles.continueCopy}>
-              <p className={styles.eyebrow}>{isSpanish ? "Continúa este viaje" : "Continue this trip"}</p>
-              <h2>{tripDisplayTitle(featuredTrip)}</h2>
-              <p className={styles.route}>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
-              <p className={styles.continueHint}>{isSpanish ? "Vuelve al plan y continúa desde donde lo dejaste." : "Pick up the plan where you left it and keep shaping the details."}</p>
-              <div className={styles.continueActions}>
-                <EasyTLinkButton href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
-                  {isSpanish ? "Continuar planeando" : "Continue planning"}<ArrowRight aria-hidden="true" />
-                </EasyTLinkButton>
-                <EasyTLinkButton variant="secondary" href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
-                  {isSpanish ? "Ver detalles" : "View trip details"}
-                </EasyTLinkButton>
-              </div>
-            </div>
+      {featuredTrip ? (
+        <article className={styles.currentJourney} aria-labelledby="current-journey-title">
+          <div className={styles.currentMedia}>
             <ResilientImage
-              className={styles.continueImage}
-              src={tripImage(featuredTrip)}
-              alt=""
-              fallback={<div className={styles.continueImageFallback} aria-hidden="true">
-                <span><b>{featuredTrip.stops.length}</b>{isSpanish ? "paradas" : "stops"}</span>
-                <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
-              </div>}
+              src={featuredPhoto?.src}
+              alt={featuredPhoto?.alt ?? ""}
+              fallback={<div className={styles.currentMediaFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(featuredTrip, copy.routeWaiting)}</span></div>}
             />
-          </article>
-        ) : recoveryState === "checking" || recoveryState === "syncing" ? (
-          <article className={`${styles.continueCard} ${styles.continueEmpty}`} aria-live="polite">
-            <div className={styles.continueCopy}>
-              <p className={styles.eyebrow}>{isSpanish ? "Recuperación" : "Recovery"}</p>
-              <h2>{isSpanish ? "Comprobando un viaje guardado en este dispositivo…" : "Checking for a saved trip on this device…"}</h2>
-              <p className={styles.continueHint}>{isSpanish ? "No crearemos ni ocultaremos nada mientras termina la comprobación." : "Nothing will be created or hidden while this safety check finishes."}</p>
+            <div className={styles.currentIdentity}>
+              <p className={styles.eyebrow}>{isSpanish ? "Tu viaje actual" : "Your current journey"}</p>
+              <h2 id="current-journey-title"><span>{featuredTitle?.direct}</span>{featuredTitle?.expressive ? <em>{featuredTitle.expressive}</em> : null}</h2>
+              <p>{routeLabel(featuredTrip, copy.routeWaiting)}</p>
             </div>
-          </article>
-        ) : (
-          <article className={`${styles.continueCard} ${styles.continueEmpty}`}>
-            <div className={styles.continueCopy}>
-              <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
-              <h2>{isSpanish ? "Empieza con un viaje que ya tienes en mente." : "Start with a trip you’ve been thinking about."}</h2>
-              <p className={styles.continueHint}>{isSpanish ? "Describe los lugares, el tiempo y el estilo de viaje. Morrovia te ayudará a dar forma a la ruta." : "Describe the places, time and travel style. Morrovia will help shape the route."}</p>
-              <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
-            </div>
-          </article>
-        )}
-
-        {trips.length ? <section className={`${styles.stampsCard} ${styles.interactiveCard}`} aria-labelledby="dashboard-stamps-title">
-          <Link className={styles.cardOverlay} href="/journey/stamped" aria-label={isSpanish ? "Abrir Sellos" : "Open Stamped"} />
-          <div className={styles.stampsMain}>
-            <div className={styles.stampsCopy}>
-              <p className={styles.eyebrow}>{isSpanish ? "Tu mundo, marcado" : "Your world, marked"}</p>
-              <h2 id="dashboard-stamps-title">{isSpanish ? "Sellos." : "Stamped."}</h2>
-              <p>{isSpanish ? "Un registro vivo de los lugares donde has estado y los que aún te llaman." : "A living record of places you’ve been and the ones still calling."}</p>
-            </div>
-            <div className={styles.stampsStats} aria-label={isSpanish ? "Resumen de sellos" : "Stamp summary"}>
-              <span><i><Globe2 aria-hidden="true" /></i><b>{visitedCount}</b><small>{isSpanish ? "Países visitados" : "Countries seen"}</small></span>
-              <span><i><MapPin aria-hidden="true" /></i><b>{wantCount}</b><small>{isSpanish ? "Quiero visitar" : "Want to visit"}</small></span>
-            </div>
-            <EasyTLinkButton className={styles.stampsAction} variant="secondary" href="/journey/stamped">{isSpanish ? "Abrir Sellos" : "Open Stamped"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+            {featuredPhoto?.creditLabel ? <MorroviaPhotoCredit photoLabel={featuredPhoto.alt} credit={featuredPhoto.creditLabel} sourceHref={featuredPhoto.creditHref} licenseHref={featuredPhoto.licenseHref} fullCreditHref={featuredPhoto.fullCreditHref} /> : null}
           </div>
-          <div className={styles.stampsVisual} aria-hidden="true">
-            <ResilientImage src="/journey/illustrations/global-route-confirm.png" alt="" className={styles.stampsMap} fallback={null} />
+          <div className={styles.currentDetails}>
+            <div className={styles.currentFacts}>
+              <time>{formatTripDates(featuredTrip, language)}</time>
+              <span>{featuredTrip.stops.length} {isSpanish ? "paradas" : "stops"}</span>
+              <span>{totalNights(featuredTrip)} {isSpanish ? "noches" : "nights"}</span>
+              <span>{featuredTrip.travellers} {isSpanish ? "viajeros" : "travellers"}</span>
+            </div>
+            <div className={styles.currentActions}>
+              <EasyTLinkButton href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>
+                {isSpanish ? "Continuar viaje" : "Continue trip"}<ArrowRight aria-hidden="true" />
+              </EasyTLinkButton>
+              <nav className={styles.workspaceLinks} aria-label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vistas" : "views"}`}>
+                <Link href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>Overview</Link>
+                <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/map`} onClick={() => trackTripReopened(featuredTrip)}>Map</Link>
+                <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/itinerary`} onClick={() => trackTripReopened(featuredTrip)}>Itinerary</Link>
+              </nav>
+              <TripActionsMenu trip={featuredTrip} language={language} copy={copy} working={working === featuredTrip.id} workingAction={working === featuredTrip.id ? workingAction : null} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+            </div>
           </div>
-        </section> : null}
-      </section>
+          <Link className={styles.currentMap} href={`/journey/${encodeURIComponent(featuredTrip.id)}/map`} onClick={() => trackTripReopened(featuredTrip)} aria-label={`${isSpanish ? "Abrir mapa de" : "Open map for"} ${tripDisplayTitle(featuredTrip)}`}>
+            <TripRoutePreview trip={featuredTrip} label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vista previa de la ruta" : "route preview"}`} />
+            <span>{featuredTrip.stops.length} {isSpanish ? "lugares, un viaje" : "places, one journey"}<ArrowRight aria-hidden="true" /></span>
+          </Link>
+        </article>
+      ) : recoveryState === "checking" || recoveryState === "syncing" ? (
+        <article className={styles.emptyHero} aria-live="polite">
+          <p className={styles.eyebrow}>{isSpanish ? "Recuperación" : "Recovery"}</p>
+          <h2>{isSpanish ? "Comprobando un viaje guardado en este dispositivo…" : "Checking for a saved trip on this device…"}</h2>
+          <p>{isSpanish ? "No crearemos ni ocultaremos nada mientras termina la comprobación." : "Nothing will be created or hidden while this safety check finishes."}</p>
+        </article>
+      ) : (
+        <article className={styles.emptyHero}>
+          <p className={styles.eyebrow}>{isSpanish ? "Tu primer viaje" : "Your first trip"}</p>
+          <h2>{isSpanish ? "Empieza con un viaje que ya tienes en mente." : "Start with a trip you’ve been thinking about."}</h2>
+          <p>{isSpanish ? "Describe los lugares, el tiempo y el estilo de viaje." : "Describe the places, time and travel style. Morrovia will help shape the route."}</p>
+          <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Planificar un viaje nuevo" : "Plan a new trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+        </article>
+      )}
 
       {trips.length ? <section className={styles.tripLibrary} aria-labelledby="trip-library-title">
         <h2 id="trip-library-title" className={styles.srOnly}>{isSpanish ? "Tus viajes" : "Your trips"}</h2>
         <div className={styles.libraryToolbar}>
-          <EasyTSegmentedControl<TripStatus>
+          <EasyTSegmentedControl<LibraryView>
             ariaLabel={isSpanish ? "Filtrar por estado del viaje" : "Filter by trip status"}
             className={styles.filterControl}
             value={view}
             onChange={setView}
-            options={(["draft", "planned", "archived"] as TripStatus[]).map((status) => ({ value: status, label: statusLabel(status, language), count: counts[status], controls: "dashboard-trip-grid" }))}
+            options={[
+              { value: "all", label: isSpanish ? "Todos" : "All", count: trips.length, controls: "dashboard-trip-grid" },
+              ...(["planned", "draft", "archived"] as TripStatus[]).map((status) => ({ value: status, label: statusLabel(status, language), count: counts[status], controls: "dashboard-trip-grid" })),
+            ]}
           />
           <div className={styles.libraryTools}>
+            <EasyTField fieldClassName={styles.searchControl} label={isSpanish ? "Buscar viajes" : "Search trips"} labelClassName={styles.srOnly} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isSpanish ? "Buscar viajes" : "Search trips"} />
             <EasyTSelect fieldClassName={styles.sortControl} label={isSpanish ? "Ordenar viajes" : "Sort trips"} labelClassName={styles.srOnly} value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
               <option value="updated">{isSpanish ? "Ordenar: Actualizados" : "Sort by: Recently updated"}</option>
               <option value="upcoming">{isSpanish ? "Ordenar: Fecha de inicio" : "Sort by: Start date"}</option>
               <option value="title">{isSpanish ? "Ordenar: Título" : "Sort by: Title"}</option>
             </EasyTSelect>
-            <EasyTField fieldClassName={styles.searchControl} label={isSpanish ? "Buscar viajes" : "Search trips"} labelClassName={styles.srOnly} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isSpanish ? "Buscar viajes" : "Search trips"} />
             <span className={styles.gridIndicator} role="img" aria-label={isSpanish ? "Vista de cuadrícula" : "Grid view"}><Grid2X2 aria-hidden="true" /></span>
           </div>
         </div>
 
-        <div id="dashboard-trip-grid" className={styles.tripGrid}>
-          {visibleTrips.map((trip) => (
-            <TripCard
-              key={trip.id}
-              trip={trip}
-              language={language}
-              copy={copy}
-              working={working === trip.id}
-              workingAction={working === trip.id ? workingAction : null}
-              onAction={runAction}
-              onGift={openGift}
-              onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }}
-            />
-          ))}
-          {!visibleTrips.length ? (
+        <div id="dashboard-trip-grid" className={styles.tripSections}>
+          <JourneySection kind="upcoming" trips={upcomingTrips} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+          <JourneySection kind="idea" trips={ideaTrips} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+          <JourneySection kind="past" trips={pastTrips} language={language} copy={copy} working={working} workingAction={workingAction} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
+          {!secondaryTrips.length && (Boolean(query) || view !== "all") ? (
             <div className={styles.emptyState}>
-              <Stamp aria-hidden="true" />
+              <Globe2 aria-hidden="true" />
               <h3>{query ? (isSpanish ? "Ningún viaje coincide." : "No trips match that search.") : view === "archived" ? copy.emptyArchived : view === "planned" ? (isSpanish ? "Aún no hay viajes planificados." : "No planned trips yet.") : copy.emptyActive}</h3>
               <p>{query ? (isSpanish ? "Prueba otro destino o título." : "Try another destination or title.") : view === "archived" ? copy.archivedHint : copy.activeHint}</p>
               {view !== "archived" && !query ? <EasyTLinkButton href="/journey/home#start-building">{isSpanish ? "Crear un viaje" : "Start a trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton> : null}
@@ -573,6 +659,21 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
           ) : null}
         </div>
       </section> : null}
+
+      <section className={styles.closingInvitation} aria-labelledby="closing-invitation-title">
+        <ResilientImage src={closingPhotoSrc} alt={closingPhoto?.alt ?? ""} fallback={<div className={styles.closingFallback}><Globe2 aria-hidden="true" /></div>} />
+        <div className={styles.closingContent}>
+          <p className={styles.eyebrow}>{isSpanish ? "Otro lugar que te llama" : "Another way to go"}</p>
+          <h2 id="closing-invitation-title"><span>{isSpanish ? "¿Algún otro lugar" : "Somewhere else"}</span><em>{isSpanish ? "en mente?" : "on your mind?"}</em></h2>
+          <EasyTLinkButton variant="secondary" href="/journey/home#start-building">{isSpanish ? "Empezar otro viaje" : "Start another trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+        </div>
+        {closingPhoto ? <MorroviaPhotoCredit photoLabel={closingPhoto.alt} credit={`${closingPhoto.author} · ${closingPhoto.license}`} sourceHref={closingPhoto.sourceUrl} licenseHref={closingPhoto.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${closingPhoto.key}`} /> : null}
+      </section>
+
+      <footer className={styles.libraryFooter}>
+        <p>{isSpanish ? "Cada viaje, a su tiempo." : "Every journey, in its own time."}</p>
+        <Link href="/journey/stamps">{isSpanish ? "Tus sellos" : "Your Stamps"}<span>{visitedCount} {isSpanish ? "visitados" : "visited"} · {wantCount} {isSpanish ? "deseados" : "want to go"}</span><ArrowRight aria-hidden="true" /></Link>
+      </footer>
 
       {gifting ? (
         <div className={accountStyles.giftOverlay} role="presentation" onMouseDown={() => setGifting(null)}>
@@ -618,58 +719,77 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   );
 }
 
-export function TripCard({ trip, language, copy, working, workingAction, onAction, onGift, onRemove }: {
+type DashboardTripCopy = {
+  routeWaiting: string;
+  edit: string;
+  restore: string;
+  archive: string;
+  duplicate: string;
+  gift: string;
+  delete: string;
+};
+
+type JourneyCardActions = {
+  language: EasyTLanguage;
+  copy: DashboardTripCopy;
+  working: string | null;
+  workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
+  onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
+  onGift: (trip: EasyTTrip) => void;
+  onRemove: (trip: EasyTTrip) => void;
+};
+
+function JourneySection({ kind, trips, language, copy, working, workingAction, onAction, onGift, onRemove }: JourneyCardActions & {
+  kind: "upcoming" | "idea" | "past";
+  trips: EasyTTrip[];
+}) {
+  if (!trips.length) return null;
+  const isSpanish = language === "es";
+  const headings = {
+    upcoming: isSpanish ? ["Más allá", "en el horizonte."] : ["Further on", "the horizon."],
+    idea: isSpanish ? ["Ideas", "tomando forma."] : ["Ideas", "taking shape."],
+    past: isSpanish ? ["Viajes pasados.", "Listos para volver."] : ["Past journeys.", "Ready to revisit."],
+  } as const;
+  const visibleTrips = kind === "past" ? trips.slice(0, 3) : trips;
+  const olderTrips = kind === "past" ? trips.slice(3) : [];
+  const cardProps = { language, copy, workingAction, onAction, onGift, onRemove };
+  return <section className={`${styles.journeySection} ${styles[`${kind}Section`]}`} aria-labelledby={`${kind}-journeys-title`}>
+    <header className={styles.sectionHeading}>
+      <h2 id={`${kind}-journeys-title`}><span>{headings[kind][0]}</span><em>{headings[kind][1]}</em></h2>
+      <p>{kind === "upcoming"
+        ? (isSpanish ? "Rutas decididas, listas para preparar." : "Routes decided, ready for the details.")
+        : kind === "idea"
+          ? (isSpanish ? "Bocetos de rutas que aún pueden cambiar." : "Route sketches that still have room to change.")
+          : (isSpanish ? "Lugares vividos, guardados para otra vez." : "Places lived, kept close for another time.")}</p>
+    </header>
+    <div className={styles.sectionGrid} data-count={Math.min(visibleTrips.length, 4)}>
+      {visibleTrips.map((trip) => <TripCard key={trip.id} kind={kind} trip={trip} {...cardProps} working={working === trip.id} />)}
+    </div>
+    {olderTrips.length ? <details className={styles.olderJourneys}>
+      <summary>{isSpanish ? `Ver ${olderTrips.length} viajes anteriores` : `Show ${olderTrips.length} older ${olderTrips.length === 1 ? "journey" : "journeys"}`}<ArrowRight aria-hidden="true" /></summary>
+      <div className={styles.sectionGrid} data-count={Math.min(olderTrips.length, 4)}>
+        {olderTrips.map((trip) => <TripCard key={trip.id} kind="past" trip={trip} {...cardProps} working={working === trip.id} />)}
+      </div>
+    </details> : null}
+  </section>;
+}
+
+function TripActionsMenu({ trip, language, copy, working, workingAction, onAction, onGift, onRemove }: {
   trip: EasyTTrip;
   language: EasyTLanguage;
-  copy: {
-    routeWaiting: string;
-    edit: string;
-    restore: string;
-    archive: string;
-    duplicate: string;
-    gift: string;
-    delete: string;
-  };
+  copy: DashboardTripCopy;
   working: boolean;
   workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
   onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
   onGift: (trip: EasyTTrip) => void;
   onRemove: (trip: EasyTTrip) => void;
 }) {
-  const readiness = tripReadinessSummary(trip);
-  const readinessLabels = language === "es"
-    ? { itinerary: "Itinerario", stays: "Estancias", route: "Ruta", prep: "Tareas prácticas" }
-    : { itinerary: "Itinerary", stays: "Stays", route: "Route", prep: "Practicals" };
-  const routeSignal = readiness.signals.find((signal) => signal.id === "route")!;
-  const prepSignal = readiness.signals.find((signal) => signal.id === "prep")!;
-  const cardSignals = [
-    readiness.signals.find((signal) => signal.id === "itinerary")!,
-    readiness.signals.find((signal) => signal.id === "stays")!,
-    routeSignal.blocked || !routeSignal.complete ? routeSignal : prepSignal,
-  ];
   const actionLabel = (action: "archive" | "restore" | "duplicate") => {
     if (!working || workingAction !== action) return action === "archive" ? copy.archive : action === "restore" ? copy.restore : copy.duplicate;
     if (language === "es") return action === "archive" ? "Archivando…" : action === "restore" ? "Restaurando…" : "Duplicando…";
     return action === "archive" ? "Archiving…" : action === "restore" ? "Restoring…" : "Duplicating…";
   };
-  const lifecycleClass = trip.status === "draft" ? styles.lifecycleActive : trip.status === "planned" ? styles.lifecyclePlanned : styles.lifecycleArchived;
-  const title = tripDisplayTitle(trip);
-  return <article className={`${styles.tripCard} ${styles.interactiveCard} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
-    <Link className={styles.cardOverlay} href={tripWorkspaceHref(trip.id)} aria-label={`${language === "es" ? "Abrir viaje" : "Open trip"}: ${title}`} onClick={() => trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined} />
-    <div className={styles.tripCardMeta}><span className={`${styles.lifecycleStatus} ${lifecycleClass}`}>{statusLabel(trip.status, language)}</span><time>{formatTripDates(trip, language)}</time></div>
-    <h3 title={title}>{title}</h3>
-    <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
-    <ResilientImage src={tripImage(trip)} alt="" className={styles.tripImage} fallback={<div className={styles.tripImageFallback}><b>{trip.stops.length}</b><span>{language === "es" ? "paradas" : "stops"}</span><small>{formatTripDates(trip, language)}</small></div>} />
-    <ul className={styles.cardReadiness} aria-label={language === "es" ? "Resumen de preparación del viaje" : "Trip readiness summary"}>
-      {cardSignals.map((signal) => <li key={signal.id} className={signal.complete ? styles.completeStage : signal.blocked ? styles.blockedStage : undefined}>
-        <span aria-hidden="true">{signal.complete ? "✓" : signal.blocked ? "!" : "•"}</span>
-        <div><b>{readinessLabels[signal.id]}</b><small>{signal.label}</small></div>
-      </li>)}
-    </ul>
-    <div className={styles.tripCardActions}>
-      <EasyTLinkButton className={styles.openAction} size="small" href={tripWorkspaceHref(trip.id)} onClick={() => trackTripReopened(trip)}>{language === "es" ? "Abrir viaje" : "Open trip"}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
-      <EasyTLinkButton className={styles.editAction} icon={Edit3} size="small" variant="secondary" href={`/journey/new?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" })}>{copy.edit}</EasyTLinkButton>
-      <details className={styles.tripMenu}>
+  return <details className={styles.tripMenu}>
         <summary aria-label={`${language === "es" ? "Acciones para" : "Actions for"} ${tripDisplayTitle(trip)}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
           <Link href={`/journey/trip?trip=${encodeURIComponent(trip.id)}`} onClick={() => trackTripReopened(trip)}><CalendarCheck2 aria-hidden="true" />{language === "es" ? "Modo viaje" : "Trip mode"}</Link>
@@ -678,7 +798,46 @@ export function TripCard({ trip, language, copy, working, workingAction, onActio
           <EasyTButton icon={Gift} variant="quiet" size="small" fullWidth disabled={working} onClick={() => onGift(trip)}>{copy.gift}</EasyTButton>
           <EasyTButton icon={Trash2} variant="quiet" size="small" fullWidth className={styles.deleteAction} disabled={working} onClick={() => onRemove(trip)}>{copy.delete}</EasyTButton>
         </div>
-      </details>
+      </details>;
+}
+
+export function TripCard({ kind, trip, language, copy, working, workingAction, onAction, onGift, onRemove }: {
+  kind?: "upcoming" | "idea" | "past";
+  trip: EasyTTrip;
+  language: EasyTLanguage;
+  copy: DashboardTripCopy;
+  working: boolean;
+  workingAction: "archive" | "restore" | "duplicate" | "delete" | null;
+  onAction: (id: string, action: "archive" | "restore" | "duplicate") => void;
+  onGift: (trip: EasyTTrip) => void;
+  onRemove: (trip: EasyTTrip) => void;
+}) {
+  const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
+  const title = tripDisplayTitle(trip);
+  const photo = tripPhoto(trip);
+  const readiness = tripReadinessSummary(trip);
+  const staySignal = readiness.signals.find((signal) => signal.id === "stays");
+  const primaryHref = resolvedKind === "idea" ? `/journey/new?trip=${encodeURIComponent(trip.id)}` : tripWorkspaceHref(trip.id);
+  const primaryLabel = resolvedKind === "idea"
+    ? (language === "es" ? "Seguir planificando" : "Continue planning")
+    : resolvedKind === "past"
+      ? (language === "es" ? "Volver a visitar" : "Revisit")
+      : (language === "es" ? "Planificar los días" : "Plan your days");
+  return <article className={`${styles.tripCard} ${styles[`${resolvedKind}Card`]} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
+    <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
+      {resolvedKind === "idea" ? <TripRoutePreview trip={trip} label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`} /> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
+      {resolvedKind === "upcoming" ? <div className={styles.cardMapInset}><TripRoutePreview compact trip={trip} label={`${title} ${language === "es" ? "vista previa de la ruta" : "route preview"}`} /></div> : null}
+    </Link>
+    {resolvedKind !== "idea" && photo?.creditLabel ? <MorroviaPhotoCredit photoLabel={photo.alt} credit={photo.creditLabel} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
+    <div className={styles.cardBody}>
+      <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>
+      <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
+      <p className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{totalNights(trip)} {language === "es" ? "noches" : "nights"}</span><span>{trip.stops.length} {language === "es" ? "paradas" : "stops"}</span></p>
+      {staySignal && resolvedKind !== "past" ? <p className={styles.readinessLine}>{staySignal.label}<ArrowRight aria-hidden="true" /></p> : null}
+      <div className={styles.tripCardActions}>
+        <EasyTLinkButton className={styles.openAction} size="small" variant="quiet" href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{primaryLabel}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+        <TripActionsMenu trip={trip} language={language} copy={copy} working={working} workingAction={workingAction} onAction={onAction} onGift={onGift} onRemove={onRemove} />
+      </div>
     </div>
   </article>;
 }

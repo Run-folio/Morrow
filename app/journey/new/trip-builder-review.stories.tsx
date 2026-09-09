@@ -147,7 +147,7 @@ function TimingReview({ kind }: { kind: "normal" | "compressed" | "unknown" | "a
             : kind === "mixed" ? "La Paz → Huacachina · Flight + road · ~8h 45m total."
           : "All nights are allocated, with time protected around the known transfers.";
   return <div style={{ display: "grid", gap: 12 }}>
-    <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>NIGHTS ALLOCATED</span><p><CheckCircle2 aria-hidden="true" /><strong>6 nights total</strong><span aria-hidden="true">•</span><b>All nights allocated</b></p></div>
+    <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>NIGHTS</span><p><CheckCircle2 aria-hidden="true" /><strong>6 total</strong><span aria-hidden="true">•</span><b>All allocated</b></p></div>
     <section className={`${styles.timingWarning} ${kind === "compressed" ? styles.timingWarningStrong : ""}`} role="status" aria-label={`${kind === "compressed" ? "Strong caution" : "Trip pacing"}: ${title}`}>
       <button type="button" className={styles.disclosureHead} aria-expanded="false">{kind === "road" ? <CarFront aria-hidden="true" /> : kind === "rail" ? <TrainFront aria-hidden="true" /> : kind === "mixed" ? <Route aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}<span><strong>{title}</strong><small>{summary}</small></span><ChevronRight aria-hidden="true" /></button>
     </section>

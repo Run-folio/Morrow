@@ -147,3 +147,7 @@
 .builder{border-color:#d9d5ef;border-radius:18px;box-shadow:0 24px 70px rgba(36,27,192,.08)}.steps{position:relative;border-bottom:1px solid #d9d5ef;background:#fff}.steps:before{content:"";position:absolute;left:7%;right:7%;top:39px;height:1px;background:#d9d5ef;z-index:0}.steps button{position:relative;z-index:1;border-right:0;background:transparent}.steps button b{background:#fff}.steps .currentStep{background:transparent}.steps .currentStep b{background:var(--signal);color:#fff}.mapStage{background-color:#f7f8fc;background-image:linear-gradient(rgba(111,112,170,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(111,112,170,.08) 1px,transparent 1px),radial-gradient(circle at 52% 48%,#fff 0,rgba(255,61,139,.08) 52%,#eef0f7 100%);background-size:48px 48px,48px 48px,100% 100%}.mapLand{fill:#fff;stroke:#c9cbe0;stroke-width:.8}.mapRoute{stroke-width:2;filter:drop-shadow(0 4px 6px rgba(255,61,139,.22))}
 @media(max-width:1024px){.builderBoundary{padding-top:28px}}
 @media(max-width:700px){.builderBoundary{padding-top:22px}}
+
+/* The desktop Builder is the page workspace. Its own measured canvas supplies
+   the gutters, while the existing tablet and mobile page padding stays intact. */
+@media(min-width:1025px){.page{padding-inline:0}}

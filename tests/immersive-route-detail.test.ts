@@ -73,7 +73,24 @@ test("photography resolves only to licensed canonical destinations and preserves
   assert.match(photo, /ResilientImage/);
   assert.match(photo, /Photography pending editorial review/);
   assert.match(photo, /fetchPriority=\{eager \? "high" : "auto"\}/);
+  assert.match(photo, /MorroviaPhotoCredit/);
+  assert.match(photo, /sourceHref=\{photo\.sourceUrl\}/);
+  assert.match(photo, /licenseHref=\{photo\.licenseUrl\}/);
+  assert.match(photo, /fullCreditHref=/);
   assert.doesNotMatch(photo, /findRoutePhotos|backgroundImage/);
+  assert.doesNotMatch(photo, /<figcaption>/);
+});
+
+test("experience imagery uses only canonical destination assets and exposes honest gaps", () => {
+  const japan = routeDetailPresentation(publicRouteDetailFor("japan-slow")!);
+  assert.equal(japan.experiences.length, 5);
+  assert.equal(japan.experiences.at(-1)?.photo?.place, "Osaka");
+  assert.match(japan.experiences.at(-1)?.photoQualification ?? "", /subject-specific photo.*pending editorial review/i);
+
+  const andes = routeDetailPresentation(publicRouteDetailFor("andean-highlands")!);
+  assert.equal(andes.experiences.length, 4);
+  assert.equal(andes.experiences[0].photo?.place, "Cusco");
+  assert.ok(andes.experiences.slice(1).every(experience => experience.photo === null));
 });
 
 test("related journeys stay published, exclude the current route and respect admin hiding", () => {
@@ -93,7 +110,11 @@ test("the map library remains behind intersection and selection never recreates 
   assert.match(map, /\}, \[stops, title\]\)/);
   assert.match(map, /event.stopPropagation\(\)/);
   assert.match(map, /duration: 0/);
+  assert.match(map, /morroviaMapStyle/);
+  assert.match(map, /mapRouteCasing/);
+  assert.match(map, /planner-map__stop/);
   assert.match(read(owner + "route-map-summary.tsx"), /aria-live="polite"/);
+  assert.doesNotMatch(read(owner + "route-map-summary.tsx"), /className=\{styles\.mapStops\}/);
 });
 
 test("actions reuse canonical handoff and analytics while mobile and motion keep equivalent content", () => {
@@ -104,9 +125,12 @@ test("actions reuse canonical handoff and analytics while mobile and motion keep
   assert.equal((action.match(/trackEvent\("route_started"/g) ?? []).length, 1);
   assert.match(action, /\/journey\/new\?homeDraft=1&inspire=/);
   assert.doesNotMatch(view, /trackEvent|useEffect|localStorage|routePlannerPayload/);
-  assert.equal((view.match(/>Start with this route<\/RoutePlanLink>/g) ?? []).length, 3);
+  assert.equal((view.match(/>Start with this route<\/RoutePlanLink>/g) ?? []).length, 2);
   assert.match(view, /href="#route-map"/);
   assert.match(view, /Shape the nights in Builder/);
+  assert.match(view, /route_detail_experiences/);
+  assert.match(view, /RouteRelatedRoutes/);
+  assert.equal((view.match(/Sources &amp; review/g) ?? []).length, 1);
   assert.match(read(owner + "route-overview.module.css"), /prefers-reduced-motion:reduce/);
   assert.match(read("components/analytics.tsx"), /lastPageViewRef.current === pathname/);
 });

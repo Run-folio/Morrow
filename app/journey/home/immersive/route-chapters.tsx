@@ -7,6 +7,7 @@ import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
 import { nextHomepageRoute, routeScrollCorrection, homepageJourneyLabel } from "@/lib/easyt/homepage-navigation";
 import RoutePlanLink from "../../routes/[slug]/route-plan-link";
 import ResilientImage from "@/components/easyt/resilient-image";
+import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
@@ -20,7 +21,7 @@ const titles: Record<string, [string, string]> = {
 export function DestinationPhoto({ route, index, landscape = false }: { route: ImmersiveRoute; index: number; landscape?: boolean }) {
   const stop = route.stops[index];
   const photo = route.photos[index];
-  return <div className={styles.destinationPhoto}>{photo ? <ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={landscape ? "100vw" : "(max-width:840px) 45vw, 23vw"} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} /> : <div className={styles.photoFallback}>{stop.name}</div>}<a className={styles.photoCredit} href="/journey/immersive/credits.html">{photo ? `${photo.author} · ${photo.license}` : "Image unavailable"}</a></div>;
+  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={landscape ? "100vw" : "(max-width:840px) 45vw, 23vw"} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} /><MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
 }
 
 export default function RouteChapters({ routes, index, onChange, children, quiet }: {
