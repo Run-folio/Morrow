@@ -1,0 +1,36 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  line-height: 0;
+}
+
+.logo img {
+  display: block;
+  width: auto;
+  object-fit: contain;
+}
+
+.footer.full img,
+.footer.light img,
+.compact.full img,
+.compact.light img {
+  height: 36px;
+}
+
+.navigation.full img,
+.navigation.light img {
+  height: 62px;
+}
+
+.mark img {
+  width: 32px;
+  height: 32px;
+}
+
+@media (max-width: 520px) {
+  .navigation.full img,
+  .navigation.light img {
+    height: 42px;
+  }
+}

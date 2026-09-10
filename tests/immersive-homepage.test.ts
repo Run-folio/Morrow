@@ -54,7 +54,7 @@ test("hero composes real capture and current handoff owners", () => {
   const hero = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
   const capture = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
   assert.match(hero, /<HomeTripStarter \/>/);
-  assert.match(hero, /<EasyTNavigation current="home" landing deferPrefetch \/>/);
+  assert.match(hero, /<EasyTNavigation current="home" landing logoTone="light" deferPrefetch \/>/);
   assert.match(capture, /<MorroviaTripCapture/);
   assert.match(capture, /progressiveDetails/);
   assert.match(capture, /<JourneyEndpointsEditor/);

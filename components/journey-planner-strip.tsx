@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import ResilientImage from "@/components/easyt/resilient-image";
+import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import styles from "./journey-planner-strip.module.css";
 
 export type JourneyPlannerStripStop = {
@@ -47,7 +48,7 @@ export function JourneyPlannerStrip({
   return (
     <header ref={containerRef} className={`${styles.strip} ${presentation === "integrated" ? styles.integrated : ""}`}>
       {presentation === "focused" ? <Link className={styles.brand} href="/" aria-label="Morrovia home">
-        Morrovia
+        <MorroviaBrandLogo variant="full" size="compact" decorative />
       </Link> : null}
 
       {presentation === "focused" ? <div className={styles.tripSummary}>

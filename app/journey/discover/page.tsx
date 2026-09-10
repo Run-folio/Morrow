@@ -36,8 +36,8 @@ export default async function DiscoveryPage() {
       ...publishedDiscoveryStyles(families).map((style) => ({ label: style.label, interest: style.interest })),
       ...publishedDiscoveryWonders(families).map((wonder) => ({ label: wonder.title, routeKey: wonder.route.key })),
     ];
-    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing deferPrefetch /></div>} routes={catalogueWithEditorialImages(routes, editorial)} editorial={editorial} shortcuts={shortcuts} /></main>;
+    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing logoTone="light" deferPrefetch /></div>} routes={catalogueWithEditorialImages(routes, editorial)} editorial={editorial} shortcuts={shortcuts} /></main>;
   } catch {
-    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing deferPrefetch /></div>} routes={[]} unavailable /></main>;
+    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing logoTone="light" deferPrefetch /></div>} routes={[]} unavailable /></main>;
   }
 }

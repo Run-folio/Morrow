@@ -11,24 +11,11 @@
 }
 
 .brand {
-  position: relative;
   justify-self: start;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
-  color: var(--morrovia-ink);
-  font: 700 27px/1 var(--morrovia-display);
-  letter-spacing: -.06em;
   text-decoration: none;
-}
-
-.brand::after {
-  content: "✦";
-  position: absolute;
-  top: -.4em;
-  right: -.46em;
-  color: var(--morrovia-signal);
-  font-size: .5em;
 }
 
 .footer p { margin: 0; }
@@ -87,7 +74,6 @@
   border-top: 1px solid color-mix(in srgb, var(--morrovia-paper) 28%, transparent);
 }
 .overImage .brand,
-.overImage .brand::after,
 .overImage nav a { color: var(--morrovia-paper); }
 .overImage nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .overImage .brand:focus-visible,

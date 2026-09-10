@@ -1098,14 +1098,6 @@
         ]
       },
       {
-        "value": "#18126d",
-        "count": 2,
-        "examples": [
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/home/home.module.css"
-        ]
-      },
-      {
         "value": "#199c72",
         "count": 2,
         "examples": [
@@ -1883,6 +1875,13 @@
       },
       {
         "value": "#17161f",
+        "count": 1,
+        "examples": [
+          "app/journey/home/home.module.css"
+        ]
+      },
+      {
+        "value": "#18126d",
         "count": 1,
         "examples": [
           "app/journey/home/home.module.css"
@@ -7682,7 +7681,7 @@
     "breakpoints": [
       {
         "value": "max-width: 520px",
-        "count": 32,
+        "count": 33,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -8065,7 +8064,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1934,
+      "raw-color": 1933,
       "raw-radius": 571,
       "raw-shadow": 179,
       "raw-font-family": 0,
@@ -8175,7 +8174,7 @@
         },
         {
           "path": "app/journey/easyt-navigation.module.css",
-          "count": 26
+          "count": 25
         }
       ],
       "raw-radius": [

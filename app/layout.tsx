@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     google: process.env.GOOGLE_SITE_VERIFICATION,
   },
   icons: {
-    icon: "/brand/morrow-route-mark-512.png",
-    shortcut: "/brand/morrow-route-mark-512.png",
-    apple: "/brand/morrow-route-mark-512.png",
+    icon: "/brand/morrovia-mark-512.png",
+    shortcut: "/brand/morrovia-mark-512.png",
+    apple: "/brand/morrovia-mark-512.png",
   },
 };
 

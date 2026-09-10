@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#17152f",
     icons: [
       {
-        src: "/brand/morrow-route-mark-512.png",
+        src: "/brand/morrovia-mark-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

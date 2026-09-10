@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
+import MorroviaBrandLogo from "./morrovia-brand-logo";
 import styles from "./morrovia-footer.module.css";
 
 const copy = {
@@ -47,7 +48,7 @@ export default function MorroviaFooter({ overImage = false, omitOnImmersiveHome 
   if (omitOnImmersiveHome && (pathname === "/" || pathname === "/journey/home")) return null;
   return <footer role="contentinfo" className={`${styles.footer} ${overImage ? styles.overImage : ""}`}>
     <Link className={styles.brand} href="/" aria-label={`${morroviaLegalIdentity.productName} home`}>
-      {morroviaLegalIdentity.productName}
+      <MorroviaBrandLogo variant={overImage ? "light" : "full"} decorative />
     </Link>
     <div className={styles.identity}>
       <p>© {morroviaLegalIdentity.copyrightYear} {morroviaLegalIdentity.productName}. {text.rights}</p>

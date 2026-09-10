@@ -20,6 +20,7 @@ import { authClient } from "@/lib/auth-client";
 import { identifyAnalyticsUser, resetAnalyticsIdentity } from "@/lib/analytics";
 import { beginNewTripNavigation, forgetRememberedOwner, rememberLastOwner } from "@/lib/easyt/storage";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
+import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
 import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
@@ -29,6 +30,7 @@ type EasyTNavigationProps = {
   account?: { id?: string; name?: string | null; email: string; language?: Language };
   storageOwnerId?: string | null;
   landing?: boolean;
+  logoTone?: "dark" | "light";
   /** Keep deferred destination bundles out of an immersive landing page’s first load. */
   deferPrefetch?: boolean;
 };
@@ -39,6 +41,7 @@ export default function EasyTNavigation({
   current,
   account,
   storageOwnerId,
+  logoTone = "dark",
   deferPrefetch = false,
 }: EasyTNavigationProps) {
   const router = useRouter();
@@ -142,7 +145,7 @@ export default function EasyTNavigation({
         href="/"
         aria-label="Morrovia home"
       >
-        <span className={styles.brandName}>Morrovia</span>
+        <MorroviaBrandLogo variant={logoTone === "light" ? "light" : "full"} size="navigation" decorative priority />
       </Link>
 
       <nav className={styles.landingActions} aria-label="Morrovia navigation">

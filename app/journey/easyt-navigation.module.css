@@ -41,33 +41,6 @@
   align-items: center;
   line-height: 1;
 }
-.brandName {
-  position: relative;
-  color: #18126d;
-  font-family: var(--morrovia-display);
-  font-size: clamp(25px, 2.2vw, 34px);
-  font-weight: 700;
-  letter-spacing: -.055em;
-  line-height: 1;
-}
-.brandName::after {
-  content: "✦";
-  position: absolute;
-  top: -0.45em;
-  right: -0.5em;
-  color: var(--morrovia-signal);
-  font-family: var(--morrovia-display);
-  font-size: .58em;
-  letter-spacing: 0;
-}
-.header:not(.landingHeader) .brandName {
-  color: var(--morrovia-ink);
-  font-family: var(--morrovia-display, Georgia, "Times New Roman", serif);
-}
-.header:not(.landingHeader) .brandName::after {
-  color: var(--morrovia-signal);
-  font-family: var(--morrovia-display, Georgia, "Times New Roman", serif);
-}
 .actions {
   grid-column: 3;
   justify-self: end;
@@ -449,10 +422,6 @@
   .primaryLink {
     width: 36px;
     padding: 0;
-  }
-  .brandName {
-    font-size: 25px;
-    letter-spacing: -.055em;
   }
   .accountPopover {
     position: fixed;
