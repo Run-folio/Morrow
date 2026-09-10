@@ -48,6 +48,8 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     placeType: candidate.placeType,
     locality: candidate.placeType === "city" || candidate.placeType === "town" ? candidate.canonicalName : undefined,
     routability: candidate.routability,
+    matchQuality: candidate.matchQuality,
+    rankScore: candidate.rankScore,
   };
 }
 

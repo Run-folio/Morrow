@@ -4,6 +4,42 @@ import type { JourneyEndSelection, JourneyEndpointPlace, TripBrief } from "./tri
 
 const normalise = (value: string | undefined) => value?.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") ?? "";
 
+export type JourneyEndpointCandidate = JourneyEndpointPlace & {
+  routability?: string;
+  placeType?: string;
+  kind?: string;
+  matchQuality?: string;
+  rankScore?: number;
+};
+
+/** Auto-accept only an exact, routable identity with a unique or materially
+ * stronger canonical result. Closely ranked same-name candidates remain
+ * ambiguous, so free text cannot select an arbitrary Springfield-like result. */
+export function resolveTypedJourneyEndpoint(
+  input: string,
+  candidates: readonly JourneyEndpointCandidate[],
+): { status: "resolved"; place: JourneyEndpointPlace } | { status: "ambiguous" | "unresolved" } {
+  const query = normalise(input);
+  if (!query) return { status: "unresolved" };
+  const routable = candidates.filter((candidate) => candidate.routability === "direct_destination"
+    && validCoordinates(candidate.coordinates)
+    && ["city", "town", "transport_gateway"].includes(candidate.placeType ?? candidate.kind ?? ""));
+  const exact = routable.filter((candidate) => normalise(candidate.name) === query);
+  const identities = exact.filter((candidate, index, all) => all.findIndex((item) => {
+    if (candidate.canonicalPlaceId && item.canonicalPlaceId) return candidate.canonicalPlaceId === item.canonicalPlaceId;
+    if (candidate.providerId && item.providerId) return candidate.providerId === item.providerId;
+    return normalise(candidate.name) === normalise(item.name)
+      && normalise(candidate.country) === normalise(item.country)
+      && candidate.coordinates?.every((coordinate, coordinateIndex) => coordinate === item.coordinates?.[coordinateIndex]);
+  }) === index);
+  if (identities.length === 1) return { status: "resolved", place: canonicalJourneyEndpointPlace(identities[0]!) };
+  const ranked = identities.filter((candidate) => Number.isFinite(candidate.rankScore)).sort((left, right) => (right.rankScore ?? 0) - (left.rankScore ?? 0));
+  if (ranked.length > 1 && (ranked[0]!.rankScore ?? 0) - (ranked[1]!.rankScore ?? 0) >= 12) {
+    return { status: "resolved", place: canonicalJourneyEndpointPlace(ranked[0]!) };
+  }
+  return { status: routable.length ? "ambiguous" : "unresolved" };
+}
+
 export const unknownJourneyEnd = (): JourneyEndSelection => ({ mode: "unknown" });
 
 function validCoordinates(value: [number, number] | undefined): value is [number, number] {

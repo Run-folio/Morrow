@@ -60,7 +60,7 @@ import { buildCanonicalTripLegs } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
-import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd } from "@/lib/easyt/journey-endpoints";
+import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -555,6 +555,11 @@ function TripBuilderDocument() {
   const [journeyEnd, setJourneyEnd] = useState<JourneyEndSelection>({ mode: "unknown" });
   const [journeyEndInput, setJourneyEndInput] = useState("");
   const [journeyEndTouched, setJourneyEndTouched] = useState(false);
+  const [journeyEndError, setJourneyEndError] = useState("");
+  const [journeyEndResolutionAttempted, setJourneyEndResolutionAttempted] = useState(false);
+  const [startRevealSuggestionsKey, setStartRevealSuggestionsKey] = useState(0);
+  const [endRevealSuggestionsKey, setEndRevealSuggestionsKey] = useState(0);
+  const journeyEndResolutionVersionRef = useRef(0);
   const originBeforePlanningClarificationRef = useRef<{
     name: string;
     coordinates?: [number, number];
@@ -2546,14 +2551,20 @@ function TripBuilderDocument() {
   };
 
   const changeJourneyEndInput = (value: string) => {
+    journeyEndResolutionVersionRef.current += 1;
     setJourneyEndTouched(true);
     setJourneyEndInput(value);
+    setJourneyEndError("");
+    setJourneyEndResolutionAttempted(false);
     setJourneyEnd(value.trim() ? { mode: "explicit", place: { name: value.trim() } } : { mode: "unknown" });
   };
 
   const selectJourneyEndSuggestion = (suggestion: CanonicalPlaceSuggestion) => {
+    journeyEndResolutionVersionRef.current += 1;
     setJourneyEndTouched(true);
     setJourneyEndInput(suggestion.name);
+    setJourneyEndError("");
+    setJourneyEndResolutionAttempted(true);
     setJourneyEnd({
       mode: "explicit",
       place: journeyEndpointPlaceFromSuggestion(suggestion),
@@ -2561,8 +2572,11 @@ function TripBuilderDocument() {
   };
 
   const chooseJourneyEndMode = (mode: "same_as_start" | "unknown") => {
+    journeyEndResolutionVersionRef.current += 1;
     setJourneyEndTouched(true);
     setJourneyEndInput("");
+    setJourneyEndError("");
+    setJourneyEndResolutionAttempted(true);
     setJourneyEnd({ mode });
   };
 
@@ -2613,21 +2627,54 @@ function TripBuilderDocument() {
     const resolutionVersion = originResolutionVersionRef.current + 1;
     replaceJourneyOrigin({ name: origin.trim() });
     try {
-      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(origin.trim())}`);
-      const payload = await response.json() as { result?: LocationChoice | null };
+      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(origin.trim())}&candidates=1`);
+      const payload = await response.json() as { candidates?: LocationChoice[] };
       if (originResolutionVersionRef.current !== resolutionVersion) return false;
-      if (!payload.result?.coordinates) { setOriginTouched(true); setOriginError(ui.verifyOrigin); return false; }
-      replaceJourneyOrigin({
-        name: payload.result.name ?? origin.trim(),
-        coordinates: payload.result.coordinates,
-        country: payload.result.country,
-        providerId: payload.result.providerId,
-        canonicalPlaceId: payload.result.canonicalPlaceId ?? (payload.result.providerId ? `open-world:${payload.result.providerId}` : undefined),
-      });
+      const resolution = resolveTypedJourneyEndpoint(origin.trim(), payload.candidates ?? []);
+      if (resolution.status !== "resolved") {
+        setOriginTouched(true);
+        setOriginError(resolution.status === "ambiguous"
+          ? (language === "es" ? "Elige qué punto de partida quieres decir." : "Choose which starting place you mean.")
+          : ui.verifyOrigin);
+        if (resolution.status === "ambiguous") setStartRevealSuggestionsKey((current) => current + 1);
+        return false;
+      }
+      replaceJourneyOrigin(resolution.place);
       setOriginError("");
       return true;
     } catch {
       setOriginError(ui.originUnavailable);
+      return false;
+    }
+  };
+
+  const validateJourneyEnd = async () => {
+    if (journeyEnd.mode !== "explicit") return true;
+    if (journeyEndpointIdentityIsCoherent(journeyEnd.place)) return true;
+    const input = journeyEndInput.trim() || journeyEnd.place.name.trim();
+    if (!input) return true;
+    const resolutionVersion = journeyEndResolutionVersionRef.current + 1;
+    journeyEndResolutionVersionRef.current = resolutionVersion;
+    setJourneyEndResolutionAttempted(true);
+    try {
+      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(input)}&candidates=1`);
+      const payload = await response.json() as { candidates?: LocationChoice[] };
+      if (journeyEndResolutionVersionRef.current !== resolutionVersion) return false;
+      const resolution = resolveTypedJourneyEndpoint(input, payload.candidates ?? []);
+      if (resolution.status !== "resolved") {
+        setJourneyEndError(resolution.status === "ambiguous"
+          ? (language === "es" ? "Elige qué lugar de llegada quieres decir." : "Choose which ending place you mean.")
+          : (language === "es" ? "No pudimos verificar ese lugar de llegada." : "We couldn't verify that ending place."));
+        if (resolution.status === "ambiguous") setEndRevealSuggestionsKey((current) => current + 1);
+        return false;
+      }
+      setJourneyEndInput(resolution.place.name);
+      setJourneyEnd({ mode: "explicit", place: resolution.place });
+      setJourneyEndError("");
+      return true;
+    } catch {
+      if (journeyEndResolutionVersionRef.current !== resolutionVersion) return false;
+      setJourneyEndError(language === "es" ? "No pudimos comprobar ese lugar de llegada ahora." : "We couldn't check that ending place just now.");
       return false;
     }
   };
@@ -2784,9 +2831,20 @@ function TripBuilderDocument() {
     document: activeTripDocument,
   }), [origin, originCoordinates, journeyEnd, stops, resolvingLocations, locationChoices.length, placeIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
   const gateConflict = step === 0
-    ? buildInvariant.conflicts.find((conflict) => conflict.stage === "places")
+    ? buildInvariant.conflicts.find((conflict) => conflict.stage === "places" && conflict.code !== "end-unverified")
+      ?? (journeyEndResolutionAttempted ? buildInvariant.conflicts.find((conflict) => conflict.code === "end-unverified") : undefined)
     : buildInvariant.firstConflict;
   const gate = gateConflict?.message ?? "";
+
+  const advanceToTime = async () => {
+    const nonEndpointConflict = buildInvariant.conflicts.find((conflict) => conflict.stage === "places" && conflict.code !== "end-unverified");
+    if (nonEndpointConflict) { surfaceBuildConflict(); return; }
+    const originValid = await validateOrigin();
+    if (!originValid) { surfaceBuildConflict(); return; }
+    const endValid = await validateJourneyEnd();
+    if (!endValid) return;
+    setStep(1);
+  };
 
   useEffect(() => {
     if (step !== 1 || !gateConflict) return;
@@ -3424,8 +3482,7 @@ function TripBuilderDocument() {
           return (
           <button type="button" key={label} onClick={() => {
             if (i === 0) { setStep(0); return; }
-            if (!buildInvariant.canAdvanceToTime) { surfaceBuildConflict(); return; }
-            void validateOrigin().then((valid) => { if (valid) setStep(1); });
+            void advanceToTime();
           }} aria-current={i === step ? "step" : undefined}
             className={`${styles.stepTab} ${i === step ? styles.stepTabOn : ""} ${i < step ? styles.stepTabDone : ""}`}>
             <b>{i < step ? "✓" : pad(i + 1)}</b>
@@ -3460,9 +3517,19 @@ function TripBuilderDocument() {
                   showHint={false}
                   onStartChange={(value) => { setManualOriginInput(value); setManualOriginCaptureText(""); setManualOriginSuggestion(undefined); setTripBriefCaptureError(""); }}
                   onStartSelect={(suggestion) => { setManualOriginInput(suggestion.name); setManualOriginCaptureText(suggestion.name); setManualOriginSuggestion(suggestion); setTripBriefCaptureError(""); }}
+                  onStartCommit={() => {
+                    const suggestion = canonicalPlaceSuggestionFor(manualOriginInput.trim());
+                    if (suggestion && !placeSuggestionRequiresBaseSelection(suggestion)) {
+                      setManualOriginInput(suggestion.name);
+                      setManualOriginCaptureText(suggestion.name);
+                      setManualOriginSuggestion(suggestion);
+                    }
+                  }}
                   onEndChange={changeJourneyEndInput}
                   onEndSelect={selectJourneyEndSuggestion}
                   onEndModeChange={chooseJourneyEndMode}
+                  onEndCommit={() => { void validateJourneyEnd(); }}
+                  endRevealSuggestionsKey={endRevealSuggestionsKey}
                 />}
                 manualEntry={<div className={styles.manualCaptureFields}>
                   <div className={styles.manualCaptureField}>
@@ -3512,16 +3579,20 @@ function TripBuilderDocument() {
                     endSelection={journeyEnd}
                     startInvalid={Boolean(originError || originMissing)}
                     startDescribedBy={(originError || originMissing) ? originErrorId : undefined}
-                    endInvalid={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
-                    hint={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates
-                      ? (language === "es" ? "Elige el lugar de llegada de las sugerencias o selecciona Aún no lo sé." : "Choose the ending place from the suggestions, or select Not sure yet.")
+                    endInvalid={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
+                    hint={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates
+                      ? journeyEndError || (language === "es" ? "Elige el lugar de llegada de las sugerencias o selecciona Aún no lo sé." : "Choose the ending place from the suggestions, or select Not sure yet.")
                       : undefined}
-                    showHint={journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
+                    showHint={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
                     onStartChange={(value) => { replaceJourneyOrigin({ name: value }); setOriginTouched(true); setOriginError(""); }}
                     onStartSelect={(suggestion) => { void selectOriginSuggestion(suggestion); }}
+                    onStartCommit={() => { void validateOrigin(); }}
+                    startRevealSuggestionsKey={startRevealSuggestionsKey}
                     onEndChange={changeJourneyEndInput}
                     onEndSelect={selectJourneyEndSuggestion}
                     onEndModeChange={chooseJourneyEndMode}
+                    onEndCommit={() => { void validateJourneyEnd(); }}
+                    endRevealSuggestionsKey={endRevealSuggestionsKey}
                   />
                   {inlineOriginPlanningMention ? <div className={styles.inlinePlanningClarification}>
                     <div className={styles.inlinePlanningIdentity} role="status">
@@ -4040,8 +4111,7 @@ function TripBuilderDocument() {
                 loading={openingTrip}
                 onClick={async () => {
                   if (gate) return;
-                  if (!buildInvariant.canAdvanceToTime || !(await validateOrigin())) { surfaceBuildConflict(); return; }
-                  setStep(1);
+                  await advanceToTime();
                 }}
               >
                 {language === "es" ? "Establecer fechas y noches" : "Set dates & nights"}<ArrowRight aria-hidden="true" />
@@ -4235,8 +4305,7 @@ function TripBuilderDocument() {
             onClick={async () => {
               if (gate) return;
               if (step === 0) {
-                if (!buildInvariant.canAdvanceToTime || !(await validateOrigin())) { surfaceBuildConflict(); return; }
-                setStep(1);
+                await advanceToTime();
                 return;
               }
               buildTrip();

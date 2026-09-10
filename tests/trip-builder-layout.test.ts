@@ -298,7 +298,7 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
     "the mobile stepper should not retain the legacy connector line");
   assert.match(mobileRepair, /\.stepHeroTitle,[\s\S]*font-size: clamp\(30px, 8\.6vw, 36px\)/,
     "mobile primary headings should stay at product scale");
-  assert.match(builder, /if \(step === 0\)[\s\S]*setStep\(1\)[\s\S]*buildTrip\(\);/,
+  assert.match(builder, /if \(step === 0\)[\s\S]*await advanceToTime\(\)[\s\S]*buildTrip\(\);/,
     "the existing Continue and Build trip handoff should remain authoritative");
 });
 

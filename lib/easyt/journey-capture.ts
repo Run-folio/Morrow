@@ -145,12 +145,61 @@ function captureFromResolution(
   return result;
 }
 
-function geographySourceSpan(sourceText: string, rawBrief: string) {
-  const stripped = sourceText
-    .replace(/^(?:start(?:ing)?|begin(?:ning)?|depart(?:ing)?|leav(?:e|ing)|finish(?:ing)?|travel(?:ling|ing)?|visit(?:ing)?)\s+(?:in|from|at|to)\s+/i, "")
-    .replace(/^(?:then|and)\s+/i, "")
+const standaloneTravelGrammar = new Set([
+  "and", "at", "begin", "beginning", "depart", "departing", "finish", "finishing", "from", "go", "going",
+  "in", "leave", "leaving", "next", "or", "see", "seeing", "start", "starting", "stay", "staying", "then",
+  "to", "travel", "traveling", "travelling", "visit", "visiting", "while", "with",
+]);
+
+function lexicalWords(value: string) {
+  return value.match(/[\p{L}\p{N}][\p{L}\p{M}\p{N}'’.-]*/gu) ?? [];
+}
+
+/**
+ * Semantic extraction identifies candidate spans, but geographic identity is
+ * resolved elsewhere. Keep that trust boundary strict: sentence punctuation,
+ * connective text and bare travel actions are not geographic lookup inputs.
+ *
+ * Common words are rejected only when the entire span is grammar. A complete
+ * proper name such as "Travel Town" therefore remains eligible, as does any
+ * full span already backed by deterministic canonical evidence.
+ */
+function geographySourceSpan(
+  sourceText: string,
+  rawBrief: string,
+  deterministicMentions: readonly ResolvedPlaceMention[] = [],
+): string | null {
+  const promptGrounded = rawBrief.toLocaleLowerCase().includes(sourceText.trim().toLocaleLowerCase());
+  const boundaryCleaned = sourceText
+    .trim()
+    .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "")
     .trim();
-  return stripped && rawBrief.toLocaleLowerCase().includes(stripped.toLocaleLowerCase()) ? stripped : sourceText;
+  if (!boundaryCleaned || !lexicalWords(boundaryCleaned).length) return null;
+
+  const canonicalEvidence = deterministicMentions.some((mention) => sameRawPlaceSpan(mention.sourceText, boundaryCleaned)
+    && Boolean(mention.canonicalPlaceId)
+    && !mention.provenance.some((item) => item.id.startsWith("fuzzy:")));
+  if (canonicalEvidence) return boundaryCleaned;
+
+  const stripped = boundaryCleaned
+    .replace(/^(?:(?:then|and|next)\s+)?(?:(?:visit(?:ing)?|see(?:ing)?)\b\s+|(?:start(?:ing)?|begin(?:ning)?|depart(?:ing)?|leav(?:e|ing)|finish(?:ing)?|travel(?:ling|ing)?|go(?:ing)?|stay(?:ing)?)\b\s+(?:in|from|at|to)\s+)/iu, "")
+    .replace(/^(?:then|and|next)\b[\s,:;.-]*/iu, "")
+    .trim();
+  const candidate = stripped && rawBrief.toLocaleLowerCase().includes(stripped.toLocaleLowerCase()) ? stripped : boundaryCleaned;
+  const words = lexicalWords(candidate).map((word) => word.toLocaleLowerCase().replace(/[.’'-]+$/g, ""));
+  if (!words.length || words.every((word) => standaloneTravelGrammar.has(word))) return null;
+  // A semantic span must be text from the traveller's prompt. Interpreted
+  // canonical lookup text is handled separately and never substitutes for a
+  // malformed source span.
+  return promptGrounded || rawBrief.toLocaleLowerCase().includes(candidate.toLocaleLowerCase()) ? candidate : null;
+}
+
+function safeLookupText(value: string | null, sourceText: string) {
+  if (!value) return undefined;
+  const cleaned = value.trim().replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "").trim();
+  const words = lexicalWords(cleaned).map((word) => word.toLocaleLowerCase());
+  if (!cleaned || !words.length || words.every((word) => standaloneTravelGrammar.has(word))) return undefined;
+  return normalizePlacePhrase(cleaned) === normalizePlacePhrase(sourceText) ? undefined : cleaned;
 }
 
 function semanticDestinationIntent(
@@ -172,17 +221,24 @@ function semanticPlaceMentions(
   deterministicMentions: ResolvedPlaceMention[],
 ): ExplicitPlaceMention[] {
   const inputs: ExplicitPlaceMention[] = [];
-  if (intent.origin.sourceText) inputs.push({ sourceText: geographySourceSpan(intent.origin.sourceText, rawBrief), role: "origin" });
-  if (intent.journeyEnd?.mode === "explicit_place" && intent.journeyEnd.sourceText) inputs.push({
-    sourceText: geographySourceSpan(intent.journeyEnd.sourceText, rawBrief),
-    role: "fixed_end",
-    travelIntent: "route-stop",
-    ...(intent.journeyEnd.interpretedText ? { lookupText: intent.journeyEnd.interpretedText } : {}),
-  });
+  const safeSpan = (value: string) => geographySourceSpan(value, rawBrief, deterministicMentions);
+  if (intent.origin.sourceText) {
+    const sourceText = safeSpan(intent.origin.sourceText);
+    if (sourceText) inputs.push({ sourceText, role: "origin" });
+  }
+  if (intent.journeyEnd?.mode === "explicit_place" && intent.journeyEnd.sourceText) {
+    const sourceText = safeSpan(intent.journeyEnd.sourceText);
+    if (sourceText) {
+      const lookupText = safeLookupText(intent.journeyEnd.interpretedText, sourceText);
+      inputs.push({ sourceText, role: "fixed_end", travelIntent: "route-stop", ...(lookupText ? { lookupText } : {}) });
+    }
+  }
   for (const destination of intent.destinationCandidates) {
     if (duplicatesRelationalJourneyEnd(destination.sourceText, intent)
       || duplicatesOriginWithoutExplicitStay(destination.sourceText, deterministicMentions)) continue;
-    const sourceText = geographySourceSpan(destination.sourceText, rawBrief);
+    const sourceText = safeSpan(destination.sourceText);
+    if (!sourceText) continue;
+    const lookupText = safeLookupText(destination.interpretedText, sourceText);
     inputs.push({
     sourceText,
     // Semantic certainty describes confidence in the interpretation, not
@@ -193,19 +249,20 @@ function semanticPlaceMentions(
     // Explicit broad wording and trusted deterministic broad identities retain
     // planning-area intent.
     travelIntent: semanticDestinationIntent(sourceText, destination.role, deterministicMentions),
-    ...(destination.interpretedText ? { lookupText: destination.interpretedText } : {}),
+    ...(lookupText ? { lookupText } : {}),
     });
   }
-  for (const point of intent.pointsOfInterest) inputs.push({
-    sourceText: geographySourceSpan(point.sourceText, rawBrief),
-    role: "anchor",
-    travelIntent: "anchor",
-    ...(point.interpretedText ? { lookupText: point.interpretedText } : {}),
-  });
+  for (const point of intent.pointsOfInterest) {
+    const sourceText = safeSpan(point.sourceText);
+    if (!sourceText) continue;
+    const lookupText = safeLookupText(point.interpretedText, sourceText);
+    inputs.push({ sourceText, role: "anchor", travelIntent: "anchor", ...(lookupText ? { lookupText } : {}) });
+  }
   for (const ambiguity of intent.ambiguities) {
     if (!['destination', 'poi'].includes(ambiguity.kind)) continue;
     if (duplicatesRelationalJourneyEnd(ambiguity.sourceText, intent)) continue;
-    const sourceText = geographySourceSpan(ambiguity.sourceText, rawBrief);
+    const sourceText = safeSpan(ambiguity.sourceText);
+    if (!sourceText) continue;
     if (!inputs.some((input) => input.sourceText.toLocaleLowerCase() === sourceText.toLocaleLowerCase())) {
       inputs.push({ sourceText, role: ambiguity.kind === "poi" ? "anchor" : "preferred" });
     }
@@ -215,6 +272,8 @@ function semanticPlaceMentions(
   // before resolution so a valid-but-incomplete model response cannot silently
   // reduce the traveller's route.
   for (const mention of deterministicMentions) {
+    const safeDeterministicSource = safeSpan(mention.sourceText);
+    if (!safeDeterministicSource) continue;
     const normalized = mention.normalizedPhrase;
     const sameRoleExisting = inputs.find((input) => semanticJourneyRole(input.role) === semanticJourneyRole(mention.role)
       && (sameRawPlaceSpan(input.sourceText, mention.sourceText)
@@ -238,7 +297,7 @@ function semanticPlaceMentions(
       continue;
     }
     if (normalized) inputs.push({
-      sourceText: mention.sourceText,
+      sourceText: safeDeterministicSource,
       role: mention.role,
       travelIntent: mention.role === "anchor" ? "anchor" : "route-stop",
     });
@@ -258,10 +317,10 @@ export function developmentJourneyCaptureDiagnostics(
   const deterministic = resolvePlaceMentions(capture.rawBrief);
   const expected = semanticPlaceMentions(intent, capture.rawBrief, deterministic.mentions);
   const semantic = [
-    ...(intent.origin.sourceText ? [{ sourceText: geographySourceSpan(intent.origin.sourceText, capture.rawBrief), role: "origin", interpretedText: null }] : []),
-    ...intent.destinationCandidates.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief), role: item.role, interpretedText: item.interpretedText })),
-    ...intent.pointsOfInterest.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief), role: "poi", interpretedText: item.interpretedText })),
-  ];
+    ...(intent.origin.sourceText ? [{ sourceText: geographySourceSpan(intent.origin.sourceText, capture.rawBrief, deterministic.mentions), role: "origin", interpretedText: null }] : []),
+    ...intent.destinationCandidates.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief, deterministic.mentions), role: item.role, interpretedText: item.interpretedText })),
+    ...intent.pointsOfInterest.map((item) => ({ sourceText: geographySourceSpan(item.sourceText, capture.rawBrief, deterministic.mentions), role: "poi", interpretedText: item.interpretedText })),
+  ].filter((item): item is typeof item & { sourceText: string } => Boolean(item.sourceText));
   const structuredByMention = new Map(capture.structuredBrief.destinations
     .flatMap((destination) => destination.placeMentionId ? [[destination.placeMentionId, destination] as const] : []));
   return {

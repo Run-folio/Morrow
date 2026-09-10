@@ -28,6 +28,10 @@ export function JourneyEndpointsEditor({
   onEndChange,
   onEndSelect,
   onEndModeChange,
+  onStartCommit,
+  onEndCommit,
+  startRevealSuggestionsKey,
+  endRevealSuggestionsKey,
 }: {
   language?: "en" | "es";
   startValue: string;
@@ -46,6 +50,10 @@ export function JourneyEndpointsEditor({
   onEndChange: (value: string) => void;
   onEndSelect: (suggestion: CanonicalPlaceSuggestion) => void;
   onEndModeChange: (mode: "same_as_start" | "unknown") => void;
+  onStartCommit?: () => void;
+  onEndCommit?: () => void;
+  startRevealSuggestionsKey?: number;
+  endRevealSuggestionsKey?: number;
 }) {
   const hintId = useId();
   const text = language === "es" ? {
@@ -72,8 +80,11 @@ export function JourneyEndpointsEditor({
           showPlaceType={false}
           invalid={startInvalid}
           describedBy={startDescribedBy}
+          revealSuggestionsKey={startRevealSuggestionsKey}
           onChange={onStartChange}
           onSelect={onStartSelect}
+          onSubmitFreeText={onStartCommit}
+          submitFreeTextOnBlur={Boolean(onStartCommit)}
         />
       </label>
       <span className={styles.arrowSlot}><ArrowRight className={styles.arrow} aria-hidden="true" /></span>
@@ -88,10 +99,13 @@ export function JourneyEndpointsEditor({
             showPlaceType={false}
             invalid={endInvalid}
             describedBy={endDescribedBy ?? (showHint ? hintId : undefined)}
+            revealSuggestionsKey={endRevealSuggestionsKey}
             onClear={() => onEndModeChange("unknown")}
             clearLabel={language === "es" ? "Borrar el final del viaje" : "Clear journey end"}
             onChange={onEndChange}
             onSelect={onEndSelect}
+            onSubmitFreeText={onEndCommit}
+            submitFreeTextOnBlur={Boolean(onEndCommit)}
           />
         </label>
         <div className={styles.shortcuts} role="group" aria-label={language === "es" ? "Opciones del final del viaje" : "Journey end options"}>

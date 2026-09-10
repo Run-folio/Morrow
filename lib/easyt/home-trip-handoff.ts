@@ -51,7 +51,10 @@ export type HandoffLocationChoice = {
   coordinates: [number, number];
   bounds?: GeographicBounds;
   routability?: PlaceRoutability;
+  placeType?: string;
   kind?: string;
+  matchQuality?: string;
+  rankScore?: number;
   locality?: string;
 };
 

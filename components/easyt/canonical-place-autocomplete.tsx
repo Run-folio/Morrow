@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin, X } from "lucide-react";
-import { useDeferredValue, useEffect, useId, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   canonicalPlaceSuggestionsForQuery,
   placeCandidateSuitableAsNearbyBase,
@@ -45,6 +45,8 @@ export function CanonicalPlaceAutocomplete({
   onClear,
   onSelect,
   onSubmitFreeText,
+  submitFreeTextOnBlur = false,
+  revealSuggestionsKey,
 }: {
   label: string;
   value: string;
@@ -67,6 +69,8 @@ export function CanonicalPlaceAutocomplete({
   onClear?: () => void;
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
   onSubmitFreeText?: () => void;
+  submitFreeTextOnBlur?: boolean;
+  revealSuggestionsKey?: number;
 }) {
   const listId = useId();
   const deferredValue = useDeferredValue(value);
@@ -76,6 +80,7 @@ export function CanonicalPlaceAutocomplete({
   const [providerSearching, setProviderSearching] = useState(false);
   const [providerFailed, setProviderFailed] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const allowedTypeKey = (allowedPlaceTypes ?? []).join("|");
   const parentConstraintKey = JSON.stringify(parentConstraint ?? null);
   const nearbyAnchorKey = JSON.stringify(nearbyAnchor ?? null);
@@ -213,9 +218,16 @@ export function CanonicalPlaceAutocomplete({
     setActiveIndex(-1);
   };
 
+  useEffect(() => {
+    if (!revealSuggestionsKey) return;
+    inputRef.current?.focus();
+    setOpen(true);
+  }, [revealSuggestionsKey]);
+
   return <div className={`${styles.root} ${onClear && value ? styles.hasClear : ""}`}>
     {/* morrovia-ui-audit-allow-next-line native-control -- The shared ARIA combobox owns active-descendant, listbox and free-text keyboard behaviour that EasyTField does not expose. */}
     <input
+      ref={inputRef}
       autoFocus={autoFocus}
       disabled={disabled}
       value={value}
@@ -229,7 +241,10 @@ export function CanonicalPlaceAutocomplete({
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
       onFocus={() => setOpen(true)}
-      onBlur={() => window.setTimeout(() => setOpen(false), 100)}
+      onBlur={() => window.setTimeout(() => {
+        setOpen(false);
+        if (submitFreeTextOnBlur) onSubmitFreeText?.();
+      }, 100)}
       onChange={(event) => { onChange(event.target.value); setOpen(true); setActiveIndex(-1); }}
       onKeyDown={(event) => {
         const result = placeAutocompleteKeyAction(event.key, activeIndex, suggestions.length);

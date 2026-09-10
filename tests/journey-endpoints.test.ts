@@ -9,6 +9,7 @@ import {
   isSameCanonicalPlace,
   normalizeJourneyEnd,
   originPlaceFromBrief,
+  resolveTypedJourneyEndpoint,
   resolvedJourneyEndPlace,
 } from "../lib/easyt/journey-endpoints.ts";
 import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
@@ -43,6 +44,52 @@ const japanStops: BuilderTripInput["stops"] = [
   { id: "kyoto", name: "Kyoto", country: "Japan", canonicalPlaceId: "kyoto", coordinates: [135.7681, 35.0116] },
   { id: "osaka", name: "Osaka", country: "Japan", canonicalPlaceId: "osaka", coordinates: [135.5023, 34.6937] },
 ];
+
+const endpointCandidates = {
+  London: { ...london, providerId: "provider:london", placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+  Paris: { name: "Paris", country: "France", canonicalPlaceId: "paris", providerId: "provider:paris", coordinates: [2.3522, 48.8566] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+  Rome: { name: "Rome", country: "Italy", canonicalPlaceId: "rome", providerId: "provider:rome", coordinates: [12.4964, 41.9028] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+  "New York": { name: "New York", country: "United States", canonicalPlaceId: "new-york-city", providerId: "provider:new-york", coordinates: [-74.006, 40.7128] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+  Tokyo: { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", providerId: "provider:tokyo", coordinates: [139.6917, 35.6895] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+} as const;
+
+test("typed Start and End resolve to the same canonical endpoint state without an autocomplete click", () => {
+  for (const [start, end] of [["London", "Paris"], ["Paris", "London"], ["London", "Rome"], ["New York", "Tokyo"]] as const) {
+    const resolvedStart = resolveTypedJourneyEndpoint(start, [endpointCandidates[start]]);
+    const resolvedEnd = resolveTypedJourneyEndpoint(end, [endpointCandidates[end]]);
+    assert.equal(resolvedStart.status, "resolved", `${start} start`);
+    assert.equal(resolvedEnd.status, "resolved", `${end} end`);
+    if (resolvedStart.status !== "resolved" || resolvedEnd.status !== "resolved") continue;
+    assert.deepEqual(resolvedStart.place, {
+      name: endpointCandidates[start].name,
+      canonicalPlaceId: endpointCandidates[start].canonicalPlaceId,
+      country: endpointCandidates[start].country,
+      providerId: endpointCandidates[start].providerId,
+      coordinates: endpointCandidates[start].coordinates,
+    });
+    assert.deepEqual(normalizeJourneyEnd({ mode: "explicit", place: resolvedEnd.place }), { mode: "explicit", place: resolvedEnd.place });
+  }
+});
+
+test("typed endpoint resolution fails closed for same-name candidates and unresolved text", () => {
+  const springfields = [
+    { name: "Springfield", country: "United States", canonicalPlaceId: "springfield-il", providerId: "provider:springfield-il", coordinates: [-89.65, 39.78] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+    { name: "Springfield", country: "United States", canonicalPlaceId: "springfield-ma", providerId: "provider:springfield-ma", coordinates: [-72.59, 42.1] as [number, number], placeType: "city", routability: "direct_destination", matchQuality: "exact" },
+  ];
+  assert.deepEqual(resolveTypedJourneyEndpoint("Springfield", springfields), { status: "ambiguous" });
+  assert.deepEqual(resolveTypedJourneyEndpoint("Definitely not a real place", []), { status: "unresolved" });
+});
+
+test("typed endpoint resolution accepts a materially stronger canonical candidate", () => {
+  const parisFrance = { ...endpointCandidates.Paris, rankScore: 175 };
+  const parisTexas = { name: "Paris", country: "United States", canonicalPlaceId: "paris-texas", providerId: "provider:paris-texas", coordinates: [-95.55, 33.66] as [number, number], placeType: "town", routability: "direct_destination", matchQuality: "exact", rankScore: 153 };
+  assert.deepEqual(resolveTypedJourneyEndpoint("Paris", [parisFrance, parisTexas]), {
+    status: "resolved",
+    place: {
+      name: "Paris", country: "France", canonicalPlaceId: "paris", providerId: "provider:paris", coordinates: [2.3522, 48.8566],
+    },
+  });
+});
 
 test("canonical place equivalence uses strong identity evidence and stays symmetric", () => {
   const delhiOrigin = { name: "Delhi", country: "India", canonicalPlaceId: "fixture:delhi", coordinates: [77.1025, 28.7041] as [number, number] };
