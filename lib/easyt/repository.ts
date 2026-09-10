@@ -17,6 +17,7 @@ import {
 import { EasyTTrip, isEasyTTrip } from "./trip";
 import { normalizedLegEndpoints } from "./trip-persistence";
 import { resolveTripTransferJourneys } from "./multimodal-transfer-resolution.server";
+import { reconcileLegacyTransportTrip } from "./transport-leg-compatibility";
 import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
 
@@ -278,7 +279,7 @@ export async function listTripsForOwner(ownerId: string): Promise<EasyTTrip[]> {
     where owner_id = ${ownerId} and deleted_at is null
     order by updated_at desc
   `) as TripDocumentRow[];
-  return rows.map((row) => row.document).filter(isEasyTTrip);
+  return rows.map((row) => row.document).filter(isEasyTTrip).map(reconcileLegacyTransportTrip);
 }
 
 export async function getTripForOwner(

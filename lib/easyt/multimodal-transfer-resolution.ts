@@ -9,6 +9,7 @@ import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
 import { resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
+import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 import type {
   CanonicalRouteEndpoint,
   EasyTTrip,
@@ -505,6 +506,7 @@ export async function resolveCanonicalTransferJourney(
   leg: TripLeg,
   options: { provider?: RoadRoutingProvider; knowledge?: TransferEvidenceProvider } = {},
 ): Promise<MultimodalResolutionResult> {
+  leg = reconcileLegacyTransportLeg(leg);
   const diagnostic: TransferResolutionDiagnostic = { version: 1, selected: "unresolved", candidates: [], rejected: [] };
   if (shouldPreserve(leg)) {
     diagnostic.selected = "preserved";

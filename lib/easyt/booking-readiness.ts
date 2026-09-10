@@ -2,6 +2,7 @@ import { tripHealth } from "./review.ts";
 import type { EasyTTrip, TripLeg, TripStop } from "./trip.ts";
 import { deriveTripDateFacts, stableStopDateRange } from "./trip-facts.ts";
 import { validateOptionalAffiliateUrl } from "./affiliate-configuration.ts";
+import { LEGACY_ROAD_COMPATIBILITY_SOURCE } from "./transport-leg-compatibility.ts";
 
 export type BookingCategory = "accommodation" | "flight" | "activity" | "car-rental" | "connectivity" | "ground-transport" | "transport" | "insurance";
 export type AffiliateAnalyticsCategory = "accommodation" | "car_rental" | "activities" | "airport_transfer" | "travel_insurance";
@@ -287,7 +288,9 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
   const to = trip.stops.find((stop) => stop.id === leg.toStopId);
   if (!from || !to || from.id === to.id || !from.name.trim() || !to.name.trim()) return null;
-  if (transportBookingForLeg(trip, leg, from, to) || isLocalTransfer(leg)) return null;
+  if (transportBookingForLeg(trip, leg, from, to)
+    || isLocalTransfer(leg)
+    || leg.routeMetadata.source === LEGACY_ROAD_COMPATIBILITY_SOURCE) return null;
 
   const supported = ["train", "flight", "ferry"].includes(leg.mode)
     || (leg.mode === "road" && describesCoachOrBus(leg))

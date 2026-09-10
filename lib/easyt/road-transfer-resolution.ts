@@ -69,6 +69,27 @@ function endpointRequiresNonRoadCrossing(endpoint: NonNullable<TripLeg["fromEndp
     || entry.parentCountries.some((country) => normalizedIdentity(country) === normalizedIdentity(endpoint.country));
 }
 
+/**
+ * Returns only definitive conflicts with a direct-road representation. This is
+ * intentionally narrower than road-fallback eligibility: a cross-border road
+ * leg, for example, needs stronger evidence before Morrovia may infer it, but
+ * is not inherently impossible when it was explicitly supplied.
+ */
+export function directRoadPlausibilityConflict(leg: TripLeg): RoadFallbackSkipReason | null {
+  const from = leg.fromEndpoint;
+  const to = leg.toEndpoint;
+  if (!from || !to) return null;
+  if (endpointRequiresNonRoadCrossing(from) || endpointRequiresNonRoadCrossing(to)) return "land_separation";
+  if (!validCoordinates(from.coordinates) || !validCoordinates(to.coordinates)) return null;
+  const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
+  if (straightLineDistanceKm !== null && straightLineDistanceKm > MAX_STRAIGHT_LINE_ROAD_KM) return "distance_out_of_scope";
+  if (straightLineDistanceKm !== null
+    && typeof leg.routedDistanceKm === "number"
+    && typeof leg.durationMinutes === "number"
+    && !routeMetricsArePlausible(leg.routedDistanceKm, leg.durationMinutes, straightLineDistanceKm)) return "implausible_route";
+  return null;
+}
+
 function roadFallbackEligible(leg: TripLeg) {
   const metadata = leg.routeMetadata as { source?: unknown; roadFallbackEligible?: unknown; decisionOption?: unknown };
   return metadata.source === "morrovia-planner"
@@ -78,12 +99,16 @@ function roadFallbackEligible(leg: TripLeg) {
         && /no supported service fact for this exact leg|rail could be considered for this distance/i.test(leg.provider ?? "")));
 }
 
-function routeIsPlausible(result: RoadRouteResult, straightLineDistanceKm: number) {
-  if (result.distanceKm < Math.max(1, straightLineDistanceKm * 0.8)) return false;
-  if (result.distanceKm > MAX_ROUTED_ROAD_KM || result.durationMinutes > MAX_ROAD_DURATION_MINUTES) return false;
-  if (result.distanceKm > Math.max(straightLineDistanceKm * MAX_ROUTE_DETOUR_FACTOR, straightLineDistanceKm + 100)) return false;
-  const averageSpeed = result.distanceKm / (result.durationMinutes / 60);
+function routeMetricsArePlausible(distanceKm: number, durationMinutes: number, straightLineDistanceKm: number) {
+  if (distanceKm < Math.max(1, straightLineDistanceKm * 0.8)) return false;
+  if (distanceKm > MAX_ROUTED_ROAD_KM || durationMinutes > MAX_ROAD_DURATION_MINUTES) return false;
+  if (distanceKm > Math.max(straightLineDistanceKm * MAX_ROUTE_DETOUR_FACTOR, straightLineDistanceKm + 100)) return false;
+  const averageSpeed = distanceKm / (durationMinutes / 60);
   return averageSpeed >= MIN_ROAD_AVERAGE_SPEED_KMH && averageSpeed <= MAX_ROAD_AVERAGE_SPEED_KMH;
+}
+
+function routeIsPlausible(result: RoadRouteResult, straightLineDistanceKm: number) {
+  return routeMetricsArePlausible(result.distanceKm, result.durationMinutes, straightLineDistanceKm);
 }
 
 export async function resolveCanonicalRoadFallback(
@@ -103,7 +128,7 @@ export async function resolveCanonicalRoadFallback(
   // A driving provider may legally include a ferry edge while still returning
   // a generic car profile. Without explicit ferry/multimodal evidence that is
   // not enough to tell travellers an island crossing is a direct road leg.
-  if (endpointRequiresNonRoadCrossing(from) || endpointRequiresNonRoadCrossing(to)) {
+  if (directRoadPlausibilityConflict(leg) === "land_separation") {
     return { leg, outcome: "unchanged", reason: "land_separation" };
   }
   const straightLineDistanceKm = haversineKm(from.coordinates, to.coordinates);
