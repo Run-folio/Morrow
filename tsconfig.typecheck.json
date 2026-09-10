@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "next-env.d.ts",
+    ".next",
+    ".next-check",
+    ".next-dev",
+    ".next-route-review",
+    "private/tmp",
+    "tmp"
+  ]
+}

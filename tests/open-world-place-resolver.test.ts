@@ -489,6 +489,54 @@ test("unqualified Salta is deterministic across provider timing and explicit pro
   assert.equal(new Set(diagnostics.map((item) => `${item.selected}:${item.type}:${item.status}`)).size, 1, JSON.stringify(diagnostics, null, 2));
 });
 
+test("provider identity corrects weak fuzzy names while ordinary destinations prefer a same-name city", async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), sources: [source({
+    salta: [
+      { ...candidate("salta-province", "Salta", "Argentina", "region", [-65.3, -24.3], 180), routability: "planning_area", geographicSignificance: 0.9, administrativeLevel: 4 },
+      { ...candidate("salta-city", "Salta", "Argentina", "city", [-65.4232, -24.7821], 145), parentRegionId: "Salta" },
+    ],
+    "la rioja": [
+      { ...candidate("la-rioja-province", "La Rioja", "Argentina", "region", [-67.5, -29.4], 180), routability: "planning_area", geographicSignificance: 0.88, administrativeLevel: 4 },
+      { ...candidate("la-rioja-city", "La Rioja", "Argentina", "city", [-66.856, -29.413], 145), parentRegionId: "La Rioja" },
+    ],
+  })] });
+
+  const bare = await captureJourneyBriefWithProvider("Salta", provider);
+  assert.equal(bare.mentions[0]?.canonicalName, "Salta");
+  assert.equal(bare.mentions[0]?.placeType, "city");
+  assert.equal(bare.mentions[0]?.status, "resolved");
+  assert.equal(bare.mentions[0]?.provenance.some((item) => item.id.startsWith("fuzzy:")), false);
+
+  const modelPlanningArea = routeStopIntent(["Salta"]);
+  modelPlanningArea.destinationCandidates[0]!.role = "planning-area";
+  const semanticBare = await captureJourneyBriefFromSemanticIntent("Salta", modelPlanningArea, provider);
+  assert.equal(semanticBare.mentions[0]?.placeType, "city");
+
+  for (const wording of ["Salta Province", "Salta region"]) {
+    const broad = await resolveExplicitPlaceMentionsWithProvider(
+      [{ sourceText: wording, role: "preferred", travelIntent: "route-stop" }],
+      provider,
+    );
+    assert.equal(broad.mentions[0]?.placeType, "region", wording);
+    assert.equal(broad.mentions[0]?.requiresBaseSelection, true, wording);
+  }
+
+  const otherCity = await resolveExplicitPlaceMentionsWithProvider(
+    [{ sourceText: "La Rioja", role: "preferred", travelIntent: "route-stop" }],
+    provider,
+  );
+  const otherProvince = await resolveExplicitPlaceMentionsWithProvider(
+    [{ sourceText: "La Rioja Province", role: "preferred", travelIntent: "route-stop" }],
+    provider,
+  );
+  assert.equal(otherCity.mentions[0]?.placeType, "city");
+  assert.equal(otherProvince.mentions[0]?.placeType, "region");
+
+  const malta = await captureJourneyBriefWithProvider("Malta", provider);
+  assert.equal(malta.mentions[0]?.canonicalName, "Malta");
+  assert.equal(malta.mentions[0]?.placeType, "country");
+});
+
 test("natural broad phrases are not mistaken for entity-type qualifiers", async () => {
   const calls: string[] = [];
   const provider = createOpenWorldPlaceProvider({ cache: new Map(), sources: [source({}, calls)] });

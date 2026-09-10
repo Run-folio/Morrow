@@ -2489,8 +2489,10 @@ async function resolveProviderMentionsInTwoPass(
 ) {
   const runPass = async (current: ResolvedPlaceMention[], passContext: PlaceResolutionContext, pendingOnly: boolean) => Promise.all(current.map(async (mention) => {
     const spec = specForMention(mention);
-    const eligible = mention.status === "unresolved" || mention.status === "ambiguous" || spec.normalizeBroadRouteStop;
-    if (!eligible || (pendingOnly && mention.status !== "unresolved" && mention.status !== "ambiguous")) return mention;
+    const weakFuzzyIdentity = mention.status === "partially_resolved"
+      && mention.provenance.some((item) => item.id.startsWith("fuzzy:"));
+    const eligible = mention.status === "unresolved" || mention.status === "ambiguous" || weakFuzzyIdentity || spec.normalizeBroadRouteStop;
+    if (!eligible || (pendingOnly && mention.status !== "unresolved" && mention.status !== "ambiguous" && !weakFuzzyIdentity)) return mention;
     const lookupContext: PlaceResolutionContext = {
       ...passContext,
       countryNames: unique([...(passContext.countryNames ?? []), ...mention.parentCountries], normalizePlacePhrase),

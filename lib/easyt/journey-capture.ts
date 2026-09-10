@@ -153,6 +153,19 @@ function geographySourceSpan(sourceText: string, rawBrief: string) {
   return stripped && rawBrief.toLocaleLowerCase().includes(stripped.toLocaleLowerCase()) ? stripped : sourceText;
 }
 
+function semanticDestinationIntent(
+  sourceText: string,
+  role: SemanticTripIntent["destinationCandidates"][number]["role"],
+  deterministicMentions: ResolvedPlaceMention[],
+) {
+  if (role !== "planning-area") return role;
+  const explicitBroadWording = /\b(?:state|province|region|country)\b/i.test(sourceText);
+  const deterministicBroadIdentity = deterministicMentions.some((mention) => sameRawPlaceSpan(mention.sourceText, sourceText)
+    && mention.requiresBaseSelection
+    && !mention.provenance.some((item) => item.id.startsWith("fuzzy:")));
+  return explicitBroadWording || deterministicBroadIdentity ? "planning-area" : "route-stop";
+}
+
 function semanticPlaceMentions(
   intent: SemanticTripIntent,
   rawBrief: string,
@@ -169,12 +182,17 @@ function semanticPlaceMentions(
   for (const destination of intent.destinationCandidates) {
     if (duplicatesRelationalJourneyEnd(destination.sourceText, intent)
       || duplicatesOriginWithoutExplicitStay(destination.sourceText, deterministicMentions)) continue;
+    const sourceText = geographySourceSpan(destination.sourceText, rawBrief);
     inputs.push({
-    sourceText: geographySourceSpan(destination.sourceText, rawBrief),
+    sourceText,
     // Semantic certainty describes confidence in the interpretation, not
     // whether the traveller considers an explicitly listed stop optional.
     role: "preferred",
-    travelIntent: destination.role,
+    // An unqualified destination name is an ordinary route stop even when the
+    // semantic model guesses that a same-name administrative area was meant.
+    // Explicit broad wording and trusted deterministic broad identities retain
+    // planning-area intent.
+    travelIntent: semanticDestinationIntent(sourceText, destination.role, deterministicMentions),
     ...(destination.interpretedText ? { lookupText: destination.interpretedText } : {}),
     });
   }

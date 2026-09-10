@@ -6,7 +6,7 @@
     "dev": "NEXT_DIST_DIR=.next-dev next dev",
     "build": "next build",
     "build:check": "NEXT_DIST_DIR=.next-check next build",
-    "typecheck": "tsc --noEmit --incremental false",
+    "typecheck": "tsc --project tsconfig.typecheck.json --noEmit --incremental false",
     "release:gate": "node scripts/release-gate-smoke.mjs",
     "staging:preflight": "node --env-file=.env.staging scripts/staging-preflight.mjs",
     "staging:seed": "node --env-file=.env.staging scripts/staging-seed.mjs",

@@ -119,3 +119,14 @@ Do not manually copy these into Vercel Production unless a documented build chan
 6. Compare variable **names and enabled/disabled intent**, never values, between Netlify production, this inventory, and Vercel Production.
 7. After any environment-variable change, create a new deployment; do not assume an already-built deployment picked up the change.
 8. Verify `/api/health`, then the enabled integration checklist in `docs/production-resilience.md`.
+
+## Semantic capture production alignment
+
+Production semantic capture requires two server-only Netlify variables:
+
+- `OPENAI_API_KEY`: store the provider credential as a secret for server Functions/Runtime. Never prefix it with `NEXT_PUBLIC_` or expose its value in build output.
+- `MORROVIA_SEMANTIC_INTENT_MODE=active`: store the mode as server configuration for the same production context.
+
+After setting both names, trigger a production deploy with the provider/build cache cleared so the rebuilt Next.js functions and place-provider data do not reuse the previous no-provider path. Verify a representative `/api/journey-capture` request after deployment. The route accepts at most 600 prompt characters, rate-limits capture to eight requests per minute per requester, and normally makes one bounded semantic request. Higher-value planning prompts can use up to two planning-model attempts plus one semantic fallback. Usage and cost remain attributable to those server-side provider calls.
+
+If the key is absent, the provider times out, rate limiting applies, or a response fails validation, capture falls back to the deterministic place resolver. The fallback must remain safe independently of semantic configuration; weak fuzzy catalogue identities are eligible for stronger provider correction, while provider failure retains the deterministic result for traveller review.
