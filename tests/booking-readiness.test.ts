@@ -184,6 +184,80 @@ test("offers the exact Omio link for unbooked major train, coach, flight and fer
   }
 });
 
+test("keeps canonical intercity rail eligible when transfer impact includes local access prose", () => {
+  const cases = [
+    { from: "Paris", fromCountry: "France", to: "Brussels", toCountry: "Belgium", distanceKm: 264 },
+    { from: "Brussels", fromCountry: "Belgium", to: "Amsterdam", toCountry: "Netherlands", distanceKm: 174 },
+    { from: "London", fromCountry: "United Kingdom", to: "Paris", toCountry: "France", distanceKm: 344 },
+    { from: "Rome", fromCountry: "Italy", to: "Florence", toCountry: "Italy", distanceKm: 231 },
+  ];
+
+  for (const route of cases) {
+    const source = trip();
+    source.stops = [
+      { id: "from", order: 0, name: route.from, country: route.fromCountry, latitude: 1, longitude: 1, arrivalDate: "2026-10-01", departureDate: "2026-10-03", nights: 2 },
+      { id: "to", order: 1, name: route.to, country: route.toCountry, latitude: 2, longitude: 2, arrivalDate: "2026-10-03", departureDate: "2026-10-06", nights: 3 },
+    ];
+    const leg = {
+      ...mainLeg(source),
+      id: `${route.from}-${route.to}`,
+      fromStopId: "from",
+      toStopId: "to",
+      fromEndpoint: { kind: "stop" as const, id: "from", name: route.from, country: route.fromCountry, coordinates: [1, 1] as [number, number] },
+      toEndpoint: { kind: "stop" as const, id: "to", name: route.to, country: route.toCountry, coordinates: [2, 2] as [number, number] },
+      classification: route.fromCountry === route.toCountry ? "intercity" as const : "international" as const,
+      mode: "train" as const,
+      distanceKm: route.distanceKm,
+      provider: "Typical high-speed rail door-to-door allowance; verify the live timetable before booking.",
+      routeMetadata: {
+        classification: route.fromCountry === route.toCountry ? "intercity" : "international",
+        transferImpact: {
+          components: [
+            { id: "origin-local", label: "Local journey to departure point" },
+            { id: "transport", label: "Headline transport" },
+            { id: "destination-local", label: "Local arrival transfer" },
+          ],
+        },
+      },
+    };
+    source.legs = [leg];
+
+    const action = omioBookingActionForLeg(source, leg, new Date("2026-09-10T12:00:00Z"));
+    assert.equal(action?.provider, "omio", `${route.from} → ${route.to}`);
+  }
+});
+
+test("uses leg-level local evidence and keeps a mixed intercity rail journey eligible", () => {
+  const source = trip();
+  const base = mainLeg(source);
+  for (const provider of ["Airport to city hotel", "Local station to accommodation", "Intra-city transfer", "Local first-mile component"]) {
+    const trueLocal = {
+      ...base,
+      classification: "local" as const,
+      mode: "road" as const,
+      distanceKm: 18,
+      provider,
+      routeMetadata: { classification: "local" },
+    };
+    assert.equal(omioBookingActionForLeg(source, trueLocal, new Date("2026-09-10T12:00:00Z")), null, provider);
+  }
+
+  const mixed = {
+    ...base,
+    classification: "international" as const,
+    mode: "mixed" as const,
+    distanceKm: 340,
+    provider: "Morrovia multimodal planning estimate",
+    routeMetadata: { classification: "international" },
+    segments: [
+      { id: "local-access", mode: "road" as const, fromEndpoint: base.fromEndpoint!, toEndpoint: { ...base.fromEndpoint!, kind: "gateway" as const, id: "paris-station", name: "Paris station" }, distanceKm: 8, durationMinutes: 25, provider: "Local transfer to station", provenance: "planning_estimate" as const, confidence: "medium" as const, scheduleNeedsChecking: true },
+      { id: "intercity-rail", mode: "train" as const, fromEndpoint: { ...base.fromEndpoint!, kind: "gateway" as const, id: "paris-station", name: "Paris station" }, toEndpoint: { ...base.toEndpoint!, kind: "gateway" as const, id: "brussels-station", name: "Brussels station" }, distanceKm: 320, durationMinutes: 95, provider: "Intercity rail estimate", provenance: "planning_estimate" as const, confidence: "medium" as const, scheduleNeedsChecking: true },
+      { id: "local-arrival", mode: "road" as const, fromEndpoint: { ...base.toEndpoint!, kind: "gateway" as const, id: "brussels-station", name: "Brussels station" }, toEndpoint: base.toEndpoint!, distanceKm: 7, durationMinutes: 20, provider: "Local arrival transfer", provenance: "planning_estimate" as const, confidence: "medium" as const, scheduleNeedsChecking: true },
+    ],
+  };
+  assert.equal(omioBookingActionForLeg(source, mixed, new Date("2026-09-10T12:00:00Z"))?.provider, "omio");
+});
+
 test("does not offer Omio for booked, local, walking or driving transfers", () => {
   const source = trip();
   source.brief.bookings = [{ id: "transport-leg", type: "transport", title: "Paris to Rome flight", date: "2026-10-04", confirmation: "ABC", url: null }];
@@ -192,7 +266,7 @@ test("does not offer Omio for booked, local, walking or driving transfers", () =
   for (const leg of [
     { ...mainLeg(trip()), mode: "walk" as const, distanceKm: 2 },
     { ...mainLeg(trip()), mode: "road" as const, provider: "Driving estimate" },
-    { ...mainLeg(trip()), mode: "train" as const, provider: "Local metro", distanceKm: 12 },
+    { ...mainLeg(trip()), classification: "local" as const, mode: "train" as const, provider: "Local metro", distanceKm: 12 },
   ]) assert.equal(omioBookingActionForLeg(trip(), leg, new Date("2026-09-01T12:00:00")), null);
 });
 

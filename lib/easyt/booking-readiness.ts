@@ -261,9 +261,24 @@ function describesCoachOrBus(leg: TripLeg) {
 }
 
 function isLocalTransfer(leg: TripLeg) {
-  const detail = `${leg.provider ?? ""} ${JSON.stringify(leg.routeMetadata)}`.toLocaleLowerCase();
-  return /\b(local|taxi|private transfer|walking|walk)\b/.test(detail)
+  // Journey classification is authoritative; nested first/last-mile segment
+  // prose must not turn an intercity leg into a local transfer.
+  if (leg.classification === "local") return true;
+  if (leg.classification === "intercity" || leg.classification === "international") return false;
+
+  const metadataClassification = leg.routeMetadata.classification;
+  const metadataTransferType = leg.routeMetadata.transferType;
+  const explicitLocalMetadata = leg.routeMetadata.localTransfer === true
+    || metadataClassification === "local"
+    || metadataTransferType === "local";
+  return explicitLocalMetadata
+    || leg.mode === "walk"
     || (typeof leg.distanceKm === "number" && leg.distanceKm < 40);
+}
+
+function hasSupportedOmioSegment(leg: TripLeg) {
+  return (leg.segments ?? []).some((segment) => ["train", "flight", "ferry"].includes(segment.mode)
+    || (segment.mode === "road" && /\b(bus|coach|shuttle)\b/.test(segment.provider?.toLocaleLowerCase() ?? "")));
 }
 
 export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): (BookingReadinessAction & ResolvedAffiliateAction) | null {
@@ -275,7 +290,8 @@ export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new
   if (transportBookingForLeg(trip, leg, from, to) || isLocalTransfer(leg)) return null;
 
   const supported = ["train", "flight", "ferry"].includes(leg.mode)
-    || (leg.mode === "road" && describesCoachOrBus(leg));
+    || (leg.mode === "road" && describesCoachOrBus(leg))
+    || (leg.mode === "mixed" && hasSupportedOmioSegment(leg));
   const needsComparison = leg.mode === "unknown" && typeof leg.distanceKm === "number" && leg.distanceKm >= 40;
   if (!supported && !needsComparison) return null;
 
