@@ -26,8 +26,11 @@ test("semantic dayparts are primary while the unnumbered detailed editor stays a
 });
 
 test("the add flow advertises only canonical Activity and Day note categories", () => {
-  assert.match(workspace, /options=\{\[\{ value: "activity", label: copy\.activity \}, \{ value: "note", label: copy\.note \}\]\}/);
-  assert.doesNotMatch(workspace, /value: "(?:food|stay|transport|buffer)"/);
+  const start = workspace.indexOf("function InsertionControl");
+  const end = workspace.indexOf("function TransferRow", start);
+  const insertionControl = workspace.slice(start, end);
+  assert.match(insertionControl, /options=\{\[\{ value: "activity", label: copy\.activity \}, \{ value: "note", label: copy\.note \}\]\}/);
+  assert.doesNotMatch(insertionControl, /value: "(?:food|stay|transport|buffer)"/);
 });
 
 test("truthful item status never infers confirmation or per-item time from presence", () => {

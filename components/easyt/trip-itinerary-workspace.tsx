@@ -53,6 +53,7 @@ import { trackEvent } from "@/lib/analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { removeStayBooking, stayBookingForStop, upsertStayBooking } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
+import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -166,6 +167,19 @@ function itineraryCopy(language: "en" | "es") {
     draft: "Borrador · editable",
     editBrief: "Editar resumen",
     dayByDay: "Día a día",
+    transport: "Transporte",
+    transportHeading: "Tus traslados, en orden",
+    transportIntro: "Una vista sencilla de cómo te mueves entre cada lugar.",
+    transportEmpty: "El transporte aparecerá cuando la ruta incluya un trayecto entre lugares.",
+    routeOrder: "Orden de la ruta",
+    booked: "Reservado",
+    available: "Estimación de viaje",
+    confirm: "Traslado por confirmar",
+    details: "Detalles",
+    distance: "Distancia",
+    confidence: "Confianza",
+    planningSource: "Fuente de planificación",
+    openBooking: "Abrir reserva",
     days: "DÍAS",
     destinations: "destinos · reparto personalizado",
     placesSelected: "lugares seleccionados",
@@ -235,6 +249,19 @@ function itineraryCopy(language: "en" | "es") {
     draft: "Draft · editable",
     editBrief: "Edit brief",
     dayByDay: "Day by day",
+    transport: "Transport",
+    transportHeading: "Your transport, in journey order",
+    transportIntro: "A simple view of how you move between each place.",
+    transportEmpty: "Transport will appear once the route includes a journey between places.",
+    routeOrder: "Route order",
+    booked: "Booked",
+    available: "Planning estimate",
+    confirm: "Transfer to confirm",
+    details: "Details",
+    distance: "Distance",
+    confidence: "Confidence",
+    planningSource: "Planning source",
+    openBooking: "Open booking",
     days: "DAYS",
     destinations: "destinations · custom split",
     placesSelected: "places selected",
@@ -383,6 +410,7 @@ export default function TripItineraryWorkspace({
     [workingTrip.planItems],
   );
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
+  const [workspaceView, setWorkspaceView] = useState<"days" | "transport">("days");
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [addFlow, setAddFlow] = useState<AddFlow | null>(null);
@@ -415,6 +443,7 @@ export default function TripItineraryWorkspace({
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
   const copy = useMemo(() => itineraryCopy(language), [language]);
+  const transportAgenda = useMemo(() => itineraryTransportAgenda(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
 
   useEffect(() => {
@@ -591,12 +620,28 @@ export default function TripItineraryWorkspace({
     mutation.saveState === "error" || Boolean(removeTarget) || noteComposerOpen,
   );
 
-  if (!active || !mapContext) {
+  if (presentation === "shell" && workspaceView === "transport") {
     return (
-      <section className={styles.empty} aria-live="polite">
+      <section className={`${styles.workspace} ${styles.transportWorkspace}`} aria-label="Trip itinerary">
+        <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
+        <TransportAgenda trip={workingTrip} items={transportAgenda} copy={copy} language={language} panelId={`${tabIdPrefix}-transport-panel`} />
+      </section>
+    );
+  }
+
+  if (!active || !mapContext) {
+    const emptyState = (
+      <div className={styles.empty} aria-live="polite">
         <CalendarDays aria-hidden="true" />
         <h2>Itinerary to confirm</h2>
         <p>{copy.itineraryEmpty}</p>
+      </div>
+    );
+    if (presentation === "legacy") return emptyState;
+    return (
+      <section className={`${styles.workspace} ${styles.emptyWorkspace}`} aria-label="Trip itinerary">
+        <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
+        {emptyState}
       </section>
     );
   }
@@ -871,6 +916,7 @@ export default function TripItineraryWorkspace({
 
   return (
     <section className={`${styles.workspace} ${hasContextRail ? "" : styles.workspaceWithoutContext}`} aria-label="Trip itinerary">
+      <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
       <div ref={itineraryDaysOrientationTarget} className={styles.rail}>
         <div className={styles.railHeader}>
           <h2>{copy.dayByDay}</h2>
@@ -885,7 +931,7 @@ export default function TripItineraryWorkspace({
                 type="button"
                 role="tab"
                 aria-selected={dayIndex === index}
-                aria-controls={`${tabIdPrefix}-panel`}
+                aria-controls={`${tabIdPrefix}-days-panel`}
                 id={`${tabIdPrefix}-tab-${dayIndex}`}
                 tabIndex={dayIndex === index ? 0 : -1}
                 className={dayIndex === index ? styles.dayButtonActive : styles.dayButton}
@@ -919,7 +965,7 @@ export default function TripItineraryWorkspace({
       <div
         className={styles.dayPanel}
         role="tabpanel"
-        id={`${tabIdPrefix}-panel`}
+        id={`${tabIdPrefix}-days-panel`}
         aria-labelledby={`${tabIdPrefix}-tab-${index}`}
       >
         <header className={styles.dayHeader}>
@@ -1299,6 +1345,115 @@ export default function TripItineraryWorkspace({
       />
     </section>
   );
+}
+
+function ItinerarySubviewSwitch({ value, onChange, copy }: {
+  value: "days" | "transport";
+  onChange: (value: "days" | "transport") => void;
+  copy: ReturnType<typeof itineraryCopy>;
+}) {
+  return <div className={styles.subviewBar}>
+    <EasyTSegmentedControl
+      ariaLabel="Itinerary view"
+      options={[
+        { value: "days", label: copy.dayByDay },
+        { value: "transport", label: copy.transport },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
+  </div>;
+}
+
+function transportAgendaGroups(items: ItineraryTransportAgendaLeg[]) {
+  return items.reduce<Array<{ date: string | null; items: ItineraryTransportAgendaLeg[] }>>((groups, item) => {
+    const current = groups.at(-1);
+    if (current && current.date === item.date) current.items.push(item);
+    else groups.push({ date: item.date, items: [item] });
+    return groups;
+  }, []);
+}
+
+function TransportAgenda({ trip, items, copy, language, panelId }: {
+  trip: EasyTTrip;
+  items: ItineraryTransportAgendaLeg[];
+  copy: ReturnType<typeof itineraryCopy>;
+  language: "en" | "es";
+  panelId: string;
+}) {
+  const groups = transportAgendaGroups(items);
+  return <div className={styles.transportAgenda} id={panelId} role="region" aria-labelledby={`${panelId}-heading`}>
+    <header className={styles.transportHeader}>
+      <div>
+        <span>{copy.transport}</span>
+        <h2 id={`${panelId}-heading`}>{copy.transportHeading}</h2>
+        <p>{copy.transportIntro}</p>
+      </div>
+      {items.length ? <strong>{items.length} {items.length === 1 ? (language === "es" ? "trayecto" : "journey") : (language === "es" ? "trayectos" : "journeys")}</strong> : null}
+    </header>
+    {!items.length ? <div className={styles.transportEmpty}><Route aria-hidden="true" /><p>{copy.transportEmpty}</p></div> : null}
+    {groups.map((group, groupIndex) => <section className={styles.transportGroup} key={`${group.date ?? "route"}-${groupIndex}`} aria-labelledby={`${panelId}-group-${groupIndex}`}>
+      <h3 id={`${panelId}-group-${groupIndex}`}>
+        <CalendarDays aria-hidden="true" />
+        {group.date ? <time dateTime={group.date}>{displayDate(group.date, language)}</time> : copy.routeOrder}
+      </h3>
+      <div className={styles.transportList}>
+        {group.items.map((item) => <TransportAgendaRow trip={trip} item={item} copy={copy} language={language} key={item.leg.id} />)}
+      </div>
+    </section>)}
+  </div>;
+}
+
+function TransportAgendaRow({ trip, item, copy, language }: {
+  trip: EasyTTrip;
+  item: ItineraryTransportAgendaLeg;
+  copy: ReturnType<typeof itineraryCopy>;
+  language: "en" | "es";
+}) {
+  const { leg } = item;
+  const Icon = iconForLeg(leg.mode);
+  const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  const mode = transferJourneyModeLabel(leg);
+  const segmentSummary = transferJourneySegmentSummary(leg);
+  const omioAction = item.booking ? null : omioBookingActionForLeg(trip, leg);
+  const statusLabel = item.status === "booked" ? copy.booked : item.status === "confirm" ? copy.confirm : copy.available;
+  const source = leg.provider ?? leg.provenance?.replaceAll("_", " ") ?? null;
+  return <article className={styles.transportCard}>
+    <span className={styles.transportModeIcon}><Icon aria-hidden="true" /></span>
+    <div className={styles.transportSummary}>
+      <div className={styles.transportRoute}>
+        <div>
+          <h4>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" /> {item.to.name}</h4>
+          <p>{mode}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
+        </div>
+        <span className={styles.transportStatus} data-status={item.status}>{statusLabel}</span>
+      </div>
+      {segmentSummary ? <p className={styles.transportSegments}>{segmentSummary}</p> : null}
+      <details className={styles.transportDetails}>
+        <summary>{copy.details}</summary>
+        <dl>
+          {item.dayNumber ? <><dt>{language === "es" ? "Día" : "Day"}</dt><dd>{item.dayNumber}</dd></> : null}
+          {leg.distanceKm !== null ? <><dt>{copy.distance}</dt><dd>{Math.round(leg.distanceKm)} km</dd></> : null}
+          {leg.confidence ? <><dt>{copy.confidence}</dt><dd>{leg.confidence}</dd></> : null}
+          {source ? <><dt>{copy.planningSource}</dt><dd>{source}</dd></> : null}
+          {item.booking?.confirmation ? <><dt>{language === "es" ? "Confirmación" : "Confirmation"}</dt><dd>{item.booking.confirmation}</dd></> : null}
+        </dl>
+        {leg.warnings?.length ? <ul>{leg.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+      </details>
+      <div className={styles.transportActions}>
+        {item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="secondary">{copy.openBooking}</EasyTLinkButton> : null}
+        {omioAction ? <OmioTransportAction action={omioAction} trip={trip} leg={leg} /> : null}
+      </div>
+    </div>
+  </article>;
+}
+
+function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg }) {
+  return <div className={styles.omioAction}>
+    <MorroviaAffiliateLink action={action} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} />
+    <small>{affiliateDisclosure}</small>
+    <MorroviaPartnerPromotion action={action} />
+  </div>;
 }
 
 function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, isPending, onSave, onSchedule, onRemove, draggingIdeaId, onDragStart, onDragEnd }: {
@@ -1810,7 +1965,7 @@ function TransferRow({ leg, copy, trip, selected, onSelect }: { leg: TripLeg; co
       <span className={styles.detailIcon}><Icon aria-hidden="true" /></span>
       <EasyTButton className={styles.rowSelect} variant="quiet" aria-pressed={selected} onClick={onSelect}><span className={styles.itemCopy}><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival" : <>{transferLabel}<i aria-hidden="true">·</i>{duration ? (leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing") : copy.unresolved}</>}</span></span></EasyTButton>
       {arrivalLabel ? <span className={styles.duration}>Arrival</span> : duration ? <span className={styles.duration}>~{duration}</span> : <span className={styles.duration}>{copy.unresolved}</span>}
-      {omioAction ? <div className={styles.omioAction}><a href={omioAction.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${omioAction.cta}, opens Omio in a new tab`} onClick={() => trackEvent("affiliate_link_clicked", { partner: "omio", placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId })}>{omioAction.cta}<ExternalLink aria-hidden="true" /></a><small>{affiliateDisclosure}</small><MorroviaPartnerPromotion action={omioAction} /></div> : null}
+      {omioAction ? <OmioTransportAction action={omioAction} trip={trip} leg={leg} /> : null}
     </div>
   );
 }

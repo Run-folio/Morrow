@@ -266,7 +266,7 @@ function isLocalTransfer(leg: TripLeg) {
     || (typeof leg.distanceKm === "number" && leg.distanceKm < 40);
 }
 
-export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): BookingReadinessAction | null {
+export function omioBookingActionForLeg(trip: EasyTTrip, leg: TripLeg, now = new Date()): (BookingReadinessAction & ResolvedAffiliateAction) | null {
   const dateFacts = deriveTripDateFacts(trip, now);
   if (dateFacts.state !== "valid" || dateFacts.lifecycle.state === "ended") return null;
   const from = trip.stops.find((stop) => stop.id === leg.fromStopId);
@@ -371,7 +371,7 @@ export function buildBookingReadiness(trip: EasyTTrip, config: AffiliateConfigur
     });
   }
 
-  const omioActions = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg, now)).filter((action): action is BookingReadinessAction => Boolean(action));
+  const omioActions = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg, now)).filter((action): action is BookingReadinessAction & ResolvedAffiliateAction => Boolean(action));
   actions.push(...omioActions);
 
   if (groundTransportUrl) trip.legs.filter((leg) => !omioActions.some((action) => action.transferId === leg.id) && ["train", "ferry", "road"].includes(leg.mode) && (leg.distanceKm ?? 0) >= 120 && Boolean(selectedDecision(trip, leg))).forEach((leg) => {
