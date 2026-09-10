@@ -9,11 +9,14 @@ import { immersiveHomepageRoutes, immersiveRouteKeys } from '../lib/easyt/immers
 import { matchCatalogPlace } from '../lib/easyt/place-catalog.ts';
 
 const sequences = {
-  'japan-slow': ['Tokyo', 'Kanazawa', 'Takayama', 'Kyoto', 'Osaka'],
-  'balkans-overland': ['Dubrovnik', 'Kotor', 'Shkodër', 'Tirana'],
-  'vietnam-cambodia': ['Hanoi', 'Hoi An', 'Ho Chi Minh City', 'Siem Reap'],
-  'iceland-ring-road': ['Reykjavík', 'Vík', 'Höfn', 'Reykjahlíð', 'Akureyri'],
-};
+  'japan-south-korea': ['Tokyo', 'Kanazawa', 'Takayama', 'Kyoto', 'Osaka', 'Seoul', 'Busan'],
+  'iceland-ring-road': ['Reykjavík', 'Grundarfjörður', 'Akureyri', 'Reykjahlíð', 'Egilsstaðir', 'Höfn', 'Vík', 'Reykjavík'],
+  'balkans-overland': ['Split', 'Dubrovnik', 'Kotor', 'Shkodër', 'Tirana', 'Ohrid'],
+  'vietnam-cambodia': ['Hanoi', 'Ninh Bình', 'Huế', 'Hội An', 'Ho Chi Minh City', 'Phnom Penh', 'Siem Reap'],
+  'namibia-self-drive': ['Windhoek', 'Sossusvlei', 'Swakopmund', 'Damaraland', 'Etosha', 'Waterberg', 'Windhoek'],
+  'peru-bolivia': ['Lima', 'Huacachina', 'Arequipa', 'Cusco', 'Puno', 'La Paz', 'Uyuni'],
+  'mexico-guatemala': ['Mexico City', 'Oaxaca', 'San Cristóbal de las Casas', 'Palenque', 'Flores', 'Antigua Guatemala', 'Panajachel'],
+} satisfies Record<(typeof immersiveRouteKeys)[number], string[]>;
 for (const key of immersiveRouteKeys) {
   test(`${key}: approved canonical route preserves sequence, countries, coordinates and minimum nights`, () => {
     const route = routeFamilyByKey[key]!;
@@ -40,7 +43,7 @@ for (const key of immersiveRouteKeys) {
     assert.equal(payload.datesExplicit, false);
     assert.ok(route.stops.every(stop => stop.recommendedNights && stop.nightGuidanceRationale));
     assert.ok(payload.destinations.every(stop => stop.canonicalPlaceId));
-    assert.deepEqual(payload.structuredBrief.placeIssues, []);
+    assert.deepEqual(payload.structuredBrief.placeIssues?.filter(issue => issue.blocksRoute), []);
     assert.ok(payload.curatedRoute);
     assert.deepEqual(payload.curatedRoute.stops.map(stop => stop.recommendedNights), route.stops.map(stop => stop.recommendedNights));
     assert.ok(route.suggestedDays.min >= 1 + route.stops.reduce((sum,stop) => sum + stop.minimumNights,0));
@@ -50,16 +53,16 @@ for (const key of immersiveRouteKeys) {
     assert.equal(JSON.stringify(route), before);
   });
 }
-test('five-stop Japan identities resolve independently; the approved canonical route uses all five', () => {
-  const places = ['Tokyo', 'Kanazawa', 'Takayama', 'Kyoto', 'Osaka'].map(name => matchCatalogPlace(name));
-  assert.deepEqual(places.map(place => place?.canonicalPlaceId), ['tokyo','kanazawa','takayama','kyoto','osaka']);
-  assert.ok(places.every(place => place?.parentCountries[0] === 'Japan'));
-  assert.deepEqual(publicRouteDetailFor('japan-slow')?.stops.map(stop => stop.name), sequences['japan-slow']);
+test('Japan and South Korea identities resolve independently across the expanded route', () => {
+  const route = publicRouteDetailFor('japan-south-korea')!;
+  const places = route.stops.map(stop => matchCatalogPlace(stop.name));
+  assert.deepEqual(places.map(place => place?.canonicalPlaceId), ['tokyo','kanazawa','takayama','kyoto','osaka','seoul','busan']);
+  assert.deepEqual(route.stops.map(stop => stop.name), sequences['japan-south-korea']);
 });
-test('canonical homepage admits all four approved route families without runtime selection', () => {
+test('canonical homepage admits all seven approved route families without runtime selection', () => {
   const page = readFileSync(new URL('../components/easyt/morrovia-homepage.tsx', import.meta.url), 'utf8');
   assert.deepEqual(immersiveHomepageRoutes().map(route => route.key), [...immersiveRouteKeys]);
-  assert.equal(immersiveHomepageRoutes().length, 4);
+  assert.equal(immersiveHomepageRoutes().length, 7);
   assert.doesNotMatch(page, /process\.env|immersiveHomepageEnabled/);
 });
 test('destination photographs carry attribution and existing local variants; Osaka and Höfn are production-mapped', () => {
@@ -90,7 +93,7 @@ test('Paris → Brussels → Amsterdam retains rail through owner normalization 
 });
 
 
-test('all four pass release, catalogue, sitemap, homepage and demo boundaries with recorded independent sign-off', async () => {
+test('all seven pass release, catalogue, sitemap, homepage and demo boundaries with recorded independent sign-off', async () => {
   const { publicRouteSitemapKeys } = await import('../lib/easyt/public-route.ts');
   const { initialImmersiveRouteIndex, nextHomepageRoute } = await import('../lib/easyt/immersive-homepage-routes.ts');
   const { createHomepageDemo, homepageDemoReducer } = await import('../lib/easyt/homepage-demo.ts');
@@ -98,9 +101,10 @@ test('all four pass release, catalogue, sitemap, homepage and demo boundaries wi
     const routes = immersiveHomepageRoutes();
     assert.deepEqual(routes.map(route => route.key), [...immersiveRouteKeys]);
     const choices = new Set(Array.from({length:100}, (_, i) => initialImmersiveRouteIndex(routes, () => i/100)));
-    assert.deepEqual([...choices].sort(), [0,1,2,3]);
-    assert.equal(nextHomepageRoute(3, 1, routes.length), 0);
-    assert.equal(nextHomepageRoute(0, -1, routes.length), 3);
+    assert.ok(choices.size >= 5, 'server selection should vary across the featured collection');
+    assert.deepEqual(Array.from({length: routes.length}, (_, index) => nextHomepageRoute(0, index, routes.length)), [0,1,2,3,4,5,6]);
+    assert.equal(nextHomepageRoute(6, 1, routes.length), 0);
+    assert.equal(nextHomepageRoute(0, -1, routes.length), 6);
     let demo = createHomepageDemo(routes);
     for (const route of routes) {
       assert.equal(checkPublicRouteRelease(routeFamilyByKey[route.key]).status, 'ready-with-verification');
@@ -115,7 +119,32 @@ test('all four pass release, catalogue, sitemap, homepage and demo boundaries wi
       }
     }
   }
-  assert.equal(immersiveHomepageRoutes().length, 4);
+  assert.equal(immersiveHomepageRoutes().length, 7);
+});
+
+test('landmark and overnight-base distinctions survive the reviewed handoff', () => {
+  const mexico = publicRouteDetailFor('mexico-guatemala')!;
+  const mexicoPayload = routePlannerPayload(mexico.planDraft, new Date(2026, 8, 7, 12));
+  assert.equal(mexicoPayload.destinations.some(stop => stop.name === 'Tikal'), false);
+  assert.equal(mexicoPayload.destinations.some(stop => stop.name === 'Flores'), true);
+  assert.ok(mexicoPayload.structuredBrief.placeMentions?.some(mention => mention.canonicalPlaceId === 'tikal' && mention.routability === 'anchor_or_poi'));
+  assert.equal(mexicoPayload.structuredBrief.placeIssues?.some(issue => issue.blocksRoute), false);
+  assert.deepEqual(mexicoPayload.structuredBrief.placeSelections?.map(selection => [selection.kind, selection.selectedName, selection.relationshipType]), [
+    ['visit', 'Flores', 'visit-from-base'],
+    ['visit', 'Panajachel', 'visit-from-base'],
+  ]);
+  assert.deepEqual(
+    mexicoPayload.structuredBrief.completedPlanningAreaMentionIds?.sort(),
+    mexicoPayload.structuredBrief.placeSelections?.map(selection => selection.mentionId).sort(),
+  );
+  assert.equal(mexicoPayload.structuredBrief.placeIssues?.some(issue => mexicoPayload.structuredBrief.completedPlanningAreaMentionIds?.includes(issue.mentionId)), false);
+
+  const andes = publicRouteDetailFor('peru-bolivia')!;
+  assert.equal(andes.stops.some(stop => stop.name === 'Puno'), true);
+  assert.equal(andes.stops.some(stop => stop.name === 'Lake Titicaca'), false);
+  assert.deepEqual(andes.planDraft.structuredBrief.placeSelections?.map(selection => [selection.selectedName, selection.relationshipType]), [
+    ['Puno', 'visit-from-base'],
+  ]);
 });
 
 

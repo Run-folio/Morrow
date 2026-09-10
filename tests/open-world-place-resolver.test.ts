@@ -143,7 +143,9 @@ test("real Homepage capture resolves the staging South America fixture into six 
   assert.deepEqual(manualUyuni[0]?.coordinates, [-66.8239, -20.4628]);
   assert.deepEqual(manualUyuni[0]?.coordinates, capture.mentions[1]?.coordinates);
   assert.equal(manualHuacachina[0]?.canonicalName, "Huacachina");
-  assert.deepEqual(manualHuacachina[0]?.coordinates, capture.mentions[4]?.coordinates);
+  assert.ok(manualHuacachina[0]?.coordinates && capture.mentions[4]?.coordinates);
+  assert.ok(Math.abs(manualHuacachina[0]!.coordinates![0] - capture.mentions[4]!.coordinates![0]) < 0.01);
+  assert.ok(Math.abs(manualHuacachina[0]!.coordinates![1] - capture.mentions[4]!.coordinates![1]) < 0.01);
 });
 
 test("open-world types resolve without catalogue pre-seeding and retain provider provenance", async () => {

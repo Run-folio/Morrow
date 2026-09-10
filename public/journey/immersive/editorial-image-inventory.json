@@ -153,5 +153,232 @@
         "bytes": 218754
       }
     ]
-  }
+  },
+  {
+    "key": "sossusvlei",
+    "place": "Sossusvlei",
+    "country": "Namibia",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sossusvlei,_Namibia,_2018-08-06,_DD_040.jpg",
+    "alt": "Sculpted sand dunes and shadows at Sossusvlei, Namibia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-sossusvlei-384.webp",
+        "width": 384,
+        "height": 210,
+        "bytes": 9228
+      },
+      {
+        "src": "/journey/immersive/moment-sossusvlei-768.webp",
+        "width": 768,
+        "height": 419,
+        "bytes": 22860
+      },
+      {
+        "src": "/journey/immersive/moment-sossusvlei-1536.webp",
+        "width": 1536,
+        "height": 838,
+        "bytes": 56988
+      }
+    ]
+  },
+  {
+    "key": "etosha",
+    "place": "Etosha National Park",
+    "country": "Namibia",
+    "author": "Joachim Huber",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Oryx_gazella_-Etosha_National_Park,_Namibia-8.jpg",
+    "alt": "A gemsbok crossing grassland in Etosha National Park, Namibia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-etosha-384.webp",
+        "width": 384,
+        "height": 255,
+        "bytes": 22550
+      },
+      {
+        "src": "/journey/immersive/moment-etosha-768.webp",
+        "width": 768,
+        "height": 511,
+        "bytes": 88908
+      },
+      {
+        "src": "/journey/immersive/moment-etosha-1536.webp",
+        "width": 1536,
+        "height": 1022,
+        "bytes": 309816
+      }
+    ]
+  },
+  {
+    "key": "uyuni",
+    "place": "Salar de Uyuni",
+    "country": "Bolivia",
+    "author": "Diego Delso",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Salar_de_Uyuni,_Bolivia,_2016-02-04,_DD_10-12_HDR.JPG",
+    "alt": "Golden mountains reflected across the flooded Salar de Uyuni, Bolivia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-uyuni-384.webp",
+        "width": 384,
+        "height": 216,
+        "bytes": 6600
+      },
+      {
+        "src": "/journey/immersive/moment-uyuni-768.webp",
+        "width": 768,
+        "height": 432,
+        "bytes": 24618
+      },
+      {
+        "src": "/journey/immersive/moment-uyuni-1536.webp",
+        "width": 1536,
+        "height": 864,
+        "bytes": 110720
+      }
+    ]
+  },
+  {
+    "key": "oaxaca",
+    "place": "Oaxaca",
+    "country": "Mexico",
+    "author": "Adam Jones",
+    "license": "CC BY-SA 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Street_Scene_-_Oaxaca_City_-_Oaxaca_-_Mexico_-_02_(6492455063).jpg",
+    "alt": "A pedestrian passing a warm ochre street facade in Oaxaca, Mexico",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-oaxaca-384.webp",
+        "width": 384,
+        "height": 288,
+        "bytes": 20276
+      },
+      {
+        "src": "/journey/immersive/moment-oaxaca-768.webp",
+        "width": 768,
+        "height": 576,
+        "bytes": 69280
+      },
+      {
+        "src": "/journey/immersive/moment-oaxaca-1536.webp",
+        "width": 1536,
+        "height": 1152,
+        "bytes": 232590
+      }
+    ]
+  },
+  {
+    "key": "atitlan",
+    "place": "Lake Atitlán",
+    "country": "Guatemala",
+    "author": "Diandumb13",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:IMG_Lake_Atitlan,_Guatemala.jpg",
+    "alt": "Lake Atitlán beneath volcanic highlands and a cloud-filled sky, Guatemala",
+    "changes": "Resized and converted to WebP; display crops to fit the composition.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-atitlan-384.webp",
+        "width": 384,
+        "height": 216,
+        "bytes": 12130
+      },
+      {
+        "src": "/journey/immersive/moment-atitlan-768.webp",
+        "width": 768,
+        "height": 432,
+        "bytes": 42570
+      },
+      {
+        "src": "/journey/immersive/moment-atitlan-1536.webp",
+        "width": 1536,
+        "height": 864,
+        "bytes": 177174
+      }
+    ]
+  },
+  {
+    "key": "ohrid",
+    "place": "Ohrid",
+    "country": "North Macedonia",
+    "author": "MiroJP",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Ohrid_lake,_North_Macedonia.jpg",
+    "alt": "The city of Ohrid seen across Lake Ohrid, North Macedonia",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-ohrid-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 9654
+      },
+      {
+        "src": "/journey/immersive/moment-ohrid-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 44048
+      },
+      {
+        "src": "/journey/immersive/moment-ohrid-1536.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 191704
+      }
+    ]
+  },
+  {
+    "key": "tikal",
+    "place": "Tikal",
+    "country": "Guatemala",
+    "author": "Charles J. Sharp",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Temple_of_the_Great_Jaguar,_Tikal,_Pet%C3%A9n,_Guatemala.jpg",
+    "alt": "Temple of the Great Jaguar rising above the forest at Tikal, Guatemala",
+    "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
+    "variants": [
+      {
+        "src": "/journey/immersive/moment-tikal-384.webp",
+        "width": 384,
+        "height": 256,
+        "bytes": 28776
+      },
+      {
+        "src": "/journey/immersive/moment-tikal-768.webp",
+        "width": 768,
+        "height": 512,
+        "bytes": 122372
+      },
+      {
+        "src": "/journey/immersive/moment-tikal-1536.webp",
+        "width": 1536,
+        "height": 1024,
+        "bytes": 531398
+      }
+    ]
+  },
+  {"key":"windhoek","place":"Windhoek","country":"Namibia","author":"Diego Delso","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Iglesia_de_Cristo,_Windhoek,_Namibia,_2018-08-04,_DD_02.jpg","alt":"Christ Church beneath a clear blue sky in Windhoek, Namibia","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-windhoek-384.webp","width":384,"height":246,"bytes":16490},{"src":"/journey/immersive/moment-windhoek-768.webp","width":768,"height":494,"bytes":63736},{"src":"/journey/immersive/moment-windhoek-1536.webp","width":1536,"height":988,"bytes":253068}]},
+  {"key":"swakopmund","place":"Swakopmund","country":"Namibia","author":"Diego Delso","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Jetty,_Swakopmund,_Namibia,_2018-08-04,_DD_62.jpg","alt":"The wooden jetty reaching into the Atlantic at Swakopmund, Namibia","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-swakopmund-384.webp","width":384,"height":212,"bytes":21140},{"src":"/journey/immersive/moment-swakopmund-768.webp","width":768,"height":425,"bytes":81742},{"src":"/journey/immersive/moment-swakopmund-1536.webp","width":1536,"height":850,"bytes":314652}]},
+  {"key":"damaraland","place":"Damaraland","country":"Namibia","author":"Lidine Mia","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Damaraland_04.jpg","alt":"A remote road crossing through the open landscape of Damaraland, Namibia","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-damaraland-384.webp","width":384,"height":257,"bytes":18162},{"src":"/journey/immersive/moment-damaraland-768.webp","width":768,"height":514,"bytes":72110},{"src":"/journey/immersive/moment-damaraland-1536.webp","width":1536,"height":1028,"bytes":243652}]},
+  {"key":"waterberg","place":"Waterberg","country":"Namibia","author":"Daniel Kraft","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Waterberg_from_Restcamp.jpg","alt":"The red escarpment of the Waterberg Plateau above dry woodland, Namibia","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-waterberg-384.webp","width":384,"height":288,"bytes":23008},{"src":"/journey/immersive/moment-waterberg-768.webp","width":768,"height":577,"bytes":110644},{"src":"/journey/immersive/moment-waterberg-1536.webp","width":1536,"height":1154,"bytes":507716}]},
+  {"key":"lima","place":"Lima","country":"Peru","author":"Donairesunovi","license":"CC BY-SA 3.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/3.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Lima,_Peru_City_-_Skyline_(Miraflores).jpg","alt":"Miraflores rising above the Pacific cliffs in Lima, Peru","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-lima-384.webp","width":384,"height":288,"bytes":12028},{"src":"/journey/immersive/moment-lima-768.webp","width":768,"height":576,"bytes":43996},{"src":"/journey/immersive/moment-lima-1536.webp","width":1536,"height":1152,"bytes":121566}]},
+  {"key":"huacachina","place":"Huacachina","country":"Peru","author":"Diego Delso","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Oasis_de_Huacachina,_Ica,_Per%C3%BA,_2015-07-29,_DD_18.JPG","alt":"The Huacachina oasis surrounded by high desert dunes, Peru","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-huacachina-384.webp","width":384,"height":204,"bytes":8918},{"src":"/journey/immersive/moment-huacachina-768.webp","width":768,"height":408,"bytes":32866},{"src":"/journey/immersive/moment-huacachina-1536.webp","width":1536,"height":816,"bytes":132248}]},
+  {"key":"arequipa","place":"Arequipa","country":"Peru","author":"Apugaia","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Plaza_de_Armas_de_Arequipa,_Per%C3%BA.jpg","alt":"Arequipa Cathedral and Plaza de Armas beneath the Andes, Peru","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-arequipa-384.webp","width":384,"height":512,"bytes":31486},{"src":"/journey/immersive/moment-arequipa-768.webp","width":768,"height":1024,"bytes":124500},{"src":"/journey/immersive/moment-arequipa-1536.webp","width":1536,"height":2048,"bytes":493134}]},
+  {"key":"titicaca","place":"Lake Titicaca","country":"Peru","author":"Diego Delso","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Vista_de_Puno_y_el_Titicaca,_Per%C3%BA,_2015-08-01,_DD_53-54_PAN.JPG","alt":"Puno spreading along the shore of Lake Titicaca, Peru","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-titicaca-384.webp","width":384,"height":154,"bytes":17202},{"src":"/journey/immersive/moment-titicaca-768.webp","width":768,"height":308,"bytes":68764},{"src":"/journey/immersive/moment-titicaca-1536.webp","width":1536,"height":616,"bytes":275874}]},
+  {"key":"lapaz","place":"La Paz","country":"Bolivia","author":"Antonee Lens","license":"CC BY 4.0","licenseUrl":"https://creativecommons.org/licenses/by/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:La_Paz_city_with_Illimani,_Bolivia.jpg","alt":"La Paz climbing through the Andes beneath Illimani at sunset, Bolivia","changes":"Resized and converted to WebP; display crops to fit the composition.","variants":[{"src":"/journey/immersive/moment-lapaz-384.webp","width":384,"height":512,"bytes":19530},{"src":"/journey/immersive/moment-lapaz-768.webp","width":768,"height":1024,"bytes":79470},{"src":"/journey/immersive/moment-lapaz-1536.webp","width":1536,"height":2048,"bytes":323896}]},
+  {"key":"kirkjufell","place":"Kirkjufell","country":"Iceland","author":"Diego Delso","license":"CC BY-SA 4.0","licenseUrl":"https://creativecommons.org/licenses/by-sa/4.0","sourceUrl":"https://commons.wikimedia.org/wiki/File:Kirkjufell,_Vesturland,_Islandia,_2014-08-14,_DD_094.JPG","alt":"Kirkjufell rising above the coast beside Grundarfjörður, Iceland","changes":"Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.","variants":[{"src":"/journey/immersive/moment-kirkjufell-384.webp","width":384,"height":164,"bytes":5992},{"src":"/journey/immersive/moment-kirkjufell-768.webp","width":768,"height":328,"bytes":23368},{"src":"/journey/immersive/moment-kirkjufell-1536.webp","width":1536,"height":657,"bytes":106298}]}
 ]

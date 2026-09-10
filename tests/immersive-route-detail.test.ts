@@ -7,9 +7,10 @@ import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { routeDetailPresentation, relatedRouteDetails } from "../app/journey/routes/[slug]/route-detail-presentation.ts";
 import { nightLabel, transferStatus } from "../app/journey/routes/[slug]/route-detail-labels.ts";
 import { routeMapSelectionFromHash, validRouteSelection } from "../app/journey/routes/[slug]/route-map-selection.ts";
+import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const owner = "app/journey/routes/[slug]/";
-const keys = ["japan-slow", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"];
+const keys = [...immersiveRouteKeys];
 
 test("presentation cannot change published identities, stop order or the canonical Builder draft", () => {
   for (const key of keys) {

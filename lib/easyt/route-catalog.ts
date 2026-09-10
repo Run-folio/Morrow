@@ -1,3 +1,5 @@
+import { featuredRouteFamilies } from "./featured-route-families.ts";
+
 /**
  * Editorial route knowledge for EasyT.
  *
@@ -66,6 +68,8 @@ export type RouteFamily = {
   connections: RouteConnection[];
   seasonalNotes: string[];
   highlights?: string[];
+  /** Reviewed landmarks that remain visit intent from an overnight base. */
+  visitIntents?: Array<{ name: string; base: string }>;
   sourceLinks: Array<{ label: string; url: string; covers: string; owner?: string; checkedAt?: string; limitations?: string }>;
   imageQuery?: string;
   confidence: RouteConfidence;
@@ -1106,7 +1110,15 @@ const globalRouteSeeds: RouteSeed[] = [
 
 const globalRouteFamilies: RouteFamily[] = globalRouteSeeds.map(seededRoute);
 
-export const routeFamilies: RouteFamily[] = [...coreRouteFamilies, ...extraRouteFamilies, ...landmarkRouteFamilies, ...globalRouteFamilies];
+const featuredOverrides = new Set(featuredRouteFamilies.map((route) => route.key));
+
+export const routeFamilies: RouteFamily[] = [
+  ...coreRouteFamilies.filter((route) => !featuredOverrides.has(route.key)),
+  ...featuredRouteFamilies,
+  ...extraRouteFamilies,
+  ...landmarkRouteFamilies,
+  ...globalRouteFamilies,
+];
 
 export const routeFamilyByKey = Object.fromEntries(routeFamilies.map((route) => [route.key, route]));
 

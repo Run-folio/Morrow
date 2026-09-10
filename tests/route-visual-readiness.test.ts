@@ -4,12 +4,13 @@ import test from "node:test";
 import { publicRoutePublishedFamilies } from "../lib/easyt/public-route.ts";
 import { routeImagePhoto, routeImages } from "../lib/easyt/route-images.ts";
 import { checkRouteVisualReadiness } from "../lib/easyt/route-visual-readiness.ts";
+import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
 
-const canonical = new Set(["japan-slow", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"]);
+const canonical = new Set(["japan-slow", ...immersiveRouteKeys]);
 
 test("every published route has a local, responsive and provenanced opening hero", () => {
   const published = publicRoutePublishedFamilies();
-  assert.equal(published.length, 21);
+  assert.equal(published.length, 25);
   for (const route of published) {
     const readiness = checkRouteVisualReadiness(route);
     const photo = routeImagePhoto(route.key);

@@ -8,14 +8,79 @@ import generatedInventory from "../../public/journey/immersive/asset-inventory.j
 export { nextHomepageRoute, routeScrollCorrection } from "./homepage-navigation.ts";
 
 /** Presentation keys, not route definitions. Publication remains canonical. */
-export const immersiveRouteKeys = ["japan-slow", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"] as const;
+export const immersiveRouteKeys = [
+  "japan-south-korea",
+  "iceland-ring-road",
+  "balkans-overland",
+  "vietnam-cambodia",
+  "namibia-self-drive",
+  "peru-bolivia",
+  "mexico-guatemala",
+] as const;
 export type ImmersiveRoute = PublicRouteDetail & {
   dayRange: { min: number; max: number };
   minimumNights: number[];
   href: string;
   heroPhoto: { variants: Array<{ src: string; width: number; bytes: number }>; credit: string; creditEs: string; country: string; rights: string; source: string } | null;
   photos: Array<RoutePhotoRecord | null>;
+  photoCandidates: Array<RoutePhotoRecord[]>;
 };
+
+export type HomepageRouteStopCard = {
+  index: number;
+  photo: RoutePhotoRecord | null;
+};
+
+const normalizedPlace = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export function responsivePhotoSource(photo: RoutePhotoRecord) {
+  return photo.sourceUrl || photo.key;
+}
+
+function candidatesForStop(routeKey: string, stop: PublicRouteDetail["stops"][number]) {
+  const exact = destinationInventory.find(image => image.country === stop.country && normalizedPlace(image.place) === normalizedPlace(stop.name));
+  const base = routeEditorialImagery[routeKey]?.bases[stop.name];
+  const configured = routeEditorialPhoto(base?.panelPhotoKey === null ? "" : base?.panelPhotoKey ?? base?.photoKey ?? "");
+  return [exact, configured].filter((photo, index, photos): photo is RoutePhotoRecord => Boolean(photo) && photos.findIndex(candidate => candidate?.sourceUrl === photo?.sourceUrl) === index);
+}
+
+/** Homepage-only projection. Route detail, planning and persistence keep the full stop list. */
+export function homepageRouteStopIndexes(route: Pick<ImmersiveRoute, "key" | "stops">) {
+  const configured = routeEditorialImagery[route.key]?.panelStopIndexes;
+  if (configured?.length) return configured.filter(index => index >= 0 && index < route.stops.length).slice(0, 7);
+  const lastIsCircularReturn = route.stops.length > 1 && normalizedPlace(route.stops[0].name) === normalizedPlace(route.stops.at(-1)!.name);
+  const available = Array.from({ length: lastIsCircularReturn ? route.stops.length - 1 : route.stops.length }, (_, index) => index);
+  if (available.length <= 7) return available;
+  const target = 6;
+  return Array.from({ length: target }, (_, index) => available[Math.round(index * (available.length - 1) / (target - 1))]);
+}
+
+/** Assigns visible cards by underlying credited source, not responsive derivative URL. */
+export function homepageRouteStopCards(route: ImmersiveRoute): HomepageRouteStopCard[] {
+  const indexes = homepageRouteStopIndexes(route);
+  const exactOwners = new Map<string, number>();
+  for (const index of indexes) {
+    const stop = route.stops[index];
+    for (const photo of route.photoCandidates[index] ?? []) {
+      if (normalizedPlace(photo.place) === normalizedPlace(stop.name)) exactOwners.set(responsivePhotoSource(photo), index);
+    }
+  }
+  const used = new Set<string>();
+  const heroSources = new Set([
+    routeEditorialPhoto(routeEditorialImagery[route.key]?.hero ?? "")?.sourceUrl,
+    route.heroPhoto?.source,
+  ].filter((source): source is string => Boolean(source)));
+  return indexes.map(index => {
+    const candidates = (route.photoCandidates[index] ?? []).filter(photo => {
+      const owner = exactOwners.get(responsivePhotoSource(photo));
+      return owner === undefined || owner === index;
+    });
+    const unused = candidates.filter(photo => !used.has(responsivePhotoSource(photo)));
+    const photo = unused.find(candidate => !heroSources.has(responsivePhotoSource(candidate))) ?? unused[0] ?? null;
+    if (photo) used.add(responsivePhotoSource(photo));
+    return { index, photo };
+  });
+}
 
 function heroFor(key: string): ImmersiveRoute["heroPhoto"] {
   const featured = routeEditorialImagery[key]?.homepageHero;
@@ -37,7 +102,8 @@ export function immersiveHomepageRoutes(): ImmersiveRoute[] {
     const card = eligible.find((item) => item.routeKey === key);
     const detail = card ? publicRouteDetailFor(key) : null;
     if (!card || !detail) return [];
-    return [{ ...detail, heroPhoto: heroFor(key), dayRange: card.dayRange, href: card.href,
+    const photoCandidates = detail.stops.map(stop => candidatesForStop(key, stop));
+    return [{ ...detail, heroPhoto: heroFor(key), dayRange: card.dayRange, href: card.href, photoCandidates,
       photos: detail.stops.map((stop) => routeEditorialPhoto(routeEditorialImagery[key]?.bases[stop.name]?.photoKey ?? "") ?? destinationInventory.find((image) => image.country === stop.country && image.place.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === stop.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ?? null),
       // Unresolved legacy hero rights: use the attributed destination-photo
       // owner until canonical release metadata explicitly clears the asset.

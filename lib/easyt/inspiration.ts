@@ -206,9 +206,9 @@ const catalogSeeds: InspirationSeed[] = routeFamilies
     origin: route.stops[0]?.name ?? route.bases[0] ?? "",
     originCoordinates: route.stops[0]?.coordinates ?? [0, 0],
     stops: route.stops.map((stop, index) => ({
-      id: route.key === "iceland-ring-road"
-        ? ({ "Reykjavík": "catalog-iceland-ring-road-0", "Vík": "catalog-iceland-ring-road-1", "Höfn": "catalog-iceland-ring-road-hofn", "Reykjahlíð": "catalog-iceland-ring-road-2", "Akureyri": "catalog-iceland-ring-road-3" } as Record<string, string>)[stop.name]
-        : `catalog-${route.key}-${index}`,
+      // Index is part of the identity because a circular route can legitimately
+      // begin and end at the same canonical place without duplicating a stop id.
+      id: `catalog-${route.key}-${index}`,
       name: stop.name,
       country: stop.country,
       coordinates: stop.coordinates,

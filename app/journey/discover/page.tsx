@@ -3,9 +3,11 @@ import EasyTNavigation from "../easyt-navigation";
 import { applyEasyTRouteControls, listEasyTRouteControls } from "@/lib/easyt/admin-content";
 import { publicRoutePublishedFamilies } from "@/lib/easyt/public-route";
 import { discoveryCatalogue } from "@/lib/easyt/discovery-catalogue";
+import { catalogueWithEditorialImages, routesOverviewEditorial } from "@/lib/easyt/routes-overview-editorial";
 import { featuredDiscoveryRoutes, publishedDiscoveryStyles, publishedDiscoveryWonders } from "@/lib/easyt/route-discovery";
 import DiscoveryBrowser from "./discovery-browser";
 import styles from "./discover.module.css";
+import homepageStyles from "../home/immersive/immersive.module.css";
 
 export const metadata: Metadata = {
   title: "Find your route",
@@ -29,12 +31,13 @@ export default async function DiscoveryPage() {
     const featured = controls.some((control) => control.featured) ? families.slice(0, 4) : featuredDiscoveryRoutes(families);
     const ordered = [...featured, ...families.filter((route) => !featured.some((item) => item.key === route.key))];
     const routes = discoveryCatalogue(ordered);
+    const editorial = routesOverviewEditorial(routes);
     const shortcuts = [
       ...publishedDiscoveryStyles(families).map((style) => ({ label: style.label, interest: style.interest })),
       ...publishedDiscoveryWonders(families).map((wonder) => ({ label: wonder.title, routeKey: wonder.route.key })),
     ];
-    return <main className={styles.page}><EasyTNavigation current="routes" deferPrefetch /><DiscoveryBrowser routes={routes} shortcuts={shortcuts} /></main>;
+    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing deferPrefetch /></div>} routes={catalogueWithEditorialImages(routes, editorial)} editorial={editorial} shortcuts={shortcuts} /></main>;
   } catch {
-    return <main className={styles.page}><EasyTNavigation current="routes" deferPrefetch /><DiscoveryBrowser routes={[]} unavailable /></main>;
+    return <main className={styles.page}><DiscoveryBrowser navigation={<div className={homepageStyles.navigation}><EasyTNavigation current="routes" landing deferPrefetch /></div>} routes={[]} unavailable /></main>;
   }
 }

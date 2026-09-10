@@ -1,5 +1,6 @@
 import type { RouteFamily } from "./route-catalog.ts";
-import { routeDestinationPhoto, routeImagePhoto, routeImages } from "./route-images.ts";
+import { routeDestinationPhoto, routeEditorialPhoto, routeImagePhoto, routeImages } from "./route-images.ts";
+import { routeEditorialImagery } from "./route-editorial-imagery.ts";
 
 export type RouteVisualReadiness = {
   routeKey: string;
@@ -13,7 +14,11 @@ export type RouteVisualReadiness = {
 
 /** Validation only: publication remains an explicit editorial decision. */
 export function checkRouteVisualReadiness(route: Pick<RouteFamily, "key"> & { stops: ReadonlyArray<Pick<RouteFamily["stops"][number], "name" | "country">> }): RouteVisualReadiness {
-  const destinationImageCount = route.stops.filter(stop => routeDestinationPhoto(stop.name, stop.country)).length;
+  const editorial = routeEditorialImagery[route.key];
+  const destinationImageCount = route.stops.filter(stop => (
+    routeEditorialPhoto(editorial?.bases[stop.name]?.photoKey ?? "")
+    ?? routeDestinationPhoto(stop.name, stop.country)
+  )).length;
   const hero = routeImagePhoto(route.key);
   const heroImageAvailable = Boolean(routeImages[route.key]);
   const heroImageProvenanced = Boolean(hero?.author && hero.sourceUrl && hero.license && hero.variants.length);

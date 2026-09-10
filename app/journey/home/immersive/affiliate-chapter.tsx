@@ -7,6 +7,8 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/a
 import ResilientImage from "@/components/easyt/resilient-image";
 import { affiliateProviderLabel, getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { homepageAffiliateImage } from "@/lib/easyt/homepage-affiliate-imagery";
+import { routeEditorialPhoto } from "@/lib/easyt/route-images";
+import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
@@ -22,7 +24,12 @@ export default function AffiliateChapter({ routeKey }: { routeKey: string }) {
   const [visible, setVisible] = useState(false);
   const container = useRef<HTMLElement>(null);
   const es = useHomepageLanguage() === "es";
-  const visual = homepageAffiliateImage(routeKey, needs[active].category);
+  const affiliateVisual = homepageAffiliateImage(routeKey, needs[active].category);
+  const visual = affiliateVisual ?? routeEditorialPhoto(routeEditorialImagery[routeKey]?.hero ?? "");
+  const visualLabel = visual
+    ? ("label" in visual && visual.label ? visual.label : "place" in visual ? visual.place : routeKey)
+    : routeKey;
+  const visualContext = visual && "context" in visual ? visual.context : (es ? "Tu ruta, lista para completar." : "The route you’re shaping, ready for the next decision.");
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } }, { rootMargin: "350px" });
     if (container.current) observer.observe(container.current);
@@ -40,8 +47,8 @@ export default function AffiliateChapter({ routeKey }: { routeKey: string }) {
   return <section id="booking-support" ref={container} className={styles.booking}>
     <header className={styles.chapterHeading}><div><span className={styles.eyebrow}>{es ? "Cuando tu viaje toma forma" : "When your trip takes shape"}</span><h2>{es ? "Planifícalo aquí." : "Plan it here."}<em>{es ? "Reserva cuando quieras." : "Book when you’re ready."}</em></h2></div></header>
     <div className={styles.bookingComposition}><figure className={styles.bookingImage}>
-      {visible && visual ? <ResilientImage key={visual.file} src={visual.variants[1].src} srcSet={visual.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width:840px) 90vw, 44vw" width={768} height={511} alt={visual.alt} loading="lazy" decoding="async" fallback={<div className={styles.imageFallback} aria-label={es ? "Imagen no disponible" : "Image unavailable"} />} /> : null}
-      <figcaption><span>{visual?.label} · {es ? needs[active].es : needs[active].label}</span><em>{es ? "Una parte más de tu viaje." : visual?.context}</em></figcaption>
+      {visible && visual ? <ResilientImage key={"file" in visual ? visual.file : visual.key} src={visual.variants[1].src} srcSet={visual.variants.map((variant) => `${variant.src} ${variant.width}w`).join(", ")} sizes="(max-width:840px) 90vw, 44vw" width={768} height={511} alt={visual.alt} loading="lazy" decoding="async" fallback={<div className={styles.imageFallback} aria-label={es ? "Imagen no disponible" : "Image unavailable"} />} /> : null}
+      <figcaption><span>{visualLabel} · {es ? needs[active].es : needs[active].label}</span><em>{es ? "Una parte más de tu viaje." : visualContext}</em></figcaption>
     </figure><div className={styles.partnerActions}>{needs.map((need, index) => {
       const action = getCurrentPartnerAction(need.category);
       const Icon = need.icon;

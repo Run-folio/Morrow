@@ -13,6 +13,15 @@ test('editorial imagery resolves only to locally served, credited assets and exi
   const detail = publicRouteDetailFor(key)!;
   const bases = new Set(detail.stops.map(stop => stop.name));
   assert.equal(routePhotoForSource(routeImages[key])?.key, visual.hero);
+  for (const [stopName, base] of Object.entries(visual.bases)) {
+   assert.ok(bases.has(stopName));
+   for (const photoKey of [base.photoKey, base.panelPhotoKey].filter((value): value is string => Boolean(value))) {
+    const photo = routeEditorialPhoto(photoKey)!;
+    assert.ok(photo?.author && photo.licenseUrl && photo.sourceUrl);
+    assert.ok(credits.includes(`id="${photo.key}"`));
+    for (const variant of photo.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
+   }
+  }
   for (const moment of visual.moments) {
    assert.ok(bases.has(moment.stopName));
    assert.ok(moment.context);

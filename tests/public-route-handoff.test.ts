@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
+import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
 
 test("Plan this route carries identity, order, duration, nights and structured intent", () => {
   const detail = publicRouteDetailFor("andean-highlands");
@@ -38,7 +39,7 @@ test("the reviewed Morocco route reaches Builder with canonical stops and no fal
 
 test('approved route handoffs carry a resolved ending base through JSON reload into Builder', async () => {
   const { normalizeJourneyEnd, journeyEndpointIdentityIsCoherent } = await import('../lib/easyt/journey-endpoints.ts');
-  for (const key of ['japan-slow','balkans-overland','vietnam-cambodia','iceland-ring-road']) {
+  for (const key of immersiveRouteKeys) {
     const detail = publicRouteDetailFor(key)!;
     const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft)));
     const end = normalizeJourneyEnd(payload.journeyEnd);
@@ -53,13 +54,13 @@ test('approved route handoffs carry a resolved ending base through JSON reload i
 });
 
 test("reviewed route handoffs never promote generated connective prose into place intent", () => {
-  for (const key of ["iceland-ring-road", "japan-slow", "vietnam-cambodia", "balkans-overland"]) {
+  for (const key of immersiveRouteKeys) {
     for (let run = 0; run < 10; run += 1) {
       const detail = publicRouteDetailFor(key)!;
       const payload = JSON.parse(JSON.stringify(routePlannerPayload(detail.planDraft)));
       const routeIds = new Set(payload.destinations.flatMap((destination: { canonicalPlaceId?: string }) => destination.canonicalPlaceId ?? []));
       const mentions = payload.structuredBrief.placeMentions ?? [];
-      assert.equal(mentions.every((mention: { canonicalPlaceId?: string }) => Boolean(mention.canonicalPlaceId && routeIds.has(mention.canonicalPlaceId))), true, `${key} run ${run + 1}`);
+      assert.equal(mentions.every((mention: { canonicalPlaceId?: string; routability?: string }) => Boolean(mention.canonicalPlaceId && (routeIds.has(mention.canonicalPlaceId) || mention.routability === "anchor_or_poi"))), true, `${key} run ${run + 1}`);
       assert.equal(mentions.some((mention: { sourceText: string }) => /^(?:continue|then|through|around|explore|follow|before|after|onward|via)$/i.test(mention.sourceText)), false, `${key} run ${run + 1}`);
       assert.equal(payload.structuredBrief.placeIssues?.some((issue: { sourceText: string }) => issue.sourceText.toLocaleLowerCase() === "continue"), false);
     }

@@ -4,7 +4,8 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { routeEditorialImagery } from "@/lib/easyt/route-editorial-imagery";
-import type { ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
+import { homepageRouteStopCards, type ImmersiveRoute } from "@/lib/easyt/immersive-homepage-routes";
+import type { RoutePhotoRecord } from "@/lib/easyt/route-images";
 import { nextHomepageRoute, routeScrollCorrection, homepageJourneyLabel } from "@/lib/easyt/homepage-navigation";
 import RoutePlanLink from "../../routes/[slug]/route-plan-link";
 import ResilientImage from "@/components/easyt/resilient-image";
@@ -13,18 +14,20 @@ import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
 
 const titles: Record<string, [string, string]> = {
-  "japan-slow": ["Japan", "by rail."],
-  "balkans-overland": ["Across borders.", "The Balkans."],
-  "vietnam-cambodia": ["Vietnam", "to Cambodia."],
-  "iceland-ring-road": ["Iceland’s", "open road."],
+  "japan-south-korea": ["Japan +", "South Korea."],
+  "iceland-ring-road": ["Iceland’s", "Ring Road."],
+  "balkans-overland": ["Four countries.", "The Balkans."],
+  "vietnam-cambodia": ["Vietnam +", "Cambodia."],
+  "namibia-self-drive": ["Namibia,", "self-driven."],
+  "peru-bolivia": ["Peru +", "Bolivia."],
+  "mexico-guatemala": ["Mexico +", "Guatemala."],
 };
 
-function photoBaseContext(name: string) { return `from the ${name} base`; }
-
-export function DestinationPhoto({ route, index, landscape = false, sizes }: { route: ImmersiveRoute; index: number; landscape?: boolean; sizes?: string }) {
+export function DestinationPhoto({ route, index, photoOverride, landscape = false, sizes }: { route: ImmersiveRoute; index: number; photoOverride?: RoutePhotoRecord | null; landscape?: boolean; sizes?: string }) {
   const stop = route.stops[index];
-  const photo = route.photos[index];
-  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} />{photo.place !== stop.name && <span className={styles.photoSubject}>{photo.place} · {photoBaseContext(stop.name)}</span>}<MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
+  const photo = photoOverride === undefined ? route.photos[index] : photoOverride;
+  const photoContext = routeEditorialImagery[route.key]?.bases[stop.name]?.caption;
+  return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} />{photo.place !== stop.name && photoContext && <span className={styles.photoSubject}>{photoContext}</span>}<MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
 }
 
 export default function RouteChapters({ routes, index, onChange, children, quiet }: {
@@ -73,12 +76,15 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
   };
   const title = titles[route.key] ?? [route.title, ""];
   const story = homepageJourneyLabel(route.key, route.title);
+  const visibleCards = homepageRouteStopCards(route);
+  const omittedStops = route.stops.length - visibleCards.length;
   const editorialPhotoIndex = route.photos.findIndex(photo => photo?.key === routeEditorialImagery[route.key]?.hero);
   const storyPhotoIndex = editorialPhotoIndex >= 0 ? editorialPhotoIndex : route.stops.length - 1;
   return <>
-    <section id="routes" ref={places} className={styles.places} aria-label={es ? "Lugares del viaje" : "Places along the journey"}>
+    <section id="routes" ref={places} className={styles.places} aria-label={es ? "Rutas para empezar" : "Featured route starting points"}>
       <div className={styles.placesStage}>
-        <div className={styles.routeHeading}><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2>{title[0]}<em>{title[1]}</em></h2><p>{route.stops.length} {es ? "lugares" : "places"} · {route.countries.length} {es ? (route.countries.length === 1 ? "país" : "países") : (route.countries.length === 1 ? "country" : "countries")}</p>
+        <header className={styles.routeCollectionIntro}><div><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos" : "Complex trips, made simple"}</span><h2>{es ? "Rutas para empezar" : "Routes to get you started"}</h2></div><p>{es ? "Siete ideas para viajes complejos. Usa una como punto de partida, cambia lo que quieras o planea un lugar completamente distinto." : "Seven ideas for complex trips. Use one as a starting point, change anything, or plan somewhere completely different."}</p></header>
+        <div className={styles.routeHeading}><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h3>{title[0]}<em>{title[1]}</em></h3><p>{route.stops.length} {es ? "lugares" : "places"} · {route.countries.length} {es ? (route.countries.length === 1 ? "país" : "países") : (route.countries.length === 1 ? "country" : "countries")}</p>
           <div className={styles.routeControls} role="group" aria-label={es ? "Cambiar viaje" : "Browse journeys"} onKeyDown={(event) => {
             const key = event.key;
             if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) return;
@@ -90,12 +96,12 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
             <EasyTLinkButton href="/journey/discover" variant="quiet" icon={ArrowRight}>{es ? "Ver todas las rutas" : "View all routes"}</EasyTLinkButton>
           </div>
         </div>
-        <div className={styles.photos} style={{ "--count": route.stops.length } as CSSProperties}>
-          {route.stops.map((stop, i) => <figure key={stop.id} tabIndex={0} aria-label={`${stop.name} · ${stop.country}`} style={{ "--angle": [-5,3,-3,4,2][i % 5] + "deg", "--offset": [28,-34,14,-20,30][i % 5] + "px", "--ratio": [.78,.75,.8,.77,.8][i % 5] } as CSSProperties}>
-            <DestinationPhoto route={route} index={i} /><figcaption><span>{String(i + 1).padStart(2,"0")} · {stop.country}</span><strong>{stop.name}</strong><small>{route.minimumNights[i]} {es ? "noches mínimas" : "minimum nights"}</small></figcaption>
-          </figure>)}
+        <div className={styles.photos} style={{ "--count": visibleCards.length } as CSSProperties}>
+          {visibleCards.map(({ index: stopIndex, photo }, visualIndex) => { const stop = route.stops[stopIndex]; return <figure key={`${stop.id}-${stopIndex}`} tabIndex={0} aria-label={`${stop.name} · ${stop.country}`} style={{ "--angle": [-5,3,-3,4,2][visualIndex % 5] + "deg", "--offset": [28,-34,14,-20,30][visualIndex % 5] + "px", "--ratio": [.78,.75,.8,.77,.8][visualIndex % 5] } as CSSProperties}>
+            <DestinationPhoto route={route} index={stopIndex} photoOverride={photo} /><figcaption><span>{String(stopIndex + 1).padStart(2,"0")} · {stop.country}</span><strong>{stop.name}</strong><small>{route.minimumNights[stopIndex]} {es ? "noches mínimas" : "minimum nights"}</small></figcaption>
+          </figure>; })}
         </div>
-        <div className={styles.routeFoot}><span>{route.dayRange.min}–{route.dayRange.max} {es ? "días · punto de partida" : "days · a starting point"}</span><a href="#route-story">{es ? "El viaje que los conecta" : "The journey between them"} <ArrowDown aria-hidden="true" /></a></div>
+        <div className={styles.routeFoot}><span>{es ? "Punto de partida" : "Starting point"} · {route.dayRange.min}–{route.dayRange.max} {es ? "días" : "days"}{omittedStops > 0 ? ` · +${omittedStops} ${es ? (omittedStops === 1 ? "parada más" : "paradas más") : (omittedStops === 1 ? "more stop" : "more stops")}` : ""}</span><a href="#route-story">{es ? "El viaje que los conecta" : "The journey between them"} <ArrowDown aria-hidden="true" /></a></div>
       </div>
     </section>
     <section id="route-story" className={styles.story}>

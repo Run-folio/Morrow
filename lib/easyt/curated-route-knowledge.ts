@@ -1,7 +1,18 @@
 import type { RouteConfidence, RouteFamily } from "./route-catalog.ts";
 
 /** The only route families whose editorial facts are a beta planning contract. */
-export const BETA_CURATED_ROUTE_KEYS = ["japan-slow", "andean-highlands", "portugal-atlantic", "balkans-overland", "vietnam-cambodia", "iceland-ring-road"] as const;
+export const BETA_CURATED_ROUTE_KEYS = [
+  "japan-slow",
+  "japan-south-korea",
+  "andean-highlands",
+  "portugal-atlantic",
+  "balkans-overland",
+  "vietnam-cambodia",
+  "iceland-ring-road",
+  "namibia-self-drive",
+  "peru-bolivia",
+  "mexico-guatemala",
+] as const;
 
 export function isBetaCuratedRoute(routeKey: string): routeKey is (typeof BETA_CURATED_ROUTE_KEYS)[number] {
   return (BETA_CURATED_ROUTE_KEYS as readonly string[]).includes(routeKey);

@@ -7,6 +7,7 @@ import { routeFamilyByKey, type RouteConfidence, type RouteConnection, type Rout
 import { routeImages } from "./route-images.ts";
 import { inspirationByKey } from "./inspiration.ts";
 import { mergeStructuredTripBrief, type StructuredTripBrief } from "./structured-trip-brief.ts";
+import type { PlaceSelection } from "./place-intelligence.ts";
 import { curatedRouteKnowledgeFor, isBetaCuratedRoute, type CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 
 export const LEGACY_PUBLIC_ROUTE_SLUGS: Readonly<Record<string, string>> = {
@@ -206,9 +207,11 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
   const first = route.stops[0]!;
   const last = route.stops.at(-1)!;
   const middle = route.stops.slice(1, -1).map((stop) => stop.name);
-  const prompt = middle.length
+  const routePrompt = middle.length
     ? `${detail.durationDays} days. Start in ${first.name}, continue through ${middle.join(", ")}, and finish in ${last.name}.`
     : `${detail.durationDays} days. Start in ${first.name} and finish in ${last.name}.`;
+  const visitPrompt = route.visitIntents?.map((visit) => ` Visit ${visit.name} from ${visit.base}.`).join("") ?? "";
+  const prompt = `${routePrompt}${visitPrompt}`;
   const captured = captureJourneyBrief(prompt);
   const originName = seed?.origin ?? first.name;
   const canonicalOrigin = matchCatalogPlace(originName);
@@ -242,7 +245,38 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
   });
   const routeDestinationIds = new Set(destinations.map((destination) => destination.id));
   const routeDestinationMentionIds = new Set(destinations.flatMap((destination) => destination.placeMentionId ?? []));
+  const routeDestinationCanonicalIds = new Set(destinations.flatMap((destination) => destination.canonicalPlaceId ?? []));
   const routeDestinationNames = new Set(destinations.map((destination) => normalizedPlaceName(destination.name)));
+  const routeVisitNames = new Set((route.visitIntents ?? []).map((visit) => normalizedPlaceName(visit.name)));
+  const routeVisitMentionIds = new Set((captured.structuredBrief.placeMentions ?? [])
+    .filter((mention) => routeVisitNames.has(normalizedPlaceName(mention.canonicalName))
+      || routeVisitNames.has(normalizedPlaceName(mention.sourceText)))
+    .map((mention) => mention.mentionId));
+  const routeVisitSelections = (route.visitIntents ?? []).flatMap((visit): PlaceSelection[] => {
+    const mention = (mergedBrief.placeMentions ?? []).find((item) => routeVisitMentionIds.has(item.mentionId)
+      && (normalizedPlaceName(item.canonicalName) === normalizedPlaceName(visit.name)
+        || normalizedPlaceName(item.sourceText) === normalizedPlaceName(visit.name)));
+    const base = destinations.find((destination) => normalizedPlaceName(destination.name) === normalizedPlaceName(visit.base));
+    if (!mention || !base?.canonicalPlaceId) return [];
+    return [{
+      mentionId: mention.mentionId,
+      kind: "visit",
+      selectedCanonicalPlaceId: base.canonicalPlaceId,
+      selectedName: base.name,
+      selectedPlaceType: base.placeType,
+      selectedParentCountries: base.parentCountries,
+      routeStopId: base.id,
+      relationshipType: "visit-from-base",
+      provenance: {
+        id: `public-route:${route.key}:${mention.mentionId}:${base.id}`,
+        label: "Morrovia reviewed route",
+        kind: "context",
+        supports: `${mention.canonicalName} remains a named visit from the reviewed overnight base ${base.name}.`,
+        reviewedAt: route.reviewedAt,
+      },
+    }];
+  });
+  const completedRouteVisitMentionIds = new Set(routeVisitSelections.map((selection) => selection.mentionId));
   const hasOperationalRoute = route.stops.every((stop) => Boolean(stop.country)
     && Number.isFinite(stop.coordinates[0])
     && Number.isFinite(stop.coordinates[1]));
@@ -258,11 +292,24 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
     // that map back to a reviewed route stop so connective editorial prose can
     // never cross into Builder's canonical place inventory.
     placeMentions: (mergedBrief.placeMentions ?? []).filter((mention) => routeDestinationMentionIds.has(mention.mentionId)
+      || routeVisitMentionIds.has(mention.mentionId)
       || routeDestinationNames.has(normalizedPlaceName(mention.canonicalName))
-      || routeDestinationNames.has(normalizedPlaceName(mention.sourceText))),
+      || routeDestinationNames.has(normalizedPlaceName(mention.sourceText))
+      || routeVisitNames.has(normalizedPlaceName(mention.canonicalName))
+      || routeVisitNames.has(normalizedPlaceName(mention.sourceText)))
+      .map((mention) => routeVisitMentionIds.has(mention.mentionId)
+        && !routeDestinationCanonicalIds.has(mention.canonicalPlaceId ?? "")
+        ? { ...mention, role: "anchor" as const, routability: "anchor_or_poi" as const }
+        : mention),
+    // A published route's explicit visit/base relationship has already been
+    // editorially reviewed. Preserve both identities without asking the
+    // traveller to repeat that shaping decision in Builder.
     placeIssues: (mergedBrief.placeIssues ?? [])
+      .filter((issue) => !completedRouteVisitMentionIds.has(issue.mentionId))
       .filter((issue) => routeDestinationMentionIds.has(issue.mentionId)
-        || routeDestinationNames.has(normalizedPlaceName(issue.sourceText)))
+        || routeVisitMentionIds.has(issue.mentionId)
+        || routeDestinationNames.has(normalizedPlaceName(issue.sourceText))
+        || routeVisitNames.has(normalizedPlaceName(issue.sourceText)))
       .map((issue) => hasOperationalRoute
       && (issue.code === "unresolved_place" || issue.code === "region_requires_base")
       ? {
@@ -270,8 +317,10 @@ function planDraftFor(route: RouteFamily, detail: Omit<PublicRouteDetail, "planD
           severity: "warning" as const,
           blocksRoute: false,
           message: `${issue.message} Morrovia will keep the reviewed route stop and coordinates unless you choose a different base.`,
-        }
+      }
       : issue),
+    placeSelections: routeVisitSelections,
+    completedPlanningAreaMentionIds: [...completedRouteVisitMentionIds],
   };
   return {
     routeKey: route.key,
