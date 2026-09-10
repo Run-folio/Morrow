@@ -30,6 +30,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "thumb.wikimedia.org",
+        pathname: "/wikipedia/commons/**",
+      },
+      {
+        protocol: "https",
         hostname: "commons.wikimedia.org",
         pathname: "/wiki/Special:FilePath/**",
       },

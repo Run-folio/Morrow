@@ -1,0 +1,92 @@
+[
+  {
+    "destination": "Agra, India",
+    "decision": "alternative selected",
+    "providerAssetId": "iWMfiInivp4"
+  },
+  {
+    "destination": "Bologna, Italy",
+    "decision": "accepted",
+    "providerAssetId": "9vC3poyl5ts"
+  },
+  {
+    "destination": "Mérida, Mexico",
+    "decision": "alternative selected",
+    "providerAssetId": "UfK0P6WygEE"
+  },
+  {
+    "destination": "Palenque, Mexico",
+    "decision": "accepted",
+    "providerAssetId": "XMhOGONIrp4"
+  },
+  {
+    "destination": "San Cristóbal de las Casas, Mexico",
+    "decision": "accepted",
+    "providerAssetId": "6xMLreoBNFo"
+  },
+  {
+    "destination": "Valladolid, Mexico",
+    "decision": "alternative selected",
+    "providerAssetId": "9AFMVXjp5ik"
+  },
+  {
+    "destination": "Sacred Valley, Peru",
+    "decision": "accepted",
+    "providerAssetId": "hQljmSHzn4E"
+  },
+  {
+    "destination": "Comporta, Portugal",
+    "decision": "accepted",
+    "providerAssetId": "jvac46gwT1M"
+  },
+  {
+    "destination": "Gyeongju, South Korea",
+    "decision": "accepted",
+    "providerAssetId": "ymvJ-wSPjvc"
+  },
+  {
+    "destination": "Taichung, Taiwan",
+    "decision": "accepted",
+    "providerAssetId": "2K0fxI1mQ_U"
+  },
+  {
+    "destination": "Tainan, Taiwan",
+    "decision": "accepted",
+    "providerAssetId": "CsERJtQGH9k"
+  },
+  {
+    "destination": "Edinburgh, United Kingdom",
+    "decision": "alternative selected",
+    "providerAssetId": "EUTShdiF5U8"
+  },
+  {
+    "destination": "Glasgow, United Kingdom",
+    "decision": "accepted",
+    "providerAssetId": "7vJX8cIgLao"
+  },
+  {
+    "destination": "Isle of Skye, United Kingdom",
+    "decision": "alternative selected",
+    "providerAssetId": "wFWQmOyfkkM"
+  },
+  {
+    "destination": "Grand Canyon, United States",
+    "decision": "accepted",
+    "providerAssetId": "85AQukQ8ipg"
+  },
+  {
+    "destination": "Las Vegas, United States",
+    "decision": "alternative selected",
+    "providerAssetId": "0MkMo1d8yx8"
+  },
+  {
+    "destination": "Busan, South Korea",
+    "decision": "alternative selected",
+    "providerAssetId": "O3i91C0vuY0"
+  },
+  {
+    "destination": "Tulum, Mexico",
+    "decision": "accepted",
+    "providerAssetId": "Hu7M5M2SU94"
+  }
+]

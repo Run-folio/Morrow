@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "images:published-routes": "node --experimental-strip-types scripts/published-route-images.ts",
+    "images:published-routes:review": "node --experimental-strip-types scripts/render-published-route-image-review.ts",
+    "test:published-route-images": "node --experimental-strip-types --test tests/published-route-image-pipeline.test.ts tests/published-route-image-coverage.test.ts tests/route-editorial-imagery.test.ts tests/route-visual-readiness.test.ts",
     "dev": "NEXT_DIST_DIR=.next-dev next dev",
     "build": "next build",
     "build:check": "NEXT_DIST_DIR=.next-check next build",

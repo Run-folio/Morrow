@@ -63,13 +63,20 @@ test("photography resolves only to licensed canonical destinations and preserves
     assert.ok(visual.closing);
     assert.notEqual(visual.hero.key, visual.closing.key);
     visual.photos.forEach((photo, index) => {
-      assert.ok(photo, detail.stops[index].name);
+      if (!photo) return;
       assert.equal(photo.country, detail.stops[index].country);
       assert.ok(photo.author && photo.sourceUrl && photo.license);
-      for (const variant of photo.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
+      for (const variant of photo.variants) {
+        if (/^https:\/\//.test(variant.src)) assert.doesNotThrow(() => new URL(variant.src));
+        else assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
+      }
     });
     assert.equal(routeDetailPresentation({ ...detail, heroImage: "/unknown-rights.jpg" }).hero, null);
   }
+  const korea = routeDetailPresentation(publicRouteDetailFor("japan-south-korea")!);
+  assert.equal(korea.photos.at(-1)?.place, "Busan");
+  const taiwan = routeDetailPresentation(publicRouteDetailFor("taiwan-rail")!);
+  assert.equal(taiwan.photos[1], null, "Taichung remains an explicit neutral fallback because the reviewed asset names Taipei");
   const photo = read(owner + "route-detail-photo.tsx");
   assert.match(photo, /ResilientImage/);
   assert.match(photo, /Photography pending editorial review/);
@@ -82,7 +89,7 @@ test("photography resolves only to licensed canonical destinations and preserves
   assert.doesNotMatch(photo, /<figcaption>/);
 });
 
-test("experience imagery uses only canonical destination assets and exposes honest gaps", () => {
+test("experience imagery reuses only canonical destination assets and exposes honest gaps", () => {
   const japan = routeDetailPresentation(publicRouteDetailFor("japan-slow")!);
   assert.equal(japan.experiences.length, 3);
   assert.equal(japan.experiences.at(-1)?.photo?.place, "Kyoto");
@@ -90,8 +97,7 @@ test("experience imagery uses only canonical destination assets and exposes hone
 
   const andes = routeDetailPresentation(publicRouteDetailFor("andean-highlands")!);
   assert.equal(andes.experiences.length, 4);
-  assert.equal(andes.experiences[0].photo?.place, "Cusco");
-  assert.ok(andes.experiences.slice(1).every(experience => experience.photo === null));
+  assert.deepEqual(andes.experiences.map(experience => experience.photo?.place ?? null), ["Cusco", "Sacred Valley", "Sacred Valley", "Arequipa"]);
 });
 
 test("related journeys stay published, exclude the current route and respect admin hiding", () => {

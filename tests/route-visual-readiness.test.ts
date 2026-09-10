@@ -4,9 +4,6 @@ import test from "node:test";
 import { publicRoutePublishedFamilies } from "../lib/easyt/public-route.ts";
 import { routeImagePhoto, routeImages } from "../lib/easyt/route-images.ts";
 import { checkRouteVisualReadiness } from "../lib/easyt/route-visual-readiness.ts";
-import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
-
-const canonical = new Set(["japan-slow", ...immersiveRouteKeys]);
 
 test("every published route has a local, responsive and provenanced opening hero", () => {
   const published = publicRoutePublishedFamilies();
@@ -23,10 +20,10 @@ test("every published route has a local, responsive and provenanced opening hero
   }
 });
 
-test("canonical routes remain fully visual while legacy routes expose partial destination coverage", () => {
+test("published routes report truthful destination coverage and use compact fallbacks for gaps", () => {
   for (const route of publicRoutePublishedFamilies()) {
     const readiness = checkRouteVisualReadiness(route);
-    if (canonical.has(route.key)) {
+    if (readiness.destinationImageCount === route.stops.length) {
       assert.equal(readiness.status, "fully-visual", route.key);
       assert.equal(readiness.destinationImageCount, route.stops.length, route.key);
       assert.equal(readiness.fallbackBehaviour, "none", route.key);
@@ -35,6 +32,10 @@ test("canonical routes remain fully visual while legacy routes expose partial de
       assert.equal(readiness.fallbackBehaviour, "compact destination fallback", route.key);
     }
   }
+  const korea = publicRoutePublishedFamilies().find((route) => route.key === "japan-south-korea")!;
+  assert.equal(checkRouteVisualReadiness(korea).status, "fully-visual");
+  const taiwan = publicRoutePublishedFamilies().find((route) => route.key === "taiwan-rail")!;
+  assert.equal(checkRouteVisualReadiness(taiwan).status, "hero-ready");
 });
 
 test("readiness validation surfaces a missing hero without changing publication", () => {

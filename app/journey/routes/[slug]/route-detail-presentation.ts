@@ -1,7 +1,8 @@
 import { routeFamilyByKey } from "../../../../lib/easyt/route-catalog.ts";
 import { publicRoutePublishedFamilies, type PublicRouteDetail } from "../../../../lib/easyt/public-route.ts";
 import { discoveryCatalogue } from "../../../../lib/easyt/discovery-catalogue.ts";
-import { routeDestinationPhoto, routePhotoForSource, routeEditorialPhoto } from "../../../../lib/easyt/route-images.ts";
+import { routePhotoForSource, routeEditorialPhoto } from "../../../../lib/easyt/route-images.ts";
+import { routeStopPhoto } from "../../../../lib/easyt/route-stop-photography.ts";
 
 import { routeEditorialImagery } from "../../../../lib/easyt/route-editorial-imagery.ts";
 
@@ -26,7 +27,7 @@ function attractionStopIndex(detail: PublicRouteDetail, stopName?: string, attra
 export function routeDetailPresentation(detail: PublicRouteDetail) {
   const family = routeFamilyByKey[detail.key];
   const editorial = routeEditorialImagery[detail.key];
-  const photos = detail.stops.map(stop => routeEditorialPhoto(editorial?.bases[stop.name]?.photoKey ?? "") ?? routeDestinationPhoto(stop.name, stop.country));
+  const photos = detail.stops.map(stop => family ? routeStopPhoto(family, stop) : null);
   const hero = routePhotoForSource(detail.heroImage);
   const closing = routeEditorialPhoto(editorial?.closing ?? "") ?? photos.find(photo => photo && photo.key !== hero?.key) ?? hero;
   const comma = detail.title.indexOf(",");

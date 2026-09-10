@@ -1,10 +1,30 @@
 import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
 import routeImageInventory from "../../public/journey/immersive/route-image-inventory.json" with { type: "json" };
+import publishedStopInventory from "../../public/journey/immersive/published-route-stop-image-inventory.generated.json" with { type: "json" };
 
 import editorialInventory from "../../public/journey/immersive/editorial-image-inventory.json" with { type: "json" };
 import { routeEditorialImagery } from "./route-editorial-imagery.ts";
 
-export type RoutePhotoRecord = (typeof destinationInventory)[number] | (typeof routeImageInventory)[number] | (typeof editorialInventory)[number];
+export type RoutePhotoRecord = {
+  key: string;
+  place: string;
+  country: string;
+  author: string;
+  authorUrl?: string;
+  license: string;
+  licenseUrl: string;
+  sourceUrl: string;
+  changes: string;
+  alt: string;
+  variants: Array<{ src: string; width: number; height: number; bytes?: number }>;
+  intendedUses?: string[];
+  routeKeys?: string[];
+};
+
+// Exact place/country editorial records are safe to reuse across published
+// routes that share the same canonical destination.
+const destinationPhotos: RoutePhotoRecord[] = [...destinationInventory, ...publishedStopInventory, ...editorialInventory];
+const editorialPhotos: RoutePhotoRecord[] = [...editorialInventory, ...destinationPhotos, ...routeImageInventory];
 
 const canonicalRouteImages: Record<string, string> = {
   "japan-slow": "/journey/immersive/place-kyoto-1536.webp",
@@ -14,7 +34,7 @@ const canonicalRouteImages: Record<string, string> = {
 };
 
 export function routeEditorialPhoto(key: string): RoutePhotoRecord | null {
-  return [...editorialInventory, ...destinationInventory, ...routeImageInventory].find(photo => photo.key === key) ?? null;
+  return editorialPhotos.find(photo => photo.key === key) ?? null;
 }
 
 /** One licensed, locally served hero for every published route with visual coverage. */
@@ -29,7 +49,7 @@ export const routeImages: Record<string, string> = {
 
 /** Licensed canonical destination photographs shared by homepage and detail. */
 export function routeDestinationPhoto(place: string, country: string) {
-  return destinationInventory.find(image => image.place === place && image.country === country) ?? null;
+  return destinationPhotos.find(image => image.place === place && image.country === country) ?? null;
 }
 
 /** Licensed route-level photograph, used when destination coverage is incomplete. */
@@ -43,7 +63,7 @@ export function routeImagePhoto(routeKey: string): RoutePhotoRecord | null {
 }
 
 export function routePhotoForSource(image: string): RoutePhotoRecord | null {
-  return [...editorialInventory, ...destinationInventory, ...routeImageInventory].find(photo => photo.variants.some(variant => variant.src === image)) ?? null;
+  return editorialPhotos.find(photo => photo.variants.some(variant => variant.src === image)) ?? null;
 }
 
 export function routeImageCredit(image: string) {

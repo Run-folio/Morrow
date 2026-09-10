@@ -3,7 +3,7 @@ import { publicRouteDetailFor, type PublicRouteDetail } from "./public-route.ts"
 import { routeFamilyByKey } from "./route-catalog.ts";
 import { routeEditorialImagery } from "./route-editorial-imagery.ts";
 import { routeEditorialPhoto, type RoutePhotoRecord } from "./route-images.ts";
-import destinationInventory from "../../public/journey/immersive/destination-inventory.json" with { type: "json" };
+import { routeStopPhotoCandidates } from "./route-stop-photography.ts";
 import generatedInventory from "../../public/journey/immersive/asset-inventory.json" with { type: "json" };
 export { nextHomepageRoute, routeScrollCorrection } from "./homepage-navigation.ts";
 
@@ -21,7 +21,7 @@ export type ImmersiveRoute = PublicRouteDetail & {
   dayRange: { min: number; max: number };
   minimumNights: number[];
   href: string;
-  heroPhoto: { variants: Array<{ src: string; width: number; bytes: number }>; credit: string; creditEs: string; country: string; rights: string; source: string } | null;
+  heroPhoto: { variants: Array<{ src: string; width: number; height?: number; bytes?: number }>; credit: string; creditEs: string; country: string; rights: string; source: string } | null;
   photos: Array<RoutePhotoRecord | null>;
   photoCandidates: Array<RoutePhotoRecord[]>;
 };
@@ -38,10 +38,10 @@ export function responsivePhotoSource(photo: RoutePhotoRecord) {
 }
 
 function candidatesForStop(routeKey: string, stop: PublicRouteDetail["stops"][number]) {
-  const exact = destinationInventory.find(image => image.country === stop.country && normalizedPlace(image.place) === normalizedPlace(stop.name));
+  const route = routeFamilyByKey[routeKey];
   const base = routeEditorialImagery[routeKey]?.bases[stop.name];
-  const configured = routeEditorialPhoto(base?.panelPhotoKey === null ? "" : base?.panelPhotoKey ?? base?.photoKey ?? "");
-  return [exact, configured].filter((photo, index, photos): photo is RoutePhotoRecord => Boolean(photo) && photos.findIndex(candidate => candidate?.sourceUrl === photo?.sourceUrl) === index);
+  const configuredPhotoKey = base?.panelPhotoKey === null ? null : base?.panelPhotoKey ?? base?.photoKey;
+  return route ? routeStopPhotoCandidates(route, stop, { configuredPhotoKey }) : [];
 }
 
 /** Homepage-only projection. Route detail, planning and persistence keep the full stop list. */
@@ -104,7 +104,7 @@ export function immersiveHomepageRoutes(): ImmersiveRoute[] {
     if (!card || !detail) return [];
     const photoCandidates = detail.stops.map(stop => candidatesForStop(key, stop));
     return [{ ...detail, heroPhoto: heroFor(key), dayRange: card.dayRange, href: card.href, photoCandidates,
-      photos: detail.stops.map((stop) => routeEditorialPhoto(routeEditorialImagery[key]?.bases[stop.name]?.photoKey ?? "") ?? destinationInventory.find((image) => image.country === stop.country && image.place.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === stop.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")) ?? null),
+      photos: detail.stops.map((stop) => routeStopPhotoCandidates(routeFamilyByKey[key], stop)[0] ?? null),
       // Unresolved legacy hero rights: use the attributed destination-photo
       // owner until canonical release metadata explicitly clears the asset.
       heroImage: routeFamilyByKey[key].release?.image?.asset === detail.heroImage ? detail.heroImage : "",
