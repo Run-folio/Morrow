@@ -314,14 +314,16 @@ test("nearby wording follows semantic type and missing coordinates cannot start 
   assert.equal(nearbyBaseAnchorForMention(mention), undefined);
 });
 
-test("acceptance names are fixture evidence, not production anchor-to-base lookup branches", async () => {
+test("acceptance names remain fixture evidence unless approved canonical routes own them", async () => {
   const intelligence = await readFile(new URL("../lib/easyt/place-intelligence.ts", import.meta.url), "utf8");
   const catalog = await readFile(new URL("../lib/easyt/place-catalog.ts", import.meta.url), "utf8");
   const builder = await readFile(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(intelligence, /REVIEWED_BASE_IDS|Tikal\s*:\s*\[|Lake Atitl[aá]n\s*:\s*\[/i);
-  for (const fixtureOnlyName of ["Panajachel", "San Pedro La Laguna", "San Marcos La Laguna", "Flores, Guatemala", "El Remate"]) {
+  for (const fixtureOnlyName of ["San Pedro La Laguna", "San Marcos La Laguna", "El Remate"]) {
     assert.equal(catalog.includes(fixtureOnlyName), false, `${fixtureOnlyName} must not be a production lookup entry`);
   }
+  assert.match(catalog, /town\("panajachel", "Panajachel"/);
+  assert.match(catalog, /town\("flores-guatemala", "Flores"/);
   assert.match(builder, /targetUsesNearbyBase && !targetNearbyAnchor/);
   assert.match(builder, /nearbySuggestions = clarificationUsesNearbyBases[\s\S]*?isDuplicatePlaceIdentity\(stops/);
   assert.match(builder, /selection\.kind === "base" \|\| selection\.kind === "visit"/);

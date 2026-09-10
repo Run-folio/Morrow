@@ -2,8 +2,8 @@
   "version": "global-routing/v1",
   "fixtureCount": 51,
   "outcomes": {
-    "PASS": 1,
-    "PASS WITH EXPECTED UNCERTAINTY": 50,
+    "PASS": 2,
+    "PASS WITH EXPECTED UNCERTAINTY": 49,
     "WARNING": 0,
     "HARD FAILURE": 0
   },
@@ -36,7 +36,7 @@
   },
   "p0RegressionFailures": [],
   "unknownTransferCount": 55,
-  "unresolvedPlaceCount": 62,
+  "unresolvedPlaceCount": 59,
   "results": [
     {
       "id": "p0-london-mexico-guatemala-belize",
@@ -725,7 +725,7 @@
     },
     {
       "id": "greek-island-ferries",
-      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "outcome": "PASS",
       "scores": {
         "semantic-understanding": {
           "earned": 4,
@@ -756,7 +756,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 0,
-      "unresolvedPlaceCount": 1,
+      "unresolvedPlaceCount": 0,
       "routeEndpoints": [
         "Athens",
         "Naxos",
@@ -1132,7 +1132,7 @@
       "hardFailures": [],
       "warnings": [],
       "unknownTransferCount": 1,
-      "unresolvedPlaceCount": 4,
+      "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "Windhoek",
         "Swakopmund"

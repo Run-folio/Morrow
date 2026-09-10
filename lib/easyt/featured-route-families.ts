@@ -42,7 +42,7 @@ function featuredRoute(input: FeaturedRouteInput): RouteFamily {
     reviewedAt,
     release: {
       routeOrderRationale,
-      editorialOwner: "Codex — route research and content preparation",
+      editorialOwner: "Codex, route research and content preparation",
       editorialReviewer: "Shaun Whiting",
       explicitUnknowns: route.connections.map((item) => ({
         kind: "connection",
