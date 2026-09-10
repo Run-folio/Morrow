@@ -32,10 +32,9 @@
 .planner form { margin: 0; max-width: none; }
 .planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
 .planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
-.heroBottom { width: 92%; margin: 0 auto 28px; display: flex; justify-content: space-between; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
+.heroBottom { width: 92%; margin: 0 auto 28px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
 .heroPhotoCredit { --photo-credit-inline:4%; --photo-credit-block:76px; }
 .heroBottom a { display: flex; align-items: center; gap: 10px; }
-.heroBottom button { color: var(--morrovia-paper); }
 .heroBottom svg { width: 18px; height: 18px; }
 @media(max-width:840px) {
   .hero { min-height: 100svh; }
@@ -63,14 +62,13 @@
 .page[data-quiet="true"] *, .page[data-quiet="true"] *::before { animation: none!important; transition: none!important; }
 .page[data-quiet="true"] .landscape { transform: none!important; }
 .product { padding: 100px 5vw; min-height: 100svh; }
-.chapterHeading { display: flex; align-items: end; justify-content: space-between; gap: 40px; margin-bottom: 40px; }
+.chapterHeading { display: flex; align-items: end; gap: 40px; margin-bottom: 40px; }
 .chapterHeading .eyebrow { color: var(--morrovia-signal); margin-bottom: 28px; }
 .chapterHeading h2 { font-size: clamp(70px,6.3vw,104px); }
-.chapterHeading > p { max-width: 300px; font: var(--morrovia-type-supporting-body); }
 .demo { border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); overflow: hidden; background: var(--morrovia-paper); }
 .canvasNavigation { display: flex; justify-content: end; padding: 14px 18px; border-bottom: 1px solid var(--morrovia-line); }
 .demoMasthead { display: flex; gap: 20px; align-items: center; padding: 14px 20px; background: var(--morrovia-lilac); font: var(--morrovia-type-fine-print); }
-.demoMasthead > span:nth-child(2) { margin-left: auto; }
+.demoMasthead > button { margin-left: auto; }
 .demoNotice { min-height: 28px; padding: 4px 20px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
 .mapDemo { display: grid; grid-template-columns: minmax(240px,25%) minmax(0,1fr); min-height: 600px; }
 .mapInfo { padding: 30px 22px; }
@@ -132,7 +130,7 @@
 .closingContent { flex: 1; display: grid; align-content: center; justify-items: center; padding: 110px 0 90px; text-align: center; }
 .closing h2 { font-size: clamp(82px,8.4vw,158px); margin: 40px 0; }
 .closingContent button { background: var(--morrovia-paper); color: var(--morrovia-ink); min-height: 56px; }
-.closingFoot { position: relative; display: flex; align-items: center; padding: 0 0 20px; justify-content: space-between; gap: 20px; font: var(--morrovia-type-fine-print); }
+.closingFoot { position: relative; display: flex; align-items: center; padding: 0 0 20px; justify-content: flex-end; gap: 20px; font: var(--morrovia-type-fine-print); }
 .closingFoot a { display: inline-flex; align-items: center; min-height: 44px; }
 .closing a:focus-visible,.closing button:focus-visible { outline: 2px solid var(--morrovia-paper); outline-offset: 4px; }
 @media(max-width:840px) { .closing { padding: 0 20px; } .closingContent { padding: 90px 0 70px; } .closing h2 { font-size: clamp(50px,10vw,76px); } }
@@ -202,7 +200,7 @@
 .routeFoot { display: flex; justify-content: space-between; gap: 20px; font: var(--morrovia-type-supporting-body); margin-top: 20px; }
 .routeFoot a { display: flex; align-items: center; gap: 10px; }
 .routeFoot svg { width: 18px; height: 18px; }
-.story { min-height: max(780px,100svh); padding: 100px 5vw; position: relative; isolation: isolate; color: var(--morrovia-paper); display: grid; grid-template-columns: minmax(0,3fr) minmax(180px,1fr); gap: 8vw; align-items: center; background: var(--morrovia-ink); }
+.story { min-height: max(780px,100svh); padding: 100px 5vw; position: relative; isolation: isolate; color: var(--morrovia-paper); display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,340px); gap: clamp(48px,7vw,132px); align-items: center; background: var(--morrovia-ink); }
 .storyPhoto,.storyShade { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
 .storyPhoto > div { width: 100%; height: 100%; border-radius: 0; background-size: cover; background-position: center; }
 .storyShade { z-index: -1; background: linear-gradient(90deg,
@@ -223,12 +221,18 @@
 .theme { font: var(--morrovia-type-metadata); margin-bottom: 24px!important; }
 .storyIdea { max-width: 610px; font-size: 18px; }
 .sequence { margin-top: 44px!important; font: var(--morrovia-type-supporting-body); }
-.note { font: var(--morrovia-type-fine-print); margin-top: 18px!important; max-width: 550px; }
 .storyActions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 28px; }
 .storyActions a:first-child { color: var(--morrovia-ink); background: var(--morrovia-paper); }
-.storyActions a:last-child,.alternatives button,.alternatives a { color: var(--morrovia-paper); }
-.alternatives { display: grid; justify-items: start; gap: 25px; }
-.alternatives button { text-align: left; white-space: normal; line-height: 1.4; }
+.storyActions a:last-child { color: var(--morrovia-paper); }
+.alternatives { width: 100%; max-width: 340px; justify-self: end; display: grid; gap: 18px; padding: 28px; color: var(--morrovia-ink); background: color-mix(in srgb,var(--morrovia-paper) 96%,transparent); border: 1px solid color-mix(in srgb,var(--morrovia-paper) 70%,transparent); border-radius: var(--morrovia-radius); backdrop-filter: blur(14px); }
+.alternatives .eyebrow { color: var(--morrovia-signal); }
+.alternativeRoutes { display: grid; }
+.alternativeRoute { width: 100%; min-height: 48px; justify-content: flex-start; gap: 12px; padding: 11px 10px; color: var(--morrovia-ink)!important; border-radius: 0; border-bottom: 1px solid var(--morrovia-line); text-align: left; white-space: normal; font-size: 17px; line-height: 1.25; }
+.alternativeRoute span { flex: 1; }
+.alternativeRoute svg { order: 2; flex: 0 0 auto; }
+.alternativeRoute:hover { background: var(--morrovia-lilac); }
+.alternativesAll { min-height: 48px; justify-content: space-between; padding: 13px 10px 0; color: var(--morrovia-action)!important; border-top: 1px solid var(--morrovia-line); border-radius: 0; }
+.alternativesAll svg { order: 2; }
 @media(max-width:840px) {
  .places { height: auto; --progress: 1!important; }
  .placesStage { position: relative; height: auto; min-height: 0; padding: 55px 20px 30px; }
@@ -247,7 +251,8 @@
  .story { grid-template-columns: 1fr; padding: 70px 22px; min-height: 850px; gap: 45px; }
  .story h2 { font-size: clamp(48px,8vw,68px); }
  .storyIdea { font-size: 16px; }
- .alternatives { gap: 10px; }
+ .alternatives { max-width: none; justify-self: stretch; gap: 14px; padding: 24px; }
+ .alternativeRoute,.alternativesAll { min-height: 48px; }
 }
 .page[data-quiet="true"] .places { height: auto; --progress: 1!important; }
 .page[data-quiet="true"] .placesStage { position: relative; }

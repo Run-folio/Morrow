@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDown, Pause } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import EasyTNavigation from "../../easyt-navigation";
 import HomeTripStarter from "../home-trip-starter";
-import { EasyTButton } from "@/components/easyt/easyt-controls";
 import MorroviaPhotoCredit from "@/components/easyt/morrovia-photo-credit";
 import { useHomepageLanguage } from "./use-homepage-language";
 import styles from "./immersive.module.css";
@@ -29,7 +28,6 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
   }, [route.key, route.stops.length]);
   const language = useHomepageLanguage();
   const es = language === "es";
-  const [quiet, setQuiet] = useState(false);
   const [systemQuiet, setSystemQuiet] = useState(false);
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -37,10 +35,10 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
     change(); media.addEventListener("change", change);
     return () => media.removeEventListener("change", change);
   }, []);
-  return <main className={styles.page} data-quiet={quiet || systemQuiet}>
+  return <main className={styles.page} data-quiet={systemQuiet}>
     <a className={styles.skip} href="#start-building">{es ? "Ir al formulario" : "Skip to trip prompt"}</a>
     <section id="hero" className={styles.hero} onPointerMove={(event) => {
-      if (quiet || systemQuiet || event.pointerType !== "mouse" || event.currentTarget.matches(":focus-within")) return;
+      if (systemQuiet || event.pointerType !== "mouse" || event.currentTarget.matches(":focus-within")) return;
       const rect = event.currentTarget.getBoundingClientRect();
       event.currentTarget.style.setProperty("--depth-x", `${((event.clientX - rect.left) / rect.width - .5) * 10}px`);
     }} onPointerLeave={(event) => event.currentTarget.style.setProperty("--depth-x", "0px")}>
@@ -52,9 +50,9 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
         <div className={styles.heroCopy}><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><h1>{es ? "Ve más lejos." : "Go further."}<em>{es ? "Hazlo tuyo." : "Make it yours."}</em></h1><p>{es ? "Convierte tus ideas en una primera ruta pensada. Después, hazla tuya." : "Turn your multi-stop ideas into a thoughtful first route. Then make it your own."}</p></div>
         <div className={styles.planner}><HomeTripStarter /></div>
       </div>
-      <div className={styles.heroBottom}><EasyTButton variant="quiet" icon={Pause} aria-pressed={quiet || systemQuiet} disabled={systemQuiet} onClick={() => setQuiet(!quiet)}>{systemQuiet ? (es ? "Movimiento reducido" : "Reduced motion") : (es ? "Vista tranquila" : "Quiet view")}</EasyTButton><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
+      <div className={styles.heroBottom}><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
     </section>
-    <RouteChapters quiet={quiet || systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
+    <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
     <ClosingChapter />
   </main>;
 }

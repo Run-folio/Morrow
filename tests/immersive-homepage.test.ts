@@ -152,7 +152,7 @@ test("destination imagery is matched to canonical places with explicit source ri
   assert.match(korea.photos[korea.stops.findIndex((stop) => stop.name === "Busan")]?.key ?? "", /O3i91C0vuY0$/);
 });
 
-test("quiet view stops scroll work and the final action focuses the original prompt", () => {
+test("reduced-motion handling stops scroll work and the final action focuses the original prompt", () => {
   const route = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
   const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
@@ -161,6 +161,32 @@ test("quiet view stops scroll work and the final action focuses the original pro
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(closing, /#start-building textarea/);
   assert.match(closing, /focus\(\{ preventScroll: true \}\)/);
+});
+
+test("annotated homepage cleanup removes redundant copy and preserves functional actions", () => {
+  const hero = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
+  const route = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
+  const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
+  const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
+
+  assert.doesNotMatch(hero, /Quiet view|Vista tranquila|Pause/);
+  assert.match(hero, /href="#routes"/);
+  assert.doesNotMatch(route, /Nights are a planning guide|Las noches son una guía/);
+  assert.match(route, /Start with this route/);
+  assert.match(route, /See whole journey/);
+  assert.match(route, /className=\{styles\.alternatives\} aria-label=/);
+  assert.match(route, /className=\{styles\.alternativeRoute\}/);
+  assert.match(route, /className=\{styles\.alternativesAll\}/);
+  assert.doesNotMatch(product, /The places\. The time between them|route\.stops\.length\} \{es \? "bases" : "overnight bases"\}|nights · interactive sample/);
+  assert.match(product, /Product view/);
+  assert.match(product, /: "Reset"/);
+  assert.doesNotMatch(closing, /Complex trips, made simple|Viajes complejos, hechos sencillos/);
+  assert.match(closing, /href="\/journey\/immersive\/credits\.html"/);
+  assert.match(closing, /Image credits/);
+  assert.match(css, /grid-template-columns: minmax\(0,1fr\) minmax\(300px,340px\)/);
+  assert.match(css, /\.alternativeRoute \{[^}]*min-height: 48px/);
+  assert.match(css, /\.alternatives \{ max-width: none; justify-self: stretch/);
 });
 
 
