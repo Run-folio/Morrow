@@ -21,9 +21,21 @@ export type ImmersiveRoute = PublicRouteDetail & {
   dayRange: { min: number; max: number };
   minimumNights: number[];
   href: string;
-  heroPhoto: { variants: Array<{ src: string; width: number; height?: number; bytes?: number }>; credit: string; creditEs: string; country: string; rights: string; source: string; focalPosition?: string; firstParty: boolean } | null;
+  heroPhoto: HomepageHeroPhoto | null;
   photos: Array<RoutePhotoRecord | null>;
   photoCandidates: Array<RoutePhotoRecord[]>;
+};
+
+export type HomepageHeroPhoto = {
+  variants: Array<{ src: string; width: number; height?: number; bytes?: number }>;
+  credit: string;
+  creditEs: string;
+  country: string;
+  rights: string;
+  source: string;
+  focalPosition?: string;
+  firstParty: boolean;
+  fallback?: HomepageHeroPhoto;
 };
 
 export type HomepageRouteStopCard = {
@@ -85,21 +97,24 @@ export function homepageRouteStopCards(route: ImmersiveRoute): HomepageRouteStop
 function heroFor(key: string): ImmersiveRoute["heroPhoto"] {
   const featured = routeEditorialImagery[key]?.homepageHero;
   if (!featured) return null;
+  let fallback: HomepageHeroPhoto | null = null;
+  if ("generatedAsset" in featured) {
+    const generated = generatedInventory.find(image => image.file === featured.generatedAsset);
+    if (generated?.label) fallback = { variants: generated.variants, credit: featured.credit, creditEs: featured.creditEs, country: generated.label, rights: generated.rights, source: generated.source, focalPosition: featured.focalPosition, firstParty: false };
+  } else {
+    const photo = routeEditorialPhoto(featured.photoKey);
+    if (photo) {
+      const credit = `${photo.place} · ${photo.author} · ${photo.license}`;
+      fallback = { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl, focalPosition: featured.focalPosition, firstParty: false };
+    }
+  }
   const slot = homepageFirstPartyPhotoSlots[key as keyof typeof homepageFirstPartyPhotoSlots];
   const firstParty = slot ? routeEditorialPhoto(slot.photoKey) : null;
   if (isReviewedFirstPartyHomepagePhoto(firstParty)) {
     const credit = firstParty.credit ?? "Morrovia photography";
-    return { variants: firstParty.variants, credit, creditEs: credit, country: firstParty.country, rights: "reviewed-morrovia-first-party", source: firstParty.sourceUrl || firstParty.key, focalPosition: featured.focalPosition, firstParty: true };
+    return { variants: firstParty.variants, credit, creditEs: credit, country: firstParty.country, rights: "reviewed-morrovia-first-party", source: firstParty.sourceUrl, focalPosition: slot.focalPosition, firstParty: true, ...(fallback ? { fallback } : {}) };
   }
-  if ("generatedAsset" in featured) {
-    const generated = generatedInventory.find(image => image.file === featured.generatedAsset);
-    if (!generated?.label) return null;
-    return { variants: generated.variants, credit: featured.credit, creditEs: featured.creditEs, country: generated.label, rights: generated.rights, source: generated.source, focalPosition: featured.focalPosition, firstParty: false };
-  }
-  const photo = routeEditorialPhoto(featured.photoKey);
-  if (!photo) return null;
-  const credit = `${photo.place} · ${photo.author} · ${photo.license}`;
-  return { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl, focalPosition: featured.focalPosition, firstParty: false };
+  return fallback;
 }
 
 export function immersiveHomepageRoutes(): ImmersiveRoute[] {

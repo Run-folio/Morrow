@@ -3,7 +3,7 @@ import routeImageInventory from "../../public/journey/immersive/route-image-inve
 import publishedStopInventory from "../../public/journey/immersive/published-route-stop-image-inventory.generated.json" with { type: "json" };
 
 import editorialInventory from "../../public/journey/immersive/editorial-image-inventory.json" with { type: "json" };
-import { routeEditorialImagery } from "./route-editorial-imagery.ts";
+import { homepageFirstPartyPhotoSlots, routeEditorialImagery } from "./route-editorial-imagery.ts";
 
 export type RoutePhotoRecord = {
   key: string;
@@ -26,8 +26,10 @@ export type RoutePhotoRecord = {
 
 // Exact place/country editorial records are safe to reuse across published
 // routes that share the same canonical destination.
-const destinationPhotos: RoutePhotoRecord[] = [...destinationInventory, ...publishedStopInventory, ...editorialInventory];
-const editorialPhotos: RoutePhotoRecord[] = [...editorialInventory, ...destinationPhotos, ...routeImageInventory];
+const reviewedEditorialInventory = editorialInventory as RoutePhotoRecord[];
+const reusableEditorialPhotos = reviewedEditorialInventory.filter(photo => photo.provenance !== "reviewed-morrovia-first-party");
+const destinationPhotos: RoutePhotoRecord[] = [...destinationInventory, ...publishedStopInventory, ...reusableEditorialPhotos];
+const editorialPhotos: RoutePhotoRecord[] = [...reviewedEditorialInventory, ...destinationPhotos, ...routeImageInventory];
 
 const canonicalRouteImages: Record<string, string> = {
   "japan-slow": "/journey/immersive/place-kyoto-1536.webp",
@@ -41,9 +43,13 @@ export function routeEditorialPhoto(key: string): RoutePhotoRecord | null {
 }
 
 export function isReviewedFirstPartyHomepagePhoto(photo: RoutePhotoRecord | null): photo is RoutePhotoRecord {
+  const slot = photo ? Object.values(homepageFirstPartyPhotoSlots).find(candidate => candidate.photoKey === photo.key) : null;
   return photo?.provenance === "reviewed-morrovia-first-party"
     && photo.approvedRoles?.includes("homepage-featured-route") === true
-    && photo.variants.every(variant => variant.src.startsWith("/journey/immersive/first-party/"));
+    && Boolean(slot)
+    && photo.sourceUrl === slot?.sourceUrl
+    && photo.variants.length === 1
+    && photo.variants[0]?.src === slot?.sourceUrl;
 }
 
 /** One licensed, locally served hero for every published route with visual coverage. */
