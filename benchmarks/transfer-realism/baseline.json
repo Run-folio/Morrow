@@ -100,6 +100,17 @@
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
             ]
+          },
+          {
+            "id": "road:canonical-gateway-access",
+            "summaryMode": "road",
+            "totalDurationMinutes": 330,
+            "score": 87.25,
+            "evidence": "canonical_gateway_access",
+            "reasons": [
+              "A reviewed canonical gateway relationship establishes ground access between these endpoints.",
+              "The duration is a conservative planning estimate because live road routing is unavailable."
+            ]
           }
         ],
         "rejected": [],
@@ -261,7 +272,7 @@
       "route": "Hiroshima → Kyoto",
       "selectedMode": "train",
       "status": "correct",
-      "durationMinutes": 120,
+      "durationMinutes": 165,
       "durationPlausible": true,
       "gatewayCorrect": null,
       "segmentIntegrity": true,
@@ -279,13 +290,13 @@
           {
             "id": "rail:network:japan-high-speed-intercity",
             "summaryMode": "train",
-            "totalDurationMinutes": 120,
+            "totalDurationMinutes": 165,
             "score": 100,
             "evidence": "intercity_rail_network",
             "reasons": [
               "Both canonical endpoints share reviewed strong intercity evidence on the Japan high-speed and intercity rail network.",
               "Rail avoids airport and driving friction for this intercity distance.",
-              "Rail is likely simplest here: about 120 minutes door to door with credible intercity evidence."
+              "Rail is likely simplest here: about 165 minutes door to door with credible intercity evidence."
             ]
           }
         ],
@@ -843,6 +854,17 @@
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          },
+          {
+            "id": "road:canonical-gateway-access",
+            "summaryMode": "road",
+            "totalDurationMinutes": 75,
+            "score": 97.88,
+            "evidence": "canonical_gateway_access",
+            "reasons": [
+              "A reviewed canonical gateway relationship establishes ground access between these endpoints.",
+              "The duration is a conservative planning estimate because live road routing is unavailable."
             ]
           }
         ],
