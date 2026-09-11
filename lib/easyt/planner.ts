@@ -628,10 +628,7 @@ export function assessRouteOrder(input: {
 }
 
 function arrivalLoad(minutes: number | null): StopDurationRecommendation["arrivalLoad"] {
-  if (minutes === null) return "unknown";
-  if (minutes < 150) return "light";
-  if (minutes < 300) return "substantial";
-  return "travel-heavy";
+  return arrivalLoadFromTransfer({ durationMinutes: minutes });
 }
 
 function arrivalLoadForLeg(leg: EstimatedLeg): StopDurationRecommendation["arrivalLoad"] {
@@ -650,6 +647,51 @@ export function usableStopDays(
   if (calendarDays <= 0) return 0;
   const arrivalUsable = load === "light" ? 0.75 : load === "substantial" ? 0.5 : load === "travel-heavy" ? 0.15 : 0;
   return Math.max(0, Math.round((Math.max(1, calendarDays) - 1 + arrivalUsable) * 4) / 4);
+}
+
+export function arrivalLoadFromTransfer(input: {
+  usableDayLoss?: number | null;
+  durationMinutes?: number | null;
+}): StopDurationRecommendation["arrivalLoad"] {
+  if (input.durationMinutes == null) return "unknown";
+  if (input.usableDayLoss != null) {
+    if (input.usableDayLoss <= 0.25) return "light";
+    if (input.usableDayLoss <= 0.5) return "substantial";
+    return "travel-heavy";
+  }
+  if (input.durationMinutes < 150) return "light";
+  if (input.durationMinutes < 300) return "substantial";
+  return "travel-heavy";
+}
+
+export type TravelStayConsequence = {
+  level: "none" | "caution" | "strong";
+  reason: "enough-time" | "less-than-day" | "most-stop-travel" | "rushed-after-travel";
+  travelShare: number;
+};
+
+/** Classify the consequence of a transfer using the same usable-time fact that
+ * drives duration recommendations. Duration remains visible, but is not by
+ * itself a reason to raise a planning warning. */
+export function travelStayConsequence(input: {
+  transferMinutes: number | null;
+  usableDays: number | null;
+  rushed?: boolean;
+}): TravelStayConsequence {
+  const { transferMinutes, usableDays, rushed = false } = input;
+  if (transferMinutes === null || usableDays === null || !Number.isFinite(transferMinutes)
+    || !Number.isFinite(usableDays) || transferMinutes <= 0 || usableDays < 0) {
+    return { level: "none", reason: "enough-time", travelShare: 0 };
+  }
+  const transferDays = transferMinutes / (24 * 60);
+  const effectiveStopDays = transferDays + usableDays;
+  const travelShare = effectiveStopDays > 0 ? transferDays / effectiveStopDays : 0;
+  if (usableDays < 1) return { level: "strong", reason: "less-than-day", travelShare };
+  if (travelShare >= 0.5) return { level: "strong", reason: "most-stop-travel", travelShare };
+  if ((usableDays <= 2 && (transferMinutes >= 300 || travelShare >= 0.25)) || (rushed && transferMinutes >= 300)) {
+    return { level: "caution", reason: "rushed-after-travel", travelShare };
+  }
+  return { level: "none", reason: "enough-time", travelShare };
 }
 
 /** Recommend calendar days from usable time, not just from a stop count. */

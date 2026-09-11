@@ -8,6 +8,7 @@ import { reviewTrip, tripHealth } from "../lib/easyt/review.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { estimateTransferImpact } from "../lib/easyt/transfer-impact.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { travelStayConsequence } from "../lib/easyt/planner.ts";
 
 const baseTrip = (): EasyTTrip => ({
   schemaVersion: 1, id: "health", ownerId: null, title: "Health", status: "draft", startDate: "2026-09-01", endDate: "2026-09-05", travellers: 2, currency: "GBP",
@@ -92,7 +93,7 @@ test("flags a one-night stop reached by a heavy transfer as blocking", () => {
   assert.equal(issues.some((item) => item.rule === "short-stop-heavy-transfer" && item.severity === "critical"), true);
 });
 
-test("Trip Health uses realistic transfer impact when it is richer than the legacy allowance", () => {
+test("Trip Health uses realistic transfer impact without stacking a generic warning on a short-stop consequence", () => {
   const trip = baseTrip();
   trip.legs[0] = {
     ...trip.legs[0],
@@ -115,7 +116,62 @@ test("Trip Health uses realistic transfer impact when it is richer than the lega
     },
   };
 
-  assert.equal(reviewTrip(trip).some((item) => item.rule === "travel-day-impact" && item.severity === "warning"), true);
+  const issues = reviewTrip(trip);
+  assert.equal(issues.some((item) => item.rule === "short-stop-heavy-transfer"), true);
+  assert.equal(issues.some((item) => item.rule === "travel-day-impact"), false);
+});
+
+test("travel warnings follow destination consequence instead of duration alone", () => {
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 14 * 60 + 45, usableDays: 4.25 }).level, "none");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 16 * 60, usableDays: 7.25 }).level, "none");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 12 * 60, usableDays: 0.75 }).level, "strong");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 12 * 60, usableDays: 1.25 }).level, "caution");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 6 * 60, usableDays: 0.2 }).level, "strong");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 20 * 60, usableDays: 5 }).level, "none");
+  assert.deepEqual(travelStayConsequence({ transferMinutes: 6 * 60, usableDays: 3, rushed: true }).level, "caution");
+});
+
+test("a long arrival with a substantial stay keeps duration facts but adds no generic Trip Health warning", () => {
+  for (const { minutes, nights } of [{ minutes: 14 * 60 + 45, nights: 5 }, { minutes: 16 * 60, nights: 8 }]) {
+    const trip = readyTrip();
+    trip.stops[0].nights = nights;
+    trip.legs[0] = { ...trip.legs[0], durationMinutes: minutes, doorToDoorMinutes: minutes, usableDayLoss: 0.75 };
+    assert.equal(reviewTrip(trip).some((item) => item.rule === "travel-day-impact"), false);
+    assert.equal(trip.legs[0].durationMinutes, minutes);
+  }
+});
+
+test("Trip Health gives one consequence warning for a materially reduced short stay", () => {
+  const trip = readyTrip();
+  trip.stops[0].nights = 2;
+  trip.legs[0] = { ...trip.legs[0], durationMinutes: 12 * 60, doorToDoorMinutes: 12 * 60, usableDayLoss: 0.75 };
+  const travelIssues = reviewTrip(trip).filter((item) => ["travel-day-impact", "short-stop-heavy-transfer", "transit-to-time-ratio"].includes(item.rule));
+  assert.equal(travelIssues.length, 1);
+  assert.equal(travelIssues[0]?.rule, "travel-day-impact");
+  assert.equal(travelIssues[0]?.severity, "warning");
+  assert.match(travelIssues[0]?.message ?? "", /usable days/);
+});
+
+test("the existing specific pacing warning owns an under-one-day arrival without a generic duplicate", () => {
+  const trip = baseTrip();
+  trip.legs[0] = { ...trip.legs[0], mode: "flight", durationMinutes: 12 * 60, usableDayLoss: 0.75 };
+  const travelIssues = reviewTrip(trip).filter((item) => ["travel-day-impact", "short-stop-heavy-transfer", "transit-to-time-ratio"].includes(item.rule));
+  assert.equal(travelIssues.filter((item) => item.rule === "short-stop-heavy-transfer").length, 1);
+  assert.equal(travelIssues.some((item) => item.rule === "travel-day-impact"), false);
+  assert.equal(travelIssues.find((item) => item.rule === "short-stop-heavy-transfer")?.severity, "critical");
+  assert.match(travelIssues.find((item) => item.rule === "short-stop-heavy-transfer")?.message ?? "", /less than a day/);
+});
+
+test("a trip-wide overpacking finding suppresses the redundant generic travel warning", () => {
+  const trip = baseTrip();
+  trip.stops = [
+    ...trip.stops.map((stop) => ({ ...stop, nights: 2 })),
+    { id: "c", order: 2, name: "C", country: "Test", latitude: 0, longitude: 20, arrivalDate: "2026-09-05", departureDate: "2026-09-05", nights: 1 },
+  ];
+  trip.legs[0] = { ...trip.legs[0], mode: "flight", durationMinutes: 12 * 60, usableDayLoss: 0.75 };
+  const issues = reviewTrip(trip);
+  assert.equal(issues.some((item) => item.rule === "stop-density"), true);
+  assert.equal(issues.some((item) => item.rule === "travel-day-impact"), false);
 });
 
 test("Trip Health exposes a structured minimum-night compromise", () => {

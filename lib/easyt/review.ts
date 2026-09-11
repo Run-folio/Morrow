@@ -1,5 +1,5 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
-import { findDestinationIntegrityIssues, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { arrivalLoadFromTransfer, findDestinationIntegrityIssues, travelStayConsequence, usableStopDays, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
 import { legPlanningConfidenceFromMetadata } from "./planning-confidence.ts";
@@ -288,18 +288,44 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     }, results.length));
   }
 
-  const dayDominatingLeg = trip.legs
-    .map((leg) => ({ leg, minutes: realisticMinutes(leg) }))
-    .filter((item): item is { leg: EasyTTrip["legs"][number]; minutes: number } => item.minutes !== null && item.minutes >= 300)
-    .sort((left, right) => right.minutes - left.minutes)[0];
-  if (dayDominatingLeg) {
-    const destination = trip.stops.find((stop) => stop.id === dayDominatingLeg.leg.toStopId)?.name ?? "the next stop";
+  const globalPacingConflict = coverage.expectedDays !== null
+    && orderedStops.length >= 3
+    && coverage.expectedDays < orderedStops.length * 2;
+  const consequentialLeg = trip.legs
+    .flatMap((leg) => {
+      const minutes = realisticMinutes(leg);
+      const stop = trip.stops.find((candidate) => candidate.id === leg.toStopId);
+      const impact = transferImpactFromMetadata(leg.routeMetadata.transferImpact);
+      const arrivalLoad = arrivalLoadFromTransfer({
+        usableDayLoss: leg.usableDayLoss ?? impact?.usableDayLoss.estimatedDayFraction,
+        durationMinutes: minutes,
+      });
+      const usableDays = stop?.nights === null || arrivalLoad === "unknown"
+        ? null
+        : usableStopDays(stop?.nights ?? 0, arrivalLoad);
+      const consequence = travelStayConsequence({ transferMinutes: minutes, usableDays });
+      const hasSpecificPacingFinding = Boolean(stop && minutes !== null && (
+        (stop.nights !== null && stop.nights <= 1 && minutes >= 240)
+        || (stop.nights !== null && stop.nights > 1 && consequence.reason === "most-stop-travel")
+      ));
+      return minutes !== null && stop && consequence.level !== "none" && !hasSpecificPacingFinding
+        ? [{ leg, minutes, stop, usableDays: usableDays!, consequence }]
+        : [];
+    })
+    .sort((left, right) => Number(right.consequence.level === "strong") - Number(left.consequence.level === "strong")
+      || right.consequence.travelShare - left.consequence.travelShare)[0];
+  if (consequentialLeg && !globalPacingConflict && nightAllocation?.state !== "conflict") {
+    const destination = consequentialLeg.stop.name;
     results.push(recommendation(trip, {
       rule: "travel-day-impact",
-      severity: "warning",
-      message: `The transfer into ${destination} consumes ${transferSeverity(dayDominatingLeg.minutes) === "critical" ? "a full travel day or more" : "most of the travel day"}.`,
-      evidence: `${Math.floor(dayDominatingLeg.minutes / 60)}h ${dayDominatingLeg.minutes % 60}m realistic door-to-door planning impact; verify the actual service and access time before booking.`,
-      affectedDays: trip.planItems.filter((item) => item.stopId === dayDominatingLeg.leg.toStopId).map((item) => item.dayNumber),
+      severity: consequentialLeg.consequence.level === "strong" ? "critical" : "warning",
+      message: consequentialLeg.consequence.reason === "less-than-day"
+        ? `Travel leaves less than a day in ${destination}.`
+        : consequentialLeg.consequence.reason === "most-stop-travel"
+          ? `Most of the stop in ${destination} would be spent travelling.`
+          : `Travel leaves only ${consequentialLeg.usableDays} usable days in ${destination}.`,
+      evidence: `${Math.floor(consequentialLeg.minutes / 60)}h ${consequentialLeg.minutes % 60}m realistic door-to-door travel leaves about ${consequentialLeg.usableDays} usable days; verify the actual service and access time before booking.`,
+      affectedDays: trip.planItems.filter((item) => item.stopId === consequentialLeg.leg.toStopId).map((item) => item.dayNumber),
       confidence: "medium",
       proposedChange: null,
     }, results.length));
@@ -422,23 +448,32 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     const stop = trip.stops.find((item) => item.id === day.stopId);
     if (!stop) return;
     const minutes = inbound ? realisticMinutes(inbound) ?? 0 : 0;
+    const impact = transferImpactFromMetadata(inbound.routeMetadata.transferImpact);
+    const arrivalLoad = arrivalLoadFromTransfer({
+      usableDayLoss: inbound.usableDayLoss ?? impact?.usableDayLoss.estimatedDayFraction,
+      durationMinutes: minutes,
+    });
+    const usableDays = stop.nights === null || arrivalLoad === "unknown" ? null : usableStopDays(stop.nights, arrivalLoad);
+    const consequence = travelStayConsequence({ transferMinutes: minutes, usableDays });
     if (stop.nights !== null && stop.nights <= 1 && minutes >= 240) {
       results.push(recommendation(trip, {
         rule: "short-stop-heavy-transfer",
-        severity: transferSeverity(minutes) === "critical" ? "critical" : "warning",
-        message: `${stop.name} has ${stop.nights === 0 ? "no overnight" : "one night"} after a ${Math.floor(minutes / 60)}h transfer.`,
-        evidence: "The transfer uses a large share of the time this stop is meant to provide.",
+        severity: consequence.level === "strong" ? "critical" : "warning",
+        message: usableDays !== null && usableDays < 1
+          ? `Travel leaves less than a day in ${stop.name}.`
+          : `${stop.name} has ${stop.nights === 0 ? "no overnight" : "one night"} after a ${Math.floor(minutes / 60)}h transfer.`,
+        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m of travel leaves about ${usableDays ?? "an unknown amount of"} usable days at this stop.`,
         affectedDays: [day.dayNumber],
         confidence: "high",
         proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },
       }, results.length));
     }
-    if (stop.nights !== null && minutes >= Math.max(360, (stop.nights + 1) * 300)) {
+    if (stop.nights !== null && stop.nights > 1 && consequence.reason === "most-stop-travel") {
       results.push(recommendation(trip, {
         rule: "transit-to-time-ratio",
-        severity: "warning",
-        message: `The transfer into ${stop.name} is large relative to the time planned there.`,
-        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m estimated transit for ${Math.max(0, stop.nights)} planned nights.`,
+        severity: consequence.level === "strong" ? "critical" : "warning",
+        message: `Most of the stop in ${stop.name} would be spent travelling.`,
+        evidence: `${Math.floor(minutes / 60)}h ${minutes % 60}m of travel is ${Math.round(consequence.travelShare * 100)}% of the effective destination time.`,
         affectedDays: [day.dayNumber],
         confidence: "high",
         proposedChange: { action: "suggest-extra-night", stopIds: [stop.id] },

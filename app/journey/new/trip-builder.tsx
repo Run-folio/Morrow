@@ -20,7 +20,7 @@ import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotio
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
-import { assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
+import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
 import { authClient } from "@/lib/auth-client";
@@ -116,10 +116,7 @@ function nightRebalanceFeedback(
 }
 
 function canonicalArrivalLoad(leg: TripLeg | undefined): "light" | "substantial" | "travel-heavy" | "unknown" {
-  if (!leg || leg.usableDayLoss == null || leg.durationMinutes === null) return "unknown";
-  if (leg.usableDayLoss <= 0.25) return "light";
-  if (leg.usableDayLoss <= 0.5) return "substantial";
-  return "travel-heavy";
+  return arrivalLoadFromTransfer({ usableDayLoss: leg?.usableDayLoss, durationMinutes: leg?.durationMinutes });
 }
 
 // TODO: replace with the live discovery API response.
@@ -1641,19 +1638,30 @@ function TripBuilderDocument() {
   );
   const allocatedNights = Object.values(allocation).reduce((sum, nights) => sum + nights, 0);
   const allNightsAllocated = stops.length > 0 && allocatedNights === totalNights;
-  const longJourneyIssue = stops.flatMap((stop) => {
+  const travelConsequenceIssues = stops.flatMap((stop) => {
     const duration = routeIntelligence.durations[stop.id];
     const arrivalLoad = canonicalArrivalLoad(builderCanonicalLegs.find((leg) => leg.toStopId === stop.id));
-    return duration && arrivalLoad === "travel-heavy" ? [{ stop, duration, days: allocation[stop.id] ?? 0, usableDays: usableStopDays(allocation[stop.id] ?? 0, arrivalLoad) }] : [];
-  })[0];
+    const days = allocation[stop.id] ?? 0;
+    const usableDays = arrivalLoad === "unknown" ? null : usableStopDays(days, arrivalLoad);
+    const consequence = travelStayConsequence({
+      transferMinutes: duration?.arrivalMinutes ?? null,
+      usableDays,
+      rushed: Boolean(duration && days < duration.minimumDays),
+    });
+    return duration && consequence.level !== "none" ? [{ stop, duration, days, usableDays, consequence }] : [];
+  });
+  const longJourneyIssue = [...travelConsequenceIssues].sort((left, right) => (
+    Number(right.consequence.level === "strong") - Number(left.consequence.level === "strong")
+    || right.consequence.travelShare - left.consequence.travelShare
+  ))[0];
   const tripTimingNotice = nightAllocation.state === "conflict"
     ? nightAllocation.conflicts[0]?.message ?? "The fixed stays cannot be reconciled with the trip dates."
     : nightAllocation.state === "compromised"
       ? nightAllocation.conflicts[0]?.message ?? "Some destination minimums cannot fit inside the available nights."
       : routeIntelligence.shortfallDays > 0
     ? (language === "es" ? `Este viaje está comprimido: ${routeIntelligence.comfortableDays} días serían un ritmo más cómodo.` : `This trip is compressed: ${routeIntelligence.comfortableDays} days would feel more comfortable.`)
-    : longTransferCount >= 2
-      ? (language === "es" ? `${longTransferCount} traslados largos ocupan una parte importante de este viaje.` : `${longTransferCount} long transfers take a meaningful amount of time from this trip.`)
+    : travelConsequenceIssues.length >= 2
+      ? (language === "es" ? `${travelConsequenceIssues.length} traslados reducen de forma importante el tiempo en sus destinos.` : `${travelConsequenceIssues.length} transfers materially reduce time at their destinations.`)
       : null;
   const restoreRecommendedOrderVisible = decisionSelections.routeOrder === "entered"
     && routeIntelligence.route.state === "recommendation"
@@ -2866,7 +2874,11 @@ function TripBuilderDocument() {
     : highlyCompressedTrip
       ? (language === "es" ? `${stops.length} paradas en ${totalDays} días es un ritmo muy intenso.` : `${stops.length} stops in ${totalDays} days is very fast-paced.`)
       : longJourneyIssue
-      ? (language === "es" ? `Viaje largo a ${longJourneyIssue.stop.name}` : `Long journey to ${longJourneyIssue.stop.name}`)
+      ? longJourneyIssue.consequence.reason === "less-than-day"
+        ? (language === "es" ? `El viaje deja menos de un día en ${longJourneyIssue.stop.name}` : `Travel leaves less than a day in ${longJourneyIssue.stop.name}`)
+        : longJourneyIssue.consequence.reason === "most-stop-travel"
+          ? (language === "es" ? `La mayor parte de esta parada sería viaje` : `Most of this stop would be spent travelling`)
+          : (language === "es" ? `El viaje reduce el tiempo en ${longJourneyIssue.stop.name}` : `Travel reduces time in ${longJourneyIssue.stop.name}`)
       : (language === "es" ? "Este viaje necesita un ritmo más ajustado" : "This trip needs a tighter pace");
   const timingWarningSummary = gateConflict?.message
     ?? (highlyCompressedTrip
@@ -4103,9 +4115,9 @@ function TripBuilderDocument() {
                   {restoreRecommendedOrderVisible && <button type="button" className={styles.routeInsightAction} onClick={applyRecommendedOrder}>{language === "es" ? "Restaurar el orden recomendado" : "Restore recommended order"}<ArrowRight aria-hidden="true" /></button>}
                 </div>}
               </section> : null}
-              {showTimingWarning && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
+              {showTimingWarning && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
                 <button type="button" className={styles.disclosureHead} aria-expanded={timingWarningOpen} aria-controls="timing-warning-content" onClick={() => setTimingWarningOpen((current) => !current)}>
-                  <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong><small>{timingWarningSummary}</small></span><ChevronRight aria-hidden="true" />
+                  <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong><small>{timingWarningSummary}</small></span><ChevronRight aria-hidden="true" />
                 </button>
                 {timingWarningOpen && <div id="timing-warning-content" className={styles.timingWarningContent}>
                   <section><strong>{language === "es" ? "Qué significa" : "What this means"}</strong><ul>
