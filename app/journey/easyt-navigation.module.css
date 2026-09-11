@@ -63,7 +63,7 @@
   gap: clamp(11px, 1.4vw, 22px);
   color: #1f1983;
 }
-.landingActions > a {
+.landingTextLink {
   padding-block: 9px 7px;
   border-bottom: 2px solid transparent;
   color: inherit;
@@ -71,41 +71,29 @@
   text-decoration: none;
   white-space: nowrap;
 }
-.landingActions > a.primaryLink {
-  color: #fff;
-}
-.landingActions > a:hover { color: var(--morrovia-signal); }
-.landingActions > a[aria-current="page"] {
+.landingTextLink:hover { color: var(--morrovia-signal); }
+.landingTextLink[aria-current="page"] {
   border-bottom-color: var(--morrovia-signal);
   color: var(--morrovia-ink);
 }
-.landingActions > a:focus-visible {
+.landingTextLink:focus-visible {
   outline: 3px solid var(--morrovia-focus-ring);
   outline-offset: 2px;
 }
-.landingActions > a.primaryLink:hover {
-  color: #fff;
-}
-.menuTour { display: block; }
-.menuTour button {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 11px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.landingTour { display: inline-flex; align-items: center; }
+.landingTour button {
   appearance: none;
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--morrovia-ink);
+  color: inherit;
   font: 600 13px var(--morrovia-ui);
   cursor: pointer;
-  text-align: left;
+  padding: 9px 2px 7px;
+  white-space: nowrap;
 }
-.menuTour button::before { width: 16px; height: 16px; content: "✦"; color: var(--morrovia-ink-soft); text-align: center; }
-.menuTour button:hover { background: var(--morrovia-lilac); }
-.menuTour button:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.landingTour button:hover { color: var(--morrovia-signal); }
+.landingTour button:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
 .landingDivider { width: 1px; height: 22px; background: #d9d6eb; }
 .landingMenuTrigger {
   min-height: 36px;
@@ -174,17 +162,14 @@
   background: var(--morrovia-action-hover);
   border-color: var(--morrovia-action-hover);
 }
-.accountMenu,
-.moreMenu {
+.accountMenu {
   position: relative;
 }
-.accountMenu summary,
-.moreMenu summary {
+.accountMenu summary {
   list-style: none;
   cursor: pointer;
 }
-.accountMenu summary::-webkit-details-marker,
-.moreMenu summary::-webkit-details-marker {
+.accountMenu summary::-webkit-details-marker {
   display: none;
 }
 .menuCurrent { border-color: var(--morrovia-signal); color: var(--morrovia-ink); }
@@ -345,7 +330,7 @@
   }
   .landingHeader { grid-template-columns: auto 1fr auto; min-height: 66px; padding-inline: 16px; }
   .landingActions { grid-column: 3; gap: 8px; }
-  .landingActions > a, .landingDivider, .landingLanguage, .landingActions > .accountMenu, .landingActions > .moreMenu { display: none; }
+  .landingActions > a, .landingDivider, .landingTour, .landingLanguage, .landingActions > .accountMenu { display: none; }
   .compactMenu { position: relative; display: block; }
   .compactMenu summary {
     min-height: 44px;

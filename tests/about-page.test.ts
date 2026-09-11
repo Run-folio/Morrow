@@ -60,7 +60,7 @@ test("public navigation and the canonical footer link to About", () => {
   const navigationStyles = read("app/journey/easyt-navigation.module.css");
 
   assert.match(navigation, /href="\/journey\/about" aria-current=\{current === "about" \? "page" : undefined\}/);
-  assert.match(navigationStyles, /\.landingActions > a\[aria-current="page"\]/);
+  assert.match(navigationStyles, /\.landingTextLink\[aria-current="page"\]/);
   assert.match(footer, /<Link href="\/journey\/about">\{text\.about\}<\/Link>/);
   assert.match(footer, /<Link href="\/journey\/help">\{text\.help\}<\/Link>/,
     "the canonical footer should link to the real Help route");

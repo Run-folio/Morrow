@@ -48,7 +48,6 @@ export default function EasyTNavigation({
   const [language, setLanguage] = useState<Language>("en");
   const [isAdmin, setIsAdmin] = useState(false);
   const [signOutBusy, setSignOutBusy] = useState(false);
-  const moreMenuRef = useRef<HTMLDetailsElement>(null);
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
   const compactMenuRef = useRef<HTMLDetailsElement>(null);
   const activeAccount = sessionPending
@@ -69,7 +68,7 @@ export default function EasyTNavigation({
   }, [account?.language]);
 
   useEffect(() => {
-    const menus = [moreMenuRef, accountMenuRef, compactMenuRef];
+    const menus = [accountMenuRef, compactMenuRef];
     const closeMenus = (except?: HTMLDetailsElement | null) => {
       for (const menu of menus) {
         if (menu.current && menu.current !== except) menu.current.open = false;
@@ -163,6 +162,7 @@ export default function EasyTNavigation({
   const howItWorksLabel = language === "es" ? "Cómo funciona" : "How it works";
   const moreLabel = language === "es" ? "Más" : "More";
   const routesLabel = language === "es" ? "Rutas" : "Routes";
+  const myTripsLabel = language === "es" ? "Mis viajes" : "My Trips";
   const aboutLabel = language === "es" ? "Acerca de" : "About";
   const passportLabel = language === "es" ? "Información de pasaporte" : "Passport info";
   const helpLabel = language === "es" ? "Ayuda" : "Help";
@@ -182,7 +182,6 @@ export default function EasyTNavigation({
       <nav className={styles.landingActions} aria-label="Morrovia navigation">
         <EasyTLinkButton
           prefetch={deferPrefetch ? false : undefined}
-          className={styles.primaryLink}
           href="/journey/new"
           icon={Plus}
           size="small"
@@ -191,49 +190,38 @@ export default function EasyTNavigation({
         >
           <span>{labels.newTrip}</span>
         </EasyTLinkButton>
-        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard" aria-current={current === "trips" ? "page" : undefined}>{labels.trips}</Link>
-        <Link prefetch={deferPrefetch ? false : undefined} href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{routesLabel}</Link>
-        <details ref={moreMenuRef} className={styles.moreMenu} onToggle={(event) => {
-          if (event.currentTarget.open) {
-            accountMenuRef.current && (accountMenuRef.current.open = false);
-            compactMenuRef.current && (compactMenuRef.current.open = false);
-          }
-        }}>
-          <summary className={`${styles.landingMenuTrigger} ${secondaryCurrent ? styles.menuCurrent : ""}`}>
-            <span>{moreLabel}</span>
-            <ChevronDown aria-hidden="true" />
-          </summary>
-          <div className={styles.accountPopover}>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "stamped" ? styles.submenuCurrent : undefined} href="/journey/stamped" aria-current={current === "stamped" ? "page" : undefined}><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "passport" ? styles.submenuCurrent : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "about" ? styles.submenuCurrent : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}><Info aria-hidden="true" /><span>{aboutLabel}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "help" ? styles.submenuCurrent : undefined} href="/journey/help" aria-current={current === "help" ? "page" : undefined}><CircleHelp aria-hidden="true" /><span>{helpLabel}</span></Link>
-            <span className={styles.menuTour}><EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen /></span>
-          </div>
-        </details>
+        <Link prefetch={deferPrefetch ? false : undefined} className={styles.landingTextLink} href="/journey/discover" aria-current={current === "routes" ? "page" : undefined}>{routesLabel}</Link>
+        <Link prefetch={deferPrefetch ? false : undefined} className={styles.landingTextLink} href="/journey/dashboard" aria-current={current === "trips" ? "page" : undefined}>{myTripsLabel}</Link>
         <span className={styles.landingDivider} aria-hidden="true" />
-        {activeAccount ? <details ref={accountMenuRef} className={styles.accountMenu} onToggle={(event) => {
+        <span className={styles.landingTour}>
+          <EasyTProductTour triggerLabel={howItWorksLabel} dispatchOpen />
+        </span>
+        <details ref={accountMenuRef} className={styles.accountMenu} onToggle={(event) => {
           if (event.currentTarget.open) {
-            moreMenuRef.current && (moreMenuRef.current.open = false);
             compactMenuRef.current && (compactMenuRef.current.open = false);
           }
         }}>
-          <summary className={`${styles.landingMenuTrigger} ${current === "profile" || current === "privacy" || current === "admin" ? styles.menuCurrent : ""}`}>
+          <summary aria-label={labels.account} className={`${styles.landingMenuTrigger} ${secondaryCurrent || current === "profile" || current === "privacy" || current === "admin" ? styles.menuCurrent : ""}`}>
             <span>{labels.account}</span>
             <ChevronDown aria-hidden="true" />
           </summary>
           <div className={styles.accountPopover}>
-            <div className={styles.accountIdentity}>
+            {activeAccount ? <div className={styles.accountIdentity}>
               <strong>{activeAccount.name || labels.account}</strong>
               <span>{activeAccount.email}</span>
-            </div>
-            <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard" aria-current={current === "trips" ? "page" : undefined}><Map aria-hidden="true" /><span>{labels.trips}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link>
-            <Link prefetch={deferPrefetch ? false : undefined} className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy" aria-current={current === "privacy" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
-            {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
-            <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
+            </div> : null}
+            {activeAccount ? <Link prefetch={deferPrefetch ? false : undefined} className={current === "profile" ? styles.submenuCurrent : undefined} href="/journey/profile" aria-current={current === "profile" ? "page" : undefined}><UserRound aria-hidden="true" /><span>{labels.profile}</span></Link> : null}
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "stamped" ? styles.submenuCurrent : undefined} href="/journey/stamped" aria-current={current === "stamped" ? "page" : undefined}><Stamp aria-hidden="true" /><span>{labels.stamped}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "passport" ? styles.submenuCurrent : undefined} href="/journey/passport" aria-current={current === "passport" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{passportLabel}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "about" ? styles.submenuCurrent : undefined} href="/journey/about" aria-current={current === "about" ? "page" : undefined}><Info aria-hidden="true" /><span>{aboutLabel}</span></Link>
+            <Link prefetch={deferPrefetch ? false : undefined} className={current === "help" ? styles.submenuCurrent : undefined} href="/journey/help" aria-current={current === "help" ? "page" : undefined}><CircleHelp aria-hidden="true" /><span>{helpLabel}</span></Link>
+            {activeAccount ? <>
+              <Link prefetch={deferPrefetch ? false : undefined} className={current === "privacy" ? styles.submenuCurrent : undefined} href="/journey/privacy" aria-current={current === "privacy" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>{labels.privacy}</span></Link>
+              {isAdmin && <Link prefetch={deferPrefetch ? false : undefined} className={current === "admin" ? styles.submenuCurrent : undefined} href="/journey/admin" aria-current={current === "admin" ? "page" : undefined}><ShieldCheck aria-hidden="true" /><span>Admin</span></Link>}
+              <button type="button" onClick={signOut} disabled={signOutBusy}><LogOut aria-hidden="true" /><span>{labels.signOut}</span></button>
+            </> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard"><UserRound aria-hidden="true" /><span>{signInLabel}</span></Link>}
           </div>
-        </details> : <Link prefetch={deferPrefetch ? false : undefined} href="/journey/dashboard">{signInLabel}</Link>}
+        </details>
         <label className={styles.landingLanguage}>
           <Languages aria-hidden="true" />
           <select value={language} onChange={(event) => changeLanguage(event.target.value as Language)} aria-label={labels.language}>
@@ -243,7 +231,6 @@ export default function EasyTNavigation({
         </label>
         <details ref={compactMenuRef} className={styles.compactMenu} onToggle={(event) => {
           if (event.currentTarget.open) {
-            moreMenuRef.current && (moreMenuRef.current.open = false);
             accountMenuRef.current && (accountMenuRef.current.open = false);
           }
         }}>
