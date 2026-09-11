@@ -38,9 +38,9 @@
   --morrovia-layer-header: 80;
   --morrovia-layer-dock: 90;
   --morrovia-layer-modal: 200;
-  --morrovia-mobile-dock-height: 62px;
-  --morrovia-mobile-dock-inset: max(10px, env(safe-area-inset-bottom));
-  --morrovia-mobile-dock-offset: calc(var(--morrovia-mobile-dock-height) + var(--morrovia-mobile-dock-inset) + 10px);
+  /* Legacy name retained while workspace surfaces migrate; without a dock it
+     represents only the device safe area used by bottom-anchored controls. */
+  --morrovia-mobile-dock-offset: env(safe-area-inset-bottom, 0px);
 }
 
 .morrovia-editorial-page {

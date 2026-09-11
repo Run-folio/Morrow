@@ -79,7 +79,7 @@
 .overImage .brand:focus-visible,
 .overImage nav a:focus-visible { outline-color: var(--morrovia-paper); }
 @media (max-width: 840px) {
-  .overImage { grid-template-columns: 1fr; justify-items: center; gap: 14px; padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .overImage { grid-template-columns: 1fr; justify-items: center; gap: 14px; padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
   .overImage .brand,.overImage nav { justify-self: center; }
   .overImage nav { justify-content: center; gap: 4px 18px; }
 }

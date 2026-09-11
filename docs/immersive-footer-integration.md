@@ -8,7 +8,7 @@ Previously the Journey layout rendered the shared footer after the homepage, on 
 
 The photograph, CTA wording and action are unchanged. The chapter uses `min-height: 100svh` and natural height, with a continuous indigo gradient (48% at the top, 58% halfway, 88% at 78%, 94% at the bottom). No opaque panel or new animation was added. Desktop retains wordmark / identity / navigation columns; up to 840px the footer stacks. All seven links, copyright and operator identity remain intact. Image credits remain in a separate 44px-high utility action above the footer and were opened successfully.
 
-Mobile footer links retain 44px minimum height. Bottom padding is `100px + env(safe-area-inset-bottom)`. A page-scoped rule removes duplicate body dock padding, keeping the photograph at the bottom edge. Checked 320, 390 and 430px. The safe-area CSS is present; these desktop browser captures do not emulate a physical device notch.
+Mobile footer links retain 44px minimum height. Bottom padding is `40px + env(safe-area-inset-bottom)`, with no persistent dock or duplicate body clearance. Checked 320, 390 and 430px. The safe-area CSS is present; these desktop browser captures do not emulate a physical device notch.
 
 ## Accessibility and checks
 

@@ -183,8 +183,8 @@ test("mobile transfer context progressively discloses evidence without hiding un
   assert.match(mapStoriesSource, /Mobile390SelectedTransfer/);
 });
 
-test("mobile fullscreen removes dock obstruction and keeps explicit Map exit coverage", () => {
-  assert.match(navigationStylesSource, /morrovia-map-expanded[\s\S]*\.mobileDock[\s\S]*display: none/);
+test("mobile navigation has no persistent dock and Map keeps explicit fullscreen exit coverage", () => {
+  assert.doesNotMatch(navigationStylesSource, /\.mobileDock/);
   assert.match(mapWorkspaceSource, /isExpandedMap \? "Exit fullscreen" : "Fullscreen map"/);
   assert.match(mapStylesSource, /\.shellPlannerExpanded \.finderDock\{bottom:0!important/);
   assert.match(mapStoriesSource, /Mobile390FullscreenOverview/);

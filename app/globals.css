@@ -25,12 +25,6 @@ body {
   touch-action: manipulation;
 }
 
-@media (max-width: 520px) {
-  body.easyt-mobile-shell {
-    padding-bottom: var(--morrovia-mobile-dock-offset, calc(82px + env(safe-area-inset-bottom)));
-  }
-}
-
 ::selection {
   background: #ff3d8b;
   color: #fff;
