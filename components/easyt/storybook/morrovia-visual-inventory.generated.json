@@ -5279,7 +5279,7 @@
       },
       {
         "value": "10px",
-        "count": 452,
+        "count": 457,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5289,7 +5289,7 @@
       },
       {
         "value": "12px",
-        "count": 392,
+        "count": 394,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5389,7 +5389,7 @@
       },
       {
         "value": "4px",
-        "count": 201,
+        "count": 202,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5409,7 +5409,7 @@
       },
       {
         "value": "3px",
-        "count": 139,
+        "count": 140,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -5589,7 +5589,7 @@
       },
       {
         "value": "44px",
-        "count": 22,
+        "count": 21,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/contact/contact.module.css",

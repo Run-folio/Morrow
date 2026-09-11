@@ -114,6 +114,40 @@ const prepActions: BookingReadinessAction[] = [{
   affiliate: false,
   livePrice: false,
 }];
+const omioPrepActions: BookingReadinessAction[] = [
+  {
+    id: "omio-cusco-valley",
+    category: "transport",
+    provider: "omio",
+    title: "Check Cusco to Sacred Valley transport",
+    detail: "Compare the saved route with live rail and coach options before booking.",
+    cta: "Check transport options on Omio",
+    href: affiliatePartners.omio.transportUrl,
+    tripId: baseTrip.id,
+    transferId: "cusco-valley",
+    originStopId: "cusco",
+    destinationStopId: "sacred-valley",
+    affiliate: true,
+    affiliateCategory: "airport_transfer",
+    livePrice: false,
+  },
+  {
+    id: "omio-valley-arequipa",
+    category: "transport",
+    provider: "omio",
+    title: "Check Sacred Valley to Arequipa transport",
+    detail: "Compare the saved route with live rail and coach options before booking.",
+    cta: "Check transport options on Omio",
+    href: affiliatePartners.omio.transportUrl,
+    tripId: baseTrip.id,
+    transferId: "valley-arequipa",
+    originStopId: "sacred-valley",
+    destinationStopId: "arequipa",
+    affiliate: true,
+    affiliateCategory: "airport_transfer",
+    livePrice: false,
+  },
+];
 const prepReadinessCards: ReadinessCard[] = [{
   id: "insurance",
   priority: "useful",
@@ -186,6 +220,16 @@ export const AllPreparationIncomplete: Story = {
 };
 
 export const InsuranceQuoteHandoff: Story = {};
+
+export const BeforeYouGoCollapsed: Story = {};
+
+export const BeforeYouGoExpanded: Story = {
+  args: { initialGoodTasksOpen: true },
+};
+
+export const OmioGoodToDo: Story = {
+  args: { initialPrepActions: [...prepActions, ...omioPrepActions], initialGoodTasksOpen: true },
+};
 
 export const AccommodationPartlyComplete: Story = {};
 
@@ -279,6 +323,7 @@ export const DepartureFarInFuture: Story = { args: { now: "2026-01-01" } };
 
 export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const BeforeYouGoMobile390: Story = { args: { initialGoodTasksOpen: true }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };

@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CarFront,
   ClipboardCheck,
+  ChevronDown,
   ExternalLink,
   FileCheck2,
   Landmark,
@@ -56,7 +57,7 @@ function TaskAction({
   const action = task.action;
   if (!action) return null;
   if (action.opensTravellerDetails) {
-    return <EasyTButton className={styles.taskAction} icon={ArrowRight} iconOnly size="small" variant="secondary" onClick={onOpenTravellerDetails}>{action.label}</EasyTButton>;
+    return <EasyTButton className={styles.taskAction} icon={ArrowRight} size="small" variant="secondary" onClick={onOpenTravellerDetails}>{action.label}</EasyTButton>;
   }
   if (!action.href) return null;
 
@@ -109,9 +110,9 @@ function TaskAction({
   };
 
   if (action.external) {
-    return <EasyTLinkButton className={styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={`${action.label}, opens ${action.provider ?? "provider"} in a new tab`} icon={ExternalLink} iconOnly size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
+    return <EasyTLinkButton className={styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={`${action.label}, opens ${action.provider ?? "provider"} in a new tab`} icon={ExternalLink} size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
   }
-  return <EasyTLinkButton className={styles.taskAction} href={action.href} icon={ArrowRight} iconOnly size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
+  return <EasyTLinkButton className={styles.taskAction} href={action.href} icon={ArrowRight} size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
 }
 
 function TripPreparationTaskRow({
@@ -125,8 +126,9 @@ function TripPreparationTaskRow({
 }) {
   const Icon = iconByKind[task.kind];
   const showsAffiliateDisclosure = task.action?.affiliate === true;
+  const interactive = Boolean(task.action?.href || task.action?.opensTravellerDetails);
 
-  return <article className={`${styles.taskRow} ${styles[`status-${task.status}`]}`}>
+  return <article className={`${styles.taskRow} ${interactive ? styles.taskRowInteractive : ""} ${styles[`status-${task.status}`]}`}>
     <span className={styles.taskIcon}><Icon aria-hidden="true" /></span>
     <div className={styles.taskCopy}>
       <h3>{task.title}</h3>
@@ -135,7 +137,6 @@ function TripPreparationTaskRow({
     </div>
     <TaskAction task={task} tripId={tripId} onOpenTravellerDetails={onOpenTravellerDetails} />
     {showsAffiliateDisclosure ? <small className={styles.affiliateDisclosure}>{affiliateDisclosureForProvider(task.action?.provider ?? "")}</small> : null}
-    <MorroviaPartnerPromotion className={styles.partnerPromotion} action={task.action} />
   </article>;
 }
 
@@ -146,6 +147,10 @@ export function TripPreparationTaskSection({
   tasks,
   tripId,
   onOpenTravellerDetails,
+  collapsible = false,
+  defaultOpen = false,
+  showPartnerPromotion = false,
+  promotionNow,
 }: {
   id: string;
   title: string;
@@ -153,13 +158,35 @@ export function TripPreparationTaskSection({
   tasks: TripPrepTask[];
   tripId: string;
   onOpenTravellerDetails: () => void;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  showPartnerPromotion?: boolean;
+  promotionNow?: Date;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   if (!tasks.length) return null;
-  return <section className={styles.taskSection} aria-labelledby={`${id}-title`}>
-    <header><Icon aria-hidden="true" /><h2 id={`${id}-title`}>{title}</h2></header>
+  const taskList = <>
     <div className={styles.taskList}>
       {tasks.map((task) => <TripPreparationTaskRow key={task.id} task={task} tripId={tripId} onOpenTravellerDetails={onOpenTravellerDetails} />)}
     </div>
+    {showPartnerPromotion ? <MorroviaPartnerPromotion
+      className={styles.partnerPromotion}
+      action={tasks.find((task) => task.action?.provider === "omio")?.action}
+      now={promotionNow}
+    /> : null}
+  </>;
+  return <section className={styles.taskSection} aria-labelledby={`${id}-title`}>
+    {collapsible ? <details className={styles.taskDisclosure} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary aria-expanded={open} aria-controls={`${id}-tasks`}>
+        <Icon aria-hidden="true" />
+        <span><h2 id={`${id}-title`}>{title}</h2><small>{tasks.length} outstanding {tasks.length === 1 ? "task" : "tasks"}</small></span>
+        <ChevronDown aria-hidden="true" />
+      </summary>
+      <div id={`${id}-tasks`} className={styles.taskDisclosurePanel}>{taskList}</div>
+    </details> : <>
+      <header><Icon aria-hidden="true" /><h2 id={`${id}-title`}>{title}</h2></header>
+      {taskList}
+    </>}
   </section>;
 }
 
