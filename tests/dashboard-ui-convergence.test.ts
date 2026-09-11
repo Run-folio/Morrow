@@ -7,6 +7,7 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
 const dashboardStyles = read("app/journey/dashboard/dashboard.module.css");
 const dashboardStories = read("app/journey/dashboard/dashboard-client.stories.tsx");
+const dashboardTripImage = read("lib/easyt/dashboard-trip-image.ts");
 const controlStyles = read("components/easyt/easyt-controls.module.css");
 const controlStories = read("components/easyt/easyt-controls.stories.tsx");
 const storybookConfig = read(".storybook/main.ts");
@@ -23,7 +24,7 @@ test("trip cards keep navigation separate from their action menus", () => {
 });
 
 test("dashboard filters and compact fields use canonical controls", () => {
-  assert.match(dashboard, /EasyTSegmentedControl<LibraryView>/);
+  assert.match(dashboard, /EasyTSegmentedControl<DashboardLibraryView>/);
   assert.match(dashboard, /controls: "dashboard-trip-grid"/);
   assert.match(dashboard, /<EasyTSelect fieldClassName=\{styles\.sortControl\}/);
   assert.match(dashboard, /<EasyTField fieldClassName=\{styles\.searchControl\}/);
@@ -48,7 +49,7 @@ test("continue and Stamped summaries expose truthful labelled metadata", () => {
 });
 
 test("mobile current journeys bound long titles and reject non-photographic hero media", () => {
-  assert.match(dashboard, /if \(!credit\) return null/,
+  assert.match(dashboardTripImage, /if \(!credit\) return null/,
     "unknown itinerary media must fall through instead of becoming a Trips hero");
   assert.match(dashboardStyles, /@media \(max-width: 520px\)[\s\S]*?\.currentIdentity h2 \{[\s\S]*?-webkit-line-clamp: 4/,
     "the mobile editorial title must have a bounded line count");

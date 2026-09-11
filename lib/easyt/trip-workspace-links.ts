@@ -19,6 +19,11 @@ export function tripWorkspaceHref(tripId: string) {
   return `/journey/${encodeURIComponent(tripId)}`;
 }
 
+/** Generic Overview entry resets position; an explicit section hash keeps its native anchor behaviour. */
+export function shouldResetOverviewEntry(hash: string) {
+  return hash === "" || hash === "#";
+}
+
 /** Mark only the just-generated arrival; normal workspace links stay quiet. */
 export function firstTripWorkspaceHref(tripId: string) {
   return `${tripWorkspaceHref(tripId)}?created=1`;

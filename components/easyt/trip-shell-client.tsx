@@ -22,7 +22,7 @@ import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
-import { workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
+import { shouldResetOverviewEntry, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaStatusBanner } from "./morrovia-feedback";
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget } from "./workspace-orientation";
@@ -231,7 +231,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
           <Link
             key={view.id}
             className={active ? styles.subnavActive : undefined}
-            href={`${baseHref}${view.suffix}`}
+            href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
             aria-current={active ? "page" : undefined}
           >
             <Icon aria-hidden="true" />
@@ -241,6 +241,33 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
       })}
     </nav>
   );
+}
+
+/**
+ * Next's App Router may retain focus/scroll state from a previously consumed
+ * hash when the next URL has no fragment. Overview owns the correction once:
+ * generic entry starts at the document top, while real section deep links are
+ * left to native hash navigation on initial load and history traversal.
+ */
+export function TripOverviewEntryBoundary() {
+  const pathname = usePathname();
+  useEffect(() => {
+    let frame = 0;
+    const resetGenericEntry = () => {
+      window.cancelAnimationFrame(frame);
+      if (!shouldResetOverviewEntry(window.location.hash)) return;
+      frame = window.requestAnimationFrame(() => {
+        if (shouldResetOverviewEntry(window.location.hash)) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    };
+    resetGenericEntry();
+    window.addEventListener("hashchange", resetGenericEntry);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("hashchange", resetGenericEntry);
+    };
+  }, [pathname]);
+  return null;
 }
 
 export function TripShellImage({

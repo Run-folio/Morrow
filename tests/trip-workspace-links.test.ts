@@ -12,6 +12,7 @@ import {
   mapWorkspaceHref,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
+  shouldResetOverviewEntry,
   tripSaveSignInHref,
   tripWorkspaceHref,
   workspaceViewFromPathname,
@@ -41,6 +42,30 @@ test("normal trip entry targets the canonical Trip Workspace Overview", () => {
     tripWorkspaceHref("trip-00000000-0000-4000-8000-000000000001"),
     "/journey/trip-00000000-0000-4000-8000-000000000001",
   );
+});
+
+test("generic Overview entry resets position while intentional section deep links remain native", () => {
+  assert.equal(shouldResetOverviewEntry(""), true);
+  assert.equal(shouldResetOverviewEntry("#"), true);
+  assert.equal(shouldResetOverviewEntry("#before-you-go"), false);
+  assert.equal(shouldResetOverviewEntry("#overview-progress-title"), false);
+});
+
+test("back and forward targets derive scroll policy from the URL being restored", () => {
+  const history = [
+    "/journey/trip-real",
+    "/journey/trip-real#before-you-go",
+    "/journey/trip-real/map",
+  ].map((href) => new URL(href, "https://morrovia.test"));
+  assert.equal(shouldResetOverviewEntry(history[0]!.hash), true);
+  assert.equal(shouldResetOverviewEntry(history[1]!.hash), false);
+  assert.equal(shouldResetOverviewEntry(history[0]!.hash), true);
+});
+
+test("dashboard and TripShell generic Overview links share the canonical hash-free owner", () => {
+  const href = tripWorkspaceHref("trip-real");
+  assert.equal(href, "/journey/trip-real");
+  assert.equal(new URL(href, "https://morrovia.test").hash, "");
 });
 
 test("a generated guest trip opens before auth and an explicit save returns to the same ID", () => {
