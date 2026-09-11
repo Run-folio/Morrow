@@ -4,7 +4,7 @@ Status: **PUBLIC LAUNCH NOT READY**
 Evidence date: 1 September 2026  
 Controller/operator: **Shaun Whiting Limited, trading as Morrovia**  
 Operational owner: Shaun Whiting  
-Privacy contact: `sw@shaunwhiting.com`
+Privacy contact: the monitored private inbox configured as `CONTACT_TO_EMAIL`, reached publicly through `/journey/contact?topic=privacy`
 
 This is an executable engineering and operations record, not legal advice or regulatory certification. `Lawful-basis candidate` means a basis for founder/legal review, not a concluded legal basis. Any item marked **PENDING HUMAN ACTION** is not complete merely because this document describes the procedure.
 
@@ -110,7 +110,7 @@ Until automation exists, Shaun must run and record a monthly manual review of so
 
 ### Intake and deadline
 
-1. Requests arrive at `sw@shaunwhiting.com` with the suggested subject `Morrovia data rights request`; requests received through another channel must still be recognised and forwarded.
+1. Requests arrive through `/journey/contact?topic=privacy` at the monitored `CONTACT_TO_EMAIL` inbox; requests received through another channel must still be recognised and forwarded.
 2. Log a random case ID, received time, right requested, scope, status, deadline, identity steps, systems searched, actions, exceptions, delivery and closure in a founder-controlled encrypted register outside git. Never put a real request or identity evidence in this repository.
 3. Owner: Shaun. Acknowledge within two business days. Under current ICO guidance, respond without undue delay and normally within one month. If a permitted complexity extension is needed, notify the person within the first month and record why. Pausing/clarification rules must follow then-current ICO guidance.
 4. Verify identity proportionately using the signed-in account plus a reply/control challenge to the registered email where possible. Request additional ID only when necessary; minimise it and delete it after verification according to the case record.

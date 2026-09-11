@@ -7,12 +7,12 @@ const privacy = source("app/journey/privacy/privacy-notice.tsx");
 
 test("privacy notice is controller-owned, deep-linkable and has an executable rights path", () => {
   assert.match(privacy, /morroviaLegalIdentity\.operatorTradingAs/);
-  assert.match(privacy, /morroviaLegalIdentity\.privacyContact/);
+  assert.match(privacy, /\/journey\/contact\?topic=privacy/);
   for (const id of ["data-we-use", "personalisation", "ai-and-speech", "analytics-settings", "providers-and-transfers", "retention", "your-rights"]) {
     assert.match(privacy, new RegExp(`id=\\"${id}\\"`));
   }
-  assert.match(privacy, /Morrovia data rights request/);
-  assert.match(privacy, /mailto:/);
+  assert.match(privacy, /privacy contact form/);
+  assert.doesNotMatch(privacy, /mailto:/);
   assert.match(privacy, /ico\.org\.uk\/make-a-complaint\/data-protection-complaints/);
   assert.match(privacy, /does not currently provide a complete automated account export or self-service account deletion tool/);
   assert.match(privacy, /A trip PDF is not a full account-data export/);
@@ -28,11 +28,12 @@ test("privacy notice covers the actual trip, account, profile and browser data b
     "Neon Postgres",
     "Guest drafts and recovery state",
     "passport-expiry month",
-    "Feedback, sharing and email",
+    "Feedback, contact, sharing and email",
   ]) assert.match(privacy, new RegExp(fact));
   assert.match(privacy, /soft-deletes a trip from normal account views/);
   assert.match(privacy, /fixed deletion periods are not yet implemented/);
   assert.match(privacy, /Transactional email events are keyed by recipient email and are not currently removed/);
+  assert.match(privacy, /not intentionally stored in Morrovia's database/);
 });
 
 test("personalisation copy matches profile seeding and trip-level ranking behaviour", () => {

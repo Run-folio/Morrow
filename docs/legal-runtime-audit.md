@@ -17,9 +17,9 @@ The canonical source is `lib/morrovia-legal-identity.ts`.
 | Registration jurisdiction | Unknown; not rendered |
 | Company number | Unknown; not rendered |
 | Registered office | Unknown; not rendered |
-| General contact | `sw@shaunwhiting.com`, the existing monitored public contact |
-| Support contact | `sw@shaunwhiting.com`, consolidated from the existing live Help contact |
-| Privacy contact | `sw@shaunwhiting.com`, consolidated from the existing live Privacy contact |
+| General contact | Public Contact form delivered to the private server-side `CONTACT_TO_EMAIL` inbox |
+| Support contact | Purpose-tagged Contact form delivered to the same monitored private inbox |
+| Privacy contact | Purpose-tagged Contact form delivered to the same monitored private inbox |
 
 `Morrovia Ltd` is not the current operator and must not be rendered. The shared footer now renders “© 2026 Morrovia” and “Operated by Shaun Whiting Limited” from the canonical owner. A future operator change should be made in that owner, not page copy.
 
@@ -272,7 +272,7 @@ The review must compare the proposed flow against the Package Travel and Linked 
 Founder confirmation:
 
 - Shaun Whiting Limited registration jurisdiction, company number, and registered office suitable for public legal notices;
-- whether `sw@shaunwhiting.com` remains the monitored public support/privacy address;
+- whether an approved role-based Morrovia address is required for any future public company disclosure;
 - intended support response/deletion-request operating process;
 - business retention decisions for accounts, trips, gifts, feedback, email events, audit logs, and co-pilot previews.
 

@@ -65,7 +65,7 @@ test("Help uses the production shell, canonical controls and real support path",
   const client = read("app/journey/help/help-client.tsx");
   const footer = read("components/morrovia-footer.tsx");
 
-  assert.match(page, /<EasyTNavigation landing \/>/);
+  assert.match(page, /<EasyTNavigation current="help" landing \/>/);
   assert.doesNotMatch(page, /MorroviaFooter/, "the shared Journey layout remains the sole footer owner");
   assert.match(client, /EasyTField/);
   assert.match(client, /EasyTButton/);
@@ -77,9 +77,9 @@ test("Help uses the production shell, canonical controls and real support path",
   assert.doesNotMatch(client, /activateDisclosureFromKeyboard/);
   assert.doesNotMatch(client, /onKeyDown=\{\(event\) => activateDisclosureFromKeyboard/);
   assert.match(client, /event\.key === "Escape"/);
-  assert.match(client, /morroviaLegalIdentity\.supportContact/);
+  assert.match(client, /\/journey\/contact\?topic=support/);
   assert.doesNotMatch(client, /mailto:sw@shaunwhiting\.com/,
-    "the support address should come from the canonical legal identity");
+    "Help must not expose the former personal support address");
   assert.equal((client.match(/<Image\b/g) ?? []).length, 1);
   assert.match(footer, /href="\/journey\/help"/);
   assert.doesNotMatch(client, /support@morrovia\.com/);

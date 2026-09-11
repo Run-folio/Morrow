@@ -23,8 +23,6 @@ const sections = [
 ] as const;
 
 export default function TermsOfUsePage() {
-  const complaintHref = `mailto:${morroviaLegalIdentity.supportContact}?subject=${encodeURIComponent("Morrovia Terms complaint")}`;
-
   return <main id="main-content">
     <EasyTNavigation />
     <div className={readingStyles.page}>
@@ -114,7 +112,7 @@ export default function TermsOfUsePage() {
         <section id="contact" className={readingStyles.section} aria-labelledby="contact-title">
           <p className={readingStyles.kicker}>CONTACT AND LAW</p>
           <h2 id="contact-title">Complaints, changes and governing law</h2>
-          <p>For a complaint about Morrovia or these Terms, email <a href={complaintHref}>{morroviaLegalIdentity.supportContact}</a> and include enough information to identify the account or issue. Do not email passwords, passport documents or payment-card information.</p>
+          <p>For a complaint about Morrovia or these Terms, use the <Link href="/journey/contact?topic=complaint">Morrovia contact form</Link> and include enough information to identify the account or issue. Do not send passwords, passport documents or payment-card information.</p>
           <p>These Terms and the contract for Morrovia are governed by the laws of England and Wales. The courts of England and Wales have non-exclusive jurisdiction. If you are a consumer resident elsewhere, this does not remove mandatory protections or any right to bring proceedings in your home courts that applicable law gives you. This governing-law wording requires solicitor confirmation against the operator's registration and target launch markets.</p>
           <p>Morrovia may update these Terms for changes to the service, law, security or commercial model. A material change will have a new version and effective date and will be brought to account holders' attention with reasonable notice where practicable. Continued use after that date means the updated Terms apply from then; changes do not apply retrospectively to remove accrued rights.</p>
         </section>
