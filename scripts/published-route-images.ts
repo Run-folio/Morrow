@@ -158,7 +158,7 @@ function commonsUrl(value?: string) {
 async function searchWikimedia(stop: PublishedRouteImageStop): Promise<ProviderSearchResult> {
   const query = `"${stop.name}" ${stop.country}`;
   const params = new URLSearchParams({ action: "query", format: "json", generator: "search", gsrsearch: query, gsrnamespace: "6", gsrlimit: "30",
-    prop: "imageinfo", iiprop: "url|size|extmetadata", iiurlwidth: "1536", origin: "*" });
+    prop: "imageinfo", iiprop: "url|size|extmetadata", iiurlwidth: "1920", origin: "*" });
   try {
     wikimediaSearchCalls += 1;
     const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, { headers: { "Api-User-Agent": "MorroviaRouteImageReview/1.0 (https://morrovia.com)" }, signal: AbortSignal.timeout(12_000) });
@@ -265,7 +265,7 @@ function generatedPhoto(stop: PublishedRouteImageStop, selected: ReturnType<type
     sourceUrl: candidate.sourceUrl,
     changes: "Provider-hosted responsive derivative; display crops to fit the composition.",
     alt: candidate.alt?.trim() || `${stop.name}, ${stop.country}`,
-    variants: [384, 768, 1536].map((width) => ({ src: variantUrl(candidate.src, width), width, height: Math.max(1, Math.round(width * candidate.height / candidate.width)) })),
+    variants: (candidate.provider === "wikimedia" ? [500, 960, 1920] : [384, 768, 1536]).map((width) => ({ src: variantUrl(candidate.src, width), width, height: Math.max(1, Math.round(width * candidate.height / candidate.width)) })),
     intendedUses: ["Canonical published-route stop photography"],
     provider: candidate.provider,
     providerAssetId: candidate.id,
@@ -291,7 +291,7 @@ async function trackSelection(candidate: PublishedRouteImageCandidate) {
 }
 
 function compactCandidate(item: ReturnType<typeof choosePublishedRouteImageCandidate>["ranked"][number]) {
-  return { provider: item.candidate.provider, id: item.candidate.id, sourceUrl: item.candidate.sourceUrl, previewUrl: variantUrl(item.candidate.src, 768),
+  return { provider: item.candidate.provider, id: item.candidate.id, sourceUrl: item.candidate.sourceUrl, previewUrl: variantUrl(item.candidate.src, item.candidate.provider === "wikimedia" ? 960 : 768),
     author: item.candidate.author, authorUrl: item.candidate.authorUrl, license: item.candidate.license, licenseUrl: item.candidate.licenseUrl,
     downloadLocation: item.candidate.downloadLocation, score: item.score, evidence: item.evidence, concerns: item.concerns };
 }

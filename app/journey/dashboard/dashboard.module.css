@@ -88,6 +88,11 @@
 }
 .currentMediaFallback svg,
 .closingFallback svg { width: 38px; height: 38px; }
+.currentMediaFallback span {
+  max-width: min(48ch, calc(100% - 48px));
+  overflow-wrap: anywhere;
+  text-align: center;
+}
 
 .currentIdentity {
   position: absolute;
@@ -282,6 +287,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(26px, 4vw, 48px) 28px;
 }
+.recentSection { grid-template-columns: 1fr; }
 .pastSection { grid-template-columns: 1fr; gap: 30px; }
 .pastSection .sectionHeading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
 .pastSection .sectionHeading p { text-align: right; }
@@ -534,6 +540,13 @@
   .pageIntro h1 em { font-size: 2.55rem; }
   .currentMedia { height: auto; overflow: visible; margin-bottom: 0; border-radius: var(--morrovia-radius); background: transparent; }
   .currentMedia > img { display: block; height: 242px; border-radius: var(--morrovia-radius); filter: brightness(.82) saturate(.9); }
+  .currentMediaFallback { min-height: 242px; border-radius: var(--morrovia-radius); }
+  .currentMediaFallback span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   .currentIdentity { position: relative; left: auto; bottom: auto; display: grid; width: auto; padding: 24px 0 0; color: var(--morrovia-ink); }
   .currentIdentity .eyebrow { color: var(--morrovia-signal); }
   .currentIdentity h2 {

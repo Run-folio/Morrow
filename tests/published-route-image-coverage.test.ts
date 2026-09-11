@@ -25,8 +25,11 @@ test("the generated inventory retains provider provenance, confidence and respon
     else assert.equal(photo.reviewStatus, "editorially accepted");
     assert.equal(photo.pipelineVersion, 2);
     assert.ok(photo.confidenceEvidence.length);
-    assert.deepEqual(photo.variants.map((variant) => variant.width), [384, 768, 1536]);
+    assert.deepEqual(photo.variants.map((variant) => variant.width), photo.provider === "wikimedia" ? [500, 960, 1920] : [384, 768, 1536]);
     assert.ok(photo.variants.every((variant) => /^https:\/\/(?:images\.unsplash\.com|(?:upload|thumb)\.wikimedia\.org)\//.test(variant.src)));
+    if (photo.provider === "wikimedia") {
+      assert.ok(photo.variants.every((variant) => !/\/(?:384|768|1536)px-/.test(variant.src)), photo.place);
+    }
   }
 });
 
