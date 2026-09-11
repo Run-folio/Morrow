@@ -20,7 +20,7 @@ test("one canonical nearby disclosure covers commission and the third-party book
 
   assert.match(shared, /Morrovia may earn a commission at no extra cost to you/);
   assert.match(shared, /Booking, payment and provider terms apply on the partner’s site/);
-  for (const renderer of renderers) assert.match(read(renderer), /affiliateDisclosure/, renderer);
+  for (const renderer of renderers) assert.match(read(renderer), /(?:affiliateDisclosure|compactAffiliateDisclosure)/, renderer);
 });
 
 test("the full disclosure names providers, ranking independence, payment and click boundaries", () => {
@@ -45,8 +45,8 @@ test("generic handoffs use comparison copy and do not present unconfirmed live i
   assert.doesNotMatch(overview, /Compare live options/);
   assert.match(overview, /open a separate Trip\.com search/);
   assert.doesNotMatch(finder, /Trip\.com confirms its own availability|Check live options on Trip\.com/);
-  assert.match(finder, /matching Booking\.com room product/);
-  assert.match(finder, /Trip\.com link below opens a separate partner search/);
+  assert.match(finder, />Check availability <ArrowUpRight/);
+  assert.doesNotMatch(finder, />Book now|Check options on Trip\.com/);
 });
 
 test("affiliate clicks retain safe new-tab semantics, one event path and no completion mutation", () => {

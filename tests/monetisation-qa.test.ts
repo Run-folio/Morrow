@@ -62,8 +62,9 @@ test("map stay handoffs are attributable Trip.com links with a disclosure", () =
   const link = readFileSync("components/easyt/affiliate-link.tsx", "utf8");
   assert.match(source, /rel="sponsored noopener noreferrer"/);
   assert.match(source, /provider: affiliatePartners\.tripCom\.provider, placement: "map_stay_finder"/);
-  assert.match(source, /<small>\{affiliateDisclosure\}<\/small>/);
+  assert.match(source, /className=\{styles\.finderAffiliateDisclosure\}>\{compactAffiliateDisclosure\}/);
   assert.match(link, /Partner link · Morrovia may earn a commission at no extra cost to you/);
+  assert.match(link, /Partner links · Morrovia may earn a commission at no extra cost to you/);
 });
 
 test("stay ranking does not reference affiliate or commission inputs", () => {

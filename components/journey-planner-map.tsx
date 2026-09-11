@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
-import { BedDouble } from "lucide-react";
+import { BedDouble, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { morroviaMapStyle, mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
@@ -35,6 +35,7 @@ type JourneyPlannerMapProps = {
   /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */
   selectedPlannerPinId?: string | null;
   localPlaces?: JourneyLocalPlace[];
+  localPlaceKind?: "restaurant" | "stay";
   selectedLocalPlaceId?: string | null;
   focusOffset?: [number, number];
   focusZoom?: number;
@@ -104,6 +105,7 @@ export function JourneyPlannerMap({
   plannerPins,
   selectedPlannerPinId = null,
   localPlaces = [],
+  localPlaceKind = "stay",
   selectedLocalPlaceId,
   focusOffset,
   focusZoom,
@@ -662,7 +664,8 @@ export function JourneyPlannerMap({
         element.dataset.localPlaceId = place.id;
         element.setAttribute("aria-label", `Show ${place.name}`);
         element.title = `Show ${place.name}`;
-        element.innerHTML = renderToStaticMarkup(<><BedDouble aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay"}</span></>);
+        const PlaceIcon = localPlaceKind === "stay" ? BedDouble : Utensils;
+        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : localPlaceKind === "stay" ? "Stay" : "Eat"}</span></>);
         element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLocalPlaceSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
@@ -675,7 +678,7 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current = [];
     };
-  }, [localPlaces]);
+  }, [localPlaceKind, localPlaces]);
 
   useEffect(() => {
     localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.localPlaceId === selectedLocalPlaceId));

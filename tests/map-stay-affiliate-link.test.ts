@@ -32,11 +32,11 @@ test("Map stay finder always uses the central generic Trip.com accommodation lin
 test("Stay results keep mapped fallbacks visible and report live-provider failures without dismissing the panel", () => {
   const finder = readFileSync("components/journey-local-finder.tsx", "utf8");
   assert.match(finder, /type AccommodationInventoryStatus = "not-requested" \| "loading" \| "live" \| "empty" \| "unconfigured" \| "unavailable"/);
-  assert.match(finder, /Live accommodation availability is temporarily unavailable\. Showing mapped stays/);
-  assert.match(finder, /Live room availability is not configured here\. Showing mapped stays/);
+  assert.doesNotMatch(finder, /Live accommodation availability is temporarily unavailable\. Showing mapped stays/);
+  assert.doesNotMatch(finder, /Live room availability is not configured here\. Showing mapped stays/);
   assert.match(finder, /title="Stay options are unavailable"/);
   assert.match(finder, /setChosen\(candidates\[0\]\.place\)/);
-  assert.doesNotMatch(finder, /if \(kind !== "stay"[^\n]+choosePlace\(candidates\[0\]\.place\)/);
+  assert.match(finder, /onPlaceSelect\?\.\(candidates\[0\]\.place\)/);
 });
 
 test("Map planning-preview accommodation keeps one disclosed, attributable, state-neutral handoff", () => {

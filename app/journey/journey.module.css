@@ -248,6 +248,7 @@
 .restaurantResult dd{margin:0;color:var(--accent)}
 .restaurantActions{display:flex;align-items:center;gap:6px;margin-top:10px}
 .affiliateAction{display:grid;gap:3px}.affiliateAction small{max-width:130px;color:rgba(31,29,61,.48);font:var(--morrovia-type-fine-print)}
+.finderAffiliateDisclosure{display:block;margin-top:8px;color:var(--morrovia-muted);font:var(--morrovia-type-fine-print)}.finderAffiliateDisclosure a{color:var(--morrovia-action);text-underline-offset:2px}.finderAffiliateDisclosure a:hover{color:var(--morrovia-action-hover)}.finderAffiliateDisclosure a:focus-visible{outline:0;box-shadow:var(--morrovia-focus-shadow)}
 .restaurantActions a,.restaurantActions button{display:flex;min-height:29px;align-items:center;justify-content:center;padding:0 9px;color:var(--accent);background:#fff;border:1px solid rgba(31,29,61,.13);border-radius:999px;font:650 7px var(--morrovia-meta);text-decoration:none;cursor:pointer;transition:color .18s,background .18s}
 .restaurantActions a{color:#fff;background:var(--accent)}
 .restaurantActions .restaurantSave{color:#fff;background:var(--signal);border-color:var(--signal)}

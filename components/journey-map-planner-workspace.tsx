@@ -412,6 +412,7 @@ export function JourneyMapPlannerWorkspace({
   const [mobileShapeDayOpen, setMobileShapeDayOpen] = useState(() => Boolean(initialMapTarget && initialMapTarget.mode !== "plan"));
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
   const [selectedLocalPlaceId, setSelectedLocalPlaceId] = useState<string | null>(storyState?.selectedLocalPlaceId ?? null);
+  const [localPlaceFocusCoordinates, setLocalPlaceFocusCoordinates] = useState<[number, number] | null>(null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
   const [undoMessage, setUndoMessage] = useState("");
@@ -755,7 +756,10 @@ export function JourneyMapPlannerWorkspace({
     : null;
   const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg;
   const showShellContext = Boolean(!copilotOpen && (wholeRouteMapContext || selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || mapMode === "detail"));
-  const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg);
+  // Local result selection is presentation state inside the active finder
+  // result set. Keep the finder mounted so selecting a marker or row cannot
+  // tear down its provider request and results.
+  const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg);
   const mapStopOrientationTarget = useWorkspaceOrientationTarget("map", "map-stop");
   const mapExploreOrientationTarget = useWorkspaceOrientationTarget("map", "map-explore");
   const mapResultActionsOrientationTarget = useWorkspaceOrientationTarget("map", "map-result-actions");
@@ -800,8 +804,24 @@ export function JourneyMapPlannerWorkspace({
   const clearSelectedLocalPlace = useCallback(() => {
     const id = selectedLocalPlaceId;
     setSelectedLocalPlaceId(null);
+    setLocalPlaceFocusCoordinates(null);
     restoreMapMarkerFocus("localPlaceId", id);
   }, [restoreMapMarkerFocus, selectedLocalPlaceId]);
+  const selectLocalPlace = useCallback((place: JourneyLocalPlace) => {
+    setSelectedLocalPlaceId(place.id);
+    setLocalPlaceFocusCoordinates(null);
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMapMode("detail");
+  }, []);
+  const focusLocalPlace = useCallback((place: JourneyLocalPlace) => {
+    setSelectedLocalPlaceId(place.id);
+    setLocalPlaceFocusCoordinates([place.coordinates[0], place.coordinates[1]]);
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMapMode("detail");
+    setMobileShapeDayOpen(false);
+  }, []);
   const resetWholeRoute = useCallback(() => {
     setSelectedLocalPlaceId(null);
     setSelectedPlannerPin(null);
@@ -1925,10 +1945,11 @@ export function JourneyMapPlannerWorkspace({
               contextCardsHidden={copilotOpen || pinPlacementMode || Boolean(pinCoordinates)}
               plannerPins={customTrip?.brief.mapPins ?? []}
               localPlaces={shapeDayTab === "stay" || shapeDayTab === "eat" ? localMapPlaces : []}
+              localPlaceKind={localFinderKind}
               selectedLocalPlaceId={selectedLocalPlaceId}
               focusOffset={isShellPresentation ? [180, -80] : [210, 0]}
               focusZoom={isShellPresentation ? 9.5 : undefined}
-              focusCoordinates={mapMode === "detail" && selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : null}
+              focusCoordinates={mapMode === "detail" && selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : selectedLocalPlace ? localPlaceFocusCoordinates : null}
               draftPinCoordinates={pinCoordinates}
               pinPlacementMode={pinPlacementMode}
               overviewMode={mapMode === "overview"}
@@ -1936,7 +1957,7 @@ export function JourneyMapPlannerWorkspace({
               cameraInteractionKey={cameraInteractionKey}
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
-              onLocalPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); }}
+              onLocalPlaceSelect={(place) => { setMobileShapeDayOpen(false); selectLocalPlace(place); }}
               onLegSelect={(leg) => { setMobileShapeDayOpen(false); setSelectedRouteLegId(leg.id); setTransferDetailsExpanded(false); setSelectedLocalPlaceId(null); setSelectedPlannerPin(null); setPinPlacementMode(false); setDestinationExpanded(false); }}
               onSelect={(id) => {
                 const firstItem = customTrip?.planItems.filter((item) => item.stopId === id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
@@ -2296,7 +2317,7 @@ export function JourneyMapPlannerWorkspace({
           onScheduleInventoryIdea={(idea: ItineraryIdea) => { if (!selectedPlanItem) return false; updatePlannerTrip((trip) => scheduleItineraryIdea(trip, idea, selectedPlanItem.id, preferredItineraryDayPart(trip, selectedPlanItem.id, idea.category)), `Added to Day ${selectedPlanItem.dayNumber}`); trackEvent("attraction_selected", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem.dayNumber, source: "map_see" }); return true; }}
           onRemoveInventoryIdea={(idea: ItineraryIdea) => { updatePlannerTrip((trip) => removeItineraryIdea(trip, idea.id), "Activity removed"); trackEvent("attraction_removed", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem?.dayNumber, source: "map_see" }); return true; }}
         /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={customTrip ? tripIntentForTrip(customTrip).preferences.interests : []} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); setMapMode("detail"); }} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={customTrip ? tripIntentForTrip(customTrip).preferences.interests : []} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedLocalPlaceId} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
 
       {hasCanonicalPlanner ? <aside className={styles.mapAssistant}><EasyTTripCopilot compact surface="map" dayCount={journey.calendar.length} destination={selected.city} scope={copilotScope} contextLabel={copilotContextLabel} tripId={customTrip?.ownerId ? customTrip.id : undefined} stopId={copilotScope === "selected-stop" || copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedTripStop?.id : undefined} dayNumber={copilotScope === "selected-day" || copilotScope === "selected-place" ? selectedPlanItem?.dayNumber : undefined} legId={copilotScope === "selected-transfer" ? selectedRouteLeg?.id : undefined} canApplyChanges={canApplyCanonicalCopilotChange({ hasUnsavedChanges, hasCloudConflict: Boolean(cloudConflictTrip), hasDeviceRecoveryIssue: recoveryBlockedByExisting, cloudCopyHasPreservedRecovery, authInterrupted: cloudAuthInterrupted })} onTripApplied={(trip) => { cacheCanonicalTrip(trip); setCustomTrip(trip); setCustomBrief(customBriefFromEasyT(trip)); setCloudConflictTrip(null); setCloudAuthInterrupted(false); if (cloudCopyHasPreservedRecovery) { setRecoveryBlockedByExisting(true); setCloudSaveError("The cloud copy was updated. Your separate device edits remain preserved until you open or explicitly discard them."); setCloudSaveState("error"); } else { setCloudSaveError(""); setCloudSaveState("saved"); } setHasUnsavedChanges(false); }} onOpenChange={(open) => { setCopilotOpen(open); if (open) setMobileShapeDayOpen(false); }} /></aside> : null}
