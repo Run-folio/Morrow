@@ -273,17 +273,27 @@ test("the spatial provider asks for real settlement types inside the anchor coun
     },
   );
   const query = new URLSearchParams(requestBody).get("data") ?? "";
-  assert.match(query, /admin_level"="2"\]\["name"="Guatemala"/);
-  assert.match(query, /place"~"\^\(city\|town\)\$"/);
-  assert.match(query, /around:60000,17\.222,-89\.6237\)\["place"="village"\]/);
-  assert.match(query, /around:40000,17\.222,-89\.6237\)\["place"="locality"\]\["population"\]/);
-  assert.match(query, /around:140000,17\.222,-89\.6237/);
+  assert.match(query, /ISO3166-1"="GT"/);
+  assert.match(query, /place"~"\^\(city\|town\|village\)\$"/);
+  assert.match(query, /around:80000,17\.222,-89\.6237/);
+  assert.match(query, /place"="locality"\]\["population"\]/);
   assert.deepEqual(candidates.map((item) => [item.providerId, item.canonicalName, item.placeType]), [
     ["node:101", "Flores", "city"],
     ["node:102", "El Remate", "town"],
     ["node:106", "Populated Locality", "town"],
   ]);
   assert.equal(candidates.every((item) => item.parentCountries?.[0] === "Guatemala"), true);
+});
+
+test("a healthy nearby source is not held behind a stalled mirror", async () => {
+  const provider = createOpenWorldPlaceProvider({ cache: new Map(), sourceTimeoutMs: 80, sources: [
+    { id: "stalled", label: "Stalled", nearby: async () => new Promise<never>(() => {}) },
+    { id: "healthy", label: "Healthy", nearby: async () => [settlement("node:200", "Safe Town", "Fixtureland", [0.1, 0.1])] },
+  ] });
+  const started = Date.now();
+  const suggestions = await searchOpenWorldNearbyBaseSuggestions(anchor(), {}, provider);
+  assert.deepEqual(suggestions.map((suggestion) => suggestion.name), ["Safe Town"]);
+  assert.ok(Date.now() - started < 70);
 });
 
 test("the spatial provider fails safely before discovery when containment is ambiguous or the provider is unavailable", async () => {

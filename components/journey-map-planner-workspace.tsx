@@ -1743,7 +1743,12 @@ export function JourneyMapPlannerWorkspace({
     let active = true;
     Promise.all(contextStops.map(async (stop) => {
       const country = stop.id === "custom-origin" ? "" : stop.country;
-      const response = await fetch(`/api/journey-place?title=${encodeURIComponent(stop.city)}&country=${encodeURIComponent(country)}`);
+      const params = new URLSearchParams({ title: stop.city, country });
+      if (stop.coordinates) {
+        params.set("lon", String(stop.coordinates[0]));
+        params.set("lat", String(stop.coordinates[1]));
+      }
+      const response = await fetch(`/api/journey-place?${params}`);
       const payload = await response.json() as { place?: PlaceMedia | null };
       return [stop.id, payload.place] as const;
     })).then((results) => {

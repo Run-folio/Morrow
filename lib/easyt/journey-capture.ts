@@ -6,6 +6,7 @@ import {
   resolvePlaceMentionsWithProvider,
   type ExplicitPlaceMention,
   type PlaceIntelligenceProvider,
+  type PlaceMentionRole,
   type PlaceIntelligenceResult,
   type PlaceResolutionContext,
   type ResolvedPlaceMention,
@@ -305,7 +306,13 @@ function semanticPlaceMentions(
   return inputs
     .filter((input, index, all) => all.findIndex((candidate) => mentionSourceKey(candidate.sourceText) === mentionSourceKey(input.sourceText)
       && semanticJourneyRole(candidate.role) === semanticJourneyRole(input.role)) === index)
-    .sort((left, right) => rawBrief.toLocaleLowerCase().indexOf(left.sourceText.toLocaleLowerCase()) - rawBrief.toLocaleLowerCase().indexOf(right.sourceText.toLocaleLowerCase()));
+    .sort((left, right) => {
+      const raw = rawBrief.toLocaleLowerCase();
+      const position = (input: { sourceText: string; role: PlaceMentionRole }) => ["fixed_end", "excluded"].includes(input.role)
+        ? raw.lastIndexOf(input.sourceText.toLocaleLowerCase())
+        : raw.indexOf(input.sourceText.toLocaleLowerCase());
+      return position(left) - position(right);
+    });
 }
 
 /** Development-only, prompt-safe trace. It records geographic source spans and

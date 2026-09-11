@@ -311,3 +311,17 @@ test("provider hierarchy and importance mark exact countries and first-order reg
     assert.equal(resolved.mentions[0]?.requiresBaseSelection, true, `${phrase} should request a base rather than becoming a stop`);
   }
 });
+
+test("a native-only provider name uses the provider-confirmed Latin query while preserving native aliases", async () => {
+  const fetchHirayu = fixtureFetch({
+    Hirayu: { freeform: [{
+      ...raw("平湯温泉", 500, "Japan", "town", { lat: "36.1915", lon: "137.5537" }),
+      namedetails: { name: "平湯温泉", "name:ja": "平湯温泉", "name:ja_kana": "ひらゆおんせん" },
+    }], city: [] },
+  });
+  const candidates = await searchNominatimTravelCandidates("Hirayu", { travelIntent: "route-stop", countryNames: ["Japan"] }, fetchHirayu);
+  assert.equal(candidates[0]?.canonicalName, "Hirayu");
+  assert.equal(candidates[0]?.aliases?.includes("平湯温泉"), true);
+  assert.equal(candidates[0]?.parentCountries?.[0], "Japan");
+  assert.deepEqual(candidates[0]?.coordinates, [137.5537, 36.1915]);
+});

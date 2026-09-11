@@ -6,6 +6,7 @@ import {
   type PlaceRoutability,
   type PlaceType,
 } from "./place-intelligence.ts";
+import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "./place-display-name.ts";
 
 type NominatimResult = {
   lat?: string;
@@ -188,13 +189,26 @@ export async function searchNominatimTravelCandidates(
     for (const [providerRank, result] of results.entries()) {
       const latitude = Number(result.lat);
       const longitude = Number(result.lon);
-      const name = result.name?.trim() || result.display_name?.split(",")[0]?.trim() || "";
+      const providerName = result.name?.trim() || result.display_name?.split(",")[0]?.trim() || "";
       const country = result.address?.country?.trim() ?? "";
       const providerId = result.osm_type && result.osm_id ? `${result.osm_type}:${result.osm_id}` : "";
       const facts = taxonomy(result, context);
-      if (!providerId || !name || (!country && facts.placeType !== "continent") || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-      const providerAliases = Object.values(result.namedetails ?? {}).filter((value) => value && normalize(value) !== normalize(name));
-      const quality = matchQuality(name, phrase, mode, providerAliases);
+      if (!providerId || !providerName || (!country && facts.placeType !== "continent") || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+      const providerAliases = Object.values(result.namedetails ?? {}).filter((value) => value && normalize(value) !== normalize(providerName));
+      const providerDisplay = resolveOsmPlaceDisplayName({ ...result.extratags, ...result.namedetails, name: providerName }, "en");
+      const providerQuality = matchQuality(providerDisplay?.name ?? providerName, phrase, mode, providerAliases);
+      const mayUseQueryAsLatinFallback = providerRank === 0
+        && facts.routability === "direct_destination"
+        && !/\p{Script=Latin}/u.test(providerName)
+        && /^\p{Script=Latin}[\p{Script=Latin}\p{M}\s'.-]*$/u.test(phrase.trim());
+      const display = providerDisplay && normalize(providerDisplay.name) !== normalize(providerName)
+        ? providerDisplay
+        : mayUseQueryAsLatinFallback
+          ? resolvePlaceDisplayName({ defaultName: providerName, alternativeNames: [phrase], nativeNames: [providerName] }, "en")
+          : providerDisplay;
+      const name = display?.name ?? providerName;
+      const aliasesForMatch = [...providerAliases, providerName, ...(display?.nativeName ? [display.nativeName] : [])];
+      const quality = mayUseQueryAsLatinFallback ? matchQuality(name, phrase, mode, aliasesForMatch) : providerQuality;
       if (quality === "partial" && !normalize(name).includes(requested) && !requested.includes(normalize(name))) continue;
       if (facts.placeType === "unknown") continue;
       const rawAdministrativeLevel = Number(result.extratags?.admin_level);
@@ -213,7 +227,12 @@ export async function searchNominatimTravelCandidates(
         + localitySpecificity(result.addresstype)
         + (mode === "city" && facts.routability === "direct_destination" ? 12 : 0)
         + (/\b(?:city|town)\b/.test(result.extratags?.linked_place ?? "") ? 10 : 0);
-      const aliases = [...new Set([...(quality === "alias" ? [phrase] : []), ...providerAliases])].slice(0, 12);
+      const aliases = [...new Set([
+        ...(normalize(name) !== normalize(phrase) ? [phrase] : []),
+        providerName,
+        ...(display?.nativeName ? [display.nativeName] : []),
+        ...providerAliases,
+      ].filter((value) => value && normalize(value) !== normalize(name)))].slice(0, 12);
       const candidate: NominatimTravelCandidate = {
         providerId,
         canonicalName: name,

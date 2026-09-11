@@ -54,7 +54,7 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
 test("route storytelling resolves imagery, stays image-led and links to the canonical Map", () => {
   assert.match(source, /const imagedDay = days\.find\(\(item\) => Boolean\(item\.image\)\)/);
   assert.match(source, /itineraryImageFor\(/);
-  assert.match(source, /\/api\/journey-place\?title=/);
+  assert.match(source, /\/api\/journey-place\?\$\{params\}/);
   assert.match(source, /resolvedPlaceImages\[stop\.id\]/);
   assert.match(source, /formatTripNights\(stop\.nights\)/);
   assert.match(source, /className=\{styles\.stopNumber\}>\{index \+ 1\}/);

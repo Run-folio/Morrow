@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canonicalPlaceEnrichmentIsCompatible } from "@/lib/easyt/canonical-place-enrichment";
 
-type Summary = { extract?: string; thumbnail?: { source?: string }; content_urls?: { desktop?: { page?: string } } };
+type Summary = { extract?: string; thumbnail?: { source?: string }; content_urls?: { desktop?: { page?: string } }; coordinates?: [number, number] };
 type SearchResult = { title?: string; snippet?: string };
-type SearchPage = { title?: string; extract?: string; thumbnail?: { source?: string } };
+type SearchPage = { title?: string; extract?: string; thumbnail?: { source?: string }; coordinates?: Array<{ lat?: number; lon?: number }> };
 type UnsplashPhoto = {
   alt_description?: string | null;
   description?: string | null;
@@ -15,6 +16,14 @@ const WIKIPEDIA_TIMEOUT_MS = 5_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function coordinatesFromUnknown(value: unknown): [number, number] | undefined {
+  const coordinate = Array.isArray(value) ? value[0] : value;
+  if (!isRecord(coordinate)) return undefined;
+  const latitude = Number(coordinate.lat);
+  const longitude = Number(coordinate.lon);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? [longitude, latitude] : undefined;
 }
 
 async function summaryFor(title: string) {
@@ -35,16 +44,17 @@ async function summaryFor(title: string) {
     ...(typeof value.extract === "string" ? { extract: value.extract } : {}),
     ...(thumbnail ? { thumbnail } : {}),
     ...(desktop ? { content_urls: { desktop } } : {}),
+    ...(coordinatesFromUnknown(value.coordinates) ? { coordinates: coordinatesFromUnknown(value.coordinates) } : {}),
   };
   return summary.extract || summary.thumbnail?.source || summary.content_urls?.desktop?.page ? summary : null;
 }
 
-async function imageFor(title: string, area?: string, country?: string) {
+async function imageFor(title: string, area?: string, country?: string, coordinates?: [number, number]) {
   const query = [title, area, country].filter(Boolean).join(" ");
   const params = new URLSearchParams({
     action: "query", format: "json", generator: "search", gsrsearch: query,
-    gsrnamespace: "0", gsrlimit: "6", prop: "pageimages|extracts", piprop: "thumbnail",
-    pithumbsize: "900", exintro: "1", explaintext: "1", origin: "*",
+    gsrnamespace: "0", gsrlimit: "6", prop: "pageimages|extracts|coordinates", piprop: "thumbnail",
+    pithumbsize: "900", exintro: "1", explaintext: "1", colimit: "6", origin: "*",
   });
   const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
     next: { revalidate: 60 * 60 * 24 * 14 },
@@ -54,9 +64,13 @@ async function imageFor(title: string, area?: string, country?: string) {
   const data = await response.json() as { query?: { pages?: Record<string, SearchPage> } };
   const normalisedTitle = title.toLocaleLowerCase();
   const pages = Object.values(data.query?.pages ?? {});
-  const closest = pages.find((page) => page.title?.toLocaleLowerCase() === normalisedTitle)
-    ?? pages.find((page) => page.title?.toLocaleLowerCase().includes(normalisedTitle));
-  return closest?.thumbnail?.source ?? pages.find((page) => page.thumbnail?.source)?.thumbnail?.source;
+  const compatible = pages.filter((page) => canonicalPlaceEnrichmentIsCompatible({
+    extract: page.extract,
+    coordinates: coordinatesFromUnknown(page.coordinates),
+  }, { country, coordinates }));
+  const closest = compatible.find((page) => page.title?.toLocaleLowerCase() === normalisedTitle)
+    ?? compatible.find((page) => page.title?.toLocaleLowerCase().includes(normalisedTitle));
+  return closest?.thumbnail?.source ?? compatible.find((page) => page.thumbnail?.source)?.thumbnail?.source;
 }
 
 function withUnsplashReferral(url?: string) {
@@ -99,14 +113,15 @@ async function unsplashImageFor(title: string, area?: string, country?: string) 
   };
 }
 
-function isInCountry(summary: Summary | null, country?: string) {
-  return Boolean(summary && (!country || (typeof summary.extract === "string" && summary.extract.toLocaleLowerCase().includes(country.toLocaleLowerCase()))));
-}
-
 export async function GET(request: NextRequest) {
   const title = request.nextUrl.searchParams.get("title")?.trim();
   const area = request.nextUrl.searchParams.get("area")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
+  const hasCoordinates = request.nextUrl.searchParams.has("lat") && request.nextUrl.searchParams.has("lon");
+  const latitude = Number(request.nextUrl.searchParams.get("lat"));
+  const longitude = Number(request.nextUrl.searchParams.get("lon"));
+  const coordinates: [number, number] | undefined = hasCoordinates && Number.isFinite(latitude) && Number.isFinite(longitude)
+    && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180 ? [longitude, latitude] : undefined;
   if (!title || title.length > 140) return NextResponse.json({ place: null }, { status: 400 });
   try {
     // Photography and place context are independent enhancements. One provider
@@ -115,10 +130,10 @@ export async function GET(request: NextRequest) {
       unsplashImageFor(title, area, country).catch(() => null),
       summaryFor(title).catch(() => null),
     ]);
-    let summary = initialSummary;
+    let summary = canonicalPlaceEnrichmentIsCompatible(initialSummary, { country, coordinates }) ? initialSummary : null;
     // Title-only Wikipedia resolution is global. If it does not clearly relate to
     // the requested country, do a contextual search rather than using a wrong city.
-    if (!isInCountry(summary, country) && country) {
+    if (!summary && (country || coordinates)) {
       try {
         const params = new URLSearchParams({ action: "query", format: "json", list: "search", srsearch: `${title} ${country}`, srnamespace: "0", srlimit: "5", origin: "*" });
         const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`, {
@@ -126,24 +141,31 @@ export async function GET(request: NextRequest) {
           signal: AbortSignal.timeout(WIKIPEDIA_TIMEOUT_MS),
         });
         const data = response.ok ? await response.json() as { query?: { search?: SearchResult[] } } : {};
-        const candidate = data.query?.search?.find((item) => item.title && `${item.title} ${item.snippet ?? ""}`.toLocaleLowerCase().includes(country.toLocaleLowerCase()));
-        summary = candidate?.title ? await summaryFor(candidate.title).catch(() => null) : null;
+        const candidates = data.query?.search ?? [];
+        for (const candidate of candidates) {
+          if (!candidate.title) continue;
+          const candidateSummary = await summaryFor(candidate.title).catch(() => null);
+          if (canonicalPlaceEnrichmentIsCompatible(candidateSummary, { country, coordinates })) {
+            summary = candidateSummary;
+            break;
+          }
+        }
       } catch {
         summary = null;
       }
     }
     const image = unsplash?.image
       ?? summary?.thumbnail?.source
-      ?? await imageFor(title, area, country).catch(() => undefined);
+      ?? await imageFor(title, area, country, coordinates).catch(() => undefined);
     if (!summary && !image) return NextResponse.json({ place: null });
     return NextResponse.json({ place: {
       image,
       alt: unsplash?.alt,
-      description: isInCountry(summary, country) ? summary?.extract : undefined,
+      description: summary?.extract,
       sourceUrl: unsplash?.sourceUrl ?? summary?.content_urls?.desktop?.page,
       sourceLabel: unsplash?.sourceLabel,
-      learnMoreUrl: isInCountry(summary, country) ? summary?.content_urls?.desktop?.page : undefined,
-      descriptionSourceLabel: isInCountry(summary, country) ? "Wikipedia" : undefined,
+      learnMoreUrl: summary?.content_urls?.desktop?.page,
+      descriptionSourceLabel: summary ? "Wikipedia" : undefined,
     } });
   } catch {
     return NextResponse.json({ place: null });

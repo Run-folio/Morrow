@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
+import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
 
 type OverpassElement = {
   id: number;
@@ -87,6 +88,10 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
       const [lon, lat] = place.geometry?.coordinates ?? [];
       const displayName = resolveOsmPlaceDisplayName(photonNameTags(properties), locale);
       if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (!localPlaceWithinCanonicalScope({
+        anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: kind === "stay" ? 7.5 : 5,
+        requestedCountry: country, candidateCountry: typeof properties.country === "string" ? properties.country : undefined,
+      })) continue;
       const { name, nativeName } = displayName;
       const address = [properties.housenumber, properties.street, properties.locality || properties.city, properties.postcode, properties.country || country].filter(Boolean).join(", ") || `${city}, ${country}`;
       const searchQuery = `${name}, ${address}`;
@@ -137,6 +142,7 @@ async function googleOperationalStays(country: string, latitude: number, longitu
       const lat = place.location?.latitude;
       const lon = place.location?.longitude;
       if (!displayName || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
+      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: 7 })) return [];
       const { name, nativeName } = displayName;
       const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
       if (seen.has(key)) return [];
@@ -211,6 +217,10 @@ export async function GET(request: NextRequest) {
         const lon = place.lon ?? place.center?.lon;
         const displayName = resolveOsmPlaceDisplayName(tags, locale);
         if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        if (!localPlaceWithinCanonicalScope({
+          anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: radius / 1_000,
+          requestedCountry: country, candidateCountry: tags["addr:country"],
+        })) continue;
         const { name, nativeName } = displayName;
         const address = addressFor(tags, country ? `${city}, ${country}` : city);
         const searchQuery = `${name}, ${address}`;

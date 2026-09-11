@@ -3,6 +3,7 @@ import {
 } from "./nominatim-place.server.ts";
 import { searchPhotonTravelCandidates } from "./photon-place.server.ts";
 import { searchOpenStreetMapNearbySettlements } from "./openstreetmap-nearby-place.server.ts";
+import { resolvePlaceDisplayName } from "./place-display-name.ts";
 import {
   providerLookupRequest,
   rankNearbyBaseCandidates,
@@ -55,10 +56,24 @@ function validatedCandidate(candidate: PlaceProviderCandidate): PlaceProviderCan
     const longitudeInside = west <= east ? longitude >= west && longitude <= east : longitude >= west || longitude <= east;
     if (!validBounds || latitude < south || latitude > north || !longitudeInside) return undefined;
   }
+  const display = !/\p{Script=Latin}/u.test(candidate.canonicalName)
+    ? resolvePlaceDisplayName({
+        defaultName: candidate.canonicalName,
+        alternativeNames: candidate.aliases,
+        nativeNames: [candidate.canonicalName],
+      }, "en")
+    : null;
+  const canonicalName = display?.name ?? candidate.canonicalName;
+  const aliases = [...new Set([
+    ...(candidate.aliases ?? []),
+    ...(normalized(canonicalName) !== normalized(candidate.canonicalName) ? [candidate.canonicalName] : []),
+    ...(display?.nativeName ? [display.nativeName] : []),
+  ].filter((value) => normalized(value) !== normalized(canonicalName)))];
   return {
     ...candidate,
+    canonicalName,
     coordinates: [...candidate.coordinates] as [number, number],
-    aliases: candidate.aliases ? [...candidate.aliases] : undefined,
+    aliases: aliases.length ? aliases : undefined,
     parentCountries: candidate.parentCountries ? [...candidate.parentCountries] : undefined,
     bounds: candidate.bounds ? { ...candidate.bounds } : undefined,
   };
@@ -97,7 +112,12 @@ function defaultSources(fetchImpl?: typeof fetch): OpenWorldPlaceSource[] {
     {
       id: "openstreetmap-overpass",
       label: "OpenStreetMap Overpass",
-      nearby: (anchor, radiusKm) => searchOpenStreetMapNearbySettlements(anchor, radiusKm, fetchImpl),
+      nearby: (anchor, radiusKm) => searchOpenStreetMapNearbySettlements(anchor, radiusKm, fetchImpl, "https://overpass-api.de/api/interpreter"),
+    },
+    {
+      id: "openstreetmap-overpass-kumi",
+      label: "OpenStreetMap Overpass (Kumi mirror)",
+      nearby: (anchor, radiusKm) => searchOpenStreetMapNearbySettlements(anchor, radiusKm, fetchImpl, "https://overpass.kumi.systems/api/interpreter"),
     },
   ];
 }
@@ -237,7 +257,7 @@ export function createOpenWorldPlaceProvider(options: {
   const cacheTtlMs = Math.max(1, options.cacheTtlMs ?? 86_400_000);
   const maxCacheEntries = Math.max(1, options.maxCacheEntries ?? 500);
   const sourceTimeoutMs = Math.max(1, Math.min(options.sourceTimeoutMs ?? 3_500, 5_000));
-  const nearbySourceTimeoutMs = Math.max(1, Math.min(options.sourceTimeoutMs ?? 10_000, 11_000));
+  const nearbySourceTimeoutMs = Math.max(1, Math.min(options.sourceTimeoutMs ?? 6_000, 6_000));
   return {
     id: "open-world",
     label: "Morrovia open-world place resolver",
@@ -304,7 +324,7 @@ export function createOpenWorldPlaceProvider(options: {
       }
       if (cached) cache.delete(key);
 
-      const settled = await Promise.allSettled(nearbySources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
+      const attempts = nearbySources.map((source) => new Promise<PlaceProviderCandidate[]>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`${source.id} nearby lookup timed out`)), nearbySourceTimeoutMs);
         source.nearby!(anchor, radiusKm).then(
           (sourceCandidates) => {
@@ -323,9 +343,20 @@ export function createOpenWorldPlaceProvider(options: {
           },
           (error) => { clearTimeout(timer); reject(error); },
         );
-      })));
-      if (!settled.some((result) => result.status === "fulfilled")) throw new Error("Nearby place providers unavailable");
-      const candidates = settled.flatMap((result) => result.status === "fulfilled" ? result.value : [])
+      }));
+      let sourceCandidates: PlaceProviderCandidate[];
+      try {
+        // A healthy mirror must not be held behind another mirror's timeout.
+        sourceCandidates = await Promise.any(attempts.map((attempt) => attempt.then((candidates) => {
+          if (!candidates.length) throw new Error("Nearby provider returned no candidates");
+          return candidates;
+        })));
+      } catch {
+        const settled = await Promise.allSettled(attempts);
+        if (!settled.some((result) => result.status === "fulfilled")) throw new Error("Nearby place providers unavailable");
+        sourceCandidates = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+      }
+      const candidates = sourceCandidates
         .sort(compareCanonicalCandidateEvidence)
         .filter((candidate, index, all) => !all.slice(0, index).some((prior) => sameCanonicalFact(prior, candidate)));
       if (candidates.length) {

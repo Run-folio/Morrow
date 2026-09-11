@@ -1861,6 +1861,20 @@ function buildDeterministicMentions(prompt: string, context: PlaceResolutionCont
   }
 
   const sorted = resolved.sort((left, right) => left._start - right._start || right._end - left._end);
+  // In an explicit arrow itinerary, a repeated first/last identity is route
+  // structure: depart here and return here. Do not hand the final endpoint to
+  // Builder as another overnight stop. Ordinary prose still requires explicit
+  // return/end wording so an intentional origin stay remains representable.
+  if (/(?:→|->)/.test(prompt) && sorted.length > 1) {
+    const first = sorted[0]!;
+    const last = sorted.at(-1)!;
+    const sameIdentity = Boolean(first.canonicalPlaceId && first.canonicalPlaceId === last.canonicalPlaceId)
+      || normalizePlacePhrase(first.sourceText) === normalizePlacePhrase(last.sourceText);
+    if (sameIdentity && ["origin", "fixed_start"].includes(first.role) && last.role === "preferred") {
+      last.role = "fixed_end";
+      last._roles.push("fixed_end");
+    }
+  }
   const deduped: typeof sorted = [];
   for (const mention of sorted) {
     const existing = mention.canonicalPlaceId
@@ -2165,6 +2179,21 @@ function decisiveProviderCandidate(
   }
   if (contextCountries.size > 0 && hasDecisiveExactContext
     && (!hasDistinctExactGeographicScope || exactRouteDestinations.length > 1)) return rankedExactContext[0];
+  const literalExactAnchors = exact.filter((candidate) => normalizePlacePhrase(candidate.canonicalName) === normalized
+    && ((candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality ?? "exact") === "exact"
+    && (candidate.routability === "needs_base_selection" || candidate.routability === "anchor_or_poi"));
+  // A literal provider identity for a natural feature/anchor is stronger than
+  // a fuzzy locality alias. This protects mountain, bay and heritage-site
+  // intent without letting a generic same-name administrative region win.
+  if (literalExactAnchors.length === 1 && exactRouteDestinations.every((candidate) => (
+    (candidate as PlaceResolutionCandidate & { matchQuality?: PlaceProviderCandidate["matchQuality"] }).matchQuality !== "exact"
+  ))) return literalExactAnchors[0];
+  // Some providers name a broad feature with a qualifying suffix (for example
+  // "Heritage Site") and also return businesses inside it. Preserve the one
+  // broad geographic identity when no settlement candidate exists.
+  if (exactBroadGeographies.length === 1 && exactRouteDestinations.length === 0
+    && ranked.every((candidate) => candidate === exactBroadGeographies[0]
+      || candidate.routability === "anchor_or_poi")) return exactBroadGeographies[0];
   const recognizedExactGeographies = exactBroadGeographies.filter((candidate) => candidate.placeType === "continent" || candidate.placeType === "country"
     || ((candidate as PlaceResolutionCandidate & { geographicSignificance?: number }).geographicSignificance ?? 0) >= 0.72);
   const explicitBroadType = explicitPlaceTypes.has("region") || explicitPlaceTypes.has("sub_region")

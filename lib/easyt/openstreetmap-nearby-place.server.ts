@@ -1,4 +1,5 @@
 import type { NearbyBaseAnchor, PlaceProviderCandidate } from "./place-intelligence.ts";
+import { countryCodeFor } from "./country-registry.ts";
 
 type OverpassElement = {
   type?: "node" | "way" | "relation";
@@ -51,17 +52,20 @@ export async function searchOpenStreetMapNearbySettlements(
   anchor: NearbyBaseAnchor,
   radiusKm: number,
   fetchImpl: typeof fetch = fetch,
+  endpoint = "https://overpass-api.de/api/interpreter",
 ): Promise<PlaceProviderCandidate[]> {
   if (!anchor.coordinates || anchor.parentCountries.length !== 1) return [];
   const [longitude, latitude] = anchor.coordinates;
   if (!validCoordinates([longitude, latitude])) return [];
   const country = anchor.parentCountries[0]!.trim();
   if (!country) return [];
-  const radiusMetres = Math.round(Math.max(10, Math.min(radiusKm, 200)) * 1_000);
-  const villageRadiusMetres = Math.min(radiusMetres, 60_000);
-  const localityRadiusMetres = Math.min(radiusMetres, 40_000);
-  const query = `[out:json][timeout:9];area["boundary"="administrative"]["admin_level"="2"]["name"=${overpassString(country)}]->.country;(nwr(area.country)(around:${radiusMetres},${latitude},${longitude})["place"~"^(city|town)$"];nwr(area.country)(around:${villageRadiusMetres},${latitude},${longitude})["place"="village"];nwr(area.country)(around:${localityRadiusMetres},${latitude},${longitude})["place"="locality"]["population"];);out center tags 200;`;
-  const response = await fetchImpl("https://overpass-api.de/api/interpreter", {
+  const radiusMetres = Math.round(Math.max(10, Math.min(radiusKm, 80)) * 1_000);
+  const countryCode = countryCodeFor(country);
+  const countrySelector = countryCode
+    ? `["ISO3166-1"=${overpassString(countryCode)}]`
+    : `["boundary"="administrative"]["admin_level"="2"]["name"=${overpassString(country)}]`;
+  const query = `[out:json][timeout:6];area${countrySelector}->.country;(nwr(area.country)(around:${radiusMetres},${latitude},${longitude})["place"~"^(city|town|village)$"];nwr(area.country)(around:${radiusMetres},${latitude},${longitude})["place"="locality"]["population"];);out center tags 80;`;
+  const response = await fetchImpl(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
@@ -69,7 +73,7 @@ export async function searchOpenStreetMapNearbySettlements(
     },
     body: new URLSearchParams({ data: query }),
     cache: "no-store",
-    signal: AbortSignal.timeout(9_500),
+    signal: AbortSignal.timeout(6_500),
   });
   if (!response.ok) throw new Error("OpenStreetMap nearby lookup unavailable");
   const payload = await response.json() as OverpassResponse;

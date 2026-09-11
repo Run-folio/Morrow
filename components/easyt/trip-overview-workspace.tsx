@@ -363,10 +363,17 @@ export default function TripOverviewWorkspace({
   }))], [orderedStops, origin.country, origin.id, origin.name, originLatitude, originLongitude]);
   const overviewMapLegs = useMemo(() => mapRouteLegsFromTrip(trip), [trip.brief, trip.id, trip.legs, trip.stops]);
   const imageResolutionCandidates = useMemo(() => [
-    { id: origin.id, name: origin.name, country: origin.country ?? "" },
+    { id: origin.id, name: origin.name, country: origin.country ?? "", coordinates: origin.coordinates },
     ...orderedStops.flatMap((stop, index) => stopImage(trip, stop, index)
       ? []
-      : [{ id: stop.id, name: stop.name, country: stop.country }]),
+      : [{
+          id: stop.id,
+          name: stop.name,
+          country: stop.country,
+          coordinates: stop.longitude !== null && stop.latitude !== null
+            ? [stop.longitude, stop.latitude] as [number, number]
+            : undefined,
+        }]),
   ], [orderedStops, origin.country, origin.id, origin.name, trip.planItems]);
 
   useEffect(() => {
@@ -375,7 +382,12 @@ export default function TripOverviewWorkspace({
     const resolveImages = async () => {
       try {
         const entries = await Promise.all(imageResolutionCandidates.map(async (candidate) => {
-          const response = await fetch(`/api/journey-place?title=${encodeURIComponent(candidate.name)}&country=${encodeURIComponent(candidate.country)}`, { signal: scope.signal });
+          const params = new URLSearchParams({ title: candidate.name, country: candidate.country });
+          if (candidate.coordinates) {
+            params.set("lon", String(candidate.coordinates[0]));
+            params.set("lat", String(candidate.coordinates[1]));
+          }
+          const response = await fetch(`/api/journey-place?${params}`, { signal: scope.signal });
           if (!response.ok) return null;
           const payload = await response.json() as { place?: { image?: string; alt?: string } | null };
           return payload.place?.image ? [candidate.id, { src: payload.place.image, alt: payload.place.alt ?? `View of ${candidate.name}` }] as const : null;
