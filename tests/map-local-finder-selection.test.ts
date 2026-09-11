@@ -112,4 +112,5 @@ test("existing Map responsive owners cover the beta viewport matrix", () => {
   assert.match(css, /@media\(max-width:980px\)[\s\S]*?\.shellPlanner \.finderDock\.mobileShapeDayClosed\{display:none!important\}/);
   assert.match(css, /@media\(min-width:1180px\)[\s\S]*?\.shellPlanner:not\(\.shellPlannerExpanded\) \.finderDock/);
   assert.match(css, /\.restaurantActions a,\.restaurantActions button\{justify-content:center;min-height:44px/);
+  assert.match(css, /\.restaurantResult\.featuredStay>p,\.restaurantResult\.featuredStay>h3,\.restaurantResult\.featuredStay>span,\.restaurantResult\.featuredStay>\.restaurantActions\{grid-column:1\/-1\}/);
 });
