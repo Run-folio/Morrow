@@ -40,7 +40,7 @@ test("truthful item status never infers confirmation or per-item time from prese
 });
 
 test("Itinerary uses Map's recovery, queue, CAS, and canonical cache pipeline", () => {
-  assert.match(persistence, /saveTripRecovery\(next, \{ ownerId, replace: replacement \}\)/);
+  assert.match(persistence, /saveTripRecovery\(next, \{[\s\S]*ownerId,[\s\S]*replace: replacement,[\s\S]*accountSavePending: Boolean\(sessionOwnerId\)/);
   assert.match(persistence, /createTripMutationPersistenceQueue\(saveTripRecoveryToEasyT\)/);
   assert.match(persistence, /queueRef\.current\.enqueue\(next, recovery\.handle\)/);
   assert.match(persistence, /markTripRecoveryState/);

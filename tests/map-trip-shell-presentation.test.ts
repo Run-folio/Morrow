@@ -161,7 +161,9 @@ test("Add pin restores the original progressive workflow on the canonical trip d
 
 test("authenticated Map mutations use the account persistence queue", () => {
   assert.match(mapWorkspaceSource, /createTripMutationPersistenceQueue\(saveTripRecoveryToEasyT\)/);
+  assert.match(mapWorkspaceSource, /accountSavePending/);
   assert.match(mapWorkspaceSource, /plannerMutationQueueRef\.current\.enqueue\(trip, recovery\)/);
+  assert.match(tripShellSource, /!tripRecoveryIsAwaitingCanonicalSave\(deviceRecovery\)/);
   assert.match(mapWorkspaceSource, /setHasUnsavedChanges\(false\)/);
 });
 

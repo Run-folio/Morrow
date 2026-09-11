@@ -60,6 +60,31 @@ export type TripRecoveryWriteResult = {
   blockedByExistingRecovery: boolean;
 };
 
+const expectedCanonicalSaveRecoveries = new Set<string>();
+
+function recoveryHandleKey(handle: TripRecoveryHandle) {
+  return JSON.stringify([handle.ownerId, handle.tripId, handle.writeId]);
+}
+
+/**
+ * True only for the exact recovery write currently owned by an authenticated
+ * save in this document. The expectation is deliberately process-local: after
+ * a reload, an unacknowledged pending record is historical recovery and must
+ * remain actionable.
+ */
+export function tripRecoveryIsAwaitingCanonicalSave(recovery: TripRecoveryRecord) {
+  return recovery.state === "pending"
+    && expectedCanonicalSaveRecoveries.has(recoveryHandleKey(recovery));
+}
+
+function expectCanonicalSave(handle: TripRecoveryHandle) {
+  expectedCanonicalSaveRecoveries.add(recoveryHandleKey(handle));
+}
+
+function finishExpectedCanonicalSave(handle: TripRecoveryHandle) {
+  return expectedCanonicalSaveRecoveries.delete(recoveryHandleKey(handle));
+}
+
 export function shouldAllowNewTripNavigation(result: Pick<TripRecoveryWriteResult, "stored">) {
   return result.stored;
 }
@@ -1027,7 +1052,12 @@ export function claimGuestTripRecoveryForOwner(tripId: string, ownerId: string) 
 
 export function saveTripRecovery(
   trip: EasyTTrip,
-  options: { ownerId?: string | null; state?: TripRecoveryState; replace?: TripRecoveryHandle } = {},
+  options: {
+    ownerId?: string | null;
+    state?: TripRecoveryState;
+    replace?: TripRecoveryHandle;
+    accountSavePending?: boolean;
+  } = {},
 ) {
   const storage = browserStorage();
   const ownerId = options.ownerId === undefined ? trip.ownerId : options.ownerId;
@@ -1038,7 +1068,12 @@ export function saveTripRecovery(
   };
   if (!storage) return fallback;
   const result = saveTripRecoveryToStorage(storage, trip, options);
-  if (result.stored) dispatchTripStorageChange({ kind: "recovery", ownerId: result.handle.ownerId, tripId: trip.id }, trip);
+  if (result.stored) {
+    // Register before the synchronous same-document event. TripShell can then
+    // distinguish this exact safe write from an unrelated recovery record.
+    if (options.accountSavePending) expectCanonicalSave(result.handle);
+    dispatchTripStorageChange({ kind: "recovery", ownerId: result.handle.ownerId, tripId: trip.id }, trip);
+  }
   return result;
 }
 
@@ -1049,9 +1084,13 @@ export function saveActiveTrip(trip: EasyTTrip) {
 
 export function markTripRecoveryState(handle: TripRecoveryHandle, state: TripRecoveryState, conflictReason?: TripRecoveryConflictReason) {
   const storage = browserStorage();
-  if (!storage) return false;
+  if (!storage) {
+    finishExpectedCanonicalSave(handle);
+    return false;
+  }
   const marked = markTripRecoveryStateInStorage(storage, handle, state, conflictReason);
-  if (marked) dispatchTripStorageChange({ kind: "recovery", ownerId: handle.ownerId, tripId: handle.tripId });
+  const expectationFinished = finishExpectedCanonicalSave(handle);
+  if (marked || expectationFinished) dispatchTripStorageChange({ kind: "recovery", ownerId: handle.ownerId, tripId: handle.tripId });
   return marked;
 }
 
@@ -1067,12 +1106,19 @@ export function reconcileTripCloudMutation(ownerId: string, tripId: string, muta
 
 export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecoveryHandle) {
   const storage = browserStorage();
-  if (!storage) return { stored: false, recoveryResolved: false };
+  if (!storage) {
+    if (resolvedRecovery) finishExpectedCanonicalSave(resolvedRecovery);
+    return { stored: false, recoveryResolved: false };
+  }
   const recoveryBeforeCache = resolvedRecovery
     ?? loadTripRecoveryFromStorage(storage, trip.id, trip.ownerId)
     ?? undefined;
   const { stored, recoveryResolved } = cacheCanonicalTripWithRecoveryToStorage(storage, trip, resolvedRecovery);
+  const expectationFinished = resolvedRecovery
+    ? finishExpectedCanonicalSave(resolvedRecovery)
+    : false;
   if (stored) dispatchTripStorageChange({ kind: "cache", ownerId: trip.ownerId, tripId: trip.id });
+  else if (expectationFinished) dispatchTripStorageChange({ kind: "recovery", ownerId: resolvedRecovery!.ownerId, tripId: resolvedRecovery!.tripId });
   if (recoveryResolved && recoveryBeforeCache) {
     dispatchTripStorageChange({ kind: "resolved", ownerId: recoveryBeforeCache.ownerId, tripId: recoveryBeforeCache.tripId });
   }
@@ -1098,6 +1144,7 @@ export function discardTripRecovery(handle: TripRecoveryHandle, confirmed: boole
   if (!storage) return false;
   const discarded = discardTripRecoveryInStorage(storage, handle, confirmed);
   if (discarded) dispatchTripStorageChange({ kind: "resolved", ownerId: handle.ownerId, tripId: handle.tripId });
+  if (discarded) finishExpectedCanonicalSave(handle);
   return discarded;
 }
 

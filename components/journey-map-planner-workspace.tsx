@@ -869,7 +869,7 @@ export function JourneyMapPlannerWorkspace({
     setSelectedRestaurant(restaurant ? { restaurant, meal } : undefined);
   }, []);
 
-  const savePlannerRecovery = useCallback((trip: EasyTTrip, ownerId: string | null) => {
+  const savePlannerRecovery = useCallback((trip: EasyTTrip, ownerId: string | null, accountSavePending = false) => {
     if (!canUseHydratedTripScope(hydratedOwnerScopeRef.current, ownerId)) {
       setRecoveryBlockedByExisting(true);
       setCloudCopyHasPreservedRecovery(false);
@@ -890,6 +890,7 @@ export function JourneyMapPlannerWorkspace({
     const recovery = saveTripRecovery(trip, {
       ownerId: replacement ? replacement.ownerId : ownerId,
       replace: replacement ?? undefined,
+      accountSavePending,
     });
     if (recovery.stored) {
       recoveryHandleRef.current = recovery.handle;
@@ -999,7 +1000,7 @@ export function JourneyMapPlannerWorkspace({
     setUndoMessage(message);
     setCustomTrip(next);
     setCustomBrief(customBriefFromEasyT(next));
-    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId);
+    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId, Boolean(session?.user && !cloudConflictTrip));
     if (recovery.stored && !cloudConflictTrip) {
       setCloudSaveError("");
       setCloudSaveState("idle");
@@ -1007,7 +1008,7 @@ export function JourneyMapPlannerWorkspace({
     if (!cloudConflictTrip) setCloudAuthInterrupted(false);
     setHasUnsavedChanges(true);
     if (recovery.stored) persistPlannerMutation(next, recovery.handle);
-  }, [activeBrowserOwnerId, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery]);
+  }, [activeBrowserOwnerId, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery, session?.user]);
 
   useEffect(() => {
     if (!lastPlannerTrip) return;
@@ -1314,7 +1315,7 @@ export function JourneyMapPlannerWorkspace({
     const changed = action === "apply" ? applyRecommendation(source, recommendationId) : undoRecommendation(source, recommendationId);
     const next = { ...changed, updatedAt: customTrip.updatedAt };
     setCustomTrip(next);
-    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId);
+    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId, Boolean(session?.user && !cloudConflictTrip));
     if (action === "apply") {
       const repairCategory = recommendation?.rule ?? "unknown";
       trackEvent("health_issue_resolved", { rule: repairCategory });
@@ -1371,7 +1372,7 @@ export function JourneyMapPlannerWorkspace({
       return;
     }
     const reviewedTrip = { ...customTrip, recommendations: reviewTrip(customTrip) };
-    const recovery = savePlannerRecovery(reviewedTrip, activeBrowserOwnerId ?? customTrip.ownerId);
+    const recovery = savePlannerRecovery(reviewedTrip, activeBrowserOwnerId ?? customTrip.ownerId, Boolean(session?.user));
     if (!recovery.stored) return;
     if (!session?.user) {
       router.push(tripSyncSignInPath(customTrip.id));
@@ -1421,7 +1422,7 @@ export function JourneyMapPlannerWorkspace({
     setExportState("saving");
     setExportError("");
     const reviewedTrip = { ...customTrip, recommendations: reviewTrip(customTrip) };
-    const recovery = savePlannerRecovery(reviewedTrip, session.user.id);
+    const recovery = savePlannerRecovery(reviewedTrip, session.user.id, true);
     if (!recovery.stored) {
       setExportState("error");
       setExportError(recovery.blockedByExistingRecovery

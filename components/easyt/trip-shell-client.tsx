@@ -14,6 +14,7 @@ import {
   loadTripRecovery,
   resolveCanonicalEquivalentTripRecovery,
   subscribeToTripStorage,
+  tripRecoveryIsAwaitingCanonicalSave,
   type TripRecoveryRecord,
   EASYT_LAST_OWNER_KEY,
   loadRememberedOwner,
@@ -50,6 +51,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   const visibleDeviceRecovery = cacheTrip
     && deviceRecovery?.tripId === trip.id
     && deviceRecovery.ownerId === trip.ownerId
+    && !tripRecoveryIsAwaitingCanonicalSave(deviceRecovery)
     ? deviceRecovery
     : null;
   useEffect(() => {

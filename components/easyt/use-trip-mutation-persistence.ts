@@ -128,7 +128,11 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     const replacement = previousHandle?.tripId === current.id && previousHandle.ownerId === ownerId
       ? previousHandle
       : undefined;
-    const recovery = saveTripRecovery(next, { ownerId, replace: replacement });
+    const recovery = saveTripRecovery(next, {
+      ownerId,
+      replace: replacement,
+      accountSavePending: Boolean(sessionOwnerId),
+    });
     if (!recovery.stored) {
       setFailure("recovery");
       setError(recovery.blockedByExistingRecovery
