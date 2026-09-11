@@ -302,7 +302,7 @@ export function estimateLeg(
         mode: "train",
         knownDoorToDoorMinutes: duration,
         international,
-        connectionCount: null,
+        connectionCount: rail.connectionCount,
       }),
     }, { mode, duration });
   }

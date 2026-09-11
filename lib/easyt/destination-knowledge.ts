@@ -126,6 +126,15 @@ export type IntercityRailEndpointKnowledge = {
   name: string;
   country: string;
   networkIds: readonly string[];
+  /** Reviewed station access for a destination that is served through a nearby rail city. */
+  accessGateway?: {
+    canonicalId: string;
+    name: string;
+    country: string;
+    coordinates: [number, number];
+    accessMode: "road";
+    planningMinutes: number;
+  };
 };
 
 export type IntercityRailNetworkKnowledge = {
@@ -138,6 +147,8 @@ export type IntercityRailNetworkKnowledge = {
   routeDistanceFactor: number;
   planningSpeedKmh: number;
   stationAllowanceMinutes: number;
+  /** General network complexity; null keeps changes explicitly uncertain. */
+  typicalChanges?: 0 | 1 | 2 | null;
   source: KnowledgeSource;
 };
 
@@ -145,6 +156,9 @@ export type IntercityRailConnectionEvidence = {
   networkId: string;
   networkLabel: string;
   planningMinutes: number;
+  connectionCount: number | null;
+  fromAccessGateway?: NonNullable<IntercityRailEndpointKnowledge["accessGateway"]>;
+  toAccessGateway?: NonNullable<IntercityRailEndpointKnowledge["accessGateway"]>;
   confidence: "medium";
   source: KnowledgeSource;
 };
@@ -355,6 +369,38 @@ export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
     source: vietnamCambodiaSource,
   }),
   curatedDestination({
+    canonicalId: "chengdu", name: "Chengdu", country: "China", region: "asia",
+    coordinates: [104.0665, 30.5728],
+    connectivity: [{ mode: "air", reach: "international", access: "direct" }, { mode: "rail", reach: "national", access: "direct" }],
+    experienceTags: ["food", "culture", "nature"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "zhangjiajie", name: "Zhangjiajie", country: "China", region: "asia",
+    coordinates: [110.4792, 29.1171],
+    connectivity: [{ mode: "air", reach: "national", access: "direct" }, { mode: "rail", reach: "national", access: "direct" }],
+    experienceTags: ["nature", "adventure"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "fenghuang", name: "Fenghuang", country: "China", region: "asia",
+    coordinates: [109.6017, 27.9483],
+    connectivity: [{ mode: "air", reach: "national", access: "nearby-gateway" }, { mode: "rail", reach: "national", access: "direct" }],
+    airGateways: [{ canonicalId: "tongren", name: "Tongren", country: "China", coordinates: [109.1896, 27.7315], accessMode: "road" }],
+    experienceTags: ["culture", "heritage"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "fanjingshan", name: "Fanjingshan", country: "China", region: "asia",
+    coordinates: [108.698, 27.917],
+    connectivity: [{ mode: "air", reach: "national", access: "nearby-gateway" }, { mode: "rail", reach: "national", access: "nearby-gateway" }],
+    airGateways: [{ canonicalId: "tongren", name: "Tongren", country: "China", coordinates: [109.1896, 27.7315], accessMode: "road" }],
+    experienceTags: ["nature", "adventure"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
+    canonicalId: "hong-kong", name: "Hong Kong", country: "China", region: "asia",
+    coordinates: [114.1694, 22.3193],
+    connectivity: [{ mode: "air", reach: "international", access: "direct" }, { mode: "rail", reach: "national", access: "direct" }],
+    experienceTags: ["food", "culture", "city"], source: multimodalPlanningSource,
+  }),
+  curatedDestination({
     canonicalId: "siem-reap", name: "Siem Reap", country: "Cambodia", region: "asia",
     coordinates: [103.8564, 13.3633], roles: ["anchor"], minimumNights: 3, idealNights: 4,
     connectivity: [{ mode: "air", reach: "international", access: "direct" }],
@@ -507,6 +553,58 @@ export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowl
     stationAllowanceMinutes: 60,
     source: intercityRailEvidenceSource,
   },
+  {
+    id: "japan-high-speed-intercity",
+    label: "Japan high-speed and intercity rail network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: false,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 1_000,
+    routeDistanceFactor: 1.12,
+    planningSpeedKmh: 280,
+    stationAllowanceMinutes: 45,
+    typicalChanges: 0,
+    source: intercityRailEvidenceSource,
+  },
+  {
+    id: "china-high-speed-intercity",
+    label: "China high-speed and intercity rail network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: true,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 1_500,
+    routeDistanceFactor: 1.18,
+    planningSpeedKmh: 165,
+    stationAllowanceMinutes: 75,
+    typicalChanges: 1,
+    source: intercityRailEvidenceSource,
+  },
+  {
+    id: "iberia-high-speed-intercity",
+    label: "Spain high-speed intercity rail network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: false,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 1_000,
+    routeDistanceFactor: 1.12,
+    planningSpeedKmh: 180,
+    stationAllowanceMinutes: 60,
+    typicalChanges: 0,
+    source: intercityRailEvidenceSource,
+  },
+  {
+    id: "vietnam-north-south-intercity",
+    label: "Vietnam north-south intercity rail network",
+    connectionEvidence: "strong-intercity",
+    supportsCrossBorder: false,
+    minimumDistanceKm: 80,
+    maximumDistanceKm: 1_600,
+    routeDistanceFactor: 1.2,
+    planningSpeedKmh: 70,
+    stationAllowanceMinutes: 60,
+    typicalChanges: 0,
+    source: intercityRailEvidenceSource,
+  },
 ];
 
 export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKnowledge[] = [
@@ -528,6 +626,28 @@ export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKno
   { canonicalId: "innsbruck", name: "Innsbruck", country: "Austria", networkIds: ["central-europe-intercity"] },
   { canonicalId: "linz", name: "Linz", country: "Austria", networkIds: ["central-europe-intercity"] },
   { canonicalId: "vienna", name: "Vienna", country: "Austria", networkIds: ["central-europe-intercity"] },
+  { canonicalId: "tokyo", name: "Tokyo", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "kanazawa", name: "Kanazawa", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "kyoto", name: "Kyoto", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "osaka", name: "Osaka", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "hiroshima", name: "Hiroshima", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "fukuoka", name: "Fukuoka", country: "Japan", networkIds: ["japan-high-speed-intercity"] },
+  { canonicalId: "beijing", name: "Beijing", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "xian", name: "Xi'an", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "chengdu", name: "Chengdu", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "zhangjiajie", name: "Zhangjiajie", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "fenghuang", name: "Fenghuang", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "hong-kong", name: "Hong Kong", country: "China", networkIds: ["china-high-speed-intercity"] },
+  { canonicalId: "fanjingshan", name: "Fanjingshan", country: "China", networkIds: ["china-high-speed-intercity"], accessGateway: { canonicalId: "tongren", name: "Tongren", country: "China", coordinates: [109.1896, 27.7315], accessMode: "road", planningMinutes: 90 } },
+  { canonicalId: "madrid", name: "Madrid", country: "Spain", networkIds: ["iberia-high-speed-intercity"] },
+  { canonicalId: "seville", name: "Seville", country: "Spain", networkIds: ["iberia-high-speed-intercity"] },
+  { canonicalId: "barcelona", name: "Barcelona", country: "Spain", networkIds: ["iberia-high-speed-intercity"] },
+  { canonicalId: "hanoi", name: "Hanoi", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
+  { canonicalId: "ninh-binh", name: "Ninh Binh", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
+  { canonicalId: "hue", name: "Hue", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
+  { canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
+  { canonicalId: "hoi-an", name: "Hoi An", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"], accessGateway: { canonicalId: "da-nang", name: "Da Nang", country: "Vietnam", coordinates: [108.2022, 16.0439], accessMode: "road", planningMinutes: 45 } },
+  { canonicalId: "ho-chi-minh-city", name: "Ho Chi Minh City", country: "Vietnam", networkIds: ["vietnam-north-south-intercity"] },
 ];
 
 const normalise = (value: string) => value
@@ -716,6 +836,9 @@ export function createDestinationKnowledgeStore(options: {
         networkId: network.id,
         networkLabel: network.label,
         planningMinutes,
+        connectionCount: network.typicalChanges ?? null,
+        ...(fromEndpoint.accessGateway ? { fromAccessGateway: fromEndpoint.accessGateway } : {}),
+        ...(toEndpoint.accessGateway ? { toAccessGateway: toEndpoint.accessGateway } : {}),
         confidence: "medium",
         source: network.source,
       };

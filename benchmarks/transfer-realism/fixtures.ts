@@ -219,8 +219,8 @@ export const TRANSFER_REALISM_FIXTURES: readonly TransferRealismFixture[] = [
     providerRoutes: [
       { fromCanonicalId: "da-nang", toCanonicalId: "hoi-an", distanceKm: 30, durationMinutes: 45 },
       { fromCanonicalId: "hanoi", toCanonicalId: "hoi-an", distanceKm: 800, durationMinutes: 720 },
-    ], maximumProviderCalls: 1,
-    rationale: "A domestic flight to Da Nang plus last-mile road access should be composable from existing gateway evidence.",
+    ], maximumProviderCalls: 2,
+    rationale: "A domestic flight to Da Nang plus last-mile road access should be compared with the whole road and reviewed rail journeys.",
   }),
   fixture({
     id: "tokyo-hoi-an-mixed", region: "southeast-asia", categories: ["gateway-mixed", "remote-destination"],

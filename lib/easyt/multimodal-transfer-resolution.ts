@@ -6,7 +6,7 @@ import {
   type IntercityRailConnectionEvidence,
 } from "./destination-knowledge.ts";
 import { estimateFlightPlanningMinutes, haversineKm } from "./planner.ts";
-import { resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
+import { directRoadPlausibilityConflict, resolveCanonicalRoadFallback } from "./road-transfer-resolution.ts";
 import type { RoadRoutingProvider } from "./road-routing.ts";
 import { estimateTransferImpact } from "./transfer-impact.ts";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
@@ -24,6 +24,7 @@ export type TransferEvidenceKind =
   | "intercity_rail_network"
   | "direct_rail_connectivity"
   | "routed_road"
+  | "deterministic_road_estimate"
   | "canonical_gateway_access"
   | "direct_air_connectivity"
   | "legacy_flight_estimate"
@@ -38,6 +39,8 @@ export type TransferJourneyCandidate = {
   confidence: "high" | "medium" | "low";
   provenance: TripLegProvenance;
   evidence: TransferEvidenceKind;
+  /** Zero is direct; null keeps schedule-specific change count uncertain. */
+  connectionCount: number | null;
   score: number;
   reasons: string[];
 };
@@ -66,15 +69,20 @@ export const MULTIMODAL_SELECTION_RULES = {
   minimumUnverifiedInternationalFlightKm: 1_200,
   inferredRailStationAllowanceMinutes: 30,
   inferredRailSpeedKmh: 200,
+  maximumDeterministicRoadFallbackKm: 350,
   maximumCandidates: 8,
-  scores: {
-    exactTransfer: 100,
-    directRailConnectivity: 86,
-    airGatewayComposition: 82,
-    canonicalGatewayAccess: 80,
-    routedRoad: 76,
-    directAirConnectivity: 78,
-    legacyFlightEstimate: 68,
+  scoring: {
+    maximumScore: 100,
+    minutesPerDurationPoint: 30,
+    unknownChangesPenalty: 3,
+    changePenalty: 6,
+    airportComplexityPenalty: 4,
+    mixedJourneyPenalty: 2,
+    preferenceBonus: 5,
+    strongRailMaximumMinutes: 360,
+    competitiveRailMaximumMinutes: 480,
+    competitiveRailCloseToAirMinutes: 90,
+    competitiveRailMaximumAirGapMinutes: 150,
   },
 } as const;
 
@@ -132,6 +140,26 @@ function inferredGatewayAccessSegment(
   });
 }
 
+function reviewedRailAccessSegment(
+  from: CanonicalRouteEndpoint,
+  to: CanonicalRouteEndpoint,
+  durationMinutes: number,
+  index: number,
+) {
+  const distanceKm = haversineKm(from.coordinates ?? undefined, to.coordinates ?? undefined);
+  return segment({
+    mode: "road",
+    fromEndpoint: from,
+    toEndpoint: to,
+    distanceKm,
+    durationMinutes,
+    provider: "Reviewed rail-gateway access; Morrovia planning allowance, verify the live ground connection.",
+    provenance: "planning_estimate",
+    confidence: "medium",
+    scheduleNeedsChecking: true,
+  }, index);
+}
+
 function gatewayAccessCandidate(
   leg: TripLeg,
   fromKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
@@ -156,7 +184,7 @@ function gatewayAccessCandidate(
     confidence: "medium",
     provenance: "planning_estimate",
     evidence: "canonical_gateway_access",
-    baseScore: MULTIMODAL_SELECTION_RULES.scores.canonicalGatewayAccess,
+    connectionCount: 0,
     reasons: ["A reviewed canonical gateway relationship establishes ground access between these endpoints.", "The duration is a conservative planning estimate because live road routing is unavailable."],
   });
 }
@@ -181,16 +209,8 @@ function segmentFromLeg(leg: TripLeg, index = 0): TransferSegment | null {
   }, index);
 }
 
-function candidateScore(base: number, durationMinutes: number, segmentCount: number, confidence: TransferJourneyCandidate["confidence"]) {
-  const durationPenalty = Math.min(8, durationMinutes / 240);
-  const connectionPenalty = Math.max(0, segmentCount - 1) * 3;
-  const confidenceAdjustment = confidence === "high" ? 4 : confidence === "low" ? -5 : 0;
-  return Number((base + confidenceAdjustment - durationPenalty - connectionPenalty).toFixed(2));
-}
-
-function candidate(input: Omit<TransferJourneyCandidate, "score"> & { baseScore: number }): TransferJourneyCandidate {
-  const { baseScore, ...rest } = input;
-  return { ...rest, score: candidateScore(baseScore, input.totalDurationMinutes, input.segments.length, input.confidence) };
+function candidate(input: Omit<TransferJourneyCandidate, "score">): TransferJourneyCandidate {
+  return { ...input, score: 0 };
 }
 
 function exactTransferCandidate(
@@ -222,7 +242,7 @@ function exactTransferCandidate(
     confidence: "high",
     provenance: "planning_estimate",
     evidence: "exact_transfer",
-    baseScore: MULTIMODAL_SELECTION_RULES.scores.exactTransfer,
+    connectionCount: mode === "road" ? 0 : null,
     reasons: ["An exact canonical transfer fact supports this mode and planning duration."],
   });
 }
@@ -246,7 +266,7 @@ function railCandidate(
   const distanceKm = from?.coordinates && to?.coordinates ? haversineKm(from.coordinates, to.coordinates) : null;
   if (!from || !to || distanceKm === null
     || distanceKm < MULTIMODAL_SELECTION_RULES.minimumIntercityRailKm
-    || distanceKm > MULTIMODAL_SELECTION_RULES.maximumInferredRailKm) return null;
+    || (!networkEvidence && distanceKm > MULTIMODAL_SELECTION_RULES.maximumInferredRailKm)) return null;
   const legacyEndpointEvidence = sameCountry(from, to)
     && hasDirectConnectivity(fromKnowledge, "rail")
     && hasDirectConnectivity(toKnowledge, "rail");
@@ -255,11 +275,17 @@ function railCandidate(
     MULTIMODAL_SELECTION_RULES.inferredRailStationAllowanceMinutes
       + (distanceKm / MULTIMODAL_SELECTION_RULES.inferredRailSpeedKmh) * 60,
   );
+  const railFrom = networkEvidence?.fromAccessGateway ? gatewayEndpoint(networkEvidence.fromAccessGateway) : from;
+  const railTo = networkEvidence?.toAccessGateway ? gatewayEndpoint(networkEvidence.toAccessGateway) : to;
+  const originAccess = networkEvidence?.fromAccessGateway
+    ? reviewedRailAccessSegment(from, railFrom, networkEvidence.fromAccessGateway.planningMinutes, 0)
+    : null;
+  const railDistanceKm = haversineKm(railFrom.coordinates ?? undefined, railTo.coordinates ?? undefined) ?? distanceKm;
   const railSegment = segment({
     mode: "train",
-    fromEndpoint: from,
-    toEndpoint: to,
-    distanceKm,
+    fromEndpoint: railFrom,
+    toEndpoint: railTo,
+    distanceKm: railDistanceKm,
     durationMinutes: duration,
     provider: networkEvidence
       ? `${networkEvidence.networkLabel}; Morrovia planning estimate, verify the live timetable.`
@@ -267,17 +293,25 @@ function railCandidate(
     provenance: "planning_estimate",
     confidence: "medium",
     scheduleNeedsChecking: true,
-  });
+  }, originAccess ? 1 : 0);
+  const destinationAccess = networkEvidence?.toAccessGateway
+    ? reviewedRailAccessSegment(railTo, to, networkEvidence.toAccessGateway.planningMinutes, originAccess ? 2 : 1)
+    : null;
+  const segments = [originAccess, railSegment, destinationAccess].filter((item): item is TransferSegment => Boolean(item));
+  const totalDurationMinutes = segments.reduce((total, item) => total + (item.durationMinutes ?? 0), 0);
+  const knownDistances = segments.map((item) => item.distanceKm).filter((value): value is number => value !== null);
   return candidate({
     id: networkEvidence ? `rail:network:${networkEvidence.networkId}` : "rail:direct-connectivity",
-    summaryMode: "train",
-    segments: [railSegment],
-    totalDurationMinutes: duration,
-    distanceKm,
+    summaryMode: segments.length > 1 ? "mixed" : "train",
+    segments,
+    totalDurationMinutes,
+    distanceKm: knownDistances.length === segments.length ? knownDistances.reduce((total, value) => total + value, 0) : distanceKm,
     confidence: "medium",
     provenance: "planning_estimate",
     evidence: networkEvidence ? "intercity_rail_network" : "direct_rail_connectivity",
-    baseScore: MULTIMODAL_SELECTION_RULES.scores.directRailConnectivity,
+    connectionCount: networkEvidence?.connectionCount === null || networkEvidence?.connectionCount === undefined
+      ? null
+      : networkEvidence.connectionCount + Math.max(0, segments.length - 1),
     reasons: networkEvidence
       ? [`Both canonical endpoints share reviewed strong intercity evidence on the ${networkEvidence.networkLabel}.`, "Rail avoids airport and driving friction for this intercity distance."]
       : ["Both canonical endpoints have direct national or regional rail connectivity.", "Rail avoids airport and driving friction for this intercity distance."],
@@ -285,15 +319,18 @@ function railCandidate(
 }
 
 async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Promise<TransferJourneyCandidate | null> {
-  const existing = leg.mode === "road" && leg.durationMinutes !== null && leg.provenance === "routing_engine"
-    ? leg
-    : (await resolveCanonicalRoadFallback({
+  const routed = leg.mode === "road" && leg.durationMinutes !== null && leg.provenance === "routing_engine"
+    ? { leg, outcome: "resolved" as const }
+    : await resolveCanonicalRoadFallback({
         ...leg,
         mode: "unknown",
         durationMinutes: null,
         routeMetadata: { ...leg.routeMetadata, source: "morrovia-planner", roadFallbackEligible: true, decisionOption: undefined },
-      }, { provider })).leg;
-  if (existing.mode !== "road" || existing.durationMinutes === null) return null;
+      }, { provider });
+  const existing = routed.leg;
+  if (existing.mode !== "road" || existing.durationMinutes === null) {
+    return routed.reason === "provider_no_route" ? null : deterministicRoadCandidate(leg);
+  }
   const roadSegment = segmentFromLeg(existing);
   if (!roadSegment || roadSegment.durationMinutes === null) return null;
   return candidate({
@@ -305,8 +342,42 @@ async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Prom
     confidence: existing.confidence === "high" ? "high" : existing.confidence === "low" ? "low" : "medium",
     provenance: "routing_engine",
     evidence: "routed_road",
-    baseScore: MULTIMODAL_SELECTION_RULES.scores.routedRoad,
+    connectionCount: 0,
     reasons: ["The road provider returned a plausible routed journey between the actual endpoints."],
+  });
+}
+
+function deterministicRoadCandidate(leg: TripLeg): TransferJourneyCandidate | null {
+  const from = leg.fromEndpoint;
+  const to = leg.toEndpoint;
+  if (!from || !to || !from.coordinates || !to.coordinates || !sameCountry(from, to)) return null;
+  if (directRoadPlausibilityConflict(leg)) return null;
+  const distanceKm = haversineKm(from.coordinates, to.coordinates);
+  if (distanceKm === null || distanceKm < 1 || distanceKm > MULTIMODAL_SELECTION_RULES.maximumDeterministicRoadFallbackKm) return null;
+  const existingMinutes = leg.mode === "road" ? leg.doorToDoorMinutes ?? leg.durationMinutes : null;
+  const durationMinutes = existingMinutes ?? roundPlanningMinutes(60 + (distanceKm / 55) * 60);
+  const roadSegment = segment({
+    mode: "road",
+    fromEndpoint: from,
+    toEndpoint: to,
+    distanceKm,
+    durationMinutes,
+    provider: "Morrovia coordinate-based road planning fallback; verify the live route and suitable ground transport.",
+    provenance: "planning_estimate",
+    confidence: "low",
+    scheduleNeedsChecking: true,
+  });
+  return candidate({
+    id: "road:deterministic-fallback",
+    summaryMode: "road",
+    segments: [roadSegment],
+    totalDurationMinutes: durationMinutes,
+    distanceKm,
+    confidence: "low",
+    provenance: "planning_estimate",
+    evidence: "deterministic_road_estimate",
+    connectionCount: 0,
+    reasons: ["Canonical coordinates support a conservative domestic road estimate after routed evidence was unavailable.", "This remains low confidence and needs a live route check."],
   });
 }
 
@@ -315,16 +386,33 @@ function directFlightCandidate(
   fromKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
   toKnowledge: ReturnType<TransferEvidenceProvider["forTransferResolution"]>,
 ): TransferJourneyCandidate | null {
-  if (leg.mode !== "flight" || leg.durationMinutes === null || !leg.fromEndpoint || !leg.toEndpoint) return null;
+  if (!leg.fromEndpoint || !leg.toEndpoint) return null;
   const destinationRequiresGateway = toKnowledge.airGateways.status === "known" && toKnowledge.airGateways.value.length > 0;
   const originRequiresGateway = fromKnowledge.airGateways.status === "known" && fromKnowledge.airGateways.value.length > 0;
   if (destinationRequiresGateway || originRequiresGateway) return null;
   const directEvidence = hasDirectConnectivity(fromKnowledge, "air") && hasDirectConnectivity(toKnowledge, "air");
   const international = !sameCountry(leg.fromEndpoint, leg.toEndpoint);
   const distanceKm = leg.straightLineDistanceKm ?? leg.distanceKm;
+  if (distanceKm === null) return null;
+  if (!directEvidence && (leg.mode !== "flight" || leg.durationMinutes === null)) return null;
   if (!directEvidence && international
     && (distanceKm === null || distanceKm < MULTIMODAL_SELECTION_RULES.minimumUnverifiedInternationalFlightKm)) return null;
-  const flightSegment = segmentFromLeg(leg);
+  const durationMinutes = leg.mode === "flight" && leg.durationMinutes !== null
+    ? leg.doorToDoorMinutes ?? leg.durationMinutes
+    : roundPlanningMinutes(estimateFlightPlanningMinutes(distanceKm).totalMinutes);
+  const flightSegment = leg.mode === "flight"
+    ? segmentFromLeg(leg)
+    : segment({
+        mode: "flight",
+        fromEndpoint: leg.fromEndpoint,
+        toEndpoint: leg.toEndpoint,
+        distanceKm,
+        durationMinutes,
+        provider: "Morrovia door-to-door flight planning estimate from reviewed endpoint air connectivity; verify the live service.",
+        provenance: "planning_estimate",
+        confidence: "medium",
+        scheduleNeedsChecking: true,
+      });
   if (!flightSegment || flightSegment.durationMinutes === null) return null;
   if (!directEvidence) {
     flightSegment.provider = "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.";
@@ -338,7 +426,7 @@ function directFlightCandidate(
     confidence: directEvidence ? "medium" : "low",
     provenance: leg.provenance ?? "planning_estimate",
     evidence: directEvidence ? "direct_air_connectivity" : "legacy_flight_estimate",
-    baseScore: directEvidence ? MULTIMODAL_SELECTION_RULES.scores.directAirConnectivity : MULTIMODAL_SELECTION_RULES.scores.legacyFlightEstimate,
+    connectionCount: directEvidence ? 0 : null,
     reasons: [directEvidence ? "Both actual endpoints have direct air connectivity evidence." : "The legacy planner supports a flight estimate and no gateway contradiction is known."],
   });
 }
@@ -416,7 +504,7 @@ async function mixedGatewayCandidate(
     confidence: "medium",
     provenance: "planning_estimate",
     evidence: "air_gateway_composition",
-    baseScore: MULTIMODAL_SELECTION_RULES.scores.airGatewayComposition,
+    connectionCount: Math.max(0, segments.length - 1),
     reasons: [
       "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
       segments.some((item) => item.mode === "road" && item.provenance !== "routing_engine")
@@ -430,6 +518,9 @@ function shouldPreserve(leg: TripLeg) {
   const metadata = leg.routeMetadata as { source?: unknown; routingConfidence?: unknown; decisionOption?: unknown; userConfirmed?: unknown; confirmed?: unknown };
   if (metadata.decisionOption !== undefined || metadata.userConfirmed === true || metadata.confirmed === true) return true;
   if (metadata.source === "curated-route" || metadata.source === "traveller-authored" || metadata.source === "imported-booking") return true;
+  const { excludedModes } = transportRules(leg);
+  if (metadata.source === "morrovia-planner"
+    && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)))) return false;
   if (leg.mode !== "unknown" && metadata.source === undefined) return true;
   if (leg.mode === "train" || leg.mode === "ferry" || leg.mode === "walk" || leg.mode === "mixed") {
     const deterministicNetworkEstimateNeedsResolution = leg.mode === "train"
@@ -453,14 +544,115 @@ function candidateAllowed(candidate: TransferJourneyCandidate, excludedModes: Se
   return candidate.segments.every((item) => !excludedModes.has(item.mode));
 }
 
-function withPreferenceScore(candidate: TransferJourneyCandidate, preferredModes: Set<string>) {
+function candidateMatchesPreference(candidate: TransferJourneyCandidate, preferredModes: Set<string>) {
   const preferences = new Set([...preferredModes].map((mode) => mode === "drive" ? "road" : mode));
-  if (!candidate.segments.some((item) => preferences.has(item.mode))) return candidate;
-  return { ...candidate, score: Number((candidate.score + 3).toFixed(2)), reasons: [...candidate.reasons, "This mode matches the traveller's stated transport preference."] };
+  return candidate.segments.some((item) => preferences.has(item.mode));
+}
+
+function evidenceAdjustment(evidence: TransferEvidenceKind) {
+  if (evidence === "exact_transfer") return 6;
+  if (evidence === "intercity_rail_network") return 4;
+  if (evidence === "routed_road") return 3;
+  if (evidence === "direct_rail_connectivity" || evidence === "direct_air_connectivity" || evidence === "air_gateway_composition") return 2;
+  if (evidence === "canonical_gateway_access") return 1;
+  if (evidence === "legacy_flight_estimate") return -6;
+  return -8;
+}
+
+function isRailJourney(candidate: TransferJourneyCandidate) {
+  return candidate.segments.some((segment) => segment.mode === "train");
+}
+
+function scoreCandidate(
+  candidate: TransferJourneyCandidate,
+  preferredModes: Set<string>,
+  fastestAirMinutes: number | null,
+) {
+  const rules = MULTIMODAL_SELECTION_RULES.scoring;
+  const durationPenalty = Math.min(45, candidate.totalDurationMinutes / rules.minutesPerDurationPoint);
+  const connectionPenalty = candidate.connectionCount === null
+    ? rules.unknownChangesPenalty
+    : candidate.connectionCount * rules.changePenalty;
+  const confidenceAdjustment = candidate.confidence === "high" ? 4 : candidate.confidence === "low" ? -10 : 0;
+  const airportPenalty = candidate.segments.some((segment) => segment.mode === "flight") ? rules.airportComplexityPenalty : 0;
+  const roadMinutes = candidate.segments.filter((segment) => segment.mode === "road").reduce((total, segment) => total + (segment.durationMinutes ?? 0), 0);
+  const drivingPenalty = candidate.summaryMode === "road" ? Math.min(8, roadMinutes / 120) : 0;
+  const mixedPenalty = candidate.summaryMode === "mixed" ? rules.mixedJourneyPenalty : 0;
+  const preferred = candidateMatchesPreference(candidate, preferredModes);
+  let railBonus = 0;
+  if (isRailJourney(candidate) && candidate.confidence !== "low" && (candidate.connectionCount === null || candidate.connectionCount <= 1)) {
+    const pureRailFactor = candidate.summaryMode === "train" ? 1 : 0.5;
+    if (candidate.totalDurationMinutes <= 240) railBonus = 10 * pureRailFactor;
+    else if (candidate.totalDurationMinutes <= rules.strongRailMaximumMinutes) railBonus = 8 * pureRailFactor;
+    else if (candidate.totalDurationMinutes <= rules.competitiveRailMaximumMinutes) {
+      const airGap = fastestAirMinutes === null ? null : candidate.totalDurationMinutes - fastestAirMinutes;
+      railBonus = (airGap === null
+        ? 4
+        : airGap <= rules.competitiveRailCloseToAirMinutes
+          ? 6
+          : airGap <= rules.competitiveRailMaximumAirGapMinutes
+            ? 2
+            : 0) * pureRailFactor;
+    }
+  }
+  const raw = rules.maximumScore
+    - durationPenalty
+    - connectionPenalty
+    - airportPenalty
+    - drivingPenalty
+    - mixedPenalty
+    + confidenceAdjustment
+    + evidenceAdjustment(candidate.evidence)
+    + (preferred ? rules.preferenceBonus : 0)
+    + railBonus;
+  const score = Number(Math.max(0, Math.min(rules.maximumScore, raw)).toFixed(2));
+  const reasons = [...candidate.reasons];
+  if (preferred) reasons.push("This mode matches the traveller's stated transport preference.");
+  if (railBonus > 0) reasons.push(candidate.totalDurationMinutes <= rules.strongRailMaximumMinutes
+    ? `Rail is likely simplest here: about ${Math.round(candidate.totalDurationMinutes / 5) * 5} minutes door to door with credible intercity evidence.`
+    : "Rail remains competitive because its door-to-door time and change burden are close to flying.");
+  return { ...candidate, score, reasons };
+}
+
+function rankCandidates(candidates: TransferJourneyCandidate[], preferredModes: Set<string>) {
+  const airMinutes = candidates
+    .filter((item) => item.segments.some((segment) => segment.mode === "flight"))
+    .map((item) => item.totalDurationMinutes);
+  const fastestAirMinutes = airMinutes.length ? Math.min(...airMinutes) : null;
+  return candidates
+    .map((item) => scoreCandidate(item, preferredModes, fastestAirMinutes))
+    .sort((left, right) => right.score - left.score || left.totalDurationMinutes - right.totalDurationMinutes || left.id.localeCompare(right.id));
+}
+
+function formatPlanningDuration(minutes: number) {
+  const rounded = Math.max(15, Math.round(minutes / 5) * 5);
+  const hours = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  if (!hours) return `${remainder}m`;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+function selectionRationale(selected: TransferJourneyCandidate, diagnostic: TransferResolutionDiagnostic) {
+  if (isRailJourney(selected)) {
+    return `Train is likely simplest here: about ${formatPlanningDuration(selected.totalDurationMinutes)} door to door.`;
+  }
+  if (selected.segments.some((segment) => segment.mode === "flight")) {
+    const rail = diagnostic.candidates.find((candidate) => candidate.id.startsWith("rail:"));
+    if (rail && rail.totalDurationMinutes - selected.totalDurationMinutes >= MULTIMODAL_SELECTION_RULES.scoring.competitiveRailMaximumAirGapMinutes) {
+      return "Flying is materially faster for this leg.";
+    }
+  }
+  return null;
 }
 
 function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagnostic: TransferResolutionDiagnostic): TripLeg {
-  const dominantMode = selected.summaryMode === "mixed" ? "flight" : selected.summaryMode === "train" ? "train" : selected.summaryMode;
+  const dominantMode = selected.summaryMode === "mixed"
+    ? selected.segments.some((segment) => segment.mode === "flight")
+      ? "flight"
+      : selected.segments.some((segment) => segment.mode === "train")
+        ? "train"
+        : "road"
+    : selected.summaryMode === "train" ? "train" : selected.summaryMode;
   const transferImpact = estimateTransferImpact({
     mode: dominantMode === "walk" || dominantMode === "unknown" ? "road" : dominantMode,
     knownDoorToDoorMinutes: {
@@ -470,7 +662,7 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
       sources: [{ id: "morrovia:multimodal-resolution-v1", label: "Morrovia multimodal resolver", kind: "curated", supports: "Aggregated segment planning duration." }],
     },
     international: Boolean(leg.fromEndpoint && leg.toEndpoint && !sameCountry(leg.fromEndpoint, leg.toEndpoint)),
-    connectionCount: selected.evidence === "legacy_flight_estimate" ? null : Math.max(0, selected.segments.length - 1),
+    connectionCount: selected.evidence === "legacy_flight_estimate" ? null : selected.connectionCount,
   });
   const onlySegment = selected.segments.length === 1 ? selected.segments[0] : null;
   return {
@@ -483,9 +675,12 @@ function applyCandidate(leg: TripLeg, selected: TransferJourneyCandidate, diagno
     distanceKm: selected.distanceKm,
     routedDistanceKm: onlySegment?.mode === "road" ? onlySegment.distanceKm : null,
     routeGeometry: onlySegment?.routeGeometry,
-    provider: selected.summaryMode === "mixed"
-      ? "Morrovia multimodal planning estimate; verify each live service before booking."
-      : selected.segments[0]?.provider ?? leg.provider,
+    provider: [
+      selectionRationale(selected, diagnostic),
+      selected.summaryMode === "mixed"
+        ? "Morrovia multimodal planning estimate; verify each live service before booking."
+        : selected.segments[0]?.provider ?? leg.provider,
+    ].filter(Boolean).join(" "),
     provenance: selected.provenance,
     confidence: selected.confidence,
     scheduleNeedsChecking: true,
@@ -531,29 +726,34 @@ export async function resolveCanonicalTransferJourney(
   const canonicalGatewayAccess = excludedModes.has("road") ? null : gatewayAccessCandidate(leg, fromKnowledge, toKnowledge);
   const candidates = [exact, rail, mixed, directFlight]
     .filter((item): item is TransferJourneyCandidate => Boolean(item))
-    .filter((item) => candidateAllowed(item, excludedModes))
-    .map((item) => withPreferenceScore(item, preferredModes));
+    .filter((item) => candidateAllowed(item, excludedModes));
 
-  // Strong exact/rail/gateway evidence makes a road-provider comparison unnecessary.
-  const hasStrongCandidate = candidates.some((item) => item.evidence === "exact_transfer" || item.evidence === "intercity_rail_network" || item.evidence === "direct_rail_connectivity" || item.evidence === "air_gateway_composition");
-  if (!hasStrongCandidate && !excludedModes.has("road")) {
+  const travellerPrefersRoad = preferredModes.has("road") || preferredModes.has("drive");
+  const credibleLowChangeRailDominatesRoad = Boolean(rail
+    && rail.confidence !== "low"
+    && rail.totalDurationMinutes <= MULTIMODAL_SELECTION_RULES.scoring.strongRailMaximumMinutes
+    && (rail.connectionCount === null || rail.connectionCount <= 1)
+    && !travellerPrefersRoad);
+  if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad) {
     const road = await roadCandidate(leg, options.provider);
-    if (road) candidates.push(withPreferenceScore(road, preferredModes));
-    else if (canonicalGatewayAccess) candidates.push(withPreferenceScore(canonicalGatewayAccess, preferredModes));
-    else diagnostic.rejected.push("No plausible provider-routed road candidate was available.");
-  } else if (rail) {
-    diagnostic.rejected.push("Road provider comparison skipped because strong rail evidence already resolves the journey.");
+    if (road) candidates.push(road);
+    else if (canonicalGatewayAccess) candidates.push(canonicalGatewayAccess);
+    else diagnostic.rejected.push("No plausible routed or deterministic road candidate was available.");
+  } else if (credibleLowChangeRailDominatesRoad) {
+    diagnostic.rejected.push("Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference.");
   }
-  candidates.sort((left, right) => right.score - left.score || left.totalDurationMinutes - right.totalDurationMinutes || left.id.localeCompare(right.id));
-  diagnostic.candidates = candidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates).map(({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }) => ({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }));
-  const selected = candidates[0];
+  const rankedCandidates = rankCandidates(candidates, preferredModes);
+  diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates).map(({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }) => ({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }));
+  const selected = rankedCandidates[0];
   if (!selected) {
     const source = leg.routeMetadata.source;
     const gatewayContradictsDirectFlight = leg.mode === "flight"
       && (fromKnowledge.airGateways.status === "known" || toKnowledge.airGateways.status === "known");
     const unsupportedPlannerRoad = leg.mode === "road" && source === "morrovia-planner";
     const unsupportedPlannerFlight = leg.mode === "flight" && source === "morrovia-planner" && !directFlight;
-    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight) {
+    const excludedPlannerMode = source === "morrovia-planner"
+      && (excludedModes.has(leg.mode) || leg.segments?.some((segment) => excludedModes.has(segment.mode)));
+    if (gatewayContradictsDirectFlight || unsupportedPlannerRoad || unsupportedPlannerFlight || excludedPlannerMode) {
       return {
         leg: {
           ...leg,
@@ -564,7 +764,9 @@ export async function resolveCanonicalTransferJourney(
           usableDayLoss: null,
           provider: gatewayContradictsDirectFlight
             ? "A flight gateway is known, but its ground access could not be resolved."
-            : unsupportedPlannerFlight
+            : excludedPlannerMode
+              ? "The inferred transport mode conflicts with a hard traveller constraint, and no supported compliant alternative is known."
+              : unsupportedPlannerFlight
               ? "Air is plausible, but Morrovia has no direct-service or complete multimodal evidence for this regional cross-border journey."
             : "A plausible road route could not be established.",
           provenance: "unknown",

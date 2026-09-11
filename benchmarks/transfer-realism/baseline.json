@@ -62,8 +62,8 @@
       "percent": 100
     },
     "providerEfficiency": {
-      "calls": 13,
-      "allowedCalls": 14,
+      "calls": 14,
+      "allowedCalls": 15,
       "efficientFixtures": 28,
       "totalFixtures": 28,
       "duplicateCalls": 0,
@@ -95,7 +95,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 255,
-            "score": 74.94,
+            "score": 92.38,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -132,7 +132,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 90,
-            "score": 75.63,
+            "score": 99.25,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -169,7 +169,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 210,
-            "score": 75.13,
+            "score": 94.25,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -206,7 +206,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 150,
-            "score": 75.38,
+            "score": 96.75,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -243,7 +243,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 195,
-            "score": 75.19,
+            "score": 94.88,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -277,21 +277,22 @@
         "selected": "train",
         "candidates": [
           {
-            "id": "rail:direct-connectivity",
+            "id": "rail:network:japan-high-speed-intercity",
             "summaryMode": "train",
             "totalDurationMinutes": 120,
-            "score": 85.5,
-            "evidence": "direct_rail_connectivity",
+            "score": 100,
+            "evidence": "intercity_rail_network",
             "reasons": [
-              "Both canonical endpoints have direct national or regional rail connectivity.",
-              "Rail avoids airport and driving friction for this intercity distance."
+              "Both canonical endpoints share reviewed strong intercity evidence on the Japan high-speed and intercity rail network.",
+              "Rail avoids airport and driving friction for this intercity distance.",
+              "Rail is likely simplest here: about 120 minutes door to door with credible intercity evidence."
             ]
           }
         ],
         "rejected": [
-          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+          "Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference."
         ],
-        "selectedCandidateId": "rail:direct-connectivity"
+        "selectedCandidateId": "rail:network:japan-high-speed-intercity"
       },
       "failureCategories": [],
       "failureOwnership": "none"
@@ -345,16 +346,17 @@
             "id": "rail:network:western-europe-high-speed",
             "summaryMode": "train",
             "totalDurationMinutes": 225,
-            "score": 85.06,
+            "score": 100,
             "evidence": "intercity_rail_network",
             "reasons": [
               "Both canonical endpoints share reviewed strong intercity evidence on the Western Europe high-speed intercity network.",
-              "Rail avoids airport and driving friction for this intercity distance."
+              "Rail avoids airport and driving friction for this intercity distance.",
+              "Rail is likely simplest here: about 225 minutes door to door with credible intercity evidence."
             ]
           }
         ],
         "rejected": [
-          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+          "Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference."
         ],
         "selectedCandidateId": "rail:network:western-europe-high-speed"
       },
@@ -435,16 +437,17 @@
             "id": "rail:direct-connectivity",
             "summaryMode": "train",
             "totalDurationMinutes": 60,
-            "score": 85.75,
+            "score": 100,
             "evidence": "direct_rail_connectivity",
             "reasons": [
               "Both canonical endpoints have direct national or regional rail connectivity.",
-              "Rail avoids airport and driving friction for this intercity distance."
+              "Rail avoids airport and driving friction for this intercity distance.",
+              "Rail is likely simplest here: about 60 minutes door to door with credible intercity evidence."
             ]
           }
         ],
         "rejected": [
-          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+          "Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference."
         ],
         "selectedCandidateId": "rail:direct-connectivity"
       },
@@ -500,16 +503,17 @@
             "id": "rail:network:uk-intercity-mainline",
             "summaryMode": "train",
             "totalDurationMinutes": 285,
-            "score": 84.81,
+            "score": 99.5,
             "evidence": "intercity_rail_network",
             "reasons": [
               "Both canonical endpoints share reviewed strong intercity evidence on the United Kingdom intercity mainline network.",
-              "Rail avoids airport and driving friction for this intercity distance."
+              "Rail avoids airport and driving friction for this intercity distance.",
+              "Rail is likely simplest here: about 285 minutes door to door with credible intercity evidence."
             ]
           }
         ],
         "rejected": [
-          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+          "Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference."
         ],
         "selectedCandidateId": "rail:network:uk-intercity-mainline"
       },
@@ -540,7 +544,7 @@
             "id": "flight:legacy-estimate",
             "summaryMode": "flight",
             "totalDurationMinutes": 660,
-            "score": 60.25,
+            "score": 55,
             "evidence": "legacy_flight_estimate",
             "reasons": [
               "The legacy planner supports a flight estimate and no gateway contradiction is known."
@@ -548,7 +552,7 @@
           }
         ],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ],
         "selectedCandidateId": "flight:legacy-estimate"
       },
@@ -579,7 +583,7 @@
             "id": "flight:legacy-estimate",
             "summaryMode": "flight",
             "totalDurationMinutes": 465,
-            "score": 61.06,
+            "score": 61.5,
             "evidence": "legacy_flight_estimate",
             "reasons": [
               "The legacy planner supports a flight estimate and no gateway contradiction is known."
@@ -587,7 +591,7 @@
           }
         ],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ],
         "selectedCandidateId": "flight:legacy-estimate"
       },
@@ -618,7 +622,7 @@
             "id": "flight:legacy-estimate",
             "summaryMode": "flight",
             "totalDurationMinutes": 330,
-            "score": 61.63,
+            "score": 66,
             "evidence": "legacy_flight_estimate",
             "reasons": [
               "The legacy planner supports a flight estimate and no gateway contradiction is known."
@@ -626,7 +630,7 @@
           }
         ],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ],
         "selectedCandidateId": "flight:legacy-estimate"
       },
@@ -657,7 +661,7 @@
             "id": "flight:legacy-estimate",
             "summaryMode": "flight",
             "totalDurationMinutes": 525,
-            "score": 60.81,
+            "score": 59.5,
             "evidence": "legacy_flight_estimate",
             "reasons": [
               "The legacy planner supports a flight estimate and no gateway contradiction is known."
@@ -665,7 +669,7 @@
           }
         ],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ],
         "selectedCandidateId": "flight:legacy-estimate"
       },
@@ -696,7 +700,7 @@
             "id": "mixed:air-gateway",
             "summaryMode": "mixed",
             "totalDurationMinutes": 525,
-            "score": 76.81,
+            "score": 72.5,
             "evidence": "air_gateway_composition",
             "reasons": [
               "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
@@ -704,7 +708,9 @@
             ]
           }
         ],
-        "rejected": [],
+        "rejected": [
+          "No plausible routed or deterministic road candidate was available."
+        ],
         "selectedCandidateId": "mixed:air-gateway"
       },
       "failureCategories": [],
@@ -721,7 +727,7 @@
       "segmentIntegrity": true,
       "presentationCorrect": true,
       "deterministic": true,
-      "providerCalls": 1,
+      "providerCalls": 2,
       "providerCallEfficient": true,
       "duplicateProviderCalls": 0,
       "confidence": "medium",
@@ -734,11 +740,32 @@
             "id": "mixed:air-gateway",
             "summaryMode": "mixed",
             "totalDurationMinutes": 285,
-            "score": 77.81,
+            "score": 80.5,
             "evidence": "air_gateway_composition",
             "reasons": [
               "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
               "Provider-routed ground access completes the journey to the actual stop."
+            ]
+          },
+          {
+            "id": "road:routed",
+            "summaryMode": "road",
+            "totalDurationMinutes": 720,
+            "score": 73,
+            "evidence": "routed_road",
+            "reasons": [
+              "The road provider returned a plausible routed journey between the actual endpoints."
+            ]
+          },
+          {
+            "id": "rail:network:vietnam-north-south-intercity",
+            "summaryMode": "mixed",
+            "totalDurationMinutes": 750,
+            "score": 71,
+            "evidence": "intercity_rail_network",
+            "reasons": [
+              "Both canonical endpoints share reviewed strong intercity evidence on the Vietnam north-south intercity rail network.",
+              "Rail avoids airport and driving friction for this intercity distance."
             ]
           }
         ],
@@ -772,7 +799,7 @@
             "id": "mixed:air-gateway",
             "summaryMode": "mixed",
             "totalDurationMinutes": 525,
-            "score": 76.81,
+            "score": 72.5,
             "evidence": "air_gateway_composition",
             "reasons": [
               "Canonical gateway evidence prevents treating the non-airport destination as the flight endpoint.",
@@ -780,7 +807,9 @@
             ]
           }
         ],
-        "rejected": [],
+        "rejected": [
+          "No plausible routed or deterministic road candidate was available."
+        ],
         "selectedCandidateId": "mixed:air-gateway"
       },
       "failureCategories": [],
@@ -810,7 +839,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 45,
-            "score": 75.81,
+            "score": 100,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -847,7 +876,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 300,
-            "score": 74.75,
+            "score": 90.5,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."
@@ -909,16 +938,17 @@
             "id": "rail:network:central-europe-intercity",
             "summaryMode": "train",
             "totalDurationMinutes": 120,
-            "score": 85.5,
+            "score": 100,
             "evidence": "intercity_rail_network",
             "reasons": [
               "Both canonical endpoints share reviewed strong intercity evidence on the Central Europe intercity network.",
-              "Rail avoids airport and driving friction for this intercity distance."
+              "Rail avoids airport and driving friction for this intercity distance.",
+              "Rail is likely simplest here: about 120 minutes door to door with credible intercity evidence."
             ]
           }
         ],
         "rejected": [
-          "Road provider comparison skipped because strong rail evidence already resolves the journey."
+          "Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference."
         ],
         "selectedCandidateId": "rail:network:central-europe-intercity"
       },
@@ -946,7 +976,7 @@
         "selected": "unresolved",
         "candidates": [],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ]
       },
       "failureCategories": [
@@ -978,14 +1008,16 @@
             "id": "exact:ferry",
             "summaryMode": "ferry",
             "totalDurationMinutes": 150,
-            "score": 103.38,
+            "score": 100,
             "evidence": "exact_transfer",
             "reasons": [
               "An exact canonical transfer fact supports this mode and planning duration."
             ]
           }
         ],
-        "rejected": [],
+        "rejected": [
+          "No plausible routed or deterministic road candidate was available."
+        ],
         "selectedCandidateId": "exact:ferry"
       },
       "failureCategories": [],
@@ -1012,7 +1044,7 @@
         "selected": "unresolved",
         "candidates": [],
         "rejected": [
-          "No plausible provider-routed road candidate was available."
+          "No plausible routed or deterministic road candidate was available."
         ]
       },
       "failureCategories": [
@@ -1044,7 +1076,7 @@
             "id": "road:routed",
             "summaryMode": "road",
             "totalDurationMinutes": 75,
-            "score": 75.69,
+            "score": 99.88,
             "evidence": "routed_road",
             "reasons": [
               "The road provider returned a plausible routed journey between the actual endpoints."

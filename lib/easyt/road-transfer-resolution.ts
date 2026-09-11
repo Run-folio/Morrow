@@ -1,6 +1,7 @@
 import { knownKnowledgeFact, type KnowledgeSource } from "./destination-knowledge.ts";
 import { haversineKm } from "./planner.ts";
 import {
+  RoadRoutingError,
   type RoadRouteRequest,
   type RoadRouteResult,
   type RoadRoutingProvider,
@@ -18,6 +19,7 @@ export type RoadFallbackSkipReason =
   | "same_place"
   | "distance_out_of_scope"
   | "provider_failure"
+  | "provider_no_route"
   | "implausible_route";
 
 export type RoadFallbackResolution = {
@@ -145,8 +147,8 @@ export async function resolveCanonicalRoadFallback(
   let result: RoadRouteResult;
   try {
     result = await provider.route(request);
-  } catch {
-    return { leg, outcome: "unchanged", reason: "provider_failure" };
+  } catch (error) {
+    return { leg, outcome: "unchanged", reason: error instanceof RoadRoutingError && error.category === "no_route" ? "provider_no_route" : "provider_failure" };
   }
   if (!routeIsPlausible(result, straightLineDistanceKm)) return { leg, outcome: "unchanged", reason: "implausible_route" };
 

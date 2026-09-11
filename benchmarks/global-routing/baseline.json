@@ -2,8 +2,8 @@
   "version": "global-routing/v1",
   "fixtureCount": 51,
   "outcomes": {
-    "PASS": 2,
-    "PASS WITH EXPECTED UNCERTAINTY": 49,
+    "PASS": 5,
+    "PASS WITH EXPECTED UNCERTAINTY": 46,
     "WARNING": 0,
     "HARD FAILURE": 0
   },
@@ -35,7 +35,7 @@
     }
   },
   "p0RegressionFailures": [],
-  "unknownTransferCount": 55,
+  "unknownTransferCount": 47,
   "unresolvedPlaceCount": 59,
   "results": [
     {
@@ -629,7 +629,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 4,
+      "unknownTransferCount": 3,
       "unresolvedPlaceCount": 2,
       "routeEndpoints": [
         "Paris",
@@ -1672,7 +1672,7 @@
     },
     {
       "id": "vietnam-rail",
-      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "outcome": "PASS",
       "scores": {
         "semantic-understanding": {
           "earned": 4,
@@ -1702,7 +1702,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 2,
+      "unknownTransferCount": 0,
       "unresolvedPlaceCount": 0,
       "routeEndpoints": [
         "Hanoi",
@@ -1795,7 +1795,7 @@
     },
     {
       "id": "china-classic-rail",
-      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "outcome": "PASS",
       "scores": {
         "semantic-understanding": {
           "earned": 4,
@@ -1825,7 +1825,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 1,
+      "unknownTransferCount": 0,
       "unresolvedPlaceCount": 0,
       "routeEndpoints": [
         "Beijing",
@@ -1868,7 +1868,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 1,
+      "unknownTransferCount": 0,
       "unresolvedPlaceCount": 1,
       "routeEndpoints": [
         "Shanghai",
@@ -1923,7 +1923,7 @@
     },
     {
       "id": "japan-airport-origin",
-      "outcome": "PASS WITH EXPECTED UNCERTAINTY",
+      "outcome": "PASS",
       "scores": {
         "semantic-understanding": {
           "earned": 4,
@@ -1953,7 +1953,7 @@
       },
       "hardFailures": [],
       "warnings": [],
-      "unknownTransferCount": 3,
+      "unknownTransferCount": 0,
       "unresolvedPlaceCount": 0,
       "routeEndpoints": [
         "Tokyo",

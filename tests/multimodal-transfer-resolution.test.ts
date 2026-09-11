@@ -93,14 +93,14 @@ test("Huacachina to Lima selects one routed road journey and no unknown marker s
   assert.equal(provider.calls.length, 1);
 });
 
-test("Hiroshima to Kyoto selects generalizable direct rail evidence without calling road routing", async () => {
+test("Hiroshima to Kyoto selects reviewed sub-six-hour rail without redundant road routing", async () => {
   const provider = new FixtureRoadProvider();
   const first = await resolveCanonicalTransferJourney(baseline(hiroshima, kyoto), { provider });
   const second = await resolveCanonicalTransferJourney(baseline(hiroshima, kyoto), { provider });
   assert.equal(first.leg.mode, "train");
   assert.equal(first.leg.durationMinutes, 120);
   assert.equal(first.leg.confidence, "medium");
-  assert.equal(first.diagnostic.selectedCandidateId, "rail:direct-connectivity");
+  assert.equal(first.diagnostic.selectedCandidateId, "rail:network:japan-high-speed-intercity");
   assert.deepEqual(first.diagnostic, second.diagnostic);
   assert.equal(provider.calls.length, 0);
 });

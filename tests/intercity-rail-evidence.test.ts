@@ -152,7 +152,7 @@ test("Builder-equivalent Paris to Amsterdam to Brussels uses the same rail mode 
   assert.equal(routeTransferSavingMinutes(route), 105);
 });
 
-test("deterministic rail network evidence survives unavailable exact or live provider data", async () => {
+test("deterministic rail network evidence survives unavailable exact data without inferring cross-border road", async () => {
   const provider = new CountingRoadProvider();
   const providerBrussels = providerStop("brussels-fallback", "Brussels", "Belgium", [4.3517, 50.8503]);
   const providerAmsterdam = providerStop("amsterdam-fallback", "Amsterdam", "Netherlands", [4.9041, 52.3676]);
@@ -165,14 +165,14 @@ test("deterministic rail network evidence survives unavailable exact or live pro
   assert.equal(result.leg.mode, "train");
   assert.ok(result.leg.durationMinutes !== null && result.leg.durationMinutes >= 90 && result.leg.durationMinutes <= 180);
   assert.match(result.diagnostic.selectedCandidateId ?? "", /^rail:network:/);
-  assert.equal(provider.calls.length, 0);
+  assert.equal(provider.calls.length, 0, "cross-border road inference remains unsupported without explicit border evidence");
 });
 
-test("reviewed network evidence creates domestic and cross-border rail candidates without road calls", async () => {
-  for (const [from, to, expectedMinutes] of [
-    [paris, amsterdam, 225],
-    [london, edinburgh, 285],
-    [salzburg, munich, 120],
+test("reviewed sub-six-hour network evidence avoids redundant road lookups", async () => {
+  for (const [from, to, expectedMinutes, expectedRoadCalls] of [
+    [paris, amsterdam, 225, 0],
+    [london, edinburgh, 285, 0],
+    [salzburg, munich, 120, 0],
   ] as const) {
     const provider = new CountingRoadProvider();
     const result = await resolveCanonicalTransferJourney(unresolvedLeg(from, to), { provider });
@@ -180,7 +180,7 @@ test("reviewed network evidence creates domestic and cross-border rail candidate
     assert.equal(result.leg.durationMinutes, expectedMinutes);
     assert.match(result.diagnostic.selectedCandidateId ?? "", /^rail:network:/);
     assert.equal(result.diagnostic.candidates[0]?.evidence, "intercity_rail_network");
-    assert.equal(provider.calls.length, 0);
+    assert.equal(provider.calls.length, expectedRoadCalls);
   }
 });
 
