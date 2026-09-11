@@ -98,7 +98,7 @@ test("Hiroshima to Kyoto selects reviewed sub-six-hour rail without redundant ro
   const first = await resolveCanonicalTransferJourney(baseline(hiroshima, kyoto), { provider });
   const second = await resolveCanonicalTransferJourney(baseline(hiroshima, kyoto), { provider });
   assert.equal(first.leg.mode, "train");
-  assert.equal(first.leg.durationMinutes, 120);
+  assert.equal(first.leg.durationMinutes, 165);
   assert.equal(first.leg.confidence, "medium");
   assert.equal(first.diagnostic.selectedCandidateId, "rail:network:japan-high-speed-intercity");
   assert.deepEqual(first.diagnostic, second.diagnostic);

@@ -561,7 +561,10 @@ export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowl
     minimumDistanceKm: 80,
     maximumDistanceKm: 1_000,
     routeDistanceFactor: 1.12,
-    planningSpeedKmh: 280,
+    // Effective network speed, including intermediate stops, rather than a
+    // train's peak operating speed. This keeps longer domestic legs from
+    // looking implausibly close to nonstop running time.
+    planningSpeedKmh: 175,
     stationAllowanceMinutes: 45,
     typicalChanges: 0,
     source: intercityRailEvidenceSource,

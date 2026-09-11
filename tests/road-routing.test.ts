@@ -147,11 +147,11 @@ test("a supported flight remains flight and never invokes road routing", async (
 });
 
 test("a second land-connected pair resolves when the provider succeeds", async () => {
-  const hiroshima = stop("hiroshima", 0, "Hiroshima", "Japan", [132.4553, 34.3853]);
-  const kyoto = stop("kyoto", 1, "Kyoto", "Japan", [135.7681, 35.0116]);
-  const unresolved = unresolvedInternalLeg(hiroshima, kyoto, "hiroshima-kyoto");
+  const austin = stop("austin", 0, "Austin", "United States", [-97.7431, 30.2672]);
+  const dallas = stop("dallas", 1, "Dallas", "United States", [-96.797, 32.7767]);
+  const unresolved = unresolvedInternalLeg(austin, dallas, "austin-dallas");
   const result = normalizeOpenRouteServiceRoute({
-    features: [{ properties: { summary: { distance: 361_000, duration: 15_600 } }, geometry: { type: "LineString", coordinates: [[132.4553, 34.3853], [134.1, 34.7], [135.7681, 35.0116]] } }],
+    features: [{ properties: { summary: { distance: 305_000, duration: 15_300 } }, geometry: { type: "LineString", coordinates: [[-97.7431, 30.2672], [-97.2, 31.5], [-96.797, 32.7767]] } }],
   }, "2026-09-01T12:00:00.000Z", "driving-car");
   const resolved = await resolveCanonicalRoadFallback(unresolved, { provider: new FixtureProvider(result) });
   assert.equal(resolved.leg.mode, "road");

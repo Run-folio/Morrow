@@ -329,7 +329,13 @@ async function roadCandidate(leg: TripLeg, provider?: RoadRoutingProvider): Prom
       }, { provider });
   const existing = routed.leg;
   if (existing.mode !== "road" || existing.durationMinutes === null) {
-    return routed.reason === "provider_no_route" ? null : deterministicRoadCandidate(leg);
+    // An attempted provider failure is evidence that this particular road
+    // journey could not be established. Do not overwrite that result with a
+    // coordinate-only estimate; the deterministic fallback is for a missing
+    // provider, not a failed live lookup.
+    return routed.reason === "provider_no_route" || (provider && routed.reason === "provider_failure")
+      ? null
+      : deterministicRoadCandidate(leg);
   }
   const roadSegment = segmentFromLeg(existing);
   if (!roadSegment || roadSegment.durationMinutes === null) return null;
@@ -737,8 +743,8 @@ export async function resolveCanonicalTransferJourney(
   if (!excludedModes.has("road") && !credibleLowChangeRailDominatesRoad) {
     const road = await roadCandidate(leg, options.provider);
     if (road) candidates.push(road);
-    else if (canonicalGatewayAccess) candidates.push(canonicalGatewayAccess);
-    else diagnostic.rejected.push("No plausible routed or deterministic road candidate was available.");
+    if (canonicalGatewayAccess) candidates.push(canonicalGatewayAccess);
+    if (!road && !canonicalGatewayAccess) diagnostic.rejected.push("No plausible routed or deterministic road candidate was available.");
   } else if (credibleLowChangeRailDominatesRoad) {
     diagnostic.rejected.push("Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference.");
   }

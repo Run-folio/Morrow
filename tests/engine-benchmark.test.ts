@@ -130,6 +130,8 @@ test("the preserved phase-one snapshot permits only the documented transport-fea
     "route-efficiency (regression): -2 pass, +2 warning, +0 fail",
     "transfer-quality (regression): -2 pass, +2 warning, +0 fail",
     "preference-fit (improvement): +2 pass, +0 warning, -2 fail",
+    "fixed-gateways: new warnings — excessive-transfer-burden",
+    "fixed-gateways: resolved warnings — most-day-transfer-burden",
     "morocco-family-access: resolved failures — no-driving",
     "morocco-family-access: new warnings — route-comparison, transfer-estimates-present",
     "morocco-family-access: route output changed",
