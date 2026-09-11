@@ -52,7 +52,7 @@ export function createMorroviaMapStyle(basemapKey?: string): StyleSpecification 
       paint: {
         /* morrovia-ui-audit-allow-next-line inline-color -- Canonical Trip Map paint is shared unchanged; MapLibre style expressions require literal colours. */
         "fill-color": "#fffefe",
-        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 1, 7.2, 0.72, 8.35, 0],
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 1, 7.2, 0.72, 8.35, 0.12],
       },
     },
     {
@@ -63,7 +63,7 @@ export function createMorroviaMapStyle(basemapKey?: string): StyleSpecification 
         /* morrovia-ui-audit-allow-next-line inline-color -- Canonical Trip Map paint is shared unchanged; MapLibre style expressions require literal colours. */
         "line-color": "#c9cae2",
         "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.75, 6, 1.15, 8.35, 0.4],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0.92, 7.2, 0.58, 8.35, 0],
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6.1, 0.92, 7.2, 0.58, 8.35, 0.18],
       },
     },
   ],

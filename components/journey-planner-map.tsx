@@ -2,15 +2,17 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
-import { BedDouble, CarFront, CircleHelp, Footprints, Plane, Route, Ship, TrainFront, type LucideIcon } from "lucide-react";
+import { BedDouble } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { morroviaMapStyle, mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
+import { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-transport-icons";
 import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { JourneyLocalPlace } from "@/components/journey-local-finder";
-import { formatMapDuration, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
+import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -46,6 +48,8 @@ type JourneyPlannerMapProps = {
   /** Accessible name for a scoped preview; the whole-route label remains the default. */
   previewLabel?: string;
   overviewPadding?: { top: number; right: number; bottom: number; left: number };
+  /** Changes whenever surrounding Map UI should immediately release camera ownership. */
+  cameraInteractionKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
   onLocalPlaceSelect?: (place: JourneyLocalPlace) => void;
@@ -60,28 +64,6 @@ const pinSymbols: Record<PlannerMapPin["category"], string> = {
   transport: "→",
   custom: "+",
 };
-
-const transportIcons: Record<MapRouteLeg["mode"], LucideIcon> = {
-  flight: Plane,
-  train: TrainFront,
-  road: CarFront,
-  ferry: Ship,
-  walk: Footprints,
-  mixed: Route,
-  unknown: CircleHelp,
-};
-
-function legMidpoint(leg: MapRouteLeg): [number, number] {
-  if (leg.routeGeometry?.length) return leg.routeGeometry[Math.floor(leg.routeGeometry.length / 2)];
-  let [fromLongitude, fromLatitude] = leg.fromCoordinates;
-  let [toLongitude, toLatitude] = leg.toCoordinates;
-  if (Math.abs(toLongitude - fromLongitude) > 180) {
-    if (toLongitude < fromLongitude) toLongitude += 360;
-    else fromLongitude += 360;
-  }
-  const longitude = ((fromLongitude + toLongitude) / 2 + 540) % 360 - 180;
-  return [longitude, (fromLatitude + toLatitude) / 2];
-}
 
 function isMapRouteLeg(leg: MapRouteLeg | JourneyLeg): leg is MapRouteLeg {
   return "fromStopId" in leg;
@@ -132,6 +114,7 @@ export function JourneyPlannerMap({
   previewMode = false,
   previewLabel,
   overviewPadding,
+  cameraInteractionKey,
   onMapPinDrop,
   onPlannerPinSelect,
   onLocalPlaceSelect,
@@ -147,6 +130,9 @@ export function JourneyPlannerMap({
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
   const removalTimerRef = useRef<number | null>(null);
   const hasInitialisedViewRef = useRef(false);
+  const lastCameraRequestKeyRef = useRef<string | null>(null);
+  const currentCameraRequestRef = useRef<string | null>(null);
+  const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);
   const selectedLegIdRef = useRef(selectedLegId);
   const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);
   const onLegSelectRef = useRef(onLegSelect);
@@ -164,10 +150,18 @@ export function JourneyPlannerMap({
   const spatialLegs = useMemo<MapRouteLeg[]>(() => {
     const stopById = new Map(stops.map((stop) => [stop.id, stop]));
     return legs.flatMap((leg, index) => {
-      if (isMapRouteLeg(leg)) return [leg];
+      if (isMapRouteLeg(leg)) {
+        const mode = canonicalMapTransportMode(leg.mode);
+        const routeSegments = leg.routeSegments?.map((segment) => {
+          const segmentMode = canonicalMapTransportMode(segment.mode);
+          return { ...segment, mode: segmentMode === "mixed" ? "unknown" as const : segmentMode };
+        });
+        return [{ ...leg, mode, ...(routeSegments ? { routeSegments } : {}) }];
+      }
       const from = stopById.get(leg.from);
       const to = stopById.get(leg.to);
       if (!from?.coordinates || !to?.coordinates) return [];
+      const mode = canonicalMapTransportMode(leg.mode);
       return [{
         id: `${leg.from}-${leg.to}-${index}`,
         fromStopId: leg.from,
@@ -176,8 +170,8 @@ export function JourneyPlannerMap({
         toName: to.city,
         fromCoordinates: from.coordinates,
         toCoordinates: to.coordinates,
-        mode: leg.mode === "rail" ? "train" : leg.mode,
-        modeLabel: leg.mode === "rail" ? "Train" : leg.mode === "flight" ? "Flight" : leg.mode === "road" ? "Road" : leg.mode === "ferry" ? "Ferry" : "Unknown transport",
+        mode,
+        modeLabel: mapTransportModeLabel(mode),
         distanceKm: null,
         headlineMinutes: null,
         doorToDoorMinutes: null,
@@ -190,6 +184,23 @@ export function JourneyPlannerMap({
       }];
     });
   }, [legs, stops]);
+  const overviewRouteKey = stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? "unmapped"}`).join("|");
+  const overviewPaddingKey = overviewPadding
+    ? `${overviewPadding.top}:${overviewPadding.right}:${overviewPadding.bottom}:${overviewPadding.left}`
+    : "default";
+  const selectedStop = stops.find((stop) => stop.id === selectedId && stop.coordinates);
+  const selectedLocalPlace = localPlaces.find((place) => place.id === selectedLocalPlaceId);
+  const cameraRequestKey = previewMode
+    ? null
+    : overviewMode
+      ? `overview:${overviewRouteKey}`
+      : selectedLocalPlace
+        ? `place:${selectedLocalPlace.id}:${selectedLocalPlace.coordinates.join(",")}`
+        : focusCoordinates
+          ? `focus:${focusCoordinates.join(",")}`
+          : selectedStop?.coordinates
+            ? `stop:${selectedStop.id}:${selectedStop.coordinates.join(",")}:${focusZoom ?? "auto"}`
+            : null;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -269,12 +280,11 @@ export function JourneyPlannerMap({
           (result, stop) => result.extend(stop.coordinates),
           new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
         );
-        map.fitBounds(bounds, {
+        fitMapCamera(map as unknown as MapCamera, bounds, {
           padding: effectiveOverviewPadding(map, overviewPadding),
           offset: previewMode ? [0, 0] : overviewFitOffset(),
           maxZoom: overviewMaxZoom,
-          duration: 0,
-        });
+        }, true);
       });
     });
     observer.observe(container);
@@ -282,7 +292,7 @@ export function JourneyPlannerMap({
       window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [overviewMode, overviewPadding, stops]);
+  }, [overviewMode, overviewPaddingKey, overviewRouteKey, previewMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -314,6 +324,8 @@ export function JourneyPlannerMap({
     };
 
     const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
+      interruptMapCamera(map as unknown as MapCamera);
+      currentCameraRequestRef.current = null;
       const id = event.features?.[0]?.properties?.id;
       const leg = spatialLegs.find((candidate) => candidate.id === id);
       if (leg) onLegSelectRef.current?.(leg);
@@ -411,6 +423,8 @@ export function JourneyPlannerMap({
 
       if (!hasInitialisedViewRef.current && mappedStops.length) {
         hasInitialisedViewRef.current = true;
+        lastCameraRequestKeyRef.current = cameraRequestKey;
+        currentCameraRequestRef.current = cameraRequestKey;
         const activeStop = mappedStops.find((stop) => stop.id === selectedId) ?? mappedStops[0];
         // On first mount the focus effect can run before the map is ready.
         // Start at the pin itself so opening/adding a pin never leaves it
@@ -420,16 +434,15 @@ export function JourneyPlannerMap({
             (result, stop) => result.extend(stop.coordinates),
             new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
           );
-          map.fitBounds(bounds, {
+          fitMapCamera(map as unknown as MapCamera, bounds, {
             padding: effectiveOverviewPadding(map, overviewPadding),
             offset: previewMode ? [0, 0] : overviewFitOffset(),
             maxZoom: overviewMaxZoom,
-            duration: 0,
-          });
+          }, true);
         } else {
           const compactViewport = window.innerWidth <= 980;
           const offset: [number, number] = !compactViewport && focusZoom !== undefined ? focusOffset ?? [0, 0] : [0, 0];
-          map.easeTo({
+          focusMapCamera(map as unknown as MapCamera, {
             center: focusCoordinates ?? activeStop.coordinates,
             zoom: focusCoordinates ? 14 : compactViewport ? 11 : focusZoom ?? 11,
             offset,
@@ -439,7 +452,6 @@ export function JourneyPlannerMap({
       }
     };
 
-    let refitFrame = 0;
     let routeRetry = 0;
     let disposed = false;
     const ensureRoute = () => {
@@ -451,20 +463,9 @@ export function JourneyPlannerMap({
       routeRetry = window.setTimeout(ensureRoute, 80);
     };
     ensureRoute();
-    if (overviewMode && mappedStops.length > 1) {
-      refitFrame = window.requestAnimationFrame(() => {
-        map.resize();
-        const bounds = mappedStops.slice(1).reduce(
-          (result, stop) => result.extend(stop.coordinates),
-          new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
-        );
-        map.fitBounds(bounds, { padding: effectiveOverviewPadding(map, overviewPadding), offset: previewMode ? [0, 0] : overviewFitOffset(), maxZoom: overviewMaxZoom, duration: 0 });
-      });
-    }
     return () => {
       disposed = true;
       window.clearTimeout(routeRetry);
-      window.cancelAnimationFrame(refitFrame);
       if (map.getLayer("trip-route-hit")) {
         map.off("click", "trip-route-hit", selectRoute);
         map.off("mousemove", "trip-route-hit", hoverRoute);
@@ -478,22 +479,6 @@ export function JourneyPlannerMap({
     if (!map?.getLayer("trip-route-selected")) return;
     map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegId ?? ""]);
   }, [selectedLegId]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
-    if (!map || !overviewMode || !hasInitialisedViewRef.current || mappedStops.length < 2) return;
-    const bounds = mappedStops.slice(1).reduce(
-      (result, stop) => result.extend(stop.coordinates),
-      new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
-    );
-    map.fitBounds(bounds, {
-      padding: effectiveOverviewPadding(map, overviewPadding),
-      offset: previewMode ? [0, 0] : overviewFitOffset(),
-      maxZoom: overviewMaxZoom,
-      duration: 550,
-    });
-  }, [overviewMode, overviewPadding, previewMode, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -511,9 +496,10 @@ export function JourneyPlannerMap({
         element.className = `planner-map__leg is-${leg.mode} ${index % 2 ? "is-card-below" : ""} ${leg.id === selectedLegId ? "is-active" : ""} ${contextCardsHidden ? "is-context-hidden" : ""}`;
         element.dataset.routeLegId = leg.id;
         element.setAttribute("aria-label", `Inspect transfer ${index + 1}: ${leg.fromName} to ${leg.toName}, ${leg.modeLabel}`);
-        const MarkerIcon = transportIcons[leg.mode];
+        const MarkerIcon = mapTransportIcon(leg.mode);
+        const rotation = mapTransportIconRotation(leg.mode, mapRouteBearing(leg));
         element.innerHTML = renderToStaticMarkup(<>
-          <span className="planner-map__leg-icon" aria-hidden="true"><MarkerIcon /></span>
+          <span className="planner-map__leg-icon" aria-hidden="true" style={rotation === null ? undefined : { transform: `rotate(${rotation}deg)` }}><MarkerIcon /></span>
           <span className="planner-map__leg-card" aria-hidden="true">
             <span className="planner-map__leg-meta"><strong>{leg.modeLabel.toLocaleUpperCase()}</strong><em>{formatMapDuration(leg.headlineMinutes ?? leg.doorToDoorMinutes)}</em></span>
             <b>{leg.fromName} → {leg.toName}</b>
@@ -521,10 +507,10 @@ export function JourneyPlannerMap({
             <small>{tripLegClassificationLabel(leg.classification)} · {leg.provenanceLabel}</small>
           </span>
         </>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); onLegSelectRef.current?.(leg); });
+        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLegSelectRef.current?.(leg); });
         element.addEventListener("mouseenter", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], leg.id]); });
         element.addEventListener("mouseleave", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], ""]); });
-        return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(legMidpoint(leg)).addTo(map);
+        return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(mapRouteMarkerCoordinates(leg)).addTo(map);
       });
     };
     drawLegMarkers();
@@ -593,7 +579,7 @@ export function JourneyPlannerMap({
           markerElement.classList.toggle("is-preview-suppressed", Boolean(id) && markerElement.dataset.mapStopId !== id);
         });
         if (!previewMode) {
-          element.addEventListener("click", (event) => { event.stopPropagation(); onSelectRef.current(stop.id); });
+          element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onSelectRef.current(stop.id); });
           element.addEventListener("mouseenter", () => previewStop(stop.id));
           element.addEventListener("mouseleave", () => previewStop(undefined));
           element.addEventListener("focus", () => previewStop(stop.id));
@@ -630,7 +616,7 @@ export function JourneyPlannerMap({
         element.setAttribute("aria-label", `Show ${pin.title}`);
         element.title = `Show ${pin.title}`;
         element.innerHTML = `<span>${pinSymbols[pin.category]}</span>`;
-        const selectPin = (event: Event) => { event.stopPropagation(); onPlannerPinSelectRef.current(pin); };
+        const selectPin = (event: Event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onPlannerPinSelectRef.current(pin); };
         if (previewMode) {
           // A non-pannable preview still needs its stable pin controls to be
           // actionable. Pointer-down avoids MapLibre swallowing the following
@@ -677,7 +663,7 @@ export function JourneyPlannerMap({
         element.setAttribute("aria-label", `Show ${place.name}`);
         element.title = `Show ${place.name}`;
         element.innerHTML = renderToStaticMarkup(<><BedDouble aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : "Stay"}</span></>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); onLocalPlaceSelectRef.current?.(place); });
+        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLocalPlaceSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
     };
@@ -716,7 +702,7 @@ export function JourneyPlannerMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const dropPin = (event: maplibregl.MapMouseEvent) => onMapPinDrop([event.lngLat.lng, event.lngLat.lat]);
+    const dropPin = (event: maplibregl.MapMouseEvent) => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapPinDrop([event.lngLat.lng, event.lngLat.lat]); };
     map.getCanvas().style.cursor = pinPlacementMode ? "crosshair" : "";
     if (pinPlacementMode) map.on("click", dropPin);
     return () => {
@@ -726,34 +712,63 @@ export function JourneyPlannerMap({
   }, [onMapPinDrop, pinPlacementMode]);
 
   useEffect(() => {
+    if (lastCameraInteractionKeyRef.current === cameraInteractionKey) return;
+    lastCameraInteractionKeyRef.current = cameraInteractionKey;
+    currentCameraRequestRef.current = null;
+    interruptMapCamera(mapRef.current as unknown as MapCamera);
+  }, [cameraInteractionKey]);
+
+  useEffect(() => {
     const map = mapRef.current;
-    const stop = stops.find((candidate) => candidate.id === selectedId);
-    if (!map || !stop?.coordinates || !hasInitialisedViewRef.current || overviewMode) return;
+    if (!map || !cameraRequestKey || !hasInitialisedViewRef.current || cameraRequestKey === lastCameraRequestKeyRef.current) return;
+    lastCameraRequestKeyRef.current = cameraRequestKey;
+    currentCameraRequestRef.current = cameraRequestKey;
+    if (overviewMode) {
+      const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
+      if (mappedStops.length < 2) return;
+      const bounds = mappedStops.slice(1).reduce(
+        (result, stop) => result.extend(stop.coordinates),
+        new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+      );
+      fitMapCamera(map as unknown as MapCamera, bounds, {
+        padding: effectiveOverviewPadding(map, overviewPadding),
+        offset: overviewFitOffset(),
+        maxZoom: overviewMaxZoom,
+      });
+      return;
+    }
+    const target = selectedLocalPlace?.coordinates ?? focusCoordinates ?? selectedStop?.coordinates;
+    if (!target) return;
     const compactViewport = window.innerWidth <= 980;
     const offset: [number, number] = compactViewport ? [0, -90] : focusOffset ?? [0, 0];
-    const zoom = compactViewport ? 11 : focusZoom ?? Math.max(map.getZoom(), 11);
-    map.easeTo({ center: stop.coordinates, zoom, offset, duration: 550 });
-  }, [focusOffset, focusZoom, overviewMode, selectedId, stops]);
+    const zoom = selectedLocalPlace || focusCoordinates
+      ? Math.max(map.getZoom(), 14)
+      : compactViewport ? 11 : focusZoom ?? Math.max(map.getZoom(), 11);
+    focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
+  }, [cameraRequestKey, focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, selectedLocalPlace, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !focusCoordinates || !hasInitialisedViewRef.current) return;
-    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
-    map.easeTo({
-      center: focusCoordinates,
-      zoom: Math.max(map.getZoom(), 14),
-      offset,
-      duration: 550,
-    });
-  }, [focusCoordinates, focusOffset]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    const place = localPlaces.find((candidate) => candidate.id === selectedLocalPlaceId);
-    if (!map || !place || !hasInitialisedViewRef.current) return;
-    const offset: [number, number] = window.innerWidth <= 980 ? [0, -90] : focusOffset ?? [0, 0];
-    map.easeTo({ center: place.coordinates, zoom: Math.max(map.getZoom(), 14), offset, duration: 420 });
-  }, [focusOffset, localPlaces, selectedLocalPlaceId]);
+    const container = containerRef.current;
+    if (!map || !container || previewMode) return;
+    const interrupt = () => {
+      currentCameraRequestRef.current = null;
+      interruptMapCamera(map as unknown as MapCamera);
+    };
+    const interruptKeyboardCamera = (event: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "+", "-", "="].includes(event.key)) interrupt();
+    };
+    container.addEventListener("pointerdown", interrupt, { capture: true });
+    container.addEventListener("wheel", interrupt, { capture: true, passive: true });
+    container.addEventListener("keydown", interruptKeyboardCamera, { capture: true });
+    map.on("dragstart", interrupt);
+    return () => {
+      container.removeEventListener("pointerdown", interrupt, true);
+      container.removeEventListener("wheel", interrupt, true);
+      container.removeEventListener("keydown", interruptKeyboardCamera, true);
+      map.off("dragstart", interrupt);
+    };
+  }, [previewMode]);
 
   return <div ref={containerRef} className={`planner-map ${mapPresentation.surface}`} aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"} />;
 }

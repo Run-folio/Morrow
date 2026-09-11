@@ -19,4 +19,8 @@ test("configured basemap credentials retain the canonical progressive detailed m
   const land = style.layers.find(layer => layer.id === "morrovia-land");
   assert.ok(land?.type === "fill");
   assert.ok(Array.isArray(land.paint?.["fill-opacity"]));
+  assert.equal((land.paint?.["fill-opacity"] as unknown[]).at(-1), 0.12);
+  const borders = style.layers.find(layer => layer.id === "morrovia-borders");
+  assert.ok(borders?.type === "line");
+  assert.equal((borders.paint?.["line-opacity"] as unknown[]).at(-1), 0.18);
 });

@@ -293,8 +293,10 @@ test("successful repeated routes use the bounded provider cache and send only ro
 
 test("the Map marker registry uses the canonical road icon and keeps unknown fallback distinct", () => {
   const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
-  assert.match(source, /road: CarFront/);
-  assert.match(source, /mixed: Route/);
-  assert.match(source, /unknown: CircleHelp/);
+  const icons = readFileSync(new URL("../components/easyt/morrovia-transport-icons.ts", import.meta.url), "utf8");
+  assert.match(icons, /road: CarFront/);
+  assert.match(icons, /mixed: Route/);
+  assert.match(icons, /unknown: CircleHelp/);
+  assert.match(source, /mapTransportIcon\(leg\.mode\)/);
   assert.match(source, /segment\.routeGeometry\?\.length \? segment\.routeGeometry/);
 });

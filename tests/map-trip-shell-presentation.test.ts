@@ -59,7 +59,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(plannerStripSource, /data-map-route-reset/);
   assert.match(mapWorkspaceSource, /onWholeRoute=\{resetWholeRoute\}/);
   assert.match(mapSource, /showCompass: false/);
-  assert.match(mapSource, /map\.fitBounds\(/);
+  assert.match(mapSource, /fitMapCamera\(/);
   assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\}/);
   assert.match(mapSource, /maplibregl\.setWorkerUrl\("\/maplibre\/maplibre-gl-worker\.mjs"\)/);
   assert.match(mapSource, /geometry: \{ type: "LineString" as const, coordinates: mappedStops\.map\(\(stop\) => stop\.coordinates\) \}/);
@@ -76,6 +76,12 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(presentation, /id: "morrovia-land"/);
   assert.match(presentation, /id: "morrovia-borders"/);
   assert.match(presentation, /"raster-opacity": \["interpolate", \["linear"\], \["zoom"\]/);
+  assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
+  const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
+  assert.ok(cameraInteractionKey);
+  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "isExpandedMap", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode"]) {
+    assert.match(cameraInteractionKey, new RegExp(state.replace(/[()]/g, "\\$&")), state);
+  }
 });
 
 test("the route-first map restores progressive spatial intelligence", () => {
@@ -95,13 +101,14 @@ test("the route-first map restores progressive spatial intelligence", () => {
 });
 
 test("transport markers use the canonical mode and never invent an unknown mode", () => {
-  assert.match(mapSource, /flight: Plane/);
-  assert.match(mapSource, /train: TrainFront/);
-  assert.match(mapSource, /road: CarFront/);
-  assert.match(mapSource, /ferry: Ship/);
-  assert.match(mapSource, /walk: Footprints/);
-  assert.match(mapSource, /unknown: CircleHelp/);
-  assert.match(mapSource, /const MarkerIcon = transportIcons\[leg\.mode\]/);
+  const icons = readFileSync(new URL("../components/easyt/morrovia-transport-icons.ts", import.meta.url), "utf8");
+  assert.match(icons, /flight: Plane/);
+  assert.match(icons, /train: TrainFront/);
+  assert.match(icons, /road: CarFront/);
+  assert.match(icons, /ferry: Ship/);
+  assert.match(icons, /walk: Footprints/);
+  assert.match(icons, /unknown: CircleHelp/);
+  assert.match(mapSource, /const MarkerIcon = mapTransportIcon\(leg\.mode\)/);
   assert.match(mapSource, /element\.dataset\.routeLegId = leg\.id/);
   assert.match(mapSource, /leg\.distanceKm !== null/);
   assert.match(mapSource, /formatMapDuration\(leg\.doorToDoorMinutes\)/);
@@ -159,10 +166,10 @@ test("authenticated Map mutations use the account persistence queue", () => {
 });
 
 test("map overlays expose keyboard-equivalent controls and predictable Escape cleanup", () => {
-  assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\); onLegSelectRef\.current\?\.\(leg\); \}\)/);
+  assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\);[\s\S]*onLegSelectRef\.current\?\.\(leg\); \}\)/);
   assert.doesNotMatch(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelectRef\.current\?\.\(leg\)\)/);
   assert.match(mapSource, /element\.addEventListener\("mouseenter",/);
-  assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\); onSelectRef\.current\(stop\.id\); \}\)/);
+  assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\);[\s\S]*onSelectRef\.current\(stop\.id\); \}\)/);
   assert.match(mapSource, /element\.addEventListener\("focus", \(\) => previewStop\(stop\.id\)\)/);
   assert.match(mapSource, /data\.routeLegId|dataset\.routeLegId/);
   assert.match(mapWorkspaceSource, /event\.key !== "Escape"/);

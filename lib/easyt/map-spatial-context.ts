@@ -6,6 +6,24 @@ import { canonicalTransferSegments, transferJourneyModeLabel } from "./transfer-
 
 export type MapTransportMode = TripLeg["mode"];
 
+export function canonicalMapTransportMode(mode: unknown): MapTransportMode {
+  if (typeof mode !== "string") return "unknown";
+  const normalized = mode.trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (normalized === "rail"
+    || normalized === "high-speed-rail"
+    || normalized === "highspeedrail"
+    || normalized === "intercity-rail"
+    || normalized === "metro"
+    || normalized === "metro-rail") return "train";
+  if (normalized === "flight"
+    || normalized === "train"
+    || normalized === "road"
+    || normalized === "ferry"
+    || normalized === "walk"
+    || normalized === "mixed") return normalized;
+  return "unknown";
+}
+
 export type MapRouteLeg = {
   id: string;
   fromStopId: string;
@@ -41,6 +59,49 @@ export type MapCopilotScope =
   | "selected-day"
   | "selected-transfer"
   | "selected-place";
+
+function usableRouteGeometry(geometry: Array<[number, number]> | undefined) {
+  return geometry?.filter((coordinate) => coordinate.length === 2
+    && Number.isFinite(coordinate[0])
+    && Number.isFinite(coordinate[1])) ?? [];
+}
+
+export function mapRouteMarkerCoordinates(leg: Pick<MapRouteLeg, "fromCoordinates" | "toCoordinates" | "routeGeometry">): [number, number] {
+  const geometry = usableRouteGeometry(leg.routeGeometry);
+  if (geometry.length) return geometry[Math.floor(geometry.length / 2)];
+  let [fromLongitude, fromLatitude] = leg.fromCoordinates;
+  let [toLongitude, toLatitude] = leg.toCoordinates;
+  if (Math.abs(toLongitude - fromLongitude) > 180) {
+    if (toLongitude < fromLongitude) toLongitude += 360;
+    else fromLongitude += 360;
+  }
+  const longitude = ((fromLongitude + toLongitude) / 2 + 540) % 360 - 180;
+  return [longitude, (fromLatitude + toLatitude) / 2];
+}
+
+export function geographicRouteBearing(from: [number, number], to: [number, number]) {
+  const toRadians = (value: number) => value * Math.PI / 180;
+  const longitudeDelta = toRadians(((to[0] - from[0] + 540) % 360) - 180);
+  const fromLatitude = toRadians(from[1]);
+  const toLatitude = toRadians(to[1]);
+  const y = Math.sin(longitudeDelta) * Math.cos(toLatitude);
+  const x = Math.cos(fromLatitude) * Math.sin(toLatitude)
+    - Math.sin(fromLatitude) * Math.cos(toLatitude) * Math.cos(longitudeDelta);
+  const bearing = Math.atan2(y, x) * 180 / Math.PI;
+  return ((bearing + 540) % 360) - 180;
+}
+
+export function mapRouteBearing(leg: Pick<MapRouteLeg, "fromCoordinates" | "toCoordinates" | "routeGeometry">) {
+  const geometry = usableRouteGeometry(leg.routeGeometry);
+  if (geometry.length >= 2) {
+    const midpoint = Math.floor(geometry.length / 2);
+    const before = geometry[Math.max(0, midpoint - 1)];
+    const after = geometry[Math.min(geometry.length - 1, midpoint + 1)];
+    if (before[0] !== after[0] || before[1] !== after[1]) return geographicRouteBearing(before, after);
+  }
+  if (leg.fromCoordinates[0] === leg.toCoordinates[0] && leg.fromCoordinates[1] === leg.toCoordinates[1]) return null;
+  return geographicRouteBearing(leg.fromCoordinates, leg.toCoordinates);
+}
 
 type RouteMetadata = {
   planningEstimate?: boolean;
@@ -93,13 +154,18 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       || scheduleConfidence?.confirmation.needed !== false
       || metadata.planningEstimate !== false);
     const curated = Boolean(metadata.curatedRouteTransfer);
-    const routeSegments = canonicalTransferSegments(leg).flatMap((segment) => segment.fromEndpoint.coordinates && segment.toEndpoint.coordinates ? [{
-      mode: segment.mode,
-      fromCoordinates: segment.fromEndpoint.coordinates,
-      toCoordinates: segment.toEndpoint.coordinates,
-      ...(segment.routeGeometry?.length ? { routeGeometry: segment.routeGeometry } : {}),
-    }] : []);
+    const routeSegments = canonicalTransferSegments(leg).flatMap((segment) => {
+      if (!segment.fromEndpoint.coordinates || !segment.toEndpoint.coordinates) return [];
+      const mode = canonicalMapTransportMode(segment.mode);
+      return [{
+        mode: mode === "mixed" ? "unknown" as const : mode,
+        fromCoordinates: segment.fromEndpoint.coordinates,
+        toCoordinates: segment.toEndpoint.coordinates,
+        ...(segment.routeGeometry?.length ? { routeGeometry: segment.routeGeometry } : {}),
+      }];
+    });
     const usesOpenRouteService = canonicalTransferSegments(leg).some((segment) => segment.provenance === "routing_engine" && /openrouteservice/i.test(segment.provider ?? ""));
+    const mode = canonicalMapTransportMode(leg.mode);
     return [{
       id: leg.id,
       fromStopId: leg.fromStopId,
@@ -108,8 +174,8 @@ export function mapRouteLegsFromTrip(trip: Pick<EasyTTrip, "stops" | "legs"> & P
       toName: to.name,
       fromCoordinates: from.coordinates,
       toCoordinates: to.coordinates,
-      mode: leg.mode,
-      modeLabel: transferJourneyModeLabel(leg),
+      mode,
+      modeLabel: mode === leg.mode ? transferJourneyModeLabel(leg) : mapTransportModeLabel(mode),
       distanceKm: leg.routedDistanceKm ?? leg.distanceKm,
       headlineMinutes: leg.headlineMinutes ?? knownPlanningMinutes(impact?.headline),
       doorToDoorMinutes: leg.doorToDoorMinutes ?? knownPlanningMinutes(impact?.doorToDoor) ?? leg.durationMinutes,

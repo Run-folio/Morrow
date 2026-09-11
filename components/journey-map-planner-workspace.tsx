@@ -419,6 +419,22 @@ export function JourneyMapPlannerWorkspace({
   const [destinationExpanded, setDestinationExpanded] = useState(Boolean(storyState?.destinationExpanded));
   const [tripStatusExpanded, setTripStatusExpanded] = useState(false);
   const [tripHealthDetail, setTripHealthDetail] = useState<TripHealthDetail | null>(null);
+  const cameraInteractionKey = JSON.stringify([
+    selectedDayId,
+    shapeDayTab,
+    mobileShapeDayOpen,
+    isExpandedMap,
+    destinationExpanded,
+    copilotOpen,
+    pinPlacementMode,
+    Boolean(pinCoordinates),
+    transferDetailsExpanded,
+    mapCoachVisible,
+    tripStatusExpanded,
+    tripHealthDetail,
+    selectedRouteLegId,
+    mapMode,
+  ]);
   const healthDetailCloseRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
   const expandedHistoryEntryRef = useRef(false);
@@ -1917,6 +1933,7 @@ export function JourneyMapPlannerWorkspace({
               pinPlacementMode={pinPlacementMode}
               overviewMode={mapMode === "overview"}
               overviewPadding={isShellPresentation ? { top: 76, right: 84, bottom: 76, left: 440 } : undefined}
+              cameraInteractionKey={cameraInteractionKey}
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}
               onLocalPlaceSelect={(place) => { setMobileShapeDayOpen(false); setSelectedLocalPlaceId(place.id); setSelectedPlannerPin(null); setSelectedRouteLegId(null); }}
