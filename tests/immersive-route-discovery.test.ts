@@ -84,6 +84,17 @@ test("preview delegates Start, restores browsing focus/scroll, and has finite fa
   assert.doesNotMatch(preview,/routePlannerPayload|trackEvent\(/);
   for (const contract of ["showModal()", "onCancel=", "preventScroll: true", "top: scrollY", "AbortSignal.timeout", "route.stops.map", "href={route.href}"]) assert.ok(preview.includes(contract),contract);
 });
+test("preview stop selector owns a contained, stable selected state", () => {
+  const preview = source("app/journey/discover/route-preview.tsx");
+  const css = source("app/journey/discover/discover.module.css");
+  assert.match(preview, /<ol className=\{styles\["stop-order"\]\} aria-label="Route stops in order">/);
+  assert.match(preview, /aria-pressed=\{index === stop\}/);
+  assert.doesNotMatch(css, /\.stop-order\{[^}]*border-top:1px/);
+  assert.match(css, /\.stop-order button\{[^}]*padding:14px 20px[^}]*grid-template-columns:auto minmax\(0,1fr\)[^}]*min-height:72px/);
+  assert.match(css, /\.stop-order button\[aria-pressed=true\]\{background:var\(--morrovia-lilac\)\}/);
+  assert.match(css, /\.stop-order button\[aria-pressed=true\]::before\{[^}]*left:14px;right:14px[^}]*background:var\(--morrovia-signal\)/);
+  assert.doesNotMatch(css, /\.stop-order button\[aria-pressed=true\]\{[^}]*margin-top/);
+});
 test("map and preview stay behind dynamic imports, with no eager catalogue or map module on client", () => {
   const browser=source("app/journey/discover/discovery-browser.tsx");
   assert.match(browser,/dynamic\(\(\) => import\("\.\/discovery-map"\)/);
