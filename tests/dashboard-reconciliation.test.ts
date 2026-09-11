@@ -24,6 +24,7 @@ import { tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promoti
 import { EasyTTripPersistenceError } from "../lib/easyt/trip-persistence-error.ts";
 import { firstTripWorkspaceHref } from "../lib/easyt/trip-workspace-links.ts";
 import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { reconcileLegacyTransportLeg } from "../lib/easyt/transport-leg-compatibility.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 
 class MemoryStorage implements EasyTBrowserStorage {
@@ -451,6 +452,47 @@ test("Build equivalence accepts only marked repository transfer enrichment", () 
   assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
     ...base,
     legs: [{ ...enrichedLeg, routeMetadata: { ...enrichedLeg.routeMetadata, source: "unmarked-rewrite" } }],
+  }, "owner-a"), false);
+});
+
+test("Build acknowledgement accepts only the exact legacy transport compatibility projection", () => {
+  const reviewed = trip({
+    ownerId: null,
+    status: "planned",
+    stops: [
+      { id: "athens", order: 0, name: "Athens", country: "Greece", latitude: 37.9838, longitude: 23.7275, arrivalDate: "2026-11-01", departureDate: "2026-11-04", nights: 3 },
+      { id: "naxos", order: 1, name: "Naxos", country: "Greece", latitude: 37.1036, longitude: 25.3777, arrivalDate: "2026-11-04", departureDate: "2026-11-08", nights: 4 },
+    ],
+    legs: [{
+      id: "legacy-road",
+      fromStopId: "athens",
+      toStopId: "naxos",
+      fromEndpoint: { kind: "stop", id: "athens", name: "Athens", country: "Greece", coordinates: [23.7275, 37.9838] },
+      toEndpoint: { kind: "stop", id: "naxos", name: "Naxos", country: "Greece", coordinates: [25.3777, 37.1036] },
+      classification: "intercity",
+      mode: "road",
+      distanceKm: 175,
+      durationMinutes: 217,
+      headlineMinutes: 217,
+      doorToDoorMinutes: 217,
+      provider: "Legacy estimate",
+      routeMetadata: {},
+    }],
+  });
+  const canonicalBase = canonicalTripForOwner("owner-a", reviewed, "2026-08-20T12:00:00.000Z");
+  const compatible = {
+    ...canonicalBase,
+    legs: [reconcileLegacyTransportLeg(canonicalBase.legs[0]!)],
+  };
+
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, compatible, "owner-a"), true);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
+    ...compatible,
+    legs: [{ ...compatible.legs[0]!, toEndpoint: { ...compatible.legs[0]!.toEndpoint!, name: "Paros" } }],
+  }, "owner-a"), false);
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(reviewed, {
+    ...compatible,
+    legs: [{ ...compatible.legs[0]!, routeMetadata: { ...compatible.legs[0]!.routeMetadata, legacyTransportCompatibility: { version: 2, outcome: "downgraded", conflict: "land_separation" } } }],
   }, "owner-a"), false);
 });
 

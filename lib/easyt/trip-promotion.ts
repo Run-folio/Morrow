@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripLeg } from "./trip";
+import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 
 const singleStopReferenceKeys = new Set([
   "stopId", "fromStopId", "toStopId", "neighbouringStopId", "routeStopId",
@@ -238,7 +239,10 @@ function resolverOwnedLegProjection(reviewedLeg: TripLeg, canonicalLeg: TripLeg)
   const isCanonicalResolution = canonicalLeg.routeMetadata.source === "multimodal-resolver"
     && isRecord(canonicalResolution)
     && canonicalResolution.version === 1;
-  if (!wasResolverEligible || !isCanonicalResolution) return null;
+  const reconciledLegacyLeg = reconcileLegacyTransportLeg(reviewedLeg);
+  const isExactLegacyCompatibility = reconciledLegacyLeg !== reviewedLeg
+    && JSON.stringify(stableJsonValue(reconciledLegacyLeg)) === JSON.stringify(stableJsonValue(canonicalLeg));
+  if (!isExactLegacyCompatibility && (!wasResolverEligible || !isCanonicalResolution)) return null;
 
   const authoredMetadata = (metadata: Record<string, unknown>) => Object.fromEntries(
     Object.entries(metadata).filter(([key]) => !transferResolutionMetadataKeys.has(key)),
@@ -254,7 +258,10 @@ function resolverOwnedLegProjection(reviewedLeg: TripLeg, canonicalLeg: TripLeg)
     routeMetadata: authoredMetadata(leg.routeMetadata),
   });
   return {
-    reviewed: projection(reviewedLeg),
+    // Legacy compatibility is a complete, versioned server projection. Require
+    // its exact output before accepting it; unlike multimodal resolution this
+    // must not become a broad allowance for arbitrary transport rewrites.
+    reviewed: projection(isExactLegacyCompatibility ? reconciledLegacyLeg : reviewedLeg),
     canonical: projection(canonicalLeg),
   };
 }
