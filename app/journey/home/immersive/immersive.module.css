@@ -224,15 +224,17 @@
 .storyActions { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; margin-top: 28px; }
 .storyActions a:first-child { color: var(--morrovia-ink); background: var(--morrovia-paper); }
 .storyActions a:last-child { color: var(--morrovia-paper); }
-.alternatives { width: 100%; max-width: 340px; justify-self: end; display: grid; gap: 18px; padding: 28px; color: var(--morrovia-ink); background: color-mix(in srgb,var(--morrovia-paper) 96%,transparent); border: 1px solid color-mix(in srgb,var(--morrovia-paper) 70%,transparent); border-radius: var(--morrovia-radius); backdrop-filter: blur(14px); }
-.alternatives .eyebrow { color: var(--morrovia-signal); }
+.alternatives { width: 100%; max-width: 420px; justify-self: end; position: relative; isolation: isolate; display: grid; gap: 22px; color: var(--morrovia-paper); }
+.alternatives::before { content: ""; position: absolute; z-index: -1; inset: -70px -5vw; pointer-events: none; background: radial-gradient(ellipse at right,color-mix(in srgb,var(--morrovia-photo-ink) 72%,transparent),color-mix(in srgb,var(--morrovia-photo-ink) 42%,transparent) 48%,transparent 76%); }
+.alternatives .eyebrow { color: var(--morrovia-paper); opacity: .82; }
 .alternativeRoutes { display: grid; }
-.alternativeRoute { width: 100%; min-height: 48px; justify-content: flex-start; gap: 12px; padding: 11px 10px; color: var(--morrovia-ink)!important; border-radius: 0; border-bottom: 1px solid var(--morrovia-line); text-align: left; white-space: normal; font-size: 17px; line-height: 1.25; }
+.alternativeRoute { width: 100%; min-height: 68px; justify-content: flex-start; gap: 18px; padding: 18px 0; color: var(--morrovia-paper)!important; border-radius: 0; border-bottom: 1px solid color-mix(in srgb,var(--morrovia-paper) 38%,transparent); text-align: left; white-space: normal; font-size: clamp(24px,1.55vw,28px); font-weight: 500; line-height: 1.2; }
 .alternativeRoute span { flex: 1; }
-.alternativeRoute svg { order: 2; flex: 0 0 auto; }
-.alternativeRoute:hover { background: var(--morrovia-lilac); }
-.alternativesAll { min-height: 48px; justify-content: space-between; padding: 13px 10px 0; color: var(--morrovia-action)!important; border-top: 1px solid var(--morrovia-line); border-radius: 0; }
-.alternativesAll svg { order: 2; }
+.alternativeRoute svg,.alternativesAll svg { order: 2; flex: 0 0 auto; transition: transform 180ms ease; }
+.alternativeRoute:hover { color: var(--morrovia-paper)!important; background: transparent; transform: none; border-bottom-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
+.alternativeRoute:hover svg,.alternativesAll:hover svg { transform: translateX(4px); }
+.alternativesAll { width: 100%; min-height: 60px; justify-content: space-between; padding: 18px 0 0; color: var(--morrovia-paper)!important; border-top: 1px solid color-mix(in srgb,var(--morrovia-paper) 38%,transparent); border-radius: 0; font-size: 17px; }
+.alternativesAll:hover { color: var(--morrovia-paper)!important; background: transparent; transform: none; border-top-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
 @media(max-width:840px) {
  .places { height: auto; --progress: 1!important; }
  .placesStage { position: relative; height: auto; min-height: 0; padding: 55px 20px 30px; }
@@ -251,8 +253,10 @@
  .story { grid-template-columns: 1fr; padding: 70px 22px; min-height: 850px; gap: 45px; }
  .story h2 { font-size: clamp(48px,8vw,68px); }
  .storyIdea { font-size: 16px; }
- .alternatives { max-width: none; justify-self: stretch; gap: 14px; padding: 24px; }
- .alternativeRoute,.alternativesAll { min-height: 48px; }
+ .alternatives { max-width: none; justify-self: stretch; gap: 16px; }
+ .alternatives::before { inset: -54px -22px; background: radial-gradient(ellipse at right,color-mix(in srgb,var(--morrovia-photo-ink) 82%,transparent),color-mix(in srgb,var(--morrovia-photo-ink) 52%,transparent) 52%,transparent 82%); }
+ .alternativeRoute { min-height: 60px; padding-block: 15px; font-size: clamp(21px,5.5vw,24px); }
+ .alternativesAll { min-height: 52px; padding-top: 14px; }
 }
 .page[data-quiet="true"] .places { height: auto; --progress: 1!important; }
 .page[data-quiet="true"] .placesStage { position: relative; }
@@ -357,5 +361,3 @@
  .mapCaption { max-width: calc(100% - 32px); }
  .dayHeading { flex-wrap: wrap; }
 }
-.photoSubject { position: absolute; top: 12px; left: 12px; right: 12px; width: fit-content; max-width: calc(100% - 24px); background: var(--morrovia-paper); color: var(--morrovia-ink); padding: 6px 9px; border-radius: var(--morrovia-control-radius); font: var(--morrovia-type-fine-print); }
-.mapPlacePreview .photoSubject { display: none; }

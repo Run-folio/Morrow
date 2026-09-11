@@ -169,6 +169,7 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
   const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
+  const navigationCss = readFileSync(new URL("../app/journey/easyt-navigation.module.css", import.meta.url), "utf8");
 
   assert.doesNotMatch(hero, /Quiet view|Vista tranquila|Pause/);
   assert.match(hero, /href="#routes"/);
@@ -178,6 +179,8 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   assert.match(route, /className=\{styles\.alternatives\} aria-label=/);
   assert.match(route, /className=\{styles\.alternativeRoute\}/);
   assert.match(route, /className=\{styles\.alternativesAll\}/);
+  assert.doesNotMatch(route, /photoSubject|photoContext/);
+  assert.doesNotMatch(css, /\.photoSubject/);
   assert.doesNotMatch(product, /The places\. The time between them|route\.stops\.length\} \{es \? "bases" : "overnight bases"\}|nights · interactive sample/);
   assert.match(product, /Product view/);
   assert.match(product, /: "Reset"/);
@@ -185,8 +188,19 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   assert.match(closing, /href="\/journey\/immersive\/credits\.html"/);
   assert.match(closing, /Image credits/);
   assert.match(css, /grid-template-columns: minmax\(0,1fr\) minmax\(300px,340px\)/);
-  assert.match(css, /\.alternativeRoute \{[^}]*min-height: 48px/);
+  assert.match(css, /\.alternativeRoute \{[^}]*min-height: 68px[^}]*color: var\(--morrovia-paper\)!important[^}]*font-size: clamp\(24px,1\.55vw,28px\)/);
+  assert.match(css, /\.alternativeRoute svg,\.alternativesAll svg \{[^}]*order: 2/);
+  assert.match(css, /\.alternatives::before \{[^}]*radial-gradient/);
   assert.match(css, /\.alternatives \{ max-width: none; justify-self: stretch/);
+  assert.match(navigationCss, /@media \(min-width: 1181px\) \{\s*\.landingHeader \{[^}]*padding-inline: 4vw/);
+});
+
+test("the Oaxaca homepage hero keeps exact provenance while replacing the rejected storefront image", () => {
+  const route = immersiveHomepageRoutes().find((candidate) => candidate.key === "mexico-guatemala")!;
+  assert.equal(route.heroPhoto?.source, "https://commons.wikimedia.org/wiki/File:TemploDomingoOaxaca01.JPG");
+  assert.match(route.heroPhoto?.credit ?? "", /Oaxaca · Thelmadatter · CC BY-SA 4\.0/);
+  assert.doesNotMatch(route.heroPhoto?.source ?? "", /Street_Scene_-_Oaxaca_City/);
+  assert.deepEqual(route.heroPhoto?.variants.map((variant) => variant.width), [384, 768, 1536]);
 });
 
 

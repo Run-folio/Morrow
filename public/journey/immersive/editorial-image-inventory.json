@@ -251,30 +251,30 @@
     "key": "oaxaca",
     "place": "Oaxaca",
     "country": "Mexico",
-    "author": "Adam Jones",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Street_Scene_-_Oaxaca_City_-_Oaxaca_-_Mexico_-_02_(6492455063).jpg",
-    "alt": "A pedestrian passing a warm ochre street facade in Oaxaca, Mexico",
+    "author": "Thelmadatter",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:TemploDomingoOaxaca01.JPG",
+    "alt": "Santo Domingo church and its plaza beneath the mountains in Oaxaca, Mexico",
     "changes": "Resized and converted to WebP; display crops to fit the composition. Derivatives remain under the source licence.",
     "variants": [
       {
         "src": "/journey/immersive/moment-oaxaca-384.webp",
         "width": 384,
-        "height": 288,
-        "bytes": 20276
+        "height": 257,
+        "bytes": 21224
       },
       {
         "src": "/journey/immersive/moment-oaxaca-768.webp",
         "width": 768,
-        "height": 576,
-        "bytes": 69280
+        "height": 514,
+        "bytes": 68438
       },
       {
         "src": "/journey/immersive/moment-oaxaca-1536.webp",
         "width": 1536,
-        "height": 1152,
-        "bytes": 232590
+        "height": 1028,
+        "bytes": 229050
       }
     ]
   },

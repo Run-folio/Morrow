@@ -22,13 +22,6 @@
   font-family: var(--morrovia-ui, var(--font-geist-sans, Geist, Inter, Arial, sans-serif));
 }
 
-@media (min-width: 1181px) {
-  .landingHeader {
-    /* Keep the public header on the same editorial grid as the homepage hero. */
-    padding-left: max(48px, calc((100vw - 1840px) / 2));
-    padding-right: max(48px, calc((100vw - 1840px) / 2));
-  }
-}
 .brand,
 .quietLink,
 .primaryLink,
@@ -54,6 +47,12 @@
   padding-inline: clamp(24px, 3vw, 52px);
   background: rgba(251, 250, 255, .94);
   border-color: #dedcf1;
+}
+@media (min-width: 1181px) {
+  .landingHeader {
+    /* Keep the public header on the same wide outer gutters as the immersive hero. */
+    padding-inline: 4vw;
+  }
 }
 .landingHeader .brand { grid-column: 1; justify-self: start; }
 .landingActions {
@@ -481,15 +480,5 @@
 
   :global(body):has(:global(.morrovia-map-expanded)) .mobileDock {
     display: none;
-  }
-}
-
-/* Keep the public landing header on the same 1180px visual grid as its content. */
-@media (min-width: 1181px) {
-  .landingHeader {
-    /* Matches the wider homepage hero grid, rather than centring the brand
-       independently of the first piece of page content. */
-    padding-left: max(48px, calc((100vw - 1840px) / 2));
-    padding-right: max(48px, calc((100vw - 1840px) / 2));
   }
 }
