@@ -15,11 +15,14 @@ import AffiliateChapter from "./affiliate-chapter";
 import { trackEvent } from "@/lib/analytics";
 import { homepageRouteView } from "@/lib/easyt/homepage-navigation";
 import ClosingChapter from "./closing-chapter";
+import { homepageCloudinaryImageLoader } from "@/lib/easyt/homepage-cloudinary-image";
 
 export default function ImmersiveHome({ routes, initialIndex }: { routes: ImmersiveRoute[]; initialIndex: number }) {
   const [index, setIndex] = useState(initialIndex);
   const route = routes[index];
   const heroPhoto = route.heroPhoto;
+  const [failedFirstPartyHeroes, setFailedFirstPartyHeroes] = useState<string[]>([]);
+  const visibleHeroPhoto = heroPhoto?.firstParty && failedFirstPartyHeroes.includes(route.key) ? heroPhoto.fallback ?? null : heroPhoto;
   const lastViewedRoute = useRef<string | null>(null);
   useEffect(() => {
     const selection = homepageRouteView(lastViewedRoute.current, route.key);
@@ -43,9 +46,11 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
       const rect = event.currentTarget.getBoundingClientRect();
       event.currentTarget.style.setProperty("--depth-x", `${((event.clientX - rect.left) / rect.width - .5) * 10}px`);
     }} onPointerLeave={(event) => event.currentTarget.style.setProperty("--depth-x", "0px")}>
-      <Image className={styles.landscape} src={heroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} sizes="100vw" fill priority alt="" style={{ objectPosition: heroPhoto?.focalPosition ?? "center" }} />
+      <Image className={styles.landscape} src={visibleHeroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} loader={visibleHeroPhoto?.firstParty ? homepageCloudinaryImageLoader : undefined} sizes="100vw" fill priority={route.key === routes[initialIndex]?.key} alt="" style={{ objectPosition: visibleHeroPhoto?.focalPosition ?? "center" }} onError={() => {
+        if (visibleHeroPhoto?.firstParty) setFailedFirstPartyHeroes(current => current.includes(route.key) ? current : [...current, route.key]);
+      }} />
       <div className={styles.heroShade} />
-      <MorroviaPhotoCredit className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={heroPhoto?.country ?? "Homepage hero"} credit={heroPhoto ? (es ? heroPhoto.creditEs : heroPhoto.credit) : (es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes")} sourceHref={!heroPhoto?.firstParty && heroPhoto?.source.startsWith("http") ? heroPhoto.source : null} fullCreditHref={heroPhoto?.firstParty ? undefined : "/journey/immersive/credits.html"} />
+      <MorroviaPhotoCredit className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={visibleHeroPhoto?.country ?? "Homepage hero"} credit={visibleHeroPhoto ? (es ? visibleHeroPhoto.creditEs : visibleHeroPhoto.credit) : (es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes")} sourceHref={!visibleHeroPhoto?.firstParty && visibleHeroPhoto?.source.startsWith("http") ? visibleHeroPhoto.source : null} fullCreditHref={visibleHeroPhoto?.firstParty ? undefined : "/journey/immersive/credits.html"} />
       <div className={styles.navigation}><EasyTNavigation current="home" landing logoTone="light" deferPrefetch /></div>
       <div className={styles.heroBody}>
         <div className={styles.heroCopy}><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><h1>{es ? "Ve más lejos." : "Go further."}<em>{es ? "Hazlo tuyo." : "Make it yours."}</em></h1><p>{es ? "Convierte tus ideas en una primera ruta pensada. Después, hazla tuya." : "Turn your multi-stop ideas into a thoughtful first route. Then make it your own."}</p></div>

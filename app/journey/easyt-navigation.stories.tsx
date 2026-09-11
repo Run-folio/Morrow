@@ -25,6 +25,9 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+const openAccount = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  canvasElement.querySelector<HTMLElement>('summary[aria-label="Account"]')?.click();
+};
 
 export const Desktop: Story = { args: { current: "home" } };
 
@@ -48,6 +51,10 @@ export const MobileCompactMenu: Story = {
 export const ImmersiveLanding: Story = { args: { current: "home", landing: true, deferPrefetch: true } };
 
 export const SignedInDesktop: Story = { render: () => <SignedInNavigation /> };
+
+export const SignedOutAccountMenu: Story = { args: { current: "about" }, play: openAccount };
+
+export const SignedInAccountMenu: Story = { render: () => <SignedInNavigation />, play: openAccount };
 
 export const SignedInMobile: Story = {
   render: () => <SignedInNavigation mobile />,

@@ -1,14 +1,14 @@
 /** Editorial image identity is independent of the overnight-base model.
- * Keys resolve only through Morrovia's attributed, locally hosted inventories. */
+ * Keys resolve only through Morrovia's reviewed, attributed inventories. */
 export type RouteVisualMoment = { name: string; stopName: string; photoKey: string; context: string };
 export const homepageFirstPartyPhotoSlots = {
-  "japan-south-korea": { photoKey: "morrovia-homepage-japan-south-korea", expectedAsset: "/journey/immersive/first-party/homepage-japan-south-korea.jpg" },
-  "iceland-ring-road": { photoKey: "morrovia-homepage-iceland-ring-road", expectedAsset: "/journey/immersive/first-party/homepage-iceland-ring-road.jpg" },
-  "balkans-overland": { photoKey: "morrovia-homepage-balkans-overland", expectedAsset: "/journey/immersive/first-party/homepage-balkans-overland.jpg" },
-  "vietnam-cambodia": { photoKey: "morrovia-homepage-vietnam-cambodia", expectedAsset: "/journey/immersive/first-party/homepage-vietnam-cambodia.jpg" },
-  "namibia-self-drive": { photoKey: "morrovia-homepage-namibia-self-drive", expectedAsset: "/journey/immersive/first-party/homepage-namibia-self-drive.jpg" },
-  "peru-bolivia": { photoKey: "morrovia-homepage-peru-bolivia", expectedAsset: "/journey/immersive/first-party/homepage-peru-bolivia.jpg" },
-  "mexico-guatemala": { photoKey: "morrovia-homepage-mexico-guatemala", expectedAsset: "/journey/immersive/first-party/homepage-mexico-guatemala.jpg" },
+  "japan-south-korea": { photoKey: "morrovia-homepage-japan-south-korea", cloudinaryPublicId: "japan_tyklgc", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1746628499/japan_tyklgc.jpg", focalPosition: "35% center" },
+  "iceland-ring-road": { photoKey: "morrovia-homepage-iceland-ring-road", cloudinaryPublicId: "iceland_rmehmy", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1746628507/iceland_rmehmy.jpg", focalPosition: "67% center" },
+  "balkans-overland": { photoKey: "morrovia-homepage-balkans-overland", cloudinaryPublicId: "montenegro_qdjqbm", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1746628489/montenegro_qdjqbm.png", focalPosition: "56% center" },
+  "vietnam-cambodia": { photoKey: "morrovia-homepage-vietnam-cambodia", cloudinaryPublicId: "cambodia_ki9fqp", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1746628426/cambodia_ki9fqp.jpg", focalPosition: "73% center" },
+  "namibia-self-drive": { photoKey: "morrovia-homepage-namibia-self-drive", cloudinaryPublicId: "namibia_vwfyeb", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1746632023/namibia_vwfyeb.jpg", focalPosition: "34% center" },
+  "peru-bolivia": { photoKey: "morrovia-homepage-peru-bolivia", cloudinaryPublicId: "bolivia_tn5l1g", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1744679348/bolivia_tn5l1g.jpg", focalPosition: "38% center" },
+  "mexico-guatemala": { photoKey: "morrovia-homepage-mexico-guatemala", cloudinaryPublicId: "guatemala_jkuqfl", sourceUrl: "https://res.cloudinary.com/dbt3wkwa3/image/upload/v1744679360/guatemala_jkuqfl.jpg", focalPosition: "46% center" },
 } as const;
 
 export type RouteEditorialImagery = {

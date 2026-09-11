@@ -195,12 +195,13 @@ test("annotated homepage cleanup removes redundant copy and preserves functional
   assert.match(navigationCss, /@media \(min-width: 1181px\) \{\s*\.landingHeader \{[^}]*padding-inline: 4vw/);
 });
 
-test("the Oaxaca homepage hero keeps exact provenance while replacing the rejected storefront image", () => {
+test("the Mexico and Guatemala homepage hero uses the reviewed first-party mapping with provider fallback", () => {
   const route = immersiveHomepageRoutes().find((candidate) => candidate.key === "mexico-guatemala")!;
-  assert.equal(route.heroPhoto?.source, "https://commons.wikimedia.org/wiki/File:TemploDomingoOaxaca01.JPG");
-  assert.match(route.heroPhoto?.credit ?? "", /Oaxaca · Thelmadatter · CC BY-SA 4\.0/);
-  assert.doesNotMatch(route.heroPhoto?.source ?? "", /Street_Scene_-_Oaxaca_City/);
-  assert.deepEqual(route.heroPhoto?.variants.map((variant) => variant.width), [384, 768, 1536]);
+  assert.match(route.heroPhoto?.source ?? "", /guatemala_jkuqfl\.jpg$/);
+  assert.equal(route.heroPhoto?.credit, "Morrovia photography");
+  assert.equal(route.heroPhoto?.firstParty, true);
+  assert.equal(route.heroPhoto?.fallback?.source, "https://commons.wikimedia.org/wiki/File:TemploDomingoOaxaca01.JPG");
+  assert.equal(route.heroPhoto?.fallback?.firstParty, false);
 });
 
 
@@ -223,8 +224,11 @@ test("hero, story and sample consume the same selected route and rights-cleared 
   assert.match(source, /heroPhoto = route.heroPhoto/);
   for (const route of immersiveHomepageRoutes()) {
     assert.ok(route.heroPhoto?.rights && route.heroPhoto.source);
-    assert.match(route.heroPhoto.source, /^https:\/\//, `${route.key} must use reviewed photography, not a generated homepage asset`);
+    assert.equal(route.heroPhoto.firstParty, true);
+    assert.equal(route.heroPhoto.rights, "reviewed-morrovia-first-party");
+    assert.match(route.heroPhoto.source, /^https:\/\/res\.cloudinary\.com\/dbt3wkwa3\//, `${route.key} must use reviewed first-party photography`);
     assert.ok(route.countries.includes(route.heroPhoto.country));
+    assert.ok(route.heroPhoto.fallback && !route.heroPhoto.fallback.firstParty, `${route.key} retains its provider fallback`);
   }
 });
 
@@ -232,7 +236,9 @@ test("only the full-screen homepage LCP image uses the Next responsive priority 
   const source = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
   const navigation = readFileSync(new URL("../app/journey/easyt-navigation.tsx", import.meta.url), "utf8");
   assert.match(source, /import Image from "next\/image"/);
-  assert.match(source, /<Image className=\{styles\.landscape\}[^>]+sizes="100vw"[^>]+fill priority alt=""/);
+  assert.match(source, /<Image className=\{styles\.landscape\}[^>]+sizes="100vw"[^>]+fill priority=\{route\.key === routes\[initialIndex\]\?\.key\} alt=""/);
+  assert.match(source, /loader=\{visibleHeroPhoto\?\.firstParty \? homepageCloudinaryImageLoader : undefined\}/);
+  assert.match(source, /onError=/);
   assert.equal((source.match(/\bpriority\b/g) ?? []).length, 1);
   assert.match(navigation, /priority=\{current !== "home"\}/);
   assert.doesNotMatch(source, /<img className=\{styles\.landscape\}/);
