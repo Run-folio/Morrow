@@ -76,8 +76,8 @@ test("consumer liability wording preserves mandatory rights and avoids a blanket
 });
 
 test("complaints, governing law and related legal links remain executable", () => {
-  assert.match(terms, /morroviaLegalIdentity\.supportContact/);
-  assert.match(terms, /mailto:/);
+  assert.match(terms, /\/journey\/contact\?topic=complaint/);
+  assert.doesNotMatch(terms, /mailto:/);
   assert.match(terms, /laws of England and Wales/);
   assert.match(terms, /non-exclusive jurisdiction/);
   assert.match(terms, /mandatory protections/);

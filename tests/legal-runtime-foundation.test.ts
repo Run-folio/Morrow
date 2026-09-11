@@ -14,9 +14,6 @@ test("the canonical legal identity contains verified values and omits unknown re
     registrationJurisdiction: null,
     companyNumber: null,
     registeredOffice: null,
-    generalContact: "sw@shaunwhiting.com",
-    supportContact: "sw@shaunwhiting.com",
-    privacyContact: "sw@shaunwhiting.com",
     copyrightYear: 2026,
   });
 });
@@ -31,22 +28,22 @@ test("public identity and contact surfaces use the canonical owner", () => {
   const login = readFileSync("app/journey/login/login-form.tsx", "utf8");
 
   assert.match(footer, /morroviaLegalIdentity\.legalOperator/);
-  assert.match(footer, /morroviaLegalIdentity\.generalContact/);
+  assert.match(footer, /href="\/journey\/contact"/);
   assert.doesNotMatch(footer, /Morrovia Ltd/);
   assert.match(privacy, /morroviaLegalIdentity\.operatorTradingAs/);
-  assert.match(privacy, /morroviaLegalIdentity\.privacyContact/);
-  assert.match(help, /morroviaLegalIdentity\.supportContact/);
+  assert.match(privacy, /\/journey\/contact\?topic=privacy/);
+  assert.match(help, /\/journey\/contact\?topic=support/);
   assert.match(cookies, /morroviaLegalIdentity\.operatorTradingAs/);
   assert.match(affiliate, /morroviaLegalIdentity\.operatorTradingAs/);
   assert.match(terms, /morroviaLegalIdentity\.operatorTradingAs/);
-  assert.match(terms, /morroviaLegalIdentity\.supportContact/);
+  assert.match(terms, /\/journey\/contact\?topic=complaint/);
   assert.match(login, /href="\/journey\/privacy"/);
   assert.equal([footer, privacy, help, cookies, affiliate, terms, login].some((source) => source.includes("sw@shaunwhiting.com")), false);
 });
 
 test("footer legal links target existing routes", () => {
   const footer = readFileSync("components/morrovia-footer.tsx", "utf8");
-  for (const route of ["about", "help", "affiliate-disclosure", "terms", "privacy", "cookies"]) {
+  for (const route of ["about", "help", "contact", "affiliate-disclosure", "terms", "privacy", "cookies"]) {
     assert.equal(existsSync(`app/journey/${route}/page.tsx`), true, `${route} route should exist`);
     assert.match(footer, new RegExp(`href=\"/journey/${route}`));
   }
@@ -75,11 +72,9 @@ test("the verified operator literal has one production owner and stale company n
 
 test("public legal and contact pages are discoverable without dead routes", () => {
   const sitemap = readFileSync("app/sitemap.ts", "utf8");
-  for (const route of ["about", "help", "privacy", "cookies", "affiliate-disclosure", "terms"]) {
+  for (const route of ["about", "help", "contact", "privacy", "cookies", "affiliate-disclosure", "terms"]) {
     assert.match(sitemap, new RegExp(`/journey/${route}`));
     assert.equal(existsSync(`app/journey/${route}/page.tsx`), true);
   }
-  assert.match(morroviaLegalIdentity.generalContact, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
-  assert.match(morroviaLegalIdentity.supportContact, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
-  assert.match(morroviaLegalIdentity.privacyContact, /^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+  assert.equal(existsSync("app/journey/contact/page.tsx"), true);
 });

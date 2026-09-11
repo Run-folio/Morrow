@@ -1,0 +1,95 @@
+.page {
+  min-height: 100vh;
+  background: var(--morrovia-page);
+  color: var(--morrovia-ink);
+}
+
+.content {
+  display: grid;
+  width: min(880px, calc(100% - 40px));
+  gap: 28px;
+  margin: 0 auto;
+  padding: clamp(48px, 8vw, 96px) 0 clamp(68px, 9vw, 112px);
+}
+
+.heading {
+  display: grid;
+  gap: 13px;
+}
+
+.heading p {
+  margin: 0;
+  color: var(--morrovia-signal);
+  font: var(--morrovia-type-eyebrow);
+  letter-spacing: .14em;
+}
+
+.heading h1 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font-family: var(--morrovia-display);
+  font-size: clamp(44px, 7vw, 76px);
+  font-weight: 600;
+  letter-spacing: -.055em;
+  line-height: .96;
+}
+
+.heading span {
+  max-width: 650px;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-body);
+}
+
+.surface {
+  padding: clamp(22px, 5vw, 44px);
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-radius);
+  background: var(--morrovia-paper);
+  box-shadow: var(--morrovia-shadow-card);
+}
+
+.form {
+  position: relative;
+  display: grid;
+  gap: 22px;
+}
+
+.form textarea {
+  min-height: 180px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.actions p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+}
+
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+@media (max-width: 560px) {
+  .content {
+    width: calc(100% - 32px);
+    gap: 22px;
+    padding-top: 36px;
+  }
+
+  .surface { padding: 20px 18px; }
+  .form { gap: 19px; }
+  .form textarea { min-height: 160px; }
+  .actions { align-items: stretch; flex-direction: column; }
+  .actions button { width: 100%; }
+}

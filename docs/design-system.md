@@ -135,8 +135,9 @@ size for an existing action pattern.
 
 - `--morrovia-page` defines the standard editorial content width: up to 1180px
   with 48px total desktop gutter and 32px total gutter below 700px.
-- Global mobile navigation changes at 520px. Content in the mobile shell must
-  reserve `--morrovia-mobile-dock-offset`, including the safe-area inset.
+- Global navigation collapses to the shared compact header menu below 820px;
+  there is no persistent mobile dock. Bottom-anchored workspace controls use
+  `--morrovia-mobile-dock-offset` only as a legacy-named safe-area inset.
 - Storybook review viewports are 320, 390, 430, 768, 1024, 1440 and 1680
   pixels. Major composed patterns should cover 320, 390, 768, 1024 and 1440;
   primitives need only the responsive states that materially change them.
@@ -174,7 +175,7 @@ not permission to reproduce their styling page-locally.
 
 | Pattern | Current source of truth |
 | --- | --- |
-| Site navigation and mobile dock | `app/journey/easyt-navigation.tsx`; `Morrovia/04 Structure/Global navigation` |
+| Site navigation and compact mobile menu | `app/journey/easyt-navigation.tsx`; `Morrovia/04 Structure/Global navigation` |
 | Homepage and Builder trip capture | `components/easyt/morrovia-trip-capture.tsx`; `Morrovia/05 Product Patterns/Trip capture` and `Homepage trip starter` |
 | Builder clarification and route review | `app/journey/new/trip-builder.tsx`; `Morrovia/05 Product Patterns/Builder review` |
 | Status, save, recovery and consequential confirmation | `components/easyt/morrovia-feedback.tsx`; `Morrovia/03 Status & Feedback` |
@@ -188,6 +189,7 @@ not permission to reproduce their styling page-locally.
 | Personal trip cards and empty state | `app/journey/dashboard/dashboard-client.tsx`; `Morrovia/05 Product Patterns/Trips dashboard` |
 | Canonical footer | `components/morrovia-footer.tsx`; `Morrovia/04 Structure/Footer` |
 | Cookie consent and preferences | `lib/privacy-consent.ts`, `components/privacy-consent.tsx`, and `components/cookie-preferences.tsx`; `Morrovia/03 Status & Feedback/Privacy choices` |
+| Public contact form | `app/journey/contact/contact-form.tsx`, composed from canonical fields, button and status banner; `Morrovia/05 Product Patterns/Contact form` |
 | Luna and speech transparency | `components/easyt/easyt-trip-copilot.tsx` and `components/easyt/morrovia-trip-capture.tsx`, with speech mechanics in `components/easyt/voice-trip-brief.tsx`; `Morrovia/05 Product Patterns/Luna AI assistant` and `Trip capture` |
 
 ### Recurring ownership map

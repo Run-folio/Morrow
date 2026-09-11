@@ -24,7 +24,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "@/components/easyt/easyt-controls";
-import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import {
   allHelpQuestions,
   filterHelpTopics,
@@ -328,8 +327,8 @@ export default function HelpCenter({
               <p className={styles.supportEyebrow}>MORROVIA SUPPORT</p>
               <h2>Still stuck?</h2>
               <p>If something isn’t working or you’re unsure what Morrovia means, get in touch.</p>
-              <EasyTLinkButton href={`mailto:${morroviaLegalIdentity.supportContact}`} icon={Mail} variant="secondary">
-                Email Morrovia support
+              <EasyTLinkButton href="/journey/contact?topic=support" icon={Mail} variant="secondary">
+                Contact Morrovia support
               </EasyTLinkButton>
             </div>
           </div>

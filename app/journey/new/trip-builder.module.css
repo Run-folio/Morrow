@@ -16,7 +16,7 @@
 .shellWide{--signal:var(--morrovia-signal);--ink:var(--morrovia-ink);--line:var(--morrovia-line);--tint:var(--morrovia-lilac);--muted:var(--morrovia-muted);max-width:1180px;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
 .steps{position:relative;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;padding:30px 15% 27px;border-bottom:1px solid var(--line);background:transparent}
 .steps:before{display:none}.stepTab{position:relative;z-index:1;justify-content:center;padding:0;background:var(--morrovia-paper);color:var(--muted);font-size:16px}.stepTab>span{grid-template-columns:auto auto;align-items:center;gap:7px}.stepTab small{grid-column:2;text-align:left}.stepTabOn{color:var(--ink)}.stepTabOn>b{border-color:var(--signal);background:var(--signal);color:#fff}.stepTabDone>b{border-color:var(--signal);background:var(--signal);color:#fff}
-.confirmHero{max-width:1180px;margin:0 auto;padding:56px 5% 26px;background:transparent}.confirmHero h1,.stepHero h2{font-family:var(--morrovia-display);font-weight:600;letter-spacing:-.055em}.confirmHero h1{font-size:clamp(48px,6vw,82px)}.wizardBody{grid-template-columns:minmax(0,1.75fr) minmax(300px,.78fr);border:1px solid var(--line);background:rgba(255,255,255,.58);box-shadow:0 16px 45px rgba(23,16,111,.05)}.pane{padding:30px 5% 40px}.confirmAside{padding:42px 12% 34px;border-left:1px solid var(--line);background:linear-gradient(150deg,#fcfbff,#f1efff)}.confirmAside h2{font-family:var(--morrovia-display);font-size:30px;font-weight:600}.confirmIllustration{max-height:220px;margin:0 auto 12px}.card,.intakeReview,.intentPanel:has(.detailsToggle + *){border-color:var(--line);border-radius:var(--morrovia-radius);box-shadow:none}.intakeReview{background:rgba(255,255,255,.78)}.intakeReview h2{font-family:var(--morrovia-display);font-weight:600}.routeCheck{border-color:var(--line);background:#fff}.primary,.confirmDatesButton{background:var(--ink)!important;border-color:var(--ink)!important}.primary:hover,.confirmDatesButton:hover{background:var(--signal)!important;border-color:var(--signal)!important}
+.confirmHero{max-width:1180px;margin:0 auto;padding:56px 5% 26px;background:transparent}.confirmHero h1,.stepHero h2{font-family:var(--morrovia-display);font-weight:600;letter-spacing:-.055em}.confirmHero h1{font-size:clamp(48px,6vw,82px)}.wizardBody{grid-template-columns:minmax(0,1.75fr) minmax(300px,.78fr);border:1px solid var(--line);background:var(--morrovia-paper);box-shadow:0 16px 45px rgba(23,16,111,.05)}.pane{padding:30px 5% 40px}.confirmAside{padding:42px 12% 34px;border-left:1px solid var(--line);background:linear-gradient(150deg,#fcfbff,#f1efff)}.confirmAside h2{font-family:var(--morrovia-display);font-size:30px;font-weight:600}.confirmIllustration{max-height:220px;margin:0 auto 12px}.card,.intakeReview,.intentPanel:has(.detailsToggle + *){border-color:var(--line);border-radius:var(--morrovia-radius);box-shadow:none}.intakeReview{background:rgba(255,255,255,.78)}.intakeReview h2{font-family:var(--morrovia-display);font-weight:600}.routeCheck{border-color:var(--line);background:#fff}.primary,.confirmDatesButton{background:var(--ink)!important;border-color:var(--ink)!important}.primary:hover,.confirmDatesButton:hover{background:var(--signal)!important;border-color:var(--signal)!important}
 .routeStep{display:grid;gap:22px}.routeStep .stepHero{margin-bottom:0}.routeDecisionStage{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(280px,.88fr);gap:18px;padding:16px;border:1px solid var(--line);border-radius:18px;background:#fff}.routeIllustratedMap{position:relative;min-height:250px;overflow:hidden;border-radius:12px;background:var(--morrovia-lilac)}.routeIllustratedMap img{width:100%;height:100%;object-fit:cover;opacity:.78}.routeIllustratedMap ol{position:absolute;inset:auto 18px 16px;display:flex;gap:8px;margin:0;padding:0;list-style:none}.routeIllustratedMap li{display:flex;align-items:center;gap:5px;color:var(--ink);font-size:11px;font-weight:700}.routeIllustratedMap b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font:700 10px var(--morrovia-meta)}.routeChoices{display:grid;gap:10px;align-content:center}.routeChoices button{display:grid;gap:7px;padding:17px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}.routeChoices button:hover{border-color:var(--signal)}.routeChoices small{color:var(--signal);font:800 9px var(--morrovia-meta);letter-spacing:.1em}.routeChoices strong{font-size:17px;line-height:1.2}.routeChoices span{color:var(--muted);font-size:12px;line-height:1.4}.routeRecommended{border-color:#aaa6f5!important;background:linear-gradient(145deg,#fff,#f4f2ff)!important}.routeRecommended:disabled{cursor:default;opacity:1}.routeAlternative{background:#fcfbff!important}
 .timeStep .allocationPanel{border-color:var(--line);border-radius:18px;overflow:hidden}.timeStep .allocationHead{background:#fcfbff}.timeStep .allocationRow{grid-template-columns:minmax(160px,.9fr) minmax(120px,1.4fr) 76px;padding:20px 0}.timeStep .allocationRow strong{font-family:var(--morrovia-display);font-size:29px}.rail{background:linear-gradient(160deg,#fff,#f3f1ff);border-left-color:var(--line)}
 @media(max-width:840px){.steps{padding-inline:5%;gap:8px}.steps:before{left:calc(5% + 18px);right:calc(5% + 18px)}.stepTab{justify-content:flex-start;font-size:13px}.stepTab small{display:none}.wizardBody{grid-template-columns:1fr}.confirmAside,.rail{border-top:1px solid var(--line);border-left:0}.routeDecisionStage{grid-template-columns:1fr}.routeIllustratedMap{min-height:205px}.confirmHero{padding:36px 22px 22px}.confirmHero h1{font-size:clamp(44px,12vw,64px)}}
@@ -1504,6 +1504,11 @@
 }
 .reorderMenu > button { justify-content: flex-start; min-height: 44px; }
 .mobileFieldLabel { display: none; }
+.routeStopIdentity { min-width: 0; }
+.routeStopImage { display: none; }
+.routeTransferSummary > span { display: grid; min-width: 0; }
+.transferContext { order: 2; }
+.transferTiming { order: 1; }
 
 /* Mobile Dates & Nights repair. The canonical data and controls stay intact;
    only their responsive composition changes. */
@@ -1571,26 +1576,47 @@
   .timeTraveller { min-height: 0; padding: 4px 8px; gap: 2px; }
   .budgetControl { min-height: 52px; padding-block: 5px; gap: 3px; }
 
+  .routeTimePlanner { border: 0; background: transparent; box-shadow: none; }
+  .routeTimePlanner > header { border: 1px solid color-mix(in srgb, var(--morrovia-action) 18%, var(--line)); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
+  .routeTimeRows { gap: 12px; padding-top: 12px; }
   .routeTimeRow {
-    grid-template-columns: minmax(0, 1fr) minmax(104px, auto);
+    grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
     grid-template-areas:
       "identity identity"
       "transfer transfer"
       "nights usable";
-    gap: 10px 12px;
+    column-gap: 0;
+    row-gap: 12px;
     padding: 14px 12px;
+    border: 1px solid color-mix(in srgb, var(--morrovia-action) 18%, var(--line));
+    border-radius: var(--morrovia-control-radius);
+    background: var(--morrovia-paper);
   }
 
-  .reorderControl { position: relative; left: auto; grid-area: identity; align-self: start; justify-self: start; z-index: 2; }
-  .reorderControl .routeGrip { width: 44px; height: 44px; touch-action: pan-y; }
+  .routeTimeRow:last-child { border-bottom: 1px solid color-mix(in srgb, var(--morrovia-action) 18%, var(--line)); }
+  .reorderControl { top: 70px; left: 68px; z-index: 2; transform: translate(-50%, -50%); }
+  .reorderControl .routeGrip { width: 44px; height: 44px; border: 1px solid color-mix(in srgb, var(--morrovia-action) 18%, var(--line)); border-radius: var(--morrovia-control-radius); background: color-mix(in srgb, var(--morrovia-paper) 92%, transparent); touch-action: pan-y; }
   .reorderMenu { top: 48px; }
-  .routeStopName { grid-area: identity; min-height: 44px; padding-left: 54px; }
-  .routeStopName strong { overflow: visible; text-overflow: clip; white-space: normal; }
-  .routeTransferSummary { grid-area: transfer; padding-left: 0; }
-  .nightsControl { grid-area: nights; grid-template-columns: 44px 24px 44px; grid-template-rows: auto 44px; align-self: start; gap: 5px; }
+  .routeStopIdentity { grid-area: identity; display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 92px; }
+  .routeStopImage { display: block; width: 92px; height: 92px; overflow: hidden; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
+  .routeStopImage > img,
+  .routeStopImageFallback { display: grid; width: 100%; height: 100%; object-fit: cover; place-items: center; }
+  .routeStopImageFallback { color: var(--morrovia-muted); }
+  .routeStopImageFallback svg { width: 22px; height: 22px; }
+  .routeStopName { grid-area: auto; min-width: 0; padding-left: 0; }
+  .routeStopName > b { width: 32px; height: 32px; }
+  .routeStopName strong { overflow: visible; font-size: 16px; line-height: 1.2; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+  .routeTransferSummary { grid-area: transfer; align-items: flex-start; min-height: 44px; padding: 10px 4px; }
+  .routeTransferSummary > svg { flex: none; margin-top: 2px; }
+  .routeTransferSummary > span { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; line-height: 1.35; }
+  .transferContext { order: 1; font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+  .transferTiming { order: 2; }
+  .transferTiming small { font-size: 11px; white-space: nowrap; }
+  .nightsControl { grid-area: nights; grid-template-columns: 44px 24px 44px; grid-template-rows: auto 44px; width: auto; align-self: stretch; justify-self: stretch; align-content: center; justify-content: start; gap: 5px; padding: 10px 8px; border-radius: var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background: var(--morrovia-lilac); }
   .nightsControl button { width: 44px; height: 44px; }
   .nightsControl > strong { align-self: center; }
-  .usableTime { grid-area: usable; display: grid; min-width: 0; align-self: start; justify-items: end; gap: 8px; padding-top: 0; text-align: right; }
+  .usableTime { grid-area: usable; display: grid; grid-template-columns: minmax(0, 1fr) auto; width: auto; min-width: 0; align-self: stretch; justify-self: stretch; align-content: center; justify-items: end; gap: 8px 5px; padding: 10px 8px; border-left: 1px solid color-mix(in srgb, var(--morrovia-action) 12%, var(--line)); border-radius: 0 var(--morrovia-control-radius) var(--morrovia-control-radius) 0; background: var(--morrovia-lilac); text-align: right; }
+  .usableTime strong { overflow-wrap: anywhere; }
   .mobileFieldLabel { display: block; grid-column: 1 / -1; color: var(--muted); font: 800 9px var(--morrovia-meta); letter-spacing: .08em; text-transform: uppercase; }
   .usableTime .mobileFieldLabel { justify-self: end; }
   .wizardFoot > .ghost { display: none; }
@@ -1603,9 +1629,9 @@
   .routeTimeRow { padding-inline: 9px; }
 }
 
-/* The mobile Builder action remains fixed above the canonical Morrovia dock.
-   Its document reserves the same measured height so Route Check, warnings and
-   recovery truth can always scroll completely clear of both persistent layers. */
+/* The mobile Builder action remains the only bottom-fixed layer. Its document
+   reserves the same measured height so Route Check, warnings and recovery
+   truth can scroll completely clear, including the device safe area. */
 @media (max-width: 520px) {
   .shellWide {
     --morrovia-builder-action-height: 82px;

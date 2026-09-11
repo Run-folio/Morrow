@@ -228,6 +228,14 @@ test("hero, story and sample consume the same selected route and rights-cleared 
   }
 });
 
+test("only the full-screen homepage LCP image uses the Next responsive priority pipeline", () => {
+  const source = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
+  assert.match(source, /import Image from "next\/image"/);
+  assert.match(source, /<Image className=\{styles\.landscape\}[^>]+sizes="100vw"[^>]+fill priority alt=""/);
+  assert.equal((source.match(/\bpriority\b/g) ?? []).length, 1);
+  assert.doesNotMatch(source, /<img className=\{styles\.landscape\}/);
+});
+
 test("featured collection states that seven routes are editable, open-world starting points", () => {
   const source = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
   assert.match(source, /Routes to get you started/);

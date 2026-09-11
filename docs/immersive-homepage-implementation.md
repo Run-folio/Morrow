@@ -27,7 +27,7 @@ Hero → places → journey → Map/Builder/Itinerary → booking support → im
 
 `HomeTripStarter` composes `MorroviaTripCapture`, `JourneyEndpointsEditor`, date/traveller/interest controls, speech and AI disclosure. Its real request gate and `createHomeTripDraft` handoff remain unchanged. `EasyTNavigation`, `EasyTButton`, `EasyTLinkButton`, `EasyTSegmentedControl`, `MorroviaQuantitySelector`, `ResilientImage`, `JourneyPlannerMap`, `RoutePlanLink`, the canonical affiliate owner and `MorroviaFooter` are reused.
 
-Shared extension: optional link prefetch control, used by immersive navigation to avoid eager Builder loading. Storybook includes the real immersive navigation state. No new shared primitive was created. The page-specific scatter composition, atmospheric scrims and demo layout are intentional editorial exceptions; control semantics/tokens stay shared. Scoped disclosure positioning keeps the existing dialog above the mobile dock and neighbouring chapters, with a 44px close target.
+Shared extension: optional link prefetch control, used by immersive navigation to avoid eager Builder loading. Storybook includes the real immersive navigation state. No new shared primitive was created. The page-specific scatter composition, atmospheric scrims and demo layout are intentional editorial exceptions; control semantics/tokens stay shared. Scoped disclosure positioning keeps the existing dialog clear of the device safe area and neighbouring chapters, with a 44px close target.
 
 ## 5. Route-data source
 
@@ -75,7 +75,7 @@ Quiet view and `prefers-reduced-motion` disable pointer depth, image transitions
 
 ## 16. Accessibility
 
-One hero h1, chapter h2s and sample h3s; real labelled capture controls; explicit previous/next controls and live current count; focusable photographs; pressed-state segmented controls and example selection; descriptive affiliate new-tab labels; visible focus and legal disclosure links. No gesture-only control. Browser checks exercised AI disclosure, Escape dismissal/focus return, keyboard focus and closing CTA. A 320px layering defect was found and fixed: disclosure now sits above the dock and route chapter, with its full text/link visible. This is not a full screen-reader or automated contrast certification.
+One hero h1, chapter h2s and sample h3s; real labelled capture controls; explicit previous/next controls and live current count; focusable photographs; pressed-state segmented controls and example selection; descriptive affiliate new-tab labels; visible focus and legal disclosure links. No gesture-only control. Browser checks exercised AI disclosure, Escape dismissal/focus return, keyboard focus and closing CTA. A 320px layering defect was found and fixed: disclosure remains clear of bottom safe-area controls and the route chapter, with its full text/link visible. This is not a full screen-reader or automated contrast certification.
 
 ## 17. Analytics
 

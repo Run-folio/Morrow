@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function HelpPage() {
   return (
     <main className={`${styles.page} morrovia-editorial-page`}>
-      <EasyTNavigation landing />
+      <EasyTNavigation current="help" landing />
       <HelpCenter />
     </main>
   );

@@ -264,9 +264,6 @@
 @media(prefers-reduced-motion:reduce) { .places { height: auto; --progress: 1!important; } .placesStage { position: relative; } .photos figure,.destinationPhoto { transform: none!important; } }
 @media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none!important; } }
 
-/* The photographic footer owns dock clearance on this page. */
-@media(max-width:520px) { :global(body.easyt-mobile-shell):has(.page) { padding-bottom: 0; } }
-
 /* Product sample: production controls inside an editorial, read-only journey. */
 .canvasNavigation { justify-content: space-between; align-items: center; gap: 20px; padding: 22px 28px; }
 .demoIdentity { display: flex; align-items: center; gap: 12px; }

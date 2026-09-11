@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 import { immersiveHomepageRoutes, immersiveRouteKeys } from '../lib/easyt/immersive-homepage-routes.ts';
-import { routeEditorialImagery } from '../lib/easyt/route-editorial-imagery.ts';
-import { routeEditorialPhoto, routeImages, routePhotoForSource } from '../lib/easyt/route-images.ts';
+import { homepageFirstPartyPhotoSlots, routeEditorialImagery } from '../lib/easyt/route-editorial-imagery.ts';
+import { isReviewedFirstPartyHomepagePhoto, routeEditorialPhoto, routeImages, routePhotoForSource, type RoutePhotoRecord } from '../lib/easyt/route-images.ts';
 import { publicRouteDetailFor } from '../lib/easyt/public-route.ts';
 import { routeDetailPresentation } from '../app/journey/routes/[slug]/route-detail-presentation.ts';
 
@@ -31,6 +31,24 @@ test('editorial imagery resolves only to locally served, credited assets and exi
    for (const variant of photo.variants) assert.ok(existsSync(new URL(`../public${variant.src}`, import.meta.url)));
   }
  }
+});
+
+test('all seven homepage routes have one gated first-party photography slot', () => {
+ assert.deepEqual(Object.keys(homepageFirstPartyPhotoSlots), [...immersiveRouteKeys]);
+ for (const [routeKey, slot] of Object.entries(homepageFirstPartyPhotoSlots)) {
+  assert.equal(slot.photoKey, `morrovia-homepage-${routeKey}`);
+  assert.equal(slot.expectedAsset, `/journey/immersive/first-party/homepage-${routeKey}.jpg`);
+ }
+
+ const candidate: RoutePhotoRecord = {
+  key: 'morrovia-homepage-japan-south-korea', place: 'Seoul', country: 'South Korea', author: 'Morrovia',
+  license: 'Founder-owned', licenseUrl: '', sourceUrl: '', changes: 'Web-ready reviewed export', alt: 'Seoul at dusk',
+  variants: [{ src: '/journey/immersive/first-party/homepage-japan-south-korea.jpg', width: 1900, height: 1267 }],
+  provenance: 'reviewed-morrovia-first-party', approvedRoles: ['homepage-featured-route'],
+ };
+ assert.equal(isReviewedFirstPartyHomepagePhoto(candidate), true);
+ assert.equal(isReviewedFirstPartyHomepagePhoto({ ...candidate, approvedRoles: [] }), false);
+ assert.equal(isReviewedFirstPartyHomepagePhoto({ ...candidate, variants: [{ ...candidate.variants[0], src: '/journey/illustrations/map.png' }] }), false);
 });
 
 test('landmark images never become overnight route stops or change the Builder draft', () => {

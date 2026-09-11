@@ -1,11 +1,21 @@
 /** Editorial image identity is independent of the overnight-base model.
  * Keys resolve only through Morrovia's attributed, locally hosted inventories. */
 export type RouteVisualMoment = { name: string; stopName: string; photoKey: string; context: string };
+export const homepageFirstPartyPhotoSlots = {
+  "japan-south-korea": { photoKey: "morrovia-homepage-japan-south-korea", expectedAsset: "/journey/immersive/first-party/homepage-japan-south-korea.jpg" },
+  "iceland-ring-road": { photoKey: "morrovia-homepage-iceland-ring-road", expectedAsset: "/journey/immersive/first-party/homepage-iceland-ring-road.jpg" },
+  "balkans-overland": { photoKey: "morrovia-homepage-balkans-overland", expectedAsset: "/journey/immersive/first-party/homepage-balkans-overland.jpg" },
+  "vietnam-cambodia": { photoKey: "morrovia-homepage-vietnam-cambodia", expectedAsset: "/journey/immersive/first-party/homepage-vietnam-cambodia.jpg" },
+  "namibia-self-drive": { photoKey: "morrovia-homepage-namibia-self-drive", expectedAsset: "/journey/immersive/first-party/homepage-namibia-self-drive.jpg" },
+  "peru-bolivia": { photoKey: "morrovia-homepage-peru-bolivia", expectedAsset: "/journey/immersive/first-party/homepage-peru-bolivia.jpg" },
+  "mexico-guatemala": { photoKey: "morrovia-homepage-mexico-guatemala", expectedAsset: "/journey/immersive/first-party/homepage-mexico-guatemala.jpg" },
+} as const;
+
 export type RouteEditorialImagery = {
   /** Route-card and route-detail identity. */
   hero: string;
   /** Independent homepage scene; never implicitly falls back to the route hero. */
-  homepageHero: { photoKey: string } | { generatedAsset: string; credit: string; creditEs: string };
+  homepageHero: ({ photoKey: string } | { generatedAsset: string; credit: string; creditEs: string }) & { focalPosition?: string };
   closing: string;
   bases: Record<string, { photoKey: string; panelPhotoKey?: string | null; caption: string }>;
   /** Optional homepage-only projection. Canonical route stops remain unchanged. */

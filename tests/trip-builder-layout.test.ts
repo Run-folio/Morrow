@@ -269,6 +269,8 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
   assert.match(builder, /\$\{stops\.length\} stops in \$\{totalDays\} days is very fast-paced\./);
   assert.match(timeStep, /Unknown transport/,
     "unknown canonical transfers should remain calm and explicit");
+  assert.match(timeStep, /transferIsUnknown[\s\S]*Transfer to confirm · Unknown transport[\s\S]*leg && !transferIsUnknown/,
+    "an unknown canonical leg should use one concise confirmation line without duplicating its missing duration");
   assert.doesNotMatch(timeStep, /<Image/,
     "the Time step should not include decorative illustration");
   const summaryRail = builder.slice(builder.indexOf("function BuilderSummaryRail"), builder.indexOf("/* ------------------------------------------------------------- main */"));
@@ -283,7 +285,19 @@ test("the Time step uses the approved hierarchy without bypassing builder truth"
   assert.match(mobileRepair, /\.timeControls \.builderDatePicker > div:first-child \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
     "mobile dates should remain side by side instead of doubling the control slab height");
   assert.match(mobileRepair, /grid-template-areas:\s*"identity identity"\s*"transfer transfer"\s*"nights usable"/,
-    "mobile rows should keep identity, transfer, nights and usable time in a compact three-line composition");
+    "mobile cards should keep destination, transfer and stay in three clear information bands");
+  assert.match(timeStep, /routeDestinationPhoto\(stop\.name, stop\.country\)/,
+    "every overnight stop should use the canonical reviewed destination image pipeline");
+  assert.match(timeStep, /className=\{styles\.routeStopImageFallback\} role="img" aria-label=\{`Image unavailable for \$\{stop\.name\}`\}/,
+    "missing destination imagery should retain a labelled, fixed-geometry fallback");
+  assert.match(mobileRepair, /\.routeStopIdentity \{ grid-area: identity; display: grid; grid-template-columns: 92px minmax\(0, 1fr\)/,
+    "the spacious mobile identity band should reserve a consistent large thumbnail and the remaining width for the name");
+  assert.match(mobileRepair, /\.routeStopName strong \{[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/,
+    "long destination names should wrap instead of truncating or widening the card");
+  assert.match(mobileRepair, /\.routeTimeRows \{ gap: 12px; padding-top: 12px; \}/,
+    "overnight stops should read as separate, calm cards rather than one fragmented table slab");
+  assert.doesNotMatch(timeStep, /First overnight stop/,
+    "the first overnight stop should not introduce a different identity-row structure");
   assert.match(mobileRepair, /\.mobileFieldLabel \{ display: block/,
     "mobile night and usable-time values should retain visible field labels");
   assert.match(mobileRepair, /\.wizardFoot > \.ghost \{ display: none; \}/,
