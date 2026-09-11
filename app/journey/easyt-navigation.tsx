@@ -176,7 +176,7 @@ export default function EasyTNavigation({
         href="/"
         aria-label="Morrovia home"
       >
-        <MorroviaBrandLogo variant={logoTone === "light" ? "light" : "full"} size="navigation" decorative priority />
+        <MorroviaBrandLogo variant={logoTone === "light" ? "light" : "full"} size="navigation" decorative priority={current !== "home"} />
       </Link>
 
       <nav className={styles.landingActions} aria-label="Morrovia navigation">
