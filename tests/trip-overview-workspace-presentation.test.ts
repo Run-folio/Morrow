@@ -5,6 +5,47 @@ import test from "node:test";
 const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
 const styles = readFileSync("components/easyt/trip-overview-workspace.module.css", "utf8");
 const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
+const shellSource = readFileSync("components/easyt/trip-shell.tsx", "utf8");
+const resolverSource = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
+const shellClientSource = readFileSync("components/easyt/trip-shell-client.tsx", "utf8");
+
+test("Overview prioritises route understanding before readiness and supporting tasks", () => {
+  const tripHeader = shellSource.indexOf('<header className={styles.tripHeader}>');
+  const shellContent = shellSource.indexOf('<div className={styles.content}>{children}</div>');
+  const nextAction = source.indexOf('className={`${styles.nextAction}');
+  const health = source.indexOf('<article className={styles.healthCard}>');
+  const route = source.indexOf('<section className={styles.routeCard}');
+  const progress = source.indexOf('<section ref={progressOrientationTarget} className={styles.progressCard}');
+  const readiness = source.indexOf('<p>Readiness at a glance</p>');
+  const planningProgress = source.indexOf('<h2 id="overview-progress-title">Planning progress</h2>');
+  const plans = source.indexOf('<TripExplicitPlans trip={trip} variant="overview" />');
+  const beforeGo = source.indexOf('<section className={styles.beforeGo}');
+
+  assert.ok(tripHeader >= 0 && tripHeader < shellContent);
+  assert.ok(nextAction >= 0 && nextAction < route);
+  assert.ok(health >= 0 && health < route);
+  assert.ok(route < progress && progress <= readiness && readiness < planningProgress);
+  assert.ok(progress < plans);
+  assert.ok(plans < beforeGo);
+  assert.match(styles, /grid-template-areas:\s*"next health"\s*"route route"\s*"progress progress"\s*"plans plans"\s*"before before"/);
+  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*grid-template-areas:\s*"next"\s*"health"\s*"route"\s*"progress"\s*"plans"\s*"before"/);
+});
+
+test("critical trip and persistence states stay ahead of the promoted route module", () => {
+  const health = source.indexOf('<article className={styles.healthCard}>');
+  const route = source.indexOf('<section className={styles.routeCard}');
+  const resolverBanner = resolverSource.indexOf("syncIssue ? <MorroviaStatusBanner");
+  const resolverShell = resolverSource.indexOf("<TripShell trip=");
+  const sessionBanner = shellClientSource.indexOf('{ownerBoundary === "expired" || ownerBoundary === "signed-out" ? (');
+  const recoveryBanner = shellClientSource.indexOf("{visibleDeviceRecovery ? (");
+  const tripProvider = shellClientSource.indexOf("<TripShellTripContext.Provider");
+
+  assert.ok(health >= 0 && health < route);
+  assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
+  assert.ok(resolverBanner >= 0 && resolverBanner < resolverShell);
+  assert.ok(sessionBanner >= 0 && sessionBanner < tripProvider);
+  assert.ok(recoveryBanner >= 0 && recoveryBanner < tripProvider);
+});
 
 test("Overview only surfaces a provider-confirmed representative stay", () => {
   assert.match(source, /stableStopDateRange\(actionImageStop, trip\)/);

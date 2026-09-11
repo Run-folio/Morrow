@@ -490,6 +490,42 @@ export default function TripOverviewWorkspace({
           <EasyTLinkButton className={styles.healthAction} href={issues[0]?.href ?? routeIssueHref(trip.id)} size="small" variant="secondary" fullWidth>{issues.length ? "Start review" : "Review trip"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
         </article>
 
+        <section className={styles.routeCard} aria-labelledby="overview-route-title">
+          <div className={styles.sectionHeading}>
+            <div><p>Your route</p><h2 id="overview-route-title">{routeHeading}</h2><span className={styles.sectionDetail}>{routeDetail}</span></div>
+          </div>
+          <div className={styles.routeComposition}>
+            <div className={styles.routeJourney}>
+              {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
+                {[
+                  { id: origin.id, name: origin.name, image: resolvedPlaceImages[origin.id], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
+                  ...orderedStops.map((stop, index) => {
+                    const next = orderedStops[index + 1];
+                    const leg = next
+                      ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id)
+                      : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
+                    return { id: stop.id, name: stop.name, image: stopImage(trip, stop, index) ?? resolvedPlaceImages[stop.id], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
+                  }),
+                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: resolvedPlaceImages[journeyEnd.id], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
+                ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
+                  <Link className={styles.routeStopLink} href={step.href}><article>
+                    <div className={styles.stopNumber}>{index + 1}</div>
+                    <ResilientImage src={step.image?.src} alt={step.image?.alt ?? ""} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
+                    <div className={styles.stopOverlay}><h3>{step.name}</h3><span>{step.meta}</span></div>
+                  </article></Link>
+                  {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
+                  {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
+                </li>)}
+              </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
+              {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationale.reasons[0] ?? routeRationale.summary}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
+            </div>
+            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
+              <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
+              <EasyTLinkButton className={styles.routeMapAction} href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary">View full map<Maximize2 aria-hidden="true" /></EasyTLinkButton>
+            </aside> : null}
+          </div>
+        </section>
+
         <section ref={progressOrientationTarget} className={styles.progressCard} aria-labelledby="overview-progress-title">
           <div className={styles.sectionHeading}>
             <div><p>Readiness at a glance</p><h2 id="overview-progress-title">Planning progress</h2></div>
@@ -527,42 +563,6 @@ export default function TripOverviewWorkspace({
             <TripPreparationTaskSection id="overview-good" title="Good to do" icon={HeartPulse} tasks={goodTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} />
           </div> : <div className={styles.beforeGoEmpty}><CheckCircle2 aria-hidden="true" /><div><strong>No outstanding practical tasks</strong><span>Keep official guidance and booking details checked before departure.</span></div></div>}
           {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
-        </section>
-
-        <section className={styles.routeCard} aria-labelledby="overview-route-title">
-          <div className={styles.sectionHeading}>
-            <div><p>Your route</p><h2 id="overview-route-title">{routeHeading}</h2><span className={styles.sectionDetail}>{routeDetail}</span></div>
-          </div>
-          <div className={styles.routeComposition}>
-            <div className={styles.routeJourney}>
-              {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
-                {[
-                  { id: origin.id, name: origin.name, image: resolvedPlaceImages[origin.id], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
-                  ...orderedStops.map((stop, index) => {
-                    const next = orderedStops[index + 1];
-                    const leg = next
-                      ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id)
-                      : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
-                    return { id: stop.id, name: stop.name, image: stopImage(trip, stop, index) ?? resolvedPlaceImages[stop.id], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
-                  }),
-                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: resolvedPlaceImages[journeyEnd.id], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
-                ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
-                  <Link className={styles.routeStopLink} href={step.href}><article>
-                    <div className={styles.stopNumber}>{index + 1}</div>
-                    <ResilientImage src={step.image?.src} alt={step.image?.alt ?? ""} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
-                    <div className={styles.stopOverlay}><h3>{step.name}</h3><span>{step.meta}</span></div>
-                  </article></Link>
-                  {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
-                  {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
-                </li>)}
-              </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
-              {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationale.reasons[0] ?? routeRationale.summary}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
-            </div>
-            {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
-              <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
-              <EasyTLinkButton className={styles.routeMapAction} href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary">View full map<Maximize2 aria-hidden="true" /></EasyTLinkButton>
-            </aside> : null}
-          </div>
         </section>
       </div>
     </section>
