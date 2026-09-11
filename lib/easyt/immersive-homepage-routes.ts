@@ -1,8 +1,8 @@
 import { homepageEligibleRouteCards, selectHomepageRouteCards } from "./homepage-routes.ts";
 import { publicRouteDetailFor, type PublicRouteDetail } from "./public-route.ts";
 import { routeFamilyByKey } from "./route-catalog.ts";
-import { routeEditorialImagery } from "./route-editorial-imagery.ts";
-import { routeEditorialPhoto, type RoutePhotoRecord } from "./route-images.ts";
+import { homepageFirstPartyPhotoSlots, routeEditorialImagery } from "./route-editorial-imagery.ts";
+import { isReviewedFirstPartyHomepagePhoto, routeEditorialPhoto, type RoutePhotoRecord } from "./route-images.ts";
 import { routeStopPhotoCandidates } from "./route-stop-photography.ts";
 import generatedInventory from "../../public/journey/immersive/asset-inventory.json" with { type: "json" };
 export { nextHomepageRoute, routeScrollCorrection } from "./homepage-navigation.ts";
@@ -21,7 +21,7 @@ export type ImmersiveRoute = PublicRouteDetail & {
   dayRange: { min: number; max: number };
   minimumNights: number[];
   href: string;
-  heroPhoto: { variants: Array<{ src: string; width: number; height?: number; bytes?: number }>; credit: string; creditEs: string; country: string; rights: string; source: string } | null;
+  heroPhoto: { variants: Array<{ src: string; width: number; height?: number; bytes?: number }>; credit: string; creditEs: string; country: string; rights: string; source: string; focalPosition?: string; firstParty: boolean } | null;
   photos: Array<RoutePhotoRecord | null>;
   photoCandidates: Array<RoutePhotoRecord[]>;
 };
@@ -85,15 +85,21 @@ export function homepageRouteStopCards(route: ImmersiveRoute): HomepageRouteStop
 function heroFor(key: string): ImmersiveRoute["heroPhoto"] {
   const featured = routeEditorialImagery[key]?.homepageHero;
   if (!featured) return null;
+  const slot = homepageFirstPartyPhotoSlots[key as keyof typeof homepageFirstPartyPhotoSlots];
+  const firstParty = slot ? routeEditorialPhoto(slot.photoKey) : null;
+  if (isReviewedFirstPartyHomepagePhoto(firstParty)) {
+    const credit = firstParty.credit ?? "Morrovia photography";
+    return { variants: firstParty.variants, credit, creditEs: credit, country: firstParty.country, rights: "reviewed-morrovia-first-party", source: firstParty.sourceUrl || firstParty.key, focalPosition: featured.focalPosition, firstParty: true };
+  }
   if ("generatedAsset" in featured) {
     const generated = generatedInventory.find(image => image.file === featured.generatedAsset);
     if (!generated?.label) return null;
-    return { variants: generated.variants, credit: featured.credit, creditEs: featured.creditEs, country: generated.label, rights: generated.rights, source: generated.source };
+    return { variants: generated.variants, credit: featured.credit, creditEs: featured.creditEs, country: generated.label, rights: generated.rights, source: generated.source, focalPosition: featured.focalPosition, firstParty: false };
   }
   const photo = routeEditorialPhoto(featured.photoKey);
   if (!photo) return null;
   const credit = `${photo.place} · ${photo.author} · ${photo.license}`;
-  return { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl };
+  return { variants: photo.variants, credit, creditEs: credit, country: photo.country, rights: photo.license, source: photo.sourceUrl, focalPosition: featured.focalPosition, firstParty: false };
 }
 
 export function immersiveHomepageRoutes(): ImmersiveRoute[] {

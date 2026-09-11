@@ -19,6 +19,9 @@ export type RoutePhotoRecord = {
   variants: Array<{ src: string; width: number; height: number; bytes?: number }>;
   intendedUses?: string[];
   routeKeys?: string[];
+  provenance?: "reviewed-provider" | "reviewed-morrovia-first-party";
+  approvedRoles?: Array<"homepage-featured-route">;
+  credit?: string;
 };
 
 // Exact place/country editorial records are safe to reuse across published
@@ -35,6 +38,12 @@ const canonicalRouteImages: Record<string, string> = {
 
 export function routeEditorialPhoto(key: string): RoutePhotoRecord | null {
   return editorialPhotos.find(photo => photo.key === key) ?? null;
+}
+
+export function isReviewedFirstPartyHomepagePhoto(photo: RoutePhotoRecord | null): photo is RoutePhotoRecord {
+  return photo?.provenance === "reviewed-morrovia-first-party"
+    && photo.approvedRoles?.includes("homepage-featured-route") === true
+    && photo.variants.every(variant => variant.src.startsWith("/journey/immersive/first-party/"));
 }
 
 /** One licensed, locally served hero for every published route with visual coverage. */
