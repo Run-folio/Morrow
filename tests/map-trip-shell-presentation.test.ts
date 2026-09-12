@@ -223,7 +223,7 @@ test("mobile Map has one contextual sheet owner with explicit reachable sizes", 
 test("mobile result detail replaces the list and has a visible route back", () => {
   assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace \? "Results" : "Map"/);
   assert.match(mapWorkspaceSource, /clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetSize\("medium"\)/);
-  assert.match(mapWorkspaceSource, /onLocalPlaceSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectLocalPlace\(place\); \}\}/);
+  assert.match(mapWorkspaceSource, /onMapResultSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectMapResult\(place\); \}\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);
 });

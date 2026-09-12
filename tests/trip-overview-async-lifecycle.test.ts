@@ -83,7 +83,9 @@ test("Overview effects use semantic dependencies, stale guards, and the shared c
 test("Map preview cleanup preserves a Strict Mode remount without changing full Map cleanup", () => {
   const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
   assert.match(mapSource, /removalTimerRef/);
-  assert.match(mapSource, /if \(previewMode\) map\.on\("error", handleMapError\)/);
+  assert.match(mapSource, /map\.on\("error", handleMapError\)/);
+  assert.match(mapSource, /basemapLifecycle\.handleError\(event\)/);
+  assert.doesNotMatch(mapSource, /if \(previewMode\) map\.on\("error", handleMapError\)/);
   assert.match(mapSource, /value instanceof Event/);
   assert.match(mapSource, /Morrovia MapLibre resource request ended before the map finished loading/);
   assert.match(mapSource, /if \(!previewMode\) \{\s*removeMap\(\);\s*return;/);
