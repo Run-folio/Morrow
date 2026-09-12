@@ -38,7 +38,7 @@ test("public identity and contact surfaces use the canonical owner", () => {
   assert.match(terms, /morroviaLegalIdentity\.operatorTradingAs/);
   assert.match(terms, /\/journey\/contact\?topic=complaint/);
   assert.match(login, /href="\/journey\/privacy"/);
-  assert.equal([footer, privacy, help, cookies, affiliate, terms, login].some((source) => source.includes("sw@shaunwhiting.com")), false);
+  assert.equal([footer, privacy, help, cookies, affiliate, terms, login].some((source) => /mailto:/i.test(source)), false);
 });
 
 test("footer legal links target existing routes", () => {

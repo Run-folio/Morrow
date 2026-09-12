@@ -99,7 +99,7 @@
     - link "Help":
       - /url: /journey/help
     - link "Contact":
-      - /url: mailto:sw@shaunwhiting.com
+      - /url: /journey/contact
     - link "Affiliate disclosure":
       - /url: /journey/affiliate-disclosure
     - link "Terms":

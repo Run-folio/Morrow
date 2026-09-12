@@ -427,16 +427,16 @@ export function Contact() {
         </p>
         <div className="mt-9 flex flex-wrap gap-3">
           <TrackedAnchor
-            href="mailto:sw@shaunwhiting.com"
+            href="/journey/contact"
             eventName="email_contact_clicked"
             eventData={{
-              cta_label: "Email Shaun",
-              destination_url: "mailto:sw@shaunwhiting.com",
+              cta_label: "Contact Shaun",
+              destination_url: "/journey/contact",
               location: "contact_panel",
             }}
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-[480] tracking-[-0.01em] text-white transition duration-200 hover:bg-signal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-offset-2 focus-visible:ring-offset-block-lime"
           >
-            Email Shaun <Mail size={17} aria-hidden="true" />
+            Contact Shaun <Mail size={17} aria-hidden="true" />
           </TrackedAnchor>
           <TrackedAnchor
             href="https://www.linkedin.com/in/shaunwhiting/"
