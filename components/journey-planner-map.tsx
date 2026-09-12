@@ -2,7 +2,7 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
-import { BedDouble, Utensils } from "lucide-react";
+import { BedDouble, Landmark, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { morroviaMapStyle, mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
@@ -10,7 +10,7 @@ import { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-tra
 import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
-import type { JourneyLocalPlace } from "@/components/journey-local-finder";
+import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
@@ -34,9 +34,8 @@ type JourneyPlannerMapProps = {
   plannerPins: PlannerMapPin[];
   /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */
   selectedPlannerPinId?: string | null;
-  localPlaces?: JourneyLocalPlace[];
-  localPlaceKind?: "restaurant" | "stay";
-  selectedLocalPlaceId?: string | null;
+  mapResults?: MapResultPlace[];
+  selectedMapResult?: MapResultPlace | null;
   focusOffset?: [number, number];
   focusZoom?: number;
   focusCoordinates: [number, number] | null;
@@ -53,7 +52,7 @@ type JourneyPlannerMapProps = {
   cameraInteractionKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
-  onLocalPlaceSelect?: (place: JourneyLocalPlace) => void;
+  onMapResultSelect?: (place: MapResultPlace) => void;
   onLegSelect?: (leg: MapRouteLeg) => void;
   onSelect: (id: string) => void;
 };
@@ -104,9 +103,8 @@ export function JourneyPlannerMap({
   contextCardsHidden = false,
   plannerPins,
   selectedPlannerPinId = null,
-  localPlaces = [],
-  localPlaceKind = "stay",
-  selectedLocalPlaceId,
+  mapResults = [],
+  selectedMapResult = null,
   focusOffset,
   focusZoom,
   focusCoordinates,
@@ -119,7 +117,7 @@ export function JourneyPlannerMap({
   cameraInteractionKey,
   onMapPinDrop,
   onPlannerPinSelect,
-  onLocalPlaceSelect,
+  onMapResultSelect,
   onLegSelect,
   onSelect,
 }: JourneyPlannerMapProps) {
@@ -140,11 +138,11 @@ export function JourneyPlannerMap({
   const onLegSelectRef = useRef(onLegSelect);
   const onSelectRef = useRef(onSelect);
   const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
-  const onLocalPlaceSelectRef = useRef(onLocalPlaceSelect);
+  const onMapResultSelectRef = useRef(onMapResultSelect);
   onLegSelectRef.current = onLegSelect;
   onSelectRef.current = onSelect;
   onPlannerPinSelectRef.current = onPlannerPinSelect;
-  onLocalPlaceSelectRef.current = onLocalPlaceSelect;
+  onMapResultSelectRef.current = onMapResultSelect;
   selectedLegIdRef.current = selectedLegId;
   selectedPlannerPinIdRef.current = selectedPlannerPinId;
   const routeFocusKey = previewMode ? null : focusCoordinates;
@@ -191,13 +189,13 @@ export function JourneyPlannerMap({
     ? `${overviewPadding.top}:${overviewPadding.right}:${overviewPadding.bottom}:${overviewPadding.left}`
     : "default";
   const selectedStop = stops.find((stop) => stop.id === selectedId && stop.coordinates);
-  const selectedLocalPlace = localPlaces.find((place) => place.id === selectedLocalPlaceId);
+  const selectedResult = selectedMapResult;
   const cameraRequestKey = previewMode
     ? null
     : overviewMode
       ? `overview:${overviewRouteKey}`
-      : selectedLocalPlace
-        ? `place:${selectedLocalPlace.id}:${selectedLocalPlace.coordinates.join(",")}`
+      : selectedResult
+        ? `result:${selectedResult.selectionId}:${selectedResult.coordinates.join(",")}`
         : focusCoordinates
           ? `focus:${focusCoordinates.join(",")}`
           : selectedStop?.coordinates
@@ -657,16 +655,16 @@ export function JourneyPlannerMap({
     if (!map) return;
     const drawLocalPlaces = () => {
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-      localPlaceMarkersRef.current = localPlaces.map((place) => {
+      localPlaceMarkersRef.current = mapResults.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__local-place ${place.id === selectedLocalPlaceId ? "is-active" : ""}`;
-        element.dataset.localPlaceId = place.id;
+        element.className = `planner-map__local-place is-${place.kind} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""}`;
+        element.dataset.mapResultId = place.selectionId;
         element.setAttribute("aria-label", `Show ${place.name}`);
         element.title = `Show ${place.name}`;
-        const PlaceIcon = localPlaceKind === "stay" ? BedDouble : Utensils;
-        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : localPlaceKind === "stay" ? "Stay" : "Eat"}</span></>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLocalPlaceSelectRef.current?.(place); });
+        const PlaceIcon = place.kind === "stay" ? BedDouble : place.kind === "eat" ? Utensils : Landmark;
+        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
+        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
     };
@@ -678,11 +676,11 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current = [];
     };
-  }, [localPlaceKind, localPlaces]);
+  }, [mapResults]);
 
   useEffect(() => {
-    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.localPlaceId === selectedLocalPlaceId));
-  }, [selectedLocalPlaceId]);
+    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.mapResultId === selectedMapResult?.selectionId));
+  }, [selectedMapResult?.selectionId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -740,15 +738,15 @@ export function JourneyPlannerMap({
       });
       return;
     }
-    const target = selectedLocalPlace?.coordinates ?? focusCoordinates ?? selectedStop?.coordinates;
+    const target = selectedResult?.coordinates ?? focusCoordinates ?? selectedStop?.coordinates;
     if (!target) return;
     const compactViewport = window.innerWidth <= 980;
     const offset: [number, number] = compactViewport ? [0, -90] : focusOffset ?? [0, 0];
-    const zoom = selectedLocalPlace || focusCoordinates
+    const zoom = selectedResult || focusCoordinates
       ? Math.max(map.getZoom(), 14)
       : compactViewport ? 11 : focusZoom ?? Math.max(map.getZoom(), 11);
     focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
-  }, [cameraRequestKey, focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, selectedLocalPlace, selectedStop, stops]);
+  }, [cameraRequestKey, focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, selectedResult, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

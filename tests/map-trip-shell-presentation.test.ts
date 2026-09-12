@@ -97,7 +97,7 @@ test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapWorkspaceSource, /scope=\{copilotScope\}/);
   assert.match(mapWorkspaceSource, /setSelectedRouteLegId\(null\);[\s\S]*setMapMode\("overview"\)/);
   assert.match(mapWorkspaceSource, /showShellContext = Boolean\(!copilotOpen/);
-  assert.match(mapWorkspaceSource, /setSelectedLocalPlaceId\(null\);[\s\S]*setSelectedPlannerPin\(null\);[\s\S]*setSelectedRouteLegId\(null\)/);
+  assert.match(mapWorkspaceSource, /setSelectedMapResult\(null\);[\s\S]*setSelectedPlannerPin\(null\);[\s\S]*setSelectedRouteLegId\(null\)/);
 });
 
 test("transport markers use the canonical mode and never invent an unknown mode", () => {
