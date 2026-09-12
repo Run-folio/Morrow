@@ -78,7 +78,7 @@ test("Help uses the production shell, canonical controls and real support path",
   assert.doesNotMatch(client, /onKeyDown=\{\(event\) => activateDisclosureFromKeyboard/);
   assert.match(client, /event\.key === "Escape"/);
   assert.match(client, /\/journey\/contact\?topic=support/);
-  assert.doesNotMatch(client, /mailto:sw@shaunwhiting\.com/,
+  assert.doesNotMatch(client, /mailto:/,
     "Help must not expose the former personal support address");
   assert.equal((client.match(/<Image\b/g) ?? []).length, 1);
   assert.match(footer, /href="\/journey\/help"/);

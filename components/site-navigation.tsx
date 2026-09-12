@@ -140,11 +140,11 @@ export function SiteNavigation() {
             Resume
           </Link>
           <a
-            href="mailto:sw@shaunwhiting.com"
+            href="/journey/contact"
             onClick={() =>
               trackEvent("email_contact_clicked", {
                 cta_label: "Contact",
-                destination_url: "mailto:sw@shaunwhiting.com",
+                destination_url: "/journey/contact",
                 location: "desktop_navigation",
               })
             }
@@ -221,11 +221,11 @@ export function SiteNavigation() {
                 Resume
               </Link>
               <a
-                href="mailto:sw@shaunwhiting.com"
+                href="/journey/contact"
                 onClick={() => {
                   trackEvent("email_contact_clicked", {
                     cta_label: "Contact",
-                    destination_url: "mailto:sw@shaunwhiting.com",
+                    destination_url: "/journey/contact",
                     location: "mobile_navigation",
                   });
                   closeMenu();

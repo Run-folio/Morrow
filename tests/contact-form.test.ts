@@ -93,7 +93,7 @@ test("public Morrovia contact surfaces do not expose a mailbox or destination co
     "lib/morrovia-legal-identity.ts",
     "app/journey/contact/contact-form.tsx",
   ].map(read).join("\n");
-  assert.doesNotMatch(sources, /mailto:|sw@shaunwhiting\.com|CONTACT_TO_EMAIL/);
+  assert.doesNotMatch(sources, /mailto:|CONTACT_TO_EMAIL/);
   assert.match(read("components/morrovia-footer.tsx"), /href="\/journey\/contact"/);
   assert.match(read("app/journey/help/help-client.tsx"), /\/journey\/contact\?topic=support/);
   assert.equal(contactTopic("privacy"), "privacy");

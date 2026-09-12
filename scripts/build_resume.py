@@ -417,7 +417,7 @@ def build_sidebar():
         side.append(p(f"<font color='#ff3d8b'>{label}</font><br/>{value}", "Small"))
     side.append(p("Contact", "Section"))
     side.append(rule())
-    side.append(p("sw@shaunwhiting.com", "Body"))
+    side.append(p("shaunwhiting.com/journey/contact", "Body"))
     side.append(p("www.shaunwhiting.com", "Body"))
     side.append(p("linkedin.com/in/shaunwhiting", "Small"))
     return side

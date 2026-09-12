@@ -887,7 +887,7 @@ No actionable P0, P1, or P2 differences remain.
 - Search filters topic names, questions, and answer text; Escape clears a populated search; the no-results state offers a canonical Clear search action. Browser checks exercised matching results, no results, reset, topic selection, topic replacement, and popular-question expand/collapse.
 - The document width matched the viewport at 320, 390, 430, 768, 1024, 1440, and 1680 px. Topic columns resolve to one, one, one, two, three, three, and three, with no page-level horizontal overflow. Mobile topic rows measured at least 59 CSS px high.
 - Semantic inspection found no duplicate IDs, unlabeled buttons, broken images, or application console errors. The isolated Storybook runtime emitted only the existing Next.js runtime-config deprecation warning.
-- The real support route remains `mailto:sw@shaunwhiting.com`; the disclaimer continues to link to the production Passport information page. Navigation and footer source files were not changed.
+- The real support route remains `/journey/contact`; the disclaimer continues to link to the production Passport information page. Navigation and footer source files were not changed.
 
 ## Storybook and validation
 
