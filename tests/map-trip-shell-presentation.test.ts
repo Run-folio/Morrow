@@ -38,6 +38,10 @@ const navigationStylesSource = readFileSync(
   new URL("../app/journey/easyt-navigation.module.css", import.meta.url),
   "utf8",
 );
+const mapDockStylesSource = readFileSync(
+  new URL("../app/journey/plan-map-docks.module.css", import.meta.url),
+  "utf8",
+);
 const mapStoriesSource = readFileSync(
   new URL("../components/easyt/trip-map-workspace.stories.tsx", import.meta.url),
   "utf8",
@@ -79,7 +83,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);
-  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "isExpandedMap", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode"]) {
+  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "isExpandedMap", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {
     assert.match(cameraInteractionKey, new RegExp(state.replace(/[()]/g, "\\$&")), state);
   }
 });
@@ -122,7 +126,7 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail"/);
   assert.match(mapWorkspaceSource, /showDayPlanner \? <aside id="shape-day-workspace"/);
   assert.match(mapWorkspaceSource, /context=\{\{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey\.calendar\.length, planItem: selectedPlanItem/);
-  assert.match(mapWorkspaceSource, /aria-controls="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /aria-controls="map-contextual-sheet"/);
   assert.match(mapStylesSource, /\.finderDock\.mobileShapeDayOpen\{display:flex!important\}/);
   assert.match(mapStylesSource, /\.mobileShapeDayClosed/);
   assert.match(mapWorkspaceSource, /showFullscreenDestination/);
@@ -195,8 +199,43 @@ test("mobile transfer context progressively discloses evidence without hiding un
 test("mobile navigation has no persistent dock and Map keeps explicit fullscreen exit coverage", () => {
   assert.doesNotMatch(navigationStylesSource, /\.mobileDock/);
   assert.match(mapWorkspaceSource, /isExpandedMap \? "Exit fullscreen" : "Fullscreen map"/);
-  assert.match(mapStylesSource, /\.shellPlannerExpanded \.finderDock\{bottom:0!important/);
+  assert.match(mapDockStylesSource, /\[class\*="mapContextualSurface"\]/);
+  assert.match(mapDockStylesSource, /\[class\*="fullscreenDestination"\]\) \{ display:none!important; \}/);
   assert.match(mapStoriesSource, /Mobile390FullscreenOverview/);
+});
+
+test("mobile Map has one contextual sheet owner with explicit reachable sizes", () => {
+  assert.equal((mapWorkspaceSource.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
+  assert.match(mapWorkspaceSource, /data-mobile-sheet-view=\{mobileMapSheetView\}/);
+  assert.match(mapWorkspaceSource, /data-mobile-sheet-size=\{mobileMapSheetSize\}/);
+  assert.match(mapWorkspaceSource, /\["peek", "medium", "expanded"\] as MobileMapSheetSize\[\]/);
+  assert.match(mapWorkspaceSource, /aria-label="Map sheet size"/);
+  assert.match(mapWorkspaceSource, /setMobileMapSheetCollapsed\(true\)/);
+  for (const view of ["planner", "context", "status", "pin"]) {
+    assert.match(mapDockStylesSource, new RegExp(`data-mobile-sheet-view="${view}"`));
+  }
+  assert.doesNotMatch(mapDockStylesSource, /position:fixed/);
+  assert.match(mapDockStylesSource, /bottom:calc\(var\(--mobile-map-sheet-height\) \+ 4px\)!important/,
+    "provider attribution is lifted above the active contextual sheet");
+});
+
+test("mobile result detail replaces the list and has a visible route back", () => {
+  assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace \? "Results" : "Map"/);
+  assert.match(mapWorkspaceSource, /clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetSize\("medium"\)/);
+  assert.match(mapWorkspaceSource, /onLocalPlaceSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectLocalPlace\(place\); \}\}/);
+  assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
+  assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);
+});
+
+test("short and landscape Map viewports retain recoverable canvas and safe-area controls", () => {
+  assert.match(mapDockStylesSource, /@media \(max-width:980px\) and \(max-height:520px\)/);
+  assert.match(mapDockStylesSource, /--mobile-map-sheet-peek-height:112px/);
+  assert.match(mapDockStylesSource, /--mobile-map-sheet-medium-height:min\(48%,240px\)/);
+  assert.match(mapDockStylesSource, /padding:0 12px env\(safe-area-inset-bottom\)/);
+  assert.match(mapDockStylesSource, /bottom:max\(10px,env\(safe-area-inset-bottom\)\)!important/);
+  for (const story of ["Mobile320MapCanvas", "Mobile390StayResultsMedium", "Mobile430SelectedStayMedium", "Mobile390EatResultsMedium", "Mobile430SelectedEatMedium", "Mobile390SeeExpanded", "Mobile390SavedPinPeek", "MobileShortStayMedium", "MobileLandscapePeek", "Tablet768StayMedium"]) {
+    assert.match(mapStoriesSource, new RegExp(`export const ${story}`), story);
+  }
 });
 
 test("a server-resolved TripShell map remains readable after session expiry", () => {

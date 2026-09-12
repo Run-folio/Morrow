@@ -34,4 +34,4 @@ export const ProductTourSlide04: Story = { render: () => <OpenProductTour initia
 export const ProductTourSlide05: Story = { render: () => <OpenProductTour initialStep={4} /> };
 export const GlobalNavigation: Story = { render: () => <EasyTNavigation current="routes" /> };
 export const TripNavigation: Story = { render: () => <div style={{ padding: 24 }}><TripShellNavigation tripId="storybook-trip" /></div> };
-export const MobileDock390: Story = { parameters: { ...meta.parameters }, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <div style={{ minHeight: 760 }}><EasyTNavigation current="new" /></div> };
+export const MobileCompactHeader390: Story = { parameters: { ...meta.parameters }, globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <div style={{ minHeight: 760 }}><EasyTNavigation current="new" /></div> };

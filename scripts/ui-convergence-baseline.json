@@ -125,7 +125,7 @@
       "app/journey/new/new-trip.module.css": 15,
       "app/journey/new/trip-builder.module.css": 111,
       "app/journey/passport/passport.module.css": 11,
-      "app/journey/plan-map-docks.module.css": 4,
+      "app/journey/plan-map-docks.module.css": 2,
       "app/journey/plan-mobile-nav.module.css": 3,
       "app/journey/plan-next/map-plan-next.module.css": 16,
       "app/journey/privacy/privacy.module.css": 2,

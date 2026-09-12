@@ -673,6 +673,70 @@ export const Mobile390RichFullscreen: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
+export const Mobile320MapCanvas: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview", mobileSheetCollapsed: true } },
+  globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
+
+export const Mobile390StayResultsMedium: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileSheetSize: "medium" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile430SelectedStayMedium: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.hotel], selectedLocalPlaceId: providerPlaces.hotel.id, mobileSheetSize: "medium" } },
+  globals: { viewport: { value: "morrovia430", isRotated: false } },
+};
+
+export const Mobile390EatResultsMedium: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileSheetSize: "medium" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile430SelectedEatMedium: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", localPlaces: [providerPlaces.restaurant], selectedLocalPlaceId: providerPlaces.restaurant.id, mobileSheetSize: "medium" } },
+  globals: { viewport: { value: "morrovia430", isRotated: false } },
+};
+
+export const Mobile390SeeExpanded: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, mobileSheetSize: "expanded" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile390TripStatusExpanded: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileShapeDayOpen: true, tripStatusExpanded: true, mobileSheetSize: "expanded" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const MobileShortStayMedium: Story = {
+  ...Mobile390StayResultsMedium,
+  globals: { viewport: { value: "morrovia390short", isRotated: false } },
+};
+
+export const MobileLandscapePeek: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileSheetSize: "peek" } },
+  globals: { viewport: { value: "morroviaLandscape", isRotated: false } },
+};
+
+export const Tablet768StayMedium: Story = {
+  ...Mobile390StayResultsMedium,
+  globals: { viewport: { value: "morrovia768", isRotated: false } },
+};
+
+export const Mobile390SavedPinPeek: Story = {
+  ...SavedPinReloaded,
+  args: { storyTrip: goldenTriangleWithPin, storyState: { mapMode: "detail", selectedPlannerPinId: "saved-red-fort", mobileSheetSize: "peek" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 /* Composition refinement acceptance matrix. Provider-backed hotel and
    restaurant records intentionally omit imagery because the current local and
    accommodation contracts do not return a licensed photo field. */

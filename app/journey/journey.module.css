@@ -1102,6 +1102,12 @@
 /* Map restoration: keep the planning workspace persistent and make route
    context live on the route before it falls back to a responsive sheet. */
 .mapContextEmpty{display:none!important}
+.mapContextualSurface,.mobileMapSheetBody{display:contents}
+.mobileMapSheetControls{display:none}
+.mobileMapSheetPeek{--mobile-map-sheet-state:peek}
+.mobileMapSheetMedium{--mobile-map-sheet-state:medium}
+.mobileMapSheetExpanded{--mobile-map-sheet-state:expanded}
+.mobileMapSheetCollapsed{--mobile-map-sheet-state:collapsed}
 .mapDayControl,.mobileShapeDayClose{display:none}
 .journey :global(.planner-map__stop.is-context-hidden .planner-map__destination-card){display:none!important}
 .shellPlanner:has(.pinDockExpanded) :global(.planner-map__destination-card),

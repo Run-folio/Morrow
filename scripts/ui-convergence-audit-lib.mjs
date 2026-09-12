@@ -215,7 +215,7 @@ export const STORYBOOK_CONTRACTS = [
   {
     id: "storybook-structure-owners",
     path: "components/easyt/storybook/morrovia-structure-catalogue.stories.tsx",
-    required: ["MorroviaConfirmationDialog", "EasyTProductTour", "EasyTNavigation", "TripShellNavigation", "ConsequentialDialog", "ProductTourDialog", "MobileDock390"],
+    required: ["MorroviaConfirmationDialog", "EasyTProductTour", "EasyTNavigation", "TripShellNavigation", "ConsequentialDialog", "ProductTourDialog", "MobileCompactHeader390"],
     alternative: "Keep the actual confirmation, product-tour and navigation owners represented in the Structure catalogue.",
   },
   {
