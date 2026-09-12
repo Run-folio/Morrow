@@ -79,7 +79,8 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(readFileSync(new URL("../components/easyt/morrovia-map-presentation.ts", import.meta.url), "utf8"), /"morrovia-countries"/);
   assert.match(presentation, /id: "morrovia-land"/);
   assert.match(presentation, /id: "morrovia-borders"/);
-  assert.match(presentation, /"raster-opacity": \["interpolate", \["linear"\], \["zoom"\]/);
+  assert.match(presentation, /MORROVIA_DETAILED_BASEMAP_STYLE_URL = "https:\/\/tiles\.openfreemap\.org\/styles\/positron"/);
+  assert.match(presentation, /export function createMorroviaFallbackMapStyle/);
   assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);

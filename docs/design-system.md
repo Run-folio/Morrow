@@ -424,7 +424,7 @@ Routes retains its page-specific collage and editorial spread. `DiscoveryPhoto` 
 
 `components/easyt/morrovia-map-presentation.ts` owns the canonical Trip Map basemap and route paints for both Trip Map and Routes. Its CSS module owns stop markers, zoom controls and attribution typography. MapLibre paint literals and the circular geographic marker are narrow documented audit exceptions. Planning state, trip edits and route selection stay in their respective existing owners.
 
-CARTO now requires a browser-safe Basemaps key. `NEXT_PUBLIC_CARTO_BASEMAP_KEY` enables the same detailed tiles; without it the shared presentation keeps local Natural Earth land and borders visible at every zoom and sends no CARTO requests. This avoids the provider’s unauthenticated watermark. Route geometry, stop identity and planning logic are unchanged. Detailed street tiles require that optional key; never use a private CARTO account credential here.
+The shared MapLibre presentation uses OpenFreeMap Positron for detailed roads, places and labels without a deployment-specific browser key. `JourneyPlannerMap` owns the style/source lifecycle: it verifies the detailed source and visible layers after style load and detailed zoom transitions, keeps the style stable during ordinary camera movement, and falls back to bundled Natural Earth geography with an explicit retry when the provider fails. Route geometry, stop identity, selection and planning logic remain in their existing owners.
 
 ### Trip workspace width
 
