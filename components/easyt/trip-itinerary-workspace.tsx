@@ -80,6 +80,7 @@ import ResilientImage from "@/components/easyt/resilient-image";
 import DestinationAccommodationModule from "@/components/easyt/destination-accommodation-module";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
+import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
@@ -386,6 +387,24 @@ function bookingsForDay(trip: EasyTTrip, day: PlanItem, stop: TripStop | null) {
   return [...new Map([...(stay ? [stay] : []), ...bookings].map((booking) => [booking.id, booking])).values()];
 }
 
+function providerDuration(activity: ComposedItineraryActivity) {
+  const duration = activity.providerMetadata?.duration;
+  if (!duration) return null;
+  if (duration.fixedMinutes) return formatTripDuration(duration.fixedMinutes);
+  if (duration.fromMinutes && duration.toMinutes) return `${formatTripDuration(duration.fromMinutes)}–${formatTripDuration(duration.toMinutes)}`;
+  return duration.fromMinutes ? `From ${formatTripDuration(duration.fromMinutes)}` : duration.toMinutes ? `Up to ${formatTripDuration(duration.toMinutes)}` : null;
+}
+
+function providerPrice(activity: ComposedItineraryActivity) {
+  const price = activity.providerMetadata?.price;
+  if (!price) return null;
+  try {
+    return new Intl.NumberFormat("en-GB", { style: "currency", currency: price.currency, maximumFractionDigits: 0 }).format(price.amount);
+  } catch {
+    return `${price.amount} ${price.currency}`;
+  }
+}
+
 export default function TripItineraryWorkspace({
   trip,
   presentation = "shell",
@@ -431,11 +450,18 @@ export default function TripItineraryWorkspace({
   const noteInputRef = useRef<HTMLInputElement>(null);
   const findIdeasButtonRef = useRef<HTMLButtonElement>(null);
   const ideasPanelRef = useRef<HTMLDetailsElement>(null);
+  const selectedItemOriginRef = useRef<HTMLButtonElement | null>(null);
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const transportAgenda = useMemo(() => itineraryTransportAgenda(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
+  const closeSelectedDetail = useCallback(() => {
+    setSelectedItemId(null);
+    const origin = selectedItemOriginRef.current;
+    selectedItemOriginRef.current = null;
+    window.requestAnimationFrame(() => origin?.focus());
+  }, []);
 
   useEffect(() => {
     setSelectedIndex((current) => Math.min(current, Math.max(0, days.length - 1)));
@@ -452,6 +478,7 @@ export default function TripItineraryWorkspace({
 
   useEffect(() => {
     setSelectedItemId(null);
+    selectedItemOriginRef.current = null;
     setAddFlow(null);
     setAddDraft("");
     setAddError("");
@@ -568,13 +595,27 @@ export default function TripItineraryWorkspace({
     () => active ? itineraryDayMapContext(workingTrip, active, null) : null,
     [active, workingTrip],
   );
-  const mapContext = useMemo(
-    () => active && dayMapContext ? itineraryDayMapSelection(dayMapContext, active, selectedItemId) : null,
-    [active, dayMapContext, selectedItemId],
-  );
   const dayComposition = useMemo(
     () => active ? composeItineraryDay(workingTrip, active.id) : null,
     [active, workingTrip],
+  );
+  const selectedActivity = useMemo(() => {
+    if (!dayComposition || !selectedItemId) return null;
+    const activities = [...itineraryDayParts.flatMap((part) => dayComposition.planned[part]), ...dayComposition.unslotted];
+    const selectedPinId = selectedItemId.startsWith("map-pin:") ? selectedItemId.slice("map-pin:".length) : null;
+    return activities.find((activity) => activity.id === selectedItemId || (selectedPinId && activity.mapPinId === selectedPinId)) ?? null;
+  }, [dayComposition, selectedItemId]);
+  const selectedStayPinId = selectedItemId?.startsWith("stay:")
+    ? (workingTrip.brief.mapPins ?? []).find((pin) => pin.dayNumber === active?.dayNumber && pin.category === "stay")?.id ?? null
+    : null;
+  const mapSelectionItemId = selectedActivity?.mapPinId
+    ? `map-pin:${selectedActivity.mapPinId}`
+    : selectedStayPinId
+      ? `map-pin:${selectedStayPinId}`
+      : selectedItemId;
+  const mapContext = useMemo(
+    () => active && dayMapContext ? itineraryDayMapSelection(dayMapContext, active, mapSelectionItemId) : null,
+    [active, dayMapContext, mapSelectionItemId],
   );
   const itineraryDaysOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-days");
   const itineraryPlannerOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-planner");
@@ -652,6 +693,7 @@ export default function TripItineraryWorkspace({
 
   const dayBookings = bookingsForDay(workingTrip, active, stop);
   const otherDayBookings = dayBookings.filter((booking) => booking.type !== "stay");
+  const stayBooking = stop ? stayBookingForStop(workingTrip, stop) ?? null : null;
   const dayNotes = workingTrip.brief.dayNotes?.[active.dayNumber] ?? [];
   const customActivities = workingTrip.brief.customActivities?.[active.dayNumber] ?? [];
   const recommendations = workingTrip.recommendations.filter((recommendation) => recommendation.status === "open" && recommendation.affectedDays.includes(active.dayNumber));
@@ -671,6 +713,56 @@ export default function TripItineraryWorkspace({
   const dayPendingKey = `itinerary-day-${active.dayNumber}`;
   const dayPending = mutation.isPending(dayPendingKey);
   const firstVisibleNoteIndex = displayNotes[0]?.sourceIndex ?? active.notes.length;
+  const selectedDetail: ItineraryItemDetailModel | null = (() => {
+    if (selectedActivity) {
+      const rating = selectedActivity.providerMetadata?.rating;
+      const reviews = selectedActivity.providerMetadata?.reviewCount;
+      const booking = selectedActivity.booking;
+      return {
+        id: selectedActivity.id,
+        kind: selectedActivity.category === "restaurant" ? "restaurant" : "activity",
+        title: selectedActivity.title,
+        location: selectedActivity.area ?? stop?.name ?? null,
+        description: selectedActivity.description ?? null,
+        image: selectedActivity.image ?? null,
+        category: selectedActivity.placeType ?? (selectedActivity.category === "restaurant" ? "Restaurant" : "Activity"),
+        duration: providerDuration(selectedActivity),
+        price: providerPrice(selectedActivity),
+        dateSummary: `${displayDayDate(active.date, language)}${selectedActivity.dayPart ? ` · ${itineraryDayPartLabels[language][selectedActivity.dayPart]}` : ""}`,
+        bookingStatus: booking?.confirmation ? "Confirmed" : booking ? "Saved booking" : null,
+        bookingHref: booking?.url ?? selectedActivity.sourceUrl ?? null,
+        whyFit: active.reason || null,
+        practical: [
+          ...(rating ? [{ label: "Rating", value: `${rating}${reviews ? ` · ${reviews.toLocaleString()} reviews` : ""}` }] : []),
+          ...(booking?.confirmation ? [{ label: "Booking", value: "Confirmed" }] : []),
+        ],
+        dayPart: selectedActivity.dayPart,
+        canMoveTime: selectedActivity.dayPartEditable,
+        canRemove: !booking && (selectedActivity.source === "itinerary-idea" || selectedActivity.source === "authored-activity"),
+      };
+    }
+    if (selectedItemId?.startsWith("stay:") && stayBooking && stop) {
+      const nights = stop.nights ?? 0;
+      return {
+        id: stayBooking.id,
+        kind: "accommodation",
+        title: stayBooking.title,
+        location: stayBooking.location ?? stayBooking.importDetails?.location ?? stop.name,
+        description: stayBooking.notes?.join(" ") ?? null,
+        category: "Accommodation",
+        dateSummary: [stop.arrivalDate ? displayDate(stop.arrivalDate, language, true) : null, stop.departureDate ? displayDate(stop.departureDate, language, true) : null].filter(Boolean).join(" – "),
+        duration: nights ? `${nights} ${nights === 1 ? "night" : "nights"}` : null,
+        bookingStatus: stayBooking.confirmation ? "Confirmed" : "Saved",
+        bookingHref: stayBooking.url,
+        practical: [
+          ...(stayBooking.importDetails?.provider ? [{ label: "Provider", value: stayBooking.importDetails.provider }] : []),
+          ...(stayBooking.confirmation ? [{ label: "Booking", value: "Confirmation saved" }] : []),
+        ],
+        canRemove: true,
+      };
+    }
+    return null;
+  })();
 
   const openAddFlow = (noteIndex: number, kind: AddFlow["kind"] = "activity", dayPart?: ItineraryDayPart) => {
     setAddFlow({ dayNumber: active.dayNumber, noteIndex, kind, dayPart });
@@ -854,7 +946,7 @@ export default function TripItineraryWorkspace({
       setRemoveError(mutationReason || "This item could not be removed safely.");
       return;
     }
-    setSelectedItemId(null);
+    closeSelectedDetail();
     setRemoveTarget(null);
     setRemoveError("");
     setNotice(copy.activityRemoved);
@@ -997,6 +1089,16 @@ export default function TripItineraryWorkspace({
             }}
             onActivityDragEnd={() => setPlannerDrag(null)}
             onActivityDrop={dropPlannerItem}
+            selectedActivityId={selectedActivity?.id ?? null}
+            onActivitySelect={(activity, trigger) => {
+              selectedItemOriginRef.current = trigger;
+              setSelectedItemId(activity.id);
+            }}
+            onTonightSelect={stayBooking ? (trigger) => {
+              selectedItemOriginRef.current = trigger;
+              setSelectedItemId(`stay:${stayBooking.id}`);
+            } : undefined}
+            selectedTonight={Boolean(selectedItemId?.startsWith("stay:"))}
             showHeader={false}
           />
         </div> : null}
@@ -1092,7 +1194,41 @@ export default function TripItineraryWorkspace({
         </details>
       </div>
 
-      {hasContextRail ? <aside className={styles.contextRail} aria-label="Selected day planning context">
+      {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail ? styles.contextRailDetail : ""}`} aria-label={selectedDetail ? "Selected itinerary item details" : "Selected day planning context"}>
+        {selectedDetail ? <ItineraryItemDetail
+          detail={selectedDetail}
+          mapHref={mapPlanHref}
+          pending={selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
+          onClose={closeSelectedDetail}
+          onDayPartChange={selectedActivity?.dayPartEditable ? (part) => changeActivityDayPart(selectedActivity, part) : undefined}
+          onAddNote={() => {
+            setSelectedItemId(null);
+            setNoteComposerOpen(true);
+          }}
+          onManage={!selectedActivity && stayBooking && stop ? () => {
+            closeSelectedDetail();
+            window.requestAnimationFrame(() => {
+              const module = document.getElementById(`stay-${stop.id}-title`)?.closest("section");
+              module?.scrollIntoView({ block: "nearest" });
+              module?.querySelector<HTMLButtonElement>("button")?.focus();
+            });
+          } : undefined}
+          manageLabel="Manage stay"
+          onRemove={selectedActivity ? () => {
+            if (selectedActivity.source === "itinerary-idea" && selectedActivity.placeId) {
+              const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, selectedActivity.id), `itinerary-idea-remove-${selectedActivity.id}`);
+              if (accepted) { closeSelectedDetail(); setNotice(copy.activityRemoved); }
+              return;
+            }
+            if (selectedActivity.source === "authored-activity" && selectedActivity.noteIndex !== null) {
+              setRemoveTarget({ dayNumber: active.dayNumber, noteIndex: selectedActivity.noteIndex, title: selectedActivity.title });
+              setRemoveError("");
+            }
+          } : stayBooking && stop ? () => {
+            const changed = mutation.mutateTrip((current) => removeStayBooking(current, stop.id), `itinerary-stay-${stop.id}`);
+            if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
+          } : undefined}
+        /> : <>
         <TripExplicitPlans
           trip={workingTrip}
           variant="itinerary"
@@ -1153,6 +1289,7 @@ export default function TripItineraryWorkspace({
             {stop && (stop.nights ?? 0) > 0 ? <DestinationAccommodationModule
               trip={workingTrip}
               stop={stop}
+              showImportStatus={false}
               pending={mutation.isPending(`itinerary-stay-${stop.id}`)}
               onCanonicalTrip={mutation.acceptCanonicalTrip}
               onSave={(draft) => {
@@ -1274,6 +1411,7 @@ export default function TripItineraryWorkspace({
             </article>;
           })}</div>
         </details> : null}
+        </>}
       </aside> : null}
 
       <MorroviaConfirmationDialog

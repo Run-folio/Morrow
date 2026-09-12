@@ -379,13 +379,43 @@ export const RichDayPlannerIntegrated: Story = {
       brief: {
         ...trip.brief,
         itineraryIdeas: [
-          { id: "idea-cusco-qorikancha", stopId: "cusco", placeId: "qorikancha", title: "Qorikancha", category: "activity", coordinates: [-71.981, -13.519], source: "destination-highlight", reasons: ["destination-significance"], dayId: "day-2", dayPart: "morning" },
-          { id: "idea-cusco-market", stopId: "cusco", placeId: "san-pedro-market", title: "San Pedro Market", category: "restaurant", coordinates: [-71.9821, -13.5207], source: "personalised-recommendation", reasons: ["interest-relevance"], dayId: "day-2", dayPart: null },
+          { id: "idea-cusco-qorikancha", stopId: "cusco", placeId: "qorikancha", title: "Qorikancha", category: "activity", coordinates: [-71.981, -13.519], image: "/journey/peru-sacred-valley-route.jpg", area: "Cusco", placeType: "Culture", description: "A compact historic anchor close to the centre, pairing Inca stonework with the later Santo Domingo complex.", source: "destination-highlight", reasons: ["destination-significance"], dayId: "day-2", dayPart: "morning", providerMetadata: { duration: { fromMinutes: 60, toMinutes: 90 }, price: { amount: 6, currency: "GBP" }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-01T12:00:00.000Z" } } },
+          { id: "idea-cusco-market", stopId: "cusco", placeId: "san-pedro-market", title: "San Pedro Market", category: "restaurant", coordinates: [-71.9821, -13.5207], image: "/journey/peru-sacred-valley-route.jpg", area: "Cusco", placeType: "Local food", description: "A lively central market for regional produce and an easy lunch close to the historic centre.", source: "personalised-recommendation", reasons: ["interest-relevance"], dayId: "day-2", dayPart: "midday" },
         ],
       },
     },
     selectedDayNumber: 2,
   },
+};
+
+const openScheduledItem = (itemId: string) => async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  canvasElement.querySelector<HTMLElement>(`[data-itinerary-activity-id="${itemId}"]`)?.querySelector<HTMLButtonElement>("button")?.click();
+};
+
+export const SelectedActivityDesktop: Story = { ...RichDayPlannerIntegrated, play: openScheduledItem("idea-cusco-qorikancha") };
+export const SelectedRestaurantDesktop: Story = { ...RichDayPlannerIntegrated, play: openScheduledItem("idea-cusco-market") };
+export const SelectedActivityMobile390: Story = { ...SelectedActivityDesktop, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const SelectedRestaurantMobile390: Story = { ...SelectedRestaurantDesktop, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const SelectedAccommodationDesktop: Story = {
+  args: { trip, selectedDayNumber: 1 },
+  play: async ({ canvasElement }) => {
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Tonight"))?.click();
+  },
+};
+export const SelectedAccommodationMobile430: Story = { ...SelectedAccommodationDesktop, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const SelectedActivityMissingImageMobile390: Story = {
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...(RichDayPlannerIntegrated.args?.trip ?? trip),
+      brief: {
+        ...(RichDayPlannerIntegrated.args?.trip?.brief ?? trip.brief),
+        itineraryIdeas: (RichDayPlannerIntegrated.args?.trip?.brief.itineraryIdeas ?? []).map((idea) => ({ ...idea, image: undefined })),
+      },
+    },
+  },
+  play: openScheduledItem("idea-cusco-qorikancha"),
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const TourCapture: Story = {

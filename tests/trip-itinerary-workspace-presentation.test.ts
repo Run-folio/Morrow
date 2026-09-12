@@ -8,6 +8,8 @@ const map = readFileSync(new URL("../components/journey-planner-map.tsx", import
 const context = readFileSync(new URL("../lib/easyt/itinerary-day-context.ts", import.meta.url), "utf8");
 const ideas = readFileSync(new URL("../lib/easyt/itinerary-ideas.ts", import.meta.url), "utf8");
 const accommodation = readFileSync(new URL("../lib/easyt/accommodation.ts", import.meta.url), "utf8");
+const detail = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+const detailStyles = readFileSync(new URL("../components/easyt/itinerary-item-detail.module.css", import.meta.url), "utf8");
 const destinationAccommodation = readFileSync(new URL("../components/easyt/destination-accommodation-module.tsx", import.meta.url), "utf8");
 const refinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
@@ -15,7 +17,7 @@ const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-wor
 test("the itinerary redesign stays below TripShell and composes the three workspace regions", () => {
   assert.match(itinerary, /className=\{styles\.rail\}/);
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
-  assert.match(itinerary, /className=\{styles\.contextRail\}/);
+  assert.match(itinerary, /styles\.contextRail/);
   assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
   assert.doesNotMatch(itinerary, /Edit trip brief/);
 });
@@ -72,7 +74,7 @@ test("the contextual rail renders only canonical map, booking, recommendation, n
   assert.match(itinerary, /<JourneyPlannerMap/);
   assert.match(itinerary, /previewMode/);
   assert.match(itinerary, /itineraryDayMapContext\(workingTrip, active, null\)/);
-  assert.match(itinerary, /itineraryDayMapSelection\(dayMapContext, active, selectedItemId\)/);
+  assert.match(itinerary, /itineraryDayMapSelection\(dayMapContext, active, mapSelectionItemId\)/);
   assert.match(itinerary, /onLegSelect=\{\(leg\) => setSelectedItemId\(`leg-\$\{leg\.id\}`\)\}/);
   assert.match(itinerary, /closest<HTMLElement>\("\[data-planner-pin-id\]"\)/);
   assert.match(itinerary, /itinerarySelectionForMapPin\(pin, active\)/);
@@ -128,11 +130,11 @@ test("tablet and mobile layouts collapse instead of squeezing three columns", ()
   assert.match(itinerary, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
 });
 
-test("mobile composition keeps the selected-day plan ahead of actions and discovery", () => {
+test("mobile composition keeps day navigation and actions ahead of the plan, with discovery after it", () => {
   const rail = itinerary.indexOf("className={styles.rail}");
   const dayPanel = itinerary.indexOf("className={styles.dayPanel}");
   const planner = itinerary.indexOf("<RichItineraryDayPlanner", dayPanel);
-  const contextRail = itinerary.indexOf("className={styles.contextRail}");
+  const contextRail = itinerary.indexOf("styles.contextRail");
   const suggestions = itinerary.indexOf("<ItineraryDaySuggestions", contextRail);
   assert.ok(rail > -1 && rail < dayPanel, "day navigation precedes the selected-day panel");
   assert.ok(dayPanel < planner && planner < contextRail, "the production DOM owns one planner before contextual discovery");
@@ -144,10 +146,35 @@ test("mobile composition keeps the selected-day plan ahead of actions and discov
   const mobile = styles.slice(styles.indexOf("@media (max-width: 540px)"));
   assert.match(mobile, /\.dayPanel \{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
   assert.match(mobile, /\.dayHeader \{ order: 0; \}/);
-  assert.match(mobile, /\.dayPanel > \.details \{ order: 2; \}/);
-  assert.match(mobile, /\.dayActionRegion \{ order: 3; \}/);
-  assert.match(mobile, /\.sequenceEditor \{ order: 4; \}/);
-  assert.match(mobile, /\.dayNavigation \{ order: 5; \}/);
+  assert.match(mobile, /\.dayNavigation \{ order: 1; \}/);
+  assert.match(mobile, /\.dayActionRegion \{ order: 2; \}/);
+  assert.match(mobile, /\.dayPanel > \.details \{ order: 4; \}/);
+  assert.match(mobile, /\.sequenceEditor \{ order: 5; \}/);
+  assert.match(mobile, /\.rail \{ display: none; \}/);
+});
+
+test("scheduled cards open one reusable detail owner without introducing another persistence model", () => {
+  assert.match(itinerary, /<ItineraryItemDetail/);
+  assert.match(itinerary, /selectedDetail \? <ItineraryItemDetail/);
+  assert.match(itinerary, /onActivitySelect=\{\(activity, trigger\)/);
+  assert.match(itinerary, /selectedItemOriginRef\.current = trigger/);
+  assert.match(itinerary, /window\.requestAnimationFrame\(\(\) => origin\?\.focus\(\)\)/);
+  assert.match(detail, /role="dialog"/);
+  assert.match(detail, /event\.key === "Escape"/);
+  assert.match(detail, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(detailStyles, /@media \(max-width: 900px\)[\s\S]*position: fixed[\s\S]*max-height: min\(88svh, 760px\)/);
+  assert.match(detailStyles, /padding-bottom: env\(safe-area-inset-bottom\)/);
+  assert.doesNotMatch(detail, /setTrip|mutateTrip|localStorage/);
+});
+
+test("activity, restaurant, and accommodation detail stay truthful and omit absent facts", () => {
+  assert.match(itinerary, /kind: selectedActivity\.category === "restaurant" \? "restaurant" : "activity"/);
+  assert.match(itinerary, /kind: "accommodation"/);
+  assert.match(detail, /detail\.description \?/);
+  assert.match(detail, /detail\.duration \?/);
+  assert.match(detail, /detail\.price \?/);
+  assert.match(detail, /detail\.practical\?\.length \?/);
+  assert.match(itinerary, /showImportStatus=\{false\}/);
 });
 
 test("long canonical and provider content stays inside the timeline and planning rail", () => {

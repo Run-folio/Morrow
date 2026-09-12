@@ -38,6 +38,8 @@ export type DestinationAccommodationModuleProps = {
   initialImportData?: BookingImportPayload;
   affiliateAction?: ResolvedAffiliateAction | null;
   storyState?: DestinationAccommodationStoryState;
+  /** Import availability belongs to the import flow; ordinary itinerary surfaces keep it quiet. */
+  showImportStatus?: boolean;
 };
 
 function dateRange(start: string | null, end: string | null) {
@@ -69,6 +71,7 @@ export default function DestinationAccommodationModule({
   initialImportData,
   affiliateAction,
   storyState,
+  showImportStatus = true,
 }: DestinationAccommodationModuleProps) {
   const [imports, setImports] = useState<BookingImportPayload | null>(initialImportData ?? null);
   const [importsLoading, setImportsLoading] = useState(Boolean(trip.ownerId && !initialImportData));
@@ -314,7 +317,7 @@ export default function DestinationAccommodationModule({
       {calendarState !== "checking" ? <EasyTButton size="small" variant="quiet" onClick={() => setCalendarState("idle")}>Close</EasyTButton> : null}
     </div> : null}
 
-    {importsError ? <MorroviaStatusBanner tone="warning" title="Import review is temporarily unavailable" detail="Your saved trip is unchanged. Manual booking and the provider handoff still work." /> : null}
+    {importsError && showImportStatus ? <MorroviaStatusBanner tone="warning" title="Import review is temporarily unavailable" detail="Your saved trip is unchanged. Manual booking and the provider handoff still work." /> : null}
 
     <MorroviaConfirmationDialog open={confirmRemove} title={`Remove ${booking?.title ?? "this stay"}?`} detail={`This removes the saved accommodation from ${stop.name}. The destination and itinerary days stay unchanged.`} consequences={["Overview, Map and Itinerary will return to Needs a stay unless another saved stay covers these dates."]} cancelLabel="Keep stay" confirmLabel="Remove stay" confirming={pending} onCancel={() => setConfirmRemove(false)} onConfirm={() => { if (onRemove()) { setConfirmRemove(false); setEditing(false); setNotice("Stay removed. This destination needs accommodation again."); } }} />
   </section>;

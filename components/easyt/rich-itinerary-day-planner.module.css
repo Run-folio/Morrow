@@ -16,6 +16,11 @@
   align-items: center;
 }
 
+.tonightSelected {
+  outline: 1px solid color-mix(in srgb, var(--morrovia-signal) 28%, var(--morrovia-line));
+  outline-offset: -1px;
+}
+
 .header {
   justify-content: space-between;
   gap: 16px;
@@ -246,13 +251,14 @@
 }
 
 .activity {
+  position: relative;
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px 9px;
   align-items: start;
   padding: 12px 13px;
-  transition: opacity .16s ease, transform .16s ease, background .16s ease;
+  transition: opacity .16s ease, transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
 
 .activity + .activity {
@@ -265,18 +271,59 @@
   transform: scale(.985);
 }
 
-.activity strong {
-  min-width: 0;
-  font-size: .88rem;
-  line-height: 1.35;
+.activitySelected {
+  border-radius: var(--morrovia-control-radius);
+  background: color-mix(in srgb, var(--morrovia-lilac) 78%, var(--morrovia-paper));
+  outline: 1px solid color-mix(in srgb, var(--morrovia-signal) 28%, var(--morrovia-line));
+  outline-offset: -1px;
 }
 
-.activityTitle {
+.activitySelected::before,
+.tonightSelected::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-signal);
+  content: "";
+}
+
+.activitySelect {
   min-width: 0;
+  min-height: 68px;
+  padding: 4px;
   display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--morrovia-control-radius);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activitySelect:hover {
+  background: color-mix(in srgb, var(--morrovia-lilac) 58%, transparent);
+}
+
+.activitySelect:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: 2px;
+}
+
+.activityDescription {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-left: 92px;
+  color: var(--morrovia-muted);
+  font-size: .76rem;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .dragHandle {
@@ -291,7 +338,9 @@
   cursor: grabbing;
 }
 
-.activityTitle > span {
+.bookedState {
+  align-self: flex-start;
+  margin-left: 92px;
   padding: 4px 6px;
   border: 1px solid color-mix(in srgb, var(--morrovia-success) 28%, var(--morrovia-line));
   border-radius: var(--morrovia-control-radius);
@@ -302,13 +351,46 @@
   letter-spacing: .04em;
 }
 
+.activityMenu {
+  position: relative;
+}
+
+.activityMenu > summary {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+.activityMenu > summary::-webkit-details-marker { display: none; }
+.activityMenu > summary:hover { background: var(--morrovia-lilac); }
+.activityMenu > summary:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
+.activityMenu > summary svg { width: 18px; height: 18px; }
+
+.activityMenu > div {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  right: 0;
+  width: min(260px, calc(100vw - 32px));
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  box-shadow: var(--morrovia-shadow-overlay);
+}
+
 .dayPartField {
-  grid-column: 1 / -1;
   min-width: 0;
 }
 
 .activityMoveActions {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -404,6 +486,7 @@
 }
 
 .tonight {
+  position: relative;
   align-items: flex-start;
   gap: 11px;
   padding: 14px 16px;
@@ -415,10 +498,20 @@
   color: var(--morrovia-action);
 }
 
-.tonight > div {
+.tonightSelect {
   min-width: 0;
   flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+
+.tonightSelect:disabled { cursor: default; }
+.tonightSelect:not(:disabled):hover strong { color: var(--morrovia-action); }
+.tonightSelect:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 4px; }
 
 .tonight h3 {
   margin-bottom: 5px;
@@ -442,6 +535,12 @@
 
   .dragHandle {
     display: none;
+  }
+
+  .activityDescription,
+  .bookedState {
+    padding-left: 84px;
+    margin-left: 0;
   }
 }
 

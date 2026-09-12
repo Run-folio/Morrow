@@ -1133,6 +1133,13 @@
   background: color-mix(in srgb, var(--morrovia-paper) 92%, var(--morrovia-lilac));
 }
 
+.contextRailDetail {
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  background: var(--morrovia-paper);
+}
+
 .contextSection {
   min-width: 0;
   padding: 14px;
@@ -1784,6 +1791,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
+  .contextRail.contextRailDetail { display: block; }
   .contextSection {
     border-right: 1px solid var(--morrovia-line);
   }
@@ -1813,6 +1821,7 @@
     grid-row: auto;
     grid-template-columns: minmax(0, 1fr);
   }
+  .contextRail.contextRailDetail { min-height: 0; padding-bottom: 0; }
   .contextSection {
     border-right: 0;
   }
@@ -1843,19 +1852,18 @@
   .transportActions > .omioAction > a { width: 100%; }
   .railHeader { min-height: 54px; padding: 0 16px; }
   .dayPanel {
-    padding: 24px 16px 28px;
+    padding: 24px 16px calc(28px + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
   }
-  .dayPanel > * { order: 2; }
   .dayHeader { order: 0; }
+  .dayNavigation { order: 1; }
+  .dayActionRegion { order: 2; }
   .recoveryFeedback,
-  .notice { order: 1; }
-  .dayPanel > .details { order: 2; }
-  .dayActionRegion { order: 3; }
-  .sequenceEditor { order: 4; }
-  .dayNavigation { order: 5; }
-  .rail { max-width: 100%; overflow: hidden; }
+  .notice { order: 3; }
+  .dayPanel > .details { order: 4; }
+  .sequenceEditor { order: 5; }
+  .rail { display: none; }
   .dayHeader { display: block; }
   .dayCount { display: inline-flex; margin-top: 10px; }
   .dayHeader .daySummary { align-items: flex-start; }

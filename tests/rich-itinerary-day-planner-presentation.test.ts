@@ -64,11 +64,21 @@ test("day parts use the canonical calm surface and heading typography at every w
   assert.match(styles, /\.periodHeading h3,[\s\S]*font: var\(--morrovia-type-control\)/);
 });
 
+test("the scheduled card is the primary selection target and editing chrome is secondary", () => {
+  assert.match(component, /className=\{styles\.activitySelect\}/);
+  assert.match(component, /aria-pressed=\{selected\}/);
+  assert.match(component, /onActivitySelect\?\.\(activity, trigger\)/);
+  assert.match(component, /<details className=\{styles\.activityMenu\}>/);
+  assert.match(styles, /\.activitySelected \{[\s\S]*outline:/);
+  assert.match(styles, /\.activitySelected::before,[\s\S]*background: var\(--morrovia-signal\)/);
+  assert.match(styles, /\.activitySelect \{[\s\S]*min-height: 68px/);
+});
+
 test("the rendered planner follows Travel, chronological day parts, unslotted context, then Tonight", () => {
   const travelIndex = component.indexOf("composition.transfers.length");
   const periodsIndex = component.indexOf("className={styles.periodGrid}");
   const unslottedIndex = component.indexOf("composition.unslotted.length");
-  const tonightIndex = component.indexOf("className={styles.tonight}");
+  const tonightIndex = component.indexOf("className={`${styles.tonight}");
   assert.ok(travelIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
   assert.match(composition, /itineraryDayParts = \["morning", "midday", "afternoon", "evening"\]/);
 });

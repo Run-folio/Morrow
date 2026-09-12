@@ -1,0 +1,302 @@
+.shell {
+  position: relative;
+  min-width: 0;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--morrovia-paper);
+  color: var(--morrovia-ink);
+}
+
+.scrim,
+.handle {
+  display: none;
+}
+
+.close {
+  position: absolute;
+  z-index: 3;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--morrovia-paper) 78%, var(--morrovia-line));
+  background: color-mix(in srgb, var(--morrovia-paper) 92%, transparent);
+}
+
+.hero {
+  height: 190px;
+  overflow: hidden;
+  background: var(--morrovia-lilac);
+}
+
+.hero img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.heroFallback {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-metadata);
+}
+
+.heroFallback svg {
+  width: 30px;
+  height: 30px;
+  color: var(--morrovia-action);
+}
+
+.content {
+  padding: 20px 18px 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.header {
+  min-width: 0;
+}
+
+.header > span,
+.header > p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.header > span {
+  color: var(--morrovia-signal);
+  font: 800 .68rem/1.2 var(--morrovia-meta);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.header > span svg,
+.header > p svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.header h2 {
+  margin: 8px 0 7px;
+  overflow-wrap: anywhere;
+  font: 600 clamp(1.7rem, 3vw, 2.15rem)/1.03 var(--morrovia-display);
+  letter-spacing: -.03em;
+}
+
+.header > p {
+  margin: 0;
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-metadata);
+}
+
+.description {
+  margin-top: 12px;
+  color: var(--morrovia-ink-soft);
+  font-size: .88rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-block: 1px solid var(--morrovia-line);
+}
+
+.facts > div {
+  min-width: 0;
+  padding: 12px 8px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 2px 7px;
+}
+
+.facts > div > svg,
+.facts > div > span {
+  grid-row: 1 / span 2;
+  width: 18px;
+  color: var(--morrovia-action);
+  font: 800 .9rem/1.2 var(--morrovia-meta);
+}
+
+.facts dt,
+.facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.facts dt {
+  color: var(--morrovia-muted);
+  font: 700 .62rem/1.25 var(--morrovia-meta);
+  text-transform: uppercase;
+}
+
+.facts dd {
+  color: var(--morrovia-ink-soft);
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.why {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.why > svg {
+  width: 20px;
+  color: var(--morrovia-signal);
+}
+
+.why h3,
+.practical h3 {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-control);
+}
+
+.why p {
+  margin: 5px 0 0;
+  color: var(--morrovia-ink-soft);
+  font-size: .78rem;
+  line-height: 1.5;
+}
+
+.practical {
+  display: grid;
+  gap: 10px;
+}
+
+.practical dl {
+  margin: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.practical dl > div {
+  display: grid;
+  grid-template-columns: minmax(80px, auto) minmax(0, 1fr);
+  gap: 10px;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.practical dt {
+  color: var(--morrovia-ink);
+  font-weight: 750;
+}
+
+.practical dd {
+  margin: 0;
+  color: var(--morrovia-muted);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.actions > :first-child {
+  grid-column: 1 / -1;
+}
+
+.actions > * {
+  width: 100%;
+  min-height: 44px;
+}
+
+@media (max-width: 900px) {
+  .scrim {
+    position: fixed;
+    z-index: 79;
+    inset: 0;
+    display: block;
+    width: 100%;
+    border: 0;
+    background: color-mix(in srgb, var(--morrovia-ink) 42%, transparent);
+  }
+
+  .shell {
+    position: fixed;
+    z-index: 80;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    min-height: 0;
+    max-height: min(88svh, 760px);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--morrovia-line);
+    border-bottom: 0;
+    border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
+    box-shadow: var(--morrovia-shadow-overlay);
+  }
+
+  .handle {
+    position: sticky;
+    z-index: 4;
+    top: 0;
+    height: 30px;
+    display: block;
+    background: var(--morrovia-paper);
+  }
+
+  .handle::after {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    width: 42px;
+    height: 4px;
+    border-radius: var(--morrovia-control-radius);
+    background: var(--morrovia-line-strong);
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .close {
+    position: sticky;
+    z-index: 5;
+    top: 8px;
+    float: right;
+    margin: -22px 10px -44px 0;
+  }
+
+  .hero {
+    height: clamp(180px, 34svh, 290px);
+  }
+
+  .content {
+    clear: both;
+    padding: 20px clamp(16px, 5vw, 26px) 28px;
+  }
+}
+
+@media (max-width: 420px), (max-height: 640px) {
+  .shell {
+    max-height: 94svh;
+  }
+
+  .hero {
+    height: clamp(150px, 28svh, 220px);
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+  }
+}

@@ -334,6 +334,27 @@ test("suggestion metadata and stable identity survive scheduling and JSON reload
   assert.equal(composeItineraryDay(reloaded, "kyoto-4")?.planned.afternoon[0]?.image, "/cathedral.jpg");
 });
 
+test("presentation dedupes exact provider identity and never promotes description into the title", () => {
+  const source = tripFixture();
+  const canonical = {
+    ...itineraryIdeaForPlace({
+      stopId: "kyoto",
+      place: { ...place("provider-temple", "Kennin-ji"), description: "A deliberately long descriptive body that must not become the visible activity title." },
+      reasons: ["destination-significance"] as const,
+    }),
+    provider: "viator" as const,
+    providerProductId: "product-123",
+    dayId: "kyoto-4",
+    dayPart: "morning" as const,
+  };
+  const duplicate = { ...canonical, id: "legacy-duplicate-id" };
+  const withDuplicate = { ...source, brief: { ...source.brief, itineraryIdeas: [canonical, duplicate] } };
+  const activities = composeItineraryDay(withDuplicate, "kyoto-4")!.planned.morning;
+  assert.equal(activities.filter((activity) => activity.title === "Kennin-ji").length, 1);
+  assert.equal(activities[0]?.title, "Kennin-ji");
+  assert.equal(activities[0]?.description, canonical.description);
+});
+
 test("canonical drag placement reorders within a period and moves between periods without duplication", () => {
   const base = tripFixture();
   const authored: EasyTTrip = {

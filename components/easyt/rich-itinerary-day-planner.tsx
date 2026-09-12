@@ -8,6 +8,7 @@ import {
   CirclePlus,
   Clock3,
   GripVertical,
+  MoreHorizontal,
   Route,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type DragEvent } from "react";
@@ -44,6 +45,10 @@ type RichItineraryDayPlannerProps = {
   onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
   onActivityDragEnd?: () => void;
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
+  selectedActivityId?: string | null;
+  onActivitySelect?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
+  onTonightSelect?: (trigger: HTMLButtonElement) => void;
+  selectedTonight?: boolean;
   showHeader?: boolean;
 };
 
@@ -132,6 +137,8 @@ function ActivityRow({
   dragging,
   onDragStart,
   onDragEnd,
+  selected,
+  onSelect,
 }: {
   activity: ComposedItineraryActivity;
   language: "en" | "es";
@@ -146,20 +153,23 @@ function ActivityRow({
   dragging: boolean;
   onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
   onDragEnd?: () => void;
+  selected: boolean;
+  onSelect?: (trigger: HTMLButtonElement) => void;
 }) {
   const copy = copyFor(language);
   return (
-    <article className={`${styles.activity} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined}>
-      <ItineraryActivityIdentity
-        title={activity.title}
-        category={activity.category}
-        image={activity.image}
-        meta={[activity.area, activity.placeType].filter(Boolean).join(" · ") || undefined}
-        compact
-      />
-      <div className={styles.activityTitle}>
-        {activity.booking ? <span>{copy.bookedActivity}</span> : null}
-      </div>
+    <article className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id}>
+      <EasyTButton className={styles.activitySelect} variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
+        <ItineraryActivityIdentity
+          title={activity.title}
+          category={activity.category}
+          image={activity.image}
+          meta={[activity.area, activity.placeType].filter(Boolean).join(" · ") || undefined}
+          card
+        />
+        {activity.description ? <span className={styles.activityDescription}>{activity.description}</span> : null}
+        {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
+      </EasyTButton>
       {draggable ? <EasyTButton
         className={styles.dragHandle}
         icon={GripVertical}
@@ -170,25 +180,26 @@ function ActivityRow({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >Drag to organise: {activity.title}</EasyTButton> : null}
-      {activity.dayPartEditable ? (
-        <EasyTSelect
-          id={controlId}
-          fieldClassName={styles.dayPartField}
-          label={`${copy.choosePeriod}: ${activity.title}`}
-          value={activity.dayPart ?? ""}
-          disabled={pending || !onDayPartChange}
-          onChange={(event) => {
-            onBeforeDayPartChange(activity.id);
-            onDayPartChange?.(activity, event.target.value ? event.target.value as ItineraryDayPart : null);
-          }}
-        >
-          <option value="">{copy.unsetPeriod}</option>
-          {itineraryDayParts.map((part) => (
-            <option value={part} key={part}>{dayPartLabels[language][part]}</option>
-          ))}
-        </EasyTSelect>
-      ) : null}
-      {activity.dayPartEditable && activity.dayPart !== null && onMoveActivity ? <div className={styles.activityMoveActions}>
+      {activity.dayPartEditable ? <details className={styles.activityMenu}>
+        <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
+        <div>
+          <EasyTSelect
+            id={controlId}
+            fieldClassName={styles.dayPartField}
+            label={`${copy.choosePeriod}: ${activity.title}`}
+            value={activity.dayPart ?? ""}
+            disabled={pending || !onDayPartChange}
+            onChange={(event) => {
+              onBeforeDayPartChange(activity.id);
+              onDayPartChange?.(activity, event.target.value ? event.target.value as ItineraryDayPart : null);
+            }}
+          >
+            <option value="">{copy.unsetPeriod}</option>
+            {itineraryDayParts.map((part) => (
+              <option value={part} key={part}>{dayPartLabels[language][part]}</option>
+            ))}
+          </EasyTSelect>
+          {activity.dayPart !== null && onMoveActivity ? <div className={styles.activityMoveActions}>
         <EasyTButton
           icon={ArrowUp}
           iconOnly
@@ -205,7 +216,9 @@ function ActivityRow({
           disabled={pending || !canMoveLater}
           onClick={() => { onBeforeDayPartChange(activity.id); onMoveActivity(activity, "later"); }}
         >{copy.moveLater} {dayPartLabels[language][activity.dayPart]}: {activity.title}</EasyTButton>
-      </div> : null}
+          </div> : null}
+        </div>
+      </details> : null}
     </article>
   );
 }
@@ -229,6 +242,10 @@ export default function RichItineraryDayPlanner({
   onActivityDragStart,
   onActivityDragEnd,
   onActivityDrop,
+  selectedActivityId = null,
+  onActivitySelect,
+  onTonightSelect,
+  selectedTonight = false,
   showHeader = true,
 }: RichItineraryDayPlannerProps) {
   const copy = copyFor(language);
@@ -317,6 +334,8 @@ export default function RichItineraryDayPlanner({
                       dragging={draggedActivityId === activity.id}
                       onDragStart={(event) => onActivityDragStart?.(activity, event)}
                       onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
+                      selected={selectedActivityId === activity.id}
+                      onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
                     />
                   </div>)}
                   <div
@@ -393,6 +412,8 @@ export default function RichItineraryDayPlanner({
                 dragging={draggedActivityId === activity.id}
                 onDragStart={(event) => onActivityDragStart?.(activity, event)}
                 onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
+                selected={selectedActivityId === activity.id}
+                onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
                 key={activity.id}
               />
             ))}
@@ -400,9 +421,9 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
-      <section className={styles.tonight} aria-labelledby={`${titleId}-tonight`}>
+      <section className={`${styles.tonight} ${selectedTonight ? styles.tonightSelected : ""}`} aria-labelledby={`${titleId}-tonight`}>
         <BedDouble aria-hidden="true" />
-        <div>
+        <EasyTButton variant="quiet" className={styles.tonightSelect} disabled={tonight.state !== "booked"} onClick={(event) => onTonightSelect?.(event.currentTarget)}>
           <h3 id={`${titleId}-tonight`}>{copy.tonight}</h3>
           {tonight.state === "booked" ? (
             <><strong>{tonight.booking?.title}</strong><p>{copy.booked} · {tonight.destination}</p></>
@@ -411,7 +432,7 @@ export default function RichItineraryDayPlanner({
           ) : tonight.state === "unknown" ? (
             <><strong>{tonight.destination ?? copy.stayUnknown}</strong><p>{copy.stayUnknown}</p></>
           ) : <p>{copy.noOvernight}</p>}
-        </div>
+        </EasyTButton>
         {composition.ideas.unscheduledCount ? <small>{composition.ideas.unscheduledCount} {copy.ideasAvailable}</small> : null}
       </section>
     </section>
