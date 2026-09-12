@@ -25,19 +25,18 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /workingTrip\.brief\.dayNotes\?\.\[active\.dayNumber\]/);
   assert.match(itinerary, /workingTrip\.brief\.customActivities\?\.\[active\.dayNumber\]/);
   assert.match(itinerary, /mapWorkspaceHref\(workingTrip\.id, active\.stopId, "see", active\.dayNumber\)/);
-  assert.match(itinerary, /<EasyTTripCopilot/);
   assert.match(itinerary, /<InsertionControl/);
   assert.match(itinerary, /useTripMutationPersistence\(trip, presentation === "shell"\)/);
 });
 
-test("day header prioritises Find ideas and Add note while Luna remains available in More", () => {
+test("day header keeps the core actions and removes the More and Luna presentation", () => {
   const actionStart = itinerary.indexOf("className={styles.dayActionRegion}");
   const actionEnd = itinerary.indexOf("mutation.saveState === \"error\"", actionStart);
   const actions = itinerary.slice(actionStart, actionEnd);
   assert.ok(actionStart > -1 && actionEnd > actionStart);
   assert.ok(actions.indexOf("copy.findIdeas") < actions.indexOf("copy.addNote"));
-  assert.ok(actions.indexOf("copy.addNote") < actions.indexOf(">More</EasyTButton>"));
-  assert.match(actions, /role="menu"[\s\S]*copy\.askMorrovia/);
+  assert.doesNotMatch(actions, />More<\/EasyTButton>|copy\.askMorrovia|role="menu"/);
+  assert.doesNotMatch(itinerary, /<EasyTTripCopilot|copy\.aiPlanning|copilotOpen/);
   assert.doesNotMatch(actions, /copy\.shapeDay/);
   assert.match(itinerary, /role="dialog" aria-labelledby=\{`\$\{tabIdPrefix\}-note-title`\}/);
   assert.match(itinerary, /noteInputRef\.current\?\.focus\(\)/);
@@ -109,11 +108,15 @@ test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's ma
   assert.doesNotMatch(itinerary, /setTrip\(|useState\(trip\)/);
 });
 
-test("the rail co-pilot receives stable selected-day context and keeps the reviewed apply contract", () => {
-  assert.match(itinerary, /scope="selected-day"/);
-  assert.match(itinerary, /stopId=\{stop\?\.id\}/);
-  assert.match(itinerary, /dayNumber=\{active\.dayNumber\}/);
-  assert.match(itinerary, /onTripApplied=\{mutation\.acceptCanonicalTrip\}/);
+test("day navigation is semantically grouped beside day context and precedes planner actions and content", () => {
+  const headerIndex = itinerary.indexOf("className={styles.dayHeader}");
+  const navigationIndex = itinerary.indexOf("<DayNavigation", headerIndex);
+  const actionsIndex = itinerary.indexOf("className={styles.dayActionRegion}", headerIndex);
+  const plannerIndex = itinerary.indexOf("<RichItineraryDayPlanner", headerIndex);
+  assert.ok(headerIndex < navigationIndex && navigationIndex < actionsIndex && actionsIndex < plannerIndex);
+  assert.match(itinerary, /<nav className=\{styles\.dayNavigation\} aria-label="Day navigation">/);
+  assert.match(itinerary, /disabled=\{index === 0\}/);
+  assert.match(itinerary, /disabled=\{index === count - 1\}/);
 });
 
 test("tablet and mobile layouts collapse instead of squeezing three columns", () => {
@@ -155,7 +158,7 @@ test("long canonical and provider content stays inside the timeline and planning
   assert.match(styles, /\.discoveryCopy > p \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryActions button \{ min-height: 40px/);
   assert.match(stories, /Taipei 101 \(Chinese: 台北101; pinyin: Táiběi Yīlíngyī/);
-  for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680"]) {
+  for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentMobile430", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
 });

@@ -73,7 +73,6 @@ import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions,
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { placeItineraryActivity, preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
-import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
@@ -235,7 +234,6 @@ function itineraryCopy(language: "en" | "es") {
     dayPlan: "Plan del día",
     noDetails: "Este día aún no tiene actividades detalladas.",
     mapPreview: "Vista previa del mapa del día",
-    askMorrovia: "Preguntar a Luna · IA",
     addSuggestion: "Añadir",
     suggestionAdded: "Sugerencia añadida",
     suggestionsLoading: "Buscando lugares cercanos",
@@ -244,7 +242,6 @@ function itineraryCopy(language: "en" | "es") {
     noNewSuggestions: "No hay nuevas sugerencias locales; los lugares ya planificados se han excluido.",
     addDayNote: "Añadir nota del día",
     notePlaceholder: "Añade un recordatorio para este día",
-    aiPlanning: "Luna · asistente de viaje con IA",
   } : {
     draft: "Draft · editable",
     editBrief: "Edit brief",
@@ -317,7 +314,6 @@ function itineraryCopy(language: "en" | "es") {
     dayPlan: "Day plan",
     noDetails: "This day does not have detailed activities yet.",
     mapPreview: "Selected-day map preview",
-    askMorrovia: "Ask Luna · AI",
     addSuggestion: "Add",
     suggestionAdded: "Suggestion added",
     suggestionsLoading: "Finding places nearby",
@@ -326,7 +322,6 @@ function itineraryCopy(language: "en" | "es") {
     noNewSuggestions: "No new local suggestions; places already planned are excluded.",
     addDayNote: "Add day note",
     notePlaceholder: "Add a reminder for this day",
-    aiPlanning: "Luna · AI travel assistant",
   };
 }
 
@@ -429,15 +424,11 @@ export default function TripItineraryWorkspace({
   const [notice, setNotice] = useState<string | null>(null);
   const [railNoteDraft, setRailNoteDraft] = useState("");
   const [railNoteError, setRailNoteError] = useState("");
-  const [copilotOpen, setCopilotOpen] = useState(false);
   const [noteComposerOpen, setNoteComposerOpen] = useState(false);
-  const [headerMoreOpen, setHeaderMoreOpen] = useState(false);
   const [ideasPanelOpen, setIdeasPanelOpen] = useState(false);
   const noteButtonRef = useRef<HTMLButtonElement>(null);
   const noteComposerRef = useRef<HTMLFormElement>(null);
   const noteInputRef = useRef<HTMLInputElement>(null);
-  const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
   const findIdeasButtonRef = useRef<HTMLButtonElement>(null);
   const ideasPanelRef = useRef<HTMLDetailsElement>(null);
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
@@ -475,9 +466,7 @@ export default function TripItineraryWorkspace({
     setPlannerError("");
     setRailNoteDraft("");
     setRailNoteError("");
-    setCopilotOpen(false);
     setNoteComposerOpen(false);
-    setHeaderMoreOpen(false);
     setIdeasPanelOpen(false);
   }, [activeDayId]);
 
@@ -511,26 +500,6 @@ export default function TripItineraryWorkspace({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [noteComposerOpen]);
-
-  useEffect(() => {
-    if (!headerMoreOpen) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (moreMenuRef.current?.contains(event.target as Node) || moreButtonRef.current?.contains(event.target as Node)) return;
-      setHeaderMoreOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setHeaderMoreOpen(false);
-      window.requestAnimationFrame(() => moreButtonRef.current?.focus());
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [headerMoreOpen]);
 
   useEffect(() => {
     if (!ideasPanelOpen) return;
@@ -977,16 +946,14 @@ export default function TripItineraryWorkspace({
           <span className={styles.dayCount}>{itemCount} {copy.items}</span>
         </header>
 
+        <DayNavigation index={index} count={days.length} setSelectedIndex={setSelectedIndex} copy={copy} />
+
         <div className={styles.dayActionRegion}>
           <div className={styles.actions} aria-label="Selected day actions">
             <EasyTButton ref={findIdeasButtonRef} icon={Lightbulb} size="small" variant="secondary" aria-expanded={ideasPanelOpen} aria-controls={`${tabIdPrefix}-ideas`} onClick={() => setIdeasPanelOpen(true)}>{copy.findIdeas}</EasyTButton>
-            <EasyTButton ref={noteButtonRef} icon={NotebookPen} size="small" variant="secondary" aria-expanded={noteComposerOpen} aria-controls={`${tabIdPrefix}-note-composer`} onClick={() => { setHeaderMoreOpen(false); setNoteComposerOpen((open) => !open); }}>{copy.addNote}</EasyTButton>
-            <EasyTButton ref={moreButtonRef} icon={MoreHorizontal} size="small" variant="quiet" aria-expanded={headerMoreOpen} aria-haspopup="menu" aria-controls={`${tabIdPrefix}-more-menu`} onClick={() => { setNoteComposerOpen(false); setHeaderMoreOpen((open) => !open); }}>More</EasyTButton>
+            <EasyTButton ref={noteButtonRef} icon={NotebookPen} size="small" variant="secondary" aria-expanded={noteComposerOpen} aria-controls={`${tabIdPrefix}-note-composer`} onClick={() => setNoteComposerOpen((open) => !open)}>{copy.addNote}</EasyTButton>
             {mutation.saveState !== "idle" && mutation.saveState !== "error" ? <span className={styles.saveStatus}><MorroviaSaveStatus state={mutation.saveState} /></span> : null}
           </div>
-          {headerMoreOpen ? <div ref={moreMenuRef} id={`${tabIdPrefix}-more-menu`} className={styles.headerMoreMenu} role="menu">
-            <EasyTButton role="menuitem" icon={Sparkles} size="small" variant="quiet" aria-expanded={copilotOpen} onClick={() => { setHeaderMoreOpen(false); setCopilotOpen(true); }}>{copy.askMorrovia}</EasyTButton>
-          </div> : null}
           {noteComposerOpen ? <form ref={noteComposerRef} id={`${tabIdPrefix}-note-composer`} className={styles.headerNoteComposer} role="dialog" aria-labelledby={`${tabIdPrefix}-note-title`} onSubmit={(event) => { event.preventDefault(); submitRailNote(); }}>
             <div className={styles.headerNoteComposerTitle}><strong id={`${tabIdPrefix}-note-title`}>{copy.addDayNote}</strong><EasyTButton icon={X} iconOnly size="small" variant="quiet" aria-label="Close note composer" onClick={() => { setNoteComposerOpen(false); noteButtonRef.current?.focus(); }}>Close</EasyTButton></div>
             <EasyTField ref={noteInputRef} label={copy.noteText} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
@@ -1123,8 +1090,6 @@ export default function TripItineraryWorkspace({
           {!displayNotes.length && !incomingLeg ? <div className={styles.timelineEmpty}><CirclePlus aria-hidden="true" /><p>{copy.noDetails}</p><EasyTButton icon={CirclePlus} size="small" variant="secondary" onClick={() => openAddFlow(active.notes.length)}>{copy.addActivity}</EasyTButton></div> : null}
         </div>
         </details>
-
-        <DayNavigation index={index} count={days.length} setSelectedIndex={setSelectedIndex} copy={copy} />
       </div>
 
       {hasContextRail ? <aside className={styles.contextRail} aria-label="Selected day planning context">
@@ -1260,27 +1225,6 @@ export default function TripItineraryWorkspace({
             <small>{affiliateDisclosure}</small>
           </section> : null}
           /> : null}
-        </details>
-
-        <details className={`${styles.contextSection} ${styles.copilotSection}`} open={copilotOpen}>
-          <summary onClick={(event) => { event.preventDefault(); setCopilotOpen((current) => !current); }}><span>{copy.aiPlanning}</span><Sparkles aria-hidden="true" /></summary>
-          <div className={styles.contextCopilot}>
-            <EasyTTripCopilot
-              surface="map"
-              dayCount={days.length}
-              destination={stop?.name}
-              contextLabel={`Day ${active.dayNumber} · ${stop?.name ?? active.title}`}
-              scope="selected-day"
-              tripId={workingTrip.ownerId ? workingTrip.id : undefined}
-              stopId={stop?.id}
-              dayNumber={active.dayNumber}
-              open={copilotOpen}
-              suggestedPrompts={language === "es" ? ["¿Cómo se ve este día?", "¿Es demasiado apresurado?", "¿Qué encaja cerca?"] : ["How does this day look?", "Is this too rushed?", "What fits nearby?"]}
-              canApplyChanges={Boolean(workingTrip.ownerId) && (mutation.saveState === "idle" || mutation.saveState === "saved")}
-              onTripApplied={mutation.acceptCanonicalTrip}
-              onOpenChange={setCopilotOpen}
-            />
-          </div>
         </details>
 
         <details className={styles.contextSection} open>

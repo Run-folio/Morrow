@@ -7,6 +7,7 @@ const styles = readFileSync(new URL("../components/easyt/rich-itinerary-day-plan
 const stories = readFileSync(new URL("../components/easyt/rich-itinerary-day-planner.stories.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
+const composition = readFileSync(new URL("../lib/easyt/itinerary-day-composition.ts", import.meta.url), "utf8");
 
 test("the production itinerary owner consumes canonical composition and persists period changes through its mutation path", () => {
   assert.match(workspace, /composeItineraryDay\(workingTrip, active\.id\)/);
@@ -51,9 +52,25 @@ test("free periods, contextual add controls, first-class travel, and tonight con
 test("long names and compact breakpoints remain contained without a parallel mobile data path", () => {
   assert.match(styles, /min-width: 0/);
   assert.match(styles, /overflow-wrap: anywhere/);
-  assert.match(styles, /@media \(max-width: 680px\)[\s\S]*grid-template-columns: 1fr/);
+  assert.match(styles, /\.periodGrid \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.doesNotMatch(styles, /\.periodGrid \{[\s\S]{0,100}repeat\(2/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.unslottedList/);
   assert.doesNotMatch(component, /innerWidth|matchMedia|mobileComposition|desktopComposition/);
+});
+
+test("day parts use the canonical calm surface and heading typography at every width", () => {
+  assert.match(styles, /\.period \{[\s\S]*border: 1px solid var\(--morrovia-line\)[\s\S]*border-radius: var\(--morrovia-control-radius\)[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.match(styles, /\.periodHeading \{[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.match(styles, /\.periodHeading h3,[\s\S]*font: var\(--morrovia-type-control\)/);
+});
+
+test("the rendered planner follows Travel, chronological day parts, unslotted context, then Tonight", () => {
+  const travelIndex = component.indexOf("composition.transfers.length");
+  const periodsIndex = component.indexOf("className={styles.periodGrid}");
+  const unslottedIndex = component.indexOf("composition.unslotted.length");
+  const tonightIndex = component.indexOf("className={styles.tonight}");
+  assert.ok(travelIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
+  assert.match(composition, /itineraryDayParts = \["morning", "midday", "afternoon", "evening"\]/);
 });
 
 test("Storybook uses the production component for composed planner and responsive states", () => {
@@ -77,6 +94,7 @@ test("Storybook uses the production component for composed planner and responsiv
     "LongActivityNames",
     "Mobile320",
     "Mobile390",
+    "Mobile430",
     "Tablet768",
     "Desktop1024",
     "Desktop1440",

@@ -463,12 +463,6 @@ export const SavedIdeaScheduling: Story = UnscheduledSavedIdea;
 export const AlreadyAddedSuggestionState: Story = RecommendationAlreadyScheduled;
 export const MobileAddFallback390: Story = { ...RecommendationDefault, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 
-export const HeaderMoreMenuOpen: Story = {
-  play: async ({ canvasElement }) => {
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "More")?.click();
-  },
-};
-
 export const AddNoteComposerOpen: Story = {
   play: async ({ canvasElement }) => {
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Add note"))?.click();
@@ -618,6 +612,7 @@ export const RecommendationDesktop1440: Story = { ...RecommendationDefault, glob
 
 export const LongContentMobile320: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const LongContentMobile390: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const LongContentMobile430: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const LongContentTablet768: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const LongContentDesktop1024: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const LongContentDesktop1440: Story = { ...LongContentContainment, globals: { viewport: { value: "morrovia1440", isRotated: false } } };

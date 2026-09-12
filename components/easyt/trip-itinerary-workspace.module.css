@@ -550,7 +550,6 @@
   margin-left: auto;
 }
 
-.headerMoreMenu,
 .headerNoteComposer {
   position: absolute;
   z-index: 22;
@@ -559,17 +558,6 @@
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-paper);
   box-shadow: var(--morrovia-shadow-overlay);
-}
-
-.headerMoreMenu {
-  left: 210px;
-  min-width: 190px;
-  padding: 6px;
-}
-
-.headerMoreMenu > button {
-  width: 100%;
-  justify-content: flex-start;
 }
 
 .headerNoteComposer {
@@ -1743,26 +1731,6 @@
 .experienceHandoff span { color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
 .experienceHandoff small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 
-.contextCopilot {
-  margin-top: 8px;
-}
-
-.contextCopilot :global([data-copilot-scope]) {
-  width: 100%;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.contextCopilot :global([data-copilot-scope]) > button {
-  display: none;
-}
-
-.contextCopilot :global([data-copilot-scope]) > div {
-  padding: 0;
-  border-top: 0;
-}
-
 .railNoteComposer {
   margin-top: 9px;
   display: grid;
@@ -1892,16 +1860,11 @@
   .dayCount { display: inline-flex; margin-top: 10px; }
   .dayHeader .daySummary { align-items: flex-start; }
   .daySummary em { flex-basis: 100%; }
-  .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .actions > a,
   .actions > button { width: 100%; min-height: 44px; padding-inline: 9px; }
   .saveStatus { margin-left: 0; }
   .saveStatus { grid-column: 1 / -1; }
-  .headerMoreMenu {
-    right: 0;
-    left: auto;
-    min-width: min(210px, calc(100vw - 32px));
-  }
   .headerNoteComposer {
     position: fixed;
     z-index: 45;

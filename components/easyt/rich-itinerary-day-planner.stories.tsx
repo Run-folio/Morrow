@@ -226,6 +226,7 @@ export const LongActivityNames: Story = {
 
 export const Mobile320: Story = { ...SparseDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile390: Story = { ...AuthoredActivities, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430: Story = { ...LongActivityNames, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { ...SparseDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { ...FullFourSectionDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { ...FullFourSectionDay, globals: { viewport: { value: "morrovia1440", isRotated: false } } };

@@ -101,10 +101,10 @@
 .unslottedHeading h3,
 .tonight h3 {
   margin: 0;
-  font-family: var(--morrovia-meta);
-  font-size: .72rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-control);
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .transferList {
@@ -155,14 +155,14 @@
 
 .periodGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
 .period {
   min-width: 0;
   border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-radius);
+  border-radius: var(--morrovia-control-radius);
   overflow: hidden;
   background: var(--morrovia-paper);
   transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
@@ -184,7 +184,7 @@
   gap: 8px;
   border-bottom: 1px solid var(--morrovia-line);
   padding: 11px 13px;
-  background: var(--morrovia-lilac);
+  background: var(--morrovia-paper);
 }
 
 .periodHeading span,
@@ -198,6 +198,12 @@
   color: var(--morrovia-ink-soft);
   font-size: .68rem;
   font-weight: 800;
+}
+
+.periodHeading span {
+  background: transparent;
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-metadata);
 }
 
 .activityList,
@@ -430,10 +436,6 @@
 }
 
 @media (max-width: 680px) {
-  .periodGrid {
-    grid-template-columns: 1fr;
-  }
-
   .freePeriod {
     min-height: 0;
   }

@@ -21,7 +21,7 @@ test("Luna is identified as AI with a restrained limitation at the interaction b
   assert.match(copilot, /Luna can make mistakes/);
   assert.match(copilot, /Verify important schedules, availability, prices, entry requirements and safety information/);
   assert.match(copilot, /A suggested change only takes effect after you apply it/);
-  assert.match(itinerary, /Ask Luna · AI/);
+  assert.doesNotMatch(itinerary, /Ask Luna · AI|<EasyTTripCopilot/);
 });
 
 test("Luna explains its reduced OpenAI context without overstating store false", () => {
