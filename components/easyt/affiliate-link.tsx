@@ -25,6 +25,7 @@ export function MorroviaAffiliateLink({
   iconOnly = false,
   renderAsSurface = false,
   children,
+  onClick: onClickSupplement,
 }: {
   action: ResolvedAffiliateAction;
   context: AffiliateClickContext;
@@ -36,12 +37,14 @@ export function MorroviaAffiliateLink({
   /** Lets a product-pattern owner make its complete surface the one outbound control. */
   renderAsSurface?: boolean;
   children?: ReactNode;
+  onClick?: () => void;
 }) {
   const providerLabel = affiliateProviderLabel(action.provider);
   const onClick = () => {
     const event = affiliateClickEventForAction(action, context);
     if (event.name === "affiliate_link_clicked") trackEvent(event.name, event.properties);
     else trackEvent(event.name, event.properties);
+    onClickSupplement?.();
   };
   const accessibleLabel = `${action.cta}, opens ${providerLabel} in a new tab`;
   if (renderAsSurface) {

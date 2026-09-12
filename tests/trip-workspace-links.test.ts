@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   firstItineraryDayForStop,
+  exploreWorkspaceHref,
   firstTripWorkspaceHref,
   isCanonicalTripWorkspaceHref,
   isFirstTripWorkspaceArrival,
@@ -85,6 +86,7 @@ test("a generated arrival remains distinguishable from normal workspace navigati
 test("login return links accept canonical trip workspaces but not account surfaces", () => {
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123?created=1&saved=1"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/map?stop=tokyo"), true);
+  assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/explore?stop=tokyo&day=2"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/dashboard"), false);
   assert.equal(isCanonicalTripWorkspaceHref("https://example.com/journey/trip-123"), false);
 });
@@ -120,6 +122,7 @@ test("Trip Health and route cards use deterministic itinerary days", () => {
   assert.equal(itineraryDayForRecommendation(trip, { affectedDays: [9, 3] }), 3);
   assert.equal(itineraryDayForRecommendation(trip, { affectedDays: [9] }), null);
   assert.equal(itineraryWorkspaceHref(trip.id, 3), "/journey/trip-real/itinerary?day=3");
+  assert.equal(exploreWorkspaceHref(trip.id, "sacred-valley", 3), "/journey/trip-real/explore?stop=sacred-valley&day=3");
 });
 
 test("query-only deep-link changes retain one workspace analytics visit key", () => {
@@ -127,5 +130,6 @@ test("query-only deep-link changes retain one workspace analytics visit key", ()
   const second = "/journey/trip-real/map?stop=sacred-valley&mode=stay";
   assert.equal(workspaceVisitKey(first), workspaceVisitKey(second));
   assert.equal(workspaceViewFromPathname(first, trip.id), "map");
+  assert.equal(workspaceViewFromPathname("/journey/trip-real/explore?stop=cusco", trip.id), "explore");
   assert.equal(workspaceViewFromPathname("/journey/trip-real/prep", trip.id), "overview");
 });

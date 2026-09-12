@@ -55,7 +55,7 @@ import { removeStayBooking, stayBookingForStop, upsertStayBooking } from "@/lib/
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import {
   itineraryDayLegs,
@@ -1362,6 +1362,14 @@ export default function TripItineraryWorkspace({
             <small>{affiliateDisclosure}</small>
           </section> : null}
           /> : null}
+          <EasyTLinkButton
+            className={styles.contextAction}
+            href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
+            icon={Sparkles}
+            size="small"
+            variant="quiet"
+            fullWidth
+          >See more ideas in Explore</EasyTLinkButton>
         </details>
 
         <details className={styles.contextSection} open>

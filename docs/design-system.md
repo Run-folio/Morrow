@@ -184,6 +184,7 @@ not permission to reproduce their styling page-locally.
 | Overview/readiness/next action | `components/easyt/trip-overview-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Overview` |
 | Itinerary day and transfer presentation | `components/easyt/trip-itinerary-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Itinerary` |
 | Map route, selected place and spatial actions | `components/easyt/trip-map-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Map` |
+| Trip-aware place and experience discovery | `components/easyt/trip-explore-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Explore` |
 | Practical tasks and completion | `components/easyt/trip-overview-workspace.tsx`, composed from `components/easyt/trip-preparation.tsx`; `Morrovia/05 Product Patterns/Catalogue` |
 | Route discovery/detail | `app/journey/discover/` and `app/journey/routes/[slug]/route-detail-view.tsx`; `Morrovia/05 Product Patterns/Routes` |
 | Personal trip cards and empty state | `app/journey/dashboard/dashboard-client.tsx`; `Morrovia/05 Product Patterns/Trips dashboard` |
@@ -232,7 +233,7 @@ These are layout expectations, not wrapper components:
    clear progress/form hierarchy and explicit recovery.
 3. **Personal library** — Trips and Stamps: filterable personal content with
    strong empty, loading and continuation states.
-4. **Trip workspace** — Overview, Itinerary and Map: shared `TripShell`
+4. **Trip workspace** — Overview, Itinerary, Map and Explore: shared `TripShell`
    and navigation with a view-specific working area.
 5. **Safety overlay** — Tour, clarification, recovery and confirmation:
    focus-managed, truthful about consequences and dismissible only when safe.

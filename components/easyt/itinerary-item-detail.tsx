@@ -15,7 +15,7 @@ import {
   Utensils,
   X,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ResilientImage from "./resilient-image";
@@ -35,6 +35,7 @@ export type ItineraryItemDetailModel = {
   bookingStatus?: string | null;
   bookingHref?: string | null;
   whyFit?: string | null;
+  whyFitLabel?: string | null;
   practical?: Array<{ label: string; value: string }>;
   dayPart?: ItineraryDayPart | null;
   canMoveTime?: boolean;
@@ -43,7 +44,7 @@ export type ItineraryItemDetailModel = {
 
 type Props = {
   detail: ItineraryItemDetailModel;
-  mapHref: string;
+  mapHref?: string | null;
   pending?: boolean;
   onClose: () => void;
   onDayPartChange?: (part: ItineraryDayPart | null) => void;
@@ -51,6 +52,7 @@ type Props = {
   onRemove?: () => void;
   onManage?: () => void;
   manageLabel?: string;
+  primaryActions?: ReactNode;
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -70,6 +72,7 @@ export default function ItineraryItemDetail({
   onRemove,
   onManage,
   manageLabel = "Manage",
+  primaryActions,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -137,7 +140,7 @@ export default function ItineraryItemDetail({
           {detail.bookingStatus ? <div><CheckCircle2 aria-hidden="true" /><dt>Status</dt><dd>{detail.bookingStatus}</dd></div> : null}
         </dl>
 
-        {detail.whyFit ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>Why it fits this part of the day</h3><p>{detail.whyFit}</p></div></section> : null}
+        {detail.whyFit ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
 
         {detail.practical?.length ? <section className={styles.practical}><h3>Practical info</h3><dl>{detail.practical.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
 
@@ -147,7 +150,8 @@ export default function ItineraryItemDetail({
         </EasyTSelect> : null}
 
         <div className={styles.actions}>
-          <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth>View on map</EasyTLinkButton>
+          {primaryActions}
+          {mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth>View on map</EasyTLinkButton> : null}
           {detail.bookingHref ? <EasyTLinkButton href={detail.bookingHref} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="secondary">Open booking</EasyTLinkButton> : null}
           {onManage ? <EasyTButton icon={BedDouble} variant="secondary" onClick={onManage}>{manageLabel}</EasyTButton> : null}
           {onAddNote ? <EasyTButton icon={NotebookPen} variant="secondary" onClick={onAddNote}>Add note</EasyTButton> : null}

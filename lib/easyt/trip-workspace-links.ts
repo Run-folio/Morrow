@@ -41,7 +41,7 @@ export function isFirstTripWorkspaceArrival(search: string) {
 }
 
 export function isCanonicalTripWorkspaceHref(href: string) {
-  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|prep))?(?:[?#].*)?$/.test(href);
+  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|prep))?(?:[?#].*)?$/.test(href);
 }
 
 export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan", dayNumber?: number | null) {
@@ -56,6 +56,14 @@ export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: M
 export function itineraryWorkspaceHref(tripId: string, dayNumber?: number | null) {
   const base = `/journey/${encodeURIComponent(tripId)}/itinerary`;
   return dayNumber ? `${base}?day=${dayNumber}` : base;
+}
+
+export function exploreWorkspaceHref(tripId: string, stopId?: string | null, dayNumber?: number | null) {
+  const query = new URLSearchParams();
+  if (stopId) query.set("stop", stopId);
+  if (dayNumber) query.set("day", String(dayNumber));
+  const suffix = query.toString();
+  return `/journey/${encodeURIComponent(tripId)}/explore${suffix ? `?${suffix}` : ""}`;
 }
 
 export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader) {
@@ -111,7 +119,7 @@ export function itineraryDayForRecommendation(
     .find((dayNumber) => canonicalDays.has(dayNumber)) ?? null;
 }
 
-export type TripWorkspaceView = "overview" | "itinerary" | "map";
+export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore";
 
 export function workspaceVisitKey(href: string) {
   return href.split(/[?#]/, 1)[0];
@@ -120,6 +128,7 @@ export function workspaceVisitKey(href: string) {
 export function workspaceViewFromPathname(pathname: string, tripId: string): TripWorkspaceView {
   const decodedPathname = decodeURIComponent(workspaceVisitKey(pathname));
   const remainder = decodedPathname.slice(`/journey/${tripId}`.length);
+  if (remainder.startsWith("/explore")) return "explore";
   if (remainder.startsWith("/itinerary")) return "itinerary";
   if (remainder.startsWith("/map")) return "map";
   return "overview";

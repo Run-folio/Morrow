@@ -7,7 +7,7 @@ export type AnalyticsEventProperties = Record<string, AnalyticsPrimitive>;
 type TripSource = "homepage" | "dashboard" | "builder" | "route";
 type SaveState = "local" | "cloud";
 // `prep` remains accepted only when normalising historical commercial events.
-type WorkspaceView = "overview" | "itinerary" | "map" | "prep";
+type WorkspaceView = "overview" | "itinerary" | "map" | "explore" | "prep";
 type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
@@ -50,6 +50,13 @@ export type LaunchAnalyticsEventMap = {
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
+  explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };
+  explore_destination_changed: { trip_id: string; destination_scope: "all" | "stop" };
+  explore_category_changed: { trip_id: string; category: string };
+  explore_result_opened: { trip_id: string; stop_id: string; result_kind: "activity" | "restaurant" | "tour" };
+  explore_added_to_day: { trip_id: string; stop_id: string; day_number: number; result_kind: "activity" | "restaurant" | "tour" };
+  explore_saved_for_later: { trip_id: string; stop_id: string; result_kind: "activity" | "restaurant" | "tour" };
+  explore_provider_handoff: { trip_id: string; stop_id: string; provider: string };
   affiliate_click: { category: string; provider: string; trip_id?: string; stop_id?: string; placement?: string; workspace_view?: WorkspaceView; destination_count?: number };
   affiliate_link_clicked: {
     partner: "viator" | "omio";
@@ -195,7 +202,7 @@ export function normalizeCommercialOutboundClick(eventName: string, properties: 
     ...(stringProperty("trip_id", "tripId") ? { trip_id: stringProperty("trip_id", "tripId") } : {}),
     ...(stringProperty("stop_id", "stopId") ? { stop_id: stringProperty("stop_id", "stopId") } : {}),
     ...(stringProperty("transfer_id", "transferId") ? { transfer_id: stringProperty("transfer_id", "transferId") } : {}),
-    ...(workspace === "overview" || workspace === "itinerary" || workspace === "map" || workspace === "prep" ? { workspace_view: workspace } : {}),
+    ...(workspace === "overview" || workspace === "itinerary" || workspace === "map" || workspace === "explore" || workspace === "prep" ? { workspace_view: workspace } : {}),
     ...(typeof properties.destination_count === "number" ? { destination_count: properties.destination_count } : {}),
   };
 }
