@@ -28,10 +28,10 @@ type BasemapListener = (event: BasemapEvent) => void;
 
 export type MorroviaBasemapMap = {
   getSource: (id: string) => unknown;
-  getStyle: () => { layers?: BasemapLayer[] };
+  getStyle: () => { layers?: BasemapLayer[] } | undefined;
   getZoom: () => number;
   isSourceLoaded: (id: string) => boolean;
-  isStyleLoaded: () => boolean;
+  isStyleLoaded: () => boolean | undefined;
   on: (type: string, listener: BasemapListener) => unknown;
   off: (type: string, listener: BasemapListener) => unknown;
   setStyle: (style: string | StyleSpecification, options?: { diff?: boolean }) => unknown;
@@ -77,11 +77,13 @@ function layerIsVisibleAtZoom(layer: BasemapLayer, zoom: number) {
 }
 
 function hasDetailedLayers(map: MorroviaBasemapMap) {
-  return (map.getStyle().layers ?? []).some((layer) => layer.source === MORROVIA_DETAILED_BASEMAP_SOURCE_ID);
+  return map.getStyle()?.layers?.some((layer) => layer.source === MORROVIA_DETAILED_BASEMAP_SOURCE_ID) ?? false;
 }
 
 export function inspectMorroviaBasemap(map: MorroviaBasemapMap, status: MorroviaBasemapStatus, reason: string | null = null): MorroviaBasemapSnapshot {
+  const style = map.getStyle();
   const zoom = map.getZoom();
+  const styleLoaded = Boolean(map.isStyleLoaded());
   const detailedSourcePresent = Boolean(map.getSource(MORROVIA_DETAILED_BASEMAP_SOURCE_ID));
   let detailedSourceLoaded = false;
   if (detailedSourcePresent) {
@@ -94,10 +96,10 @@ export function inspectMorroviaBasemap(map: MorroviaBasemapMap, status: Morrovia
   return {
     status,
     zoom,
-    styleLoaded: map.isStyleLoaded(),
+    styleLoaded,
     detailedSourcePresent,
     detailedSourceLoaded,
-    visibleDetailedLayerCount: (map.getStyle().layers ?? []).filter((layer) => layerIsVisibleAtZoom(layer, zoom)).length,
+    visibleDetailedLayerCount: (style?.layers ?? []).filter((layer) => layerIsVisibleAtZoom(layer, zoom)).length,
     reason,
   };
 }

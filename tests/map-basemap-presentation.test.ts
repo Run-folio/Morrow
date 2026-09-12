@@ -22,6 +22,7 @@ type Listener = (event: { sourceId?: string; error?: unknown; type?: string }) =
 class FakeBasemap implements MorroviaBasemapMap {
   zoom = 4;
   styleLoaded = false;
+  styleAvailable = true;
   detailedSourceLoaded = false;
   sources = new Map<string, unknown>();
   layers: Array<{ id: string; source?: string; minzoom?: number; maxzoom?: number; layout?: { visibility?: string } }> = [];
@@ -30,6 +31,7 @@ class FakeBasemap implements MorroviaBasemapMap {
 
   loadDetailed(sourceLoaded = false) {
     this.styleLoaded = true;
+    this.styleAvailable = true;
     this.detailedSourceLoaded = sourceLoaded;
     this.sources = new Map([[MORROVIA_DETAILED_BASEMAP_SOURCE_ID, {}]]);
     this.layers = [
@@ -43,7 +45,7 @@ class FakeBasemap implements MorroviaBasemapMap {
   }
 
   getSource(id: string) { return this.sources.get(id); }
-  getStyle() { return { layers: this.layers }; }
+  getStyle() { return this.styleAvailable ? { layers: this.layers } : undefined; }
   getZoom() { return this.zoom; }
   isSourceLoaded(id: string) { return id === MORROVIA_DETAILED_BASEMAP_SOURCE_ID && this.detailedSourceLoaded; }
   isStyleLoaded() { return this.styleLoaded; }
@@ -56,6 +58,7 @@ class FakeBasemap implements MorroviaBasemapMap {
   setStyle(style: string | StyleSpecification) {
     this.setStyleCalls.push(style);
     this.styleLoaded = false;
+    this.styleAvailable = false;
     this.detailedSourceLoaded = false;
     if (typeof style === "string") {
       this.sources.clear();
@@ -72,6 +75,39 @@ class FakeBasemap implements MorroviaBasemapMap {
     }));
   }
 }
+
+test("a lazy preview can inspect a URL style before style.load without crashing", () => {
+  const productDemo = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
+  const demoMap = readFileSync(new URL("../app/journey/home/immersive/demo-map.tsx", import.meta.url), "utf8");
+  assert.match(productDemo, /IntersectionObserver[\s\S]*setMapReady\(true\)/);
+  assert.match(productDemo, /mapReady \? <DemoMap/);
+  assert.match(demoMap, /<JourneyPlannerMap[\s\S]*overviewMode previewMode/);
+
+  const map = new FakeBasemap();
+  const states: MorroviaBasemapSnapshot[] = [];
+  map.styleAvailable = false;
+  const lifecycle = createMorroviaBasemapLifecycle(map, {
+    timeoutMs: 0,
+    onChange: (snapshot) => states.push(snapshot),
+  });
+
+  assert.deepEqual(states[0], {
+    status: "loading",
+    zoom: 4,
+    styleLoaded: false,
+    detailedSourcePresent: false,
+    detailedSourceLoaded: false,
+    visibleDetailedLayerCount: 0,
+    reason: null,
+  });
+
+  map.loadDetailed(false);
+  map.emit("style.load");
+  map.detailedSourceLoaded = true;
+  map.emit("sourcedata", { sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID });
+  assert.equal(lifecycle.getSnapshot().status, "detailed");
+  lifecycle.dispose();
+});
 
 test("the production basemap always starts with a real keyless detailed style", () => {
   assert.equal(morroviaMapStyle, MORROVIA_DETAILED_BASEMAP_STYLE_URL);
