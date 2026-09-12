@@ -124,6 +124,28 @@ test("tablet and mobile layouts collapse instead of squeezing three columns", ()
   assert.match(itinerary, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
 });
 
+test("mobile composition keeps the selected-day plan ahead of actions and discovery", () => {
+  const rail = itinerary.indexOf("className={styles.rail}");
+  const dayPanel = itinerary.indexOf("className={styles.dayPanel}");
+  const planner = itinerary.indexOf("<RichItineraryDayPlanner", dayPanel);
+  const contextRail = itinerary.indexOf("className={styles.contextRail}");
+  const suggestions = itinerary.indexOf("<ItineraryDaySuggestions", contextRail);
+  assert.ok(rail > -1 && rail < dayPanel, "day navigation precedes the selected-day panel");
+  assert.ok(dayPanel < planner && planner < contextRail, "the production DOM owns one planner before contextual discovery");
+  assert.ok(contextRail < suggestions, "suggestions remain inside the secondary context rail");
+
+  const singleColumn = styles.slice(styles.indexOf("@media (max-width: 900px)"), styles.indexOf("@media (max-width: 540px)"));
+  assert.match(singleColumn, /\.contextRail \{[\s\S]*grid-column: 1;[\s\S]*grid-row: auto;/);
+
+  const mobile = styles.slice(styles.indexOf("@media (max-width: 540px)"));
+  assert.match(mobile, /\.dayPanel \{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
+  assert.match(mobile, /\.dayHeader \{ order: 0; \}/);
+  assert.match(mobile, /\.dayPanel > \.details \{ order: 2; \}/);
+  assert.match(mobile, /\.dayActionRegion \{ order: 3; \}/);
+  assert.match(mobile, /\.sequenceEditor \{ order: 4; \}/);
+  assert.match(mobile, /\.dayNavigation \{ order: 5; \}/);
+});
+
 test("long canonical and provider content stays inside the timeline and planning rail", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);

@@ -1842,6 +1842,7 @@
   .dayPanel { padding: 28px; }
   .contextRail {
     grid-column: 1;
+    grid-row: auto;
     grid-template-columns: minmax(0, 1fr);
   }
   .contextSection {
@@ -1873,7 +1874,19 @@
   .transportActions > .omioAction,
   .transportActions > .omioAction > a { width: 100%; }
   .railHeader { min-height: 54px; padding: 0 16px; }
-  .dayPanel { padding: 24px 16px 28px; }
+  .dayPanel {
+    padding: 24px 16px 28px;
+    display: flex;
+    flex-direction: column;
+  }
+  .dayPanel > * { order: 2; }
+  .dayHeader { order: 0; }
+  .recoveryFeedback,
+  .notice { order: 1; }
+  .dayPanel > .details { order: 2; }
+  .dayActionRegion { order: 3; }
+  .sequenceEditor { order: 4; }
+  .dayNavigation { order: 5; }
   .rail { max-width: 100%; overflow: hidden; }
   .dayHeader { display: block; }
   .dayCount { display: inline-flex; margin-top: 10px; }
