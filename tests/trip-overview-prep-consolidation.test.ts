@@ -177,7 +177,8 @@ test("Overview preparation actions reuse one shared task UI and preserve accessi
   assert.match(overview, /<TripPreparationTaskSection id="overview-must" title="Must do"/);
   assert.match(overview, /groupTripPrepTasks\(prepReadiness\.tasks\.filter\(\(task\) => task\.status !== "complete"\)\)/);
   assert.match(preparation, /if \(action\.opensTravellerDetails\)/);
-  assert.match(preparation, /aria-label=\{`\$\{action\.label\}, opens \$\{action\.provider \?\? "provider"\} in a new tab`\}/);
+  assert.match(preparation, /aria-label=\{`\$\{action\.label\}: \$\{task\.title\}, opens \$\{action\.provider \?\? "provider"\} in a new tab`\}/);
+  assert.match(preparation, /renderAsSurface/);
   assert.match(preparation, /placement: "overview_before_you_go"/);
   assert.doesNotMatch(preparation, /onClick=\{\(\) => undefined\}|taskSummary/);
 });

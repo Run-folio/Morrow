@@ -15,13 +15,14 @@ import {
   Smartphone,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { travelReadinessStorageKey } from "@/lib/easyt/private-browser-context";
 import type { TripPrepTask, TripPrepTaskStatus } from "@/lib/easyt/trip-prep";
 import type { TravelReadinessProfile } from "@/lib/easyt/travel-readiness";
-import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
+import { EasyTButton, EasyTField } from "./easyt-controls";
 import { affiliateDisclosureForProvider, MorroviaAffiliateLink } from "./affiliate-link";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
 import styles from "./trip-preparation.module.css";
@@ -45,39 +46,16 @@ const statusLabel: Record<TripPrepTaskStatus, string> = {
   urgent: "Needs attention",
 };
 
-function TaskAction({
-  task,
-  tripId,
-  onOpenTravellerDetails,
-}: {
-  task: TripPrepTask;
-  tripId: string;
-  onOpenTravellerDetails: () => void;
-}) {
+function TaskActionCue({ task }: { task: TripPrepTask }) {
   const action = task.action;
   if (!action) return null;
-  if (action.opensTravellerDetails) {
-    return <EasyTButton className={styles.taskAction} icon={ArrowRight} size="small" variant="secondary" onClick={onOpenTravellerDetails}>{action.label}</EasyTButton>;
-  }
-  if (!action.href) return null;
+  return <span className={`${styles.taskAction} ${action.provider === "world-nomads" ? styles.insuranceAction : ""}`}>{action.label}{action.external ? <ExternalLink aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}</span>;
+}
 
-  if (action.affiliate && action.provider === "world-nomads") {
-    return <MorroviaAffiliateLink
-      action={{
-        provider: action.provider,
-        category: "travel_insurance",
-        href: action.href,
-        cta: action.label,
-        affiliate: true,
-      }}
-      context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }}
-      className={`${styles.taskAction} ${styles.insuranceAction}`}
-      size="small"
-      variant="secondary"
-    />;
-  }
-
+function taskActionClick(task: TripPrepTask, tripId: string) {
+  const action = task.action;
   const onClick = () => {
+    if (!action) return;
     if (task.kind === "accommodation" && action.stopId) {
       trackEvent("accommodation_map_opened", { trip_id: tripId, stop_id: action.stopId });
     }
@@ -108,11 +86,7 @@ function TaskAction({
       });
     }
   };
-
-  if (action.external) {
-    return <EasyTLinkButton className={styles.taskAction} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={`${action.label}, opens ${action.provider ?? "provider"} in a new tab`} icon={ExternalLink} size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
-  }
-  return <EasyTLinkButton className={styles.taskAction} href={action.href} icon={ArrowRight} size="small" variant="secondary" onClick={onClick}>{action.label}</EasyTLinkButton>;
+  return onClick;
 }
 
 function TripPreparationTaskRow({
@@ -127,17 +101,39 @@ function TripPreparationTaskRow({
   const Icon = iconByKind[task.kind];
   const showsAffiliateDisclosure = task.action?.affiliate === true;
   const interactive = Boolean(task.action?.href || task.action?.opensTravellerDetails);
-
-  return <article className={`${styles.taskRow} ${interactive ? styles.taskRowInteractive : ""} ${styles[`status-${task.status}`]}`}>
+  const className = `${styles.taskRow} ${interactive ? styles.taskRowInteractive : ""} ${styles[`status-${task.status}`]}`;
+  const content = <>
     <span className={styles.taskIcon}><Icon aria-hidden="true" /></span>
     <div className={styles.taskCopy}>
       <h3>{task.title}</h3>
       <p>{task.detail}</p>
       <span className={styles.statusChip}>{statusLabel[task.status]}</span>
     </div>
-    <TaskAction task={task} tripId={tripId} onOpenTravellerDetails={onOpenTravellerDetails} />
+    <TaskActionCue task={task} />
     {showsAffiliateDisclosure ? <small className={styles.affiliateDisclosure}>{affiliateDisclosureForProvider(task.action?.provider ?? "")}</small> : null}
-  </article>;
+  </>;
+  const action = task.action;
+
+  if (!interactive || !action) return <article className={className}>{content}</article>;
+  if (action.opensTravellerDetails) return <a className={className} href="#overview-traveller-details" aria-label={`${action.label}: ${task.title}`} onClick={(event) => { event.preventDefault(); onOpenTravellerDetails(); }}>{content}</a>;
+  if (!action.href) return <article className={className}>{content}</article>;
+  if (action.affiliate && (action.provider === "world-nomads" || action.provider === "saily")) {
+    return <MorroviaAffiliateLink
+      action={{
+        provider: action.provider,
+        category: action.provider === "world-nomads" ? "travel_insurance" : "connectivity",
+        href: action.href,
+        cta: action.label,
+        affiliate: true,
+      }}
+      context={{ placement: "overview_before_you_go", tripId, workspaceView: "overview" }}
+      className={className}
+      renderAsSurface
+    >{content}</MorroviaAffiliateLink>;
+  }
+  const onClick = taskActionClick(task, tripId);
+  if (action.external) return <a className={className} href={action.href} target="_blank" rel={action.affiliate ? "sponsored noopener noreferrer" : "noopener noreferrer"} aria-label={`${action.label}: ${task.title}, opens ${action.provider ?? "provider"} in a new tab`} onClick={onClick}>{content}</a>;
+  return <Link className={className} href={action.href} aria-label={`${action.label}: ${task.title}`} onClick={onClick}>{content}</Link>;
 }
 
 export function TripPreparationTaskSection({

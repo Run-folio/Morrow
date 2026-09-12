@@ -458,8 +458,8 @@ export default function TripOverviewWorkspace({
       href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay"),
       label: "View stays",
     };
-    if (category.id === "transport") return { kind: "internal", href: mapWorkspaceHref(trip.id), label: "Review route" };
-    if (category.id === "passport") return { kind: "traveller-details", label: "Add or review details" };
+    if (category.id === "transport") return { kind: "internal", href: mapWorkspaceHref(trip.id), label: "Review transport/route" };
+    if (category.id === "passport") return { kind: "traveller-details", label: "Add details" };
     if (category.id === "checklist") return { kind: "internal", href: "#before-you-go", label: "Open checklist" };
     const task = category.id === "insurance" ? insuranceTask : category.id === "connectivity" ? connectivityTask : undefined;
     const taskAction = task?.action;
@@ -618,15 +618,24 @@ function ProgressItem({ icon: Icon, label, detail, percent, status, action, trip
   tripId: string;
   onOpenTravellerDetails: () => void;
 }) {
-  return <article className={`${styles.progressItem} ${action ? styles.progressItemInteractive : ""}`}>
+  const className = `${styles.progressItem} ${action ? styles.progressItemInteractive : ""}`;
+  const content = <>
     <div className={styles.progressSummary}><Icon aria-hidden="true" /><div><h3>{label}</h3><span>{detail}</span></div></div>
     {percent !== null ? <div className={styles.progressTrack} aria-label={`${label}: ${percent}%`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><i style={{ width: `${percent}%` }} /></div> : <div className={styles.progressTrackPlaceholder} aria-hidden="true" />}
     <div className={styles.progressFooter}>
       <small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small>
-      {action?.kind === "affiliate" ? <MorroviaAffiliateLink action={action.action} context={{ placement: "trip_readiness", tripId, workspaceView: "overview" }} className={styles.progressAction} size="small" variant="quiet" />
-        : action?.kind === "traveller-details" ? <EasyTButton className={styles.progressAction} size="small" variant="quiet" aria-label={`${action.label}: ${label}`} onClick={onOpenTravellerDetails}>{action.label}<ChevronRight aria-hidden="true" /></EasyTButton>
-          : action?.kind === "external" ? <EasyTLinkButton className={styles.progressAction} href={action.href} target="_blank" rel="noopener noreferrer" size="small" variant="quiet" aria-label={`${action.label}: ${label}, opens ${action.provider ?? "provider"} in a new tab`}>{action.label}<ExternalLink aria-hidden="true" /></EasyTLinkButton>
-            : action?.kind === "internal" ? <EasyTLinkButton className={styles.progressAction} href={action.href} size="small" variant="quiet" aria-label={`${action.label}: ${label}`}>{action.label}<ChevronRight aria-hidden="true" /></EasyTLinkButton> : null}
+      {action ? <span className={styles.progressAction}>{action.kind === "affiliate" ? action.action.cta : action.label}{action.kind === "affiliate" || action.kind === "external" ? <ExternalLink aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</span> : null}
     </div>
-  </article>;
+  </>;
+
+  if (!action) return <article className={className}>{content}</article>;
+  if (action.kind === "affiliate") return <MorroviaAffiliateLink
+    action={action.action}
+    context={{ placement: "trip_readiness", tripId, workspaceView: "overview" }}
+    className={className}
+    renderAsSurface
+  >{content}</MorroviaAffiliateLink>;
+  if (action.kind === "external") return <a className={className} href={action.href} target="_blank" rel="noopener noreferrer" aria-label={`${action.label}: ${label}, opens ${action.provider ?? "provider"} in a new tab`}>{content}</a>;
+  if (action.kind === "traveller-details") return <a className={className} href="#overview-traveller-details" aria-label={`${action.label}: ${label}`} onClick={(event) => { event.preventDefault(); onOpenTravellerDetails(); }}>{content}</a>;
+  return <Link className={className} href={action.href} aria-label={`${action.label}: ${label}`}>{content}</Link>;
 }

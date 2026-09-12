@@ -347,12 +347,18 @@
 .progressItem {
   position: relative;
   min-width: 0;
+  min-height: 44px;
   padding: 15px 18px 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(46px, auto) 5px auto;
   align-content: start;
   gap: 10px;
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
   border-right: 1px solid var(--morrovia-line);
 }
 
@@ -361,7 +367,7 @@
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 .progressItemInteractive:hover { background: color-mix(in srgb, var(--morrovia-lilac) 42%, var(--morrovia-paper)); }
-.progressItemInteractive:focus-within { z-index: 1; outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.progressItemInteractive:focus-visible { z-index: 1; outline: none; box-shadow: var(--morrovia-focus-shadow); }
 
 .progressItem:first-child { padding-left: 0; }
 .progressItem:last-child { padding-right: 0; border-right: 0; }
@@ -420,9 +426,7 @@
 .progressStatus-complete { background: color-mix(in srgb, var(--morrovia-success) 11%, var(--morrovia-paper)); color: var(--morrovia-success); }
 .progressStatus-in-progress { background: var(--morrovia-warning-soft); color: var(--morrovia-warning); }
 .progressStatus-needs-review { background: var(--morrovia-danger-soft); color: var(--morrovia-danger); }
-.progressAction { position: static; min-height: 44px; height: auto; padding-inline: 6px; font-size: 9px; white-space: normal; }
-.progressAction::after { position: absolute; z-index: 1; inset: 0; content: ""; }
-.progressAction:focus-visible { box-shadow: none; }
+.progressAction { min-height: 44px; height: auto; padding-inline: 6px; display: inline-flex; align-items: center; gap: 6px; color: var(--morrovia-ink-soft); font-size: 9px; font-weight: 700; white-space: normal; }
 .progressAction svg { width: 12px; height: 12px; }
 
 .progressTrack {

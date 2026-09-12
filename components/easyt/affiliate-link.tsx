@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/easyt/affiliate-click";
 import { affiliateProviderLabel, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
@@ -22,6 +23,8 @@ export function MorroviaAffiliateLink({
   variant = "secondary",
   fullWidth = false,
   iconOnly = false,
+  renderAsSurface = false,
+  children,
 }: {
   action: ResolvedAffiliateAction;
   context: AffiliateClickContext;
@@ -30,6 +33,9 @@ export function MorroviaAffiliateLink({
   variant?: "primary" | "secondary" | "quiet" | "danger";
   fullWidth?: boolean;
   iconOnly?: boolean;
+  /** Lets a product-pattern owner make its complete surface the one outbound control. */
+  renderAsSurface?: boolean;
+  children?: ReactNode;
 }) {
   const providerLabel = affiliateProviderLabel(action.provider);
   const onClick = () => {
@@ -37,12 +43,23 @@ export function MorroviaAffiliateLink({
     if (event.name === "affiliate_link_clicked") trackEvent(event.name, event.properties);
     else trackEvent(event.name, event.properties);
   };
+  const accessibleLabel = `${action.cta}, opens ${providerLabel} in a new tab`;
+  if (renderAsSurface) {
+    return <a
+      className={className}
+      href={action.href}
+      target="_blank"
+      rel="sponsored noopener noreferrer"
+      data-affiliate-provider={action.provider}
+      onClick={onClick}
+    >{children ?? action.cta}<span className="sr-only">{`Opens ${providerLabel} in a new tab.`}</span></a>;
+  }
   return <EasyTLinkButton
     className={className}
     href={action.href}
     target="_blank"
     rel="sponsored noopener noreferrer"
-    aria-label={`${action.cta}, opens ${providerLabel} in a new tab`}
+    aria-label={accessibleLabel}
     icon={ExternalLink}
     size={size}
     variant={variant}
@@ -50,5 +67,5 @@ export function MorroviaAffiliateLink({
     iconOnly={iconOnly}
     data-affiliate-provider={action.provider}
     onClick={onClick}
-  >{action.cta}</EasyTLinkButton>;
+  >{children ?? action.cta}</EasyTLinkButton>;
 }
