@@ -1,3 +1,5 @@
+import { isMorroviaEmailDeliveryConfigured } from "./email-policy.ts";
+
 export const GOOGLE_AUTH_SCOPES = ["email", "profile"] as const;
 
 export const GOOGLE_ACCOUNT_LINKING_POLICY = {
@@ -40,6 +42,16 @@ export function getMorroviaAuthBaseURL() {
     ?? LOCAL_AUTH_ORIGIN;
 }
 
+export function getMorroviaApplicationUrl(path: string, environment: Record<string, string | undefined> = process.env) {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("Morrovia application links must use an absolute application path.");
+  }
+  const origin = configuredOrigin(environment.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL")
+    ?? configuredOrigin(environment.BETTER_AUTH_URL, "BETTER_AUTH_URL")
+    ?? LOCAL_AUTH_ORIGIN;
+  return new URL(path, origin).toString();
+}
+
 export function getMorroviaAuthTrustedOrigins() {
   const origins = new Set<string>([getMorroviaAuthBaseURL()]);
   const publicOrigin = configuredOrigin(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL");
@@ -64,5 +76,5 @@ export function isEasyTAuthConfigured() {
 }
 
 export function isEasyTEmailVerificationRequired() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return isMorroviaEmailDeliveryConfigured(process.env);
 }

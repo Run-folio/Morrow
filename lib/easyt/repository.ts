@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 
 import { getEasyTDatabase } from "./database";
 import {
@@ -20,6 +20,7 @@ import { resolveTripTransferJourneys } from "./multimodal-transfer-resolution.se
 import { reconcileLegacyTransportTrip } from "./transport-leg-compatibility";
 import { defaultTravelProfile, travelProfileFromUnknown, type TravelProfile } from "./travel-profile";
 import { defaultTravelReadinessProfile, isTravelReadinessProfile, type TravelReadinessProfile } from "./travel-readiness";
+import { getEasyTAuthSecret } from "./auth-environment.ts";
 
 type TripDocumentRow = { document: unknown };
 export type EasyTUserPreferences = {
@@ -68,22 +69,60 @@ export type EasyTGiftPreview = {
   expiresAt: string;
 };
 
-export async function createEasyTEmailEvent(input: {
-  providerId?: string | null;
+export async function reserveEasyTEmailEvent(input: {
   recipientEmail: string;
   subject: string;
   template: string;
-  status: string;
-  errorMessage?: string | null;
-  metadata?: Record<string, unknown>;
+  idempotencyKey: string;
 }) {
   const sql = getEasyTDatabase();
   const id = randomUUID();
+  const inserted = (await sql`
+    insert into easyt_email_events (
+      id, recipient_email, subject, template, status, idempotency_key
+    ) values (
+      ${id}, ${input.recipientEmail}, ${input.subject}, ${input.template}, 'queued', ${input.idempotencyKey}
+    )
+    on conflict (idempotency_key) where idempotency_key is not null do nothing
+    returning id
+  `) as Array<{ id: string }>;
+  if (inserted[0]) return { eventId: inserted[0].id, duplicate: false };
+
+  const existing = (await sql`
+    select id, provider_id as "providerId", status
+    from easyt_email_events
+    where idempotency_key = ${input.idempotencyKey}
+    limit 1
+  `) as Array<{ id: string; providerId: string | null; status: string }>;
+  const event = existing[0];
+  if (!event) return { duplicate: false };
+
+  if (event.status === "failed") {
+    const retry = (await sql`
+      update easyt_email_events
+      set status = 'queued', error_message = null, updated_at = now()
+      where id = ${event.id} and status = 'failed'
+      returning id
+    `) as Array<{ id: string }>;
+    if (retry[0]) return { eventId: event.id, duplicate: false, providerId: event.providerId };
+  }
+
+  return { eventId: event.id, providerId: event.providerId, duplicate: true };
+}
+
+export async function finishEasyTEmailEvent(input: {
+  eventId: string;
+  providerId?: string | null;
+  status: "sent" | "failed";
+  errorMessage?: string | null;
+}) {
+  const sql = getEasyTDatabase();
   await sql`
-    insert into easyt_email_events (id, provider_id, recipient_email, subject, template, status, error_message, metadata)
-    values (${id}, ${input.providerId ?? null}, ${input.recipientEmail}, ${input.subject}, ${input.template}, ${input.status}, ${input.errorMessage ?? null}, ${JSON.stringify(input.metadata ?? {})})
+    update easyt_email_events
+    set provider_id = coalesce(${input.providerId ?? null}, provider_id),
+      status = ${input.status}, error_message = ${input.errorMessage ?? null}, updated_at = now()
+    where id = ${input.eventId}
   `;
-  return id;
 }
 
 export async function updateEasyTEmailEvent(input: { providerId: string; status: string; occurredAt?: string }) {
@@ -714,33 +753,69 @@ export async function createTripGift(
   tripId: string,
   recipientEmail: string,
   note?: string | null,
+  idempotencyKey?: string,
 ) {
   const source = await getTripForOwner(sender.id, tripId);
   if (!source) return null;
 
   const sql = getEasyTDatabase();
-  const token = randomBytes(32).toString("base64url");
+  if (idempotencyKey && (idempotencyKey.length < 16 || idempotencyKey.length > 200 || !/^[A-Za-z0-9._:-]+$/.test(idempotencyKey))) {
+    throw new Error("Invalid trip invitation request key.");
+  }
+  const secret = getEasyTAuthSecret();
+  if (idempotencyKey && !secret) throw new Error("Morrovia authentication is not configured.");
+  const token = idempotencyKey
+    ? createHmac("sha256", secret!).update(`trip-gift-v1\0${sender.id}\0${idempotencyKey}`).digest("base64url")
+    : randomBytes(32).toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + 14);
+  const normalizedRecipient = recipientEmail.trim().toLowerCase();
+  const normalizedNote = note?.trim().slice(0, 500) || null;
   const gift = {
     id: randomUUID(),
     token,
     tripTitle: source.title,
-    recipientEmail: recipientEmail.trim().toLowerCase(),
-    note: note?.trim().slice(0, 500) || null,
+    recipientEmail: normalizedRecipient,
+    note: normalizedNote,
     expiresAt: expiresAt.toISOString(),
+    created: true,
   };
 
-  await sql`
+  const inserted = (await sql`
     insert into easyt_trip_gifts (
       id, trip_id, sender_id, recipient_email, note, token_hash, status, expires_at
     ) values (
       ${gift.id}, ${tripId}, ${sender.id}, ${gift.recipientEmail}, ${gift.note},
       ${tokenHash(token)}, 'pending', ${gift.expiresAt}
     )
-  `;
-  return gift;
+    on conflict (token_hash) do nothing
+    returning id
+  `) as Array<{ id: string }>;
+  if (inserted[0]) return gift;
+
+  const existing = (await sql`
+    select id, trip_id as "tripId", recipient_email as "recipientEmail", note, expires_at as "expiresAt"
+    from easyt_trip_gifts
+    where token_hash = ${tokenHash(token)} and sender_id = ${sender.id}
+    limit 1
+  `) as Array<{ id: string; tripId: string; recipientEmail: string; note: string | null; expiresAt: string }>;
+  const previous = existing[0];
+  if (!previous
+    || previous.tripId !== tripId
+    || previous.recipientEmail.toLowerCase() !== normalizedRecipient
+    || previous.note !== normalizedNote) {
+    throw new Error("Trip invitation request key was already used.");
+  }
+  return {
+    id: previous.id,
+    token,
+    tripTitle: source.title,
+    recipientEmail: previous.recipientEmail,
+    note: previous.note,
+    expiresAt: previous.expiresAt,
+    created: false,
+  };
 }
 
 async function getGiftRow(token: string): Promise<GiftRow | null> {

@@ -181,6 +181,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [giftState, setGiftState] = useState<"idle" | "sending" | "complete">("idle");
   const [giftError, setGiftError] = useState("");
   const [claimUrl, setClaimUrl] = useState("");
+  const giftRequestRef = useRef<{ signature: string; key: string } | null>(null);
   const [delivered, setDelivered] = useState(false);
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [recoveryIssues, setRecoveryIssues] = useState<Record<string, DashboardRecoveryIssue>>({});
@@ -373,6 +374,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     setGiftState("idle");
     setGiftError("");
     setClaimUrl("");
+    giftRequestRef.current = null;
   };
 
   const sendGift = async () => {
@@ -380,9 +382,16 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     setGiftState("sending");
     setGiftError("");
     try {
+      const signature = JSON.stringify([gifting.id, giftEmail.trim().toLowerCase(), giftNote.trim()]);
+      if (giftRequestRef.current?.signature !== signature) {
+        giftRequestRef.current = { signature, key: crypto.randomUUID() };
+      }
       const response = await fetch(`/api/easyt/trips/${encodeURIComponent(gifting.id)}/gift`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": giftRequestRef.current.key,
+        },
         body: JSON.stringify({ email: giftEmail, note: giftNote }),
       });
       const payload = (await response.json()) as { error?: string; claimUrl?: string; delivered?: boolean };

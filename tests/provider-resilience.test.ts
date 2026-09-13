@@ -42,7 +42,7 @@ test("all newly identified provider boundaries are finite and keep failures loca
   const discover = source("app/api/journey-discover/route.ts");
   const weather = source("components/journey-weather.tsx");
   const copilot = source("lib/easyt/trip-copilot.server.ts");
-  const email = source("lib/easyt/email.ts");
+  const email = source("lib/easyt/email-delivery.ts");
 
   assert.match(place, /WIKIPEDIA_TIMEOUT_MS = 5_000/);
   assert.equal((place.match(/signal: AbortSignal\.timeout\(WIKIPEDIA_TIMEOUT_MS\)/g) ?? []).length, 3);

@@ -9,6 +9,8 @@
     "dev": "NEXT_DIST_DIR=.next-dev next dev",
     "build": "next build",
     "build:check": "NEXT_DIST_DIR=.next-check next build",
+    "email:preview": "node --experimental-strip-types scripts/render-email-previews.ts",
+    "test:email": "node --experimental-strip-types --test tests/email-system.test.ts tests/contact-form.test.ts tests/private-session-boundary.test.ts",
     "typecheck": "tsc --project tsconfig.typecheck.json --noEmit --incremental false",
     "release:gate": "node scripts/release-gate-smoke.mjs",
     "staging:preflight": "node --env-file=.env.staging scripts/staging-preflight.mjs",

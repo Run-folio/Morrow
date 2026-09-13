@@ -3,16 +3,18 @@ import { Pool } from "pg";
 import {
   getEasyTAuthSecret,
   getMorroviaAuthBaseURL,
+  getMorroviaApplicationUrl,
   getMorroviaAuthTrustedOrigins,
   GOOGLE_ACCOUNT_LINKING_POLICY,
   GOOGLE_AUTH_SCOPES,
   isEasyTEmailVerificationRequired,
   isMorroviaGoogleAuthConfigured,
 } from "@/lib/easyt/auth-environment";
-import { passwordResetEmail, sendEasyTEmail, verificationEmail } from "@/lib/easyt/email";
+import { passwordResetEmail, sendMorroviaEmail, verificationEmail } from "@/lib/easyt/email";
 
 function createAuth(databaseUrl: string, secret: string) {
   const baseURL = getMorroviaAuthBaseURL();
+  const supportUrl = getMorroviaApplicationUrl("/journey/contact?topic=support");
   const googleEnabled = isMorroviaGoogleAuthConfigured();
   return betterAuth({
     appName: "Morrovia",
@@ -38,12 +40,12 @@ function createAuth(databaseUrl: string, secret: string) {
           baseURL,
         );
         resetUrl.searchParams.set("token", token);
-        await sendEasyTEmail({ to: user.email, ...passwordResetEmail(resetUrl.toString()) });
+        await sendMorroviaEmail({ to: user.email, ...passwordResetEmail(resetUrl.toString(), supportUrl) });
       },
     },
     emailVerification: {
       sendVerificationEmail: async ({ user, url }) => {
-        await sendEasyTEmail({ to: user.email, ...verificationEmail(url) });
+        await sendMorroviaEmail({ to: user.email, ...verificationEmail(url, supportUrl) });
       },
       sendOnSignUp: isEasyTEmailVerificationRequired(),
       // Existing accounts created before email delivery was configured need a
