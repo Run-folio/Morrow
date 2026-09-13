@@ -8,6 +8,7 @@ import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
 import { itineraryInterestReason } from "@/lib/easyt/itinerary-day-context";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import styles from "./live-activity-inventory.module.css";
@@ -49,7 +50,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
   useEffect(() => {
     if (initialItems) { setItems(initialItems); setStatus("ready"); return; }
     if (!stop.canonicalPlaceId) { setItems([]); setStatus("unavailable"); return; }
-    const controller = new AbortController();
+    const scope = createAbortableEffectScope(`Live activity inventory for ${stop.id}`);
     setItems([]);
     setStatus("loading");
     void fetch("/api/journey-activity-inventory", {
@@ -65,20 +66,23 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
         aliases: placeMention?.aliases,
         placeType: placeMention?.placeType,
       }, currency: trip.currency }),
-      signal: controller.signal,
+      signal: scope.signal,
     }).then(async (response) => {
       if (!response.ok) throw new Error("Activity inventory unavailable");
       return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
     }).then((payload) => {
-      if (controller.signal.aborted) return;
-      setItems(payload.activities ?? []);
-      setStatus((payload.activities ?? []).length ? "ready" : "unavailable");
+      scope.commit(() => {
+        setItems(payload.activities ?? []);
+        setStatus((payload.activities ?? []).length ? "ready" : "unavailable");
+      });
     }).catch((error: unknown) => {
-      if ((error as { name?: string })?.name === "AbortError") return;
-      setItems([]);
-      setStatus("unavailable");
+      if (scope.isCancellation(error)) return;
+      scope.commit(() => {
+        setItems([]);
+        setStatus("unavailable");
+      });
     });
-    return () => controller.abort();
+    return () => scope.dispose();
   }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency]);
 
   const ranked = useMemo(() => rankActivityInventory(items, interests).slice(0, 4), [interests, items]);

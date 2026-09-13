@@ -63,8 +63,10 @@ test("hover and keyboard focus cannot paint the full-card control over its conte
 });
 
 test("loading, partial-provider degradation, empty, and missing-image states stay distinct", () => {
-  assert.match(workspace, /providerState === "degraded" && visibleResults\.length/);
-  assert.match(workspace, /providerState === "degraded" \? <MorroviaSectionStatus/);
+  assert.match(workspace, /organicStatus === "loading" && !visibleResults\.length/);
+  assert.match(workspace, /commercialStatus === "loading"/);
+  assert.match(workspace, /Local ideas are ready\. Bookable experiences are still loading\./);
+  assert.match(workspace, /commercialStatus === "degraded"/);
   assert.match(workspace, /className=\{styles\.empty\}/);
   assert.match(workspace, /fallback=\{<span><MapPin/);
   assert.doesNotMatch(workspace, /console\.(?:log|error)/);
@@ -115,6 +117,6 @@ test("responsive cards avoid horizontal overflow and retain 44px touch controls"
 
 test("Storybook covers destination, interaction, inventory and responsive Explore acceptance states", () => {
   for (const story of [
-    "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState",
+    "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState",
   ]) assert.match(stories, new RegExp(`export const ${story}`), story);
 });

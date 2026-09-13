@@ -179,6 +179,7 @@ export const SpecificDestination: Story = { args: { initialDestinationId: "cusco
 export const SelectedRomeStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "rome" } };
 export const SelectedAthensStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "athens" } };
 export const MixedOrganicAndViator: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults } };
+export const OrganicReadyCommercialLoading: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza], initialProviderState: "loading" } };
 export const OrganicAttraction: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza] } };
 export const EntryTicket: Story = { args: { trip: mediterraneanTrip, initialResults: [athensTicket], initialDestinationId: "athens" } };
 export const RepeatedAthensOutbound: Story = { args: { trip: repeatedAthensTrip, initialResults: repeatedAthensResults, initialDestinationId: "athens-outbound" } };

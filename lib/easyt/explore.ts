@@ -68,8 +68,26 @@ export type ExploreResultState =
   | { state: "saved"; idea: ItineraryIdea; day: null }
   | { state: "planned"; idea: ItineraryIdea; day: PlanItem };
 
+export type ExploreDiscoveryLaneStatus = "idle" | "loading" | "ready" | "empty" | "degraded";
+
+export type ExploreDiscoveryLaneSnapshot = {
+  results: ExploreResult[];
+  status: ExploreDiscoveryLaneStatus;
+  pendingCount: number;
+  failedCount: number;
+};
+
 function normal(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+export function exploreSourcePlan(category: ExploreCategory, trip: EasyTTrip) {
+  const interests = tripIntentForTrip(trip).preferences.interests;
+  return {
+    mapped: category !== "tours" && category !== "day-trips",
+    restaurants: category === "food" || (category === "for-you" && interests.includes("food")),
+    tours: category === "for-you" || category === "must-see" || category === "tours" || category === "day-trips",
+  };
 }
 
 export function exploreDestinationOptions(trip: Pick<EasyTTrip, "stops" | "planItems">): ExploreDestination[] {
@@ -274,13 +292,127 @@ export function exploreResultForIdea(trip: EasyTTrip, idea: ItineraryIdea): Expl
   return { ...result, identity: exploreResultIdentity(result) };
 }
 
+function obviousBookableMatchTitle(value: string) {
+  return normal(value).replace(/\s+(?:entry|admission)\s+tickets?$/, "");
+}
+
+function obviousCrossLaneDuplicate(left: ExploreResult, right: ExploreResult) {
+  const leftCommercial = Boolean(left.providerProductId);
+  const rightCommercial = Boolean(right.providerProductId);
+  return left.stopId === right.stopId
+    && leftCommercial !== rightCommercial
+    && obviousBookableMatchTitle(left.title) === obviousBookableMatchTitle(right.title);
+}
+
+function sameProviderProduct(left: ExploreResult, right: ExploreResult) {
+  return left.stopId === right.stopId
+    && Boolean(left.provider && left.providerProductId)
+    && left.provider === right.provider
+    && left.providerProductId === right.providerProductId;
+}
+
+function mergeExploreResult(primary: ExploreResult, incoming: ExploreResult) {
+  const primaryOrganicOwned = primary.idea.source !== "live-provider-inventory";
+  const incomingOrganicOwned = incoming.idea.source !== "live-provider-inventory";
+  if (primaryOrganicOwned === incomingOrganicOwned) return {
+    ...primary,
+    ...incoming,
+    identity: primary.identity,
+    stopId: primary.stopId,
+    sourceId: primary.sourceId,
+    idea: primary.idea,
+    description: incoming.description ?? primary.description,
+    image: incoming.image ?? primary.image,
+    coordinates: incoming.coordinates ?? primary.coordinates,
+    duration: incoming.duration ?? primary.duration,
+    price: incoming.price ?? primary.price,
+    rating: incoming.rating ?? primary.rating,
+    reviewCount: incoming.reviewCount ?? primary.reviewCount,
+    qualityScore: incoming.qualityScore ?? primary.qualityScore,
+    provider: incoming.provider ?? primary.provider,
+    providerProductId: incoming.providerProductId ?? primary.providerProductId,
+    providerUrl: incoming.providerUrl ?? primary.providerUrl,
+  };
+
+  const organic = primaryOrganicOwned ? primary : incoming;
+  const commercial = primaryOrganicOwned ? incoming : primary;
+  return {
+    ...primary,
+    title: organic.title,
+    kind: organic.kind,
+    category: organic.category,
+    tags: [...new Set([...organic.tags, ...commercial.tags])],
+    description: organic.description ?? commercial.description,
+    image: organic.image ?? commercial.image,
+    coordinates: organic.coordinates ?? commercial.coordinates,
+    duration: commercial.duration ?? organic.duration,
+    price: commercial.price ?? organic.price,
+    rating: commercial.rating ?? organic.rating,
+    reviewCount: commercial.reviewCount ?? organic.reviewCount,
+    qualityScore: organic.qualityScore ?? commercial.qualityScore,
+    provider: commercial.provider,
+    providerProductId: commercial.providerProductId,
+    providerUrl: commercial.providerUrl,
+  };
+}
+
 export function dedupeExploreResults(results: readonly ExploreResult[]) {
-  const seen = new Set<string>();
-  return results.filter((result) => {
-    if (seen.has(result.identity)) return false;
-    seen.add(result.identity);
-    return true;
-  });
+  const deduped: ExploreResult[] = [];
+  for (const result of results) {
+    const duplicateIndex = deduped.findIndex((candidate) => candidate.identity === result.identity
+      || sameProviderProduct(candidate, result)
+      || obviousCrossLaneDuplicate(candidate, result));
+    if (duplicateIndex === -1) {
+      deduped.push(result);
+      continue;
+    }
+    deduped[duplicateIndex] = mergeExploreResult(deduped[duplicateIndex]!, result);
+  }
+  return deduped;
+}
+
+/** Streams each source as it settles so one slow request cannot gate its lane. */
+export async function streamExploreDiscoveryLane(
+  requests: readonly (() => Promise<ExploreResult[]>)[],
+  onSnapshot: (snapshot: ExploreDiscoveryLaneSnapshot) => void,
+) {
+  let results: ExploreResult[] = [];
+  let pendingCount = requests.length;
+  let failedCount = 0;
+  let snapshot: ExploreDiscoveryLaneSnapshot = {
+    results,
+    status: requests.length ? "loading" : "idle",
+    pendingCount,
+    failedCount,
+  };
+  const emit = () => {
+    snapshot = {
+      results: [...results],
+      status: pendingCount
+        ? "loading"
+        : failedCount
+          ? "degraded"
+          : results.length
+            ? "ready"
+            : "empty",
+      pendingCount,
+      failedCount,
+    };
+    onSnapshot(snapshot);
+  };
+  emit();
+  await Promise.all(requests.map(async (request) => {
+    try {
+      const settledResults = await request();
+      results = dedupeExploreResults([...results, ...settledResults]);
+    } catch {
+      failedCount += 1;
+    } finally {
+      pendingCount -= 1;
+      emit();
+    }
+  }));
+  return snapshot;
 }
 
 export function exploreResultState(trip: EasyTTrip, result: ExploreResult): ExploreResultState {
@@ -316,18 +448,12 @@ export function filterExploreResults(
     return { result, index, score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score };
   }).sort((left, right) => right.score - left.score || left.index - right.index).map(({ result }) => result);
   if (category !== "for-you" && category !== "must-see") return ranked;
-  const organic = ranked.filter((result) => !result.providerProductId);
-  const commercial = ranked.filter((result) => result.providerProductId);
+  const organic = ranked.filter((result) => result.idea.source !== "live-provider-inventory");
+  const commercial = ranked.filter((result) => result.idea.source === "live-provider-inventory");
   if (!organic.length || !commercial.length) return ranked;
-  const mixed: ExploreResult[] = [];
-  let organicIndex = 0;
-  let commercialIndex = 0;
-  while (organicIndex < organic.length || commercialIndex < commercial.length) {
-    mixed.push(...organic.slice(organicIndex, organicIndex + 2));
-    organicIndex += 2;
-    if (commercialIndex < commercial.length) mixed.push(commercial[commercialIndex++]!);
-  }
-  return mixed;
+  // Keep already rendered organic cards stable when commercial enrichment
+  // arrives later; provider-only inventory appends without reordering them.
+  return [...organic, ...commercial];
 }
 
 export function exploreScheduleTarget(trip: EasyTTrip, result: ExploreResult, requestedDayNumber?: number | null) {

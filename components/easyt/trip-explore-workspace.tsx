@@ -30,11 +30,15 @@ import {
   exploreResultForPlace,
   exploreResultState,
   exploreScheduleTarget,
+  exploreSourcePlan,
   filterExploreResults,
+  streamExploreDiscoveryLane,
+  type ExploreDiscoveryLaneStatus,
   type ExploreCategory,
   type ExploreLocalPlace,
   type ExploreResult,
 } from "@/lib/easyt/explore";
+import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -50,7 +54,7 @@ import ResilientImage from "./resilient-image";
 import { useTripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-explore-workspace.module.css";
 
-type ProviderState = "ready" | "degraded" | "empty";
+type ProviderState = Exclude<ExploreDiscoveryLaneStatus, "idle">;
 
 export type TripExploreWorkspaceProps = {
   trip: EasyTTrip;
@@ -144,15 +148,6 @@ async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
   return (payload.activities ?? []).map((item) => exploreResultForActivity(stop, item, trip));
 }
 
-function sourcePlan(category: ExploreCategory, trip: EasyTTrip) {
-  const interests = tripIntentForTrip(trip).preferences.interests;
-  return {
-    mapped: category !== "tours" && category !== "day-trips",
-    restaurants: category === "food" || (category === "for-you" && interests.includes("food")),
-    tours: category === "for-you" || category === "must-see" || category === "tours" || category === "day-trips",
-  };
-}
-
 function detailForResult(result: ExploreResult, state: ReturnType<typeof exploreResultState>, whyFit: string | null): ItineraryItemDetailModel {
   const when = state.state === "planned"
     ? `Day ${state.day.dayNumber}${state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}`
@@ -202,9 +197,17 @@ export default function TripExploreWorkspace({
     : "all";
   const [destinationId, setDestinationId] = useState(validInitialDestination);
   const [category, setCategory] = useState<ExploreCategory>(initialCategory);
-  const [loadedResults, setLoadedResults] = useState<ExploreResult[]>(initialResults ?? []);
-  const [loading, setLoading] = useState(!initialResults);
-  const [providerState, setProviderState] = useState<ProviderState>(initialResults ? initialProviderState : "ready");
+  const initialPlan = exploreSourcePlan(initialCategory, trip);
+  const initialOrganicResults = (initialResults ?? []).filter((result) => result.idea.source !== "live-provider-inventory");
+  const initialCommercialResults = (initialResults ?? []).filter((result) => result.idea.source === "live-provider-inventory");
+  const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
+  const [commercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
+  const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
+    ? initialPlan.mapped || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle"
+    : initialPlan.mapped || initialPlan.restaurants ? "loading" : "idle");
+  const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
+    ? initialProviderState
+    : initialPlan.tours ? "loading" : "idle");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(initialSelectedResultId ?? null);
   const [selectedDayByResult, setSelectedDayByResult] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState<string | null>(null);
@@ -215,11 +218,12 @@ export default function TripExploreWorkspace({
       const result = exploreResultForIdea(workingTrip, idea);
       return result ? [result] : [];
     }), [workingTrip]);
-  const results = useMemo(() => dedupeExploreResults([...persistedResults, ...loadedResults]), [loadedResults, persistedResults]);
+  const results = useMemo(() => dedupeExploreResults([...persistedResults, ...organicResults, ...commercialResults]), [commercialResults, organicResults, persistedResults]);
   const visibleResults = useMemo(() => filterExploreResults(workingTrip, results, destinationId, category), [category, destinationId, results, workingTrip]);
   const selectedResult = results.find((result) => result.identity === selectedResultId) ?? null;
   const opportunity = useMemo(() => exploreOpportunityForTrip(workingTrip, destinationId), [destinationId, workingTrip]);
   const activeDestination = destinationId === "all" ? null : destinations.find((item) => item.id === destinationId) ?? null;
+  const activeSourcePlan = exploreSourcePlan(category, workingTrip);
   const navigationStops = useMemo(() => [
     { id: "all", name: "All trip", dayLabel: "Whole journey", active: destinationId === "all", kind: "all" as const },
     ...destinations.map((destination) => ({
@@ -241,28 +245,29 @@ export default function TripExploreWorkspace({
 
   useEffect(() => {
     if (initialResults) return;
-    const controller = new AbortController();
+    const scope = createAbortableEffectScope("Explore organic and commercial discovery");
     const scopedStops = destinationId === "all"
       ? destinations.map((item) => item.stop)
       : destinations.filter((item) => item.id === destinationId).map((item) => item.stop);
-    const plan = sourcePlan(category, trip);
-    setLoading(true);
-    setProviderState("ready");
-    setLoadedResults([]);
-    const requests = scopedStops.flatMap((stop) => [
-      ...(plan.mapped ? [loadMappedPlaces(trip, stop, controller.signal)] : []),
-      ...(plan.restaurants ? [loadRestaurants(stop, controller.signal)] : []),
-      ...(plan.tours ? [loadTours(trip, stop, controller.signal)] : []),
+    const plan = exploreSourcePlan(category, trip);
+    setOrganicResults([]);
+    setCommercialResults([]);
+    const organicRequests = scopedStops.flatMap((stop) => [
+      ...(plan.mapped ? [() => loadMappedPlaces(trip, stop, scope.signal)] : []),
+      ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
     ]);
-    void Promise.allSettled(requests).then((settled) => {
-      if (controller.signal.aborted) return;
-      const fulfilled = settled.flatMap((entry) => entry.status === "fulfilled" ? entry.value : []);
-      const failed = settled.some((entry) => entry.status === "rejected");
-      setLoadedResults(dedupeExploreResults(fulfilled));
-      setProviderState(failed ? "degraded" : fulfilled.length ? "ready" : "empty");
-      setLoading(false);
-    });
-    return () => controller.abort();
+    const commercialRequests = scopedStops.flatMap((stop) => plan.tours
+      ? [() => loadTours(trip, stop, scope.signal)]
+      : []);
+    void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
+      setOrganicResults(snapshot.results);
+      setOrganicStatus(snapshot.status);
+    }));
+    void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
+      setCommercialResults(snapshot.results);
+      setCommercialStatus(snapshot.status);
+    }));
+    return () => scope.dispose();
   }, [category, destinationId, destinations, initialResults, trip]);
 
   useEffect(() => {
@@ -365,21 +370,31 @@ export default function TripExploreWorkspace({
 
       <div className={styles.resultsHeader}>
         <div><strong>{exploreCategoryLabels[category]}</strong><span> around {destinationLabel}</span></div>
-        {!loading ? <small>{visibleResults.length} {visibleResults.length === 1 ? "idea" : "ideas"}</small> : null}
+        <small>{visibleResults.length} {visibleResults.length === 1 ? "idea" : "ideas"}</small>
       </div>
 
-      {loading ? <div className={styles.loading} aria-label="Finding trip ideas">
+      {organicStatus === "loading" && !visibleResults.length ? <div className={styles.loading} aria-label="Finding local trip ideas">
         <MorroviaSectionStatus title="Finding ideas for this trip" detail={`Looking around ${destinationLabel}.`} />
         <div aria-hidden="true"><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /></div>
       </div> : null}
-      {!loading && providerState === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some ideas are temporarily unavailable. You can still use the results shown here.</p> : null}
-      {!loading && !visibleResults.length ? providerState === "degraded" ? <MorroviaSectionStatus
+      {organicStatus === "loading" && visibleResults.length ? <p className={styles.degraded} role="status">More local ideas are loading. The results shown are ready to use.</p> : null}
+      {commercialStatus === "loading" ? <p className={styles.degraded} role="status">{visibleResults.some((result) => result.idea.source !== "live-provider-inventory") ? "Local ideas are ready. Bookable experiences are still loading." : "Bookable experiences are loading separately."}</p> : null}
+      {organicStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some local ideas are temporarily unavailable. You can still use the results shown here.</p> : null}
+      {commercialStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some bookable experiences are temporarily unavailable. The results shown remain ready to use.</p> : null}
+      {commercialStatus === "degraded" && !visibleResults.length && (activeSourcePlan.mapped || activeSourcePlan.restaurants) ? <p className={styles.degraded}>Bookable experiences are temporarily unavailable. Local discovery is unaffected.</p> : null}
+      {organicStatus === "degraded" && !visibleResults.length ? <MorroviaSectionStatus
         state="error"
-        title="Some ideas are unavailable"
-        detail="Your trip and saved ideas are unchanged. Try this category again later."
-      /> : <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
+        title="Local ideas are unavailable"
+        detail="Your trip and saved ideas are unchanged. Bookable experiences will remain separate."
+      /> : null}
+      {commercialStatus === "degraded" && !visibleResults.length && !activeSourcePlan.mapped && !activeSourcePlan.restaurants ? <MorroviaSectionStatus
+        state="error"
+        title="Bookable experiences are unavailable"
+        detail="Your trip is unchanged. Try this category again later."
+      /> : null}
+      {!visibleResults.length && organicStatus !== "loading" && commercialStatus !== "loading" && organicStatus !== "degraded" && !(commercialStatus === "degraded" && !activeSourcePlan.mapped && !activeSourcePlan.restaurants) ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
-      {!loading && visibleResults.length ? <div className={styles.grid} id="explore-results">
+      {visibleResults.length ? <div className={styles.grid} id="explore-results">
         {visibleResults.map((result) => {
           const state = exploreResultState(workingTrip, result);
           const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;

@@ -98,7 +98,10 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   const route = readFileSync(new URL("../app/api/journey-activity-inventory/route.ts", import.meta.url), "utf8");
   assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*<LiveActivityInventory/);
   assert.match(map, /JourneyItineraryRefinement[\s\S]*LiveActivityInventory/);
-  assert.match(inventory, /controller\.abort\(\)/);
+  assert.match(inventory, /createAbortableEffectScope\(`Live activity inventory for \$\{stop\.id\}`\)/);
+  assert.match(inventory, /scope\.commit\(\(\) =>/);
+  assert.match(inventory, /scope\.isCancellation\(error\)/);
+  assert.match(inventory, /scope\.dispose\(\)/);
   assert.match(inventory, /MorroviaAffiliateLink/);
   assert.match(inventory, /country:\s*stop\.country/);
   assert.match(inventory, /countryCode:\s*stop\.countryCode/);
