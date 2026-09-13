@@ -1,11 +1,8 @@
 import type { ReactNode } from "react";
-import { CalendarDays, Clock3, Edit3, MapPin, Route } from "lucide-react";
 import type { EasyTTrip, TripStatus } from "@/lib/easyt/trip";
-import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
-import { EasyTLinkButton } from "./easyt-controls";
-import { TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
-import { WorkspaceOrientationLauncher, WorkspaceOrientationProvider } from "./workspace-orientation";
+import { TripShellIdentityAndActions, TripShellImage, TripShellNavigation, TripShellTripProvider } from "./trip-shell-client";
+import { WorkspaceOrientationProvider } from "./workspace-orientation";
 import styles from "./trip-shell.module.css";
 
 export function formatTripShellDates(startDate: string, endDate: string) {
@@ -41,42 +38,14 @@ export default function TripShell({ trip, children, cacheTrip = true, orientatio
             stopCount={trip.stops.length}
           />
 
-          <div className={styles.tripIdentity}>
-            <p className={styles.eyebrow}>{statusLabel(trip.status)}</p>
-            <h1 id="trip-shell-title">{tripDisplayTitle(trip)}</h1>
-            <p className={styles.routeSummary}>{routeLabel}</p>
-            <dl className={styles.metadata}>
-              <div>
-                <dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt>
-                <dd>{formatTripShellDates(trip.startDate, trip.endDate)}</dd>
-              </div>
-              <div>
-                <dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt>
-                <dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd>
-              </div>
-              <div>
-                <dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Stops</span></dt>
-                <dd>{trip.stops.length} {trip.stops.length === 1 ? "stop" : "stops"}</dd>
-              </div>
-              <div>
-                <dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt>
-                <dd>{trip.legs.length} {trip.legs.length === 1 ? "transfer" : "transfers"}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className={styles.headerActions}>
-            <EasyTLinkButton
-              className={styles.editAction}
-              href={editHref}
-              icon={Edit3}
-              size="small"
-              variant="secondary"
-            >
-              Edit trip brief
-            </EasyTLinkButton>
-            <WorkspaceOrientationLauncher />
-          </div>
+          <TripShellIdentityAndActions
+            trip={trip}
+            status={statusLabel(trip.status)}
+            routeLabel={routeLabel}
+            dateLabel={formatTripShellDates(trip.startDate, trip.endDate)}
+            duration={duration}
+            editHref={editHref}
+          />
         </header>
 
         <TripShellNavigation tripId={trip.id} />

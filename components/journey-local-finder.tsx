@@ -17,7 +17,7 @@ import { compactAffiliateDisclosure } from "@/components/easyt/affiliate-link";
 import { localFinderQueryKey } from "@/lib/easyt/local-finder-query";
 import { recommendationDurationMs, streamIndependentRecommendationLanes } from "@/lib/easyt/recommendation-performance";
 
-export type JourneyLocalPlace = { id: string; name: string; nativeName?: string; address: string; category: string; coordinates: [number, number]; mapsUrl: string; distanceKm?: number; operational?: true; availability?: "available" | "check"; provider?: "booking-demand" | "google-places" | "openstreetmap"; rating?: number; priceLevel?: string; price?: { total: number; currency: string }; cancellation?: string };
+export type JourneyLocalPlace = { id: string; name: string; nativeName?: string; address: string; category: string; coordinates: [number, number]; mapsUrl: string; distanceKm?: number; operational?: true; availability?: "available" | "check"; provider?: "booking-demand" | "google-places" | "openstreetmap"; rating?: number; reviewCount?: number; priceLevel?: string; price?: { total: number; currency: string }; cancellation?: string };
 type MealPace = "quick" | "relaxed" | "occasion";
 type MealMood = "local" | "comfort" | "surprise";
 type StayStyle = "simple" | "character" | "comfort";
@@ -50,6 +50,7 @@ function isJourneyLocalPlace(value: unknown): value is JourneyLocalPlace {
     && (value.distanceKm === undefined || (typeof value.distanceKm === "number" && Number.isFinite(value.distanceKm)))
     && (value.operational === undefined || value.operational === true)
     && (value.rating === undefined || (typeof value.rating === "number" && Number.isFinite(value.rating)))
+    && (value.reviewCount === undefined || (typeof value.reviewCount === "number" && Number.isFinite(value.reviewCount) && value.reviewCount >= 0))
     && (value.priceLevel === undefined || typeof value.priceLevel === "string")
     && (value.cancellation === undefined || typeof value.cancellation === "string")
     && validAvailability

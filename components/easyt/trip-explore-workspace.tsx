@@ -120,6 +120,27 @@ async function loadMappedPlaces(trip: EasyTTrip, stop: TripStop, signal: AbortSi
   return (payload.places ?? []).map((place) => exploreResultForPlace(stop, place, interests));
 }
 
+async function loadDayTrips(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
+  if (stop.latitude === null || stop.longitude === null) return [];
+  const query = new URLSearchParams({
+    destination: stop.name,
+    country: stop.country,
+    canonicalPlaceId: stop.canonicalPlaceId ?? stop.id,
+    region: stop.region ?? "",
+    lat: String(stop.latitude),
+    lon: String(stop.longitude),
+  });
+  const response = await fetch(`/api/journey-day-trips?${query}`, { signal });
+  if (!response.ok) throw new Error("Day-trip discovery unavailable");
+  const payload = await response.json() as DiscoveryPayload;
+  if (payload.unavailable) throw new Error("Day-trip discovery unavailable");
+  const interests = tripIntentForTrip(trip).preferences.interests;
+  const routeStops = new Set(trip.stops.map((routeStop) => `${routeStop.name.trim().toLocaleLowerCase()}|${routeStop.country.trim().toLocaleLowerCase()}`));
+  return (payload.places ?? [])
+    .filter((place) => !routeStops.has(`${place.title.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`))
+    .map((place) => exploreResultForPlace(stop, place, interests));
+}
+
 async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
   if (stop.latitude === null || stop.longitude === null) return [];
   const query = new URLSearchParams({
@@ -205,8 +226,8 @@ export default function TripExploreWorkspace({
   const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
   const [commercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
   const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
-    ? initialPlan.mapped || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle"
-    : initialPlan.mapped || initialPlan.restaurants ? "loading" : "idle");
+    ? initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle"
+    : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? "loading" : "idle");
   const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
     : initialPlan.tours ? "loading" : "idle");
@@ -276,6 +297,7 @@ export default function TripExploreWorkspace({
     setCommercialResults([]);
     const organicRequests = scopedStops.flatMap((stop) => [
       ...(plan.mapped ? [() => loadMappedPlaces(trip, stop, scope.signal)] : []),
+      ...(plan.dayTrips ? [() => loadDayTrips(trip, stop, scope.signal)] : []),
       ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
     ]);
     const commercialRequests = scopedStops.flatMap((stop) => plan.tours
@@ -405,13 +427,13 @@ export default function TripExploreWorkspace({
       {commercialStatus === "loading" ? <p className={styles.degraded} role="status">{visibleResults.some((result) => result.idea.source !== "live-provider-inventory") ? "Local ideas are ready. Bookable experiences are still loading." : "Bookable experiences are loading separately."}</p> : null}
       {organicStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some local ideas are temporarily unavailable. You can still use the results shown here.</p> : null}
       {commercialStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some bookable experiences are temporarily unavailable. The results shown remain ready to use.</p> : null}
-      {commercialStatus === "degraded" && !visibleResults.length && (activeSourcePlan.mapped || activeSourcePlan.restaurants) ? <p className={styles.degraded}>Bookable experiences are temporarily unavailable. Local discovery is unaffected.</p> : null}
+      {commercialStatus === "degraded" && !visibleResults.length && (activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants) ? <p className={styles.degraded}>Bookable experiences are temporarily unavailable. Local discovery is unaffected.</p> : null}
       {organicStatus === "degraded" && !visibleResults.length ? <MorroviaSectionStatus
         state="error"
         title="Local ideas are unavailable"
         detail="Your trip and saved ideas are unchanged. Bookable experiences will remain separate."
       /> : null}
-      {commercialStatus === "degraded" && !visibleResults.length && !activeSourcePlan.mapped && !activeSourcePlan.restaurants ? <MorroviaSectionStatus
+      {commercialStatus === "degraded" && !visibleResults.length && !activeSourcePlan.mapped && !activeSourcePlan.dayTrips && !activeSourcePlan.restaurants ? <MorroviaSectionStatus
         state="error"
         title="Bookable experiences are unavailable"
         detail="Your trip is unchanged. Try this category again later."
@@ -440,7 +462,11 @@ export default function TripExploreWorkspace({
                   <span>Viator</span>
                   {result.rating !== undefined ? <><Star aria-hidden="true" />{result.rating.toFixed(1)}{result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}</> : null}
                   {result.price ? <strong>{result.price}</strong> : null}
-                </p> : result.price ? <p className={styles.providerFacts}><strong>{result.price}</strong></p> : null}
+                </p> : result.rating !== undefined || result.price ? <p className={styles.providerFacts}>
+                  {result.provider === "google-places" ? <span>Google Places</span> : null}
+                  {result.rating !== undefined ? <><Star aria-hidden="true" />{result.rating.toFixed(1)}{result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}</> : null}
+                  {result.price ? <strong>{result.price}</strong> : null}
+                </p> : null}
                 {result.description ? <p className={styles.description}>{result.description}</p> : null}
                 {fitReason ? <p className={styles.fit}><Sparkles aria-hidden="true" />{fitReason}</p> : null}
                 {state.state === "planned" ? <p className={styles.planned}><Check aria-hidden="true" />Added to Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}</p> : null}
@@ -518,10 +544,6 @@ export default function TripExploreWorkspace({
           </>}
         />;
       })() : <>
-        <section className={styles.mapContext}>
-          <header><div><span>Your trip</span><h3>{activeDestination?.label ?? destinations.map((destination) => destination.label).join(" · ")}</h3></div><MapIcon aria-hidden="true" /></header>
-          <EasyTLinkButton href={pageMapHref} icon={MapIcon} variant="secondary" fullWidth>Open map</EasyTLinkButton>
-        </section>
         {opportunity ? <section className={styles.dayContext}>
           <span>Free time</span>
           <h3>{titleCase(opportunity.dayPart)} in {opportunity.stop.name}</h3>

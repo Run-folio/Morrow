@@ -27,6 +27,7 @@ import { formatIsoDate, isoDateKey, tripLifecycle } from "@/lib/easyt/trip-lifec
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import type { EasyTTrip, TripBooking, TripChecklistItem } from "@/lib/easyt/trip";
 import { mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { authClient } from "@/lib/auth-client";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
@@ -314,7 +315,7 @@ export default function TripModeClient() {
 
   return <section className={styles.page}>
     {syncError ? <MorroviaStatusBanner className={styles.tripModeNotice} tone="warning" title={syncMessage} actions={<EasyTButton size="small" variant="secondary" onClick={syncAction === "reload-cloud" ? reloadCloudCopy : syncAction === "open-device" ? () => window.location.assign(tripSyncRecoveryPath(trip.id)) : syncAction === "sign-in" ? () => window.location.assign(tripSyncSignInPath(trip.id)) : () => persist(trip)}>{syncAction === "reload-cloud" ? "Reload cloud copy" : syncAction === "open-device" ? "Open device copy" : syncAction === "sign-in" ? "Sign in again" : "Try again"}</EasyTButton>} /> : null}
-    <header className={styles.hero}><div><p>TRIP MODE</p><h1>{trip.title}</h1><span>{lifecycleLabel(trip.startDate, trip.endDate)}</span></div><Link href={tripHref}>Open map <ArrowRight /></Link></header>
+    <header className={styles.hero}><div><p>TRIP MODE</p><h1>{tripDisplayTitle(trip)}</h1><span>{lifecycleLabel(trip.startDate, trip.endDate)}</span></div><Link href={tripHref}>Open map <ArrowRight /></Link></header>
     <nav className={styles.tabs} aria-label="Trip mode sections"><button type="button" className={tab === "today" ? styles.active : ""} onClick={() => setTab("today")}>Today</button><button type="button" className={tab === "bookings" ? styles.active : ""} onClick={() => setTab("bookings")}>Bookings <span>{bookings.length}</span></button><button type="button" className={tab === "ready" ? styles.active : ""} onClick={() => setTab("ready")}>Ready</button></nav>
     {tab === "today" ? tripDay ? <div className={styles.today}><article className={styles.dayCard}><p><CalendarCheck2 /> {dayLabel(tripDay.date)} · Day {tripDay.dayNumber}</p><h2>{tripDay.title}</h2><span>{tripDay.reason}</span><ol>{tripDay.notes.map((note, index) => <li key={`${note}-${index}`}><b>{String(index + 1).padStart(2, "0")}</b>{note}</li>)}</ol></article><div className={styles.quickActions}><Link href={`${tripHref}#finder`}><Utensils /> Find food nearby</Link><Link href={`${tripHref}#finder`}><BedDouble /> Find a stay</Link></div>{(dayNotes.length || pins.length) ? <article className={styles.context}><p>FOR TODAY</p>{dayNotes.length ? <div><ClipboardList /><span>{dayNotes.join(" · ")}</span></div> : null}{pins.map((pin) => <div key={pin.id}><MapPin /><span>{pin.title}</span><small>{pin.category}</small></div>)}</article> : null}</div> : <div className={styles.today}><article className={styles.dayCard}><p><CalendarCheck2 /> TODAY</p><h2>No itinerary item is scheduled for today.</h2><span>Open the map or itinerary to review the plan without treating another day as today.</span></article></div> : null}
     {tab === "bookings" ? <div className={styles.bookings}>

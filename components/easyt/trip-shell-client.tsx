@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, Map, Sparkles } from "lucide-react";
+import { CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -25,11 +25,88 @@ import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConfl
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { shouldResetOverviewEntry, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
-import { MorroviaConfirmationDialog, MorroviaStatusBanner } from "./morrovia-feedback";
-import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget } from "./workspace-orientation";
+import { EasyTField } from "./easyt-controls";
+import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
+import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
+import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
+import { useTripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
+
+export function TripShellIdentityAndActions({
+  dateLabel,
+  duration,
+  editHref,
+  routeLabel,
+  status,
+  trip,
+}: {
+  dateLabel: string;
+  duration: number | null;
+  editHref: string;
+  routeLabel: string;
+  status: string;
+  trip: EasyTTrip;
+}) {
+  const mutation = useTripMutationPersistence(trip, true);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [validationError, setValidationError] = useState("");
+  useWorkspaceOrientationBlocker(renameOpen);
+
+  const openRename = () => {
+    setDraft(tripCustomTitle(mutation.trip) ?? "");
+    setValidationError("");
+    setRenameOpen(true);
+  };
+  const saveRename = () => {
+    const normalizedTitle = draft.trim().replace(/\s+/g, " ");
+    if (Array.from(normalizedTitle).length > 80) {
+      setValidationError("Use 80 characters or fewer.");
+      return;
+    }
+    const changed = mutation.mutateTrip((current) => renameTripIdentity(current, normalizedTitle), "trip-title");
+    if (changed || normalizedTitle === (tripCustomTitle(mutation.trip) ?? "")) setRenameOpen(false);
+  };
+
+  return <>
+    <div className={styles.tripIdentity}>
+      <p className={styles.eyebrow}>{status}</p>
+      <h1 id="trip-shell-title">{tripDisplayTitle(mutation.trip)}</h1>
+      <p className={styles.routeSummary}>{routeLabel}</p>
+      <dl className={styles.metadata}>
+        <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateLabel}</dd></div>
+        <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
+        <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Stops</span></dt><dd>{mutation.trip.stops.length} {mutation.trip.stops.length === 1 ? "stop" : "stops"}</dd></div>
+        <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
+      </dl>
+    </div>
+    <div className={styles.headerActions}>
+      <MorroviaSaveStatus state={mutation.saveState} />
+      <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary">Edit trip brief</EasyTLinkButton>
+      <WorkspaceOrientationLauncher onRenameTrip={openRename} />
+    </div>
+    <MorroviaFormDialog
+      open={renameOpen}
+      title="Rename this trip"
+      detail="Give the trip a personal name, or leave it blank to use Morrovia’s geographic title. Your route and dates will not change."
+      submitLabel="Save name"
+      error={validationError || mutation.error || undefined}
+      onCancel={() => setRenameOpen(false)}
+      onSubmit={saveRename}
+    >
+      <EasyTField
+        data-dialog-autofocus="true"
+        label="Trip name"
+        value={draft}
+        onChange={(event) => { setDraft(event.target.value); setValidationError(""); }}
+        hint={`${Array.from(draft.trim()).length}/80 characters · optional`}
+        autoComplete="off"
+      />
+    </MorroviaFormDialog>
+  </>;
+}
 
 export function TripShellTripProvider({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
   const pathname = usePathname();
@@ -184,7 +261,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       ) : null}
       <MorroviaConfirmationDialog
         open={discardDialogOpen && Boolean(visibleDeviceRecovery)}
-        title={`Discard device edits for “${trip.title}”?`}
+        title={`Discard device edits for “${tripDisplayTitle(trip)}”?`}
         detail="You are viewing the account copy. This removes only the separate recovery copy stored in this browser."
         consequences={[
           "Device-only edits in this recovery copy cannot be restored.",

@@ -73,6 +73,16 @@ const tourItem: ActivityInventoryItem = {
   provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
 };
 const tour = exploreResultForActivity(cusco, tourItem, trip);
+const organicDayTrip = exploreResultForPlace(cusco, {
+  id: "day-trip-ollantaytambo",
+  title: "Ollantaytambo",
+  area: "Ollantaytambo, Peru",
+  type: "Day trip",
+  tags: ["Day trip", "day-trips"],
+  description: "A verified nearby town 42 km from Cusco. Check current transport options before adding it to a day.",
+  coordinates: [-72.264, -13.258],
+  qualityScore: 7,
+});
 const results = [qorikancha, market, ...mapped, restaurant, tour];
 const longContentResult = {
   ...mapped[0]!,
@@ -164,6 +174,36 @@ const rejectedImageResult = exploreResultForPlace(cusco, {
   coordinates: [-71.97, -13.515],
 });
 
+const tokyoTrip = structuredClone(trip);
+const originalTokyoStopId = tokyoTrip.stops[0]!.id;
+tokyoTrip.id = "storybook-tokyo-discovery";
+tokyoTrip.title = "London to Tokyo & Kyoto & Osaka";
+tokyoTrip.stops[0] = { ...tokyoTrip.stops[0]!, id: "tokyo", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo-jp", latitude: 35.6762, longitude: 139.6503 };
+tokyoTrip.planItems = tokyoTrip.planItems.map((item) => item.stopId === originalTokyoStopId ? { ...item, stopId: "tokyo" } : item);
+tokyoTrip.brief.itineraryIdeas = [];
+const tokyoStop = tokyoTrip.stops[0]!;
+const tokyoLandmark = exploreResultForPlace(tokyoStop, { id: "sensoji", title: "Sensō-ji", area: "Asakusa", type: "Landmark", tags: ["Culture"], description: "A major historic temple and visitor landmark in east Tokyo.", coordinates: [139.7967, 35.7148], qualityScore: 12 });
+const tokyoOutdoors = [
+  exploreResultForPlace(tokyoStop, { id: "shinjuku-gyoen", title: "Shinjuku Gyoen National Garden", area: "Shinjuku", type: "Garden", tags: ["Nature"], description: "A large garden whose paths and seasonal planting make the outdoor visit the main experience.", coordinates: [139.7101, 35.6852], qualityScore: 11 }),
+  exploreResultForPlace(tokyoStop, { id: "mount-takao", title: "Mount Takao", area: "Hachiōji", type: "Mountain", tags: ["Hike", "Nature"], description: "A mountain and trail area west of central Tokyo.", coordinates: [139.2436, 35.6252], qualityScore: 10 }),
+  exploreResultForPlace(tokyoStop, { id: "imperial-theatre", title: "Imperial Theatre", area: "Marunouchi", type: "Theatre", tags: ["Culture"], description: "An indoor theatre fixture that must not pass the Outdoors filter.", coordinates: [139.7616, 35.676], qualityScore: 10 }),
+];
+const tokyoRestaurants = [
+  ["google-sushi-dai", "Sushi Dai", "Toyosu Market", 4.6, 1842, "PRICE_LEVEL_MODERATE"],
+  ["google-tempura-kondo", "Tempura Kondo", "Ginza", 4.5, 1124, "PRICE_LEVEL_EXPENSIVE"],
+  ["google-udon-shin", "Udon Shin", "Yoyogi", 4.4, 3287, "PRICE_LEVEL_INEXPENSIVE"],
+  ["google-narisawa", "Narisawa", "Minami-Aoyama", 4.5, 908, "PRICE_LEVEL_VERY_EXPENSIVE"],
+  ["google-tonki", "Tonkatsu Tonki", "Meguro", 4.3, 2175, "PRICE_LEVEL_MODERATE"],
+  ["google-sometaro", "Sometarō", "Asakusa", 4.4, 1960, "PRICE_LEVEL_MODERATE"],
+].map(([id, name, address, rating, reviewCount, priceLevel], index) => exploreResultForLocalPlace(tokyoStop, {
+  id: String(id), name: String(name), address: `${address}, Tokyo`, category: "Restaurant", coordinates: [139.65 + index * 0.02, 35.67 + index * 0.005], mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(String(name))}`, provider: "google-places", rating: Number(rating), reviewCount: Number(reviewCount), priceLevel: String(priceLevel),
+}));
+const tokyoTour = exploreResultForActivity(tokyoStop, {
+  provider: "viator", source: "viator", providerProductId: "tokyo-small-group-story", title: "Tokyo small-group neighbourhood tour", destination: { canonicalPlaceId: "tokyo-jp", label: "Tokyo", providerDestinationId: "334" }, tags: ["guided tour", "culture"], description: "A provider-backed guided walk with explicit commercial identity.", rating: 4.8, reviewCount: 922, duration: { fixedMinutes: 180 }, price: { amount: 64, currency: "GBP" }, productUrl: "https://www.viator.com/tours/Tokyo/", provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T00:00:00.000Z" },
+}, tokyoTrip);
+const tokyoOrganicDayTrip = exploreResultForPlace(tokyoStop, { id: "day-trip-kamakura", title: "Kamakura", area: "Kamakura, Japan", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby city 43 km from Tokyo. Check current transport options before adding it to a day.", coordinates: [139.5503, 35.3192], qualityScore: 9 });
+const tokyoCommercialDayTrip = exploreResultForActivity(tokyoStop, { ...tourItem, providerProductId: "tokyo-fuji-day-story", title: "Mount Fuji guided day trip", destination: { canonicalPlaceId: "tokyo-jp", label: "Tokyo", providerDestinationId: "334" }, tags: ["day trip", "mountain"], productUrl: "https://www.viator.com/tours/Tokyo/" }, tokyoTrip);
+
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Explore",
   component: TripExploreWorkspace,
@@ -188,6 +228,16 @@ export const Restaurant: Story = { args: { initialResults: [restaurant], initial
 export const MustSee: Story = { args: { initialCategory: "must-see" } };
 export const Food: Story = { args: { initialCategory: "food" } };
 export const Tours: Story = { args: { initialCategory: "tours" } };
+export const OrganicDayTripsWithoutViator: Story = { args: { initialResults: [organicDayTrip], initialCategory: "day-trips", initialProviderState: "degraded" } };
+export const TokyoForYou: Story = { args: { trip: tokyoTrip, initialResults: [tokyoLandmark, ...tokyoRestaurants.slice(0, 2), ...tokyoOutdoors], initialDestinationId: "tokyo" } };
+export const TokyoMustSee: Story = { args: { trip: tokyoTrip, initialResults: [tokyoLandmark, ...tokyoOutdoors], initialDestinationId: "tokyo", initialCategory: "must-see" } };
+export const TokyoFoodRichCandidates: Story = { args: { trip: tokyoTrip, initialResults: tokyoRestaurants, initialDestinationId: "tokyo", initialCategory: "food" } };
+export const TokyoToursAvailable: Story = { args: { trip: tokyoTrip, initialResults: [tokyoTour], initialDestinationId: "tokyo", initialCategory: "tours" } };
+export const TokyoToursProviderUnavailable: Story = { args: { trip: tokyoTrip, initialResults: [], initialDestinationId: "tokyo", initialCategory: "tours", initialProviderState: "degraded" } };
+export const TokyoDayTripsOrganicAndCommercial: Story = { args: { trip: tokyoTrip, initialResults: [tokyoOrganicDayTrip, tokyoCommercialDayTrip], initialDestinationId: "tokyo", initialCategory: "day-trips" } };
+export const TokyoOutdoorsSemantic: Story = { args: { trip: tokyoTrip, initialResults: tokyoOutdoors, initialDestinationId: "tokyo", initialCategory: "outdoors" } };
+export const SparseDestination: Story = { args: { trip: tokyoTrip, initialResults: [], initialDestinationId: "tokyo", initialCategory: "must-see", initialProviderState: "degraded" } };
+export const TokyoNoImageRestaurants: Story = { args: { trip: tokyoTrip, initialResults: tokyoRestaurants.slice(0, 6), initialDestinationId: "tokyo", initialCategory: "food" } };
 export const ScheduledResult: Story = { args: { initialSelectedResultId: qorikancha.identity } };
 export const SavedResult: Story = { args: { trip: savedTrip, initialResults: results, initialSelectedResultId: mapped[0]!.identity } };
 export const SelectedDetail: Story = { args: { initialSelectedResultId: mapped[0]!.identity } };

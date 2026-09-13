@@ -82,11 +82,11 @@ test("Explore reuses canonical persistence, scheduling, identity and detail owne
   assert.match(workspace, /const mapHref = selectedResult\.coordinates[\s\S]*: null;/);
 });
 
-test("traveller copy avoids implementation language and the rail gives trip and free-time actions", () => {
+test("traveller copy avoids implementation language and the rail keeps free-time actions without a duplicate map card", () => {
   for (const phrase of ["route geometry", "exact saved pins", "No canonical activity", "add it to a real day", "trip destinations"]) {
     assert.doesNotMatch(workspace, new RegExp(phrase, "i"));
   }
-  assert.match(workspace, />Your trip</);
+  assert.doesNotMatch(workspace, /styles\.mapContext|>Your trip</);
   assert.match(workspace, />Free time</);
   assert.match(workspace, />Find ideas for this time</);
   assert.match(workspace, /Add it to a day or save it for later/);
@@ -117,6 +117,6 @@ test("responsive cards avoid horizontal overflow and retain 44px touch controls"
 
 test("Storybook covers destination, interaction, inventory and responsive Explore acceptance states", () => {
   for (const story of [
-    "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState",
+    "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoDayTripsOrganicAndCommercial", "TokyoOutdoorsSemantic", "SparseDestination", "TokyoNoImageRestaurants", "OrganicDayTripsWithoutViator",
   ]) assert.match(stories, new RegExp(`export const ${story}`), story);
 });

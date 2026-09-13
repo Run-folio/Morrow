@@ -13,6 +13,7 @@ import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance
 import { trackEvent } from "@/lib/analytics";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
+import { discoveryCategoryMatches, type DiscoveryCategory } from "@/lib/easyt/discovery-taxonomy";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -27,6 +28,7 @@ type LiveActivityInventoryProps = {
   onRemove?: (idea: ItineraryIdea) => boolean;
   isPending?: (idea: ItineraryIdea) => boolean;
   initialItems?: ActivityInventoryItem[];
+  discoveryCategory?: Exclude<DiscoveryCategory, "food">;
 };
 
 function durationLabel(duration: ActivityInventoryItem["duration"]) {
@@ -43,13 +45,15 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(initialItems ? "ready" : "loading");
   const interests = tripIntentForTrip(trip).preferences.interests;
   const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
+  const usesCommercialInventory = discoveryCategory !== "outdoors";
 
   useEffect(() => {
+    if (!usesCommercialInventory) { setItems([]); setStatus("ready"); return; }
     if (initialItems) { setItems(initialItems); setStatus("ready"); return; }
     if (!stop.canonicalPlaceId) { setItems([]); setStatus("unavailable"); return; }
     const scope = createAbortableEffectScope(`Live activity inventory for ${stop.id}`);
@@ -91,11 +95,18 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
       });
     });
     return () => scope.dispose();
-  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, workspace]);
+  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, usesCommercialInventory, workspace]);
 
-  const ranked = useMemo(() => rankActivityInventory(items, interests).slice(0, 4), [interests, items]);
+  const ranked = useMemo(() => rankActivityInventory(items, interests)
+    .filter((item) => discoveryCategoryMatches({
+      kind: "tour",
+      category: /\b(?:day trip|full[- ]day|half[- ]day|excursion)\b/i.test(`${item.title} ${(item.tags ?? []).join(" ")}`) ? "Day trip" : "Tour",
+      tags: item.tags,
+      qualityScore: item.rating !== undefined ? Math.round(item.rating * 2 + Math.min(5, Math.log10((item.reviewCount ?? 0) + 1))) : undefined,
+    }, discoveryCategory))
+    .slice(0, 4), [discoveryCategory, interests, items]);
   if (status === "loading") return <section className={styles.group}><h4>Things to do</h4><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
-  if (!ranked.length) return <>{fallback}</>;
+  if (!ranked.length) return <>{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
   return <section className={styles.group} aria-labelledby={`${workspace}-live-experiences-${stop.id}`}>
     <header><h4 id={`${workspace}-live-experiences-${stop.id}`}>Things to do</h4></header>

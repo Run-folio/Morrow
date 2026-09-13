@@ -422,7 +422,7 @@ export function useWorkspaceOrientationBlocker(blocked: boolean) {
   }, [blocked, id, setBlocked]);
 }
 
-export function WorkspaceOrientationLauncher() {
+export function WorkspaceOrientationLauncher({ onRenameTrip }: { onRenameTrip?: () => void } = {}) {
   const context = useContext(WorkspaceOrientationContext);
   const [open, setOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -448,6 +448,7 @@ export function WorkspaceOrientationLauncher() {
   return <div className={styles.launcher} data-workspace-orientation-ui="true">
     <EasyTButton ref={buttonRef} icon={MoreHorizontal} size="small" variant="quiet" aria-haspopup="menu" aria-expanded={open} aria-controls="workspace-more-menu" onClick={() => setOpen((value) => !value)}>More</EasyTButton>
     {open ? <div ref={menuRef} id="workspace-more-menu" role="menu" className={styles.menu}>
+      {onRenameTrip ? <EasyTButton role="menuitem" size="small" variant="quiet" onClick={() => { buttonRef.current?.focus(); setOpen(false); onRenameTrip(); }}>Rename trip</EasyTButton> : null}
       <EasyTButton role="menuitem" size="small" variant="quiet" disabled={!context?.canReplay} onClick={() => { setOpen(false); context?.replay(buttonRef.current); }}>Show me around</EasyTButton>
     </div> : null}
   </div>;

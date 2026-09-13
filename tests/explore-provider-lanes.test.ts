@@ -210,10 +210,11 @@ test("rapid context switching never mixes old category results into the new lane
 
 test("provider fetching remains intentional by category", () => {
   const base = trip();
-  assert.deepEqual(exploreSourcePlan("food", base), { mapped: true, restaurants: true, tours: false });
-  assert.deepEqual(exploreSourcePlan("outdoors", base), { mapped: true, restaurants: false, tours: false });
-  assert.deepEqual(exploreSourcePlan("tours", base), { mapped: false, restaurants: false, tours: true });
-  assert.deepEqual(exploreSourcePlan("day-trips", base), { mapped: false, restaurants: false, tours: true });
+  assert.deepEqual(exploreSourcePlan("food", base), { mapped: true, dayTrips: false, restaurants: true, tours: false });
+  assert.deepEqual(exploreSourcePlan("outdoors", base), { mapped: true, dayTrips: false, restaurants: false, tours: false });
+  assert.deepEqual(exploreSourcePlan("tours", base), { mapped: false, dayTrips: false, restaurants: false, tours: true });
+  assert.deepEqual(exploreSourcePlan("day-trips", base), { mapped: false, dayTrips: true, restaurants: false, tours: true });
+  assert.equal(exploreSourcePlan("for-you", base).dayTrips, true);
 });
 
 test("obvious entry-ticket duplicates enrich the organic card without replacing its canonical idea", () => {

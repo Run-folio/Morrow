@@ -73,12 +73,13 @@ function placeAwareBrief(routeStopId: string) {
 }
 
 test("local-only promotion claims the exact canonical trip ID and preserves edits", () => {
-  const local = localTrip();
+  const local = localTrip({ title: "Family hanami", brief: { ...localTrip().brief, customTitle: "Family hanami" } });
   const canonical = canonicalTripForOwner("owner-a", local);
 
   assert.equal(canonical.id, local.id);
   assert.equal(canonical.ownerId, "owner-a");
   assert.equal(canonical.updatedAt, local.updatedAt);
+  assert.equal(canonical.brief.customTitle, "Family hanami");
   assert.deepEqual(canonical.brief.selectedPlaces, { [`${local.id}-stop-tokyo`]: ["Senso-ji"] });
   assert.equal(canonical.stops[0].id, `${local.id}-stop-tokyo`);
   assert.equal(canonical.planItems[0].stopId, canonical.stops[0].id);

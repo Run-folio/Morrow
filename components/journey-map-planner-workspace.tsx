@@ -36,6 +36,7 @@ import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { estimateLeg, legDecisionAlternatives, type RoutePlanningConstraints } from "@/lib/easyt/planner";
 import { routeConstraintsFromStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
@@ -305,7 +306,7 @@ export function makeEasyTJourney(trip: EasyTTrip) {
     };
   });
   return {
-    title: trip.title || "Your Journey",
+    title: tripDisplayTitle(trip),
     dateRange: dateFacts.rangeLabel,
     stops,
     legs,

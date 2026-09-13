@@ -18,8 +18,7 @@
 
 .header,
 .filtersRow,
-.resultsHeader,
-.mapContext header {
+.resultsHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -232,7 +231,6 @@
 .railSelected { padding: 0; }
 .railSelected > section { min-height: 100%; border: 0; border-radius: 0; }
 
-.mapContext,
 .dayContext,
 .railHint {
   padding: 14px;
@@ -240,11 +238,8 @@
   border-radius: var(--morrovia-radius);
   background: var(--morrovia-paper);
 }
-.mapContext header span,
 .dayContext > span { color: var(--morrovia-signal); font: var(--morrovia-type-eyebrow); text-transform: uppercase; letter-spacing: .07em; }
-.mapContext h3,
 .dayContext h3 { margin: 4px 0 0; color: var(--morrovia-ink); font: 600 20px/1.2 var(--morrovia-display); }
-.mapContext header svg { width: 20px; height: 20px; color: var(--morrovia-action); }
 .mapPlaceholder { min-height: 190px; margin: 12px 0 8px; padding: 18px; display: grid; place-content: center; gap: 7px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); color: var(--morrovia-ink-soft); text-align: center; }
 .mapPlaceholder svg { width: 30px; height: 30px; margin: auto; color: var(--morrovia-signal); }
 .mapPlaceholder strong { color: var(--morrovia-ink); font: 650 15px/1.3 var(--morrovia-ui); }

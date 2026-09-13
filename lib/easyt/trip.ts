@@ -288,6 +288,8 @@ export type TripChange = {
 
 export type TripBrief = {
   origin: string;
+  /** Traveller-authored identity. Null explicitly opts back into the generated geographic title. */
+  customTitle?: string | null;
   originCoordinates?: [number, number];
   originCanonicalPlaceId?: string;
   originCountry?: string;

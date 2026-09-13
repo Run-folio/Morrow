@@ -75,6 +75,16 @@ test("edit, save, refresh and reopen preserve the canonical ID and returned revi
   assert.equal(requestedTripMatch(reopened.id, null, "owner-a"), null);
 });
 
+test("custom trip identity survives account canonicalization and participates in CAS", () => {
+  const opened = cloudTrip();
+  const renamed = { ...opened, title: "春の記念旅行", brief: { ...opened.brief, customTitle: "春の記念旅行" } };
+  const saved = canonicalTripForOwner("owner-a", renamed, nextTripUpdatedAt(opened.updatedAt));
+  const reloaded = JSON.parse(JSON.stringify(saved)) as EasyTTrip;
+  assert.equal(reloaded.brief.customTitle, "春の記念旅行");
+  assert.equal(reloaded.title, "春の記念旅行");
+  assert.deepEqual(decideExistingTripUpdate("owner-a", opened, saved), { outcome: "conflict", conflictReason: "cloud-changed" });
+});
+
 test("owner and deletion checks fail closed without exposing or recreating a trip", () => {
   const trip = cloudTrip();
   assert.deepEqual(

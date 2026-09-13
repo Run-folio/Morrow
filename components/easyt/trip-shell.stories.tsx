@@ -135,10 +135,67 @@ export const LongTitleAndMissingImage: Story = {
   },
 };
 
+export const GeneratedOneCountry: Story = {
+  args: {
+    trip: { ...trip, brief: { ...trip.brief, customTitle: null } },
+    children: <TripWorkspacePlaceholder title="Overview" description="A single-country route uses the country as its concise trip identity." />,
+  },
+};
+
+export const GeneratedTwoCountries: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, customTitle: null },
+      stops: [
+        { ...trip.stops[0]!, id: "paris", name: "Paris", country: "France" },
+        { ...trip.stops[1]!, id: "bruges", name: "Bruges", country: "Belgium" },
+      ],
+    },
+    children: <TripWorkspacePlaceholder title="Overview" description="Two resolved countries remain concise while the route stays on its own line." />,
+  },
+};
+
+export const GeneratedLongMultiCountry: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, customTitle: null },
+      stops: [
+        { ...trip.stops[0]!, id: "paris", name: "Paris", country: "France" },
+        { ...trip.stops[1]!, id: "bruges", name: "Bruges", country: "Belgium" },
+        { ...trip.stops[2]!, id: "amsterdam", name: "Amsterdam", country: "Netherlands" },
+        { ...trip.stops[2]!, id: "cologne", order: 3, name: "Cologne", country: "Germany" },
+        { ...trip.stops[2]!, id: "prague", order: 4, name: "Prague", country: "Czechia" },
+      ],
+    },
+    children: <TripWorkspacePlaceholder title="Overview" description="Long multi-country identities stay bounded without hiding the route." />,
+  },
+};
+
+export const CustomUnicodeTitle: Story = {
+  args: {
+    trip: { ...trip, title: "春の家族旅行 — Perú", brief: { ...trip.brief, customTitle: "春の家族旅行 — Perú" } },
+    children: <TripWorkspacePlaceholder title="Overview" description="Traveller-authored Unicode names survive the shared shell presentation." />,
+  },
+};
+
+export const LongCustomTitle: Story = {
+  args: {
+    trip: { ...trip, title: "A long-awaited spring journey with family across old favourites and entirely new places", brief: { ...trip.brief, customTitle: "A long-awaited spring journey with family across old favourites and entirely new places" } },
+    children: <TripWorkspacePlaceholder title="Overview" description="Long custom identity wraps independently of the unchanged route line." />,
+  },
+};
+
 export const Mobile320: Story = {
   ...Overview,
   parameters: { ...meta.parameters },
   globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
+
+export const Mobile390LongGeneratedTitle: Story = {
+  ...GeneratedLongMultiCountry,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const Tablet768: Story = {

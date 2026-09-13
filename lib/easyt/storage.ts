@@ -569,6 +569,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
     currency: trip.currency,
     brief: {
       originIdentity,
+      customTitle: brief.customTitle,
       journeyEnd: brief.journeyEnd,
       mustDo: brief.mustDo,
       pace: brief.pace,

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripBooking, type TripLeg, type TripStop } from "@/lib/easyt/trip";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import type { JourneyImage } from "@/lib/journey";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { itineraryNotesWithSourceIndexesForDisplay, semanticSamePlaceArrival } from "@/lib/easyt/itinerary-presentation";
@@ -673,7 +674,7 @@ export default function TripItineraryWorkspace({
         <div className={legacyStyles.draftHead}>
           <div>
             <p className={legacyStyles.eyebrow}>{copy.draft}</p>
-            <h2>{trip.title}</h2>
+            <h2>{tripDisplayTitle(trip)}</h2>
           </div>
           {onEditBrief ? <button type="button" className={legacyStyles.primary} onClick={onEditBrief}>{copy.editBrief}</button> : null}
         </div>

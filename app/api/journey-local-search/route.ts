@@ -3,6 +3,7 @@ import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
 import { firstUsefulRecommendationResults } from "@/lib/easyt/recommendation-performance";
+import { qualityControlledLocalPlaces } from "@/lib/easyt/local-place-results";
 
 type OverpassElement = {
   id: number;
@@ -25,6 +26,7 @@ type LocalPlace = {
   availability: "available" | "check";
   provider: "google-places" | "openstreetmap";
   rating?: number;
+  reviewCount?: number;
   priceLevel?: string;
 };
 
@@ -36,7 +38,9 @@ type GooglePlace = {
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "FUTURE_OPENING";
   googleMapsUri?: string;
   rating?: number;
+  userRatingCount?: number;
   priceLevel?: string;
+  primaryTypeDisplayName?: { text?: string };
 };
 
 type PhotonPlace = {
@@ -77,7 +81,7 @@ function distanceKm(latitude: number, longitude: number, targetLatitude: number,
 
 async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
   const term = kind === "stay" ? "hotel" : "restaurant";
-  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "8", lang: locale })}`, {
+  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "12", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
     next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
@@ -113,10 +117,10 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
         provider: "openstreetmap" as "openstreetmap",
       });
   }
-  return places;
+  return qualityControlledLocalPlaces(places);
 }
 
-async function googleOperationalStays(country: string, latitude: number, longitude: number, locale: string) {
+async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) return null;
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
@@ -124,27 +128,27 @@ async function googleOperationalStays(country: string, latitude: number, longitu
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.rating,places.priceLevel",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.rating,places.userRatingCount,places.priceLevel,places.primaryTypeDisplayName",
     },
     body: JSON.stringify({
-      includedTypes: ["lodging"],
+      includedTypes: [kind === "stay" ? "lodging" : "restaurant"],
       maxResultCount: 12,
-      rankPreference: "DISTANCE",
-      locationRestriction: { circle: { center: { latitude, longitude }, radius: 7000 } },
+      rankPreference: kind === "stay" ? "DISTANCE" : "POPULARITY",
+      locationRestriction: { circle: { center: { latitude, longitude }, radius: kind === "stay" ? 7000 : 5000 } },
       languageCode: locale,
     }),
     next: { revalidate: 60 * 15 },
     signal: AbortSignal.timeout(7000),
   });
-  if (!response.ok) throw new Error("Google Places stay lookup unavailable");
+  if (!response.ok) throw new Error("Google Places lookup unavailable");
   const seen = new Set<string>();
-  return ((await response.json() as { places?: GooglePlace[] }).places ?? [])
+  return qualityControlledLocalPlaces(((await response.json() as { places?: GooglePlace[] }).places ?? [])
     .flatMap((place) => {
       const displayName = resolvePlaceDisplayName({ defaultName: place.displayName?.text }, locale);
       const lat = place.location?.latitude;
       const lon = place.location?.longitude;
       if (!displayName || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
-      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: 7 })) return [];
+      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: kind === "stay" ? 7 : 5 })) return [];
       const { name, nativeName } = displayName;
       const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
       if (seen.has(key)) return [];
@@ -155,7 +159,7 @@ async function googleOperationalStays(country: string, latitude: number, longitu
         name,
         ...(nativeName ? { nativeName } : {}),
         address: place.formattedAddress ?? country,
-        category: "lodging",
+        category: place.primaryTypeDisplayName?.text?.trim() || (kind === "stay" ? "lodging" : "restaurant"),
         coordinates: [lon!, lat!] as [number, number],
         mapsUrl: place.googleMapsUri ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
@@ -163,9 +167,10 @@ async function googleOperationalStays(country: string, latitude: number, longitu
         availability: "check" as const,
         provider: "google-places" as const,
         rating: place.rating,
-        priceLevel: place.priceLevel,
+        reviewCount: place.userRatingCount,
+        priceLevel: place.priceLevel && place.priceLevel !== "PRICE_LEVEL_UNSPECIFIED" ? place.priceLevel : undefined,
       } satisfies LocalPlace];
-    });
+    }));
 }
 
 async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
@@ -212,14 +217,14 @@ async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, co
       provider: "openstreetmap",
     });
   }
-  return places
+  return qualityControlledLocalPlaces(places)
     .filter((place) => {
       const key = `${place.name}|${place.address}`.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .slice(0, 8);
+    .slice(0, 12);
 }
 
 export async function GET(request: NextRequest) {
@@ -242,10 +247,11 @@ export async function GET(request: NextRequest) {
     let primaryFailureCount = 0;
     const providerRequests = kind === "stay"
       ? [
-          () => googleOperationalStays(country ?? "", latitude, longitude, locale).then((places) => places ?? []),
+          () => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale).then((places) => places ?? []),
           () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
         ]
       : [
+          () => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale).then((places) => places ?? []),
           () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
           () => photonFallback(kind, city, country ?? "", latitude, longitude, locale),
         ];

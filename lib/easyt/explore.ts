@@ -6,18 +6,16 @@ import { preferredItineraryDayPart } from "./itinerary-activity-placement.ts";
 import { ideaStateForPlace, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
+import {
+  discoveryCategories,
+  discoveryCategoryLabels,
+  discoveryCategoryMatches,
+  type DiscoveryCategory,
+} from "./discovery-taxonomy.ts";
 
-export const exploreCategories = ["for-you", "must-see", "food", "tours", "day-trips", "outdoors"] as const;
-export type ExploreCategory = typeof exploreCategories[number];
-
-export const exploreCategoryLabels: Record<ExploreCategory, string> = {
-  "for-you": "For you",
-  "must-see": "Must-see",
-  food: "Food",
-  tours: "Tours",
-  "day-trips": "Day trips",
-  outdoors: "Outdoors",
-};
+export const exploreCategories = discoveryCategories;
+export const exploreCategoryLabels = discoveryCategoryLabels;
+export type ExploreCategory = DiscoveryCategory;
 
 export type ExploreDestination = {
   id: string;
@@ -37,6 +35,7 @@ export type ExploreLocalPlace = {
   mapsUrl: string;
   provider: "google-places" | "openstreetmap";
   rating?: number;
+  reviewCount?: number;
   priceLevel?: string;
 };
 
@@ -85,6 +84,7 @@ export function exploreSourcePlan(category: ExploreCategory, trip: EasyTTrip) {
   const interests = tripIntentForTrip(trip).preferences.interests;
   return {
     mapped: category !== "tours" && category !== "day-trips",
+    dayTrips: category === "for-you" || category === "day-trips",
     restaurants: category === "food" || (category === "for-you" && interests.includes("food")),
     tours: category === "for-you" || category === "must-see" || category === "tours" || category === "day-trips",
   };
@@ -150,7 +150,8 @@ export function exploreDiscoveryCategory(title: string, sourceType: string, desc
   if (/park|garden|mountain|lake|forest|nature/.test(explicit)) return "Nature";
   if (/square|plaza|piazza|palace|cathedral|church|monastery|temple|castle|fortress|monument|tower|bridge|landmark/.test(explicit)
     || /\b(?:square|plaza|piazza|palace|cathedral|church|monastery|temple|castle|fortress|monument|tower|bridge)\b/.test(title.toLocaleLowerCase())) return "Landmark";
-  if (/gallery|theatre|theater|culture|cultural/.test(explicit)) return "Culture";
+  if (/gallery|theatre|theater|culture|cultural/.test(explicit)
+    || /\b(?:gallery|theatre|theater)\b/.test(title.toLocaleLowerCase())) return "Culture";
   return "Place";
 }
 
@@ -205,11 +206,14 @@ export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPl
     kind: "restaurant",
     title: place.name,
     location: place.address || stop.name,
-    category: "Restaurant",
+    category: place.category || "Restaurant",
     tags: ["Food"],
     coordinates: place.coordinates,
     provider: place.provider,
     providerUrl: place.mapsUrl,
+    rating: place.rating,
+    reviewCount: place.reviewCount,
+    price: place.priceLevel ? place.priceLevel.replace(/^PRICE_LEVEL_/, "").replaceAll("_", " ").toLocaleLowerCase() : undefined,
     idea,
   };
   return { ...result, identity: exploreResultIdentity(result) };
@@ -419,16 +423,6 @@ export function exploreResultState(trip: EasyTTrip, result: ExploreResult): Expl
   return ideaStateForPlace(trip, result.stopId, result.idea.placeId);
 }
 
-function categoryMatches(result: ExploreResult, category: ExploreCategory) {
-  const evidence = `${result.title} ${result.category} ${result.tags.join(" ")} ${result.description ?? ""}`;
-  if (category === "for-you") return true;
-  if (category === "must-see") return typeof result.qualityScore === "number" && result.qualityScore > 0;
-  if (category === "food") return result.kind === "restaurant";
-  if (category === "tours") return result.kind === "tour";
-  if (category === "day-trips") return result.kind === "tour" && /\b(?:day trip|full[- ]day|half[- ]day|excursion)\b/i.test(evidence);
-  return /\b(?:nature|outdoors?|park|garden|mountain|beach|lake|forest|trail|hike|hiking|coast|island)\b/i.test(evidence);
-}
-
 export function filterExploreResults(
   trip: EasyTTrip,
   results: readonly ExploreResult[],
@@ -436,7 +430,7 @@ export function filterExploreResults(
   category: ExploreCategory,
 ) {
   const scoped = results.filter((result) => exploreResultEligible(trip, result) && (destinationId === "all" || result.stopId === destinationId));
-  const matching = scoped.filter((result) => categoryMatches(result, category));
+  const matching = scoped.filter((result) => discoveryCategoryMatches(result, category));
   const interests = tripIntentForTrip(trip).preferences.interests;
   const ranked = matching.map((result, index) => {
     const affinity = itineraryInterestAffinity({

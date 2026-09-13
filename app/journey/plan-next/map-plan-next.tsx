@@ -14,6 +14,7 @@ import type { JourneyStop } from "@/lib/journey";
 import { mapRouteLegsFromTrip, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { tripHealth } from "@/lib/easyt/review";
+import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import styles from "./map-plan-next.module.css";
 import editorial from "../surface-editorial.module.css";
 
@@ -151,7 +152,7 @@ export default function MapPlanNext() {
     <EasyTNavigation current="trips" />
     <header className={styles.header}>
       <Link href={currentHref} className={styles.switch}>← Current map planner</Link>
-      <div><strong>{trip.title}</strong><small>{formatDate(trip.startDate)} – {formatDate(trip.endDate)} · {trip.travellers} travellers</small></div>
+      <div><strong>{tripDisplayTitle(trip)}</strong><small>{formatDate(trip.startDate)} – {formatDate(trip.endDate)} · {trip.travellers} travellers</small></div>
       <Link href={`/journey/${encodeURIComponent(trip.id)}#before-you-go`} className={styles.prep}>Before you go</Link>
     </header>
 
