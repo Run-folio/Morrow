@@ -78,6 +78,7 @@ type ViatorImageVariant = { width?: number; url?: string };
 type ViatorProduct = {
   productCode?: string;
   title?: string;
+  description?: string;
   images?: Array<{ isCover?: boolean; variants?: ViatorImageVariant[] }>;
   reviews?: { combinedAverageRating?: number; totalReviews?: number };
   durationInMinutes?: number;
@@ -104,9 +105,21 @@ function bestImage(product: ViatorProduct) {
   return [...(image?.variants ?? [])]
     .flatMap((variant) => {
       const url = validHttpsUrl(variant.url);
+      if (url && /(?:^|[\s/_.-])(?:route[-_ ]?map|map|diagram|floor[-_ ]?plan|plan|screenshot|screen[-_ ]?shot|schematic|chart)(?:[\s/_.-]|$)/i.test(url)) return [];
       return url && typeof variant.width === "number" && Number.isFinite(variant.width) && variant.width > 0 ? [{ width: variant.width, url }] : [];
     })
     .sort((left, right) => right.width - left.width)[0]?.url;
+}
+
+function conciseDescription(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return undefined;
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [];
+  const concise = sentences.slice(0, 2).join(" ");
+  if (concise.length <= 260) return concise;
+  const clipped = concise.slice(0, 257).replace(/\s+\S*$/, "").trim();
+  return clipped ? `${clipped}…` : undefined;
 }
 
 function finiteNonNegative(value: unknown) {
@@ -134,6 +147,7 @@ export function normalizeViatorProducts(value: unknown, destination: ViatorDesti
     if (!entry || typeof entry !== "object") return [];
     const product = entry as ViatorProduct;
     if (typeof product.productCode !== "string" || !product.productCode.trim() || typeof product.title !== "string" || !product.title.trim()) return [];
+    const title = product.title.replace(/\s+/g, " ").trim();
     const providerDestination = product.destinations?.find((candidate) => candidate.primary) ?? product.destinations?.[0];
     const providerDestinationId = typeof providerDestination?.ref === "string" && providerDestination.ref.trim() ? providerDestination.ref.trim() : destination.providerDestinationId;
     const rating = finiteNonNegative(product.reviews?.combinedAverageRating);
@@ -143,11 +157,13 @@ export function normalizeViatorProducts(value: unknown, destination: ViatorDesti
     const image = bestImage(product);
     const duration = normalizedDuration(product);
     const productUrl = validHttpsUrl(product.productUrl, "viator.com");
+    const description = conciseDescription(product.description);
     return [{
       provider: "viator" as const,
       source: "viator" as const,
       providerProductId: product.productCode.trim(),
-      title: product.title.trim(),
+      title,
+      ...(description ? { description } : {}),
       destination: { canonicalPlaceId: destination.canonicalPlaceId, label: destination.name, providerDestinationId },
       ...(image ? { image } : {}),
       ...(rating !== undefined && rating <= 5 ? { rating } : {}),

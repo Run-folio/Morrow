@@ -7,6 +7,7 @@ export type ActivityInventoryItem = {
   source: "viator";
   providerProductId: string;
   title: string;
+  description?: string;
   destination: { canonicalPlaceId: string; label: string; providerDestinationId?: string };
   image?: string;
   tags?: string[];
@@ -29,13 +30,14 @@ function ideaId(stopId: string, item: Pick<ActivityInventoryItem, "provider" | "
 
 /** Persist only the selected product's useful identity and display evidence. */
 export function itineraryIdeaForActivityInventory(stopId: string, item: ActivityInventoryItem, interests: readonly TripInterest[] = []): ItineraryIdea {
-  const affinity = itineraryInterestAffinity({ title: item.title, type: "Experience", tags: item.tags ?? [], description: "" }, interests);
+  const affinity = itineraryInterestAffinity({ title: item.title, type: "Experience", tags: item.tags ?? [], description: item.description ?? "" }, interests);
   return {
     id: ideaId(stopId, item),
     stopId,
     placeId: activityInventoryIdentity(item),
     title: item.title,
     category: "activity",
+    description: item.description,
     image: item.image,
     sourceUrl: item.productUrl,
     area: item.destination.label,
@@ -59,6 +61,6 @@ export function rankActivityInventory(items: readonly ActivityInventoryItem[], i
   return items.map((item, index) => ({
     item,
     index,
-    score: Math.max(0, 12 - index) + itineraryInterestAffinity({ title: item.title, type: "Experience", tags: item.tags ?? [], description: "" }, interests).score,
+    score: Math.max(0, 12 - index) + itineraryInterestAffinity({ title: item.title, type: "Experience", tags: item.tags ?? [], description: item.description ?? "" }, interests).score,
   })).sort((left, right) => right.score - left.score || left.index - right.index).map(({ item }) => item);
 }

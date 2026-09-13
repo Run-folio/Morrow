@@ -95,9 +95,10 @@
 .notice > svg { width: 16px; height: 16px; flex: none; }
 .notice button { margin-left: auto; }
 
-.filtersRow { margin-top: 22px; align-items: end; }
-.destinationField { width: min(100%, 280px); }
-.destinationField > span:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.filtersRow { margin-top: 22px; align-items: center; }
+.stopNavigation { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.stopNavigation [data-route-stop-navigation] { width: 100%; padding: 4px 2px; scroll-padding-inline: 2px; }
+.stopNavigation [data-route-stop-navigation] button { min-height: 44px; }
 
 .categories {
   margin: 14px 0 0;
@@ -153,9 +154,9 @@
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: var(--morrovia-paper);
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
-.card:hover { border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line)); transform: translateY(-1px); }
+.card:hover { border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line)); }
 .cardSelected { border-color: var(--morrovia-signal); outline: 2px solid color-mix(in srgb, var(--morrovia-signal) 14%, transparent); outline-offset: -3px; }
 .card:focus-within { box-shadow: var(--morrovia-focus-shadow); }
 
@@ -189,11 +190,18 @@
 .cardBody { min-width: 0; padding: 14px; }
 .cardOpen { position: absolute; inset: 0; z-index: 1; width: 100%; max-width: none; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; cursor: pointer; }
 .cardOpen:focus-visible { outline: 0; }
+.card .cardOpen:hover:not(:disabled),
+.card .cardOpen:focus-visible:not(:disabled),
+.card .cardOpen:active:not(:disabled) { color: transparent; background: transparent; border-color: transparent; box-shadow: none; transform: none; }
 .cardCopy { position: relative; pointer-events: none; }
 .cardCopy h3 { margin: 0; color: var(--morrovia-ink); font: 600 20px/1.15 var(--morrovia-display); letter-spacing: -.02em; overflow-wrap: anywhere; }
 .meta { margin: 7px 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 7px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); }
 .meta svg { width: 13px; height: 13px; flex: none; color: var(--morrovia-action); }
 .meta span { color: var(--morrovia-line); }
+.providerFacts { margin: 8px 0 0; display: flex; align-items: center; gap: 5px; color: var(--morrovia-ink-soft); font: 700 10px/1.35 var(--morrovia-ui); }
+.providerFacts > span { color: var(--morrovia-action); }
+.providerFacts svg { width: 14px; height: 14px; fill: var(--morrovia-signal); color: var(--morrovia-signal); }
+.providerFacts strong { margin-left: auto; color: var(--morrovia-ink); font-weight: 800; }
 .description { min-height: 3.9em; margin: 8px 0 0; display: -webkit-box; overflow: hidden; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .fit { margin: 10px 0 0; padding: 9px 10px; display: flex; align-items: center; gap: 6px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); color: var(--morrovia-action); font: 750 10px/1.35 var(--morrovia-ui); }
 .fit svg { width: 15px; height: 15px; flex: none; color: var(--morrovia-signal); }
@@ -279,7 +287,6 @@
   .opportunity { grid-template-columns: auto minmax(0, 1fr); }
   .opportunity a { grid-column: 2; justify-self: start; }
   .filtersRow { align-items: stretch; }
-  .destinationField { width: 100%; }
   .filtersRow > a { min-width: 44px; padding-inline: 12px; }
   .grid,
   .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
@@ -293,6 +300,7 @@
   .header { display: grid; }
   .header h2 { font-size: 34px; }
   .filtersRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .stopNavigation { margin-left: -10px; padding-left: 10px; }
   .categories { margin-inline: -10px; padding-inline: 10px; scroll-padding-inline: 10px; }
   .cardBody { padding: 12px; }
   .cardImage { height: 190px; }
@@ -302,5 +310,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card { transition: none; }
-  .card:hover { transform: none; }
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
-import type { ReactNode, Ref } from "react";
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import styles from "./journey-planner-strip.module.css";
@@ -13,8 +13,54 @@ export type JourneyPlannerStripStop = {
   dayLabel: string;
   image?: string;
   active: boolean;
-  kind?: "origin" | "stop";
+  kind?: "all" | "origin" | "stop";
 };
+
+export function JourneyStopNavigation({
+  stops,
+  onSelectStop,
+  ariaLabel = "Trip stops",
+  trailing,
+}: {
+  stops: JourneyPlannerStripStop[];
+  onSelectStop: (id: string) => void;
+  ariaLabel?: string;
+  trailing?: ReactNode;
+}) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  const activeId = stops.find((stop) => stop.active)?.id;
+
+  useEffect(() => {
+    const active = activeRef.current;
+    if (!active) return;
+    const frame = window.requestAnimationFrame(() => active.scrollIntoView?.({ block: "nearest", inline: "nearest" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeId]);
+
+  return <nav className={styles.stopTrack} aria-label={ariaLabel} data-route-stop-navigation>
+    {stops.map((stop, index) => (
+      <div className={styles.stopGroup} key={stop.id}>
+        <button
+          ref={stop.active ? activeRef : undefined}
+          type="button"
+          className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
+          aria-current={stop.active ? (stop.kind === "all" ? "page" : "step") : undefined}
+          aria-pressed={stop.active}
+          onClick={() => onSelectStop(stop.id)}
+        >
+          <ResilientImage
+            src={stop.image}
+            alt=""
+            fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" || stop.kind === "all" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stop.kind === "all" ? "All" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin" && item.kind !== "all").length}</span>}
+          />
+          <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
+        </button>
+        {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
+      </div>
+    ))}
+    {trailing}
+  </nav>;
+}
 
 export function JourneyPlannerStrip({
   summary,
@@ -56,23 +102,11 @@ export function JourneyPlannerStrip({
         <span>{summary}</span>
       </div> : null}
 
-      <nav className={styles.stopTrack} aria-label="Trip stops">
-        {stops.map((stop, index) => (
-          <div className={styles.stopGroup} key={stop.id}>
-            <button
-              type="button"
-              className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
-              aria-current={stop.active ? "step" : undefined}
-              onClick={() => onSelectStop(stop.id)}
-            >
-              <ResilientImage src={stop.image} alt="" fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>} />
-              <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
-            </button>
-            {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
-          </div>
-        ))}
-        <Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>
-      </nav>
+      <JourneyStopNavigation
+        stops={stops}
+        onSelectStop={onSelectStop}
+        trailing={<Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>}
+      />
 
       <div className={styles.actions}>
         {onWholeRoute ? <button data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</button> : null}

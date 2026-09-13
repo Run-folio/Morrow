@@ -5269,7 +5269,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 486,
+        "count": 487,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5279,7 +5279,7 @@
       },
       {
         "value": "10px",
-        "count": 471,
+        "count": 472,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5368,6 +5368,16 @@
         ]
       },
       {
+        "value": "5px",
+        "count": 210,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css",
+          "app/journey/help/help.module.css"
+        ]
+      },
+      {
         "value": "6px",
         "count": 210,
         "examples": [
@@ -5378,18 +5388,8 @@
         ]
       },
       {
-        "value": "5px",
-        "count": 209,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/help/help.module.css"
-        ]
-      },
-      {
         "value": "4px",
-        "count": 208,
+        "count": 209,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5428,6 +5428,16 @@
         ]
       },
       {
+        "value": "2px",
+        "count": 129,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/easyt-navigation.module.css",
+          "app/journey/home/home.module.css"
+        ]
+      },
+      {
         "value": "28px",
         "count": 128,
         "examples": [
@@ -5435,16 +5445,6 @@
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
           "app/journey/contact/contact.module.css"
-        ]
-      },
-      {
-        "value": "2px",
-        "count": 128,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/home/home.module.css"
         ]
       },
       {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
+import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImage } from "@/lib/easyt/explore";
 
 type WikiPage = {
   pageid?: number;
@@ -14,8 +15,8 @@ type GeocodeCountry = { address?: { country?: string } };
 const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
 
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
-const nonVisitPage = /\b(administrative division|rapid transit line|metro line|population density|electoral district|neighbourhood of madrid|disambiguation|politics of|demographics of|transport in)\b/i;
-const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
+const nonVisitPage = /\b(administrative division|administrative region|country|continent|province|state of|county|municipality|rapid transit line|metro line|railway station|train station|bus station|airport|transport hub|population density|electoral district|disambiguation|politics of|demographics of|transport in)\b/i;
+const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|piazza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|neighbou?rhood|quarter|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
 
 function visitorValue(page: WikiPage) {
   const text = `${page.title ?? ""} ${page.extract ?? ""}`;
@@ -27,11 +28,8 @@ function visitorValue(page: WikiPage) {
 }
 
 function classify(title: string, extract: string) {
-  const text = `${title} ${extract}`.toLowerCase();
-  if (/park|garden|mountain|beach|lake|forest|trail|viewpoint|hill/.test(text)) return { type: "Nature", tags: ["Nature"] };
-  if (/market|food|restaurant|culinary/.test(text)) return { type: "Food", tags: ["Food"] };
-  if (/museum|gallery|theatre|theater|cultural/.test(text)) return { type: "Culture", tags: ["Cities"] };
-  return { type: "Landmark", tags: ["Cities"] };
+  const type = exploreDiscoveryCategory(title, "", extract);
+  return { type, tags: [type === "Nature" || type === "Beach" || type === "Hike" || type === "Viewpoint" ? "Nature" : type === "Food" || type === "Restaurant" || type === "Market" ? "Food" : "Cities"] };
 }
 
 function suggestedVisitLength(title: string, extract: string) {
@@ -106,6 +104,7 @@ export async function GET(request: NextRequest) {
           && coordinate
           && isWithinDestinationRadius([longitude, latitude], [coordinate.lon ?? Number.NaN, coordinate.lat ?? Number.NaN])
           && !irrelevant.test(page.title)
+          && page.title.trim().toLocaleLowerCase() !== destination.toLocaleLowerCase()
           && !nonVisitPage.test(text)
           && strongPlaceSignal.test(text)
           && !seen.has(key)
@@ -125,8 +124,8 @@ export async function GET(request: NextRequest) {
           tags: category.tags,
           qualityScore: visitorValue(page),
           cost: suggestedVisitLength(page.title!, page.extract!),
-          description: `${page.extract!.slice(0, 190).replace(/\s+\S*$/, "")}…`,
-          image: page.thumbnail?.source,
+          description: conciseExploreDescription(page.extract!),
+          image: trustedExploreImage(page.thumbnail?.source, "reviewed"),
           sourceUrl: `https://en.wikipedia.org/?curid=${page.pageid}`,
           country: country || destination,
           coordinates: [coordinate.lon, coordinate.lat] as [number, number],

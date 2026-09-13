@@ -113,6 +113,17 @@ test("normalizes a small provider-neutral activity result and preserves productU
   }]);
 });
 
+test("keeps concise sourced provider descriptions and rejects technical hero media", async () => {
+  const { ViatorAffiliateClient } = await loadViatorModule();
+  const client = new ViatorAffiliateClient(configuration, { request: async () => jsonResponse({ products: [product({
+    description: "See the museum with a local guide. Admission is included. A third marketing sentence should be left out.",
+    images: [{ isCover: true, variants: [{ width: 1200, url: "https://images.example.test/route-map.png" }, { width: 800, url: "https://images.example.test/museum-photo.jpg" }] }],
+  })] }), cache: new Map(), now: () => Date.parse(checkedAt), resolveDestination: resolvedDestination });
+  const [activity] = await client.searchActivities({ destination: paris });
+  assert.equal(activity?.description, "See the museum with a local guide. Admission is included.");
+  assert.equal(activity?.image, "https://images.example.test/museum-photo.jpg");
+});
+
 test("omits unsupported optional claims and unsafe product URLs rather than inventing certainty", async () => {
   const { ViatorAffiliateClient } = await loadViatorModule();
   const client = new ViatorAffiliateClient(configuration, { request: async () => jsonResponse({ products: [product({

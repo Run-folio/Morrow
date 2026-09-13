@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   dedupeExploreResults,
+  conciseExploreDescription,
   exploreDestinationOptions,
+  exploreDiscoveryCategory,
   exploreOpportunityForTrip,
+  exploreResultEligible,
   exploreResultForActivity,
   exploreResultForIdea,
   exploreResultForLocalPlace,
@@ -11,6 +14,7 @@ import {
   exploreResultState,
   exploreScheduleTarget,
   filterExploreResults,
+  trustedExploreImage,
 } from "../lib/easyt/explore.ts";
 import { saveItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
@@ -71,6 +75,21 @@ test("Explore destinations come only from the current trip and retain canonical 
   assert.deepEqual(options.map(({ id, label }) => ({ id, label })), [
     { id: "athens", label: "Athens" },
     { id: "naxos", label: "Naxos" },
+  ]);
+});
+
+test("Explore keeps repeated cities as separate stopIds and excludes stops without itinerary days", () => {
+  const base = trip();
+  base.stops.push(
+    { ...base.stops[0]!, id: "athens-return", canonicalPlaceId: "athens-gr", order: 2, arrivalDate: "2026-09-13", departureDate: "2026-09-14" },
+    { ...base.stops[0]!, id: "london-origin-only", canonicalPlaceId: "london-gb", name: "London", country: "United Kingdom", order: 3 },
+  );
+  base.planItems.push({ ...base.planItems[1]!, id: "day-4", stopId: "athens-return", dayNumber: 4, date: "2026-09-13" });
+  const options = exploreDestinationOptions(base);
+  assert.deepEqual(options.map(({ id, dayLabel }) => ({ id, dayLabel })), [
+    { id: "athens", dayLabel: "Days 1–2" },
+    { id: "naxos", dayLabel: "Day 3" },
+    { id: "athens-return", dayLabel: "Day 4" },
   ]);
 });
 
@@ -141,17 +160,81 @@ test("Viator results preserve provider identity, sourced metadata and affiliate 
     destination: { canonicalPlaceId: "athens-gr", label: "Athens" },
     image: "https://images.example/sounion.jpg",
     tags: ["day trip"],
+    rating: 4.7,
+    reviewCount: 842,
     duration: { fromMinutes: 240, toMinutes: 300 },
     price: { amount: 75, currency: "GBP" },
     productUrl: "https://www.viator.com/tours/123",
     provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
   };
   const result = exploreResultForActivity(base.stops[0]!, item, base);
-  assert.equal(result.identity, "provider:viator:tour-123");
+  assert.equal(result.identity, "stop:athens:provider:viator:tour-123");
   assert.equal(result.duration, "4 hrs–5 hrs");
   assert.equal(result.price, "From £75");
+  assert.equal(result.rating, 4.7);
+  assert.equal(result.reviewCount, 842);
   assert.equal(result.providerUrl, item.productUrl);
   assert.deepEqual(filterExploreResults(base, [result], "all", "day-trips"), [result]);
+});
+
+test("eligibility rejects the destination and administrative records but keeps useful places", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const city = exploreResultForPlace(stop, { ...place, id: "city", title: "Athens", type: "City" });
+  const region = exploreResultForPlace(stop, { ...place, id: "attica", title: "Attica", type: "Administrative region", tags: [] });
+  const neighbourhood = exploreResultForPlace(stop, { ...place, id: "plaka", title: "Plaka", type: "Neighbourhood", tags: ["Cities"] });
+  const attraction = exploreResultForPlace(stop, { ...place, id: "agora", title: "Ancient Agora", type: "Historic site" });
+  const restaurant = exploreResultForLocalPlace(stop, { id: "taverna", name: "Taverna", address: "Plaka", category: "restaurant", coordinates: [23.7, 37.9], mapsUrl: "https://maps.example/taverna", provider: "openstreetmap" });
+  const tour = exploreResultForActivity(stop, { provider: "viator", source: "viator", providerProductId: "walk", title: "Athens walking tour", destination: { canonicalPlaceId: "athens-gr", label: "Athens" }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" } }, base);
+  assert.equal(exploreResultEligible(base, city), false);
+  assert.equal(exploreResultEligible(base, region), false);
+  for (const result of [neighbourhood, attraction, restaurant, tour]) assert.equal(exploreResultEligible(base, result), true);
+  assert.deepEqual(filterExploreResults(base, [city, region, neighbourhood, attraction, restaurant, tour], "all", "for-you").map((result) => result.title).sort(), ["Ancient Agora", "Athens walking tour", "Plaka", "Taverna"]);
+});
+
+test("category classification favors truthful place anatomy over incidental prose", () => {
+  assert.equal(exploreDiscoveryCategory("Piazza del Campidoglio", "", "A square on Capitoline Hill."), "Landmark");
+  assert.equal(exploreDiscoveryCategory("Unknown stop", "", "Limited source detail."), "Place");
+  assert.equal(exploreDiscoveryCategory("Acropolis Museum", "attraction", ""), "Museum");
+});
+
+test("descriptions stay concise and technical or untrusted imagery falls back", () => {
+  const long = "A useful first sentence. A useful second sentence. This third sentence should not be exposed on the card.";
+  assert.equal(conciseExploreDescription(long), "A useful first sentence. A useful second sentence.");
+  assert.equal(trustedExploreImage("https://upload.wikimedia.org/photo.jpg"), "https://upload.wikimedia.org/photo.jpg");
+  assert.equal(trustedExploreImage("https://upload.wikimedia.org/route-map.png"), undefined);
+  assert.equal(trustedExploreImage("https://unknown.example/photo.jpg"), undefined);
+  assert.equal(trustedExploreImage("https://provider.example/photo.jpg", "provider"), "https://provider.example/photo.jpg");
+});
+
+test("For you keeps organic results and mixes commercial inventory without replacing it", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const organic = ["Agora", "Plaka", "Museum"].map((title, index) => exploreResultForPlace(stop, { ...place, id: `organic-${index}`, title, type: index === 2 ? "Museum" : "Landmark", qualityScore: 20 - index }));
+  const commercial = ["Entry ticket", "Food tour"].map((title, index) => exploreResultForActivity(stop, { provider: "viator", source: "viator", providerProductId: `paid-${index}`, title, destination: { canonicalPlaceId: "athens-gr", label: "Athens" }, rating: 5, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" } }, base));
+  const mixed = filterExploreResults(base, [...commercial, ...organic], "all", "for-you");
+  assert.equal(mixed.filter((result) => !result.providerProductId).length, 3);
+  assert.equal(mixed.filter((result) => result.providerProductId).length, 2);
+  assert.equal(mixed.slice(0, 2).every((result) => !result.providerProductId), true);
+});
+
+test("commercial metadata remains absent when the provider does not source it", () => {
+  const base = trip();
+  const result = exploreResultForActivity(base.stops[0]!, { provider: "viator", source: "viator", providerProductId: "minimal", title: "Guided walk", destination: { canonicalPlaceId: "athens-gr", label: "Athens" }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" } }, base);
+  assert.equal(result.rating, undefined);
+  assert.equal(result.reviewCount, undefined);
+  assert.equal(result.price, undefined);
+  assert.equal(result.duration, undefined);
+});
+
+test("stale or ambiguous day context never schedules into another stop or silently guesses", () => {
+  const base = trip();
+  const result = exploreResultForPlace(base.stops[0]!, place);
+  assert.equal(exploreScheduleTarget(base, result, 3)?.day.id, "day-2", "a stale Naxos day falls back only to a grounded Athens opportunity");
+  base.planItems[1] = { ...base.planItems[1]!, notes: ["Morning", "Lunch", "Afternoon", "Evening"], noteDayParts: ["morning", "midday", "afternoon", "evening"] };
+  base.planItems.push({ ...base.planItems[1]!, id: "day-4", dayNumber: 4, date: "2026-09-13" });
+  assert.equal(exploreScheduleTarget(base, result), null, "multiple valid days without a free part require a traveller choice");
+  assert.equal(exploreScheduleTarget(base, result, 4)?.day.id, "day-4");
 });
 
 test("persisted ideas project back into Explore without inventing missing geography", () => {

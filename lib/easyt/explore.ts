@@ -3,7 +3,7 @@ import { activityInventoryIdentity, itineraryIdeaForActivityInventory } from "./
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestAffinity, type ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
 import { preferredItineraryDayPart } from "./itinerary-activity-placement.ts";
-import { ideaStateForPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, validIdeaDays } from "./itinerary-ideas.ts";
+import { ideaStateForPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
 
@@ -23,6 +23,8 @@ export type ExploreDestination = {
   id: string;
   label: string;
   country: string;
+  dayLabel: string;
+  image?: string;
   stop: TripStop;
 };
 
@@ -52,6 +54,8 @@ export type ExploreResult = {
   coordinates?: [number, number];
   duration?: string;
   price?: string;
+  rating?: number;
+  reviewCount?: number;
   qualityScore?: number;
   provider?: string;
   providerProductId?: string;
@@ -68,22 +72,80 @@ function normal(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
-export function exploreDestinationOptions(trip: Pick<EasyTTrip, "stops">): ExploreDestination[] {
-  const seen = new Set<string>();
+export function exploreDestinationOptions(trip: Pick<EasyTTrip, "stops" | "planItems">): ExploreDestination[] {
   return [...trip.stops]
     .sort((left, right) => left.order - right.order)
     .flatMap((stop) => {
-      const key = stop.canonicalPlaceId ? `canonical:${stop.canonicalPlaceId}` : `named:${normal(stop.name)}:${normal(stop.country)}`;
-      if (seen.has(key)) return [];
-      seen.add(key);
-      return [{ id: stop.id, label: stop.name, country: stop.country, stop }];
+      const days = trip.planItems.filter((day) => day.stopId === stop.id).sort((left, right) => left.dayNumber - right.dayNumber);
+      if (!days.length) return [];
+      const firstDay = days[0]!.dayNumber;
+      const lastDay = days.at(-1)!.dayNumber;
+      const dayLabel = firstDay === lastDay ? `Day ${firstDay}` : `Days ${firstDay}–${lastDay}`;
+      const image = trustedExploreImage(days.find((day) => day.image)?.image, "reviewed");
+      return [{ id: stop.id, label: stop.name, country: stop.country, dayLabel, ...(image ? { image } : {}), stop }];
     });
 }
 
-export function exploreResultIdentity(input: Pick<ExploreResult, "provider" | "providerProductId" | "sourceId">) {
+export function exploreResultIdentity(input: Pick<ExploreResult, "stopId" | "provider" | "providerProductId" | "sourceId">) {
   return input.provider && input.providerProductId
-    ? `provider:${input.provider}:${input.providerProductId}`
-    : `place:${input.sourceId}`;
+    ? `stop:${input.stopId}:provider:${input.provider}:${input.providerProductId}`
+    : `stop:${input.stopId}:place:${input.sourceId}`;
+}
+
+const technicalImageRole = /(?:^|[\s/_.-])(?:route[-_ ]?map|map|diagram|floor[-_ ]?plan|plan|screenshot|screen[-_ ]?shot|schematic|chart)(?:[\s/_.-]|$)/i;
+const reviewedImageHosts = /(?:^|\.)(?:images\.unsplash\.com|unsplash\.com|upload\.wikimedia\.org|thumb\.wikimedia\.org|wikimedia\.org|tacdn\.com|tripadvisor\.com)$/i;
+
+export function trustedExploreImage(value: string | null | undefined, source: "provider" | "reviewed" = "reviewed") {
+  if (!value || value !== value.trim() || technicalImageRole.test(value)) return undefined;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return undefined;
+    return source === "provider" || reviewedImageHosts.test(url.hostname) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function conciseExploreDescription(value: string | null | undefined) {
+  const text = value?.replace(/\s+/g, " ").trim();
+  if (!text) return undefined;
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean) ?? [];
+  const concise = sentences.slice(0, 2).join(" ");
+  if (concise.length <= 260) return concise;
+  const clipped = concise.slice(0, 257).replace(/\s+\S*$/, "").trim();
+  return clipped ? `${clipped}…` : undefined;
+}
+
+export function exploreDiscoveryCategory(title: string, sourceType: string, description = "") {
+  const explicit = normal(sourceType);
+  const text = `${title} ${sourceType} ${description}`.toLocaleLowerCase();
+  if (/museum/.test(explicit) || /\bmuseum\b/.test(title.toLocaleLowerCase())) return "Museum";
+  if (/archaeological|ruins/.test(explicit) || /archaeological|\bruins?\b/.test(text)) return "Historic site";
+  if (/historic/.test(explicit)) return "Historic site";
+  if (/restaurant|cafe|food/.test(explicit)) return explicit.includes("restaurant") ? "Restaurant" : "Food";
+  if (/market/.test(explicit) || /\bmarket\b/.test(title.toLocaleLowerCase())) return "Market";
+  if (/beach/.test(explicit) || /\bbeach\b/.test(title.toLocaleLowerCase())) return "Beach";
+  if (/hike|trail/.test(explicit)) return "Hike";
+  if (/viewpoint|observatory/.test(explicit) || /viewpoint|observatory/.test(title.toLocaleLowerCase())) return "Viewpoint";
+  if (/neighbou?rhood|quarter/.test(explicit)) return "Neighbourhood";
+  if (/park|garden|mountain|lake|forest|nature/.test(explicit)) return "Nature";
+  if (/square|plaza|piazza|palace|cathedral|church|monastery|temple|castle|fortress|monument|tower|bridge|landmark/.test(explicit)
+    || /\b(?:square|plaza|piazza|palace|cathedral|church|monastery|temple|castle|fortress|monument|tower|bridge)\b/.test(title.toLocaleLowerCase())) return "Landmark";
+  if (/gallery|theatre|theater|culture|cultural/.test(explicit)) return "Culture";
+  return "Place";
+}
+
+const rejectedExploreEntity = /\b(?:country|continent|macro[- ]?region|administrative|admin(?:istration)?|state|province|county|municipality|metropolitan area|electoral district|transport hub|airport|railway station|train station|bus station|metro station|rapid transit|disambiguation|wikipedia article)\b/i;
+const usefulExploreEntity = /\b(?:attraction|landmark|museum|archaeological|historic|neighbou?rhood|quarter|viewpoint|park|garden|beach|natural area|hike|trail|market|restaurant|cafe|tour|experience|ticket|boat trip|day trip)\b/i;
+
+export function exploreResultEligible(trip: Pick<EasyTTrip, "stops">, result: ExploreResult) {
+  if (result.kind === "restaurant" || result.kind === "tour" || result.idea.source === "traveller-visit-intent") return true;
+  const stop = trip.stops.find((candidate) => candidate.id === result.stopId);
+  if (!stop) return false;
+  if (normal(result.title) === normal(stop.name)) return false;
+  if (usefulExploreEntity.test(`${result.category} ${result.tags.join(" ")}`)) return true;
+  return !rejectedExploreEntity.test(`${result.category} ${result.tags.join(" ")}`);
 }
 
 export function exploreResultForPlace(stop: TripStop, place: ItineraryDiscoveryPlace, interests: readonly TripInterest[] = []): ExploreResult {
@@ -104,10 +166,10 @@ export function exploreResultForPlace(stop: TripStop, place: ItineraryDiscoveryP
     kind,
     title: place.title,
     location: place.area || stop.name,
-    category: place.type,
+    category: rejectedExploreEntity.test(place.type) && !usefulExploreEntity.test(place.type) ? place.type : exploreDiscoveryCategory(place.title, place.type, place.description),
     tags: [...place.tags],
-    description: place.description,
-    image: place.image,
+    description: conciseExploreDescription(place.description),
+    image: trustedExploreImage(place.image, "reviewed"),
     coordinates: place.coordinates,
     qualityScore: place.qualityScore,
     providerUrl: place.sourceUrl,
@@ -138,7 +200,7 @@ export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPl
     kind: "restaurant",
     title: place.name,
     location: place.address || stop.name,
-    category: place.category.replaceAll("_", " "),
+    category: "Restaurant",
     tags: ["Food"],
     coordinates: place.coordinates,
     provider: place.provider,
@@ -178,11 +240,15 @@ export function exploreResultForActivity(stop: TripStop, item: ActivityInventory
     kind: "tour",
     title: item.title,
     location: item.destination.label || stop.name,
-    category: "Tour",
+    category: /\b(?:ticket|admission|entry)\b/i.test(`${item.title} ${(item.tags ?? []).join(" ")}`) ? "Entry ticket" : /\bday trip\b/i.test(`${item.title} ${(item.tags ?? []).join(" ")}`) ? "Day trip" : "Tour",
     tags: [...(item.tags ?? [])],
-    image: item.image,
+    description: conciseExploreDescription(item.description),
+    image: trustedExploreImage(item.image, "provider"),
     duration: activityDurationLabel(item.duration),
     price: activityPriceLabel(item.price),
+    rating: item.rating,
+    reviewCount: item.reviewCount,
+    qualityScore: item.rating !== undefined ? Math.round(item.rating * 2 + Math.min(5, Math.log10((item.reviewCount ?? 0) + 1))) : undefined,
     provider: item.provider,
     providerProductId: item.providerProductId,
     providerUrl: item.productUrl,
@@ -207,10 +273,12 @@ export function exploreResultForIdea(trip: EasyTTrip, idea: ItineraryIdea): Expl
     category: idea.placeType || (kind === "restaurant" ? "Food" : kind === "tour" ? "Tour" : "Activity"),
     tags: kind === "restaurant" ? ["Food"] : [],
     description: idea.description,
-    image: idea.image,
+    image: trustedExploreImage(idea.image, idea.provider ? "provider" : "reviewed"),
     coordinates: idea.coordinates,
     duration,
     price,
+    rating: idea.providerMetadata?.rating,
+    reviewCount: idea.providerMetadata?.reviewCount,
     provider: idea.provider,
     providerProductId: idea.providerProductId,
     providerUrl: idea.sourceUrl,
@@ -248,10 +316,10 @@ export function filterExploreResults(
   destinationId: string,
   category: ExploreCategory,
 ) {
-  const scoped = results.filter((result) => destinationId === "all" || result.stopId === destinationId);
+  const scoped = results.filter((result) => exploreResultEligible(trip, result) && (destinationId === "all" || result.stopId === destinationId));
   const matching = scoped.filter((result) => categoryMatches(result, category));
   const interests = tripIntentForTrip(trip).preferences.interests;
-  return matching.map((result, index) => {
+  const ranked = matching.map((result, index) => {
     const affinity = itineraryInterestAffinity({
       title: result.title,
       type: result.category,
@@ -260,13 +328,26 @@ export function filterExploreResults(
     }, interests);
     return { result, index, score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score };
   }).sort((left, right) => right.score - left.score || left.index - right.index).map(({ result }) => result);
+  if (category !== "for-you" && category !== "must-see") return ranked;
+  const organic = ranked.filter((result) => !result.providerProductId);
+  const commercial = ranked.filter((result) => result.providerProductId);
+  if (!organic.length || !commercial.length) return ranked;
+  const mixed: ExploreResult[] = [];
+  let organicIndex = 0;
+  let commercialIndex = 0;
+  while (organicIndex < organic.length || commercialIndex < commercial.length) {
+    mixed.push(...organic.slice(organicIndex, organicIndex + 2));
+    organicIndex += 2;
+    if (commercialIndex < commercial.length) mixed.push(commercial[commercialIndex++]!);
+  }
+  return mixed;
 }
 
 export function exploreScheduleTarget(trip: EasyTTrip, result: ExploreResult, requestedDayNumber?: number | null) {
-  const requested = requestedDayNumber
-    ? validIdeaDays(trip, result.stopId).find((day) => day.dayNumber === requestedDayNumber)
-    : undefined;
-  const day = requested ?? preferredItineraryIdeaDay(trip, result.stopId);
+  const days = validIdeaDays(trip, result.stopId);
+  const requested = requestedDayNumber ? days.find((day) => day.dayNumber === requestedDayNumber) : undefined;
+  const opportunity = exploreOpportunityForTrip(trip, result.stopId);
+  const day = requested ?? (days.length === 1 ? days[0] : opportunity?.day);
   if (!day) return null;
   return {
     day,

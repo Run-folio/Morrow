@@ -6,8 +6,6 @@ import {
   Check,
   Clock3,
   Compass,
-  ExternalLink,
-  Landmark,
   Map as MapIcon,
   MapPin,
   Mountain,
@@ -18,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { JourneyStopNavigation } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import {
   dedupeExploreResults,
@@ -37,7 +36,7 @@ import {
   type ExploreResult,
 } from "@/lib/easyt/explore";
 import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
-import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
@@ -149,7 +148,7 @@ function sourcePlan(category: ExploreCategory, trip: EasyTTrip) {
   return {
     mapped: category !== "tours" && category !== "day-trips",
     restaurants: category === "food" || (category === "for-you" && interests.includes("food")),
-    tours: category === "tours" || category === "day-trips",
+    tours: category === "for-you" || category === "must-see" || category === "tours" || category === "day-trips",
   };
 }
 
@@ -171,7 +170,17 @@ function detailForResult(result: ExploreResult, state: ReturnType<typeof explore
     bookingStatus: state.state === "planned" ? "Added to itinerary" : state.state === "saved" ? "Saved for later" : null,
     whyFit,
     whyFitLabel: "Why this fits your trip",
+    practical: [
+      ...(result.provider === "viator" ? [{ label: "Provider", value: "Viator" }] : []),
+      ...(result.rating !== undefined ? [{ label: "Rating", value: `${result.rating.toFixed(1)}${result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}` }] : []),
+    ],
   };
+}
+
+function whyFitForResult(trip: EasyTTrip, result: ExploreResult) {
+  const opportunity = exploreOpportunityForTrip(trip, result.stopId);
+  if (opportunity) return `Fits your free ${opportunity.dayPart} on Day ${opportunity.day.dayNumber}.`;
+  return itineraryInterestReason({ title: result.title, type: result.category, tags: result.tags, description: result.description ?? "" }, tripIntentForTrip(trip).preferences.interests);
 }
 
 export default function TripExploreWorkspace({
@@ -195,6 +204,7 @@ export default function TripExploreWorkspace({
   const [loading, setLoading] = useState(!initialResults);
   const [providerState, setProviderState] = useState<ProviderState>(initialResults ? initialProviderState : "ready");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(initialSelectedResultId ?? null);
+  const [selectedDayByResult, setSelectedDayByResult] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const selectedOriginRef = useRef<HTMLButtonElement | null>(null);
 
@@ -208,6 +218,17 @@ export default function TripExploreWorkspace({
   const selectedResult = results.find((result) => result.identity === selectedResultId) ?? null;
   const opportunity = useMemo(() => exploreOpportunityForTrip(workingTrip, destinationId), [destinationId, workingTrip]);
   const activeDestination = destinationId === "all" ? null : destinations.find((item) => item.id === destinationId) ?? null;
+  const navigationStops = useMemo(() => [
+    { id: "all", name: "All trip", dayLabel: "Whole journey", active: destinationId === "all", kind: "all" as const },
+    ...destinations.map((destination) => ({
+      id: destination.id,
+      name: destination.label,
+      dayLabel: destination.dayLabel,
+      image: destination.image,
+      active: destinationId === destination.id,
+      kind: "stop" as const,
+    })),
+  ], [destinationId, destinations]);
 
   const closeDetail = useCallback(() => {
     setSelectedResultId(null);
@@ -260,7 +281,8 @@ export default function TripExploreWorkspace({
   };
 
   const scheduleResult = (result: ExploreResult) => {
-    const target = exploreScheduleTarget(workingTrip, result, requestedDayNumber);
+    const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
+    const target = exploreScheduleTarget(workingTrip, result, chosenDay);
     if (!target) return;
     const changed = mutation.mutateTrip(
       (current) => scheduleItineraryIdea(current, result.idea, target.day.id, target.dayPart),
@@ -289,16 +311,16 @@ export default function TripExploreWorkspace({
     <div className={styles.main}>
       <header className={styles.header}>
         <div>
-          <p><Sparkles aria-hidden="true" />Trip-aware discovery</p>
+          <p><Sparkles aria-hidden="true" />Discover your route</p>
           <h2 id="explore-title">Explore</h2>
-          <span>Find useful places and experiences already matched to this trip.</span>
+          <span>Find places, experiences and food that fit your trip.</span>
         </div>
         <MorroviaSaveStatus state={mutation.saveState} />
       </header>
 
       {opportunity ? <aside className={styles.opportunity}>
         <CalendarPlus aria-hidden="true" />
-        <div><strong>Your {titleCase(opportunity.dayPart)} is still open on Day {opportunity.day.dayNumber} in {opportunity.stop.name}.</strong><span>Ideas you add can use this real gap in the itinerary.</span></div>
+        <div><strong>You’ve got space {opportunity.dayPart} on Day {opportunity.day.dayNumber} in {opportunity.stop.name}.</strong><span>Find something worth adding while you’re there.</span></div>
         <EasyTLinkButton href={itineraryWorkspaceHref(workingTrip.id, opportunity.day.dayNumber)} size="small" variant="quiet">View day</EasyTLinkButton>
       </aside> : null}
 
@@ -306,20 +328,17 @@ export default function TripExploreWorkspace({
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
 
       <div className={styles.filtersRow}>
-        <EasyTSelect
-          fieldClassName={styles.destinationField}
-          label="Explore destination"
-          value={destinationId}
-          onChange={(event) => {
-            const next = event.target.value;
-            setDestinationId(next);
-            setSelectedResultId(null);
-            trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: next === "all" ? "all" : "stop" });
-          }}
-        >
-          <option value="all">All trip</option>
-          {destinations.map((destination) => <option value={destination.id} key={destination.id}>{destination.label}</option>)}
-        </EasyTSelect>
+        <div className={styles.stopNavigation}>
+          <JourneyStopNavigation
+            stops={navigationStops}
+            ariaLabel="Explore by trip stop"
+            onSelectStop={(next) => {
+              setDestinationId(next);
+              setSelectedResultId(null);
+              trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: next === "all" ? "all" : "stop" });
+            }}
+          />
+        </div>
         <EasyTLinkButton href={pageMapHref} icon={MapIcon} variant="secondary">Open map</EasyTLinkButton>
       </div>
 
@@ -348,23 +367,25 @@ export default function TripExploreWorkspace({
       </div>
 
       {loading ? <div className={styles.loading} aria-label="Finding trip ideas">
-        <MorroviaSectionStatus title="Finding ideas for this trip" detail={`Checking trustworthy sources around ${destinationLabel}.`} />
+        <MorroviaSectionStatus title="Finding ideas for this trip" detail={`Looking around ${destinationLabel}.`} />
         <div aria-hidden="true"><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /></div>
       </div> : null}
-      {!loading && providerState === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some live sources are temporarily unavailable. The verified ideas already loaded remain usable.</p> : null}
+      {!loading && providerState === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some ideas are temporarily unavailable. You can still use the results shown here.</p> : null}
       {!loading && !visibleResults.length ? providerState === "degraded" ? <MorroviaSectionStatus
         state="error"
         title="Some ideas are unavailable"
         detail="Your trip and saved ideas are unchanged. Try this category again later."
-      /> : <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Nothing trustworthy is available for {destinationLabel} in this category yet.</p></section> : null}
+      /> : <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
       {!loading && visibleResults.length ? <div className={styles.grid} id="explore-results">
         {visibleResults.map((result) => {
           const state = exploreResultState(workingTrip, result);
-          const target = exploreScheduleTarget(workingTrip, result, requestedDayNumber);
-          const fitReason = itineraryInterestReason({ title: result.title, type: result.category, tags: result.tags, description: result.description ?? "" }, tripIntentForTrip(workingTrip).preferences.interests);
+          const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
+          const target = exploreScheduleTarget(workingTrip, result, chosenDay);
+          const dayChoices = validIdeaDays(workingTrip, result.stopId);
+          const fitReason = whyFitForResult(workingTrip, result);
           const pending = mutation.isPending(`explore-save-${result.identity}`) || mutation.isPending(`explore-schedule-${result.identity}`);
-          return <article className={`${styles.card} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state}>
+          return <article className={`${styles.card} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state} data-explore-card>
             <div className={styles.cardImage}>
               <ResilientImage src={result.image} alt="" fallback={<span><MapPin aria-hidden="true" /><small>Image unavailable</small></span>} />
               {state.state === "saved" ? <span className={styles.savedBadge}><Bookmark aria-hidden="true" />Saved</span> : null}
@@ -374,6 +395,11 @@ export default function TripExploreWorkspace({
               <div className={styles.cardCopy}>
                 <h3>{result.title}</h3>
                 <p className={styles.meta}><MapPin aria-hidden="true" />{result.location}<span>·</span>{result.category}{result.duration ? <><span>·</span><Clock3 aria-hidden="true" />{result.duration}</> : null}</p>
+                {result.provider === "viator" ? <p className={styles.providerFacts}>
+                  <span>Viator</span>
+                  {result.rating !== undefined ? <><Star aria-hidden="true" />{result.rating.toFixed(1)}{result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}</> : null}
+                  {result.price ? <strong>{result.price}</strong> : null}
+                </p> : result.price ? <p className={styles.providerFacts}><strong>{result.price}</strong></p> : null}
                 {result.description ? <p className={styles.description}>{result.description}</p> : null}
                 {fitReason ? <p className={styles.fit}><Sparkles aria-hidden="true" />{fitReason}</p> : null}
                 {state.state === "planned" ? <p className={styles.planned}><Check aria-hidden="true" />Added to Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}</p> : null}
@@ -383,10 +409,21 @@ export default function TripExploreWorkspace({
                   <EasyTLinkButton size="small" variant="secondary" href={itineraryWorkspaceHref(workingTrip.id, state.day.dayNumber)}>View day</EasyTLinkButton>
                   <EasyTButton size="small" variant="quiet" disabled={pending} onClick={() => removeResult(result)}>Remove</EasyTButton>
                 </> : <>
-                  <EasyTButton icon={CalendarPlus} size="small" disabled={!target || pending} onClick={() => scheduleResult(result)}>{target ? `Add to Day ${target.day.dayNumber}` : "No day available"}</EasyTButton>
+                  <EasyTButton
+                    icon={CalendarPlus}
+                    size="small"
+                    disabled={!dayChoices.length || pending}
+                    onClick={(event) => target ? scheduleResult(result) : openDetail(result, event.currentTarget)}
+                  >{target ? `Add to Day ${target.day.dayNumber}` : dayChoices.length > 1 ? "Choose a day" : "No day available"}</EasyTButton>
+                  {result.provider === "viator" && result.providerUrl ? <MorroviaAffiliateLink
+                    action={{ provider: "viator", category: "activities", href: result.providerUrl, cta: "View tickets", affiliate: true }}
+                    context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: result.stopId, workspaceView: "explore" }}
+                    variant="secondary"
+                    onClick={() => trackEvent("explore_provider_handoff", { trip_id: workingTrip.id, stop_id: result.stopId, provider: "viator" })}
+                  /> : null}
                   {state.state === "saved"
                     ? <span className={styles.savedState}><Bookmark aria-hidden="true" />Saved for later</span>
-                    : <EasyTButton icon={Bookmark} size="small" variant="secondary" disabled={pending} aria-label={`Save ${result.title} for later`} onClick={() => saveResult(result)}>Save for later</EasyTButton>}
+                    : <EasyTButton icon={Bookmark} size="small" variant="quiet" disabled={pending} aria-label={`Save ${result.title} for later`} onClick={() => saveResult(result)}>Save</EasyTButton>}
                 </>}
               </div>
             </div>
@@ -398,9 +435,10 @@ export default function TripExploreWorkspace({
     <aside className={`${styles.rail} ${selectedResult ? styles.railSelected : ""}`} aria-label={selectedResult ? "Selected Explore result" : "Explore trip context"}>
       {selectedResult ? (() => {
         const state = exploreResultState(workingTrip, selectedResult);
-        const target = exploreScheduleTarget(workingTrip, selectedResult, requestedDayNumber);
-        const interest = tripIntentForTrip(workingTrip).preferences.interests;
-        const whyFit = itineraryInterestReason({ title: selectedResult.title, type: selectedResult.category, tags: selectedResult.tags, description: selectedResult.description ?? "" }, interest);
+        const chosenDay = selectedDayByResult[selectedResult.identity] ?? requestedDayNumber;
+        const target = exploreScheduleTarget(workingTrip, selectedResult, chosenDay);
+        const dayChoices = validIdeaDays(workingTrip, selectedResult.stopId);
+        const whyFit = whyFitForResult(workingTrip, selectedResult);
         const mode = selectedResult.kind === "restaurant" ? "eat" : "see";
         const mapHref = selectedResult.coordinates
           ? mapWorkspaceHref(workingTrip.id, selectedResult.stopId, mode, target?.day.dayNumber)
@@ -411,11 +449,19 @@ export default function TripExploreWorkspace({
           pending={mutation.isPending(`explore-save-${selectedResult.identity}`) || mutation.isPending(`explore-schedule-${selectedResult.identity}`)}
           onClose={closeDetail}
           primaryActions={<>
+            {state.state !== "planned" && !target && dayChoices.length > 1 ? <EasyTSelect
+              label="Choose a day"
+              value={selectedDayByResult[selectedResult.identity] ?? ""}
+              onChange={(event) => setSelectedDayByResult((current) => ({ ...current, [selectedResult.identity]: Number(event.target.value) }))}
+            >
+              <option value="" disabled>Select a day</option>
+              {dayChoices.map((day) => <option key={day.id} value={day.dayNumber}>Day {day.dayNumber} · {day.title}</option>)}
+            </EasyTSelect> : null}
             {state.state !== "planned" && target ? <EasyTButton icon={CalendarPlus} fullWidth onClick={() => scheduleResult(selectedResult)}>Add to Day {target.day.dayNumber}</EasyTButton> : null}
             {state.state === "available" ? <EasyTButton icon={Bookmark} variant="secondary" onClick={() => saveResult(selectedResult)}>Save for later</EasyTButton> : null}
             {state.state === "planned" ? <EasyTLinkButton icon={CalendarPlus} variant="secondary" href={itineraryWorkspaceHref(workingTrip.id, state.day.dayNumber)}>View in itinerary</EasyTLinkButton> : null}
             {selectedResult.provider === "viator" && selectedResult.providerUrl ? <MorroviaAffiliateLink
-              action={{ provider: "viator", category: "activities", href: selectedResult.providerUrl, cta: "View on Viator", affiliate: true }}
+              action={{ provider: "viator", category: "activities", href: selectedResult.providerUrl, cta: "View tickets", affiliate: true }}
               context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: selectedResult.stopId, workspaceView: "explore" }}
               variant="secondary"
               onClick={() => trackEvent("explore_provider_handoff", { trip_id: workingTrip.id, stop_id: selectedResult.stopId, provider: "viator" })}
@@ -424,18 +470,21 @@ export default function TripExploreWorkspace({
         />;
       })() : <>
         <section className={styles.mapContext}>
-          <header><div><span>Location context</span><h3>{activeDestination?.label ?? "Your route"}</h3></div><MapIcon aria-hidden="true" /></header>
-          <div className={styles.mapPlaceholder}><MapPin aria-hidden="true" /><strong>{activeDestination?.label ?? `${destinations.length} trip destinations`}</strong><span>Open the full Map to see route geometry and exact saved pins.</span></div>
-          <EasyTLinkButton href={pageMapHref} icon={ExternalLink} variant="quiet" fullWidth>Open full map</EasyTLinkButton>
+          <header><div><span>Your trip</span><h3>{activeDestination?.label ?? destinations.map((destination) => destination.label).join(" · ")}</h3></div><MapIcon aria-hidden="true" /></header>
+          <EasyTLinkButton href={pageMapHref} icon={MapIcon} variant="secondary" fullWidth>Open map</EasyTLinkButton>
         </section>
         {opportunity ? <section className={styles.dayContext}>
-          <span>Day {opportunity.day.dayNumber} opportunity</span>
+          <span>Free time</span>
           <h3>{titleCase(opportunity.dayPart)} in {opportunity.stop.name}</h3>
-          <p>No canonical activity is scheduled in this part of the day yet.</p>
-          <EasyTLinkButton href={itineraryWorkspaceHref(workingTrip.id, opportunity.day.dayNumber)} variant="secondary" fullWidth>View itinerary day</EasyTLinkButton>
+          <p>You’ve got space on Day {opportunity.day.dayNumber}.</p>
+          <EasyTButton variant="secondary" fullWidth onClick={() => {
+            setDestinationId(opportunity.stop.id);
+            setCategory("for-you");
+            document.getElementById("explore-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}>Find ideas for this time</EasyTButton>
         </section> : null}
-        <section className={styles.railHint}><Sparkles aria-hidden="true" /><div><strong>Turn an idea into part of the trip</strong><span>Open a card for detail, save it without scheduling, or add it to a real day.</span></div></section>
-        {category === "tours" || category === "day-trips" ? <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small> : null}
+        <section className={styles.railHint}><Sparkles aria-hidden="true" /><div><strong>Like something?</strong><span>Add it to a day or save it for later.</span></div></section>
+        {visibleResults.some((result) => result.provider === "viator") ? <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small> : null}
       </>}
     </aside>
   </section>;

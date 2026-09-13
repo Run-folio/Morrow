@@ -64,6 +64,9 @@ const tourItem: ActivityInventoryItem = {
   destination: { canonicalPlaceId: "cusco", label: "Cusco" },
   image: "/journey/peru-sacred-valley-route.jpg",
   tags: ["day trip", "culture"],
+  description: "A guided day through the Sacred Valley’s villages, terraces and archaeological sites.",
+  rating: 4.8,
+  reviewCount: 1264,
   duration: { fromMinutes: 480, toMinutes: 540 },
   price: { amount: 89, currency: "GBP" },
   productUrl: "https://www.viator.com/",
@@ -76,9 +79,59 @@ const longContentResult = {
   identity: "place:sacsayhuaman-long-content",
   sourceId: "sacsayhuaman-long-content",
   idea: { ...mapped[0]!.idea, id: "idea-cusco-sacsayhuaman-long-content", placeId: "sacsayhuaman-long-content" },
-  description: "A monumental Inca complex above Cusco, where carefully fitted stone walls frame broad views across the city. The site is extensive and exposed, so the pace and weather matter. Its canonical source supports the place identity and location; opening details and prices remain omitted because this fixture does not provide them.",
+  description: "A monumental Inca complex above Cusco, where carefully fitted stone walls frame broad views across the city. The site is extensive and exposed, so the pace and weather matter.",
 };
 const savedTrip = saveItineraryIdea(trip, mapped[0]!.idea);
+
+const mediterraneanTrip = structuredClone(trip);
+const stopReplacements = [
+  { id: "rome", name: "Rome", country: "Italy", canonicalPlaceId: "rome-it", latitude: 41.9028, longitude: 12.4964 },
+  { id: "athens", name: "Athens", country: "Greece", canonicalPlaceId: "athens-gr", latitude: 37.9838, longitude: 23.7275 },
+  { id: "naxos", name: "Naxos", country: "Greece", canonicalPlaceId: "naxos-gr", latitude: 37.1036, longitude: 25.3764 },
+];
+const oldStopIds = mediterraneanTrip.stops.map((stop) => stop.id);
+mediterraneanTrip.stops = mediterraneanTrip.stops.map((stop, index) => ({ ...stop, ...stopReplacements[index] }));
+mediterraneanTrip.planItems = mediterraneanTrip.planItems.map((day) => ({ ...day, stopId: stopReplacements[oldStopIds.indexOf(day.stopId)]!.id }));
+mediterraneanTrip.brief.itineraryIdeas = [];
+const piazza = exploreResultForPlace(mediterraneanTrip.stops[0]!, {
+  id: "piazza-del-campidoglio",
+  title: "Piazza del Campidoglio",
+  area: "Rome",
+  type: "Landmark",
+  tags: ["Cities"],
+  description: "A Renaissance square on Capitoline Hill, framed by civic palaces and reached by the broad Cordonata staircase.",
+  image: "/journey/immersive/route-italy-greece-1536.webp",
+  sourceUrl: "https://en.wikipedia.org/wiki/Piazza_del_Campidoglio",
+  coordinates: [12.4828, 41.8933],
+  qualityScore: 12,
+});
+const athensTicket = exploreResultForActivity(mediterraneanTrip.stops[1]!, {
+  provider: "viator",
+  source: "viator",
+  providerProductId: "acropolis-entry-story",
+  title: "Acropolis and Parthenon entry ticket",
+  description: "Timed entry to the Acropolis archaeological site and the Parthenon.",
+  destination: { canonicalPlaceId: "athens-gr", label: "Athens" },
+  image: "/journey/immersive/route-italy-greece-1536.webp",
+  tags: ["entry ticket", "culture"],
+  rating: 4.7,
+  reviewCount: 12480,
+  duration: { fromMinutes: 60, toMinutes: 120 },
+  price: { amount: 28, currency: "GBP" },
+  productUrl: "https://www.viator.com/",
+  provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
+}, mediterraneanTrip);
+const mediterraneanResults = [piazza, athensTicket];
+const rejectedImageResult = exploreResultForPlace(cusco, {
+  id: "technical-image",
+  title: "Historic walking quarter",
+  area: "Cusco",
+  type: "Landmark",
+  tags: ["Cities"],
+  description: "A compact historic quarter suited to an unhurried walk.",
+  image: "https://upload.wikimedia.org/route-map.png",
+  coordinates: [-71.97, -13.515],
+});
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Explore",
@@ -92,21 +145,35 @@ type Story = StoryObj<typeof meta>;
 
 export const AllTripForYou: Story = {};
 export const SpecificDestination: Story = { args: { initialDestinationId: "cusco" } };
+export const SelectedRomeStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "rome" } };
+export const SelectedAthensStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "athens" } };
+export const MixedOrganicAndViator: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults } };
+export const OrganicAttraction: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza] } };
+export const EntryTicket: Story = { args: { trip: mediterraneanTrip, initialResults: [athensTicket], initialDestinationId: "athens" } };
+export const Restaurant: Story = { args: { initialResults: [restaurant], initialCategory: "food" } };
 export const MustSee: Story = { args: { initialCategory: "must-see" } };
 export const Food: Story = { args: { initialCategory: "food" } };
 export const Tours: Story = { args: { initialCategory: "tours" } };
 export const ScheduledResult: Story = { args: { initialSelectedResultId: qorikancha.identity } };
 export const SavedResult: Story = { args: { trip: savedTrip, initialResults: results, initialSelectedResultId: mapped[0]!.identity } };
 export const SelectedDetail: Story = { args: { initialSelectedResultId: mapped[0]!.identity } };
+export const HoverContentStable: Story = { play: ({ canvasElement }) => { canvasElement.querySelector<HTMLElement>("[data-explore-card]")?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); } };
+export const KeyboardFocusStable: Story = { play: ({ canvasElement }) => { canvasElement.querySelector<HTMLButtonElement>("[data-explore-card] button[aria-label^='Open details']")?.focus(); } };
 export const MissingImage: Story = { args: { initialResults: [mapped[2]!] } };
+export const RejectedImageFallback: Story = { args: { initialResults: [rejectedImageResult] } };
 export const ProviderDegraded: Story = { args: { initialProviderState: "degraded" } };
 export const EmptyCategory: Story = { args: { initialCategory: "outdoors", initialResults: [restaurant] } };
 export const Mobile390Results: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile390HorizontalStops: Story = { args: { initialDestinationId: "arequipa" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430HorizontalStops: Story = { args: { initialDestinationId: "sacred-valley" }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile430SelectedDetail: Story = { args: { initialSelectedResultId: mapped[0]!.identity }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile390HorizontalCategories: Story = { args: { initialCategory: "day-trips" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile390OrganicCard: Story = { args: { initialResults: [mapped[0]!] }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430CommercialCard: Story = { args: { initialResults: [tour] }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile430LongTitle: Story = { args: { initialDestinationId: "sacred-valley", initialResults: [mapped[1]!] }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile390MissingImage: Story = { args: { initialResults: [mapped[2]!] }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430SavedState: Story = { args: { trip: savedTrip, initialResults: [mapped[0]!] }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const Mobile390ScheduledState: Story = { args: { initialResults: [qorikancha] }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile320Results: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile430LongDetail: Story = { args: { initialResults: [longContentResult], initialSelectedResultId: longContentResult.identity }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Mobile390LandscapeRecovery: Story = { args: { initialSelectedResultId: mapped[0]!.identity }, globals: { viewport: { value: "morrovia390", isRotated: true } } };
