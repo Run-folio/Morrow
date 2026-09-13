@@ -55,7 +55,7 @@ import ItineraryItemDetail, { type ItineraryItemDetailModel } from "./itinerary-
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
-import { useTripMutationPersistence } from "./use-trip-mutation-persistence";
+import { useTripShellMutation } from "./trip-shell-client";
 import styles from "./trip-explore-workspace.module.css";
 
 type ProviderState = Exclude<ExploreDiscoveryLaneStatus, "idle">;
@@ -217,7 +217,7 @@ export default function TripExploreWorkspace({
   initialProviderState = "ready",
   requestedDayNumber,
 }: TripExploreWorkspaceProps) {
-  const mutation = useTripMutationPersistence(trip, true);
+  const mutation = useTripShellMutation();
   const workingTrip = mutation.trip;
   const destinations = useMemo(() => exploreDestinationOptions(trip), [trip]);
   const validInitialDestination = initialDestinationId === "all" || destinations.some((item) => item.id === initialDestinationId)

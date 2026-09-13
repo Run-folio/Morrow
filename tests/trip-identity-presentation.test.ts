@@ -25,9 +25,10 @@ test("rename persistence reuses the guest recovery and authenticated CAS owner",
   const shell = read("components/easyt/trip-shell-client.tsx");
   const persistence = read("components/easyt/use-trip-mutation-persistence.ts");
   const storage = read("lib/easyt/storage.ts");
-  assert.match(shell, /useTripMutationPersistence\(trip, true\)/);
+  assert.match(shell, /TripShellCanonicalMutationProvider[\s\S]*useTripMutationPersistence\(trip, true\)/);
+  assert.match(shell, /TripShellIdentityAndActions[\s\S]*useTripShellMutation\(\)/);
   assert.match(persistence, /saveTripRecovery\(next/);
-  assert.match(persistence, /queueRef\.current\.enqueue\(next, recovery\.handle\)/);
+  assert.match(persistence, /queueRef\.current!\.enqueue\(next, recovery\.handle\)/);
   assert.match(storage, /customTitle: brief\.customTitle/);
 });
 

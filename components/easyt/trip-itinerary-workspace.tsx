@@ -78,6 +78,7 @@ import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-state
 import ResilientImage from "@/components/easyt/resilient-image";
 import DestinationAccommodationModule from "@/components/easyt/destination-accommodation-module";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
+import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
@@ -418,7 +419,9 @@ export default function TripItineraryWorkspace({
   activityAction,
   initialActivityInventory,
 }: ItineraryWorkspaceProps) {
-  const mutation = useTripMutationPersistence(trip, presentation === "shell");
+  const shellMutation = useOptionalTripShellMutation();
+  const localMutation = useTripMutationPersistence(trip, presentation === "shell" && !shellMutation);
+  const mutation = shellMutation ?? localMutation;
   const workingTrip = mutation.trip;
   const days = useMemo(
     () => [...workingTrip.planItems].sort((left, right) => left.dayNumber - right.dayNumber),

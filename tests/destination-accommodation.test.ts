@@ -167,6 +167,8 @@ test("V. production stories and CSS cover the required responsive destination-st
 
 test("cross-surface shell accepts a newer canonical cache only after recovery is clear", () => {
   const shell = readFileSync("components/easyt/trip-shell-client.tsx", "utf8");
+  const persistence = readFileSync("components/easyt/use-trip-mutation-persistence.ts", "utf8");
   assert.match(shell, /change\.kind !== "cache" \|\| loadTripRecovery/);
-  assert.match(shell, /canonicalTripRevisionCanReplace\(current, cached\) \? cached : current/);
+  assert.match(shell, /mutation\.adoptCanonicalTrip\(cached\)/);
+  assert.match(persistence, /!canonicalTripRevisionCanReplace\(tripRef\.current, saved\)/);
 });

@@ -80,6 +80,13 @@ function mergeAuthoredDocument(base: unknown, authored: unknown, canonical: unkn
   return structuredClone(authored);
 }
 
+export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip, canonical: EasyTTrip) {
+  if (!sameTripDocument(base, authored) || !sameTripDocument(base, canonical)) return structuredClone(authored);
+  const merged = mergeAuthoredDocument(base, authored, canonical) as EasyTTrip;
+  merged.updatedAt = canonical.updatedAt;
+  return merged;
+}
+
 /**
  * Serialize edits made by one open trip document. Each queued edit is rebased
  * from its known canonical revision onto the preceding successful account
@@ -103,9 +110,8 @@ export function createTripMutationPersistenceQueue(persist: PersistTripMutation)
           && sameTripDocument(authoredBase, authored)
           && sameTripDocument(latestCanonical, authored);
         const submitted = canRebase
-          ? mergeAuthoredDocument(authoredBase, authored, latestCanonical) as EasyTTrip
+          ? mergeTripMutationDocuments(authoredBase, authored, latestCanonical)
           : authored;
-        if (canRebase) submitted.updatedAt = latestCanonical.updatedAt;
         const saved = await persist(submitted, recovery);
         if (requestGeneration === generation) canonicalByRevision.set(saved.updatedAt, structuredClone(saved));
         return saved;

@@ -28,7 +28,8 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /workingTrip\.brief\.customActivities\?\.\[active\.dayNumber\]/);
   assert.match(itinerary, /mapWorkspaceHref\(workingTrip\.id, active\.stopId, "see", active\.dayNumber\)/);
   assert.match(itinerary, /<InsertionControl/);
-  assert.match(itinerary, /useTripMutationPersistence\(trip, presentation === "shell"\)/);
+  assert.match(itinerary, /useOptionalTripShellMutation\(\)/);
+  assert.match(itinerary, /const mutation = shellMutation \?\? localMutation/);
 });
 
 test("day header keeps the core actions and removes the More and Luna presentation", () => {

@@ -81,7 +81,7 @@ test("usable results suppress provider status while blocking failure and valid e
 });
 
 test("Explore reuses canonical persistence, scheduling, identity and detail owners", () => {
-  assert.match(workspace, /useTripMutationPersistence/);
+  assert.match(workspace, /useTripShellMutation\(\)/);
   assert.match(workspace, /saveItineraryIdea\(current, result\.idea\)/);
   assert.match(workspace, /scheduleItineraryIdea\(current, result\.idea, target\.day\.id, target\.dayPart\)/);
   assert.match(workspace, /dedupeExploreResults/);

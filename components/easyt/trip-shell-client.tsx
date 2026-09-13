@@ -21,7 +21,7 @@ import {
 } from "@/lib/easyt/storage";
 import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
-import { canonicalTripRevisionCanReplace, journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
+import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
 import { shouldResetOverviewEntry, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
@@ -29,27 +29,36 @@ import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
-import { useTripMutationPersistence } from "./use-trip-mutation-persistence";
+import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
 
 const TripShellTripContext = createContext<EasyTTrip | null>(null);
+const TripShellMutationContext = createContext<TripMutationPersistence | null>(null);
 
-export function TripShellIdentityAndActions({
-  dateLabel,
-  duration,
-  editHref,
-  routeLabel,
-  status,
-  trip,
-}: {
-  dateLabel: string;
-  duration: number | null;
-  editHref: string;
-  routeLabel: string;
-  status: string;
-  trip: EasyTTrip;
-}) {
+export function TripShellCanonicalMutationProvider({ trip, children }: { trip: EasyTTrip; children: ReactNode }) {
   const mutation = useTripMutationPersistence(trip, true);
+  return <TripShellMutationContext.Provider value={mutation}>{children}</TripShellMutationContext.Provider>;
+}
+
+export function useTripShellMutation() {
+  const mutation = useContext(TripShellMutationContext);
+  if (!mutation) throw new Error("useTripShellMutation must be used inside TripShell");
+  return mutation;
+}
+
+export function useOptionalTripShellMutation() {
+  return useContext(TripShellMutationContext);
+}
+
+export function TripShellIdentityAndActions() {
+  const mutation = useTripShellMutation();
+  const trip = mutation.trip;
+  const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
+  const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
+  const duration = dateFacts.durationDays;
+  const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";
+  const editHref = `/journey/new?trip=${encodeURIComponent(trip.id)}`;
   const [renameOpen, setRenameOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [validationError, setValidationError] = useState("");
@@ -76,7 +85,7 @@ export function TripShellIdentityAndActions({
       <h1 id="trip-shell-title">{tripDisplayTitle(mutation.trip)}</h1>
       <p className={styles.routeSummary}>{routeLabel}</p>
       <dl className={styles.metadata}>
-        <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateLabel}</dd></div>
+        <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
         <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
         <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Stops</span></dt><dd>{mutation.trip.stops.length} {mutation.trip.stops.length === 1 ? "stop" : "stops"}</dd></div>
         <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
@@ -109,21 +118,21 @@ export function TripShellIdentityAndActions({
 }
 
 export function TripShellTripProvider({ trip, children, cacheTrip = true }: { trip: EasyTTrip; children: ReactNode; cacheTrip?: boolean }) {
+  const mutation = useTripShellMutation();
   const pathname = usePathname();
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(null);
   const authenticatedOwnerRef = useRef<string | null>(cacheTrip ? trip.ownerId : null);
   if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
   const [returnTarget, setReturnTarget] = useState(pathname);
-  const [activeTrip, setActiveTrip] = useState(trip);
   const [deviceRecovery, setDeviceRecovery] = useState<TripRecoveryRecord | null>(null);
   const [discardFailed, setDiscardFailed] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const trackedWorkspaceVisitRef = useRef<string | null>(null);
   const conflictActions = tripConflictResolutionActions(trip.id);
-  const visibleActiveTrip = activeTrip.id === trip.id
-    && activeTrip.ownerId === trip.ownerId
-    ? activeTrip
+  const visibleActiveTrip = mutation.trip.id === trip.id
+    && mutation.trip.ownerId === trip.ownerId
+    ? mutation.trip
     : trip;
   const visibleDeviceRecovery = cacheTrip
     && deviceRecovery?.tripId === trip.id
@@ -158,26 +167,19 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
   }, [ownerBoundary]);
 
   useEffect(() => {
-    setActiveTrip((current) => current.id === trip.id
-      && current.ownerId === trip.ownerId
-      && !canonicalTripRevisionCanReplace(current, trip)
-      ? current
-      : trip);
     // A server-resolved deep link is canonical for this owner. Refresh the
     // clean offline cache without replacing a pending recovery document.
     if (cacheTrip) cacheCanonicalTrip(trip);
   }, [cacheTrip, trip]);
+
   useEffect(() => {
     const onActiveTripChange = (event: Event) => {
       const next = (event as CustomEvent<unknown>).detail;
-      // A canonical cloud workspace remains canonical. Device edits are
-      // surfaced below and opened only when the traveller explicitly chooses
-      // that copy. Browser-only resolver shells still receive their live edit.
-      if (!cacheTrip && isEasyTTrip(next) && next.id === trip.id && next.ownerId === trip.ownerId) setActiveTrip(next);
+      if (!cacheTrip && isEasyTTrip(next)) mutation.adoptDeviceTrip(next);
     };
     window.addEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
     return () => window.removeEventListener(EASYT_ACTIVE_TRIP_CHANGE_EVENT, onActiveTripChange);
-  }, [cacheTrip, trip]);
+  }, [cacheTrip, mutation.adoptDeviceTrip]);
 
   useEffect(() => {
     if (!cacheTrip) {
@@ -201,12 +203,16 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     return subscribeToTripStorage(trip.ownerId, trip.id, (change) => {
       refreshRecovery();
       if (change.kind !== "cache" || loadTripRecovery(trip.id, trip.ownerId)) return;
+      // This provider owns authenticated mutations. Its queue adopts its own
+      // acknowledgement in order; resetting it from the synchronous cache
+      // event could sever later edits already queued behind that save.
+      if (mutation.hasPendingSaves()) return;
       const cached = loadLocalTrip(trip.id, trip.ownerId);
       if (cached?.id === trip.id && cached.ownerId === trip.ownerId) {
-        setActiveTrip((current) => canonicalTripRevisionCanReplace(current, cached) ? cached : current);
+        mutation.adoptCanonicalTrip(cached);
       }
     });
-  }, [cacheTrip, trip]);
+  }, [cacheTrip, mutation.adoptCanonicalTrip, mutation.hasPendingSaves, trip]);
 
   useEffect(() => {
     const visitKey = workspaceVisitKey(pathname);
