@@ -3,7 +3,7 @@ import { activityInventoryIdentity, itineraryIdeaForActivityInventory } from "./
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestAffinity, type ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
 import { preferredItineraryDayPart } from "./itinerary-activity-placement.ts";
-import { ideaStateForPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
+import { ideaStateForPlace, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
 
@@ -179,20 +179,7 @@ export function exploreResultForPlace(stop: TripStop, place: ItineraryDiscoveryP
 }
 
 export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPlace): ExploreResult {
-  const idea: ItineraryIdea = {
-    id: `idea-${stop.id}-${place.id.replace(/[^a-z0-9_-]+/gi, "-")}`,
-    stopId: stop.id,
-    placeId: place.id,
-    title: place.name,
-    category: "restaurant",
-    coordinates: place.coordinates,
-    area: place.address || stop.name,
-    placeType: place.category,
-    description: undefined,
-    sourceUrl: place.mapsUrl,
-    source: "personalised-recommendation",
-    reasons: [],
-  };
+  const idea = itineraryIdeaForLocalPlace(stop.id, place);
   const result: ExploreResult = {
     identity: "",
     stopId: stop.id,

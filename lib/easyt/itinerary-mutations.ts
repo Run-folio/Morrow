@@ -251,6 +251,54 @@ export function moveItineraryActivity(
   };
 }
 
+/** Move one unambiguously traveller-authored activity between canonical days. */
+export function moveItineraryActivityToDay(
+  trip: EasyTTrip,
+  location: ItineraryActivityLocation,
+  targetDayNumber: number,
+  targetNoteIndex: number,
+): ItineraryMutationResult {
+  if (location.dayNumber === targetDayNumber) return moveItineraryActivity(trip, location, targetNoteIndex);
+  const protection = itineraryActivityProtection(trip, location);
+  const source = planItemForDay(trip, location.dayNumber);
+  const target = planItemForDay(trip, targetDayNumber);
+  if (!protection.editable || protection.note === null || !source || !target) {
+    return unchanged(trip, "This item cannot be safely moved.");
+  }
+  if (target.notes.some((note) => normalized(note) === normalized(protection.note!))) {
+    return unchanged(trip, "This activity is already on the target day.");
+  }
+  const boundedTarget = Math.max(0, Math.min(targetNoteIndex, target.notes.length));
+  const sourceNotes = [...source.notes];
+  const sourceParts = alignedDayParts(source);
+  const [title] = sourceNotes.splice(location.noteIndex, 1);
+  const [dayPart] = sourceParts.splice(location.noteIndex, 1);
+  const targetNotes = [...target.notes];
+  const targetParts = alignedDayParts(target);
+  targetNotes.splice(boundedTarget, 0, title!);
+  targetParts.splice(boundedTarget, 0, dayPart ?? null);
+  return {
+    changed: true,
+    trip: {
+      ...trip,
+      brief: {
+        ...trip.brief,
+        customActivities: {
+          ...(trip.brief.customActivities ?? {}),
+          [location.dayNumber]: (trip.brief.customActivities?.[location.dayNumber] ?? [])
+            .filter((activity) => normalized(activity) !== normalized(title!)),
+          [targetDayNumber]: [...(trip.brief.customActivities?.[targetDayNumber] ?? []), title!],
+        },
+      },
+      planItems: trip.planItems.map((item) => item.id === source.id
+        ? withAlignedSchedule(item, sourceNotes, sourceParts)
+        : item.id === target.id
+          ? withAlignedSchedule(item, targetNotes, targetParts)
+          : item),
+    },
+  };
+}
+
 export function assignItineraryActivityDayPart(
   trip: EasyTTrip,
   location: ItineraryActivityLocation,

@@ -38,6 +38,7 @@ import {
 import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
@@ -167,12 +168,13 @@ function detailForResult(result: ExploreResult, state: ReturnType<typeof explore
     duration: result.duration,
     price: result.price,
     dateSummary: when,
-    bookingStatus: state.state === "planned" ? "Added to itinerary" : state.state === "saved" ? "Saved for later" : null,
+    bookingStatus: state.state === "planned" ? `Added to ${when}` : state.state === "saved" ? "Saved for later" : null,
     whyFit,
     whyFitLabel: "Why this fits your trip",
     practical: [
       ...(result.provider === "viator" ? [{ label: "Provider", value: "Viator" }] : []),
       ...(result.rating !== undefined ? [{ label: "Rating", value: `${result.rating.toFixed(1)}${result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}` }] : []),
+      ...(!result.coordinates ? [{ label: "Map", value: "Unavailable · No trustworthy coordinates are attached to this result yet." }] : []),
     ],
   };
 }
@@ -388,7 +390,7 @@ export default function TripExploreWorkspace({
           return <article className={`${styles.card} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state} data-explore-card>
             <div className={styles.cardImage}>
               <ResilientImage src={result.image} alt="" fallback={<span><MapPin aria-hidden="true" /><small>Image unavailable</small></span>} />
-              {state.state === "saved" ? <span className={styles.savedBadge}><Bookmark aria-hidden="true" />Saved</span> : null}
+              {state.state === "saved" ? <span className={styles.savedBadge}><Bookmark aria-hidden="true" />Saved for later</span> : null}
             </div>
             <div className={styles.cardBody}>
               <EasyTButton type="button" className={styles.cardOpen} iconOnly variant="quiet" aria-label={`Open details for ${result.title}`} aria-pressed={selectedResultId === result.identity} onClick={(event) => openDetail(result, event.currentTarget)}>Open details</EasyTButton>
@@ -441,7 +443,15 @@ export default function TripExploreWorkspace({
         const whyFit = whyFitForResult(workingTrip, selectedResult);
         const mode = selectedResult.kind === "restaurant" ? "eat" : "see";
         const mapHref = selectedResult.coordinates
-          ? mapWorkspaceHref(workingTrip.id, selectedResult.stopId, mode, target?.day.dayNumber)
+          ? mapWorkspaceHref(
+            workingTrip.id,
+            selectedResult.stopId,
+            mode,
+            state.state === "planned" ? state.day.dayNumber : target?.day.dayNumber,
+            state.state === "available"
+              ? mapResultSelectionId(mode, selectedResult.sourceId, selectedResult.stopId)
+              : mapResultSelectionIdForIdea(state.idea.id),
+          )
           : null;
         return <ItineraryItemDetail
           detail={detailForResult(selectedResult, state, whyFit)}

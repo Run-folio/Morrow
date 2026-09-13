@@ -1,5 +1,5 @@
 import { mappedPlacePinId } from "./map-place-itinerary.ts";
-import type { EasyTTrip, PlannerMapPin } from "./trip.ts";
+import type { EasyTTrip, ItineraryDayPart, PlannerMapPin } from "./trip.ts";
 
 export type MapResultKind = "stay" | "eat" | "see";
 export type MapResultState = "result" | "saved" | "scheduled";
@@ -7,6 +7,11 @@ export type MapResultState = "result" | "saved" | "scheduled";
 export type MapResultPlace = {
   selectionId: string;
   sourceId: string;
+  /** Canonical route-stop context; repeated destination names must not collapse. */
+  stopId: string | null;
+  dayNumber: number | null;
+  dayPart: ItineraryDayPart | null;
+  canonicalItemId?: string;
   name: string;
   coordinates: [number, number];
   kind: MapResultKind;
@@ -23,7 +28,8 @@ export type MapResultPlace = {
   persistedPinId?: string;
 };
 
-type TransientMapPlace = Omit<MapResultPlace, "selectionId" | "kind" | "sourceId" | "state"> & { id: string };
+type TransientMapPlace = Omit<MapResultPlace, "selectionId" | "kind" | "sourceId" | "state" | "stopId" | "dayNumber" | "dayPart" | "canonicalItemId"> & { id: string };
+type MapResultContext = { stopId?: string | null; dayNumber?: number | null };
 
 const mappedPinPrefix = "venue-";
 
@@ -46,11 +52,22 @@ function pinKind(category: PlannerMapPin["category"]): MapResultKind | null {
   return null;
 }
 
-export function mapResultForLocalPlace(place: TransientMapPlace, kind: "stay" | "eat"): MapResultPlace {
+export function mapResultSelectionId(kind: MapResultKind, sourceId: string, stopId?: string | null) {
+  return `result:${kind}:${stopId ? `${stopId}:` : ""}${sourceId}`;
+}
+
+export function mapResultSelectionIdForIdea(ideaId: string) {
+  return `idea:${ideaId}`;
+}
+
+export function mapResultForLocalPlace(place: TransientMapPlace, kind: "stay" | "eat", context: MapResultContext = {}): MapResultPlace {
   return {
     ...place,
-    selectionId: `result:${kind}:${place.id}`,
+    selectionId: mapResultSelectionId(kind, place.id, context.stopId),
     sourceId: place.id,
+    stopId: context.stopId ?? null,
+    dayNumber: context.dayNumber ?? null,
+    dayPart: null,
     kind,
     state: "result",
   };
@@ -62,11 +79,14 @@ export function mapResultForDiscoveryPlace(place: {
   area: string;
   type: string;
   coordinates: [number, number];
-}): MapResultPlace | null {
+}, context: MapResultContext = {}): MapResultPlace | null {
   if (!validCoordinates(place.coordinates)) return null;
   return {
-    selectionId: `result:see:${place.id}`,
+    selectionId: mapResultSelectionId("see", place.id, context.stopId),
     sourceId: place.id,
+    stopId: context.stopId ?? null,
+    dayNumber: context.dayNumber ?? null,
+    dayPart: null,
     name: place.title,
     coordinates: place.coordinates,
     kind: "see",
@@ -100,11 +120,15 @@ export function projectPersistedMapResults(trip: EasyTTrip | null): {
       }
     }
     results.push({
-      selectionId: `idea:${idea.id}`,
+      selectionId: mapResultSelectionIdForIdea(idea.id),
       sourceId: idea.placeId,
+      stopId: idea.stopId,
+      dayNumber: idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId)?.dayNumber ?? null : null,
+      dayPart: idea.dayPart ?? null,
+      canonicalItemId: idea.id,
       name: idea.title,
       coordinates: idea.coordinates,
-      kind: "see",
+      kind: idea.category === "restaurant" ? "eat" : "see",
       state: idea.dayId ? "scheduled" : "saved",
       address: idea.area ?? trip.stops.find((stop) => stop.id === idea.stopId)?.name ?? "Saved to this trip",
       category: idea.placeType ?? idea.category,
@@ -122,6 +146,9 @@ export function projectPersistedMapResults(trip: EasyTTrip | null): {
     results.push({
       selectionId: `saved:${pin.id}`,
       sourceId: pin.id,
+      stopId: trip.planItems.find((item) => item.dayNumber === pin.dayNumber)?.stopId ?? null,
+      dayNumber: pin.dayNumber,
+      dayPart: null,
       name: pin.title,
       coordinates,
       kind,
@@ -156,6 +183,7 @@ export function mergeMapResults(
       });
     const matchIndex = remaining.findIndex((candidate) => (
       candidate.kind === result.kind
+      && (!candidate.stopId || !result.stopId || candidate.stopId === result.stopId)
       && (candidate.sourceId === result.sourceId || Boolean(expectedPinId && candidate.persistedPinId === expectedPinId))
     ));
     if (matchIndex < 0) return result;

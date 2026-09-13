@@ -17,7 +17,6 @@ import { compactAffiliateDisclosure } from "@/components/easyt/affiliate-link";
 import { localFinderQueryKey } from "@/lib/easyt/local-finder-query";
 
 export type JourneyLocalPlace = { id: string; name: string; nativeName?: string; address: string; category: string; coordinates: [number, number]; mapsUrl: string; distanceKm?: number; operational?: true; availability?: "available" | "check"; provider?: "booking-demand" | "google-places" | "openstreetmap"; rating?: number; priceLevel?: string; price?: { total: number; currency: string }; cancellation?: string };
-type SavedLocalPlace = Pick<JourneyLocalPlace, "id" | "name" | "coordinates" | "provider">;
 type MealPace = "quick" | "relaxed" | "occasion";
 type MealMood = "local" | "comfort" | "surprise";
 type StayStyle = "simple" | "character" | "comfort";
@@ -79,7 +78,7 @@ function inventorySearchPayload(value: unknown) {
   };
 }
 
-export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, country, locale = "en", dayId, coordinates, interests, staySearch, selectedPlaceId, onPlaceSelect, onViewOnMap, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { ownerId?: string | null; tripId?: string; stopId?: string; kind: "restaurant" | "stay"; city: string; country: string; locale?: string; dayId: string; coordinates: [number, number]; interests?: readonly TripInterest[]; staySearch?: StaySearch; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyLocalPlace) => void; onViewOnMap?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: SavedLocalPlace, kind: "restaurant" | "stay", replaced?: SavedLocalPlace) => void; onRemovePlace?: (place: SavedLocalPlace, kind: "restaurant" | "stay") => void }) {
+export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, savedPlaceIds, onPlaceSelect, onViewOnMap, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { ownerId?: string | null; tripId?: string; stopId?: string; kind: "restaurant" | "stay"; city: string; country: string; locale?: string; dayId: string; dayNumber?: number; coordinates: [number, number]; interests?: readonly TripInterest[]; staySearch?: StaySearch; selectedPlaceId?: string | null; savedPlaceIds?: readonly string[]; onPlaceSelect?: (place: JourneyLocalPlace) => void; onViewOnMap?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | void; onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void }) {
   const { data: session } = authClient.useSession();
   const contextOwnerId = session?.user?.id ?? ownerId ?? null;
   // These defaults are the existing “Show best matches” choice. Keeping them
@@ -104,6 +103,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
   const autoSelectedRef = useRef(false);
   const loadedResultKeyRef = useRef<string | null>(null);
   const storageKey = `journey:local-${kind}:v3`;
+  const canonicalSavedState = savedPlaceIds !== undefined;
   const label = kind === "restaurant" ? "Restaurant finder" : "Stay finder";
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
   const isReady = kind === "restaurant" ? Boolean(meal && pace && mood) : Boolean(stayStyle);
@@ -199,10 +199,10 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
       .finally(() => { if (active) setLoading(false); });
     try {
       const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
-      if (store[dayId]) { setSaved(store[dayId]); setChosen(store[dayId]); }
+      if (!canonicalSavedState && store[dayId]) { setSaved(store[dayId]); setChosen(store[dayId]); }
     } catch { /* The finder remains usable without local persistence. */ }
     return () => { active = false; controller.abort(); };
-  }, [city, country, dayId, kind, latitude, locale, longitude, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
+  }, [canonicalSavedState, city, country, dayId, kind, latitude, locale, longitude, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
 
   useEffect(() => {
     if (kind !== "restaurant" || !saved || !onRestaurantSelect) return onRestaurantSelect?.();
@@ -217,7 +217,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
     const savedKey = `${kind}:${dayId}:${saved.id}`;
     if (reportedSaveRef.current === savedKey) return;
     reportedSaveRef.current = savedKey;
-    onSavePlace?.({ id: saved.id, name: saved.name, coordinates: saved.coordinates, provider: saved.provider }, kind);
+    onSavePlace?.(saved, kind);
   }, [dayId, kind, onSavePlace, saved]);
 
   const candidates = useMemo(() => {
@@ -269,13 +269,17 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
     // Keep the last saved restaurant as local UI context without turning it
     // into a request to remove an earlier canonical restaurant.
     const replaced = kind === "stay" && saved && saved.id !== chosen.id ? saved : undefined;
-    setSaved(chosen);
-    onSavePlace?.({ id: chosen.id, name: chosen.name, coordinates: chosen.coordinates, provider: chosen.provider }, kind, replaced ? { id: replaced.id, name: replaced.name, coordinates: replaced.coordinates, provider: replaced.provider } : undefined);
+    const accepted = onSavePlace?.(chosen, kind, replaced ?? undefined);
+    if (accepted === false) return;
+    if (!canonicalSavedState) setSaved(chosen);
     reportedSaveRef.current = `${kind}:${dayId}:${chosen.id}`;
-    try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
+    if (!canonicalSavedState) {
+      try { window.localStorage.setItem(storageKey, JSON.stringify({ ...JSON.parse(window.localStorage.getItem(storageKey) ?? "{}"), [dayId]: chosen })); } catch { /* no-op */ }
+    }
   };
   const reset = () => {
-    if (saved) onRemovePlace?.({ id: saved.id, name: saved.name, coordinates: saved.coordinates, provider: saved.provider }, kind);
+    const target = canonicalSavedState && chosen && savedPlaceIds?.includes(chosen.id) ? chosen : saved;
+    if (target && onRemovePlace?.(target, kind) === false) return;
     setSaved(null);
     setChosen(null);
     setMeal("dinner");
@@ -283,11 +287,13 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
     setMood("local");
     setStayStyle("simple");
     setMoment("now");
-    try {
-      const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
-      delete store[dayId];
-      window.localStorage.setItem(storageKey, JSON.stringify(store));
-    } catch { /* The in-memory finder state is still cleared. */ }
+    if (!canonicalSavedState) {
+      try {
+        const store = JSON.parse(window.localStorage.getItem(storageKey) ?? "{}") as Record<string, JourneyLocalPlace>;
+        delete store[dayId];
+        window.localStorage.setItem(storageKey, JSON.stringify(store));
+      } catch { /* The in-memory finder state is still cleared. */ }
+    }
   };
 
   return <section className={`${styles.restaurantFinder} ${kind === "stay" ? styles.finderStay : styles.finderEat}`} aria-label={`${label} for ${city}`}>
@@ -298,7 +304,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
     {!loading && kind === "restaurant" && !displayPlaces.length && searchUnavailable ? <MorroviaSectionStatus state="error" title="Local results are unavailable" detail="The day and map are unchanged. Try the provider again when your connection is ready." retryLabel="Try local search again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
     {!loading && !displayPlaces.length && !searchUnavailable && accommodationInventoryStatus !== "unavailable" ? <p className={styles.restaurantLocalNote}>{kind === "stay" ? "No stays came back for this overnight base. Try the search again or use the accommodation link to check current options." : "No mapped venues came back for this area. Open Maps to search around the day’s location instead."}</p> : null}
     {!loading && displayPlaces.length ? <details className={styles.finderFilters}><summary>Filters</summary><div>{kind === "stay" ? ([{ value: "simple", label: "Central" }, { value: "character", label: "Character" }, { value: "comfort", label: "Comfort" }] as const).map((option) => <button key={option.value} type="button" aria-pressed={stayStyle === option.value} onClick={() => setStayStyle(option.value)}>{option.label}</button>) : <>{finderMoments.map((option) => <button key={option.value} type="button" aria-pressed={moment === option.value} onClick={() => setMoment(option.value)}>{option.label}</button>)}{(["lunch", "dinner"] as const).map((option) => <button key={option} type="button" aria-pressed={meal === option} onClick={() => setMeal(option)}>{option}</button>)}{(["quick", "relaxed", "occasion"] as const).map((option) => <button key={option} type="button" aria-pressed={pace === option} onClick={() => setPace(option)}>{option}</button>)}{(["local", "comfort", "surprise"] as const).map((option) => <button key={option} type="button" aria-pressed={mood === option} onClick={() => setMood(option)}>{option}</button>)}</>}</div></details> : null}
-    {chosen ? (() => { const chosenIsSaved = saved?.id === chosen.id; return <article className={`${styles.restaurantResult} ${kind === "stay" ? styles.featuredStay : ""}`} aria-current="true"><p><span>{chosenIsSaved ? `Added ${kind === "stay" ? "stay" : meal}` : `Selected ${kind === "stay" ? "stay" : meal}`}</span>{chosenIsSaved ? <b>In today’s plan ↑</b> : kind === "stay" && chosen.availability === "available" ? <b>Room option found</b> : null}</p><h3>{chosen.name}</h3>{chosen.nativeName ? <span>{chosen.nativeName}</span> : null}<span><MapPin aria-hidden="true" /> {chosen.address}</span>{kind === "stay" ? chosen.availability === "available" && (chosen.price || chosen.rating) ? <p className={styles.restaurantFit}>{[chosen.price ? `${chosen.price.currency} ${chosen.price.total.toFixed(0)} for your dates` : null, chosen.rating ? `${chosen.rating.toFixed(1)} rating` : null].filter(Boolean).join(" · ")}</p> : null : <p className={styles.restaurantFit}>{recommendNearbyPlace(chosen, { kind, moment, mood, pace, profile, interests }).reasons.join(" · ")}</p>}<div className={styles.restaurantActions}>{onPlaceSelect ? <button type="button" aria-label={`View ${chosen.name} on the map`} onClick={() => (onViewOnMap ?? onPlaceSelect)(chosen)}>View on map</button> : <a href={chosen.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Maps <ArrowUpRight aria-hidden="true" /></a>}{kind === "stay" && stayBookingUrl ? <span className={styles.affiliateAction}><a href={stayBookingUrl} target="_blank" rel="sponsored noopener noreferrer" aria-label={`Check availability for ${chosen.name} on Trip.com, opens in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: affiliatePartners.tripCom.provider, placement: "map_stay_finder", workspace_view: "map", destination_count: 1, ...(tripId ? { trip_id: tripId } : {}), ...(stopId ? { stop_id: stopId } : {}) })}>Check availability <ArrowUpRight aria-hidden="true" /></a></span> : null}<button type="button" className={styles.restaurantSave} onClick={save} disabled={chosenIsSaved}>{chosenIsSaved ? "Added to itinerary" : kind === "stay" && saved ? "Replace stay" : `Add ${kind === "stay" ? "stay" : "to today"}`}</button><button type="button" aria-label="Change selection" onClick={reset}><RotateCcw aria-hidden="true" /></button></div></article>; })() : null}
+    {chosen ? (() => { const chosenIsSaved = canonicalSavedState ? Boolean(savedPlaceIds?.includes(chosen.id)) : saved?.id === chosen.id; return <article className={`${styles.restaurantResult} ${kind === "stay" ? styles.featuredStay : ""}`} aria-current="true"><p><span>{chosenIsSaved ? kind === "stay" ? "Stay added" : `Added to Day ${dayNumber ?? ""}`.trim() : `Selected ${kind === "stay" ? "stay" : meal}`}</span>{chosenIsSaved ? <b>{dayNumber ? `Day ${dayNumber}` : "In today’s plan"} ↑</b> : kind === "stay" && chosen.availability === "available" ? <b>Room option found</b> : null}</p><h3>{chosen.name}</h3>{chosen.nativeName ? <span>{chosen.nativeName}</span> : null}<span><MapPin aria-hidden="true" /> {chosen.address}</span>{kind === "stay" ? chosen.availability === "available" && (chosen.price || chosen.rating) ? <p className={styles.restaurantFit}>{[chosen.price ? `${chosen.price.currency} ${chosen.price.total.toFixed(0)} for your dates` : null, chosen.rating ? `${chosen.rating.toFixed(1)} rating` : null].filter(Boolean).join(" · ")}</p> : null : <p className={styles.restaurantFit}>{recommendNearbyPlace(chosen, { kind, moment, mood, pace, profile, interests }).reasons.join(" · ")}</p>}<div className={styles.restaurantActions}>{onPlaceSelect ? <button type="button" aria-label={`View ${chosen.name} on the map`} onClick={() => (onViewOnMap ?? onPlaceSelect)(chosen)}>View on map</button> : <a href={chosen.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Maps <ArrowUpRight aria-hidden="true" /></a>}{kind === "stay" && stayBookingUrl ? <span className={styles.affiliateAction}><a href={stayBookingUrl} target="_blank" rel="sponsored noopener noreferrer" aria-label={`Check availability for ${chosen.name} on Trip.com, opens in a new tab`} onClick={() => trackEvent("affiliate_click", { category: "accommodation", provider: affiliatePartners.tripCom.provider, placement: "map_stay_finder", workspace_view: "map", destination_count: 1, ...(tripId ? { trip_id: tripId } : {}), ...(stopId ? { stop_id: stopId } : {}) })}>Check availability <ArrowUpRight aria-hidden="true" /></a></span> : null}<button type="button" className={styles.restaurantSave} onClick={save} disabled={chosenIsSaved}>{chosenIsSaved ? dayNumber ? `Added to Day ${dayNumber}` : "Added to itinerary" : kind === "stay" && saved ? "Replace stay" : kind === "stay" ? "Add stay" : dayNumber ? `Add to Day ${dayNumber}` : "Add to day"}</button><button type="button" aria-label="Change selection" onClick={reset}><RotateCcw aria-hidden="true" /></button></div></article>; })() : null}
     {kind === "stay" && stayBookingUrl ? <small className={styles.finderAffiliateDisclosure}>{compactAffiliateDisclosure} <Link href="/journey/affiliate-disclosure">How partner links work</Link></small> : null}
     {isReady && candidates.length ? <div className={styles.localCandidates}><p><span>{kind === "restaurant" ? "RECOMMENDED NEARBY" : liveInventory ? "AVAILABLE FOR YOUR DATES" : "RECOMMENDED NEARBY"}</span><b>{chosen ? "Browse options" : "Best match"}</b></p>{candidates.map(({ place, recommendation }, index) => { const selected = place.id === chosen?.id || place.id === selectedPlaceId; return <button key={place.id} type="button" aria-pressed={selected} className={selected ? styles.localCandidateSelected : ""} onClick={() => choosePlace(place)}><span><strong>{!chosen && index === 0 ? "Best match · " : ""}{place.name}</strong>{place.nativeName ? <small>{place.nativeName}</small> : null}<small>{place.address}</small><small className={styles.finderWhy}>{kind === "stay" ? `${place.availability === "available" ? "Available for your dates" : place.operational === true ? "Operational property · check rooms" : "Mapped property · check before booking"}${place.rating ? ` · ${place.rating.toFixed(1)} rating` : ""}${place.price ? ` · ${place.price.currency} ${place.price.total.toFixed(0)}` : ""}` : `${recommendation.reasons[0]} · ${recommendation.confidence} confidence`}</small></span><em>{place.category.replace(/_/g, " ")}</em></button>; })}</div> : null}
   </section>;

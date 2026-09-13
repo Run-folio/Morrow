@@ -95,18 +95,18 @@ test("Overview preparation stay actions target the stable Map stop in Stay mode"
   assert.equal(mapWorkspaceHref(trip.id, "sacred-valley", "stay"), "/journey/trip-real/map?stop=sacred-valley&mode=stay");
   assert.deepEqual(
     parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&mode=stay")),
-    { stopId: "sacred-valley", mode: "stay", dayNumber: null },
+    { stopId: "sacred-valley", mode: "stay", dayNumber: null, resultSelectionId: null },
   );
   assert.equal(mapWorkspaceHref(trip.id, "sacred-valley", "see", 3), "/journey/trip-real/map?stop=sacred-valley&mode=see&day=3");
   assert.deepEqual(
     parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&mode=see&day=3")),
-    { stopId: "sacred-valley", mode: "see", dayNumber: 3 },
+    { stopId: "sacred-valley", mode: "see", dayNumber: 3, resultSelectionId: null },
   );
 });
 
 test("invalid Map and Itinerary deep links fall back to the first canonical context", () => {
-  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=missing&mode=hotel")), { stopId: "cusco", mode: "plan", dayNumber: null });
-  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&day=2")), { stopId: "sacred-valley", mode: "plan", dayNumber: null });
+  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=missing&mode=hotel")), { stopId: "cusco", mode: "plan", dayNumber: null, resultSelectionId: null });
+  assert.deepEqual(parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&day=2")), { stopId: "sacred-valley", mode: "plan", dayNumber: null, resultSelectionId: null });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=3junk")), { dayNumber: 1 });
   assert.deepEqual(parseItineraryWorkspaceTarget(trip, new URLSearchParams("day=99")), { dayNumber: 1 });
 });

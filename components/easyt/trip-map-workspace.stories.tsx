@@ -427,6 +427,26 @@ export const TourCapture: Story = {
   args: { storyTrip: tourTripFixture, presentation: "focused", storyState: { mapMode: "overview", expandedMap: false, destinationExpanded: true } },
 };
 
+const scheduledResultHandoffParameters = {
+  nextjs: {
+    appDirectory: true,
+    navigation: {
+      pathname: "/journey/tour-cusco-sacred-valley-arequipa/map",
+      query: { stop: "cusco", mode: "see", day: "2", result: "idea:tour-idea-qorikancha" },
+    },
+  },
+};
+
+export const ScheduledResultHandoff: Story = {
+  args: { storyTrip: tourTripFixture, storyState: { mapMode: "detail", selectedMapResultId: "idea:tour-idea-qorikancha" } },
+  parameters: scheduledResultHandoffParameters,
+};
+
+export const ScheduledResultHandoffMobile390: Story = {
+  ...ScheduledResultHandoff,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 const attractionHandoffParameters = {
   nextjs: {
     appDirectory: true,

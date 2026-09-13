@@ -25,10 +25,12 @@ import { getCountryIntelligence } from "@/lib/country-intelligence";
 import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadLocalTrip, loadRememberedOwner, loadTripFromEasyT, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue } from "@/lib/easyt/trip-mutation-persistence";
-import { addMappedPlaceToTrip, removeMappedPlaceFromTrip, type MappedItineraryPlace } from "@/lib/easyt/map-place-itinerary";
+import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
 import { mapResultForDiscoveryPlace, mapResultForLocalPlace, mergeMapResults, projectPersistedMapResults, type MapResultPlace } from "@/lib/easyt/map-result-selection";
-import { preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { itineraryIdeaForLocalPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
+import { composeItineraryDay } from "@/lib/easyt/itinerary-day-composition";
+import { insertItineraryActivity, itineraryActivityProtection, moveItineraryActivityToDay, moveItineraryIdeaActivity, removeItineraryActivity, renameItineraryActivity } from "@/lib/easyt/itinerary-mutations";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -326,6 +328,7 @@ export type JourneyMapPlannerWorkspaceProps = {
     shapeDayTab?: "plan" | "stay" | "eat" | "see";
     localPlaces?: JourneyLocalPlace[];
     selectedLocalPlaceId?: string;
+    selectedMapResultId?: string;
     selectedRouteLegId?: string;
     mobileSheetSize?: MobileMapSheetSize;
     mobileSheetCollapsed?: boolean;
@@ -459,6 +462,7 @@ export function JourneyMapPlannerWorkspace({
   const activeBrowserOwnerIdRef = useRef(activeBrowserOwnerId);
   activeBrowserOwnerIdRef.current = activeBrowserOwnerId;
   const appliedDeepLinkRef = useRef<string | null>(null);
+  const appliedMapResultTargetRef = useRef<string | null>(null);
   const journey = useMemo(() => {
     const base = customTrip
       ? makeEasyTJourney(customTrip)
@@ -546,6 +550,22 @@ export function JourneyMapPlannerWorkspace({
       ? `Estimación de planificación de Morrovia: unas ${duration} de puerta a puerta; comprueba los horarios actuales.`
       : `Morrovia planning estimate: about ${duration} door to door; check current schedules.`;
   });
+  const selectedActivityCapabilities = useMemo(() => {
+    if (!customTrip || !selectedPlanItem) return [];
+    const composition = composeItineraryDay(customTrip, selectedPlanItem.id);
+    const activities = composition
+      ? [...Object.values(composition.planned).flat(), ...composition.unslotted]
+      : [];
+    return selectedPlanItem.notes.map((title, index) => {
+      const composed = activities.find((activity) => activity.noteIndex === index);
+      if (composed?.source === "itinerary-idea") {
+        const editable = !composed.booking;
+        return { movable: editable, removable: editable, renamable: false };
+      }
+      const protection = itineraryActivityProtection(customTrip, { dayNumber: selectedPlanItem.dayNumber, noteIndex: index, title });
+      return { movable: protection.editable, removable: protection.editable, renamable: protection.editable };
+    });
+  }, [customTrip, selectedPlanItem]);
   const selectedDayNotes = selectedPlanItem ? customTrip?.brief.dayNotes?.[selectedPlanItem.dayNumber] ?? [] : [];
   useEffect(() => {
     setLanguage(languageFromStorage());
@@ -755,15 +775,27 @@ export function JourneyMapPlannerWorkspace({
   const persistedMapProjection = useMemo(() => projectPersistedMapResults(customTrip), [customTrip]);
   const selectedTripInterests = useMemo(() => customTrip ? tripIntentForTrip(customTrip).preferences.interests : [], [customTrip]);
   const transientMapResults = useMemo(() => shapeDayTab === "stay" || shapeDayTab === "eat"
-    ? localMapPlaces.map((place) => mapResultForLocalPlace(place, shapeDayTab))
+    ? localMapPlaces.map((place) => mapResultForLocalPlace(place, shapeDayTab, {
+      stopId: selectedPlanItem?.stopId ?? selectedMapStopId,
+      dayNumber: selectedPlanItem?.dayNumber ?? null,
+    }))
     : shapeDayTab === "see"
-      ? seeMapPlaces.flatMap((place) => mapResultForDiscoveryPlace(place) ?? [])
-      : [], [localMapPlaces, seeMapPlaces, shapeDayTab]);
+      ? seeMapPlaces.flatMap((place) => mapResultForDiscoveryPlace(place, {
+        stopId: selectedPlanItem?.stopId ?? selectedMapStopId,
+        dayNumber: selectedPlanItem?.dayNumber ?? null,
+      }) ?? [])
+      : [], [localMapPlaces, seeMapPlaces, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, shapeDayTab]);
   const mapResults = useMemo(() => mergeMapResults(
     persistedMapProjection.results,
     transientMapResults,
     selectedPlanItem?.dayNumber ?? null,
   ), [persistedMapProjection.results, selectedPlanItem?.dayNumber, transientMapResults]);
+  const scheduledRestaurantIds = useMemo(() => mapResults
+    .filter((result) => result.kind === "eat"
+      && result.state === "scheduled"
+      && result.stopId === selectedPlanItem?.stopId
+      && result.dayNumber === selectedPlanItem?.dayNumber)
+    .map((result) => result.sourceId), [mapResults, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   const selectedLocalPlace = selectedMapResult;
   const selectedLocalPlaceId = selectedMapResult?.selectionId ?? null;
   const selectedMapStopFirstItem = customTrip?.planItems.filter((item) => item.stopId === selectedTripStop?.id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
@@ -1050,7 +1082,7 @@ export function JourneyMapPlannerWorkspace({
   }, [activeBrowserOwnerId, customTrip, hasUnsavedChanges, savePlannerRecovery]);
 
   const updatePlannerTrip = useCallback((update: (trip: EasyTTrip) => EasyTTrip, message = "Trip updated") => {
-    if (!customTrip) return;
+    if (!customTrip) return false;
     const base: EasyTTrip = {
       ...customTrip,
       brief: {
@@ -1068,18 +1100,26 @@ export function JourneyMapPlannerWorkspace({
     // Keep the last cloud updatedAt as the compare-and-swap token until the
     // repository returns a new canonical revision after a successful save.
     const next = update(base);
+    if (JSON.stringify(next) === JSON.stringify(customTrip)) return false;
+    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId, Boolean(session?.user && !cloudConflictTrip));
+    if (!recovery.stored) {
+      setCloudSaveError(recovery.blockedByExistingRecovery
+        ? "This browser has newer trip changes saved separately. This change was not applied; review the saved recovery before trying again."
+        : "Browser storage is blocked. This change was not applied; your existing plan remains unchanged.");
+      return false;
+    }
     setLastPlannerTrip(customTrip);
     setUndoMessage(message);
     setCustomTrip(next);
     setCustomBrief(customBriefFromEasyT(next));
-    const recovery = savePlannerRecovery(next, activeBrowserOwnerId ?? next.ownerId, Boolean(session?.user && !cloudConflictTrip));
-    if (recovery.stored && !cloudConflictTrip) {
+    if (!cloudConflictTrip) {
       setCloudSaveError("");
       setCloudSaveState("idle");
     }
     if (!cloudConflictTrip) setCloudAuthInterrupted(false);
     setHasUnsavedChanges(true);
-    if (recovery.stored) persistPlannerMutation(next, recovery.handle);
+    persistPlannerMutation(next, recovery.handle);
+    return true;
   }, [activeBrowserOwnerId, cloudConflictTrip, customTrip, persistPlannerMutation, savePlannerRecovery, session?.user]);
 
   useEffect(() => {
@@ -1165,49 +1205,50 @@ export function JourneyMapPlannerWorkspace({
   }, [customTrip, journey.calendar, language, updatePlannerTrip]);
 
   const moveActivity = useCallback((from: { dayNumber: number; index: number }, to: { dayNumber: number; index: number }) => {
-    updatePlannerTrip((trip) => {
-      const planItems = trip.planItems.map((item) => ({
-        ...item,
-        notes: [...item.notes],
-        ...(item.noteDayParts ? { noteDayParts: [...item.noteDayParts] } : {}),
-      }));
-      const source = planItems.find((item) => item.dayNumber === from.dayNumber);
-      const target = planItems.find((item) => item.dayNumber === to.dayNumber);
-      if (!source || !target || !source.notes[from.index]) return trip;
-      const sourceParts = source.notes.map((_, index) => source.noteDayParts?.[index] ?? null);
-      const targetParts = source === target
-        ? sourceParts
-        : target.notes.map((_, index) => target.noteDayParts?.[index] ?? null);
-      const [activity] = source.notes.splice(from.index, 1);
-      const [dayPart] = sourceParts.splice(from.index, 1);
-      const targetIndex = source === target && from.index < to.index ? to.index - 1 : to.index;
-      target.notes.splice(Math.max(0, targetIndex), 0, activity);
-      targetParts.splice(Math.max(0, targetIndex), 0, dayPart ?? null);
-      if (source.noteDayParts || target.noteDayParts || dayPart) {
-        source.noteDayParts = sourceParts;
-        target.noteDayParts = targetParts;
+    const changed = updatePlannerTrip((trip) => {
+      const source = trip.planItems.find((item) => item.dayNumber === from.dayNumber);
+      const target = trip.planItems.find((item) => item.dayNumber === to.dayNumber);
+      const title = source?.notes[from.index];
+      if (!source || !target || !title) return trip;
+      const normalizedTitle = title.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+      const matchingIdeas = (trip.brief.itineraryIdeas ?? []).filter((idea) => (
+        idea.dayId === source.id
+        && idea.title.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalizedTitle
+      ));
+      if (matchingIdeas.length === 1) {
+        const idea = matchingIdeas[0]!;
+        if (target.stopId !== idea.stopId) return trip;
+        const scheduled = scheduleItineraryIdea(trip, idea, target.id, idea.dayPart ?? null);
+        const scheduledTarget = scheduled.planItems.find((item) => item.id === target.id);
+        if (!scheduledTarget) return trip;
+        return moveItineraryIdeaActivity(
+          scheduled,
+          idea.id,
+          Math.max(0, Math.min(to.index, scheduledTarget.notes.length)),
+        ).trip;
       }
-      const customActivities = { ...(trip.brief.customActivities ?? {}) };
-      const sourceCustom = [...(customActivities[from.dayNumber] ?? [])];
-      if (sourceCustom.includes(activity)) {
-        const customIndex = sourceCustom.indexOf(activity);
-        sourceCustom.splice(customIndex, 1);
-        customActivities[from.dayNumber] = sourceCustom;
-        customActivities[to.dayNumber] = [...(customActivities[to.dayNumber] ?? []), activity];
-      }
-      return { ...trip, brief: { ...trip.brief, customActivities }, planItems };
+      return moveItineraryActivityToDay(
+        trip,
+        { dayNumber: from.dayNumber, noteIndex: from.index, title },
+        to.dayNumber,
+        to.index,
+      ).trip;
     }, "Activity moved");
-    setPlannerWarning(from.dayNumber === to.dayNumber ? "Activity order updated." : "Activity moved to a different day. Morrovia has recalculated the travel sequence.");
+    setPlannerWarning(changed
+      ? from.dayNumber === to.dayNumber ? "Activity order updated." : "Activity moved to a different day."
+      : "This activity cannot move to that day without changing its destination context.");
   }, [updatePlannerTrip]);
 
   const addActivity = () => {
     const title = activityDraft.trim();
     if (!title || !selectedPlanItem) return;
-    updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, customActivities: { ...(trip.brief.customActivities ?? {}), [selectedPlanItem.dayNumber]: [...(trip.brief.customActivities?.[selectedPlanItem.dayNumber] ?? []), title] } }, planItems: trip.planItems.map((item) => item.dayNumber === selectedPlanItem.dayNumber ? {
-      ...item,
-      notes: [...item.notes, title],
-      ...(item.noteDayParts ? { noteDayParts: [...item.noteDayParts, null] } : {}),
-    } : item) }));
+    const changed = updatePlannerTrip((trip) => insertItineraryActivity(
+      trip,
+      selectedPlanItem.dayNumber,
+      selectedPlanItem.notes.length,
+      title,
+    ).trip);
+    if (!changed) return;
     setActivityDraft("");
   };
 
@@ -1240,35 +1281,28 @@ export function JourneyMapPlannerWorkspace({
   };
 
   const renameActivity = useCallback((location: { dayNumber: number; index: number }, title: string) => {
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: {
-        ...trip.brief,
-        customActivities: {
-          ...(trip.brief.customActivities ?? {}),
-          [location.dayNumber]: (trip.brief.customActivities?.[location.dayNumber] ?? []).map((activity) => activity === trip.planItems.find((item) => item.dayNumber === location.dayNumber)?.notes[location.index] ? title : activity),
-        },
-      },
-      planItems: trip.planItems.map((plan) => plan.dayNumber === location.dayNumber ? { ...plan, notes: plan.notes.map((activity, activityIndex) => activityIndex === location.index ? title : activity) } : plan),
-    }));
+    updatePlannerTrip((trip) => renameItineraryActivity(trip, {
+      dayNumber: location.dayNumber,
+      noteIndex: location.index,
+      title: trip.planItems.find((item) => item.dayNumber === location.dayNumber)?.notes[location.index],
+    }, title).trip);
   }, [updatePlannerTrip]);
 
   const removeActivity = useCallback((location: { dayNumber: number; index: number }, title: string) => {
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: {
-        ...trip.brief,
-        customActivities: {
-          ...(trip.brief.customActivities ?? {}),
-          [location.dayNumber]: (trip.brief.customActivities?.[location.dayNumber] ?? []).filter((activity) => activity !== title),
-        },
-      },
-      planItems: trip.planItems.map((plan) => plan.dayNumber === location.dayNumber ? {
-        ...plan,
-        notes: plan.notes.filter((_, activityIndex) => activityIndex !== location.index),
-        ...(plan.noteDayParts ? { noteDayParts: plan.noteDayParts.filter((_, activityIndex) => activityIndex !== location.index) } : {}),
-      } : plan),
-    }));
+    updatePlannerTrip((trip) => {
+      const day = trip.planItems.find((item) => item.dayNumber === location.dayNumber);
+      const normalizedTitle = title.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+      const matchingIdeas = (trip.brief.itineraryIdeas ?? []).filter((idea) => (
+        idea.dayId === day?.id
+        && idea.title.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalizedTitle
+      ));
+      if (matchingIdeas.length === 1) return removeItineraryIdea(trip, matchingIdeas[0]!.id);
+      return removeItineraryActivity(trip, {
+        dayNumber: location.dayNumber,
+        noteIndex: location.index,
+        title,
+      }).trip;
+    });
   }, [updatePlannerTrip]);
 
   const removeDayNote = useCallback((location: { dayNumber: number; index: number }) => {
@@ -1368,25 +1402,47 @@ export function JourneyMapPlannerWorkspace({
     setSelectedPlannerPin(nextPin);
   };
 
-  const saveLocalVenue = useCallback((venue: MappedItineraryPlace, category: "restaurant" | "stay", replaced?: MappedItineraryPlace) => {
-    if (!customTrip || !selectedPlanItem) return;
+  const saveLocalVenue = useCallback((venue: JourneyLocalPlace, category: "restaurant" | "stay", replaced?: JourneyLocalPlace) => {
+    if (!customTrip || !selectedPlanItem) return false;
     const replacedStay = category === "stay" ? replaced : undefined;
-    updatePlannerTrip(
-      (trip) => addMappedPlaceToTrip(
-        replacedStay ? removeMappedPlaceFromTrip(trip, replacedStay, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId) : trip,
-        venue,
-        category,
-        selectedPlanItem.dayNumber,
-        selectedPlanItem.stopId,
-      ),
+    return updatePlannerTrip(
+      (trip) => {
+        if (category === "restaurant") {
+          const candidate = itineraryIdeaForLocalPlace(selectedPlanItem.stopId, venue);
+          const existing = (trip.brief.itineraryIdeas ?? []).find((idea) => idea.id === candidate.id);
+          return scheduleItineraryIdea(
+            trip,
+            existing ?? candidate,
+            selectedPlanItem.id,
+            preferredItineraryDayPart(trip, selectedPlanItem.id, "restaurant"),
+          );
+        }
+        return addMappedPlaceToTrip(
+          replacedStay ? removeMappedPlaceFromTrip(trip, replacedStay, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId) : trip,
+          venue,
+          category,
+          selectedPlanItem.dayNumber,
+          selectedPlanItem.stopId,
+        );
+      },
       `${category === "restaurant" ? "Restaurant" : "Stay"} added to the day`,
     );
   }, [customTrip, selectedPlanItem, updatePlannerTrip]);
 
-  const removeLocalVenue = useCallback((venue: MappedItineraryPlace, category: "restaurant" | "stay") => {
-    if (!customTrip || !selectedPlanItem) return;
-    updatePlannerTrip(
-      (trip) => removeMappedPlaceFromTrip(trip, venue, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId),
+  const removeLocalVenue = useCallback((venue: JourneyLocalPlace, category: "restaurant" | "stay") => {
+    if (!customTrip || !selectedPlanItem) return false;
+    return updatePlannerTrip(
+      (trip) => {
+        if (category === "restaurant") {
+          const idea = (trip.brief.itineraryIdeas ?? []).find((candidate) => (
+            candidate.stopId === selectedPlanItem.stopId
+            && candidate.placeId === venue.id
+            && candidate.category === "restaurant"
+          ));
+          if (idea) return removeItineraryIdea(trip, idea.id);
+        }
+        return removeMappedPlaceFromTrip(trip, venue, category, selectedPlanItem.dayNumber, selectedPlanItem.stopId);
+      },
       `${category === "restaurant" ? "Restaurant" : "Stay"} removed from the day`,
     );
   }, [customTrip, selectedPlanItem, updatePlannerTrip]);
@@ -1832,6 +1888,24 @@ export function JourneyMapPlannerWorkspace({
   }, [customTrip, isShellPresentation, searchParams, storyState?.selectedRouteLegId]);
 
   useEffect(() => {
+    if (!isShellPresentation || !customTrip) return;
+    const target = parseMapWorkspaceTarget(customTrip, searchParams);
+    if (!target.resultSelectionId) return;
+    const targetKey = `${customTrip.id}?${searchParams.toString()}`;
+    if (appliedMapResultTargetRef.current === targetKey) return;
+    const result = mapResults.find((candidate) => candidate.selectionId === target.resultSelectionId);
+    if (!result || (result.stopId && result.stopId !== target.stopId)) return;
+    appliedMapResultTargetRef.current = targetKey;
+    setSelectedMapResult(result);
+    setSelectedPlannerPin(null);
+    setSelectedRouteLegId(null);
+    setMapMode("detail");
+    setMobileShapeDayOpen(false);
+    setMobileMapSheetCollapsed(false);
+    setMobileMapSheetSize("medium");
+  }, [customTrip, isShellPresentation, mapResults, searchParams]);
+
+  useEffect(() => {
     if (!storyState || !planHydrated || !customTrip) return;
     if (storyState.mapMode) setMapMode(storyState.mapMode);
     if (storyState.pinPlacement !== undefined) setPinPlacementMode(storyState.pinPlacement);
@@ -1857,6 +1931,12 @@ export function JourneyMapPlannerWorkspace({
     if (storyState.mobileShapeDayOpen !== undefined) setMobileShapeDayOpen(storyState.mobileShapeDayOpen);
     if (storyState.tripStatusExpanded !== undefined) setTripStatusExpanded(storyState.tripStatusExpanded);
   }, [customTrip, planHydrated, storyState]);
+
+  useEffect(() => {
+    if (!storyState?.selectedMapResultId) return;
+    const result = mapResults.find((candidate) => candidate.selectionId === storyState.selectedMapResultId);
+    if (result) setSelectedMapResult(result);
+  }, [mapResults, storyState?.selectedMapResultId]);
 
   useEffect(() => {
     if (!customBrief) return;
@@ -2285,8 +2365,10 @@ export function JourneyMapPlannerWorkspace({
             <p>{selectedLocalPlace.address || `${selectedLocalPlace.category} near ${selected.city}`}</p>
             <dl className={styles.mapContextFacts}>
               <div><dt>Type</dt><dd>{selectedLocalPlace.category.replace(/_/g, " ")}</dd></div>
+              {selectedLocalPlace.dayNumber ? <div><dt>Day</dt><dd>Day {selectedLocalPlace.dayNumber}</dd></div> : null}
+              {selectedLocalPlace.dayPart ? <div><dt>Part of day</dt><dd>{selectedLocalPlace.dayPart[0]!.toUpperCase() + selectedLocalPlace.dayPart.slice(1)}</dd></div> : null}
               <div><dt>Distance</dt><dd>{selectedLocalPlace.distanceKm !== undefined ? `${selectedLocalPlace.distanceKm.toFixed(1)} km` : "Nearby"}</dd></div>
-              <div><dt>Source</dt><dd>{selectedLocalPlace.state === "scheduled" ? "Scheduled itinerary" : selectedLocalPlace.state === "saved" ? "Saved trip" : selectedLocalPlace.provider === "google-places" ? "Google Places" : selectedLocalPlace.provider === "booking-demand" ? "Booking provider" : "OpenStreetMap"}</dd></div>
+              <div><dt>Source</dt><dd>{selectedLocalPlace.state === "scheduled" ? "Scheduled itinerary" : selectedLocalPlace.state === "saved" ? "Saved for later" : selectedLocalPlace.provider === "google-places" ? "Google Places" : selectedLocalPlace.provider === "booking-demand" ? "Booking provider" : "OpenStreetMap"}</dd></div>
               {selectedLocalPlace.operational === true ? <div><dt>Status</dt><dd>Operational</dd></div> : null}
             </dl>
             <div className={styles.mapExternalActions}><a href={selectedLocalPlace.mapsUrl} target="_blank" rel="noopener noreferrer">Open in Google Maps <ArrowUpRight aria-hidden="true" /></a></div>
@@ -2421,6 +2503,7 @@ export function JourneyMapPlannerWorkspace({
           activity={{
             items: selectedActivities,
             customItems: customTrip?.brief.customActivities?.[selectedPlanItem?.dayNumber ?? -1] ?? [],
+            capabilities: selectedActivityCapabilities,
             draft: activityDraft,
             dragged: draggedActivity,
             onDraftChange: setActivityDraft,
@@ -2444,11 +2527,20 @@ export function JourneyMapPlannerWorkspace({
           copy={planCopy}
         /> : null}
         {shapeDayTab === "see" && customTrip ? <div ref={mapResultActionsOrientationTarget} className={styles.shapeDaySee}><JourneyItineraryRefinement key={selectedPlanItem?.stopId} compact trip={customTrip} stop={customTrip.stops.find((stop) => stop.id === selectedPlanItem?.stopId)} day={selectedPlanItem ?? undefined} selectedPlaceId={selectedMapResult?.kind === "see" ? selectedMapResult.sourceId : null} onPlaceSelect={selectSeePlace} onPlacesChange={setSeeMapPlaces} onSelectionChange={handleAttractionSelection} onExploreMap={() => setMapMode("detail")} activityAction={activityAction}
-          onSaveInventoryIdea={(idea: ItineraryIdea) => { updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Saved for later"); return true; }}
-          onScheduleInventoryIdea={(idea: ItineraryIdea) => { if (!selectedPlanItem) return false; updatePlannerTrip((trip) => scheduleItineraryIdea(trip, idea, selectedPlanItem.id, preferredItineraryDayPart(trip, selectedPlanItem.id, idea.category)), `Added to Day ${selectedPlanItem.dayNumber}`); trackEvent("attraction_selected", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem.dayNumber, source: "map_see" }); return true; }}
-          onRemoveInventoryIdea={(idea: ItineraryIdea) => { updatePlannerTrip((trip) => removeItineraryIdea(trip, idea.id), "Activity removed"); trackEvent("attraction_removed", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem?.dayNumber, source: "map_see" }); return true; }}
+          onSaveInventoryIdea={(idea: ItineraryIdea) => updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Saved for later")}
+          onScheduleInventoryIdea={(idea: ItineraryIdea) => {
+            if (!selectedPlanItem) return false;
+            const changed = updatePlannerTrip((trip) => scheduleItineraryIdea(trip, idea, selectedPlanItem.id, preferredItineraryDayPart(trip, selectedPlanItem.id, idea.category)), `Added to Day ${selectedPlanItem.dayNumber}`);
+            if (changed) trackEvent("attraction_selected", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem.dayNumber, source: "map_see" });
+            return changed;
+          }}
+          onRemoveInventoryIdea={(idea: ItineraryIdea) => {
+            const changed = updatePlannerTrip((trip) => removeItineraryIdea(trip, idea.id), "Activity removed");
+            if (changed) trackEvent("attraction_removed", { trip_id: customTrip.id, stop_id: idea.stopId, day_number: selectedPlanItem?.dayNumber, source: "map_see" });
+            return changed;
+          }}
         /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") ? selectedMapResult.sourceId : null} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
         </div>
       </div>

@@ -56,6 +56,7 @@ import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { exploreWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import {
   itineraryDayLegs,
@@ -708,6 +709,19 @@ export default function TripItineraryWorkspace({
   const hasContextRail = true;
   const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber);
   const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber);
+  const selectedItemMapHref = selectedActivity
+    ? selectedActivity.mapPinId
+      ? mapWorkspaceHref(
+        workingTrip.id,
+        active.stopId,
+        selectedActivity.category === "restaurant" ? "eat" : "see",
+        active.dayNumber,
+        mapResultSelectionIdForIdea(selectedActivity.id),
+      )
+      : null
+    : selectedStayPinId
+      ? mapWorkspaceHref(workingTrip.id, active.stopId, "stay", active.dayNumber, `saved:${selectedStayPinId}`)
+      : null;
   const itemCount = displayNotes.length + (dayComposition?.ideas.scheduledHereCount ?? 0) + (incomingLeg ? 1 : 0);
   const ActiveDayIcon = iconForPlanItem(active.type);
   const dayPendingKey = `itinerary-day-${active.dayNumber}`;
@@ -735,6 +749,7 @@ export default function TripItineraryWorkspace({
         practical: [
           ...(rating ? [{ label: "Rating", value: `${rating}${reviews ? ` · ${reviews.toLocaleString()} reviews` : ""}` }] : []),
           ...(booking?.confirmation ? [{ label: "Booking", value: "Confirmed" }] : []),
+          ...(!selectedActivity.mapPinId ? [{ label: "Map", value: "Unavailable · No trustworthy coordinates are attached to this item yet." }] : []),
         ],
         dayPart: selectedActivity.dayPart,
         canMoveTime: selectedActivity.dayPartEditable,
@@ -757,6 +772,7 @@ export default function TripItineraryWorkspace({
         practical: [
           ...(stayBooking.importDetails?.provider ? [{ label: "Provider", value: stayBooking.importDetails.provider }] : []),
           ...(stayBooking.confirmation ? [{ label: "Booking", value: "Confirmation saved" }] : []),
+          ...(!selectedStayPinId ? [{ label: "Map", value: "Unavailable · No trustworthy coordinates are attached to this stay yet." }] : []),
         ],
         canRemove: true,
       };
@@ -1197,7 +1213,7 @@ export default function TripItineraryWorkspace({
       {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail ? styles.contextRailDetail : ""}`} aria-label={selectedDetail ? "Selected itinerary item details" : "Selected day planning context"}>
         {selectedDetail ? <ItineraryItemDetail
           detail={selectedDetail}
-          mapHref={mapPlanHref}
+          mapHref={selectedItemMapHref}
           pending={selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
           onClose={closeSelectedDetail}
           onDayPartChange={selectedActivity?.dayPartEditable ? (part) => changeActivityDayPart(selectedActivity, part) : undefined}
@@ -1716,7 +1732,7 @@ function RecommendationDiscoveryCard({ place, interestReason, language, options,
         onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)}
         onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)}
       /> : null}
-      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
+      {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
     </div>
   </article>;
 }

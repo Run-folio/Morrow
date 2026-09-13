@@ -57,7 +57,8 @@ test("Find ideas focuses the existing current-day suggestion surface and becomes
 });
 
 test("Map attraction Add schedules the canonical activity instead of only toggling selectedPlaces", () => {
-  assert.match(refinement, /day \? `Add to Day \$\{day\.dayNumber\}` : "Add to trip"/);
+  assert.match(refinement, /day \? `Add to Day \$\{day\.dayNumber\}` : "Add to a day"/);
+  assert.match(refinement, /`Added to Day \$\{scheduledDay\}\$\{scheduledPart/);
   assert.match(refinement, /scheduledIdea\?\.dayPart/);
   assert.match(mapWorkspace, /setDiscoveryPlaceScheduled\(trip, \{ stopId, place, dayId: targetDay\.id, selected \}\)/);
   assert.doesNotMatch(mapWorkspace.slice(mapWorkspace.indexOf("const handleAttractionSelection"), mapWorkspace.indexOf("const undoPlannerEdit")), /selected\s*\? \[\.\.\.\(trip\.brief\.selectedPlaces/);

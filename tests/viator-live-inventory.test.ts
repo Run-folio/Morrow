@@ -71,9 +71,11 @@ test("stable product identity prevents duplicate Save while similar titles from 
     planItems: [...once.planItems, { ...once.planItems[0]!, id: "day-3", stopId: "paris-return", dayNumber: 3, date: "2026-09-03" }],
   };
   const sameProductAtRepeatedStop = itineraryIdeaForActivityInventory("paris-return", item("A", "Louvre highlights tour"));
-  assert.equal(saveItineraryIdea(repeatedStop, sameProductAtRepeatedStop), repeatedStop);
-  assert.equal(scheduleItineraryIdea(repeatedStop, sameProductAtRepeatedStop, "day-3"), repeatedStop);
-  assert.equal(ideaStateForPlace(repeatedStop, "paris-return", sameProductAtRepeatedStop.placeId).state, "saved");
+  const savedAtBothStops = saveItineraryIdea(repeatedStop, sameProductAtRepeatedStop);
+  assert.deepEqual(savedAtBothStops.brief.itineraryIdeas?.map((idea) => idea.stopId), ["paris-stop", "paris-return"]);
+  const plannedReturn = scheduleItineraryIdea(savedAtBothStops, sameProductAtRepeatedStop, "day-3");
+  assert.equal(ideaStateForPlace(plannedReturn, "paris-stop", sameProductAtRepeatedStop.placeId).state, "saved");
+  assert.equal(ideaStateForPlace(plannedReturn, "paris-return", sameProductAtRepeatedStop.placeId).state, "planned");
 });
 
 test("selected provider metadata survives reload and moving/removing a coordinate-less activity cleans canonical day state", () => {

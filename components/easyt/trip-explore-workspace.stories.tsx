@@ -122,6 +122,37 @@ const athensTicket = exploreResultForActivity(mediterraneanTrip.stops[1]!, {
   provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-12T00:00:00.000Z" },
 }, mediterraneanTrip);
 const mediterraneanResults = [piazza, athensTicket];
+const repeatedAthensTrip = structuredClone(mediterraneanTrip);
+repeatedAthensTrip.id = "storybook-athens-naxos-athens";
+repeatedAthensTrip.title = "Athens, Naxos & Athens";
+const repeatedStopReplacements = [
+  { id: "athens-outbound", name: "Athens", country: "Greece", canonicalPlaceId: "athens-gr", latitude: 37.9838, longitude: 23.7275 },
+  { id: "naxos", name: "Naxos", country: "Greece", canonicalPlaceId: "naxos-gr", latitude: 37.1036, longitude: 25.3764 },
+  { id: "athens-return", name: "Athens", country: "Greece", canonicalPlaceId: "athens-gr", latitude: 37.9838, longitude: 23.7275 },
+];
+const repeatedSourceStopIds = repeatedAthensTrip.stops.map((stop) => stop.id);
+repeatedAthensTrip.stops = repeatedAthensTrip.stops.map((stop, index) => ({ ...stop, ...repeatedStopReplacements[index] }));
+repeatedAthensTrip.planItems = repeatedAthensTrip.planItems.map((item) => ({
+  ...item,
+  stopId: repeatedStopReplacements[repeatedSourceStopIds.indexOf(item.stopId)]!.id,
+}));
+repeatedAthensTrip.brief.itineraryIdeas = [];
+const lycabettusFixture = {
+  id: "mount-lycabettus",
+  title: "Mount Lycabettus",
+  area: "Athens",
+  type: "Viewpoint",
+  tags: ["Nature"],
+  description: "A hilltop viewpoint above central Athens.",
+  image: "/journey/immersive/route-italy-greece-1536.webp",
+  sourceUrl: "https://en.wikipedia.org/wiki/Mount_Lycabettus",
+  coordinates: [23.7438, 37.9819] as [number, number],
+  qualityScore: 10,
+};
+const repeatedAthensResults = [
+  exploreResultForPlace(repeatedAthensTrip.stops[0]!, lycabettusFixture),
+  exploreResultForPlace(repeatedAthensTrip.stops[2]!, lycabettusFixture),
+];
 const rejectedImageResult = exploreResultForPlace(cusco, {
   id: "technical-image",
   title: "Historic walking quarter",
@@ -150,6 +181,8 @@ export const SelectedAthensStop: Story = { args: { trip: mediterraneanTrip, init
 export const MixedOrganicAndViator: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults } };
 export const OrganicAttraction: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza] } };
 export const EntryTicket: Story = { args: { trip: mediterraneanTrip, initialResults: [athensTicket], initialDestinationId: "athens" } };
+export const RepeatedAthensOutbound: Story = { args: { trip: repeatedAthensTrip, initialResults: repeatedAthensResults, initialDestinationId: "athens-outbound" } };
+export const RepeatedAthensReturnMobile390: Story = { args: { trip: repeatedAthensTrip, initialResults: repeatedAthensResults, initialDestinationId: "athens-return" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Restaurant: Story = { args: { initialResults: [restaurant], initialCategory: "food" } };
 export const MustSee: Story = { args: { initialCategory: "must-see" } };
 export const Food: Story = { args: { initialCategory: "food" } };

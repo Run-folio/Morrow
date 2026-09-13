@@ -7,6 +7,15 @@ const ideaId = (stopId: string, placeId: string) => `idea-${stopId}-${placeId.re
 
 export type IdeaDiscoveryReason = "destination-significance" | "interest-relevance";
 
+export type LocalItineraryPlace = {
+  id: string;
+  name: string;
+  address: string;
+  category: string;
+  coordinates: [number, number];
+  mapsUrl: string;
+};
+
 export function itineraryIdeaForPlace(input: {
   stopId: string;
   place: ItineraryDiscoveryPlace;
@@ -23,9 +32,29 @@ export function itineraryIdeaForPlace(input: {
   };
 }
 
+/**
+ * Keep Map and Explore restaurant additions on the same canonical idea path.
+ * Provider-specific UI state stays outside the trip document; only durable
+ * place identity, display evidence and trustworthy coordinates are retained.
+ */
+export function itineraryIdeaForLocalPlace(stopId: string, place: LocalItineraryPlace): ItineraryIdea {
+  return {
+    id: ideaId(stopId, place.id),
+    stopId,
+    placeId: place.id,
+    title: place.name,
+    category: "restaurant",
+    coordinates: place.coordinates,
+    sourceUrl: place.mapsUrl,
+    area: place.address,
+    placeType: place.category,
+    source: "personalised-recommendation",
+    reasons: [],
+  };
+}
+
 export function ideaStateForPlace(trip: EasyTTrip, stopId: string, placeId: string) {
-  const providerIdentity = placeId.startsWith("viator:");
-  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.placeId === placeId && (providerIdentity || item.stopId === stopId));
+  const idea = (trip.brief.itineraryIdeas ?? []).find((item) => item.placeId === placeId && item.stopId === stopId);
   if (!idea) return { state: "available" as const, idea: null, day: null };
   const day = idea.dayId ? trip.planItems.find((item) => item.id === idea.dayId) ?? null : null;
   return day ? { state: "planned" as const, idea, day } : { state: "saved" as const, idea, day: null };
@@ -33,7 +62,7 @@ export function ideaStateForPlace(trip: EasyTTrip, stopId: string, placeId: stri
 
 export function saveItineraryIdea(trip: EasyTTrip, idea: ItineraryIdea): EasyTTrip {
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
-    || Boolean(idea.provider && idea.providerProductId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+    || Boolean(idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
   if (existing) return trip;
   if (!trip.stops.some((stop) => stop.id === idea.stopId)) return trip;
   return { ...trip, brief: { ...trip.brief, itineraryIdeas: [...(trip.brief.itineraryIdeas ?? []), idea] } };
@@ -48,7 +77,7 @@ export function scheduleItineraryIdea(
   const day = trip.planItems.find((item) => item.id === dayId && item.stopId === idea.stopId);
   if (!day) return trip;
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
-    || Boolean(idea.provider && idea.providerProductId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
+    || Boolean(idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
   if (existing && existing.id !== idea.id) return trip;
   const scheduledDayPart = dayPart === undefined ? existing?.dayPart ?? null : dayPart;
   const exactDuplicate = existing?.placeId === idea.placeId

@@ -58,6 +58,7 @@ export interface PlanWorkspaceProps {
   activity: {
     items: string[];
     customItems: readonly string[];
+    capabilities?: ReadonlyArray<{ movable: boolean; removable: boolean; renamable: boolean }>;
     draft: string;
     dragged: ActivityLocation | null;
     onDraftChange: (value: string) => void;
@@ -123,12 +124,13 @@ export function PlanWorkspace({ context, schedule, activity, notes, navigation, 
           {activity.items.map((item, index) => {
             const location = { dayNumber: planItem.dayNumber, index };
             const isCustom = activity.customItems.includes(item);
-            return <li key={`${item}-${index}`} draggable onDragStart={() => activity.onDragStart(location)} onDragOver={activity.onDragOver} onDrop={(event) => activity.onDrop(event, location)} onDragEnd={activity.onDragEnd}>
-              <b>{String(index + 1).padStart(2, "0")}</b><GripVertical className={styles.activityGrip} />
-              {isCustom ? <input className={styles.customActivityInput} value={item} onChange={(event) => activity.onRename(location, event.target.value)} aria-label={copy.editActivity} /> : <span>{item}</span>}
-              {isCustom ? <small className={styles.yourActivity}>{copy.yours}</small> : null}
-              <span className={styles.mobileActivityMove}><button type="button" disabled={index === 0} onClick={() => activity.onMove(location, { dayNumber: planItem.dayNumber, index: index - 1 })} aria-label={`Move ${item} earlier`}><ArrowUp /></button><button type="button" disabled={index === activity.items.length - 1} onClick={() => activity.onMove(location, { dayNumber: planItem.dayNumber, index: index + 2 })} aria-label={`Move ${item} later`}><ArrowDown /></button></span>
-              <button type="button" className={styles.removeActivity} onClick={() => activity.onRemove(location, item)} aria-label={`Remove ${item}`}><Trash2 /></button>
+            const capability = activity.capabilities?.[index] ?? { movable: true, removable: true, renamable: isCustom };
+            return <li key={`${item}-${index}`} draggable={capability.movable} onDragStart={capability.movable ? () => activity.onDragStart(location) : undefined} onDragOver={capability.movable ? activity.onDragOver : undefined} onDrop={capability.movable ? (event) => activity.onDrop(event, location) : undefined} onDragEnd={capability.movable ? activity.onDragEnd : undefined}>
+              <b>{String(index + 1).padStart(2, "0")}</b>{capability.movable ? <GripVertical className={styles.activityGrip} /> : null}
+              {capability.renamable ? <input className={styles.customActivityInput} value={item} onChange={(event) => activity.onRename(location, event.target.value)} aria-label={copy.editActivity} /> : <span>{item}</span>}
+              {capability.renamable ? <small className={styles.yourActivity}>{copy.yours}</small> : null}
+              {capability.movable ? <span className={styles.mobileActivityMove}><button type="button" disabled={index === 0} onClick={() => activity.onMove(location, { dayNumber: planItem.dayNumber, index: index - 1 })} aria-label={`Move ${item} earlier`}><ArrowUp /></button><button type="button" disabled={index === activity.items.length - 1} onClick={() => activity.onMove(location, { dayNumber: planItem.dayNumber, index: index + 2 })} aria-label={`Move ${item} later`}><ArrowDown /></button></span> : null}
+              {capability.removable ? <button type="button" className={styles.removeActivity} onClick={() => activity.onRemove(location, item)} aria-label={`Remove ${item}`}><Trash2 /></button> : null}
             </li>;
           })}
         </ol>

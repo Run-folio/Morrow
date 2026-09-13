@@ -44,11 +44,18 @@ export function isCanonicalTripWorkspaceHref(href: string) {
   return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|prep))?(?:[?#].*)?$/.test(href);
 }
 
-export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan", dayNumber?: number | null) {
+export function mapWorkspaceHref(
+  tripId: string,
+  stopId?: string | null,
+  mode: MapWorkspaceMode = "plan",
+  dayNumber?: number | null,
+  resultSelectionId?: string | null,
+) {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);
   if (mode !== "plan") query.set("mode", mode);
   if (dayNumber) query.set("day", String(dayNumber));
+  if (resultSelectionId) query.set("result", resultSelectionId);
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
 }
@@ -81,7 +88,13 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
   const requestedDay = Number.isInteger(requestedDayNumber)
     ? orderedDays(trip).find((day) => day.dayNumber === requestedDayNumber && day.stopId === stopId)
     : undefined;
-  return { stopId, mode, dayNumber: requestedDay?.dayNumber ?? null };
+  const rawResultSelectionId = query.get("result");
+  const resultSelectionId = rawResultSelectionId
+    && rawResultSelectionId.length <= 240
+    && /^(?:idea:|saved:|result:(?:stay|eat|see):)[^\s]+$/.test(rawResultSelectionId)
+    ? rawResultSelectionId
+    : null;
+  return { stopId, mode, dayNumber: requestedDay?.dayNumber ?? null, resultSelectionId };
 }
 
 /**
