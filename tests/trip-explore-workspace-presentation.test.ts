@@ -44,7 +44,7 @@ test("desktop uses a results workspace and contextual right rail, not a centred 
 
 test("mobile detail reuses the canonical itinerary sheet interaction", () => {
   assert.match(workspace, /<ItineraryItemDetail/);
-  assert.match(detail, /aria-modal=\{mobileSheet \|\| undefined\}/);
+  assert.match(detail, /aria-modal=\{!embedded && mobileSheet \|\| undefined\}/);
   assert.match(detail, /document\.body\.style\.overflow = "hidden"/);
   assert.match(detail, /window\.requestAnimationFrame\(\(\) => closeRef\.current\?\.focus/);
   assert.match(workspace, /window\.requestAnimationFrame\(\(\) => origin\?\.focus\(\)\)/);

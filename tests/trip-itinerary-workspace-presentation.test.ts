@@ -161,7 +161,7 @@ test("scheduled cards open one reusable detail owner without introducing another
   assert.match(itinerary, /onActivitySelect=\{\(activity, trigger\)/);
   assert.match(itinerary, /selectedItemOriginRef\.current = trigger/);
   assert.match(itinerary, /window\.requestAnimationFrame\(\(\) => origin\?\.focus\(\)\)/);
-  assert.match(detail, /role="dialog"/);
+  assert.match(detail, /role=\{embedded \? undefined : "dialog"\}/);
   assert.match(detail, /event\.key === "Escape"/);
   assert.match(detail, /document\.body\.style\.overflow = "hidden"/);
   assert.match(detailStyles, /@media \(max-width: 900px\)[\s\S]*position: fixed[\s\S]*max-height: min\(88svh, 760px\)/);
@@ -172,7 +172,7 @@ test("scheduled cards open one reusable detail owner without introducing another
 test("activity, restaurant, and accommodation detail stay truthful and omit absent facts", () => {
   assert.match(itinerary, /kind: selectedActivity\.category === "restaurant" \? "restaurant" : "activity"/);
   assert.match(itinerary, /kind: "accommodation"/);
-  assert.match(detail, /detail\.description \?/);
+  assert.match(detail, /detail\.summary \?/);
   assert.match(detail, /detail\.duration \?/);
   assert.match(detail, /detail\.price \?/);
   assert.match(detail, /detail\.practical\?\.length \?/);

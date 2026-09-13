@@ -7,6 +7,21 @@
   color: var(--morrovia-ink);
 }
 
+.embedded {
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+.embedded .hero {
+  height: 150px;
+  border-radius: var(--morrovia-control-radius);
+}
+
+.embedded .content {
+  padding: 14px 0 0;
+}
+
 .scrim,
 .handle {
   display: none;
@@ -246,6 +261,17 @@
     border-bottom: 0;
     border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
     box-shadow: var(--morrovia-shadow-overlay);
+  }
+
+  .embedded {
+    position: relative;
+    inset: auto;
+    max-height: none;
+    padding-bottom: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .handle {

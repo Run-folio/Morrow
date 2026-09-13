@@ -19,12 +19,23 @@ export type MapResultPlace = {
   address: string;
   category: string;
   mapsUrl: string;
+  description?: string;
+  image?: string;
+  tags?: string[];
+  duration?: string;
+  priceLabel?: string;
+  priceLevel?: string;
+  providerUrl?: string;
+  providerProductId?: string;
   nativeName?: string;
   distanceKm?: number;
   operational?: true;
-  provider?: "booking-demand" | "google-places" | "openstreetmap";
+  provider?: "booking-demand" | "google-places" | "openstreetmap" | "viator";
   rating?: number;
+  reviewCount?: number;
   price?: { total: number; currency: string };
+  availability?: "available" | "check";
+  cancellation?: string;
   persistedPinId?: string;
 };
 
@@ -79,6 +90,10 @@ export function mapResultForDiscoveryPlace(place: {
   area: string;
   type: string;
   coordinates: [number, number];
+  tags?: string[];
+  description?: string;
+  image?: string;
+  sourceUrl?: string;
 }, context: MapResultContext = {}): MapResultPlace | null {
   if (!validCoordinates(place.coordinates)) return null;
   return {
@@ -94,6 +109,10 @@ export function mapResultForDiscoveryPlace(place: {
     address: place.area,
     category: place.type,
     mapsUrl: mapsUrl(place.coordinates),
+    ...(place.tags ? { tags: [...place.tags] } : {}),
+    ...(place.description ? { description: place.description } : {}),
+    ...(place.image ? { image: place.image } : {}),
+    ...(place.sourceUrl ? { providerUrl: place.sourceUrl } : {}),
   };
 }
 
@@ -133,6 +152,13 @@ export function projectPersistedMapResults(trip: EasyTTrip | null): {
       address: idea.area ?? trip.stops.find((stop) => stop.id === idea.stopId)?.name ?? "Saved to this trip",
       category: idea.placeType ?? idea.category,
       mapsUrl: mapsUrl(idea.coordinates),
+      ...(idea.description ? { description: idea.description } : {}),
+      ...(idea.image ? { image: idea.image } : {}),
+      ...(idea.sourceUrl ? { providerUrl: idea.sourceUrl } : {}),
+      ...(idea.provider ? { provider: idea.provider } : {}),
+      ...(idea.providerProductId ? { providerProductId: idea.providerProductId } : {}),
+      ...(idea.providerMetadata?.rating !== undefined ? { rating: idea.providerMetadata.rating } : {}),
+      ...(idea.providerMetadata?.reviewCount !== undefined ? { reviewCount: idea.providerMetadata.reviewCount } : {}),
       ...(persistedPinId ? { persistedPinId } : {}),
     });
   }
@@ -179,7 +205,7 @@ export function mergeMapResults(
         id: result.sourceId,
         name: result.name,
         coordinates: result.coordinates,
-        provider: result.provider,
+        provider: result.provider === "viator" ? undefined : result.provider,
       });
     const matchIndex = remaining.findIndex((candidate) => (
       candidate.kind === result.kind

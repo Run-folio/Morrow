@@ -17,30 +17,12 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
+import type { RecommendationDetailModel } from "@/lib/easyt/recommendation-detail";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ResilientImage from "./resilient-image";
 import styles from "./itinerary-item-detail.module.css";
 
-export type ItineraryItemDetailModel = {
-  id: string;
-  kind: "activity" | "restaurant" | "accommodation";
-  title: string;
-  location?: string | null;
-  description?: string | null;
-  image?: string | null;
-  category?: string | null;
-  duration?: string | null;
-  price?: string | null;
-  dateSummary?: string | null;
-  bookingStatus?: string | null;
-  bookingHref?: string | null;
-  whyFit?: string | null;
-  whyFitLabel?: string | null;
-  practical?: Array<{ label: string; value: string }>;
-  dayPart?: ItineraryDayPart | null;
-  canMoveTime?: boolean;
-  canRemove?: boolean;
-};
+export type ItineraryItemDetailModel = RecommendationDetailModel;
 
 type Props = {
   detail: ItineraryItemDetailModel;
@@ -53,6 +35,7 @@ type Props = {
   onManage?: () => void;
   manageLabel?: string;
   primaryActions?: ReactNode;
+  embedded?: boolean;
 };
 
 const partLabels: Record<ItineraryDayPart, string> = {
@@ -62,7 +45,7 @@ const partLabels: Record<ItineraryDayPart, string> = {
   evening: "Evening",
 };
 
-export default function ItineraryItemDetail({
+export default function RecommendationDetail({
   detail,
   mapHref,
   pending = false,
@@ -73,6 +56,7 @@ export default function ItineraryItemDetail({
   onManage,
   manageLabel = "Manage",
   primaryActions,
+  embedded = false,
 }: Props) {
   const headingId = useId();
   const shellRef = useRef<HTMLElement>(null);
@@ -81,6 +65,7 @@ export default function ItineraryItemDetail({
   const KindIcon = detail.kind === "restaurant" ? Utensils : detail.kind === "accommodation" ? BedDouble : Sparkles;
 
   useEffect(() => {
+    if (embedded) return;
     const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -106,30 +91,30 @@ export default function ItineraryItemDetail({
       document.removeEventListener("keydown", onKeyDown);
       if (mobile) document.body.style.overflow = previousOverflow;
     };
-  }, [detail.id, onClose]);
+  }, [detail.id, embedded, onClose]);
 
   return <>
-    <EasyTButton className={styles.scrim} iconOnly variant="quiet" aria-label="Close item details" onClick={onClose}>Close item details</EasyTButton>
+    {!embedded ? <EasyTButton className={styles.scrim} iconOnly variant="quiet" aria-label="Close recommendation details" onClick={onClose}>Close recommendation details</EasyTButton> : null}
     <section
       ref={shellRef}
-      className={styles.shell}
-      role="dialog"
-      aria-modal={mobileSheet || undefined}
+      className={`${styles.shell} ${embedded ? styles.embedded : ""}`}
+      role={embedded ? undefined : "dialog"}
+      aria-modal={!embedded && mobileSheet || undefined}
       aria-labelledby={headingId}
       aria-busy={pending || undefined}
-      data-itinerary-detail-kind={detail.kind}
+      data-recommendation-detail-kind={detail.kind}
+      data-recommendation-context-key={detail.contextKey}
     >
-      <div className={styles.handle} aria-hidden="true" />
-      <EasyTButton ref={closeRef} className={styles.close} icon={X} iconOnly variant="secondary" aria-label={`Close details for ${detail.title}`} onClick={onClose}>Close</EasyTButton>
+      {!embedded ? <><div className={styles.handle} aria-hidden="true" /><EasyTButton ref={closeRef} className={styles.close} icon={X} iconOnly variant="secondary" aria-label={`Close details for ${detail.title}`} onClick={onClose}>Close</EasyTButton></> : null}
 
-      {detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt="" fallback={<span><KindIcon aria-hidden="true" /></span>} /></div> : <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.location ?? "Saved itinerary item"}</span></div>}
+      {detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt={detail.imageAlt ?? ""} fallback={<span><KindIcon aria-hidden="true" /></span>} /></div> : <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.kind === "restaurant" ? "No sourced image available" : detail.location ?? "Recommendation"}</span></div>}
 
       <div className={styles.content}>
         <header className={styles.header}>
-          <span><KindIcon aria-hidden="true" />{detail.kind === "accommodation" ? "Your stay" : detail.kind === "restaurant" ? "Restaurant" : "Activity"}</span>
+          <span><KindIcon aria-hidden="true" />{detail.kind === "accommodation" ? "Your stay" : detail.kind === "restaurant" ? "Restaurant" : detail.kind === "tour" ? "Bookable experience" : "Activity"}</span>
           <h2 id={headingId}>{detail.title}</h2>
           {detail.location ? <p><MapPin aria-hidden="true" />{detail.location}</p> : null}
-          {detail.description ? <div className={styles.description}>{detail.description}</div> : null}
+          {detail.summary ? <div className={styles.description}>{detail.summary}</div> : null}
         </header>
 
         <dl className={styles.facts}>

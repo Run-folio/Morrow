@@ -42,7 +42,8 @@ import {
 } from "@/lib/easyt/explore";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
-import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
+import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
+import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
@@ -51,7 +52,7 @@ import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { affiliateDisclosure, compactAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
-import ItineraryItemDetail, { type ItineraryItemDetailModel } from "./itinerary-item-detail";
+import ItineraryItemDetail from "./itinerary-item-detail";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
@@ -173,38 +174,6 @@ async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
   if (!response.ok) throw new Error("Tour inventory unavailable");
   const payload = await response.json() as ActivityPayload;
   return (payload.activities ?? []).map((item) => exploreResultForActivity(stop, item, trip));
-}
-
-function detailForResult(result: ExploreResult, state: ReturnType<typeof exploreResultState>, whyFit: string | null): ItineraryItemDetailModel {
-  const when = state.state === "planned"
-    ? `Day ${state.day.dayNumber}${state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}`
-    : null;
-  return {
-    id: result.identity,
-    kind: result.kind === "restaurant" ? "restaurant" : "activity",
-    title: result.title,
-    location: result.location,
-    description: result.description,
-    image: result.image,
-    category: result.category,
-    duration: result.duration,
-    price: result.price,
-    dateSummary: when,
-    bookingStatus: state.state === "planned" ? `Added to ${when}` : state.state === "saved" ? "Saved for later" : null,
-    whyFit,
-    whyFitLabel: "Why this fits your trip",
-    practical: [
-      ...(result.provider === "viator" ? [{ label: "Provider", value: "Viator" }] : []),
-      ...(result.rating !== undefined ? [{ label: "Rating", value: `${result.rating.toFixed(1)}${result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}` }] : []),
-      ...(!result.coordinates ? [{ label: "Map", value: "Unavailable · No trustworthy coordinates are attached to this result yet." }] : []),
-    ],
-  };
-}
-
-function whyFitForResult(trip: EasyTTrip, result: ExploreResult) {
-  const opportunity = exploreOpportunityForTrip(trip, result.stopId);
-  if (opportunity) return `Fits your free ${opportunity.dayPart} on Day ${opportunity.day.dayNumber}.`;
-  return itineraryInterestReason({ title: result.title, type: result.category, tags: result.tags, description: result.description ?? "" }, tripIntentForTrip(trip).preferences.interests);
 }
 
 export default function TripExploreWorkspace({
@@ -425,7 +394,6 @@ export default function TripExploreWorkspace({
           const chosenDay = selectedDayByResult[result.identity] ?? requestedDayNumber;
           const target = exploreScheduleTarget(workingTrip, result, chosenDay);
           const dayChoices = validIdeaDays(workingTrip, result.stopId);
-          const fitReason = whyFitForResult(workingTrip, result);
           const pending = mutation.isPending(`explore-save-${result.identity}`) || mutation.isPending(`explore-schedule-${result.identity}`);
           return <article className={`${styles.card} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state} data-explore-card>
             <div className={styles.cardImage}>
@@ -446,8 +414,6 @@ export default function TripExploreWorkspace({
                   {result.rating !== undefined ? <><Star aria-hidden="true" />{result.rating.toFixed(1)}{result.reviewCount !== undefined ? ` · ${result.reviewCount.toLocaleString()} reviews` : ""}</> : null}
                   {result.price ? <strong>{result.price}</strong> : null}
                 </p> : null}
-                {result.description ? <p className={styles.description}>{result.description}</p> : null}
-                {fitReason ? <p className={styles.fit}><Sparkles aria-hidden="true" />{fitReason}</p> : null}
                 {state.state === "planned" ? <p className={styles.planned}><Check aria-hidden="true" />Added to Day {state.day.dayNumber}{state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}</p> : null}
               </div>
               <div className={styles.cardActions}>
@@ -485,7 +451,6 @@ export default function TripExploreWorkspace({
         const chosenDay = selectedDayByResult[selectedResult.identity] ?? requestedDayNumber;
         const target = exploreScheduleTarget(workingTrip, selectedResult, chosenDay);
         const dayChoices = validIdeaDays(workingTrip, selectedResult.stopId);
-        const whyFit = whyFitForResult(workingTrip, selectedResult);
         const mode = selectedResult.kind === "restaurant" ? "eat" : "see";
         const mapHref = selectedResult.coordinates
           ? mapWorkspaceHref(
@@ -499,7 +464,12 @@ export default function TripExploreWorkspace({
           )
           : null;
         return <ItineraryItemDetail
-          detail={detailForResult(selectedResult, state, whyFit)}
+          detail={recommendationDetailForExploreResult({
+            trip: workingTrip,
+            result: selectedResult,
+            state,
+            context: { surface: "explore", activeDayId: state.state === "planned" ? state.day.id : target?.day.id, activeDayPart: state.state === "planned" ? state.idea.dayPart : target?.dayPart },
+          })}
           mapHref={mapHref}
           pending={mutation.isPending(`explore-save-${selectedResult.identity}`) || mutation.isPending(`explore-schedule-${selectedResult.identity}`)}
           onClose={closeDetail}

@@ -1133,6 +1133,14 @@
   background: color-mix(in srgb, var(--morrovia-paper) 92%, var(--morrovia-lilac));
 }
 
+.contextRailBody {
+  display: contents;
+}
+
+.contextRailBody[hidden] {
+  display: none;
+}
+
 .contextRailDetail {
   max-height: calc(100vh - 112px);
   overflow-y: auto;

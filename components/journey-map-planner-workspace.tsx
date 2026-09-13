@@ -18,6 +18,8 @@ import EasyTTripCopilot from "@/components/easyt/easyt-trip-copilot";
 import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
+import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
+import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import type { TripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
 import ResilientImage from "@/components/easyt/resilient-image";
@@ -28,7 +30,8 @@ import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryP
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
 import { mapResultForDiscoveryPlace, mapResultForLocalPlace, mergeMapResults, projectPersistedMapResults, type MapResultPlace } from "@/lib/easyt/map-result-selection";
-import { itineraryIdeaForLocalPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
+import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
 import { composeItineraryDay } from "@/lib/easyt/itinerary-day-composition";
 import { mapPlanAgendaForDay, mapPlanDaysForStop } from "@/lib/easyt/map-plan-agenda";
@@ -831,6 +834,16 @@ export function JourneyMapPlannerWorkspace({
     .map((result) => result.sourceId), [mapResults, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   const selectedLocalPlace = selectedMapResult;
   const selectedLocalPlaceId = selectedMapResult?.selectionId ?? null;
+  const selectedRecommendationPart = customTrip && selectedPlanItem && selectedLocalPlace && selectedLocalPlace.kind !== "stay"
+    ? mapPlanFreeTimePart ?? preferredItineraryDayPart(customTrip, selectedPlanItem.id, selectedLocalPlace.kind === "eat" ? "restaurant" : "activity")
+    : null;
+  const selectedRecommendationDetail = customTrip && selectedLocalPlace && selectedLocalPlace.kind !== "stay"
+    ? recommendationDetailForMapResult({
+      trip: customTrip,
+      result: selectedLocalPlace,
+      context: { surface: "map", activeDayId: selectedPlanItem?.id, activeDayPart: selectedRecommendationPart },
+    })
+    : null;
   const selectedMapStopFirstItem = customTrip?.planItems.filter((item) => item.stopId === selectedTripStop?.id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
   const selectedDestinationMediaKey = customTrip && selectedMapStopFirstItem ? `${customTrip.id}-day-${selectedMapStopFirstItem.dayNumber}` : selected.id;
   const selectedDestinationMedia = placeMedia[selectedDestinationMediaKey];
@@ -1566,6 +1579,48 @@ export function JourneyMapPlannerWorkspace({
       `${category === "restaurant" ? "Restaurant" : "Stay"} removed from the day`,
     );
   }, [customTrip, selectedPlanItem, updatePlannerTrip]);
+
+  const saveSelectedRecommendation = useCallback(() => {
+    if (!selectedLocalPlace || selectedLocalPlace.kind === "stay") return false;
+    const stopId = selectedLocalPlace.stopId ?? selectedPlanItem?.stopId;
+    if (!stopId) return false;
+    const seePlace = selectedLocalPlace.kind === "see" ? seeMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
+    const eatPlace = selectedLocalPlace.kind === "eat" ? localMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
+    const idea = seePlace
+      ? itineraryIdeaForPlace({ stopId, place: seePlace, reasons: [] })
+      : eatPlace
+        ? itineraryIdeaForLocalPlace(stopId, eatPlace)
+        : selectedLocalPlace.canonicalItemId
+          ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+          : null;
+    return idea ? updatePlannerTrip((trip) => saveItineraryIdea(trip, idea), "Recommendation saved for later") : false;
+  }, [customTrip?.brief.itineraryIdeas, localMapPlaces, seeMapPlaces, selectedLocalPlace, selectedPlanItem, updatePlannerTrip]);
+
+  const addSelectedRecommendation = useCallback(() => {
+    if (!selectedLocalPlace || selectedLocalPlace.kind === "stay" || !selectedPlanItem) return false;
+    const seePlace = selectedLocalPlace.kind === "see" ? seeMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
+    if (seePlace) {
+      handleAttractionSelection(selectedPlanItem.stopId, seePlace, true);
+      return true;
+    }
+    const eatPlace = selectedLocalPlace.kind === "eat" ? localMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
+    if (eatPlace) return saveLocalVenue(eatPlace, "restaurant");
+    const idea = selectedLocalPlace.canonicalItemId
+      ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+      : null;
+    return idea ? updatePlannerTrip(
+      (trip) => scheduleItineraryIdea(trip, idea, selectedPlanItem.id, selectedRecommendationPart),
+      `Added to Day ${selectedPlanItem.dayNumber}`,
+    ) : false;
+  }, [customTrip?.brief.itineraryIdeas, handleAttractionSelection, localMapPlaces, saveLocalVenue, seeMapPlaces, selectedLocalPlace, selectedPlanItem, selectedRecommendationPart, updatePlannerTrip]);
+
+  const removeSelectedRecommendation = useCallback(() => {
+    if (!selectedLocalPlace || selectedLocalPlace.kind === "stay") return false;
+    const idea = selectedLocalPlace.canonicalItemId
+      ? customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.id === selectedLocalPlace.canonicalItemId)
+      : customTrip?.brief.itineraryIdeas?.find((candidate) => candidate.stopId === selectedLocalPlace.stopId && candidate.placeId === selectedLocalPlace.sourceId);
+    return idea ? updatePlannerTrip((trip) => removeItineraryIdea(trip, idea.id), "Recommendation removed") : false;
+  }, [customTrip?.brief.itineraryIdeas, selectedLocalPlace, updatePlannerTrip]);
 
   const changeRecommendation = useCallback((recommendationId: string, action: "apply" | "undo") => {
     if (!customTrip) return;
@@ -2531,18 +2586,35 @@ export function JourneyMapPlannerWorkspace({
         {isShellPresentation && customTrip ? showShellContext ? <section className={styles.mapContextPanel} aria-labelledby="map-context-title">
           <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
-            <h2 id="map-context-title">{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
+            <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
             {selectedLocalPlace ? <button type="button" onClick={() => { clearSelectedLocalPlace(); setMobileMapSheetCollapsed(true); }} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapSheetCollapsed(true); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
           </div>
 
-          {selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
+          {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
+            <ItineraryItemDetail
+              embedded
+              detail={selectedRecommendationDetail}
+              mapHref={selectedLocalPlace.mapsUrl}
+              onClose={clearSelectedLocalPlace}
+              primaryActions={<>
+                {selectedLocalPlace.state !== "scheduled" && selectedPlanItem ? <EasyTButton fullWidth onClick={addSelectedRecommendation}>Add to Day {selectedPlanItem.dayNumber}</EasyTButton> : null}
+                {selectedLocalPlace.state === "result" ? <EasyTButton variant="secondary" onClick={saveSelectedRecommendation}>Save for later</EasyTButton> : null}
+                {selectedLocalPlace.provider === "viator" && selectedLocalPlace.providerUrl ? <><MorroviaAffiliateLink
+                  action={{ provider: "viator", category: "activities", href: selectedLocalPlace.providerUrl, cta: "View on Viator", affiliate: true }}
+                  context={{ placement: "itinerary_day_experiences", tripId: customTrip.id, stopId: selectedLocalPlace.stopId ?? undefined, workspaceView: "map" }}
+                  variant="secondary"
+                /><small>{affiliateDisclosure}</small></> : null}
+              </>}
+              onRemove={selectedLocalPlace.state !== "result" ? () => { if (removeSelectedRecommendation()) clearSelectedLocalPlace(); } : undefined}
+            />
+          </div> : selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
             {selectedLocalPlace.nativeName ? <p>{selectedLocalPlace.nativeName}</p> : null}
-            <p>{selectedLocalPlace.address || `${selectedLocalPlace.category} near ${selected.city}`}</p>
+            {selectedLocalPlace.address ? <p>{selectedLocalPlace.address}</p> : null}
             <dl className={styles.mapContextFacts}>
               <div><dt>Type</dt><dd>{selectedLocalPlace.category.replace(/_/g, " ")}</dd></div>
               {selectedLocalPlace.dayNumber ? <div><dt>Day</dt><dd>Day {selectedLocalPlace.dayNumber}</dd></div> : null}
               {selectedLocalPlace.dayPart ? <div><dt>Part of day</dt><dd>{selectedLocalPlace.dayPart[0]!.toUpperCase() + selectedLocalPlace.dayPart.slice(1)}</dd></div> : null}
-              <div><dt>Distance</dt><dd>{selectedLocalPlace.distanceKm !== undefined ? `${selectedLocalPlace.distanceKm.toFixed(1)} km` : "Nearby"}</dd></div>
+              {selectedLocalPlace.distanceKm !== undefined ? <div><dt>Distance</dt><dd>{selectedLocalPlace.distanceKm.toFixed(1)} km</dd></div> : null}
               <div><dt>Source</dt><dd>{selectedLocalPlace.state === "scheduled" ? "Scheduled itinerary" : selectedLocalPlace.state === "saved" ? "Saved for later" : selectedLocalPlace.provider === "google-places" ? "Google Places" : selectedLocalPlace.provider === "booking-demand" ? "Booking provider" : "OpenStreetMap"}</dd></div>
               {selectedLocalPlace.operational === true ? <div><dt>Status</dt><dd>Operational</dd></div> : null}
             </dl>
