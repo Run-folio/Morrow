@@ -56,7 +56,7 @@
       "components/journey-itinerary-refinement.tsx": 4,
       "components/journey-local-finder.tsx": 9,
       "components/journey-map-planner-workspace.tsx": 46,
-      "components/journey-plan-workspace.tsx": 20,
+      "components/journey-plan-workspace.tsx": 8,
       "components/journey-planner-strip.tsx": 3,
       "components/journey-restaurant-finder.tsx": 6,
       "components/journey-trip-quality.tsx": 2,

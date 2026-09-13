@@ -5269,7 +5269,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 488,
+        "count": 495,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5279,7 +5279,7 @@
       },
       {
         "value": "10px",
-        "count": 472,
+        "count": 481,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5308,18 +5308,8 @@
         ]
       },
       {
-        "value": "14px",
-        "count": 302,
-        "examples": [
-          "app/journey/about/about.module.css",
-          "app/journey/account.module.css",
-          "app/journey/admin/feedback/feedback.module.css",
-          "app/journey/dashboard/dashboard.module.css"
-        ]
-      },
-      {
         "value": "7px",
-        "count": 301,
+        "count": 304,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5328,8 +5318,18 @@
         ]
       },
       {
+        "value": "14px",
+        "count": 303,
+        "examples": [
+          "app/journey/about/about.module.css",
+          "app/journey/account.module.css",
+          "app/journey/admin/feedback/feedback.module.css",
+          "app/journey/dashboard/dashboard.module.css"
+        ]
+      },
+      {
         "value": "9px",
-        "count": 266,
+        "count": 267,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5349,7 +5349,7 @@
       },
       {
         "value": "20px",
-        "count": 229,
+        "count": 230,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5368,18 +5368,8 @@
         ]
       },
       {
-        "value": "5px",
-        "count": 210,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/help/help.module.css"
-        ]
-      },
-      {
         "value": "6px",
-        "count": 210,
+        "count": 214,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -5389,7 +5379,7 @@
       },
       {
         "value": "4px",
-        "count": 209,
+        "count": 212,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5398,8 +5388,18 @@
         ]
       },
       {
+        "value": "5px",
+        "count": 212,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css",
+          "app/journey/help/help.module.css"
+        ]
+      },
+      {
         "value": "22px",
-        "count": 150,
+        "count": 151,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5409,12 +5409,22 @@
       },
       {
         "value": "3px",
-        "count": 143,
+        "count": 146,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
           "app/journey/discover/discover.module.css",
           "app/journey/easyt-navigation.module.css"
+        ]
+      },
+      {
+        "value": "2px",
+        "count": 133,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/easyt-navigation.module.css",
+          "app/journey/home/home.module.css"
         ]
       },
       {
@@ -5425,16 +5435,6 @@
           "app/journey/account.module.css",
           "app/journey/easyt-navigation.module.css",
           "app/journey/help/help.module.css"
-        ]
-      },
-      {
-        "value": "2px",
-        "count": 129,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/home/home.module.css"
         ]
       },
       {
@@ -5598,6 +5598,16 @@
         ]
       },
       {
+        "value": "70px",
+        "count": 21,
+        "examples": [
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/discover/editorial-carousel.module.css",
+          "app/journey/home/home.module.css"
+        ]
+      },
+      {
         "value": "21px",
         "count": 20,
         "examples": [
@@ -5615,16 +5625,6 @@
           "app/journey/help/help.module.css",
           "app/journey/home/home.module.css",
           "app/journey/home/immersive/immersive.module.css"
-        ]
-      },
-      {
-        "value": "70px",
-        "count": 20,
-        "examples": [
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/discover/editorial-carousel.module.css",
-          "app/journey/home/home.module.css"
         ]
       },
       {
@@ -7712,7 +7712,7 @@
       },
       {
         "value": "max-width: 680px",
-        "count": 12,
+        "count": 13,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/journey.module.css",
@@ -8037,7 +8037,7 @@
   },
   "audit": {
     "totals": {
-      "native-control": 241,
+      "native-control": 229,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
@@ -8066,10 +8066,6 @@
           "count": 46
         },
         {
-          "path": "components/journey-plan-workspace.tsx",
-          "count": 20
-        },
-        {
           "path": "app/journey/stamped/stamped-client.tsx",
           "count": 17
         },
@@ -8091,6 +8087,10 @@
         },
         {
           "path": "components/easyt/trip-itinerary-workspace.tsx",
+          "count": 8
+        },
+        {
+          "path": "components/journey-plan-workspace.tsx",
           "count": 8
         },
         {

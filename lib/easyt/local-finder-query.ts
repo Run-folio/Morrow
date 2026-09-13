@@ -2,6 +2,7 @@ export type LocalFinderQueryContext = {
   kind: "restaurant" | "stay";
   city: string;
   country: string;
+  canonicalPlaceId?: string;
   dayId: string;
   coordinates: [number, number];
   locale: string;
@@ -28,11 +29,12 @@ export function localFinderBaseQueryKey({
   kind,
   city,
   country,
+  canonicalPlaceId,
   dayId,
   coordinates: [longitude, latitude],
   locale,
 }: LocalFinderBaseQueryContext) {
-  return [kind, city, country, dayId, coordinateKey(latitude), coordinateKey(longitude), locale].join("|");
+  return [kind, city, country, canonicalPlaceId ?? "", dayId, coordinateKey(latitude), coordinateKey(longitude), locale].join("|");
 }
 
 type LocalFinderPlaceIdentity = {
@@ -71,6 +73,7 @@ export function localFinderQueryKey({
   kind,
   city,
   country,
+  canonicalPlaceId,
   dayId,
   coordinates: [longitude, latitude],
   locale,
@@ -80,6 +83,7 @@ export function localFinderQueryKey({
     kind,
     city,
     country,
+    canonicalPlaceId ?? "",
     dayId,
     latitude,
     longitude,

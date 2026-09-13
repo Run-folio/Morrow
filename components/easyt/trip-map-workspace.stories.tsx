@@ -399,6 +399,37 @@ const goldenTriangleLongDay: EasyTTrip = {
   } : item),
 };
 
+const goldenTriangleMapPlanTrip: EasyTTrip = {
+  ...goldenTriangleTrip,
+  brief: {
+    ...goldenTriangleTrip.brief,
+    itineraryIdeas: [
+      {
+        id: "agra-riverside-walk", stopId: "agra", placeId: "agra-riverside-walk", title: "A deliberately long riverside garden walk near the Taj Mahal at sunset", category: "activity",
+        coordinates: [78.0432, 27.1795], area: "Mehtab Bagh", placeType: "Garden", source: "destination-highlight", reasons: ["destination-significance"], dayId: "india-day-5", dayPart: "afternoon",
+      },
+      {
+        id: "agra-fort-map-plan", stopId: "agra", placeId: "agra-fort", title: "Agra Fort", category: "activity",
+        coordinates: [78.0211, 27.1795], area: "Rakabganj", placeType: "Fort", source: "destination-highlight", reasons: ["destination-significance"], dayId: "india-day-6", dayPart: "morning",
+      },
+    ],
+  },
+  planItems: goldenTriangleTrip.planItems.map((item) => item.id === "india-day-5" ? {
+    ...item,
+    startsAt: "08:10",
+    notes: ["Delhi → Agra", "Morrovia planning estimate: allow about three and a half hours door to door; compare current rail schedules before booking."],
+    noteDayParts: [null, null],
+  } : item.id === "india-day-6" ? {
+    ...item,
+    notes: [],
+    noteDayParts: [],
+  } : item.id === "india-day-10" ? {
+    ...item,
+    notes: [],
+    noteDayParts: [],
+  } : item),
+};
+
 function TripMapStory({ storyTrip, presentation = "shell", storyState, activityAction }: { storyTrip: EasyTTrip; presentation?: "shell" | "focused"; storyState?: JourneyMapPlannerWorkspaceProps["storyState"]; activityAction?: ResolvedAffiliateAction | null }) {
   if (presentation === "focused") return <JourneyMapPlannerWorkspace trip={storyTrip} presentation="focused" storyState={storyState} activityAction={activityAction} />;
   return <TripShell trip={storyTrip} orientationAutoStart={false}><TripMapWorkspace trip={storyTrip} storyState={storyState} activityAction={activityAction} /></TripShell>;
@@ -807,3 +838,34 @@ export const CompositionTablet768: Story = {
 };
 
 export const CompositionMobile390: Story = Mobile390Restoration;
+
+const mapPlanAgraDayFiveParameters = {
+  nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "plan", day: "5" } } },
+};
+
+export const MapPlanMultiDayTransferLongTitle: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
+  parameters: mapPlanAgraDayFiveParameters,
+};
+
+export const MapPlanMultiDayTransferLongTitleMobile320: Story = { ...MapPlanMultiDayTransferLongTitle, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const MapPlanMultiDayTransferLongTitleMobile390: Story = { ...MapPlanMultiDayTransferLongTitle, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const MapPlanMultiDayTransferLongTitleMobile430: Story = { ...MapPlanMultiDayTransferLongTitle, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+
+export const MapPlanSelectedMappableActivity: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan", selectedMapResultId: "idea:agra-fort-map-plan" } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "agra", mode: "plan", day: "6", result: "idea:agra-fort-map-plan" } } } },
+};
+
+export const MapPlanFreeTime: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "jaipur", mode: "plan", day: "10" } } } },
+};
+
+export const MapPlanSingleDayStop: Story = {
+  args: { storyTrip: cancunReturnTripFixture, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/storybook-cancun-return/map", query: { stop: "antigua", mode: "plan", day: "3" } } } },
+};

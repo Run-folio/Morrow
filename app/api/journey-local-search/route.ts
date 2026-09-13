@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
-import {
-  firstUsefulRecommendationResults,
-  firstUsefulRecommendationResultsWithFallback,
-  recommendationDurationMs,
-} from "@/lib/easyt/recommendation-performance";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { qualityControlledLocalPlaces } from "@/lib/easyt/local-place-results";
+import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
+import {
+  firstUsefulLocalSearchWithFallback,
+  localSearchProviderOutcome,
+  localSearchScope,
+} from "@/lib/easyt/local-search-strategy";
 
 type OverpassElement = {
   id: number;
@@ -83,9 +85,17 @@ function distanceKm(latitude: number, longitude: number, targetLatitude: number,
   return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 }
 
-async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
+function validPhotonCategory(kind: "restaurant" | "stay", properties: NonNullable<PhotonPlace["properties"]>) {
+  const category = `${properties.osm_value ?? ""} ${properties.type ?? ""}`.toLocaleLowerCase();
+  return kind === "stay"
+    ? /\b(?:hotel|hostel|guest_house|guesthouse|motel|apartment)\b/.test(category)
+    : /\b(?:restaurant|cafe|café|fast_food)\b/u.test(category);
+}
+
+async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
   const term = kind === "stay" ? "hotel" : "restaurant";
-  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "12", lang: locale })}`, {
+  const destinationQuery = [term, city === "your location" ? "" : city, country].filter(Boolean).join(" ");
+  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: destinationQuery, lat: String(latitude), lon: String(longitude), limit: "20", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
     next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
@@ -97,9 +107,9 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
       const displayName = resolveOsmPlaceDisplayName(photonNameTags(properties), locale);
-      if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (!displayName || !validPhotonCategory(kind, properties) || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       if (!localPlaceWithinCanonicalScope({
-        anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: kind === "stay" ? 7.5 : 5,
+        anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm,
         requestedCountry: country, candidateCountry: typeof properties.country === "string" ? properties.country : undefined,
       })) continue;
       const { name, nativeName } = displayName;
@@ -124,9 +134,9 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   return qualityControlledLocalPlaces(places);
 }
 
-async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string) {
+async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) throw new Error("Google Places lookup unavailable");
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
     method: "POST",
     headers: {
@@ -138,7 +148,7 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
       includedTypes: [kind === "stay" ? "lodging" : "restaurant"],
       maxResultCount: 12,
       rankPreference: kind === "stay" ? "DISTANCE" : "POPULARITY",
-      locationRestriction: { circle: { center: { latitude, longitude }, radius: kind === "stay" ? 7000 : 5000 } },
+      locationRestriction: { circle: { center: { latitude, longitude }, radius: radiusKm * 1_000 } },
       languageCode: locale,
     }),
     next: { revalidate: 60 * 15 },
@@ -152,7 +162,7 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
       const lat = place.location?.latitude;
       const lon = place.location?.longitude;
       if (!displayName || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
-      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: kind === "stay" ? 7 : 5 })) return [];
+      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm })) return [];
       const { name, nativeName } = displayName;
       const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
       if (seen.has(key)) return [];
@@ -177,8 +187,8 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
     }));
 }
 
-async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
-  const radius = kind === "stay" ? 7500 : 5000;
+async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
+  const radius = Math.round(radiusKm * 1_000);
   const matcher = kind === "stay"
     ? '["tourism"~"^(hotel|hostel|guest_house|motel)$"]'
     : '["amenity"~"^(restaurant|cafe|fast_food)$"]';
@@ -238,50 +248,63 @@ export async function GET(request: NextRequest) {
   });
   const city = request.nextUrl.searchParams.get("city")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
+  const canonicalPlaceId = request.nextUrl.searchParams.get("canonicalPlaceId")?.trim();
   const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
-  const latitude = Number(request.nextUrl.searchParams.get("lat"));
-  const longitude = Number(request.nextUrl.searchParams.get("lon"));
+  const requestedLatitude = Number(request.nextUrl.searchParams.get("lat"));
+  const requestedLongitude = Number(request.nextUrl.searchParams.get("lon"));
   const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim().toLocaleLowerCase() || "en";
   const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(requestedLocale) ? requestedLocale : "en";
-  if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-    return NextResponse.json({ places: [] }, { status: 400 });
+  const catalogPlace = canonicalPlaceId ? findCatalogPlaceById(canonicalPlaceId) : undefined;
+  const normalized = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const catalogMatchesRequest = Boolean(catalogPlace
+    && (!country || catalogPlace.parentCountries.some((candidate) => normalized(candidate) === normalized(country)))
+    && [catalogPlace.canonicalName, ...catalogPlace.aliases].some((candidate) => normalized(candidate) === normalized(city ?? "")));
+  const canonicalCoordinates = catalogMatchesRequest && catalogPlace?.coordinates
+    ? [catalogPlace.coordinates[0], catalogPlace.coordinates[1]] as [number, number]
+    : null;
+  const requestedCoordinatesValid = Number.isFinite(requestedLatitude)
+    && Number.isFinite(requestedLongitude)
+    && Math.abs(requestedLatitude) <= 90
+    && Math.abs(requestedLongitude) <= 180;
+  const [longitude, latitude] = requestedCoordinatesValid
+    ? [requestedLongitude, requestedLatitude]
+    : canonicalCoordinates ?? [Number.NaN, Number.NaN];
+  if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return NextResponse.json({ places: [], searchStatus: "failed", unavailable: true }, { status: 400 });
   }
 
   try {
-    // Restaurant sources are equivalent mapped-place lanes, so return the first
-    // useful bounded response. Stay discovery races the richer operational
-    // Google lane against mapped results and hedges Photon only when neither has
-    // become useful promptly. Live date-specific inventory remains a separate
-    // client request and is never inferred here.
-    let primaryFailureCount = 0;
-    const providerRequests = kind === "stay"
-      ? [
-          () => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale).then((places) => places ?? []),
-          () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
-        ]
-      : [
-          () => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale).then((places) => places ?? []),
-          () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
-          () => photonFallback(kind, city, country ?? "", latitude, longitude, locale),
-        ];
-    const primaryRequests = providerRequests.map((request) => async () => {
-      try { return await request(); }
-      catch { primaryFailureCount += 1; return []; }
-    });
-    const places = kind === "stay"
-      ? await firstUsefulRecommendationResultsWithFallback(
-          primaryRequests,
-          () => photonFallback(kind, city, country ?? "", latitude, longitude, locale),
-        )
-      : await firstUsefulRecommendationResults(primaryRequests);
-    if (places.length) {
-      const source = places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
-      return baseResponse({ places, source, inventory: false });
+    // Google and OSM remain independent immediate lanes. Exactly one bounded,
+    // destination-aware Photon fallback is hedged after one second, so a slow
+    // provider cannot block useful local results. Live stay inventory remains
+    // a separate client request and is never inferred here.
+    const scope = localSearchScope(kind, catalogMatchesRequest ? catalogPlace?.placeType : undefined);
+    const outcome = await firstUsefulLocalSearchWithFallback([
+      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
+      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
+    ], () => localSearchProviderOutcome(() => photonFallback(
+      kind,
+      city,
+      country ?? "",
+      latitude,
+      longitude,
+      locale,
+      scope.fallbackRadiusKm,
+    )));
+    if (outcome.state === "ready") {
+      const source = outcome.places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
+      return baseResponse({ places: outcome.places, source, inventory: false, searchStatus: "ready" });
     }
-    return baseResponse({ places: [], source: "OpenStreetMap", inventory: false, ...(primaryFailureCount === providerRequests.length ? { unavailable: true } : {}) });
+    return baseResponse({
+      places: [],
+      source: "OpenStreetMap",
+      inventory: false,
+      searchStatus: outcome.state,
+      ...(outcome.state === "failed" ? { unavailable: true } : {}),
+    });
   } catch {
     // Keep the response shape stable so the client can retain its day and map
     // context even when every bounded mapped-place source is unavailable.
-    return baseResponse({ places: [], source: "OpenStreetMap", unavailable: true });
+    return baseResponse({ places: [], source: "OpenStreetMap", searchStatus: "failed", unavailable: true });
   }
 }

@@ -250,11 +250,14 @@ test("stay base and live inventory use independent client lanes with stale-conte
 
 test("restaurant fallback sources and stay base sources are bounded parallel work", () => {
   const route = source("app/api/journey-local-search/route.ts");
-  assert.match(route, /firstUsefulRecommendationResults\(primaryRequests\)/);
-  assert.match(route, /firstUsefulRecommendationResultsWithFallback/);
+  assert.match(route, /firstUsefulLocalSearchWithFallback/);
+  assert.match(route, /localSearchProviderOutcome/);
+  assert.match(route, /primaryRadiusKm/);
+  assert.match(route, /fallbackRadiusKm/);
   assert.match(route, /Server-Timing.*first-base/);
   assert.match(route, /googleOperationalPlaces[\s\S]*openStreetMapPlaces/);
   assert.match(route, /openStreetMapPlaces[\s\S]*photonFallback/);
+  assert.match(route, /destinationQuery = \[term, city === "your location" \? "" : city, country\]/);
   assert.match(route, /photon\.komoot\.io[\s\S]*next: \{ revalidate: 60 \* 60 \* 12 \}/);
   assert.match(route, /AbortSignal\.timeout\(4500\)/);
   assert.match(route, /AbortSignal\.timeout\(5000\)/);

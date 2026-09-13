@@ -151,6 +151,7 @@ async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
     lon: String(stop.longitude),
     locale: "en",
   });
+  if (stop.canonicalPlaceId) query.set("canonicalPlaceId", stop.canonicalPlaceId);
   const response = await fetch(`/api/journey-local-search?${query}`, { signal });
   if (!response.ok) throw new Error("Restaurant discovery unavailable");
   const payload = await response.json() as LocalPayload;

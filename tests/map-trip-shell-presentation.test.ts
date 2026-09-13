@@ -126,7 +126,11 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /selectedDestinationImage = selectedDestinationMedia\?\.image \?\? selectedMapStopFirstItem\?\.image/);
   assert.match(mapWorkspaceSource, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail"/);
   assert.match(mapWorkspaceSource, /showDayPlanner \? <aside id="shape-day-workspace"/);
-  assert.match(mapWorkspaceSource, /context=\{\{ selectedDay, selectedStop: selected, selectedDayIndex, totalDays: journey\.calendar\.length, planItem: selectedPlanItem/);
+  assert.match(mapWorkspaceSource, /context=\{\{[\s\S]*selectedDay,[\s\S]*selectedStop: selected,[\s\S]*planItem: selectedPlanItem,[\s\S]*days: selectedStopPlanDays,[\s\S]*items: selectedPlanAgenda\?\.items/);
+  assert.match(mapWorkspaceSource, /onSelectDay: selectMapPlanDay/);
+  assert.match(mapWorkspaceSource, /onSelectItem: selectMapPlanItem/);
+  assert.match(mapWorkspaceSource, /onSelectTransfer: selectMapPlanTransfer/);
+  assert.match(mapWorkspaceSource, /editHref=\{customTrip && selectedPlanItem \? itineraryWorkspaceHref/);
   assert.match(mapWorkspaceSource, /aria-controls="map-contextual-sheet"/);
   assert.match(mapStylesSource, /\.finderDock\.mobileShapeDayOpen\{display:flex!important\}/);
   assert.match(mapStylesSource, /\.mobileShapeDayClosed/);
@@ -138,6 +142,24 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapStylesSource, /right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
   assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.mapDestinationContext/);
   assert.match(mapStylesSource, /left:18px!important;[\s\S]*width:clamp\(330px,23vw,380px\)!important/);
+});
+
+test("Map Plan is a compact canonical projection with truthful spatial actions", () => {
+  const plan = readFileSync(new URL("../components/journey-plan-workspace.tsx", import.meta.url), "utf8");
+  const agenda = readFileSync(new URL("../lib/easyt/map-plan-agenda.ts", import.meta.url), "utf8");
+  assert.match(plan, /days\.length > 1/);
+  assert.match(plan, /aria-current=\{active \? "date"/);
+  assert.match(plan, /item\.mapSelectionId \? <button/);
+  assert.match(plan, /<div className=\{styles\.mapPlanAgendaRow\}>\{content\}<\/div>/);
+  assert.match(plan, /<summary>Transfer details<\/summary>/);
+  assert.match(plan, /navigation\.onFindNearby\(freeTime\)/);
+  assert.match(plan, /activity\.onAdd\(\)/);
+  assert.match(agenda, /composeItineraryDayWithExplicitPeriods/);
+  assert.match(agenda, /mapResultSelectionIdForIdea/);
+  assert.doesNotMatch(plan, /onMoveDay|onRename|onRemove|onDrop|notesToSelf/);
+  assert.match(mapStylesSource, /\.mapPlanTitle\{[^}]*min-width:0[^}]*overflow-wrap:anywhere[^}]*-webkit-line-clamp:2/);
+  assert.match(mapStylesSource, /@media\(max-width:680px\)\{[\s\S]*\.mapPlanAgendaRow\{min-height:52px/);
+  assert.match(mapWorkspaceSource, /setMapPlanFreeTimePart\(null\);\s*\}, \[selectedDay\.id, selectedPlanItem\?\.stopId\]\)/);
 });
 
 test("whole-route mode prioritises route context and keeps mobile Map actions reachable", () => {
