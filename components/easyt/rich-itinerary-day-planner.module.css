@@ -142,7 +142,6 @@
 
 .transfer p,
 .transfer small,
-.freePeriod p,
 .tonight p {
   margin: 4px 0 0;
   color: var(--morrovia-muted);
@@ -261,7 +260,7 @@
   transition: opacity .16s ease, transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
 
-.activity + .activity {
+.activityDropGroup + .activityDropGroup .activity {
   border-top: 1px solid var(--morrovia-line);
 }
 
@@ -315,17 +314,6 @@
   outline-offset: 2px;
 }
 
-.activityDescription {
-  display: -webkit-box;
-  overflow: hidden;
-  padding-left: 92px;
-  color: var(--morrovia-muted);
-  font-size: .76rem;
-  line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .dragHandle {
   width: 34px;
   height: 34px;
@@ -349,6 +337,21 @@
   font: 800 .62rem/1 var(--morrovia-meta);
   text-transform: uppercase;
   letter-spacing: .04em;
+}
+
+.activityWarning {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-left: 92px;
+  color: var(--morrovia-warning);
+  font: var(--morrovia-type-metadata);
+}
+
+.activityWarning svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .activityMenu {
@@ -418,12 +421,11 @@
 }
 
 .freePeriod {
-  display: flex;
-  min-height: 68px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 13px;
+  min-height: 0;
+}
+
+.periodDropReady .freePeriod {
+  min-height: 44px;
 }
 
 .freePeriodDropActive {
@@ -455,12 +457,9 @@
   gap: 7px;
 }
 
-.freePeriod strong {
-  color: var(--morrovia-ink-soft);
-}
-
 .freePeriod p {
-  margin-bottom: 9px;
+  margin: 0;
+  padding: 10px 13px;
   font-size: .78rem;
 }
 
@@ -537,8 +536,8 @@
     display: none;
   }
 
-  .activityDescription,
-  .bookedState {
+  .bookedState,
+  .activityWarning {
     padding-left: 84px;
     margin-left: 0;
   }

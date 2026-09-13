@@ -14,6 +14,7 @@ import { trackEvent } from "@/lib/analytics";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import { discoveryCategoryMatches, type DiscoveryCategory } from "@/lib/easyt/discovery-taxonomy";
+import { activityDurationLabel as faithfulActivityDurationLabel } from "@/lib/easyt/itinerary-schedule-awareness";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -32,11 +33,7 @@ type LiveActivityInventoryProps = {
 };
 
 function durationLabel(duration: ActivityInventoryItem["duration"]) {
-  if (!duration) return null;
-  const minutes = duration.fixedMinutes ?? duration.fromMinutes;
-  if (!minutes) return null;
-  const formatted = minutes >= 60 ? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}` : `${minutes}m`;
-  return duration.fixedMinutes ? formatted : `From ${formatted}`;
+  return faithfulActivityDurationLabel(duration);
 }
 
 function priceLabel(price: ActivityInventoryItem["price"]) {

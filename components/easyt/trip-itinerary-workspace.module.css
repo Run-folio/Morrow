@@ -1709,6 +1709,17 @@
   color: var(--morrovia-danger);
 }
 
+.suggestionProgress,
+.commercialDisclosure {
+  margin: 7px 0 0;
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+}
+
+.commercialDisclosure {
+  flex-basis: 100%;
+}
+
 .experienceHandoff {
   display: grid;
   min-width: 0;

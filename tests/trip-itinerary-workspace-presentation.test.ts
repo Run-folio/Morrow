@@ -195,7 +195,8 @@ test("long canonical and provider content stays inside the timeline and planning
 test("recommendation cards use canonical day scoring, an accessible itinerary menu, and separate Add and Save actions", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(itinerary, /itineraryIdeaDayOptions\(trip, stop\.id\)/);
-  assert.match(itinerary, /preferredItineraryIdeaDay\(trip, stop\.id\)/);
+  assert.match(itinerary, /rankItineraryRecommendations\(trip, day/);
+  assert.match(itinerary, /dedupeExploreResults\(\[\.\.\.organic, \.\.\.commercial\]\)/);
   assert.doesNotMatch(itinerary, /<EasyTSelect|<option[^>]*>Choose a day/);
   assert.match(itinerary, /aria-haspopup="menu"/);
   assert.match(itinerary, /role="menu"/);
@@ -213,6 +214,7 @@ test("recommendation cards use canonical day scoring, an accessible itinerary me
   assert.match(styles, /\.discoveryMedia > img,[\s\S]*object-fit: cover/);
   assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.dayPickerPanel \{[\s\S]*position: fixed/);
   assert.match(itinerary, /Choose day and part of day for/);
+  assert.doesNotMatch(itinerary, /<p>\{place\.description\}<\/p>/);
   assert.match(itinerary, /itineraryDayParts\.map/);
   assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.dragHint \{ display: none; \}/);
   for (const story of ["RecommendationDefault", "RecommendationNoImage", "RecommendationInterestMatch", "RecommendationAlreadySaved", "RecommendationAlreadyAdded", "RecommendationDayPickerOpen", "RecommendationLongTitle", "RecommendationMobile320"]) {

@@ -5279,7 +5279,7 @@
       },
       {
         "value": "10px",
-        "count": 479,
+        "count": 480,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5309,7 +5309,7 @@
       },
       {
         "value": "7px",
-        "count": 303,
+        "count": 304,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5329,7 +5329,7 @@
       },
       {
         "value": "9px",
-        "count": 267,
+        "count": 266,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5368,6 +5368,16 @@
         ]
       },
       {
+        "value": "5px",
+        "count": 213,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css",
+          "app/journey/help/help.module.css"
+        ]
+      },
+      {
         "value": "6px",
         "count": 213,
         "examples": [
@@ -5375,16 +5385,6 @@
           "app/journey/discover/discover.module.css",
           "app/journey/home/home.module.css",
           "app/journey/home/immersive/immersive.module.css"
-        ]
-      },
-      {
-        "value": "5px",
-        "count": 212,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css",
-          "app/journey/help/help.module.css"
         ]
       },
       {

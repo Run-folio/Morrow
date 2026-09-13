@@ -6,6 +6,8 @@ import { preferredItineraryDayPart } from "./itinerary-activity-placement.ts";
 import { ideaStateForPlace, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
+import { discoveryVisitorRelevance } from "./discovery-quality.ts";
+import { activityDurationLabel as faithfulActivityDurationLabel } from "./itinerary-schedule-awareness.ts";
 import {
   discoveryCategories,
   discoveryCategoryLabels,
@@ -163,6 +165,7 @@ export function exploreResultEligible(trip: Pick<EasyTTrip, "stops">, result: Ex
   const stop = trip.stops.find((candidate) => candidate.id === result.stopId);
   if (!stop) return false;
   if (normal(result.title) === normal(stop.name)) return false;
+  if (!discoveryVisitorRelevance({ title: result.title, category: result.category, tags: result.tags, description: result.description, qualityScore: result.qualityScore, kind: result.kind }).eligible) return false;
   if (usefulExploreEntity.test(`${result.category} ${result.tags.join(" ")}`)) return true;
   return !rejectedExploreEntity.test(`${result.category} ${result.tags.join(" ")}`);
 }
@@ -220,14 +223,7 @@ export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPl
 }
 
 export function activityDurationLabel(duration: ActivityInventoryItem["duration"]) {
-  if (!duration) return undefined;
-  const from = duration.fixedMinutes ?? duration.fromMinutes;
-  if (!from) return undefined;
-  const to = duration.toMinutes;
-  const format = (minutes: number) => minutes >= 60
-    ? `${Math.floor(minutes / 60)} hr${Math.floor(minutes / 60) === 1 ? "" : "s"}${minutes % 60 ? ` ${minutes % 60} min` : ""}`
-    : `${minutes} min`;
-  return to && to !== from ? `${format(from)}–${format(to)}` : format(from);
+  return faithfulActivityDurationLabel(duration) ?? undefined;
 }
 
 export function activityPriceLabel(price: ActivityInventoryItem["price"]) {

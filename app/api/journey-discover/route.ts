@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
 import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImage } from "@/lib/easyt/explore";
+import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
 
 type WikiPage = {
   pageid?: number;
@@ -114,6 +115,17 @@ export async function GET(request: NextRequest) {
           && !seen.has(key)
           && seen.add(key),
         );
+      })
+      .filter((page) => {
+        const category = classify(page.title!, page.extract!);
+        return discoveryVisitorRelevance({
+          title: page.title!,
+          category: category.type,
+          tags: category.tags,
+          description: page.extract!,
+          qualityScore: visitorValue(page),
+          kind: "activity",
+        }).eligible;
       })
       .sort((a, b) => visitorValue(b) - visitorValue(a))
       .slice(0, 10)

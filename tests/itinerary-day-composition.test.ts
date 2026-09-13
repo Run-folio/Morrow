@@ -123,7 +123,7 @@ test("unscheduled, scheduled-unslotted, and scheduled-slotted remain distinct ca
   assert.equal(slotted.brief.itineraryIdeas?.[0]?.dayPart, "evening");
 });
 
-test("day composition groups explicit periods and deterministically places legacy rows without an unslotted lane", () => {
+test("day composition groups explicit periods and leaves legacy untimed rows truthfully unslotted", () => {
   let source = tripFixture();
   for (const [id, title, part] of [
     ["fushimi", "Fushimi Inari", "morning"],
@@ -138,16 +138,16 @@ test("day composition groups explicit periods and deterministically places legac
   const composition = composeItineraryDay(source, "kyoto-3");
   assert.ok(composition);
   assert.deepEqual(composition.planned.morning.map((item) => item.title), ["Fushimi Inari"]);
-  assert.deepEqual(composition.planned.midday.map((item) => item.title), ["Keep dinner flexible"]);
+  assert.deepEqual(composition.planned.midday.map((item) => item.title), []);
   assert.deepEqual(composition.planned.afternoon.map((item) => item.title), ["Kiyomizu-dera"]);
-  assert.deepEqual(composition.planned.evening.map((item) => item.title), ["Dinner in Gion", "Nishiki Market"]);
-  assert.deepEqual(composition.unslotted, []);
-  assert.deepEqual(composition.freeDayParts, []);
-  assert.equal(composition.planned.midday[0]?.dayPartEditable, false);
+  assert.deepEqual(composition.planned.evening.map((item) => item.title), ["Dinner in Gion"]);
+  assert.deepEqual(composition.unslotted.map((item) => item.title), ["Keep dinner flexible", "Nishiki Market"]);
+  assert.deepEqual(composition.freeDayParts, ["midday"]);
+  assert.equal(composition.unslotted[0]?.dayPartEditable, false);
   assert.equal(Object.values(composition.planned).flat().filter((item) => item.title === "Kiyomizu-dera").length, 1, "the mapped Phase 1 note is not duplicated");
 
   const partial = composeItineraryDay(scheduleItineraryIdea(tripFixture(), itineraryIdeaForPlace({ stopId: "kyoto", place: place("gion", "Dinner in Gion"), reasons: ["destination-significance"] }), "kyoto-3", "evening"), "kyoto-3");
-  assert.deepEqual(partial?.freeDayParts, ["midday"]);
+  assert.deepEqual(partial?.freeDayParts, ["morning", "midday", "afternoon"]);
 });
 
 test("legacy fallback is balanced and monotonic for one, two, three, four, and many items", () => {
@@ -180,8 +180,8 @@ test("an unambiguous authored activity can be slotted, moved to midday, and clea
   assert.equal(cleared.changed, true);
   assert.equal(cleared.trip.planItems[2]?.noteDayParts?.[location.noteIndex], null);
   const clearedComposition = composeItineraryDay(cleared.trip, "kyoto-3");
-  assert.equal(clearedComposition?.unslotted.length, 0);
-  assert.equal(Object.values(clearedComposition!.planned).flat().some((item) => item.title === "Tea in Higashiyama"), true);
+  assert.equal(clearedComposition?.unslotted.some((item) => item.title === "Tea in Higashiyama"), true);
+  assert.equal(Object.values(clearedComposition!.planned).flat().some((item) => item.title === "Tea in Higashiyama"), false);
 });
 
 test("authored note dayparts survive planner reconciliation on the same canonical stop", () => {

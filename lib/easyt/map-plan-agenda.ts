@@ -1,6 +1,7 @@
 import { composeItineraryDayWithExplicitPeriods } from "./itinerary-day-part-intent.ts";
 import { mapResultSelectionIdForIdea } from "./map-result-selection.ts";
 import type { EasyTTrip, ItineraryDayPart } from "./trip.ts";
+import { activityDurationLabel, isFullDayActivity } from "./itinerary-schedule-awareness.ts";
 
 export type MapPlanAgendaItem = {
   id: string;
@@ -21,7 +22,7 @@ export type MapPlanDayOption = {
 
 const dayPartLabel = (dayPart: ItineraryDayPart) => `${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`;
 
-function canonicalTime(value: string | null) {
+function canonicalTime(value: string | null | undefined) {
   const match = value?.trim().match(/^(?:[01]\d|2[0-3]):[0-5]\d/);
   return match?.[0] ?? null;
 }
@@ -79,8 +80,12 @@ export function mapPlanAgendaForDay(trip: EasyTTrip, dayId: string) {
     id: activity.id,
     kind: "activity",
     title: activity.title,
-    scheduleLabel: useExactStart() ?? (activity.dayPart ? dayPartLabel(activity.dayPart) : null),
-    metadata: activity.area ?? activity.placeType ?? null,
+    scheduleLabel: canonicalTime(activity.startsAt) ?? useExactStart() ?? (activity.dayPart ? dayPartLabel(activity.dayPart) : null),
+    metadata: [
+      activityDurationLabel(activity.providerMetadata?.duration),
+      isFullDayActivity(activity.providerMetadata?.duration) ? "Full-day experience" : null,
+      activity.area ?? activity.placeType,
+    ].filter(Boolean).join(" · ") || null,
     detail: null,
     mapSelectionId: activity.source === "itinerary-idea" && activity.mapPinId
       ? mapResultSelectionIdForIdea(activity.id)

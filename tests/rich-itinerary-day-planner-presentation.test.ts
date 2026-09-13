@@ -34,8 +34,9 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
   assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
 });
 
-test("free periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
-  assert.match(component, /copy\.freeDetail/);
+test("compact empty periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
+  assert.doesNotMatch(component, /No activity is set for this part of the day|copy\.freeDetail/);
+  assert.match(component, /Add something/);
   assert.match(component, /addComposerDayPart === part/);
   assert.match(component, /aria-label=\{`\$\{copy\.addActivity\}/);
   assert.match(component, /composition\.transfers\.map/);
@@ -91,6 +92,12 @@ test("Storybook uses the production component for composed planner and responsiv
     "ArrivalDay",
     "BookedActivity",
     "AuthoredActivities",
+    "MultipleActivitiesInMorning",
+    "MultipleActivitiesInAfternoon",
+    "ExactTimeAndUntimedMix",
+    "FullDayExperienceWarning",
+    "RestaurantAndEveningActivity",
+    "TransferAndActivities",
     "DraggingActivityOverMorning",
     "EmptyDaypart",
     "MixedGeneratedAndAuthored",

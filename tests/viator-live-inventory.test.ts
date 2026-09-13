@@ -96,7 +96,9 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../app/api/journey-activity-inventory/route.ts", import.meta.url), "utf8");
-  assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*<LiveActivityInventory/);
+  assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*initialActivityInventory/);
+  assert.match(itinerary, /exploreResultForActivity/);
+  assert.match(itinerary, /rankItineraryRecommendations/);
   assert.match(map, /JourneyItineraryRefinement[\s\S]*LiveActivityInventory/);
   assert.match(inventory, /createAbortableEffectScope\(`Live activity inventory for \$\{stop\.id\}`\)/);
   assert.match(inventory, /scope\.commit\(\(\) =>/);
@@ -116,7 +118,8 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   assert.match(inventory, /onRemove\(state\.idea\)/);
   assert.match(inventory, /Day \{state\.day\.dayNumber\}[\s\S]*state\.idea\.dayPart/);
   assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
-  assert.match(itinerary, /onRemove=\{\(idea\) => \{[\s\S]*removeItineraryIdea\(current, idea\.id\)/);
+  assert.match(itinerary, /onRemove=\{\(idea\) => removeSuggestion\(idea\.placeId, idea\.id\)\}/);
+  assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
   assert.match(route, /count:\s*4/);
   assert.doesNotMatch(route, /while\s*\(|for\s*\(.*start|database|repository/);
 });

@@ -153,11 +153,60 @@ const authoredTrip: EasyTTrip = {
   } : day),
 };
 
+const multiItemTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: {
+    ...baseTrip.brief,
+    itineraryIdeas: [
+      ...(baseTrip.brief.itineraryIdeas ?? []),
+      { id: "idea-breakfast", stopId: "kyoto", placeId: "breakfast", title: "Breakfast near Gion", category: "restaurant", coordinates: [135.776, 35.004], area: "Gion", placeType: "Restaurant", source: "personalised-recommendation", reasons: ["interest-relevance"], dayId: "kyoto-2", dayPart: "morning", startsAt: "09:00" },
+      { id: "idea-tea", stopId: "kyoto", placeId: "tea", title: "Tea house pause", category: "restaurant", coordinates: [135.779, 35.006], area: "Higashiyama", placeType: "Cafe", source: "personalised-recommendation", reasons: ["interest-relevance"], dayId: "kyoto-2", dayPart: "afternoon", startsAt: "16:00" },
+      { id: "idea-viewpoint", stopId: "kyoto", placeId: "viewpoint", title: "Higashiyama viewpoint", category: "activity", coordinates: [135.782, 35.008], area: "Higashiyama", placeType: "Viewpoint", source: "destination-highlight", reasons: ["destination-significance"], dayId: "kyoto-2", dayPart: "afternoon" },
+    ],
+  },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? {
+    ...day,
+    notes: ["Breakfast near Gion", "Fushimi Inari", "Nishiki Market", "Kiyomizu-dera", "Tea house pause", "Higashiyama viewpoint", "Dinner in Gion"],
+    noteDayParts: ["morning", "morning", "midday", "afternoon", "afternoon", "afternoon", "evening"],
+  } : day),
+};
+
+const fullDayTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: {
+    ...baseTrip.brief,
+    itineraryIdeas: [
+      { id: "idea-full-day", stopId: "kyoto", placeId: "viator:full-day", title: "Kyoto and Nara full-day experience", category: "activity", area: "Kyoto", placeType: "Bookable experience", source: "live-provider-inventory", sourceUrl: "https://www.viator.com/", reasons: [], provider: "viator", providerProductId: "full-day", providerMetadata: { duration: { fixedMinutes: 600 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "morning", startsAt: "08:00" },
+      { id: "idea-evening", stopId: "kyoto", placeId: "evening", title: "Evening theatre", category: "activity", area: "Gion", placeType: "Culture", source: "personalised-recommendation", reasons: ["interest-relevance"], providerMetadata: { duration: { fixedMinutes: 120 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "evening", startsAt: "19:00" },
+    ],
+  },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Kyoto and Nara full-day experience", "Evening theatre"], noteDayParts: ["morning", "evening"] } : day),
+};
+
+const emptyTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: { ...baseTrip.brief, itineraryIdeas: baseTrip.brief.itineraryIdeas?.filter((idea) => !idea.dayId), customActivities: {} },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: [], noteDayParts: [] } : day),
+};
+
+const overlapTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: {
+    ...baseTrip.brief,
+    itineraryIdeas: [
+      { id: "idea-overlap-museum", stopId: "kyoto", placeId: "overlap-museum", title: "Museum visit", category: "activity", area: "Higashiyama", placeType: "Museum", source: "destination-highlight", reasons: ["destination-significance"], providerMetadata: { duration: { fixedMinutes: 120 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "afternoon", startsAt: "14:00" },
+      { id: "idea-overlap-coffee", stopId: "kyoto", placeId: "overlap-coffee", title: "Coffee stop", category: "restaurant", area: "Higashiyama", placeType: "Cafe", source: "personalised-recommendation", reasons: ["interest-relevance"], providerMetadata: { duration: { fixedMinutes: 60 }, provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" } }, dayId: "kyoto-2", dayPart: "afternoon", startsAt: "15:00" },
+    ],
+  },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Museum visit", "Coffee stop"], noteDayParts: ["afternoon", "afternoon"] } : day),
+};
+
 export const FullFourSectionDay: Story = {
   render: () => <StoryFrame trip={baseTrip} dayId="kyoto-2" />,
 };
 
 export const SparseDay: Story = { render: () => <StoryFrame trip={sparseTrip} dayId="kyoto-2" /> };
+export const CompletelyEmptyDay: Story = { render: () => <StoryFrame trip={emptyTrip} dayId="kyoto-2" /> };
 
 export const AutomaticLegacyPlacement: Story = {
   render: () => <StoryFrame trip={{
@@ -176,6 +225,14 @@ export const ArrivalDay: Story = {
 export const BookedActivity: Story = FullFourSectionDay;
 
 export const AuthoredActivities: Story = { render: () => <StoryFrame trip={authoredTrip} dayId="kyoto-2" /> };
+
+export const MultipleActivitiesInMorning: Story = { render: () => <StoryFrame trip={multiItemTrip} dayId="kyoto-2" /> };
+export const MultipleActivitiesInAfternoon: Story = MultipleActivitiesInMorning;
+export const ExactTimeAndUntimedMix: Story = MultipleActivitiesInMorning;
+export const FullDayExperienceWarning: Story = { render: () => <StoryFrame trip={fullDayTrip} dayId="kyoto-2" /> };
+export const ExactOverlapWarning: Story = { render: () => <StoryFrame trip={overlapTrip} dayId="kyoto-2" /> };
+export const RestaurantAndEveningActivity: Story = FullDayExperienceWarning;
+export const TransferAndActivities: Story = ArrivalDay;
 
 export const DraggingActivityOverMorning: Story = {
   args: {
@@ -225,7 +282,7 @@ export const LongActivityNames: Story = {
 };
 
 export const Mobile320: Story = { ...SparseDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
-export const Mobile390: Story = { ...AuthoredActivities, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile390: Story = { ...MultipleActivitiesInAfternoon, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { ...LongActivityNames, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { ...SparseDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { ...FullFourSectionDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };

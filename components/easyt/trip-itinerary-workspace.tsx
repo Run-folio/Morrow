@@ -63,15 +63,12 @@ import {
   itineraryDayLegs,
   itineraryDayMapContext,
   itineraryDayMapSelection,
-  itineraryInterestReason,
   itinerarySelectionForMapPin,
   itinerarySuggestionCandidates,
-  destinationHighlightCandidates,
-  personalisedItineraryCandidates,
   type ItineraryDiscoveryPlace,
 } from "@/lib/easyt/itinerary-day-context";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, type IdeaDiscoveryReason, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
+import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { placeItineraryActivity, preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
@@ -88,8 +85,9 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/a
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
 import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
-import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { dedupeExploreResults, exploreResultForActivity, exploreResultForPlace, type ExploreResult } from "@/lib/easyt/explore";
+import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
@@ -831,14 +829,6 @@ export default function TripItineraryWorkspace({
     setNotice(copy.noteAdded);
   };
 
-  const saveSuggestion = (place: ItineraryDiscoveryPlace, reasons: IdeaDiscoveryReason[]) => {
-    const idea = itineraryIdeaForPlace({ stopId: active.stopId, place, reasons });
-    const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${active.stopId}-${place.id}`);
-    if (!accepted) return false;
-    setNotice("Idea saved");
-    return true;
-  };
-
   const scheduleIdea = (idea: ItineraryIdea, dayId: string, requestedPart?: ItineraryDayPart) => {
     let scheduledPart: ItineraryDayPart | null = requestedPart ?? null;
     const accepted = mutation.mutateTrip((current) => {
@@ -854,10 +844,6 @@ export default function TripItineraryWorkspace({
     trackEvent("attraction_selected", { trip_id: workingTrip.id, stop_id: active.stopId, source: "itinerary_rail" });
     return true;
   };
-
-  const scheduleSuggestion = (place: ItineraryDiscoveryPlace, reasons: IdeaDiscoveryReason[], dayId: string, dayPart?: ItineraryDayPart) => (
-    scheduleIdea(itineraryIdeaForPlace({ stopId: active.stopId, place, reasons }), dayId, dayPart)
-  );
 
   const dropPlannerItem = (dayPart: ItineraryDayPart, insertionIndex: number) => {
     const dragged = plannerDrag;
@@ -1337,40 +1323,24 @@ export default function TripItineraryWorkspace({
             copy={copy}
             language={language}
             initialPlaces={initialSuggestions?.[active.dayNumber]}
+            initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
             isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
-            onSave={saveSuggestion}
-            onSchedule={scheduleSuggestion}
-            onRemove={removeSuggestion}
+            onSave={(idea) => {
+              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
+              if (accepted) setNotice("Idea saved");
+              return accepted;
+            }}
+            onSchedule={scheduleIdea}
+            onRemove={(idea) => removeSuggestion(idea.placeId, idea.id)}
             draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
-            onDragStart={(place, reasons, event) => {
-              const idea = itineraryIdeaForPlace({ stopId: active.stopId, place, reasons });
+            onDragStart={(idea, event) => {
               event.dataTransfer.effectAllowed = "copyMove";
               event.dataTransfer.setData("text/plain", idea.id);
               setPlannerDrag({ kind: "suggestion", idea });
             }}
             onDragEnd={() => setPlannerDrag(null)}
           />
-          {stop ? <LiveActivityInventory
-            key={`live-${workingTrip.id}-${active.id}`}
-            trip={workingTrip}
-            stop={stop}
-            day={active}
-            workspace="itinerary"
-            placement="itinerary_day_experiences"
-            initialItems={initialActivityInventory?.[active.dayNumber]}
-            isPending={(idea) => mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
-            onSave={(idea) => {
-              const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
-              if (accepted) setNotice("Saved for later");
-              return accepted;
-            }}
-            onSchedule={(idea) => scheduleIdea(idea, active.id)}
-            onRemove={(idea) => {
-              const accepted = mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`);
-              if (accepted) setNotice("Activity removed");
-              return accepted;
-            }}
-            fallback={experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`${active.id}-experience-handoff`}>
+          {stop && experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`${active.id}-experience-handoff`}>
             <div>
               <strong id={`${active.id}-experience-handoff`}>{language === "es" ? "¿Quieres más opciones?" : "Want more options?"}</strong>
               <p>{language === "es" ? `Explora tours y actividades cerca de ${stop.name} sin cambiar este día.` : `Browse tours and activities around ${stop.name} without changing this day.`}</p>
@@ -1379,7 +1349,6 @@ export default function TripItineraryWorkspace({
             <MorroviaAffiliateLink action={experienceAction} context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: stop.id, workspaceView: "itinerary" }} fullWidth />
             <small>{affiliateDisclosure}</small>
           </section> : null}
-          /> : null}
           <EasyTLinkButton
             className={styles.contextAction}
             href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
@@ -1564,43 +1533,47 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, isPending, onSave, onSchedule, onRemove, draggingIdeaId, onDragStart, onDragEnd }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, isPending, onSave, onSchedule, onRemove, draggingIdeaId, onDragStart, onDragEnd }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
   copy: ReturnType<typeof itineraryCopy>;
   language: "en" | "es";
   initialPlaces?: ItineraryDiscoveryPlace[];
+  initialActivityInventory?: ActivityInventoryItem[];
   isPending: (placeId: string) => boolean;
-  onSave: (place: ItineraryDiscoveryPlace, reasons: IdeaDiscoveryReason[]) => boolean;
-  onSchedule: (place: ItineraryDiscoveryPlace, reasons: IdeaDiscoveryReason[], dayId: string, dayPart?: ItineraryDayPart) => boolean;
-  onRemove: (placeId: string, ideaId: string) => boolean;
+  onSave: (idea: ItineraryIdea) => boolean;
+  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart) => boolean;
+  onRemove: (idea: ItineraryIdea) => boolean;
   draggingIdeaId: string | null;
-  onDragStart: (place: ItineraryDiscoveryPlace, reasons: IdeaDiscoveryReason[], event: DragEvent<HTMLElement>) => void;
+  onDragStart: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }) {
   const [places, setPlaces] = useState<ItineraryDiscoveryPlace[]>(initialPlaces ?? []);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(initialPlaces ? "ready" : "idle");
+  const [organicStatus, setOrganicStatus] = useState<"idle" | "loading" | "ready" | "error">(initialPlaces ? "ready" : "idle");
+  const [inventory, setInventory] = useState<ActivityInventoryItem[]>(initialActivityInventory ?? []);
+  const [commercialStatus, setCommercialStatus] = useState<"idle" | "loading" | "ready" | "error">(initialActivityInventory ? "ready" : "idle");
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
   const [openPickerId, setOpenPickerId] = useState<string | null>(null);
+  const interests = tripIntentForTrip(trip).preferences.interests;
 
   useEffect(() => {
     if (initialPlaces) {
       setPlaces(initialPlaces);
-      setStatus("ready");
+      setOrganicStatus("ready");
       return;
     }
     if (!stop || stop.latitude === null || stop.longitude === null) {
       setPlaces([]);
-      setStatus("ready");
+      setOrganicStatus("ready");
       return;
     }
     const scope = createAbortableEffectScope(`Itinerary suggestions for day ${day.dayNumber}`);
     const startedAt = performance.now();
     setPlaces([]);
     setError("");
-    setStatus("loading");
+    setOrganicStatus("loading");
     void fetch(`/api/journey-discover?${new URLSearchParams({
       destination: stop.name,
       country: stop.country,
@@ -1615,7 +1588,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         scope.commit(() => {
           const nextPlaces = payload.places ?? [];
           setPlaces(nextPlaces);
-          setStatus("ready");
+          setOrganicStatus("ready");
           const properties = { surface: "itinerary" as const, recommendation_kind: "activity" as const, lane: "core" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: nextPlaces.length, outcome: nextPlaces.length ? "ready" as const : "empty" as const };
           if (nextPlaces.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
           trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
@@ -1625,69 +1598,116 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         if (scope.isCancellation(caught)) return;
         scope.commit(() => {
           setPlaces([]);
-          setStatus("error");
+          setOrganicStatus("error");
           trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
         });
       });
     return () => scope.dispose();
   }, [copy.suggestionsUnavailable, initialPlaces, retryVersion, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name]);
 
-  const eligible = itinerarySuggestionCandidates(trip, day, places);
-  const highlights = destinationHighlightCandidates(eligible).slice(0, 4);
-  const highlightIds = new Set(highlights.map((place) => place.id));
-  const recommended = personalisedItineraryCandidates(eligible, tripIntentForTrip(trip).preferences.interests)
-    .filter((place) => !highlightIds.has(place.id))
-    .slice(0, 4);
-  if (status === "loading") return <div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>;
-  if (status === "error") return <div className={styles.suggestionStatus}><MorroviaSectionStatus state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try places again" onRetry={() => setRetryVersion((current) => current + 1)} /></div>;
-  if (!highlights.length && !recommended.length) return <p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>;
-  const renderPlaces = (items: ItineraryDiscoveryPlace[], reason: IdeaDiscoveryReason) => <div className={styles.discoveryList}>{items.map((place) => {
-    const pending = isPending(place.id);
-    const interestReason = itineraryInterestReason(place, tripIntentForTrip(trip).preferences.interests, language);
-    const state = stop ? ideaStateForPlace(trip, stop.id, place.id) : { state: "available" as const, idea: null, day: null };
-    const reasons: IdeaDiscoveryReason[] = [...new Set<IdeaDiscoveryReason>([reason, ...(interestReason ? ["interest-relevance" as const] : [])])];
-    const options = stop ? itineraryIdeaDayOptions(trip, stop.id) : [];
-    const preferredDay = stop ? preferredItineraryIdeaDay(trip, stop.id) : null;
-    const idea = itineraryIdeaForPlace({ stopId: day.stopId, place, reasons });
-    return <RecommendationDiscoveryCard
-      key={place.id}
-      place={place}
-      interestReason={interestReason}
-      language={language}
-      options={options}
-      preferredDayId={preferredDay?.id ?? null}
-      preferredDayPart={preferredDay ? preferredItineraryDayPart(trip, preferredDay.id, idea.category) : "morning"}
-      state={state}
-      pending={pending}
-      dragging={draggingIdeaId === idea.id}
-      pickerOpen={openPickerId === place.id}
-      onPickerOpenChange={(open) => setOpenPickerId(open ? place.id : null)}
-      onSave={() => { setError(""); if (!onSave(place, reasons)) setError("This idea could not be stored safely."); }}
-      onSchedule={(dayId, dayPart) => {
-        setError("");
-        const accepted = onSchedule(place, reasons, dayId, dayPart);
-        if (!accepted) setError("This activity could not be added safely.");
-        return accepted;
-      }}
-      onRemove={state.idea ? () => {
-        setError("");
-        if (!onRemove(place.id, state.idea!.id)) setError("This activity could not be removed safely.");
-      } : undefined}
-      onDragStart={(event) => onDragStart(place, reasons, event)}
-      onDragEnd={onDragEnd}
-    />;
-  })}</div>;
-  return <>{highlights.length ? <section className={styles.discoveryGroup}><h4>Highlights in {stop?.name}</h4>{renderPlaces(highlights, "destination-significance")}</section> : null}{recommended.length ? <section className={styles.discoveryGroup}><h4>Recommended for you</h4>{renderPlaces(recommended, "interest-relevance")}</section> : null}{error ? <p className={styles.suggestionError} role="alert">{error}</p> : null}</>;
+  useEffect(() => {
+    if (initialActivityInventory) {
+      setInventory(initialActivityInventory);
+      setCommercialStatus("ready");
+      return;
+    }
+    if (!stop?.canonicalPlaceId) {
+      setInventory([]);
+      setCommercialStatus("ready");
+      return;
+    }
+    const scope = createAbortableEffectScope(`Itinerary experiences for day ${day.dayNumber}`);
+    const startedAt = performance.now();
+    const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
+    setCommercialStatus("loading");
+    void fetch("/api/journey-activity-inventory", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ destination: {
+        canonicalPlaceId: stop.canonicalPlaceId,
+        name: stop.name,
+        country: stop.country,
+        countryCode: stop.countryCode,
+        region: stop.region,
+        coordinates: stop.latitude !== null && stop.longitude !== null ? { latitude: stop.latitude, longitude: stop.longitude } : undefined,
+        aliases: placeMention?.aliases,
+        placeType: placeMention?.placeType,
+      }, currency: trip.currency }),
+      signal: scope.signal,
+    }).then(async (response) => {
+      if (!response.ok) throw new Error("Activity inventory unavailable");
+      return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
+    }).then((payload) => scope.commit(() => {
+      const items = payload.activities ?? [];
+      setInventory(items);
+      setCommercialStatus("ready");
+      const properties = { surface: "itinerary" as const, recommendation_kind: "activity" as const, lane: "commercial" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: items.length, outcome: items.length ? "ready" as const : "empty" as const };
+      if (items.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+      trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+    })).catch((caught: unknown) => {
+      if (scope.isCancellation(caught)) return;
+      scope.commit(() => {
+        setInventory([]);
+        setCommercialStatus("error");
+        trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
+      });
+    });
+    return () => scope.dispose();
+  }, [day.dayNumber, initialActivityInventory, retryVersion, stop?.canonicalPlaceId, stop?.country, stop?.countryCode, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region, trip.brief.structuredBrief?.placeMentions, trip.currency]);
+
+  const results = useMemo(() => {
+    if (!stop) return [];
+    const organic = itinerarySuggestionCandidates(trip, day, places).map((place) => exploreResultForPlace(stop, place, interests));
+    const commercial = inventory.map((item) => exploreResultForActivity(stop, item, trip));
+    return rankItineraryRecommendations(trip, day, dedupeExploreResults([...organic, ...commercial])).slice(0, 8);
+  }, [day, interests, inventory, places, stop, trip]);
+  const loading = organicStatus === "loading" || commercialStatus === "loading";
+  if (!results.length && loading) return <div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>;
+  if (!results.length && (organicStatus === "error" || commercialStatus === "error")) return <div className={styles.suggestionStatus}><MorroviaSectionStatus state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => setRetryVersion((current) => current + 1)} /></div>;
+  if (!results.length) return <p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>;
+  return <section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
+    <h4>Shortlist for {stop?.name}</h4>
+    <div className={styles.discoveryList}>{results.map((result) => {
+      const idea = result.idea;
+      const pending = isPending(idea.placeId);
+      const state = stop ? ideaStateForPlace(trip, stop.id, idea.placeId) : { state: "available" as const, idea: null, day: null };
+      const options = stop ? itineraryIdeaDayOptions(trip, stop.id) : [];
+      return <ItineraryRankedSuggestionCard
+        key={result.identity}
+        result={result}
+        tripId={trip.id}
+        language={language}
+        options={options}
+        preferredDayId={day.id}
+        preferredDayPart={preferredItineraryDayPart(trip, day.id, idea.category)}
+        state={state}
+        pending={pending}
+        dragging={draggingIdeaId === idea.id}
+        pickerOpen={openPickerId === result.identity}
+        onPickerOpenChange={(open) => setOpenPickerId(open ? result.identity : null)}
+        onSave={() => { setError(""); if (!onSave(idea)) setError("This idea could not be stored safely."); }}
+        onSchedule={(dayId, dayPart) => {
+          setError("");
+          const accepted = onSchedule(idea, dayId, dayPart);
+          if (!accepted) setError("This activity could not be added safely.");
+          return accepted;
+        }}
+        onRemove={state.idea ? () => { setError(""); if (!onRemove(state.idea!)) setError("This activity could not be removed safely."); } : undefined}
+        onDragStart={(event) => onDragStart(idea, event)}
+        onDragEnd={onDragEnd}
+      />;
+    })}</div>
+    {loading ? <p className={styles.suggestionProgress} role="status">More ideas are still loading…</p> : null}
+    {error ? <p className={styles.suggestionError} role="alert">{error}</p> : null}
+  </section>;
 }
 
-type DiscoveryIdeaState = ReturnType<typeof ideaStateForPlace>;
-
-function RecommendationDiscoveryCard({ place, interestReason, language, options, preferredDayId, preferredDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onDragStart, onDragEnd }: {
-  place: ItineraryDiscoveryPlace;
-  interestReason: string | null;
+function ItineraryRankedSuggestionCard({ result, tripId, language, options, preferredDayId, preferredDayPart, state, pending, dragging, pickerOpen, onPickerOpenChange, onSave, onSchedule, onRemove, onDragStart, onDragEnd }: {
+  result: ExploreResult;
+  tripId: string;
   language: "en" | "es";
   options: ItineraryIdeaDayOption[];
-  preferredDayId: string | null;
+  preferredDayId: string;
   preferredDayPart: ItineraryDayPart;
   state: DiscoveryIdeaState;
   pending: boolean;
@@ -1701,49 +1721,29 @@ function RecommendationDiscoveryCard({ place, interestReason, language, options,
   onDragEnd: () => void;
 }) {
   const titleId = useId();
+  const commercial = result.idea.source === "live-provider-inventory";
   const currentDayId = state.state === "planned" ? state.day.id : null;
   const preferredDay = options.find((option) => option.day.id === preferredDayId)?.day ?? options[0]?.day ?? null;
   const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
-  return <article
-    className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`}
-    data-itinerary-suggestion-id={place.id}
-    aria-labelledby={titleId}
-    aria-busy={pending || undefined}
-    draggable={!pending}
-    onDragStart={onDragStart}
-    onDragEnd={onDragEnd}
-  >
+  const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
+  const action = commercial && result.providerUrl ? { provider: "viator", category: "activities", href: result.providerUrl, cta: "View on Viator", affiliate: true } as const : null;
+  return <article className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={!pending} onDragStart={onDragStart} onDragEnd={onDragEnd}>
     <div className={styles.discoveryMedia}>
-      <ResilientImage src={place.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
-      {place.sourceUrl ? <a href={place.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${place.title}`}><ExternalLink aria-hidden="true" /></a> : null}
+      <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
+      {!commercial && result.providerUrl ? <a href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : null}
     </div>
-    <div className={styles.discoveryCopy}>
-      <div id={titleId}><ItineraryActivityIdentity title={place.title} category={place.type === "Food" || place.tags.includes("Food") ? "restaurant" : "activity"} meta={`${place.area} · ${place.type}`} compact /></div>
-      {interestReason ? <p className={styles.interestReason}>{interestReason}</p> : null}
-      <p>{place.description}</p>
-    </div>
+    <div className={styles.discoveryCopy}><div id={titleId}><ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} meta={meta} compact /></div></div>
     <div className={styles.discoveryActions}>
       <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span>
       {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
-      {preferredDay ? <ItineraryDayPicker
-        placeTitle={place.title}
-        language={language}
-        options={options}
-        preferredDayId={preferredDayId}
-        preferredDayPart={preferredDayPart}
-        currentDayId={currentDayId}
-        currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null}
-        label={actionLabel}
-        open={pickerOpen}
-        pending={pending}
-        onOpenChange={onPickerOpenChange}
-        onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)}
-        onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)}
-      /> : null}
+      {preferredDay ? <ItineraryDayPicker placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
       {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
+      {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><small className={styles.commercialDisclosure}>Bookable experience · {affiliateDisclosure}</small></> : null}
     </div>
   </article>;
 }
+
+type DiscoveryIdeaState = ReturnType<typeof ideaStateForPlace>;
 
 function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, preferredDayPart, currentDayId, currentDayPart, label, open, pending, onOpenChange, onDefault, onChoose }: {
   placeTitle: string;

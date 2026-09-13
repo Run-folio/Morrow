@@ -424,6 +424,54 @@ export const TourCapture: Story = {
 
 export const RecommendationDefault: Story = {};
 
+const storyCommercialInventory = [{
+  provider: "viator",
+  source: "viator",
+  providerProductId: "CUSCO-FULL-DAY",
+  title: "Sacred Valley full-day experience",
+  destination: { canonicalPlaceId: "cusco-pe", label: "Cusco" },
+  tags: ["culture", "day trip"],
+  rating: 4.9,
+  reviewCount: 1240,
+  duration: { fixedMinutes: 600 },
+  productUrl: "https://www.viator.com/tours/Cusco/",
+  provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" },
+}] satisfies import("@/lib/easyt/activity-inventory").ActivityInventoryItem[];
+
+export const MixedOrganicAndCommercialShortlist: Story = {
+  args: {
+    initialSuggestions: {
+      1: [
+        { id: "cusco-museum", title: "Museo Inka", area: "Cusco", type: "Museum", tags: ["Culture"], description: "A major visitor museum for regional Inca history.", coordinates: [-71.979, -13.516], qualityScore: 18 },
+        { id: "cusco-road-bridge", title: "Cusco Vehicular Bridge", area: "Cusco", type: "Landmark", tags: ["Cities"], description: "A vehicular bridge carrying ordinary road traffic.", coordinates: [-71.98, -13.52], qualityScore: 11 },
+      ],
+    },
+    initialActivityInventory: {
+      1: storyCommercialInventory,
+    },
+  },
+};
+
+export const CommercialProviderUnavailable: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: [] } } };
+export const OrganicProviderUnavailable: Story = { args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: storyCommercialInventory } } };
+export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortlist;
+export const FullDayExperienceOnBusyDay: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, selectedDayNumber: 2, initialActivityInventory: { 2: storyCommercialInventory } } };
+export const EveningFreeContext: Story = {
+  args: {
+    trip: {
+      ...trip,
+      planItems: trip.planItems.map((item) => item.id === "day-1" ? {
+        ...item,
+        notes: ["Breakfast", "Maya museum", "Lunch"],
+        noteDayParts: ["morning", "midday", "afternoon"],
+      } : item),
+    },
+    initialSuggestions: { 1: [] },
+    initialActivityInventory: { 1: storyCommercialInventory },
+  },
+};
+export const MixedShortlistMobile390: Story = { ...MixedOrganicAndCommercialShortlist, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
 export const ActivityHandoffViator: Story = RecommendationDefault;
 
 export const ActivityHandoffTripComFallback: Story = {

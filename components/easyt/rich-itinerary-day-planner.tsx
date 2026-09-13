@@ -3,6 +3,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  AlertTriangle,
   BedDouble,
   CalendarDays,
   CirclePlus,
@@ -22,6 +23,7 @@ import {
   type ItineraryDayComposition,
 } from "@/lib/easyt/itinerary-day-composition";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
+import { activityDurationLabel, activityStartTimeLabel, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import styles from "./rich-itinerary-day-planner.module.css";
@@ -65,10 +67,8 @@ function copyFor(language: "en" | "es") {
     estimate: "estimación de planificación",
     timingUnknown: "Horario por confirmar",
     scheduleCheck: "Consulta los horarios actuales antes de reservar.",
-    free: "Libre",
-    freeDetail: "No hay ninguna actividad fijada para este periodo.",
     addActivity: "Añadir actividad",
-    addHere: "Añadir aquí",
+    addHere: "Añadir algo",
     activityName: "Actividad para",
     save: "Guardar",
     cancel: "Cancelar",
@@ -91,10 +91,8 @@ function copyFor(language: "en" | "es") {
     estimate: "planning estimate",
     timingUnknown: "Timing to confirm",
     scheduleCheck: "Check current schedules before booking.",
-    free: "Free",
-    freeDetail: "No activity is set for this part of the day.",
     addActivity: "Add activity",
-    addHere: "Add here",
+    addHere: "Add something",
     activityName: "Activity for",
     save: "Save",
     cancel: "Cancel",
@@ -139,6 +137,7 @@ function ActivityRow({
   onDragEnd,
   selected,
   onSelect,
+  warnings,
 }: {
   activity: ComposedItineraryActivity;
   language: "en" | "es";
@@ -155,8 +154,17 @@ function ActivityRow({
   onDragEnd?: () => void;
   selected: boolean;
   onSelect?: (trigger: HTMLButtonElement) => void;
+  warnings: string[];
 }) {
   const copy = copyFor(language);
+  const duration = activityDurationLabel(activity.providerMetadata?.duration);
+  const meta = [
+    activityStartTimeLabel(activity.startsAt),
+    duration,
+    isFullDayActivity(activity.providerMetadata?.duration) ? (language === "es" ? "Experiencia de día completo" : "Full-day experience") : null,
+    activity.placeType,
+    activity.area,
+  ].filter(Boolean).join(" · ");
   return (
     <article className={`${styles.activity} ${selected ? styles.activitySelected : ""} ${dragging ? styles.activityDragging : ""}`} aria-busy={pending || undefined} data-itinerary-activity-id={activity.id}>
       <EasyTButton className={styles.activitySelect} variant="quiet" aria-pressed={selected} onClick={(event) => onSelect?.(event.currentTarget)}>
@@ -164,11 +172,11 @@ function ActivityRow({
           title={activity.title}
           category={activity.category}
           image={activity.image}
-          meta={[activity.area, activity.placeType].filter(Boolean).join(" · ") || undefined}
+          meta={meta || undefined}
           card
         />
-        {activity.description ? <span className={styles.activityDescription}>{activity.description}</span> : null}
         {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
+        {warnings.map((warning) => <span className={styles.activityWarning} role="status" key={warning}><AlertTriangle aria-hidden="true" />{warning}</span>)}
       </EasyTButton>
       {draggable ? <EasyTButton
         className={styles.dragHandle}
@@ -254,6 +262,8 @@ export default function RichItineraryDayPlanner({
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const warnings = itineraryScheduleWarnings(composition);
+  const warningsFor = (activityId: string) => [...new Set(warnings.filter((warning) => warning.activityIds.includes(activityId)).map((warning) => warning.message))];
   useEffect(() => {
     const activityId = focusAfterMoveRef.current;
     if (!activityId) return;
@@ -336,6 +346,7 @@ export default function RichItineraryDayPlanner({
                       onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
                       selected={selectedActivityId === activity.id}
                       onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
+                      warnings={warningsFor(activity.id)}
                     />
                   </div>)}
                   <div
@@ -355,8 +366,7 @@ export default function RichItineraryDayPlanner({
                   onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
                   onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, 0); setDropTarget(null); }}
                 >
-                  <strong>{copy.free}</strong>
-                  <p>{dragActive ? "Drop activity here" : copy.freeDetail}</p>
+                  {dragActive ? <p>Drop activity here</p> : null}
                 </div>
               )}
               <div className={styles.addHere}>
@@ -414,6 +424,7 @@ export default function RichItineraryDayPlanner({
                 onDragEnd={() => { setDropTarget(null); onActivityDragEnd?.(); }}
                 selected={selectedActivityId === activity.id}
                 onSelect={(trigger) => onActivitySelect?.(activity, trigger)}
+                warnings={warningsFor(activity.id)}
                 key={activity.id}
               />
             ))}

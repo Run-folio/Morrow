@@ -406,7 +406,11 @@ const goldenTriangleMapPlanTrip: EasyTTrip = {
     itineraryIdeas: [
       {
         id: "agra-riverside-walk", stopId: "agra", placeId: "agra-riverside-walk", title: "A deliberately long riverside garden walk near the Taj Mahal at sunset", category: "activity",
-        coordinates: [78.0432, 27.1795], area: "Mehtab Bagh", placeType: "Garden", source: "destination-highlight", reasons: ["destination-significance"], dayId: "india-day-5", dayPart: "afternoon",
+        coordinates: [78.0432, 27.1795], area: "Mehtab Bagh", placeType: "Garden", source: "destination-highlight", reasons: ["destination-significance"], dayId: "india-day-5", dayPart: "afternoon", startsAt: "16:00",
+      },
+      {
+        id: "agra-tea-stop", stopId: "agra", placeId: "agra-tea-stop", title: "Tea overlooking the Yamuna", category: "restaurant",
+        coordinates: [78.044, 27.1802], area: "Mehtab Bagh", placeType: "Cafe", source: "personalised-recommendation", reasons: ["interest-relevance"], dayId: "india-day-5", dayPart: "afternoon", startsAt: "17:30",
       },
       {
         id: "agra-fort-map-plan", stopId: "agra", placeId: "agra-fort", title: "Agra Fort", category: "activity",
@@ -848,6 +852,8 @@ export const MapPlanMultiDayTransferLongTitle: Story = {
   args: { storyTrip: goldenTriangleMapPlanTrip, storyState: { mapMode: "detail", shapeDayTab: "plan" } },
   parameters: mapPlanAgraDayFiveParameters,
 };
+
+export const MapPlanMultipleActivitiesInAfternoon: Story = MapPlanMultiDayTransferLongTitle;
 
 export const MapPlanMultiDayTransferLongTitleMobile320: Story = { ...MapPlanMultiDayTransferLongTitle, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const MapPlanMultiDayTransferLongTitleMobile390: Story = { ...MapPlanMultiDayTransferLongTitle, globals: { viewport: { value: "morrovia390", isRotated: false } } };

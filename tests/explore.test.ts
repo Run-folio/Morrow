@@ -169,7 +169,7 @@ test("Viator results preserve provider identity, sourced metadata and affiliate 
   };
   const result = exploreResultForActivity(base.stops[0]!, item, base);
   assert.equal(result.identity, "stop:athens:provider:viator:tour-123");
-  assert.equal(result.duration, "4 hrs–5 hrs");
+  assert.equal(result.duration, "4h–5h");
   assert.equal(result.price, "From £75");
   assert.equal(result.rating, 4.7);
   assert.equal(result.reviewCount, 842);

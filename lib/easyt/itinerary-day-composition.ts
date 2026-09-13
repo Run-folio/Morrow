@@ -40,6 +40,7 @@ export type ComposedItineraryActivity = {
   placeId?: string;
   provider?: ItineraryIdea["provider"];
   providerMetadata?: ItineraryIdea["providerMetadata"];
+  startsAt?: string;
 };
 
 export type ComposedItineraryTransfer = {
@@ -215,6 +216,7 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       placeId: idea?.placeId,
       provider: idea?.provider,
       providerMetadata: idea?.providerMetadata,
+      startsAt: idea?.startsAt,
     };
   });
   for (const ideas of ideasByTitle.values()) {
@@ -236,15 +238,16 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       placeId: idea.placeId,
       provider: idea.provider,
       providerMetadata: idea.providerMetadata,
+      startsAt: idea.startsAt,
     });
   }
-  const allActivities: ComposedItineraryActivity[] = drafts.map((activity, index) => ({
+  const allActivities: ComposedItineraryActivity[] = drafts.map((activity) => ({
     id: activity.id,
     title: activity.title,
     category: activity.category,
     booking: activity.booking,
     source: activity.source,
-    dayPart: activity.explicitPart ?? fallbackItineraryDayPart(index, drafts.length),
+    dayPart: activity.explicitPart,
     noteIndex: activity.noteIndex,
     dayPartEditable: activity.dayPartEditable,
     image: activity.image,
@@ -256,12 +259,13 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     placeId: activity.placeId,
     provider: activity.provider,
     providerMetadata: activity.providerMetadata,
+    startsAt: activity.startsAt,
   }));
   const planned = Object.fromEntries(itineraryDayParts.map((part) => [
     part,
     allActivities.filter((activity) => activity.dayPart === part),
   ])) as Record<ItineraryDayPart, ComposedItineraryActivity[]>;
-  const unslotted: ComposedItineraryActivity[] = [];
+  const unslotted = allActivities.filter((activity) => activity.dayPart === null);
 
   return {
     day,
