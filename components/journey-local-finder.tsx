@@ -14,7 +14,8 @@ import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { authClient } from "@/lib/auth-client";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "@/components/easyt/morrovia-loading-states";
 import { compactAffiliateDisclosure } from "@/components/easyt/affiliate-link";
-import { localFinderQueryKey } from "@/lib/easyt/local-finder-query";
+import { localFinderBaseQueryKey, localFinderQueryKey, mergeLocalFinderPlaces } from "@/lib/easyt/local-finder-query";
+import { loadLocalFinderBaseResult, peekLocalFinderBaseResult } from "@/lib/easyt/local-finder-base-cache";
 import { recommendationDurationMs, streamIndependentRecommendationLanes } from "@/lib/easyt/recommendation-performance";
 
 export type JourneyLocalPlace = { id: string; name: string; nativeName?: string; address: string; category: string; coordinates: [number, number]; mapsUrl: string; distanceKm?: number; operational?: true; availability?: "available" | "check"; provider?: "booking-demand" | "google-places" | "openstreetmap"; rating?: number; reviewCount?: number; priceLevel?: string; price?: { total: number; currency: string }; cancellation?: string };
@@ -82,6 +83,11 @@ function inventorySearchPayload(value: unknown) {
 }
 
 export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, country, locale = "en", dayId, dayNumber, coordinates, interests, staySearch, selectedPlaceId, savedPlaceIds, initialState, onPlaceSelect, onViewOnMap, onPlacesChange, onRestaurantSelect, onSavePlace, onRemovePlace }: { ownerId?: string | null; tripId?: string; stopId?: string; kind: "restaurant" | "stay"; city: string; country: string; locale?: string; dayId: string; dayNumber?: number; coordinates: [number, number]; interests?: readonly TripInterest[]; staySearch?: StaySearch; selectedPlaceId?: string | null; savedPlaceIds?: readonly string[]; initialState?: JourneyLocalFinderInitialState; onPlaceSelect?: (place: JourneyLocalPlace) => void; onViewOnMap?: (place: JourneyLocalPlace) => void; onPlacesChange?: (places: JourneyLocalPlace[]) => void; onRestaurantSelect?: (restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => void; onSavePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay", replaced?: JourneyLocalPlace) => boolean | void; onRemovePlace?: (place: JourneyLocalPlace, kind: "restaurant" | "stay") => boolean | void }) {
+  const longitude = coordinates[0];
+  const latitude = coordinates[1];
+  const baseResultKey = localFinderBaseQueryKey({ kind, city, country, dayId: stopId ?? dayId, coordinates: [longitude, latitude], locale });
+  const cachedBasePayload = initialState || kind !== "stay" ? null : peekLocalFinderBaseResult<ReturnType<typeof localSearchPayload>>(baseResultKey);
+  const initialCorePlaces = initialState?.corePlaces ?? cachedBasePayload?.places ?? [];
   const { data: session } = authClient.useSession();
   const contextOwnerId = session?.user?.id ?? ownerId ?? null;
   // These defaults are the existing “Show best matches” choice. Keeping them
@@ -93,27 +99,26 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
   const [stayStyle, setStayStyle] = useState<StayStyle | undefined>("simple");
   const [moment, setMoment] = useState<FinderMoment | undefined>("now");
   const [profile, setProfile] = useState<TravelProfile>(defaultTravelProfile);
-  const [corePlaces, setCorePlaces] = useState<JourneyLocalPlace[]>(initialState?.corePlaces ?? []);
+  const [corePlaces, setCorePlaces] = useState<JourneyLocalPlace[]>(initialCorePlaces);
   const [commercialPlaces, setCommercialPlaces] = useState<JourneyLocalPlace[]>(initialState?.commercialPlaces ?? []);
   const [chosen, setChosen] = useState<JourneyLocalPlace | null>(null);
   const [saved, setSaved] = useState<JourneyLocalPlace | null>(null);
-  const [loading, setLoading] = useState(initialState?.coreLoading ?? !initialState);
+  const [loading, setLoading] = useState(initialState?.coreLoading ?? (!initialState && initialCorePlaces.length === 0));
   const [searchUnavailable, setSearchUnavailable] = useState(false);
   const [searchVersion, setSearchVersion] = useState(0);
   const [accommodationInventoryStatus, setAccommodationInventoryStatus] = useState<AccommodationInventoryStatus>(initialState?.accommodationInventoryStatus ?? "not-requested");
   const reportedSaveRef = useRef("");
   const reportedAccommodationSearchRef = useRef("");
   const autoSelectedRef = useRef(false);
-  const loadedResultKeyRef = useRef<string | null>(null);
+  const loadedBaseResultKeyRef = useRef<string | null>(initialCorePlaces.length ? baseResultKey : null);
+  const performanceRequestRef = useRef<{ token: string; startedAt: number } | null>(null);
+  const firstUsefulPerformanceRef = useRef("");
   const storageKey = `journey:local-${kind}:v3`;
   const canonicalSavedState = savedPlaceIds !== undefined;
   const label = kind === "restaurant" ? "Restaurant finder" : "Stay finder";
   const Icon = kind === "restaurant" ? Utensils : BedDouble;
   const isReady = kind === "restaurant" ? Boolean(meal && pace && mood) : Boolean(stayStyle);
-  const longitude = coordinates[0];
-  const latitude = coordinates[1];
-  const places = useMemo(() => [...commercialPlaces, ...corePlaces]
-    .filter((place, index, combined) => combined.findIndex((candidate) => candidate.id === place.id) === index), [commercialPlaces, corePlaces]);
+  const places = useMemo(() => mergeLocalFinderPlaces(commercialPlaces, corePlaces), [commercialPlaces, corePlaces]);
   const liveInventory = commercialPlaces.length > 0;
   const displayPlaces = useMemo(() => kind === "stay" ? places.filter((place) => !/construction/i.test(place.category)) : places, [kind, places]);
 
@@ -133,10 +138,12 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
     // shortlist. A changed stop, date range, or finder kind is a genuinely
     // different result set, so it starts from the honest initial state.
     const resultKey = localFinderQueryKey({ kind, city, country, dayId, coordinates: [longitude, latitude], locale, staySearch });
-    const retainExistingResults = searchVersion > 0 && loadedResultKeyRef.current === resultKey;
+    const cachedBaseResult = kind === "stay" ? peekLocalFinderBaseResult<ReturnType<typeof localSearchPayload>>(baseResultKey) : null;
+    const retainExistingResults = Boolean(cachedBaseResult?.places.length)
+      || (loadedBaseResultKeyRef.current === baseResultKey && corePlaces.length > 0);
     const startedAt = performance.now();
+    performanceRequestRef.current = { token: `${resultKey}:${searchVersion}`, startedAt };
     const hasCommercialLane = kind === "stay" && Boolean(staySearch?.checkIn && staySearch?.checkOut);
-    let firstUsefulReported = false;
     const reportPerformance = (lane: "core" | "commercial", resultCount: number, outcome: "ready" | "empty" | "unavailable") => {
       const properties = {
         surface: "map" as const,
@@ -146,10 +153,6 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
         result_count: resultCount,
         outcome,
       };
-      if (resultCount > 0 && !firstUsefulReported) {
-        firstUsefulReported = true;
-        trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
-      }
       trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
     };
     if (kind === "stay") {
@@ -164,7 +167,11 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
         });
       }
     }
-    setLoading(true);
+    if (cachedBaseResult?.places.length) {
+      setCorePlaces(cachedBaseResult.places);
+      loadedBaseResultKeyRef.current = baseResultKey;
+    }
+    setLoading(!retainExistingResults);
     setSearchUnavailable(false);
     // Date-specific inventory is no-store provider truth. Never retain it
     // through a retry or context change when the new request has not confirmed
@@ -189,9 +196,18 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
       {
         lane: "core" as const,
         request: async (): Promise<FinderLaneValue> => {
-          const response = await fetch(`/api/journey-local-search?kind=${kind}&city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&lat=${latitude}&lon=${longitude}&locale=${encodeURIComponent(locale)}`, { signal: controller.signal });
-          if (!response.ok) throw new Error("Local recommendations unavailable");
-          return { lane: "core", payload: localSearchPayload(await response.json()) };
+          // Shared base requests deliberately outlive an individual mount. The
+          // active-scope guard below prevents stale publication, while a rapid
+          // return to the same stop can reuse the same safe mapped-place work.
+          const requestBasePlaces = async () => {
+            const response = await fetch(`/api/journey-local-search?kind=${kind}&city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&lat=${latitude}&lon=${longitude}&locale=${encodeURIComponent(locale)}`);
+            if (!response.ok) throw new Error("Local recommendations unavailable");
+            return localSearchPayload(await response.json());
+          };
+          const payload = kind === "stay"
+            ? await loadLocalFinderBaseResult(baseResultKey, requestBasePlaces, { shouldCache: (result) => result.places.length > 0 && !result.unavailable })
+            : await requestBasePlaces();
+          return { lane: "core", payload };
         },
       },
       ...(hasCommercialLane ? [{
@@ -208,7 +224,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
       if (settlement.status === "failed") {
         if (settlement.lane === "core") {
           if (!retainExistingResults) setCorePlaces([]);
-          loadedResultKeyRef.current = resultKey;
+          loadedBaseResultKeyRef.current = baseResultKey;
           setSearchUnavailable(true);
           setLoading(false);
           reportPerformance("core", 0, "unavailable");
@@ -221,7 +237,7 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
       if (settlement.value.lane === "core") {
         const { places: nextPlaces, unavailable } = settlement.value.payload;
         if (!retainExistingResults || nextPlaces.length > 0 || !unavailable) setCorePlaces(nextPlaces);
-        loadedResultKeyRef.current = resultKey;
+        loadedBaseResultKeyRef.current = baseResultKey;
         setSearchUnavailable(unavailable);
         setLoading(false);
         reportPerformance("core", nextPlaces.length, unavailable ? "unavailable" : nextPlaces.length ? "ready" : "empty");
@@ -243,7 +259,22 @@ export function JourneyLocalFinder({ ownerId, tripId, stopId, kind, city, countr
       if (!canonicalSavedState && store[dayId]) { setSaved(store[dayId]); setChosen(store[dayId]); }
     } catch { /* The finder remains usable without local persistence. */ }
     return () => { active = false; controller.abort(); };
-  }, [canonicalSavedState, city, country, dayId, initialState, kind, latitude, locale, longitude, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
+  }, [baseResultKey, canonicalSavedState, city, country, dayId, initialState, kind, latitude, locale, longitude, searchVersion, staySearch?.adults, staySearch?.bookerCountry, staySearch?.checkIn, staySearch?.checkOut, staySearch?.currency, staySearch?.rooms, storageKey]);
+
+  useEffect(() => {
+    const measurement = performanceRequestRef.current;
+    if (!measurement || loading || !corePlaces.length || firstUsefulPerformanceRef.current === measurement.token) return;
+    firstUsefulPerformanceRef.current = measurement.token;
+    trackEvent("recommendation_performance", {
+      surface: "map",
+      recommendation_kind: kind === "stay" ? "accommodation" : "restaurant",
+      lane: "core",
+      milestone: "first_useful",
+      duration_ms: recommendationDurationMs(measurement.startedAt, performance.now()),
+      result_count: corePlaces.length,
+      outcome: "ready",
+    });
+  }, [corePlaces, kind, loading]);
 
   useEffect(() => {
     if (kind !== "restaurant" || !saved || !onRestaurantSelect) return onRestaurantSelect?.();

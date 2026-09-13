@@ -52,6 +52,28 @@ const mappedTokyoStay: JourneyLocalPlace = {
   provider: "openstreetmap",
 };
 
+const photonTokyoStay: JourneyLocalPlace = {
+  ...mappedTokyoStay,
+  id: "photon-tokyo-stay",
+  name: "Asakusa mapped hotel",
+  address: "Asakusa, Taito City, Tokyo",
+  category: "hotel",
+  coordinates: [139.7967, 35.7148],
+};
+
+const liveTokyoStay: JourneyLocalPlace = {
+  id: "booking-tokyo-stay",
+  name: "Tokyo Station Hotel",
+  address: "Marunouchi, Tokyo",
+  category: "hotel",
+  coordinates: [139.765, 35.6812],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Tokyo%20Station%20Hotel",
+  availability: "available",
+  provider: "booking-demand",
+  price: { total: 640, currency: "GBP" },
+  rating: 9.1,
+};
+
 function PlanWorkspaceStory() {
   const [activities, setActivities] = useState(selectedDay.items);
   const [activityDraft, setActivityDraft] = useState("");
@@ -109,8 +131,20 @@ export const ShapeTheDayStay: Story = {
   render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} /></div>,
 };
 
+export const StayBaseLoading: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-loading" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [], coreLoading: true, accommodationInventoryStatus: "not-requested" }} /></div>,
+};
+
+export const StayPhotonFallbackReady: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-photon" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [photonTokyoStay], accommodationInventoryStatus: "not-requested" }} /></div>,
+};
+
 export const StayCoreReadyCommercialLoading: Story = {
   render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-progressive" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "loading" }} /></div>,
+};
+
+export const StayBookingReadyAfterBase: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-booking-ready" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], commercialPlaces: [liveTokyoStay], accommodationInventoryStatus: "live" }} /></div>,
 };
 
 export const StayCoreReadyProviderUnavailableMobile390: Story = {

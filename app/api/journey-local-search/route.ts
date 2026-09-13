@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
-import { firstUsefulRecommendationResults } from "@/lib/easyt/recommendation-performance";
+import {
+  firstUsefulRecommendationResults,
+  firstUsefulRecommendationResultsWithFallback,
+  recommendationDurationMs,
+} from "@/lib/easyt/recommendation-performance";
 import { qualityControlledLocalPlaces } from "@/lib/easyt/local-place-results";
 
 type OverpassElement = {
@@ -228,6 +232,10 @@ async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, co
 }
 
 export async function GET(request: NextRequest) {
+  const startedAt = performance.now();
+  const baseResponse = (body: Record<string, unknown>) => NextResponse.json(body, {
+    headers: { "Server-Timing": `first-base;dur=${recommendationDurationMs(startedAt, performance.now())}` },
+  });
   const city = request.nextUrl.searchParams.get("city")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
   const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
@@ -242,8 +250,9 @@ export async function GET(request: NextRequest) {
   try {
     // Restaurant sources are equivalent mapped-place lanes, so return the first
     // useful bounded response. Stay discovery races the richer operational
-    // Google lane against mapped results; live date-specific inventory remains
-    // a separate client request and is never inferred here.
+    // Google lane against mapped results and hedges Photon only when neither has
+    // become useful promptly. Live date-specific inventory remains a separate
+    // client request and is never inferred here.
     let primaryFailureCount = 0;
     const providerRequests = kind === "stay"
       ? [
@@ -259,22 +268,20 @@ export async function GET(request: NextRequest) {
       try { return await request(); }
       catch { primaryFailureCount += 1; return []; }
     });
-    const places = await firstUsefulRecommendationResults(primaryRequests);
+    const places = kind === "stay"
+      ? await firstUsefulRecommendationResultsWithFallback(
+          primaryRequests,
+          () => photonFallback(kind, city, country ?? "", latitude, longitude, locale),
+        )
+      : await firstUsefulRecommendationResults(primaryRequests);
     if (places.length) {
       const source = places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
-      return NextResponse.json({ places, source, inventory: false });
+      return baseResponse({ places, source, inventory: false });
     }
-    // Photon remains a bounded second-stage stay fallback when neither Google
-    // nor Overpass yields a usable property. It is already part of the initial
-    // restaurant race above, so it is never requested twice for food.
-    if (kind === "stay") {
-      const fallback = await photonFallback(kind, city, country ?? "", latitude, longitude, locale);
-      return NextResponse.json({ places: fallback, source: "OpenStreetMap", inventory: false });
-    }
-    return NextResponse.json({ places: [], source: "OpenStreetMap", inventory: false, ...(primaryFailureCount === providerRequests.length ? { unavailable: true } : {}) });
+    return baseResponse({ places: [], source: "OpenStreetMap", inventory: false, ...(primaryFailureCount === providerRequests.length ? { unavailable: true } : {}) });
   } catch {
     // Keep the response shape stable so the client can retain its day and map
     // context even when every bounded mapped-place source is unavailable.
-    return NextResponse.json({ places: [], source: "OpenStreetMap", unavailable: true });
+    return baseResponse({ places: [], source: "OpenStreetMap", unavailable: true });
   }
 }

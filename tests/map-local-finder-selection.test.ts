@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { localFinderQueryKey, type LocalFinderQueryContext } from "../lib/easyt/local-finder-query.ts";
+import { localFinderBaseQueryKey, localFinderQueryKey, type LocalFinderQueryContext } from "../lib/easyt/local-finder-query.ts";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -53,6 +53,17 @@ test("destination, category, and provider-affecting stay inputs produce new quer
   assert.notEqual(localFinderQueryKey(tokyo), localFinderQueryKey({ ...tokyo, staySearch: { ...tokyo.staySearch, checkOut: "2026-10-08" } }));
 });
 
+test("base identity remains stop-scoped while commercial-only inputs stay out of its cache key", () => {
+  const tokyo = cases[0].query;
+  const first = localFinderBaseQueryKey(tokyo);
+  const changedDateQuery: LocalFinderQueryContext = { ...tokyo, staySearch: { ...tokyo.staySearch, checkOut: "2026-10-18" } };
+  const changedDates = localFinderBaseQueryKey(changedDateQuery);
+  const repeatedStop = localFinderBaseQueryKey({ ...tokyo, dayId: "tokyo-day-9" });
+
+  assert.equal(first, changedDates);
+  assert.notEqual(first, repeatedStop);
+});
+
 test("the finder remains mounted while selection drives the existing marker and focus contracts", () => {
   const workspace = read("components/journey-map-planner-workspace.tsx");
   const finder = read("components/journey-local-finder.tsx");
@@ -62,6 +73,9 @@ test("the finder remains mounted while selection drives the existing marker and 
   assert.ok(providerEffect);
   assert.match(providerEffect, /searchVersion/);
   assert.doesNotMatch(providerEffect, /selectedPlaceId|chosen|onPlaceSelect|onViewOnMap/);
+  assert.match(finder, /peekLocalFinderBaseResult/);
+  assert.match(finder, /loadLocalFinderBaseResult/);
+  assert.match(finder, /Shared base requests deliberately outlive an individual mount/);
   assert.match(workspace, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg\)/);
   assert.doesNotMatch(workspace, /const showDayPlanner = Boolean\([^\n]*!selectedLocalPlace/);
   assert.match(workspace, /onPlaceSelect=\{selectLocalPlace\} onViewOnMap=\{focusLocalPlace\}/);

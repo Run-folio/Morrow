@@ -61,6 +61,78 @@ export function firstUsefulRecommendationResults<Result>(
   });
 }
 
+export const recommendationFallbackHedgeMs = 1_000;
+
+/**
+ * Races equivalent primary sources immediately, then starts one bounded
+ * fallback when either every primary has already failed/returned empty or the
+ * hedge budget expires. A useful primary that arrives inside the budget avoids
+ * the fallback request entirely. Once the fallback is needed, it can publish
+ * without accumulating every primary timeout first.
+ */
+export function firstUsefulRecommendationResultsWithFallback<Result>(
+  primaryRequests: readonly (() => Promise<readonly Result[]>)[],
+  fallbackRequest: () => Promise<readonly Result[]>,
+  waitBeforeFallback: () => Promise<void> = () => new Promise((resolve) => {
+    setTimeout(resolve, recommendationFallbackHedgeMs);
+  }),
+): Promise<Result[]> {
+  return new Promise((resolve) => {
+    let resolved = false;
+    let pendingPrimary = primaryRequests.length;
+    let fallbackStarted = false;
+    let fallbackSettled = false;
+
+    const resolveUseful = (results: readonly Result[]) => {
+      if (resolved || !results.length) return false;
+      resolved = true;
+      resolve([...results]);
+      return true;
+    };
+    const resolveEmptyWhenComplete = () => {
+      if (!resolved && pendingPrimary === 0 && fallbackSettled) {
+        resolved = true;
+        resolve([]);
+      }
+    };
+    const startFallback = () => {
+      if (resolved || fallbackStarted) return;
+      fallbackStarted = true;
+      Promise.resolve()
+        .then(fallbackRequest)
+        .then((results) => {
+          if (resolveUseful(results)) return;
+          fallbackSettled = true;
+          resolveEmptyWhenComplete();
+        })
+        .catch(() => {
+          fallbackSettled = true;
+          resolveEmptyWhenComplete();
+        });
+    };
+    const settlePrimaryEmpty = () => {
+      pendingPrimary -= 1;
+      if (pendingPrimary === 0) startFallback();
+      resolveEmptyWhenComplete();
+    };
+
+    if (!primaryRequests.length) startFallback();
+    for (const request of primaryRequests) {
+      Promise.resolve()
+        .then(request)
+        .then((results) => {
+          if (resolveUseful(results)) return;
+          settlePrimaryEmpty();
+        })
+        .catch(settlePrimaryEmpty);
+    }
+    Promise.resolve()
+      .then(waitBeforeFallback)
+      .then(startFallback)
+      .catch(startFallback);
+  });
+}
+
 /** Coarse, bounded durations keep recommendation telemetry useful and private. */
 export function recommendationDurationMs(startedAt: number, endedAt: number) {
   const elapsed = Number.isFinite(startedAt) && Number.isFinite(endedAt)
