@@ -13,9 +13,11 @@ import {
   mapWorkspaceHref,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
+  parseStayWorkspaceTarget,
   shouldResetOverviewEntry,
   tripSaveSignInHref,
   tripWorkspaceHref,
+  stayWorkspaceHref,
   workspaceViewFromPathname,
   workspaceVisitKey,
 } from "../lib/easyt/trip-workspace-links.ts";
@@ -24,8 +26,8 @@ import type { EasyTTrip } from "../lib/easyt/trip.ts";
 const trip = {
   id: "trip-real",
   stops: [
-    { id: "cusco", order: 0, name: "Cusco" },
-    { id: "sacred-valley", order: 1, name: "Sacred Valley" },
+    { id: "cusco", order: 0, name: "Cusco", nights: 2 },
+    { id: "sacred-valley", order: 1, name: "Sacred Valley", nights: 3 },
   ],
   planItems: [
     { id: "day-1", stopId: "cusco", dayNumber: 1 },
@@ -87,8 +89,16 @@ test("login return links accept canonical trip workspaces but not account surfac
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123?created=1&saved=1"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/map?stop=tokyo"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/explore?stop=tokyo&day=2"), true);
+  assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/stay?stop=tokyo"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/dashboard"), false);
   assert.equal(isCanonicalTripWorkspaceHref("https://example.com/journey/trip-123"), false);
+});
+
+test("Stay links preserve stop-scoped property identity", () => {
+  const selectionId = "result:stay:sacred-valley:booking-42";
+  assert.equal(stayWorkspaceHref(trip.id, "sacred-valley", selectionId), `/journey/trip-real/stay?stop=sacred-valley&result=${encodeURIComponent(selectionId)}`);
+  assert.deepEqual(parseStayWorkspaceTarget(trip, new URLSearchParams(`stop=sacred-valley&result=${encodeURIComponent(selectionId)}`)), { stopId: "sacred-valley", resultSelectionId: selectionId });
+  assert.deepEqual(parseStayWorkspaceTarget(trip, new URLSearchParams("stop=missing&result=bad value")), { stopId: "cusco", resultSelectionId: null });
 });
 
 test("Overview preparation stay actions target the stable Map stop in Stay mode", () => {
@@ -131,5 +141,6 @@ test("query-only deep-link changes retain one workspace analytics visit key", ()
   assert.equal(workspaceVisitKey(first), workspaceVisitKey(second));
   assert.equal(workspaceViewFromPathname(first, trip.id), "map");
   assert.equal(workspaceViewFromPathname("/journey/trip-real/explore?stop=cusco", trip.id), "explore");
+  assert.equal(workspaceViewFromPathname("/journey/trip-real/stay?stop=cusco", trip.id), "stay");
   assert.equal(workspaceViewFromPathname("/journey/trip-real/prep", trip.id), "overview");
 });

@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       const resultCurrency = typeof result.currency === "string" ? result.currency : result.currency?.booker || result.currency?.accommodation || currency;
       return [{
         id: `booking-${result.id}`,
-        bookingAccommodationId: String(result.id),
+        providerProductId: String(result.id),
         name,
         ...(nativeName ? { nativeName } : {}),
         address: localized(detail?.location?.address) || "Address provided by accommodation search",

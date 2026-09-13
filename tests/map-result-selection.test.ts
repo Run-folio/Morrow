@@ -171,7 +171,8 @@ test("only Stay asks the canonical mutation owner to replace a previous local ch
   assert.match(finder, /const replaced = kind === "stay" && saved && saved\.id !== chosen\.id/);
   assert.doesNotMatch(finder, /Replace restaurant/);
   assert.match(workspace, /const replacedStay = category === "stay" \? replaced : undefined/);
-  assert.match(workspace, /replacedStay \? removeMappedPlaceFromTrip/);
+  assert.match(workspace, /replacedStay \? removeMappedStayForStop/);
+  assert.match(workspace, /selectMappedStayForStop/);
 });
 
 test("coordinate-less activities stay saved but are never fabricated as markers", () => {

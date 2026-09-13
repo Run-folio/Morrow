@@ -107,7 +107,7 @@ export default function RecommendationDetail({
     >
       {!embedded ? <><div className={styles.handle} aria-hidden="true" /><EasyTButton ref={closeRef} className={styles.close} icon={X} iconOnly variant="secondary" aria-label={`Close details for ${detail.title}`} onClick={onClose}>Close</EasyTButton></> : null}
 
-      {detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt={detail.imageAlt ?? ""} fallback={<span><KindIcon aria-hidden="true" /></span>} /></div> : <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.kind === "restaurant" ? "No sourced image available" : detail.location ?? "Recommendation"}</span></div>}
+      {detail.image ? <div className={styles.hero}><ResilientImage src={detail.image} alt={detail.imageAlt ?? ""} fallback={<span><KindIcon aria-hidden="true" /></span>} /></div> : <div className={`${styles.hero} ${styles.heroFallback}`}><KindIcon aria-hidden="true" /><span>{detail.kind === "restaurant" ? "No sourced image available" : detail.kind === "accommodation" ? "No sourced property image available" : detail.location ?? "Recommendation"}</span></div>}
 
       <div className={styles.content}>
         <header className={styles.header}>

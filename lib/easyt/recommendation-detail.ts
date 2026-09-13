@@ -2,7 +2,10 @@ import { exploreResultState, type ExploreResult, type ExploreResultState } from 
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestReason } from "./itinerary-day-context.ts";
 import { activityDurationLabel, isFullDayActivity, itineraryScheduleWarnings } from "./itinerary-schedule-awareness.ts";
+import type { JourneyLocalPlace } from "./local-place.ts";
 import type { MapResultPlace } from "./map-result-selection.ts";
+import { stayBookingForStop } from "./accommodation.ts";
+import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "./stay-workspace.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea } from "./trip.ts";
 
 export type RecommendationDetailKind = "activity" | "tour" | "restaurant" | "accommodation";
@@ -35,7 +38,7 @@ export type RecommendationDetailModel = {
 export type RecommendationDetailContext = {
   activeDayId?: string | null;
   activeDayPart?: ItineraryDayPart | null;
-  surface: "explore" | "itinerary" | "map";
+  surface: "explore" | "itinerary" | "map" | "stay";
 };
 
 function titleCase(value: string) {
@@ -62,6 +65,15 @@ function providerLabel(value: string | null | undefined) {
 function ratingFact(rating: number | undefined, reviewCount: number | undefined) {
   if (!Number.isFinite(rating)) return null;
   return `${rating!.toFixed(1)}${Number.isFinite(reviewCount) ? ` · ${reviewCount!.toLocaleString()} reviews` : ""}`;
+}
+
+function stayPrice(place: JourneyLocalPlace) {
+  if (place.provider !== "booking-demand" || place.availability !== "available" || !place.price || !Number.isFinite(place.price.total)) return null;
+  try {
+    return new Intl.NumberFormat("en", { style: "currency", currency: place.price.currency, maximumFractionDigits: 2 }).format(place.price.total);
+  } catch {
+    return `${place.price.total} ${place.price.currency}`;
+  }
 }
 
 export function recommendationDetailContextKey(input: {
@@ -176,7 +188,86 @@ export function recommendationDetailForExploreResult(input: { trip: EasyTTrip; r
   });
 }
 
+export function recommendationDetailForStayResult(input: {
+  trip: EasyTTrip;
+  place: JourneyLocalPlace;
+  stayContext: StayWorkspaceContext;
+  surface: "stay" | "map";
+}): RecommendationDetailModel {
+  const selected = stayIsSelected(input.trip, input.stayContext, input.place);
+  const booking = stayBookingForStop(input.trip, input.stayContext.stop);
+  const rating = ratingFact(input.place.rating, input.place.reviewCount);
+  const source = providerLabel(input.place.provider);
+  const availability = input.place.provider === "booking-demand" && input.place.availability === "available"
+    ? `Available for ${input.stayContext.dateLabel} in the current provider response`
+    : "Check current availability with the booking provider";
+  return {
+    id: input.place.id,
+    contextKey: recommendationDetailContextKey({
+      tripId: input.trip.id,
+      stopId: input.stayContext.stop.id,
+      resultId: input.place.id,
+      providerProductId: input.place.providerProductId,
+      activeDayId: input.stayContext.key,
+    }),
+    kind: "accommodation",
+    title: input.place.name,
+    location: input.place.address || input.stayContext.stop.name,
+    summary: input.place.description,
+    image: input.place.image,
+    imageAlt: input.place.image ? `${input.place.name} property` : null,
+    category: input.place.category.replaceAll("_", " "),
+    price: stayPrice(input.place),
+    dateSummary: `${input.stayContext.nights} ${input.stayContext.nights === 1 ? "night" : "nights"} · ${input.stayContext.dateLabel}`,
+    bookingStatus: selected ? `Saved for ${input.stayContext.stop.name}` : input.place.availability === "available" ? "Current availability found" : null,
+    provider: input.place.provider,
+    providerProductId: input.place.providerProductId,
+    whyFit: stayCandidateFit(input.place, input.stayContext),
+    whyFitLabel: "Why this fits your trip",
+    practical: [
+      ...(source ? [{ label: "Source", value: source }] : []),
+      ...(input.place.providerProductId ? [{ label: "Property", value: input.place.providerProductId }] : []),
+      ...(rating ? [{ label: "Rating", value: rating }] : []),
+      { label: "Availability", value: availability },
+      ...(input.place.cancellation ? [{ label: "Cancellation", value: input.place.cancellation.replaceAll("_", " ") }] : []),
+      ...(booking?.location && selected ? [{ label: "Saved location", value: booking.location }] : []),
+    ],
+    canRemove: selected,
+  };
+}
+
 export function recommendationDetailForMapResult(input: { trip: EasyTTrip; result: MapResultPlace; context: RecommendationDetailContext }) {
+  if (input.result.kind === "stay" && input.result.stopId) {
+    const context = stayWorkspaceContext(input.trip, input.result.stopId);
+    if (context) {
+      return recommendationDetailForStayResult({
+        trip: input.trip,
+        place: {
+          id: input.result.sourceId,
+          name: input.result.name,
+          nativeName: input.result.nativeName,
+          address: input.result.address,
+          category: input.result.category,
+          coordinates: input.result.coordinates,
+          mapsUrl: input.result.mapsUrl,
+          distanceKm: input.result.distanceKm,
+          operational: input.result.operational,
+          availability: input.result.availability,
+          provider: input.result.provider === "viator" ? undefined : input.result.provider,
+          providerProductId: input.result.providerProductId,
+          rating: input.result.rating,
+          reviewCount: input.result.reviewCount,
+          priceLevel: input.result.priceLevel,
+          price: input.result.price,
+          cancellation: input.result.cancellation,
+          description: input.result.description,
+          image: input.result.image,
+        },
+        stayContext: context,
+        surface: "map",
+      });
+    }
+  }
   const idea = input.result.canonicalItemId
     ? (input.trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.id === input.result.canonicalItemId)
     : (input.trip.brief.itineraryIdeas ?? []).find((candidate) => candidate.stopId === input.result.stopId && candidate.placeId === input.result.sourceId);

@@ -7,7 +7,7 @@ export type AnalyticsEventProperties = Record<string, AnalyticsPrimitive>;
 type TripSource = "homepage" | "dashboard" | "builder" | "route";
 type SaveState = "local" | "cloud";
 // `prep` remains accepted only when normalising historical commercial events.
-type WorkspaceView = "overview" | "itinerary" | "map" | "explore" | "prep";
+type WorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "prep";
 type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
@@ -50,6 +50,7 @@ export type LaunchAnalyticsEventMap = {
   trip_overview_viewed: { trip_id?: string; workspace_view: "overview"; route_mode: RouteMode; stop_count?: number };
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
+  trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };
   explore_destination_changed: { trip_id: string; destination_scope: "all" | "stop" };
   explore_category_changed: { trip_id: string; category: string };
@@ -58,7 +59,7 @@ export type LaunchAnalyticsEventMap = {
   explore_saved_for_later: { trip_id: string; stop_id: string; result_kind: "activity" | "restaurant" | "tour" };
   explore_provider_handoff: { trip_id: string; stop_id: string; provider: string };
   recommendation_performance: {
-    surface: "explore" | "itinerary" | "map";
+    surface: "explore" | "itinerary" | "map" | "stay";
     recommendation_kind: "activity" | "restaurant" | "accommodation" | "mixed";
     lane: "core" | "commercial";
     milestone: "first_useful" | "lane_ready";
@@ -79,7 +80,7 @@ export type LaunchAnalyticsEventMap = {
   trip_edit_started: { trip_id?: string; source: "dashboard" | "workspace" };
   trip_reopened: { trip_id?: string; source: "dashboard"; save_state: "cloud"; stop_count?: number };
   route_repair_applied: { trip_id?: string; repair_count: number; repair_category: string; had_hard_issue?: boolean; source: "map" };
-  accommodation_search_started: { source: "map"; destination_count: number; has_dates: boolean; provider?: string };
+  accommodation_search_started: { source: "map" | "stay"; destination_count: number; has_dates: boolean; provider?: string };
   booking_import_reviewed: {
     source: "forwarded_email";
     type: "accommodation" | "flight" | "activity" | "ground_transport" | "car_rental" | "other";

@@ -31,7 +31,8 @@ test("Map stay finder always uses the central generic Trip.com accommodation lin
 
 test("Stay results keep mapped fallbacks visible and report live-provider failures without dismissing the panel", () => {
   const finder = readFileSync("components/journey-local-finder.tsx", "utf8");
-  assert.match(finder, /type AccommodationInventoryStatus = "not-requested" \| "loading" \| "live" \| "empty" \| "unconfigured" \| "unavailable"/);
+  const localPlace = readFileSync("lib/easyt/local-place.ts", "utf8");
+  assert.match(localPlace, /type AccommodationInventoryStatus = "not-requested" \| "loading" \| "live" \| "empty" \| "unconfigured" \| "unavailable"/);
   assert.doesNotMatch(finder, /Live accommodation availability is temporarily unavailable\. Showing mapped stays/);
   assert.doesNotMatch(finder, /Live room availability is not configured here\. Showing mapped stays/);
   assert.match(finder, /title="Stay options are unavailable"/);

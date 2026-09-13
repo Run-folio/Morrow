@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -226,6 +226,8 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       trackEvent("trip_map_viewed", { ...common, workspace_view: "map" });
     } else if (view === "explore") {
       trackEvent("explore_opened", { trip_id: trip.id, workspace_view: "explore", stop_count: trip.stops.length });
+    } else if (view === "stay") {
+      trackEvent("trip_stay_viewed", { ...common, workspace_view: "stay" });
     } else {
       trackEvent("trip_overview_viewed", { ...common, workspace_view: "overview" });
     }
@@ -295,6 +297,7 @@ const views = [
   { id: "map", label: "Map", icon: Map, suffix: "/map" },
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
+  { id: "stay", label: "Stay", icon: BedDouble, suffix: "/stay" },
 ] as const;
 
 export function TripShellNavigation({ tripId }: { tripId: string }) {
@@ -309,6 +312,8 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
       ? "map"
       : remainder.startsWith("/explore")
         ? "explore"
+        : remainder.startsWith("/stay")
+          ? "stay"
       : "overview";
   const orientationTarget = useWorkspaceOrientationTarget("overview", "workspace-navigation");
 

@@ -54,7 +54,7 @@
       "components/journey-globe.tsx": 4,
       "components/journey-itinerary-accommodation.tsx": 3,
       "components/journey-itinerary-refinement.tsx": 4,
-      "components/journey-local-finder.tsx": 9,
+      "components/journey-local-finder.tsx": 8,
       "components/journey-map-planner-workspace.tsx": 46,
       "components/journey-plan-workspace.tsx": 8,
       "components/journey-planner-strip.tsx": 3,

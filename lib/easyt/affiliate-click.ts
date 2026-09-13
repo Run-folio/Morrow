@@ -8,7 +8,7 @@ export type AffiliateClickContext = {
   transferId?: string;
   originStopId?: string;
   destinationStopId?: string;
-  workspaceView?: "overview" | "itinerary" | "map" | "explore";
+  workspaceView?: "overview" | "itinerary" | "map" | "explore" | "stay";
   destinationCount?: number;
 };
 
