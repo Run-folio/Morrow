@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   dedupeExploreResults,
   conciseExploreDescription,
+  exploreDiscoveryRequestKey,
   exploreDestinationOptions,
   exploreDiscoveryCategory,
   exploreOpportunityForTrip,
@@ -14,9 +15,10 @@ import {
   exploreResultState,
   exploreScheduleTarget,
   filterExploreResults,
+  projectExploreResults,
   trustedExploreImage,
 } from "../lib/easyt/explore.ts";
-import { saveItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
+import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
 import type { ActivityInventoryItem } from "../lib/easyt/activity-inventory.ts";
 
@@ -138,6 +140,68 @@ test("Add to Day schedules exactly one canonical item and survives JSON reload",
   assert.equal(reloaded.brief.itineraryIdeas?.filter((idea) => idea.placeId === place.id).length, 1);
   assert.equal(reloaded.planItems[1]!.notes.filter((note) => note === place.title).length, 1);
   assert.equal(exploreResultState(reloaded, result).state, "planned");
+});
+
+test("Save and Add update card state without changing the active provider order", () => {
+  const base = trip();
+  const source = ["A", "B", "C", "D", "E"].map((title, index) => exploreResultForPlace(base.stops[0]!, {
+    ...place,
+    id: `stable-${title.toLocaleLowerCase()}`,
+    title,
+    type: "Landmark",
+    description: `${title} is a visitor attraction and major landmark.`,
+    qualityScore: 20 - index,
+  }));
+  const selected = source[2]!;
+  const selectedIdentity = selected.identity;
+  assert.equal(projectExploreResults(source, [], []).find((result) => result.identity === selectedIdentity)?.title, "C", "selection never changes eligibility or order");
+  const savedTrip = saveItineraryIdea(base, selected.idea);
+  const savedProjection = projectExploreResults(source, [], (savedTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(savedTrip, idea) ?? []));
+  assert.deepEqual(savedProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
+  assert.equal(exploreResultState(savedTrip, savedProjection[2]!).state, "saved");
+
+  const occupied = { ...savedTrip, planItems: savedTrip.planItems.map((day) => day.id === "day-2" ? { ...day, notes: ["Existing afternoon plan"], noteDayParts: ["afternoon" as const] } : day) };
+  const scheduledTrip = scheduleItineraryIdea(occupied, selected.idea, "day-2", "afternoon");
+  const scheduledProjection = projectExploreResults(source, [], (scheduledTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(scheduledTrip, idea) ?? []));
+  assert.deepEqual(scheduledProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
+  assert.equal(exploreResultState(scheduledTrip, scheduledProjection[2]!).state, "planned");
+  assert.deepEqual(scheduledTrip.planItems.find((day) => day.id === "day-2")?.notes, ["Existing afternoon plan", "C"], "Add inserts without replacing an occupied daypart");
+  assert.equal(savedProjection[2]!.identity, scheduledProjection[2]!.identity);
+  assert.equal(exploreDiscoveryRequestKey(base), exploreDiscoveryRequestKey(savedTrip));
+  assert.equal(exploreDiscoveryRequestKey(base), exploreDiscoveryRequestKey(scheduledTrip));
+
+  const removedTrip = removeItineraryIdea(scheduledTrip, selected.idea.id);
+  const removedProjection = projectExploreResults(source, [], (removedTrip.brief.itineraryIdeas ?? []).flatMap((idea) => exploreResultForIdea(removedTrip, idea) ?? []));
+  assert.deepEqual(removedProjection.map((result) => result.title), ["A", "B", "C", "D", "E"]);
+  assert.equal(exploreResultState(removedTrip, removedProjection[2]!).state, "available");
+});
+
+test("late commercial enrichment preserves an organic card identity and ordering", () => {
+  const base = trip();
+  const organic = [
+    exploreResultForPlace(base.stops[0]!, { ...place, id: "a", title: "A landmark", type: "Landmark", description: "A major visitor landmark." }),
+    exploreResultForPlace(base.stops[0]!, { ...place, id: "b", title: "B museum", type: "Museum", description: "A visitor museum." }),
+  ];
+  const enriched = exploreResultForActivity(base.stops[0]!, {
+    provider: "viator", source: "viator", providerProductId: "a-ticket", title: "A landmark entry ticket",
+    destination: { canonicalPlaceId: "athens-gr", label: "Athens" }, rating: 4.8, reviewCount: 200,
+    provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T00:00:00.000Z" },
+  }, base);
+  const before = projectExploreResults(organic, [], []);
+  const after = projectExploreResults(organic, [enriched], []);
+  assert.deepEqual(after.map((result) => result.identity), before.map((result) => result.identity));
+  assert.equal(after[0]?.providerProductId, "a-ticket");
+  assert.equal(after.find((result) => result.identity === before[1]!.identity)?.title, "B museum", "late commercial enrichment preserves the active sibling selection");
+
+  const lateImage = { ...organic[1]!, image: "/journey/late-museum.jpg" };
+  const imageProjection = projectExploreResults(dedupeExploreResults([...organic, lateImage]), [], []);
+  assert.deepEqual(imageProjection.map((result) => result.identity), before.map((result) => result.identity));
+  assert.equal(imageProjection[1]?.image, "/journey/late-museum.jpg");
+
+  const lateOrganic = exploreResultForPlace(base.stops[0]!, { ...place, id: "c", title: "C park", type: "Park", description: "A visitor park." });
+  const organicProjection = projectExploreResults([...organic, lateOrganic], [], []);
+  assert.deepEqual(organicProjection.slice(0, 2).map((result) => result.identity), before.map((result) => result.identity));
+  assert.equal(organicProjection.some((result) => result.identity === before[1]!.identity), true);
 });
 
 test("the opportunity callout is derived from an actual empty canonical day part", () => {

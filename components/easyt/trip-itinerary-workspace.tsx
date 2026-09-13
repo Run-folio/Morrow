@@ -57,7 +57,7 @@ import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { exploreWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
-import { mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
+import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
 import {
@@ -735,15 +735,22 @@ export default function TripItineraryWorkspace({
   const selectedRecommendationPart = selectedRecommendation
     ? preferredItineraryDayPart(workingTrip, active.id, selectedRecommendation.idea.category)
     : null;
-  const selectedRecommendationMapHref = selectedRecommendation?.coordinates
+  const selectedRecommendationMapDayNumber = selectedRecommendationState?.state === "planned"
+    ? selectedRecommendationState.day.dayNumber
+    : active.dayNumber;
+  const selectedRecommendationMapSelectionId = selectedRecommendation && selectedRecommendationState
+    ? selectedRecommendationState.state === "available"
+      ? mapResultSelectionId(selectedRecommendation.kind === "restaurant" ? "eat" : "see", selectedRecommendation.sourceId, selectedRecommendation.stopId)
+      : mapResultSelectionIdForIdea(selectedRecommendationState.idea.id)
+    : null;
+  const selectedRecommendationMapHref = selectedRecommendation?.coordinates && selectedRecommendationMapSelectionId
     ? mapWorkspaceHref(
       workingTrip.id,
       selectedRecommendation.stopId,
       selectedRecommendation.kind === "restaurant" ? "eat" : "see",
-      selectedRecommendationState?.state === "planned" ? selectedRecommendationState.day.dayNumber : active.dayNumber,
-      selectedRecommendationState?.state === "available"
-        ? mapResultSelectionId(selectedRecommendation.kind === "restaurant" ? "eat" : "see", selectedRecommendation.sourceId, selectedRecommendation.stopId)
-        : selectedRecommendationState ? mapResultSelectionIdForIdea(selectedRecommendationState.idea.id) : undefined,
+      selectedRecommendationMapDayNumber,
+      selectedRecommendationMapSelectionId,
+      mapResultHandoffForExploreResult(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber),
     )
     : null;
   const itemCount = displayNotes.length + (dayComposition?.ideas.scheduledHereCount ?? 0) + (incomingLeg ? 1 : 0);

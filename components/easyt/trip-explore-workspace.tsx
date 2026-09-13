@@ -19,9 +19,9 @@ import { trackEvent } from "@/lib/analytics";
 import { JourneyStopNavigation } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import {
-  dedupeExploreResults,
   exploreCategories,
   exploreCategoryLabels,
+  exploreDiscoveryRequestKey,
   exploreDestinationOptions,
   exploreOpportunityForTrip,
   exploreResultForActivity,
@@ -33,6 +33,7 @@ import {
   exploreScheduleTarget,
   exploreSourcePlan,
   filterExploreResults,
+  projectExploreResults,
   streamExploreDiscoveryLane,
   type ExploreDiscoveryLaneSnapshot,
   type ExploreDiscoveryLaneStatus,
@@ -46,7 +47,7 @@ import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context"
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
-import { mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
+import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { routeTimelineScopeId, routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
@@ -188,7 +189,10 @@ export default function TripExploreWorkspace({
 }: TripExploreWorkspaceProps) {
   const mutation = useTripShellMutation();
   const workingTrip = mutation.trip;
-  const destinations = useMemo(() => exploreDestinationOptions(trip), [trip]);
+  const discoveryRequestKey = exploreDiscoveryRequestKey(workingTrip);
+  const discoveryTripRef = useRef(workingTrip);
+  if (exploreDiscoveryRequestKey(discoveryTripRef.current) !== discoveryRequestKey) discoveryTripRef.current = workingTrip;
+  const destinations = useMemo(() => exploreDestinationOptions(discoveryTripRef.current), [discoveryRequestKey]);
   const validInitialDestination = initialDestinationId === "all" || destinations.some((item) => item.id === initialDestinationId)
     ? initialDestinationId
     : "all";
@@ -215,7 +219,10 @@ export default function TripExploreWorkspace({
       const result = exploreResultForIdea(workingTrip, idea);
       return result ? [result] : [];
     }), [workingTrip]);
-  const results = useMemo(() => dedupeExploreResults([...persistedResults, ...organicResults, ...commercialResults]), [commercialResults, organicResults, persistedResults]);
+  const results = useMemo(
+    () => projectExploreResults(organicResults, commercialResults, persistedResults),
+    [commercialResults, organicResults, persistedResults],
+  );
   const visibleResults = useMemo(() => filterExploreResults(workingTrip, results, destinationId, category), [category, destinationId, results, workingTrip]);
   const selectedResult = results.find((result) => result.identity === selectedResultId) ?? null;
   const opportunity = useMemo(() => exploreOpportunityForTrip(workingTrip, destinationId), [destinationId, workingTrip]);
@@ -236,10 +243,12 @@ export default function TripExploreWorkspace({
   useEffect(() => {
     if (initialResults) return;
     const scope = createAbortableEffectScope("Explore organic and commercial discovery");
+    const discoveryTrip = discoveryTripRef.current;
+    const discoveryDestinations = exploreDestinationOptions(discoveryTrip);
     const scopedStops = destinationId === "all"
-      ? destinations.map((item) => item.stop)
-      : destinations.filter((item) => item.id === destinationId).map((item) => item.stop);
-    const plan = exploreSourcePlan(category, trip);
+      ? discoveryDestinations.map((item) => item.stop)
+      : discoveryDestinations.filter((item) => item.id === destinationId).map((item) => item.stop);
+    const plan = exploreSourcePlan(category, discoveryTrip);
     const startedAt = performance.now();
     let firstUsefulReported = false;
     const recommendationKind = category === "food" ? "restaurant" as const
@@ -263,12 +272,12 @@ export default function TripExploreWorkspace({
     setOrganicResults([]);
     setCommercialResults([]);
     const organicRequests = scopedStops.flatMap((stop) => [
-      ...(plan.mapped ? [() => loadMappedPlaces(trip, stop, scope.signal)] : []),
-      ...(plan.dayTrips ? [() => loadDayTrips(trip, stop, scope.signal)] : []),
+      ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal)] : []),
+      ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
       ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
     ]);
     const commercialRequests = scopedStops.flatMap((stop) => plan.tours
-      ? [() => loadTours(trip, stop, scope.signal)]
+      ? [() => loadTours(discoveryTrip, stop, scope.signal)]
       : []);
     void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
       setOrganicResults(snapshot.results);
@@ -281,7 +290,7 @@ export default function TripExploreWorkspace({
       if (commercialRequests.length) reportSnapshot("commercial", snapshot);
     }));
     return () => scope.dispose();
-  }, [category, destinationId, destinations, initialResults, trip]);
+  }, [category, destinationId, discoveryRequestKey, initialResults]);
 
   useEffect(() => {
     if (selectedResultId && !results.some((result) => result.identity === selectedResultId)) closeDetail();
@@ -452,15 +461,18 @@ export default function TripExploreWorkspace({
         const target = exploreScheduleTarget(workingTrip, selectedResult, chosenDay);
         const dayChoices = validIdeaDays(workingTrip, selectedResult.stopId);
         const mode = selectedResult.kind === "restaurant" ? "eat" : "see";
+        const mapDayNumber = state.state === "planned" ? state.day.dayNumber : target?.day.dayNumber ?? null;
+        const mapSelectionId = state.state === "available"
+          ? mapResultSelectionId(mode, selectedResult.sourceId, selectedResult.stopId)
+          : mapResultSelectionIdForIdea(state.idea.id);
         const mapHref = selectedResult.coordinates
           ? mapWorkspaceHref(
             workingTrip.id,
             selectedResult.stopId,
             mode,
-            state.state === "planned" ? state.day.dayNumber : target?.day.dayNumber,
-            state.state === "available"
-              ? mapResultSelectionId(mode, selectedResult.sourceId, selectedResult.stopId)
-              : mapResultSelectionIdForIdea(state.idea.id),
+            mapDayNumber,
+            mapSelectionId,
+            mapResultHandoffForExploreResult(selectedResult, mapSelectionId, mapDayNumber),
           )
           : null;
         return <ItineraryItemDetail

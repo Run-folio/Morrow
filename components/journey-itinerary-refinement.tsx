@@ -20,6 +20,7 @@ import {
   mapSeeDiscoveryCategories,
   type DiscoveryCategory,
 } from "@/lib/easyt/discovery-taxonomy";
+import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
 import styles from "./journey-itinerary-refinement.module.css";
 
 export type JourneyItineraryDiscoveryResult = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number; distanceKm?: number };
@@ -34,7 +35,14 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
   const [filter, setFilter] = useState<MapSeeDiscoveryCategory>("for-you");
   const selected = stop ? trip.brief.selectedPlaces[stop.id] ?? [] : [];
   const interests = useMemo(() => tripIntentForTrip(trip).preferences.interests, [trip]);
-  const visible = useMemo(() => rankItineraryDiscoveryPlaces(places, interests)
+  const visible = useMemo(() => rankItineraryDiscoveryPlaces(places.filter((place) => discoveryVisitorRelevance({
+    title: place.title,
+    category: place.type,
+    tags: place.tags,
+    description: place.description,
+    qualityScore: place.qualityScore,
+    kind: "activity",
+  }).eligible), interests)
     .filter((place) => discoveryCategoryMatches({ kind: "activity", category: place.type, tags: place.tags, qualityScore: place.qualityScore }, filter))
     .slice(0, compact ? 4 : 8), [compact, filter, interests, places]);
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;

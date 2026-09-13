@@ -29,7 +29,7 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForO
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
-import { mapResultForDiscoveryPlace, mapResultForLocalPlace, mergeMapResults, projectPersistedMapResults, type MapResultPlace } from "@/lib/easyt/map-result-selection";
+import { mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mergeMapResults, projectPersistedMapResults, type MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
@@ -380,7 +380,11 @@ export function JourneyMapPlannerWorkspace({
     renderOwnerId,
     providedTrip?.id ?? searchParams.get("trip") ?? null,
   ]);
-  const initialMapTarget = providedTrip ? parseMapWorkspaceTarget(providedTrip, searchParams) : null;
+  const mapTargetQuery = searchParams.toString();
+  const initialMapTarget = useMemo(
+    () => providedTrip ? parseMapWorkspaceTarget(providedTrip, searchParams) : null,
+    [mapTargetQuery, providedTrip, searchParams],
+  );
   const firstProvidedItem = providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)
     .find((item) => item.dayNumber === initialMapTarget?.dayNumber)
     ?? providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)
@@ -809,18 +813,25 @@ export function JourneyMapPlannerWorkspace({
   const customMapPlace: JourneyMapPlace | undefined = isCustomJourney && selected.coordinates ? { name: selected.city, coordinates: selected.coordinates, address: `${selected.city}, ${selected.country}`, image: customImage, summary: selected.description } : undefined;
   const selectedRouteLeg = canonicalMapLegs.find((leg) => leg.id === selectedRouteLegId) ?? null;
   const persistedMapProjection = useMemo(() => projectPersistedMapResults(customTrip), [customTrip]);
+  const handoffMapResult = useMemo(
+    () => initialMapTarget?.resultHandoff ? mapResultForHandoffTarget(initialMapTarget.resultHandoff) : null,
+    [initialMapTarget?.resultHandoff],
+  );
   const selectedTripInterests = useMemo(() => customTrip ? tripIntentForTrip(customTrip).preferences.interests : [], [customTrip]);
-  const transientMapResults = useMemo(() => shapeDayTab === "stay" || shapeDayTab === "eat"
-    ? localMapPlaces.map((place) => mapResultForLocalPlace(place, shapeDayTab, {
+  const transientMapResults = useMemo(() => {
+    const discovered = shapeDayTab === "stay" || shapeDayTab === "eat"
+      ? localMapPlaces.map((place) => mapResultForLocalPlace(place, shapeDayTab, {
       stopId: selectedPlanItem?.stopId ?? selectedMapStopId,
       dayNumber: selectedPlanItem?.dayNumber ?? null,
-    }))
-    : shapeDayTab === "see"
-      ? seeMapPlaces.flatMap((place) => mapResultForDiscoveryPlace(place, {
+      }))
+      : shapeDayTab === "see"
+        ? seeMapPlaces.flatMap((place) => mapResultForDiscoveryPlace(place, {
         stopId: selectedPlanItem?.stopId ?? selectedMapStopId,
         dayNumber: selectedPlanItem?.dayNumber ?? null,
-      }) ?? [])
-      : [], [localMapPlaces, seeMapPlaces, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, shapeDayTab]);
+        }) ?? [])
+        : [];
+    return handoffMapResult?.kind === shapeDayTab ? [handoffMapResult, ...discovered] : discovered;
+  }, [handoffMapResult, localMapPlaces, seeMapPlaces, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId, shapeDayTab]);
   const mapResults = useMemo(() => mergeMapResults(
     persistedMapProjection.results,
     transientMapResults,

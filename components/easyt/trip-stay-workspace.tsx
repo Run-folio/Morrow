@@ -8,7 +8,8 @@ import { JourneyStopNavigation } from "@/components/journey-planner-strip";
 import { trackEvent } from "@/lib/analytics";
 import { getCurrentPartnerAction } from "@/lib/easyt/booking-readiness";
 import { removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
-import { mapResultSelectionId } from "@/lib/easyt/map-result-selection";
+import { hasBookingLiveInformation } from "@/lib/easyt/local-place";
+import { mapResultHandoffForLocalPlace, mapResultSelectionId } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForStayResult } from "@/lib/easyt/recommendation-detail";
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import { stayAreaGuidance, stayCandidateFit, stayIsSelected, stayWorkspaceContext } from "@/lib/easyt/stay-workspace";
@@ -31,7 +32,7 @@ export type TripStayWorkspaceProps = {
 };
 
 function formattedPrice(place: JourneyLocalPlace) {
-  if (place.provider !== "booking-demand" || place.availability !== "available" || !place.price) return null;
+  if (!hasBookingLiveInformation(place) || place.availability !== "available" || !place.price) return null;
   try {
     return new Intl.NumberFormat("en", { style: "currency", currency: place.price.currency, maximumFractionDigits: 0 }).format(place.price.total);
   } catch {
@@ -40,7 +41,7 @@ function formattedPrice(place: JourneyLocalPlace) {
 }
 
 function sourceLabel(provider: JourneyLocalPlace["provider"]) {
-  if (provider === "booking-demand") return "Current provider result";
+  if (provider === "booking-demand") return "Booking.com live information";
   if (provider === "google-places") return "Google Places";
   if (provider === "openstreetmap") return "OpenStreetMap";
   return null;
@@ -172,6 +173,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
             const isSaved = stayIsSelected(workingTrip, context, place);
             const price = formattedPrice(place);
             const source = sourceLabel(place.provider);
+            const hasBookingFacts = hasBookingLiveInformation(place);
             return <article key={place.id} className={`${styles.card} ${isSelected ? styles.cardSelected : ""}`} aria-current={isSelected ? "true" : undefined}>
               <div className={`${styles.cardMedia} ${place.image ? "" : styles.cardMediaFallback}`}>
                 {place.image ? <ResilientImage src={place.image} alt={`${place.name} property`} fallback={<BedDouble aria-hidden="true" />} /> : <><BedDouble aria-hidden="true" /><span>No sourced property image</span></>}
@@ -182,10 +184,10 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
                 <p><MapPin aria-hidden="true" />{place.address}</p>
                 <div className={styles.cardFacts}>
                   {place.rating !== undefined ? <span><Star aria-hidden="true" />{place.rating.toFixed(1)}{place.reviewCount !== undefined ? ` · ${place.reviewCount.toLocaleString()} reviews` : ""}</span> : null}
-                  {price ? <strong>{price} for your dates</strong> : null}
-                  {place.availability === "available" ? <span>Current availability found</span> : <span>Availability to check</span>}
                   {source ? <small>{source}</small> : null}
+                  {!hasBookingFacts ? <span>Availability to check</span> : null}
                 </div>
+                {hasBookingFacts ? <div className={`${styles.cardFacts} ${styles.bookingFacts}`}><small>BOOKING.COM LIVE INFO</small>{price ? <strong>{price} for your dates</strong> : null}<span>{place.availability === "available" ? "Current availability found" : "No current availability confirmed"}</span></div> : null}
                 <p className={styles.fit}>{stayCandidateFit(place, context)}</p>
                 <EasyTButton
                   ref={isSelected ? undefined : (element) => { if (element && place.id === selectedPlaceId) selectedOriginRef.current = element; }}
@@ -205,17 +207,21 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
       </div>
 
       <aside className={`${styles.rail} ${detail ? styles.railSelected : ""}`} aria-label="Stay decision support">
-        {detail && selected ? <ItineraryItemDetail
+        {detail && selected ? (() => {
+          const mapDayNumber = workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber ?? null;
+          const mapSelectionId = mapResultSelectionId("stay", selected.id, context.stop.id);
+          return <ItineraryItemDetail
           detail={detail}
           pending={mutation.saveState === "saving"}
           onClose={() => closeDetail(finder.clearSelection)}
-          mapHref={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", workingTrip.planItems.find((day) => day.stopId === context.stop.id)?.dayNumber, mapResultSelectionId("stay", selected.id, context.stop.id))}
+          mapHref={mapWorkspaceHref(workingTrip.id, context.stop.id, "stay", mapDayNumber, mapSelectionId, mapResultHandoffForLocalPlace(selected, "stay", context.stop.id, mapDayNumber, mapSelectionId))}
           primaryActions={<>
             {!selectedSaved ? <EasyTButton fullWidth loading={mutation.saveState === "saving"} onClick={saveStay}>{booking ? "Replace saved stay" : "Save stay to trip"}</EasyTButton> : <span className={styles.selectedStatus}><Check aria-hidden="true" />Saved for this stop</span>}
-            {partnerAction ? <><MorroviaAffiliateLink action={{ ...partnerAction, cta: "Check availability" }} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} variant="secondary" /><small className={styles.disclosure}>{affiliateDisclosure}</small></> : null}
+            {partnerAction ? <div className={styles.partnerHandoff}><strong>Check independently on Trip.com</strong>{hasBookingLiveInformation(selected) ? <p>Trip.com prices, availability and terms may differ from the Booking.com live information above.</p> : <p>Trip.com will confirm its own current prices, availability and terms.</p>}<MorroviaAffiliateLink action={{ ...partnerAction, cta: "Check Trip.com availability" }} context={{ placement: "stay_workspace_detail", tripId: workingTrip.id, stopId: context.stop.id, workspaceView: "stay", destinationCount: 1 }} variant="secondary" /><small className={styles.disclosure}>{affiliateDisclosure}</small></div> : null}
           </>}
           onRemove={selectedSaved ? removeStay : undefined}
-        /> : <div className={styles.railPrompt}><Building2 aria-hidden="true" /><small>STAY DECISION</small><h3>Choose an option to compare</h3><p>Property detail will explain its sourced facts, relationship to your mapped plans, and what still needs checking.</p></div>}
+        />;
+        })() : <div className={styles.railPrompt}><Building2 aria-hidden="true" /><small>STAY DECISION</small><h3>Choose an option to compare</h3><p>Property detail will explain its sourced facts, relationship to your mapped plans, and what still needs checking.</p></div>}
       </aside>
     </div>;
   };

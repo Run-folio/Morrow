@@ -353,7 +353,7 @@ test("production handoffs, Map mutations and unavailable-location language use t
   assert.match(map, /if \(!recovery\.stored\) \{[\s\S]*return false;[\s\S]*setCustomTrip\(next\)/);
   assert.match(map, /This change was not applied; your existing plan remains unchanged/);
   assert.match(map, /return moveItineraryActivityToDay/);
-  assert.match(explore, /No trustworthy coordinates are attached to this result yet/);
+  assert.match(explore, /const mapHref = selectedResult\.coordinates[\s\S]*: null;/);
   assert.match(itinerary, /No trustworthy coordinates are attached to this item yet/);
   assert.match(finder, /Add to Day \$\{dayNumber\}/);
   assert.doesNotMatch(finder, /"Add to today"/);

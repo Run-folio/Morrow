@@ -38,6 +38,8 @@
   --morrovia-layer-header: 80;
   --morrovia-layer-dock: 90;
   --morrovia-layer-modal: 200;
+  --morrovia-navigation-height: 78px;
+  --morrovia-sticky-content-offset: calc(var(--morrovia-navigation-height) + 14px);
   /* Legacy name retained while workspace surfaces migrate; without a dock it
      represents only the device safe area used by bottom-anchored controls. */
   --morrovia-mobile-dock-offset: env(safe-area-inset-bottom, 0px);
@@ -74,6 +76,12 @@
   flex: 1 0 auto;
 }
 
+@media (max-width: 820px) {
+  :root { --morrovia-navigation-height: 66px; }
+}
+
 @media (max-width: 700px) {
-  :root { --morrovia-page: min(100% - 32px, 1180px); }
+  :root {
+    --morrovia-page: min(100% - 32px, 1180px);
+  }
 }

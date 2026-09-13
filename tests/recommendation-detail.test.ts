@@ -123,12 +123,14 @@ test("all entry surfaces use one presentation and one canonical mutation path", 
   assert.match(itinerary, /useOptionalTripShellMutation/);
   assert.match(map, /canonicalMutation/);
   assert.doesNotMatch(detail, /mutateTrip|saveItineraryIdea|scheduleItineraryIdea/);
+  assert.match(detail, /onClick=\{\(\) => setMapPending\(true\)\}/);
+  assert.match(detail, /mapPending \? "Opening map…" : "View on map"/);
   assert.doesNotMatch(map, /\"Nearby\"|category} near/);
 });
 
 test("Recommendation Detail stories cover variants, states, surfaces and compact viewports", () => {
   const stories = readFileSync(new URL("../components/easyt/recommendation-detail.stories.tsx", import.meta.url), "utf8");
-  for (const name of ["ExploreRichActivity", "ExploreSparseActivity", "OpenDayElevenHourTour", "BusyDayElevenHourTourSoftConflict", "ViatorCommercial", "RestaurantWithSourcedImage", "RestaurantWithoutImage", "SparseRestaurant", "SavedRecommendation", "AlreadyPlanned", "MapEmbedded", "ItinerarySelectedDay", "Mobile320", "Mobile390", "Mobile430"]) {
+  for (const name of ["ExploreRichActivity", "ExploreSparseActivity", "OpenDayElevenHourTour", "BusyDayElevenHourTourSoftConflict", "ViatorCommercial", "RestaurantWithSourcedImage", "RestaurantWithoutImage", "SparseRestaurant", "SavedRecommendation", "AlreadyPlanned", "MapEmbedded", "ItinerarySelectedDay", "MapHandoffPending", "Mobile320", "Mobile390", "Mobile430"]) {
     assert.match(stories, new RegExp(`export const ${name}`));
   }
 });

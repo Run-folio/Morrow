@@ -6,10 +6,15 @@ import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "../lib/easyt/ma
 import { saveItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import {
   mapResultForDiscoveryPlace,
+  mapResultForHandoffTarget,
   mapResultForLocalPlace,
+  mapResultHandoffForExploreResult,
+  mapResultHandoffForLocalPlace,
   mergeMapResults,
   projectPersistedMapResults,
 } from "../lib/easyt/map-result-selection.ts";
+import { mapWorkspaceHref, parseMapWorkspaceTarget } from "../lib/easyt/trip-workspace-links.ts";
+import type { ExploreResult } from "../lib/easyt/explore.ts";
 import type { EasyTTrip, ItineraryIdea } from "../lib/easyt/trip.ts";
 
 function tripFixture(): EasyTTrip {
@@ -55,6 +60,80 @@ test("rapid Stay and Eat result switching keeps the latest exact result as canon
   assert.equal(selected?.sourceId, "tokyo-eat-a");
   assert.equal(selected?.kind, "eat");
   assert.deepEqual(selected?.coordinates, tokyoStayA.coordinates);
+});
+
+test("navigation handoff makes the exact target selectable before unrelated inventory arrives", () => {
+  const trip = tripFixture();
+  const enrichedMappedStay = {
+    ...tokyoStayA,
+    provider: "google-places" as const,
+    commercialProvider: "booking-demand" as const,
+    commercialProviderProductId: "booking-tokyo-a",
+  };
+  const handoff = mapResultHandoffForLocalPlace(enrichedMappedStay, "stay", "tokyo", 1);
+  const href = mapWorkspaceHref(trip.id, "tokyo", "stay", 1, handoff.selectionId, handoff);
+  const parsed = parseMapWorkspaceTarget(trip, new URL(href, "https://morrovia.example").searchParams);
+  assert.deepEqual(parsed.resultHandoff, handoff);
+
+  const initial = mapResultForHandoffTarget(parsed.resultHandoff!);
+  const enriched = mapResultForLocalPlace({ ...enrichedMappedStay, rating: 4.8, reviewCount: 400 }, "stay", { stopId: "tokyo", dayNumber: 1 });
+  const merged = mergeMapResults([], [initial, enriched], 1);
+  assert.equal(merged.length, 1, "later provider inventory enriches rather than duplicates the target");
+  assert.equal(merged[0]?.selectionId, handoff.selectionId);
+  assert.equal(merged[0]?.sourceId, tokyoStayA.id);
+  assert.deepEqual(merged[0]?.coordinates, tokyoStayA.coordinates);
+  assert.equal(merged[0]?.rating, 4.8);
+  assert.equal(merged[0]?.provider, "google-places");
+  assert.equal(merged[0]?.commercialProvider, "booking-demand");
+  assert.equal(merged[0]?.commercialProviderProductId, "booking-tokyo-a");
+
+  const noCoordinates = new URLSearchParams("stop=tokyo&mode=stay&day=1&result=result%3Astay%3Atokyo%3Atokyo-hotel-a&targetId=tokyo-hotel-a&targetName=Tokyo+Stay+A&targetKind=stay");
+  assert.equal(parseMapWorkspaceTarget(trip, noCoordinates).resultHandoff, undefined, "partial handoff context never fabricates a zero-coordinate marker");
+  const orphanCommercialProduct = new URL(href, "https://morrovia.example").searchParams;
+  orphanCommercialProduct.set("targetCommercialProvider", "other");
+  orphanCommercialProduct.set("targetCommercialProduct", "untrusted");
+  assert.equal(parseMapWorkspaceTarget(trip, orphanCommercialProduct).resultHandoff, undefined, "commercial product identity requires its allowlisted provider");
+});
+
+test("activity and tour handoffs preserve exact stop, coordinates and provider product identity", () => {
+  const idea: ItineraryIdea = {
+    id: "idea-tokyo-tour", stopId: "tokyo", placeId: "viator:TOKYO-42", title: "Tokyo architecture tour",
+    category: "activity", coordinates: [139.71, 35.68], source: "live-provider-inventory", provider: "viator",
+    providerProductId: "TOKYO-42", reasons: [],
+  };
+  const result: ExploreResult = {
+    identity: "stop:tokyo:provider:viator:TOKYO-42", stopId: "tokyo", sourceId: "viator:TOKYO-42",
+    kind: "tour", title: idea.title, location: "Tokyo", category: "Tour", tags: ["Culture"],
+    coordinates: idea.coordinates, provider: "viator", providerProductId: "TOKYO-42", idea,
+  };
+  const handoff = mapResultHandoffForExploreResult(result, "result:see:tokyo:viator:TOKYO-42", 1)!;
+  assert.equal(handoff.kind, "see");
+  assert.equal(handoff.stopId, "tokyo");
+  assert.equal(handoff.provider, "viator");
+  assert.equal(handoff.providerProductId, "TOKYO-42");
+  assert.deepEqual(handoff.coordinates, [139.71, 35.68]);
+  assert.equal(mapResultHandoffForExploreResult({ ...result, coordinates: undefined }, handoff.selectionId, 1), null);
+
+  const restaurant = mapResultHandoffForExploreResult({ ...result, identity: "stop:tokyo:place:restaurant-7", sourceId: "restaurant-7", kind: "restaurant", provider: "google-places", providerProductId: undefined }, "result:eat:tokyo:restaurant-7", 1)!;
+  assert.equal(restaurant.kind, "eat");
+  assert.equal(restaurant.provider, "google-places");
+});
+
+test("rapid navigation and repeated destinations keep the latest exact stop-scoped handoff", () => {
+  const repeated = tripFixture();
+  repeated.stops.push({ ...repeated.stops[0]!, id: "tokyo-return", order: 1, arrivalDate: "2026-10-04", departureDate: "2026-10-05", nights: 1 });
+  repeated.planItems.push({ ...repeated.planItems[0]!, id: "tokyo-return-day", stopId: "tokyo-return", dayNumber: 4, date: "2026-10-04" });
+  const outbound = mapResultHandoffForLocalPlace(tokyoStayA, "stay", "tokyo", 1);
+  const returned = mapResultHandoffForLocalPlace(tokyoStayA, "stay", "tokyo-return", 4);
+  const hrefs = [
+    mapWorkspaceHref(repeated.id, "tokyo", "stay", 1, outbound.selectionId, outbound),
+    mapWorkspaceHref(repeated.id, "tokyo-return", "stay", 4, returned.selectionId, returned),
+  ];
+  const latest = parseMapWorkspaceTarget(repeated, new URL(hrefs.at(-1)!, "https://morrovia.example").searchParams);
+  assert.equal(latest.stopId, "tokyo-return");
+  assert.equal(latest.resultSelectionId, "result:stay:tokyo-return:tokyo-hotel-a");
+  assert.deepEqual(latest.resultHandoff?.coordinates, tokyoStayA.coordinates);
+  assert.notEqual(outbound.selectionId, returned.selectionId);
 });
 
 test("a saved stay projects once at trustworthy coordinates before and after reload", () => {
@@ -173,6 +252,9 @@ test("only Stay asks the canonical mutation owner to replace a previous local ch
   assert.match(workspace, /const replacedStay = category === "stay" \? replaced : undefined/);
   assert.match(workspace, /replacedStay \? removeMappedStayForStop/);
   assert.match(workspace, /selectMappedStayForStop/);
+  assert.match(workspace, /handoffMapResult\?\.kind === shapeDayTab \? \[handoffMapResult, \.\.\.discovered\] : discovered/);
+  assert.match(workspace, /mapResults\.find\(\(candidate\) => candidate\.selectionId === target\.resultSelectionId\)/);
+  assert.match(workspace, /setSelectedMapResult\(result\)/);
 });
 
 test("coordinate-less activities stay saved but are never fabricated as markers", () => {

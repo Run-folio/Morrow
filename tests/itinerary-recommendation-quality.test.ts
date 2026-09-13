@@ -36,6 +36,19 @@ test("shared visitor relevance rejects weak infrastructure but retains strongly 
   assert.equal(discoveryVisitorRelevance({ title: "Ordinary office", category: "Administrative", description: "Municipal office" }).eligible, false);
 });
 
+test("visitor relevance rejects generic stations, regions, events and theatres before interest ranking", () => {
+  const fixtures = [
+    { title: "Hoehyeon station", category: "Culture", tags: ["Culture"], description: "A subway station in central Seoul.", qualityScore: 30 },
+    { title: "Ishikawa Prefecture", category: "Culture", tags: ["Culture"], description: "An administrative region of Japan.", qualityScore: 30 },
+    { title: "Bombing of Tokyo", category: "Historic site", tags: ["Culture"], description: "A historical event article.", qualityScore: 30 },
+    { title: "New National Theatre Tokyo", category: "Culture", tags: ["Culture"], description: "A theatre building and performance venue.", qualityScore: 30 },
+  ];
+  for (const fixture of fixtures) assert.equal(discoveryVisitorRelevance({ ...fixture, kind: "activity" }).eligible, false, fixture.title);
+  assert.equal(discoveryVisitorRelevance({ title: "Tokyo National Museum", category: "Museum", description: "A major visitor museum.", kind: "activity" }).eligible, true);
+  assert.equal(discoveryVisitorRelevance({ title: "Tower Bridge", category: "Landmark", description: "An iconic landmark and visitor attraction.", kind: "activity" }).eligible, true);
+  assert.equal(discoveryVisitorRelevance({ title: "Historic theatre", category: "Theatre", description: "A visitor attraction with guided architecture tours.", kind: "activity" }).eligible, true);
+});
+
 test("one usefulness-ranked rail can contain organic and commercial results without a commercial boost", () => {
   const trip = tripCopilotFixture();
   const day = { ...trip.planItems[3]!, notes: [] };

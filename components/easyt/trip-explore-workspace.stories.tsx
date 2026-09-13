@@ -281,6 +281,13 @@ export const TokyoNoImageRestaurants: Story = { args: { trip: tokyoTrip, initial
 export const ScheduledResult: Story = { args: { initialSelectedResultId: qorikancha.identity } };
 export const SavedResult: Story = { args: { trip: savedTrip, initialResults: results, initialSelectedResultId: mapped[0]!.identity } };
 export const SelectedDetail: Story = { args: { initialSelectedResultId: mapped[0]!.identity } };
+export const DeepScrollStickyDetail: Story = {
+  args: { initialResults: abundantOrganicResults, initialSelectedResultId: abundantOrganicResults[0]!.identity },
+  globals: { viewport: { value: "morrovia1024", isRotated: false } },
+  play: ({ canvasElement }) => {
+    canvasElement.ownerDocument.defaultView?.scrollTo({ top: 900, behavior: "instant" });
+  },
+};
 export const HoverContentStable: Story = { play: ({ canvasElement }) => { canvasElement.querySelector<HTMLElement>("[data-explore-card]")?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); } };
 export const KeyboardFocusStable: Story = { play: ({ canvasElement }) => { canvasElement.querySelector<HTMLButtonElement>("[data-explore-card] button[aria-label^='Open details']")?.focus(); } };
 export const MissingImage: Story = { args: { initialResults: [mapped[2]!] } };

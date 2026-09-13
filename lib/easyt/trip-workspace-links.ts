@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripRecommendation } from "./trip.ts";
+import type { MapResultHandoffTarget } from "./map-result-selection.ts";
 
 export type MapWorkspaceMode = "plan" | "stay" | "eat" | "see";
 
@@ -50,12 +51,30 @@ export function mapWorkspaceHref(
   mode: MapWorkspaceMode = "plan",
   dayNumber?: number | null,
   resultSelectionId?: string | null,
+  resultHandoff?: MapResultHandoffTarget | null,
 ) {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);
   if (mode !== "plan") query.set("mode", mode);
   if (dayNumber) query.set("day", String(dayNumber));
   if (resultSelectionId) query.set("result", resultSelectionId);
+  if (resultSelectionId
+    && stopId
+    && resultHandoff?.selectionId === resultSelectionId
+    && resultHandoff.stopId === stopId
+    && resultHandoff.kind === mode) {
+    query.set("targetId", resultHandoff.sourceId);
+    query.set("targetName", resultHandoff.name);
+    query.set("targetLng", String(resultHandoff.coordinates[0]));
+    query.set("targetLat", String(resultHandoff.coordinates[1]));
+    query.set("targetKind", resultHandoff.kind);
+    query.set("targetAddress", resultHandoff.address);
+    query.set("targetCategory", resultHandoff.category);
+    if (resultHandoff.provider) query.set("targetProvider", resultHandoff.provider);
+    if (resultHandoff.providerProductId) query.set("targetProduct", resultHandoff.providerProductId);
+    if (resultHandoff.commercialProvider) query.set("targetCommercialProvider", resultHandoff.commercialProvider);
+    if (resultHandoff.commercialProviderProductId) query.set("targetCommercialProduct", resultHandoff.commercialProviderProductId);
+  }
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
 }
@@ -117,7 +136,58 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
     && /^(?:idea:|saved:|result:(?:stay|eat|see):)[^\s]+$/.test(rawResultSelectionId)
     ? rawResultSelectionId
     : null;
-  return { stopId, mode, dayNumber: requestedDay?.dayNumber ?? null, resultSelectionId };
+  const dayNumber = requestedDay?.dayNumber ?? null;
+  const targetSourceId = query.get("targetId")?.trim() ?? "";
+  const targetName = query.get("targetName")?.trim() ?? "";
+  const rawTargetLongitude = query.get("targetLng");
+  const rawTargetLatitude = query.get("targetLat");
+  const targetLongitude = rawTargetLongitude?.trim() ? Number(rawTargetLongitude) : Number.NaN;
+  const targetLatitude = rawTargetLatitude?.trim() ? Number(rawTargetLatitude) : Number.NaN;
+  const targetKind = query.get("targetKind");
+  const targetAddress = query.get("targetAddress")?.trim() ?? "";
+  const targetCategory = query.get("targetCategory")?.trim() ?? "";
+  const rawProvider = query.get("targetProvider");
+  const provider = rawProvider === "booking-demand" || rawProvider === "google-places" || rawProvider === "openstreetmap" || rawProvider === "viator"
+    ? rawProvider
+    : undefined;
+  const providerProductId = query.get("targetProduct")?.trim() || undefined;
+  const commercialProvider = query.get("targetCommercialProvider") === "booking-demand" ? "booking-demand" as const : undefined;
+  const commercialProviderProductId = query.get("targetCommercialProduct")?.trim() || undefined;
+  const resultHandoff = resultSelectionId
+    && stopId
+    && targetKind === mode
+    && targetKind !== "plan"
+    && targetSourceId.length > 0 && targetSourceId.length <= 240
+    && targetName.length > 0 && targetName.length <= 200
+    && targetAddress.length <= 300
+    && targetCategory.length <= 120
+    && Number.isFinite(targetLongitude) && Math.abs(targetLongitude) <= 180
+    && Number.isFinite(targetLatitude) && Math.abs(targetLatitude) <= 90
+    && (!providerProductId || providerProductId.length <= 240)
+    && (!commercialProviderProductId || Boolean(commercialProvider) && commercialProviderProductId.length <= 240)
+    ? {
+        selectionId: resultSelectionId,
+        sourceId: targetSourceId,
+        stopId,
+        dayNumber,
+        name: targetName,
+        coordinates: [targetLongitude, targetLatitude] as [number, number],
+        kind: targetKind,
+        address: targetAddress || trip.stops.find((candidate) => candidate.id === stopId)?.name || "Selected map result",
+        category: targetCategory || (targetKind === "stay" ? "Accommodation" : targetKind === "eat" ? "Restaurant" : "Activity"),
+        ...(provider ? { provider } : {}),
+        ...(providerProductId ? { providerProductId } : {}),
+        ...(commercialProvider ? { commercialProvider } : {}),
+        ...(commercialProvider && commercialProviderProductId ? { commercialProviderProductId } : {}),
+      } satisfies MapResultHandoffTarget
+    : null;
+  return {
+    stopId,
+    mode,
+    dayNumber,
+    resultSelectionId,
+    ...(resultHandoff ? { resultHandoff } : {}),
+  };
 }
 
 /**

@@ -41,26 +41,67 @@ type LocalFinderPlaceIdentity = {
   id: string;
   name: string;
   coordinates: [number, number];
+  address?: string;
+  category?: string;
+  mapsUrl?: string;
+  nativeName?: string;
+  image?: string;
+  rating?: number;
+  reviewCount?: number;
+  provider?: string;
+  providerProductId?: string;
+  commercialProvider?: string;
+  commercialProviderProductId?: string;
 };
 
 const normalizedPlaceName = (name: string) => name.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
 /**
- * Keeps the earlier (commercial when present) identity and removes only exact
- * IDs or exact normalized names within roughly one city block. Similar names
- * or distinct provider products remain separate.
+ * Keeps the earlier canonical mapped identity while attaching later evidence
+ * to an exact ID or exact normalized name within roughly one city block.
+ * Similar names or distinct provider products remain separate.
  */
 export function mergeLocalFinderPlaces<Place extends LocalFinderPlaceIdentity>(
   ...groups: readonly (readonly Place[])[]
 ) {
   const merged: Place[] = [];
   for (const place of groups.flat()) {
-    const duplicate = merged.some((candidate) => candidate.id === place.id || (
+    const duplicateIndex = merged.findIndex((candidate) => candidate.id === place.id || (
       normalizedPlaceName(candidate.name) === normalizedPlaceName(place.name)
       && Math.abs(candidate.coordinates[0] - place.coordinates[0]) <= 0.001
       && Math.abs(candidate.coordinates[1] - place.coordinates[1]) <= 0.001
     ));
-    if (!duplicate) merged.push(place);
+    if (duplicateIndex < 0) {
+      merged.push(place);
+      continue;
+    }
+    const canonical = merged[duplicateIndex]!;
+    const incomingCommercialProvider = place.provider === "booking-demand" ? place.provider : place.commercialProvider;
+    const incomingCommercialProductId = place.provider === "booking-demand" ? place.providerProductId : place.commercialProviderProductId;
+    merged[duplicateIndex] = {
+      ...canonical,
+      ...place,
+      id: canonical.id,
+      name: canonical.name,
+      coordinates: canonical.coordinates,
+      address: canonical.address || place.address,
+      category: canonical.category || place.category,
+      mapsUrl: canonical.mapsUrl || place.mapsUrl,
+      nativeName: canonical.nativeName ?? place.nativeName,
+      image: canonical.image ?? place.image,
+      provider: canonical.provider ?? place.provider,
+      providerProductId: canonical.providerProductId ?? (canonical.provider ? undefined : place.providerProductId),
+      commercialProvider: incomingCommercialProvider ?? canonical.commercialProvider,
+      commercialProviderProductId: incomingCommercialProductId ?? canonical.commercialProviderProductId,
+      // Core ratings remain attached to their mapped source. A commercial-only
+      // property still keeps its Booking.com rating on its own canonical card.
+      rating: canonical.rating ?? place.rating,
+      reviewCount: canonical.rating !== undefined
+        ? canonical.reviewCount
+        : place.rating !== undefined
+          ? place.reviewCount
+          : canonical.reviewCount ?? place.reviewCount,
+    } as Place;
   }
   return merged;
 }

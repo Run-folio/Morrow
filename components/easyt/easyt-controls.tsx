@@ -85,18 +85,29 @@ export function EasyTLinkButton({
   className,
   icon: Icon,
   iconOnly,
+  loading,
   size,
   variant,
   fullWidth,
+  onClick,
   ...props
 }: SharedControlProps & { href: string; prefetch?: boolean | null } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "className" | "href">) {
   return (
     <Link
       {...props}
       href={href}
+      aria-busy={loading || undefined}
+      aria-disabled={loading || undefined}
+      onClick={loading || onClick ? (event) => {
+        if (loading) {
+          event.preventDefault();
+          return;
+        }
+        onClick?.(event);
+      } : undefined}
       className={controlClassName({ className, iconOnly, size, variant, fullWidth })}
     >
-      {Icon ? <Icon aria-hidden="true" /> : null}
+      {loading ? <span className={styles.spinner} aria-hidden="true" /> : Icon ? <Icon aria-hidden="true" /> : null}
       {iconOnly ? <span className="sr-only">{children}</span> : children}
     </Link>
   );

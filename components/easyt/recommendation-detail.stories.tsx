@@ -70,6 +70,13 @@ export const SavedRecommendation: Story = { args: { detail: { ...activity, booki
 export const AlreadyPlanned: Story = { args: { detail: { ...activity, dateSummary: "Day 2 · Afternoon", bookingStatus: "Added to Day 2 · Afternoon", whyFit: "Already planned for Day 2 · Afternoon.", canRemove: true }, primaryActions: undefined } };
 export const MapEmbedded: Story = { args: { detail: { ...restaurant, contextKey: "trip:cusco:market-kitchen:no-product:day-2:evening" }, embedded: true } };
 export const ItinerarySelectedDay: Story = { args: { detail: { ...activity, contextKey: "trip:cusco:sacsayhuaman:no-product:day-2:afternoon" } } };
+export const MapHandoffPending: Story = {
+  args: { detail: activity, mapHref: "#map-handoff" },
+  play: ({ canvasElement }) => {
+    const link = [...canvasElement.querySelectorAll<HTMLAnchorElement>("a")].find((candidate) => candidate.textContent?.includes("View on map"));
+    link?.click();
+  },
+};
 export const Mobile320: Story = { args: { detail: viator }, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile390: Story = { args: { detail: restaurant }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { args: { detail: activity }, globals: { viewport: { value: "morrovia430", isRotated: false } } };

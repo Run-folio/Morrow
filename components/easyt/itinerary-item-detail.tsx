@@ -62,6 +62,7 @@ export default function RecommendationDetail({
   const shellRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [mobileSheet, setMobileSheet] = useState(false);
+  const [mapPending, setMapPending] = useState(false);
   const KindIcon = detail.kind === "restaurant" ? Utensils : detail.kind === "accommodation" ? BedDouble : Sparkles;
 
   useEffect(() => {
@@ -92,6 +93,8 @@ export default function RecommendationDetail({
       if (mobile) document.body.style.overflow = previousOverflow;
     };
   }, [detail.id, embedded, onClose]);
+
+  useEffect(() => setMapPending(false), [detail.id, mapHref]);
 
   return <>
     {!embedded ? <EasyTButton className={styles.scrim} iconOnly variant="quiet" aria-label="Close recommendation details" onClick={onClose}>Close recommendation details</EasyTButton> : null}
@@ -125,6 +128,16 @@ export default function RecommendationDetail({
           {detail.bookingStatus ? <div><CheckCircle2 aria-hidden="true" /><dt>Status</dt><dd>{detail.bookingStatus}</dd></div> : null}
         </dl>
 
+        {detail.commercialFacts ? <section className={styles.commercialFacts} aria-label={detail.commercialFacts.providerLabel}>
+          <span>{detail.commercialFacts.providerLabel}</span>
+          <dl>
+            {detail.commercialFacts.price ? <div><dt>Price</dt><dd>{detail.commercialFacts.price}</dd></div> : null}
+            {detail.commercialFacts.availability ? <div><dt>Availability</dt><dd>{detail.commercialFacts.availability}</dd></div> : null}
+            {detail.commercialFacts.cancellation ? <div><dt>Cancellation</dt><dd>{detail.commercialFacts.cancellation}</dd></div> : null}
+          </dl>
+          <p>{detail.commercialFacts.qualification}</p>
+        </section> : null}
+
         {detail.whyFit ? <section className={styles.why} aria-label="Why this fits"><Sparkles aria-hidden="true" /><div><h3>{detail.whyFitLabel ?? "Why it fits this part of the day"}</h3><p>{detail.whyFit}</p></div></section> : null}
 
         {detail.practical?.length ? <section className={styles.practical}><h3>Practical info</h3><dl>{detail.practical.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl></section> : null}
@@ -136,7 +149,7 @@ export default function RecommendationDetail({
 
         <div className={styles.actions}>
           {primaryActions}
-          {mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth>View on map</EasyTLinkButton> : null}
+          {mapHref ? <EasyTLinkButton href={mapHref} icon={MapIcon} fullWidth loading={mapPending} onClick={() => setMapPending(true)}>{mapPending ? "Opening map…" : "View on map"}</EasyTLinkButton> : null}
           {detail.bookingHref ? <EasyTLinkButton href={detail.bookingHref} target="_blank" rel="noopener noreferrer" icon={ExternalLink} variant="secondary">Open booking</EasyTLinkButton> : null}
           {onManage ? <EasyTButton icon={BedDouble} variant="secondary" onClick={onManage}>{manageLabel}</EasyTButton> : null}
           {onAddNote ? <EasyTButton icon={NotebookPen} variant="secondary" onClick={onAddNote}>Add note</EasyTButton> : null}

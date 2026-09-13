@@ -150,6 +150,50 @@
   overflow-wrap: anywhere;
 }
 
+.commercialFacts {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.commercialFacts > span {
+  color: var(--morrovia-signal);
+  font: var(--morrovia-type-eyebrow);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.commercialFacts dl {
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.commercialFacts dl > div {
+  display: grid;
+  grid-template-columns: minmax(78px, auto) minmax(0, 1fr);
+  gap: 10px;
+  font: var(--morrovia-type-metadata);
+}
+
+.commercialFacts dt {
+  color: var(--morrovia-ink);
+}
+
+.commercialFacts dd,
+.commercialFacts p {
+  margin: 0;
+  color: var(--morrovia-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.commercialFacts p {
+  font: var(--morrovia-type-fine-print);
+}
+
 .facts dt {
   color: var(--morrovia-muted);
   font: 700 .62rem/1.25 var(--morrovia-meta);

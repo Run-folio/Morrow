@@ -106,6 +106,33 @@ export function exploreDestinationOptions(trip: Pick<EasyTTrip, "stops" | "planI
     });
 }
 
+/**
+ * Discovery requests depend on route/search facts, not on mutable itinerary
+ * state. Keeping this key stable prevents Save/Add/Remove from restarting both
+ * provider lanes and blanking an already useful grid.
+ */
+export function exploreDiscoveryRequestKey(trip: EasyTTrip) {
+  const interests = tripIntentForTrip(trip).preferences.interests;
+  const mentions = trip.brief.structuredBrief?.placeMentions ?? [];
+  return JSON.stringify({
+    currency: trip.currency,
+    interests,
+    stops: [...trip.stops]
+      .sort((left, right) => left.order - right.order)
+      .map((stop) => ({
+        id: stop.id,
+        canonicalPlaceId: stop.canonicalPlaceId,
+        name: stop.name,
+        country: stop.country,
+        countryCode: stop.countryCode,
+        region: stop.region,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        mention: mentions.find((item) => item.canonicalPlaceId === stop.canonicalPlaceId),
+      })),
+  });
+}
+
 export function exploreResultIdentity(input: Pick<ExploreResult, "stopId" | "provider" | "providerProductId" | "sourceId">) {
   return input.provider && input.providerProductId
     ? `stop:${input.stopId}:provider:${input.provider}:${input.providerProductId}`
@@ -369,6 +396,19 @@ export function dedupeExploreResults(results: readonly ExploreResult[]) {
     deduped[duplicateIndex] = mergeExploreResult(deduped[duplicateIndex]!, result);
   }
   return deduped;
+}
+
+/**
+ * Provider order owns the visible grid. Persisted ideas enrich their matching
+ * card in place and append only when their source is no longer in the active
+ * provider result set.
+ */
+export function projectExploreResults(
+  organic: readonly ExploreResult[],
+  commercial: readonly ExploreResult[],
+  persisted: readonly ExploreResult[],
+) {
+  return dedupeExploreResults([...organic, ...commercial, ...persisted]);
 }
 
 /** Streams each source as it settles so one slow request cannot gate its lane. */

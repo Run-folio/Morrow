@@ -12,6 +12,8 @@ const routeStripStyles = readFileSync(new URL("../components/journey-planner-str
 const routeTimeline = readFileSync(new URL("../lib/easyt/route-timeline.ts", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/trip-explore-workspace.stories.tsx", import.meta.url), "utf8");
+const design = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
+const appNavigationStyles = readFileSync(new URL("../app/journey/easyt-navigation.module.css", import.meta.url), "utf8");
 
 test("Explore is a canonical TripShell workspace without a second navigation owner", () => {
   assert.match(navigation, /id: "explore"[\s\S]*suffix: "\/explore"/);
@@ -40,6 +42,14 @@ test("desktop uses a results workspace and contextual right rail, not a centred 
   assert.match(workspace, /className=\{`\$\{styles\.rail\}/);
   assert.match(workspace, /<ItineraryItemDetail/);
   assert.doesNotMatch(workspace, /role="alertdialog"/);
+});
+
+test("desktop detail owns a navigation-aware sticky, viewport-bounded rail and mobile releases it", () => {
+  assert.match(design, /--morrovia-navigation-height: 78px/);
+  assert.match(design, /--morrovia-sticky-content-offset: calc\(var\(--morrovia-navigation-height\) \+ 14px\)/);
+  assert.match(appNavigationStyles, /\.header \{[\s\S]*min-height: var\(--morrovia-navigation-height, 78px\)/);
+  assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.railSelected \{ position: static;[\s\S]*max-height: none;[\s\S]*overflow: visible;/);
 });
 
 test("mobile detail reuses the canonical itinerary sheet interaction", () => {
@@ -84,7 +94,7 @@ test("Explore reuses canonical persistence, scheduling, identity and detail owne
   assert.match(workspace, /useTripShellMutation\(\)/);
   assert.match(workspace, /saveItineraryIdea\(current, result\.idea\)/);
   assert.match(workspace, /scheduleItineraryIdea\(current, result\.idea, target\.day\.id, target\.dayPart\)/);
-  assert.match(workspace, /dedupeExploreResults/);
+  assert.match(workspace, /projectExploreResults\(organicResults, commercialResults, persistedResults\)/);
   assert.match(workspace, /ItineraryItemDetail/);
   assert.doesNotMatch(workspace, /localStorage|sessionStorage/);
   assert.match(workspace, /const mapHref = selectedResult\.coordinates[\s\S]*: null;/);
@@ -132,6 +142,6 @@ test("responsive cards avoid horizontal overflow and retain 44px touch controls"
 
 test("Storybook covers destination, interaction, inventory and responsive Explore acceptance states", () => {
   for (const story of [
-    "DefaultExplore", "FreeTimeRail", "LongRoute", "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "PartialProviderFailureNoBanner", "BlockingProviderFailure", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoDayTripsOrganicAndCommercial", "TokyoOutdoorsSemantic", "SparseDestination", "TokyoNoImageRestaurants", "OrganicDayTripsWithoutViator",
+    "DefaultExplore", "FreeTimeRail", "LongRoute", "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "PartialProviderFailureNoBanner", "BlockingProviderFailure", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "DeepScrollStickyDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoDayTripsOrganicAndCommercial", "TokyoOutdoorsSemantic", "SparseDestination", "TokyoNoImageRestaurants", "OrganicDayTripsWithoutViator",
   ]) assert.match(stories, new RegExp(`export const ${story}`), story);
 });

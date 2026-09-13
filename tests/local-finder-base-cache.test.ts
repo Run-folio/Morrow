@@ -94,10 +94,32 @@ test("base request identity ignores commercial dates but remains stop scoped", (
   assert.doesNotMatch(firstStop, /2026|GBP|2 rooms/);
 });
 
-test("commercial enrichment replaces only a confidently identical mapped property", () => {
-  const commercial = { id: "booking-42", name: "Tokyo Garden Hotel", coordinates: [139.7, 35.69] as [number, number] };
-  const sameMappedProperty = { id: "google-19", name: " Tokyo  Garden Hotel ", coordinates: [139.7004, 35.6904] as [number, number] };
-  const distinctSimilarProperty = { id: "osm-20", name: "Tokyo Garden Hotel Annex", coordinates: [139.7004, 35.6904] as [number, number] };
+test("commercial enrichment attaches to a confidently identical canonical mapped property", () => {
+  type TestPlace = {
+    id: string;
+    name: string;
+    coordinates: [number, number];
+    provider?: string;
+    providerProductId?: string;
+    commercialProvider?: string;
+    commercialProviderProductId?: string;
+    availability?: string;
+    price?: { total: number; currency: string };
+    rating?: number;
+    reviewCount?: number;
+  };
+  const commercial: TestPlace = { id: "booking-42", name: "Tokyo Garden Hotel", coordinates: [139.7, 35.69], provider: "booking-demand", providerProductId: "42", availability: "available", price: { total: 420, currency: "GBP" }, rating: 4.6, reviewCount: 910 };
+  const sameMappedProperty: TestPlace = { id: "google-19", name: " Tokyo  Garden Hotel ", coordinates: [139.7004, 35.6904], provider: "google-places", rating: 4.8 };
+  const distinctSimilarProperty: TestPlace = { id: "osm-20", name: "Tokyo Garden Hotel Annex", coordinates: [139.7004, 35.6904] };
 
-  assert.deepEqual(mergeLocalFinderPlaces([commercial], [sameMappedProperty, distinctSimilarProperty]), [commercial, distinctSimilarProperty]);
+  const merged = mergeLocalFinderPlaces([sameMappedProperty, distinctSimilarProperty], [commercial]);
+  assert.equal(merged.length, 2);
+  assert.deepEqual(merged.map((place) => place.id), ["google-19", "osm-20"]);
+  assert.deepEqual(merged[0]?.coordinates, sameMappedProperty.coordinates);
+  assert.equal(merged[0]?.provider, "google-places", "the mapped source remains the canonical identity and rating owner");
+  assert.equal(merged[0]?.commercialProvider, "booking-demand");
+  assert.equal(merged[0]?.commercialProviderProductId, "42");
+  assert.equal(merged[0]?.rating, 4.8);
+  assert.equal(merged[0]?.reviewCount, undefined);
+  assert.deepEqual(merged[0]?.price, commercial.price);
 });

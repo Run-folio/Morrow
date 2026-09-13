@@ -94,10 +94,31 @@ const bookingStay = mappedStay("booking-property-42", "Kadoya Hotel", [139.698, 
   cancellation: "free_cancellation",
   description: "A current provider result for the selected stop and date range.",
 });
+const bookingGardenEnrichment = mappedStay("booking-garden-88", "Garden Hotel Tokyo", [139.7124, 35.6844], {
+  address: "Shinjuku, Tokyo",
+  provider: "booking-demand",
+  providerProductId: "88",
+  availability: "available",
+  rating: 4.6,
+  reviewCount: 596,
+  price: { total: 438, currency: "GBP" },
+  cancellation: "free_cancellation",
+});
+const strongMapped = mappedStay("strong-mapped", "Shinjuku Heritage Hotel", [139.704, 35.681], { rating: 4.9, reviewCount: 4200 });
+const weakBooking = mappedStay("weak-booking", "Outer Tokyo Rooms", [139.82, 35.78], {
+  provider: "booking-demand",
+  providerProductId: "weak-17",
+  availability: "available",
+  rating: 3.2,
+  reviewCount: 12,
+  price: { total: 312, currency: "GBP" },
+});
 
 const ready: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, accommodationInventoryStatus: "unconfigured" };
 const loading: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, accommodationInventoryStatus: "loading" };
 const enriched: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, commercialPlaces: [bookingStay], accommodationInventoryStatus: "live" };
+const partiallyEnriched: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, commercialPlaces: [bookingGardenEnrichment], accommodationInventoryStatus: "live" };
+const rankingComparison: JourneyLocalFinderInitialState = { corePlaces: [strongMapped, ...mappedPlaces.slice(1, 4)], commercialPlaces: [weakBooking], accommodationInventoryStatus: "live" };
 const unavailable: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, accommodationInventoryStatus: "unavailable" };
 const sparse: JourneyLocalFinderInitialState = { corePlaces: [mappedStay("small-ryokan", "Small Ryokan", [139.7, 35.68], { category: "Ryokan", provider: "openstreetmap" })], accommodationInventoryStatus: "unconfigured" };
 
@@ -122,7 +143,11 @@ export const NoNeighbourhoodFallback: Story = { args: { initialStopId: "tokyo-re
 export const SixOptionShortlist: Story = {};
 export const MappedResultsBookingLoading: Story = { args: { initialFinderState: loading } };
 export const BookingEnriched: Story = { args: { initialFinderState: enriched } };
+export const PartiallyEnrichedShortlist: Story = { args: { initialFinderState: partiallyEnriched, initialSelectedPlaceId: "garden-hotel" } };
+export const BookingFactsSeparateTripComCta: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" } };
+export const RankingComparison: Story = { args: { initialFinderState: rankingComparison, initialSelectedPlaceId: "strong-mapped" } };
 export const ProviderUnavailableMappedBaseReady: Story = { args: { initialFinderState: unavailable } };
+export const BookingFailureMappedShortlist: Story = { args: { initialFinderState: unavailable, initialSelectedPlaceId: "sakura-house" } };
 export const NoPropertyImage: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };
 export const SparsePropertyDetail: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };
 export const RichPropertyDetail: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" } };

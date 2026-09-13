@@ -117,7 +117,7 @@ test("Stay presents one concise disclosure and a truthful generic handoff", () =
 
   assert.match(affiliate, /compactAffiliateDisclosure = "Partner links · Morrovia may earn a commission at no extra cost to you\."/);
   assert.equal((finder.match(/\{compactAffiliateDisclosure\}/g) ?? []).length, 1);
-  assert.match(finder, />Check availability <ArrowUpRight/);
+  assert.match(finder, />Check separately on Trip\.com <ArrowUpRight/);
   assert.doesNotMatch(finder, />Book now</);
   assert.doesNotMatch(finder, /Live room availability is not configured here|Mapped property; operating status unverified|Check options on Trip\.com/);
   assert.equal((finder.match(/trackEvent\("affiliate_click"/g) ?? []).length, 1);

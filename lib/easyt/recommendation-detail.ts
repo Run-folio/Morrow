@@ -2,7 +2,7 @@ import { exploreResultState, type ExploreResult, type ExploreResultState } from 
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestReason } from "./itinerary-day-context.ts";
 import { activityDurationLabel, isFullDayActivity, itineraryScheduleWarnings } from "./itinerary-schedule-awareness.ts";
-import type { JourneyLocalPlace } from "./local-place.ts";
+import { hasBookingLiveInformation, type JourneyLocalPlace } from "./local-place.ts";
 import type { MapResultPlace } from "./map-result-selection.ts";
 import { stayBookingForStop } from "./accommodation.ts";
 import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "./stay-workspace.ts";
@@ -30,6 +30,13 @@ export type RecommendationDetailModel = {
   whyFit?: string | null;
   whyFitLabel?: string | null;
   practical?: Array<{ label: string; value: string }>;
+  commercialFacts?: {
+    providerLabel: string;
+    price?: string | null;
+    availability?: string | null;
+    cancellation?: string | null;
+    qualification: string;
+  } | null;
   dayPart?: ItineraryDayPart | null;
   canMoveTime?: boolean;
   canRemove?: boolean;
@@ -58,7 +65,7 @@ function providerLabel(value: string | null | undefined) {
   if (value === "viator") return "Viator";
   if (value === "google-places") return "Google Places";
   if (value === "openstreetmap") return "OpenStreetMap";
-  if (value === "booking-demand") return "Booking provider";
+  if (value === "booking-demand") return "Booking.com";
   return null;
 }
 
@@ -68,7 +75,7 @@ function ratingFact(rating: number | undefined, reviewCount: number | undefined)
 }
 
 function stayPrice(place: JourneyLocalPlace) {
-  if (place.provider !== "booking-demand" || place.availability !== "available" || !place.price || !Number.isFinite(place.price.total)) return null;
+  if (!hasBookingLiveInformation(place) || place.availability !== "available" || !place.price || !Number.isFinite(place.price.total)) return null;
   try {
     return new Intl.NumberFormat("en", { style: "currency", currency: place.price.currency, maximumFractionDigits: 2 }).format(place.price.total);
   } catch {
@@ -198,16 +205,24 @@ export function recommendationDetailForStayResult(input: {
   const booking = stayBookingForStop(input.trip, input.stayContext.stop);
   const rating = ratingFact(input.place.rating, input.place.reviewCount);
   const source = providerLabel(input.place.provider);
-  const availability = input.place.provider === "booking-demand" && input.place.availability === "available"
+  const hasBookingFacts = hasBookingLiveInformation(input.place);
+  const availability = hasBookingFacts && input.place.availability === "available"
     ? `Available for ${input.stayContext.dateLabel} in the current provider response`
-    : "Check current availability with the booking provider";
+    : "No current availability was confirmed in this provider response";
+  const bookingLiveFacts = hasBookingFacts ? {
+    providerLabel: "Booking.com live information",
+    price: stayPrice(input.place),
+    availability,
+    cancellation: input.place.cancellation?.replaceAll("_", " ") ?? null,
+    qualification: "These facts come from Booking.com’s current response. Prices, availability and terms may differ on Trip.com or another provider.",
+  } : null;
   return {
     id: input.place.id,
     contextKey: recommendationDetailContextKey({
       tripId: input.trip.id,
       stopId: input.stayContext.stop.id,
       resultId: input.place.id,
-      providerProductId: input.place.providerProductId,
+      providerProductId: input.place.commercialProviderProductId ?? input.place.providerProductId,
       activeDayId: input.stayContext.key,
     }),
     kind: "accommodation",
@@ -217,9 +232,9 @@ export function recommendationDetailForStayResult(input: {
     image: input.place.image,
     imageAlt: input.place.image ? `${input.place.name} property` : null,
     category: input.place.category.replaceAll("_", " "),
-    price: stayPrice(input.place),
+    price: null,
     dateSummary: `${input.stayContext.nights} ${input.stayContext.nights === 1 ? "night" : "nights"} · ${input.stayContext.dateLabel}`,
-    bookingStatus: selected ? `Saved for ${input.stayContext.stop.name}` : input.place.availability === "available" ? "Current availability found" : null,
+    bookingStatus: selected ? `Saved for ${input.stayContext.stop.name}` : null,
     provider: input.place.provider,
     providerProductId: input.place.providerProductId,
     whyFit: stayCandidateFit(input.place, input.stayContext),
@@ -228,10 +243,10 @@ export function recommendationDetailForStayResult(input: {
       ...(source ? [{ label: "Source", value: source }] : []),
       ...(input.place.providerProductId ? [{ label: "Property", value: input.place.providerProductId }] : []),
       ...(rating ? [{ label: "Rating", value: rating }] : []),
-      { label: "Availability", value: availability },
-      ...(input.place.cancellation ? [{ label: "Cancellation", value: input.place.cancellation.replaceAll("_", " ") }] : []),
+      ...(!bookingLiveFacts ? [{ label: "Availability", value: "Not checked · confirm current rooms and terms with the provider you choose." }] : []),
       ...(booking?.location && selected ? [{ label: "Saved location", value: booking.location }] : []),
     ],
+    commercialFacts: bookingLiveFacts,
     canRemove: selected,
   };
 }
@@ -255,6 +270,8 @@ export function recommendationDetailForMapResult(input: { trip: EasyTTrip; resul
           availability: input.result.availability,
           provider: input.result.provider === "viator" ? undefined : input.result.provider,
           providerProductId: input.result.providerProductId,
+          commercialProvider: input.result.commercialProvider,
+          commercialProviderProductId: input.result.commercialProviderProductId,
           rating: input.result.rating,
           reviewCount: input.result.reviewCount,
           priceLevel: input.result.priceLevel,

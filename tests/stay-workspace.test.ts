@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "../lib/easyt/accommodation.ts";
 import { accommodationInventoryPayload, type JourneyLocalPlace } from "../lib/easyt/local-place.ts";
+import { mergeLocalFinderPlaces } from "../lib/easyt/local-finder-query.ts";
 import { mapResultForLocalPlace, mapResultSelectionId } from "../lib/easyt/map-result-selection.ts";
 import { recommendationDetailForMapResult, recommendationDetailForStayResult } from "../lib/easyt/recommendation-detail.ts";
 import { isStayCandidate, rankedStayShortlist, stayAreaGuidance, stayCandidateFit, stayWorkspaceContext } from "../lib/easyt/stay-workspace.ts";
@@ -100,7 +101,8 @@ test("shortlist rejects malformed/non-stays, dedupes exact properties and keeps 
   const restaurant = mappedHotel({ id: "restaurant", name: "Restaurant", category: "Restaurant" });
   assert.equal(isStayCandidate(restaurant), false);
   const shortlist = rankedStayShortlist([mappedHotel(), duplicate, similar, live, restaurant], context, 6);
-  assert.equal(shortlist[0]?.id, "booking-42");
+  assert.equal(shortlist[0]?.id, "google-hotel-a", "availability alone cannot outrank equivalent mapped evidence");
+  assert.equal(shortlist.some((place) => place.id === "booking-42"), true, "a valid commercial-only property may enter the shortlist");
   assert.equal(shortlist.some((place) => place.id === "osm-duplicate"), false);
   assert.equal(shortlist.some((place) => place.id === "google-hotel-annex"), true);
   assert.ok(shortlist.length <= 6);
@@ -116,11 +118,71 @@ test("mapped and live details distinguish check-required availability from curre
   const livePlace = mappedHotel({ id: "booking-42", provider: "booking-demand", providerProductId: "42", availability: "available", price: { total: 420, currency: "GBP" }, cancellation: "free_cancellation" });
   const live = recommendationDetailForStayResult({ trip, place: livePlace, stayContext: context, surface: "stay" });
   assert.equal(base.price, null);
-  assert.match(base.practical!.find((fact) => fact.label === "Availability")!.value, /Check current availability/);
-  assert.equal(live.price, "£420.00");
+  assert.match(base.practical!.find((fact) => fact.label === "Availability")!.value, /Not checked/);
+  assert.equal(live.price, null, "Booking.com price is never flattened into provider-neutral facts");
   assert.equal(live.providerProductId, "42");
-  assert.match(live.practical!.find((fact) => fact.label === "Availability")!.value, /current provider response/);
+  assert.equal(live.commercialFacts?.providerLabel, "Booking.com live information");
+  assert.equal(live.commercialFacts?.price, "£420.00");
+  assert.match(live.commercialFacts?.availability ?? "", /current provider response/);
+  assert.equal(live.commercialFacts?.cancellation, "free cancellation");
+  assert.match(live.commercialFacts?.qualification ?? "", /may differ on Trip\.com/);
   assert.doesNotMatch(JSON.stringify(live), /breakfast|pool|gym|wifi|room type|travel time/i);
+
+  const enrichedMapped = mergeLocalFinderPlaces([mappedHotel()], [livePlace])[0]!;
+  const enrichedMappedDetail = recommendationDetailForStayResult({ trip, place: enrichedMapped, stayContext: context, surface: "stay" });
+  assert.equal(enrichedMappedDetail.provider, "google-places");
+  assert.equal(enrichedMappedDetail.commercialFacts?.price, "£420.00");
+  assert.equal(enrichedMappedDetail.practical?.find((fact) => fact.label === "Rating")?.value, "4.5 · 800 reviews");
+  assert.match(enrichedMappedDetail.commercialFacts?.qualification ?? "", /Booking\.com[\s\S]*may differ on Trip\.com/);
+
+  const afterProviderFailure = recommendationDetailForStayResult({ trip, place: mappedHotel(), stayContext: context, surface: "stay" });
+  assert.equal(afterProviderFailure.commercialFacts, null);
+  assert.deepEqual(
+    [afterProviderFailure.id, afterProviderFailure.title, afterProviderFailure.location, afterProviderFailure.category],
+    [base.id, base.title, base.location, base.category],
+    "provider failure removes Booking facts without damaging mapped identity",
+  );
+});
+
+test("commercial availability is bounded and missing enrichment remains neutral", () => {
+  const context = stayWorkspaceContext(tripFixture(), "tokyo-first")!;
+  const strongMapped = mappedHotel({ id: "mapped-strong", name: "Strong mapped hotel", coordinates: [139.703, 35.691], rating: 4.9, reviewCount: 4_000, availability: "check" });
+  const weakLive = mappedHotel({ id: "booking-weak", name: "Weak live hotel", coordinates: [139.82, 35.78], provider: "booking-demand", providerProductId: "weak", rating: 3.2, reviewCount: 12, availability: "available" });
+  const ranked = rankedStayShortlist([strongMapped, weakLive], context, 6);
+  assert.equal(ranked[0]?.id, "mapped-strong");
+  assert.equal(rankedStayShortlist([strongMapped], context, 6)[0]?.id, "mapped-strong");
+
+  const core = [
+    strongMapped,
+    mappedHotel({ id: "mapped-second", name: "Second mapped hotel", coordinates: [139.708, 35.693], rating: 4.4, reviewCount: 600 }),
+    mappedHotel({ id: "mapped-third", name: "Third mapped hotel", coordinates: [139.715, 35.697], rating: 4.1, reviewCount: 300 }),
+  ];
+  const before = rankedStayShortlist(core, context, 6);
+  const enrichment = mappedHotel({
+    id: "booking-strong",
+    name: " Strong mapped hotel ",
+    coordinates: [139.7034, 35.6914],
+    provider: "booking-demand",
+    providerProductId: "strong-live",
+    availability: "available",
+    price: { total: 510, currency: "GBP" },
+    rating: undefined,
+    reviewCount: undefined,
+  });
+  const merged = mergeLocalFinderPlaces(core, [enrichment]);
+  const after = rankedStayShortlist(merged, context, 6);
+  assert.deepEqual(after.map((place) => place.id), before.map((place) => place.id), "safe late enrichment keeps the active shortlist order stable");
+  assert.equal(after[0]?.provider, "google-places");
+  assert.equal(after[0]?.providerProductId, undefined);
+  assert.equal(after[0]?.commercialProvider, "booking-demand");
+  assert.equal(after[0]?.commercialProviderProductId, "strong-live");
+  assert.deepEqual(after[0]?.price, enrichment.price);
+  assert.equal(merged.length, core.length, "a mapped/commercial identity enriches one card rather than duplicating");
+  assert.deepEqual(rankedStayShortlist(mergeLocalFinderPlaces(core, []), context, 6).map((place) => place.id), before.map((place) => place.id), "provider failure leaves mapped ranking intact");
+  assert.equal(after.some((place) => place.id === "mapped-strong"), true, "the selected canonical property identity survives enrichment");
+
+  const overflow = Array.from({ length: 8 }, (_, index) => mappedHotel({ id: `mapped-${index}`, name: `Mapped hotel ${index}`, coordinates: [139.69 + index * 0.002, 35.68] }));
+  assert.equal(rankedStayShortlist(overflow, context, 99).length, 6);
 });
 
 test("Stay workspace and Map Stay project the same shared property identity", () => {
@@ -157,6 +219,7 @@ test("fit copy exposes straight-line geometry without inventing neighbourhood or
 
 test("Stay production surface reuses shared owners and keeps commercial action secondary", () => {
   const workspace = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../components/easyt/trip-stay-workspace.module.css", import.meta.url), "utf8");
   const finder = readFileSync(new URL("../components/journey-local-finder.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
   assert.match(workspace, /<JourneyStopNavigation/);
@@ -165,6 +228,10 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /<ItineraryItemDetail/);
   assert.match(workspace, /useTripShellMutation/);
   assert.match(workspace, /selectMappedStayForStop/);
+  assert.match(workspace, /Check independently on Trip\.com/);
+  assert.match(workspace, /may differ from the Booking\.com live information above/);
+  assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.railSelected \{[\s\S]*position: static;[\s\S]*max-height: none;[\s\S]*overflow: visible;/);
   assert.doesNotMatch(workspace, /useTripMutationPersistence|OpenAI|LLM|Best Value|More comfortable/);
   assert.match(workspace, /key=\{context\.key\}/);
   assert.match(finder, /controller\.abort\(\)/);
@@ -179,7 +246,8 @@ test("Stay stories cover the required evidence, provider and compact viewport ma
   const stories = readFileSync(new URL("../components/easyt/trip-stay-workspace.stories.tsx", import.meta.url), "utf8");
   for (const story of [
     "TokyoThreeNightStay", "RepeatedTokyoStay", "StrongAreaEvidence", "NoNeighbourhoodFallback",
-    "SixOptionShortlist", "MappedResultsBookingLoading", "BookingEnriched", "ProviderUnavailableMappedBaseReady",
+    "SixOptionShortlist", "MappedResultsBookingLoading", "BookingEnriched", "PartiallyEnrichedShortlist",
+    "BookingFactsSeparateTripComCta", "RankingComparison", "ProviderUnavailableMappedBaseReady", "BookingFailureMappedShortlist",
     "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "Mobile320", "Mobile390", "Mobile430",
   ]) assert.match(stories, new RegExp(`export const ${story}`));
   for (const viewport of ["morrovia320", "morrovia390", "morrovia430"]) assert.match(stories, new RegExp(viewport));

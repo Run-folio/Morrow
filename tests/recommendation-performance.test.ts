@@ -240,12 +240,12 @@ test("stay base and live inventory use independent client lanes with stale-conte
   assert.ok(commercialSettlement);
   assert.doesNotMatch(commercialSettlement, /setChosen|setSaved/, "late enrichment must not replace the traveller's selection");
   assert.match(finder, /Mapped stays are ready to use\. Current room availability is still loading\./);
-  assert.match(finder, /mergeLocalFinderPlaces\(commercialPlaces, corePlaces\)/);
+  assert.match(finder, /mergeLocalFinderPlaces\(corePlaces, commercialPlaces\)/);
   assert.match(providerEffect, /loadLocalFinderBaseResult\(baseResultKey/);
   assert.match(providerEffect, /setLoading\(!retainExistingResults\)/);
   assert.match(finder, /firstUsefulPerformanceRef[\s\S]*?milestone: "first_useful"/, "first useful is measured after the base result reaches committed component state");
   assert.doesNotMatch(providerEffect.match(/loadLocalFinderBaseResult[\s\S]*?return \{ lane: "core", payload \};/)?.[0] ?? "", /staySearch|journey-accommodation-search/, "safe base cache never contains commercial inventory");
-  assert.match(finder, /chosen\.availability === "available" && \(chosen\.price \|\| chosen\.rating\)/, "price and ratings only render for provider-confirmed availability");
+  assert.match(finder, /hasBookingLiveInformation\(chosen\)[\s\S]*?chosen\.availability === "available" && \(chosen\.price \|\| \(chosen\.provider === "booking-demand" && chosen\.rating\)\)/, "commercial facts render only within a Booking-scoped boundary");
 });
 
 test("restaurant fallback sources and stay base sources are bounded parallel work", () => {

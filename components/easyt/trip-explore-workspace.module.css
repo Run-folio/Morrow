@@ -3,7 +3,7 @@
   min-height: 680px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(286px, 340px);
-  overflow: hidden;
+  overflow: clip;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: var(--morrovia-paper);
@@ -167,11 +167,17 @@
 .savedState svg { width: 15px; height: 15px; }
 
 .rail {
+  position: sticky;
+  top: var(--morrovia-sticky-content-offset);
+  align-self: start;
   min-width: 0;
+  max-height: calc(100svh - var(--morrovia-sticky-content-offset) - 14px);
   padding: 14px;
   display: grid;
   align-content: start;
   gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: color-mix(in srgb, var(--morrovia-paper) 96%, var(--morrovia-lilac));
 }
 .railSelected { padding: 0; }
@@ -209,7 +215,7 @@
   .workspace { display: block; min-height: 0; overflow: visible; }
   .main { border-right: 0; }
   .rail:not(.railSelected) { display: none; }
-  .railSelected { display: block; padding: 0; }
+  .railSelected { position: static; display: block; max-height: none; padding: 0; overflow: visible; }
   .railSelected > section { border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0; }
 }
 

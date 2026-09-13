@@ -149,8 +149,9 @@ export function rankedStayShortlist(
       place,
       index,
       distance: anchor ? mapDistanceKm(anchor, place.coordinates) : null,
-      score: Number(place.availability === "available") * 100
-        + Number(place.operational === true) * 10
+      // Availability and price are volatile provider facts, not quality. They
+      // enrich a stable shortlist after ranking; missing enrichment is neutral.
+      score: Number(place.operational === true) * 6
         + reviewSignal(place)
         - (anchor ? Math.min(20, mapDistanceKm(anchor, place.coordinates)) : 0),
     }))
