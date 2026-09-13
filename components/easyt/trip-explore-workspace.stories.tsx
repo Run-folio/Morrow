@@ -204,6 +204,41 @@ const tokyoTour = exploreResultForActivity(tokyoStop, {
 const tokyoOrganicDayTrip = exploreResultForPlace(tokyoStop, { id: "day-trip-kamakura", title: "Kamakura", area: "Kamakura, Japan", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby city 43 km from Tokyo. Check current transport options before adding it to a day.", coordinates: [139.5503, 35.3192], qualityScore: 9 });
 const tokyoCommercialDayTrip = exploreResultForActivity(tokyoStop, { ...tourItem, providerProductId: "tokyo-fuji-day-story", title: "Mount Fuji guided day trip", destination: { canonicalPlaceId: "tokyo-jp", label: "Tokyo", providerDestinationId: "334" }, tags: ["day trip", "mountain"], productUrl: "https://www.viator.com/tours/Tokyo/" }, tokyoTrip);
 
+const abundantOrganicResults = Array.from({ length: 27 }, (_, index) => ({
+  ...mapped[0]!,
+  identity: `stop:cusco:place:abundant-${index + 1}`,
+  sourceId: `abundant-${index + 1}`,
+  title: `Cusco idea ${index + 1}`,
+  idea: {
+    ...mapped[0]!.idea,
+    id: `idea-cusco-abundant-${index + 1}`,
+    placeId: `abundant-${index + 1}`,
+    title: `Cusco idea ${index + 1}`,
+  },
+}));
+
+const longRouteTrip = structuredClone(trip);
+longRouteTrip.id = "storybook-long-route";
+longRouteTrip.title = "Peru north to south";
+longRouteTrip.stops = [
+  ...longRouteTrip.stops,
+  { ...longRouteTrip.stops[0]!, id: "puno", order: 3, name: "Puno", canonicalPlaceId: "puno-pe" },
+  { ...longRouteTrip.stops[0]!, id: "paracas", order: 4, name: "Paracas", canonicalPlaceId: "paracas-pe" },
+  { ...longRouteTrip.stops[0]!, id: "huaraz", order: 5, name: "Huaraz", canonicalPlaceId: "huaraz-pe" },
+  { ...longRouteTrip.stops[0]!, id: "trujillo", order: 6, name: "Trujillo", canonicalPlaceId: "trujillo-pe" },
+];
+longRouteTrip.planItems = [
+  ...longRouteTrip.planItems,
+  ...longRouteTrip.stops.slice(3).map((stop, index) => ({
+    ...longRouteTrip.planItems[0]!,
+    id: `long-route-day-${index + 9}`,
+    stopId: stop.id,
+    dayNumber: index + 9,
+    date: `2026-09-0${index + 1}`,
+    title: `Explore ${stop.name}`,
+  })),
+];
+
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Explore",
   component: TripExploreWorkspace,
@@ -215,11 +250,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const AllTripForYou: Story = {};
+export const DefaultExplore: Story = {};
+export const FreeTimeRail: Story = {};
+export const LongRoute: Story = { args: { trip: longRouteTrip, initialResults: results } };
 export const SpecificDestination: Story = { args: { initialDestinationId: "cusco" } };
 export const SelectedRomeStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "rome" } };
 export const SelectedAthensStop: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults, initialDestinationId: "athens" } };
 export const MixedOrganicAndViator: Story = { args: { trip: mediterraneanTrip, initialResults: mediterraneanResults } };
 export const OrganicReadyCommercialLoading: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza], initialProviderState: "loading" } };
+export const PartialProviderFailureNoBanner: Story = { args: { initialResults: abundantOrganicResults, initialOrganicState: "degraded", initialProviderState: "degraded" } };
+export const BlockingProviderFailure: Story = { args: { trip: tokyoTrip, initialResults: [], initialDestinationId: "tokyo", initialCategory: "tours", initialProviderState: "degraded" } };
 export const OrganicAttraction: Story = { args: { trip: mediterraneanTrip, initialResults: [piazza] } };
 export const EntryTicket: Story = { args: { trip: mediterraneanTrip, initialResults: [athensTicket], initialDestinationId: "athens" } };
 export const RepeatedAthensOutbound: Story = { args: { trip: repeatedAthensTrip, initialResults: repeatedAthensResults, initialDestinationId: "athens-outbound" } };

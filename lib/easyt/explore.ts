@@ -419,6 +419,16 @@ export async function streamExploreDiscoveryLane(
   return snapshot;
 }
 
+export function exploreResultsPresentation(
+  resultCount: number,
+  statuses: readonly ExploreDiscoveryLaneStatus[],
+): "results" | "loading" | "unavailable" | "empty" {
+  if (resultCount > 0) return "results";
+  if (statuses.some((status) => status === "loading")) return "loading";
+  if (statuses.some((status) => status === "degraded")) return "unavailable";
+  return "empty";
+}
+
 export function exploreResultState(trip: EasyTTrip, result: ExploreResult): ExploreResultState {
   return ideaStateForPlace(trip, result.stopId, result.idea.placeId);
 }

@@ -8,6 +8,7 @@ import {
   dedupeExploreResults,
   exploreResultForActivity,
   exploreResultForPlace,
+  exploreResultsPresentation,
   exploreSourcePlan,
   streamExploreDiscoveryLane,
   type ExploreDiscoveryLaneSnapshot,
@@ -122,6 +123,26 @@ test("a failed commercial lane does not change a successful organic lane", async
   assert.equal(organicSnapshots.at(-1)?.results.length, 1);
   assert.equal(providerSnapshots.at(-1)?.status, "degraded");
   assert.equal(providerSnapshots.at(-1)?.results.length, 0);
+});
+
+test("partial provider failures stay silent whenever useful recommendations remain", () => {
+  for (const statuses of [
+    ["ready", "degraded"],
+    ["degraded", "ready"],
+    ["degraded", "degraded"],
+    ["loading", "degraded"],
+  ] as const) {
+    assert.equal(exploreResultsPresentation(1, statuses), "results");
+    assert.equal(exploreResultsPresentation(27, statuses), "results");
+  }
+});
+
+test("blocking provider failure and genuine empty remain distinct", () => {
+  assert.equal(exploreResultsPresentation(0, ["degraded"]), "unavailable");
+  assert.equal(exploreResultsPresentation(0, ["empty", "degraded"]), "unavailable");
+  assert.equal(exploreResultsPresentation(0, ["empty", "ready"]), "empty");
+  assert.equal(exploreResultsPresentation(0, ["empty"]), "empty");
+  assert.equal(exploreResultsPresentation(0, ["loading", "degraded"]), "loading");
 });
 
 test("the fast lane publishes one organic source without waiting for another organic source", async () => {

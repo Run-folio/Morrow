@@ -5,16 +5,10 @@ import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from 
 import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
+import type { RouteTimelineStop } from "@/lib/easyt/route-timeline";
 import styles from "./journey-planner-strip.module.css";
 
-export type JourneyPlannerStripStop = {
-  id: string;
-  name: string;
-  dayLabel: string;
-  image?: string;
-  active: boolean;
-  kind?: "all" | "origin" | "stop";
-};
+export type JourneyPlannerStripStop = RouteTimelineStop;
 
 export function JourneyStopNavigation({
   stops,
@@ -44,14 +38,14 @@ export function JourneyStopNavigation({
           ref={stop.active ? activeRef : undefined}
           type="button"
           className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
-          aria-current={stop.active ? (stop.kind === "all" ? "page" : "step") : undefined}
+          aria-current={stop.active ? (stop.kind === "origin" ? "page" : "step") : undefined}
           aria-pressed={stop.active}
           onClick={() => onSelectStop(stop.id)}
         >
           <ResilientImage
             src={stop.image}
             alt=""
-            fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" || stop.kind === "all" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stop.kind === "all" ? "All" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin" && item.kind !== "all").length}</span>}
+            fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "All" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>}
           />
           <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
         </button>

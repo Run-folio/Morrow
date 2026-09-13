@@ -31,6 +31,7 @@ import { itineraryIdeaForLocalPlace, preferredItineraryIdeaDay, removeItineraryI
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
 import { composeItineraryDay } from "@/lib/easyt/itinerary-day-composition";
 import { mapPlanAgendaForDay, mapPlanDaysForStop } from "@/lib/easyt/map-plan-agenda";
+import { routeTimelineScopeId, routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import { insertItineraryActivity, itineraryActivityProtection, moveItineraryActivityToDay, moveItineraryIdeaActivity, removeItineraryActivity, renameItineraryActivity } from "@/lib/easyt/itinerary-mutations";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
@@ -667,26 +668,19 @@ export function JourneyMapPlannerWorkspace({
   const priorityRecommendations = displayRecommendations.slice(0, 3);
   const remainingRecommendations = displayRecommendations.slice(3);
   const tripIssueCount = healthSummary?.issueCount ?? 0;
-  const canonicalStripStops = useMemo(() => customTrip ? [{
-    id: tripOriginEndpointId(customTrip.id),
-    name: customTrip.brief.origin,
-    dayLabel: "Journey origin",
-    active: false,
-    kind: "origin" as const,
-  }, ...customTrip.stops.map((stop) => {
-    const items = customTrip.planItems.filter((item) => item.stopId === stop.id).sort((a, b) => a.dayNumber - b.dayNumber);
-    const first = items[0];
-    const last = items[items.length - 1];
-    const imageKey = first ? `${customTrip.id}-day-${first.dayNumber}` : "";
-    return {
-      id: stop.id,
-      name: stop.name,
-      dayLabel: first ? first.dayNumber === last?.dayNumber ? `Day ${first.dayNumber}` : `Day ${first.dayNumber}–${last?.dayNumber}` : formatTripNights(stop.nights),
-      image: (imageKey ? placeMedia[imageKey]?.image : undefined) ?? first?.image ?? undefined,
-      active: mapMode === "detail" && stop.id === selectedPlanItem?.stopId,
-      kind: "stop" as const,
-    };
-  })] : [], [customTrip, mapMode, placeMedia, selectedPlanItem?.stopId]);
+  const canonicalStripStops = useMemo(() => {
+    if (!customTrip) return [];
+    const imageByStopId = Object.fromEntries(customTrip.stops.map((stop) => {
+      const first = customTrip.planItems
+        .filter((item) => item.stopId === stop.id)
+        .sort((left, right) => left.dayNumber - right.dayNumber)[0];
+      return [stop.id, first ? placeMedia[`${customTrip.id}-day-${first.dayNumber}`]?.image : undefined];
+    }));
+    return routeTimelineStopsForTrip(customTrip, {
+      scopeId: mapMode === "overview" ? "all" : selectedPlanItem?.stopId ?? "all",
+      imageByStopId,
+    });
+  }, [customTrip, mapMode, placeMedia, selectedPlanItem?.stopId]);
   const canonicalMapStops = useMemo(() => {
     if (!customTrip) return journey.stops;
     const origin = originEndpointForTrip(customTrip);
@@ -2250,14 +2244,15 @@ export function JourneyMapPlannerWorkspace({
         onFullTrip={isShellPresentation ? toggleExpandedMap : undefined}
         presentation={isShellPresentation ? "integrated" : "focused"}
         onSelectStop={(stopId) => {
-          if (stopId === tripOriginEndpointId(customTrip.id)) {
+          const scopeId = routeTimelineScopeId(customTrip.id, stopId);
+          if (scopeId === "all") {
             resetWholeRoute();
             return;
           }
-          const firstItem = customTrip.planItems.filter((item) => item.stopId === stopId).sort((a, b) => a.dayNumber - b.dayNumber)[0];
+          const firstItem = customTrip.planItems.filter((item) => item.stopId === scopeId).sort((a, b) => a.dayNumber - b.dayNumber)[0];
           setIsPlaying(false);
           setMobileShapeDayOpen(false);
-          setSelectedMapStopId(stopId);
+          setSelectedMapStopId(scopeId);
           if (firstItem) {
             setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
             setSelectedId(`${customTrip.id}-day-${firstItem.dayNumber}`);

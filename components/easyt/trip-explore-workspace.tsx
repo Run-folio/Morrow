@@ -28,6 +28,7 @@ import {
   exploreResultForIdea,
   exploreResultForLocalPlace,
   exploreResultForPlace,
+  exploreResultsPresentation,
   exploreResultState,
   exploreScheduleTarget,
   exploreSourcePlan,
@@ -45,12 +46,13 @@ import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/eas
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
+import { routeTimelineScopeId, routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
-import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
+import { affiliateDisclosure, compactAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "./itinerary-item-detail";
-import { MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
 import { useTripMutationPersistence } from "./use-trip-mutation-persistence";
@@ -64,6 +66,7 @@ export type TripExploreWorkspaceProps = {
   initialDestinationId?: string;
   initialCategory?: ExploreCategory;
   initialSelectedResultId?: string;
+  initialOrganicState?: ProviderState;
   initialProviderState?: ProviderState;
   requestedDayNumber?: number | null;
 };
@@ -210,6 +213,7 @@ export default function TripExploreWorkspace({
   initialDestinationId = "all",
   initialCategory = "for-you",
   initialSelectedResultId,
+  initialOrganicState,
   initialProviderState = "ready",
   requestedDayNumber,
 }: TripExploreWorkspaceProps) {
@@ -227,7 +231,7 @@ export default function TripExploreWorkspace({
   const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
   const [commercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
   const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
-    ? initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle"
+    ? initialOrganicState ?? (initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle")
     : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? "loading" : "idle");
   const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
@@ -248,17 +252,10 @@ export default function TripExploreWorkspace({
   const opportunity = useMemo(() => exploreOpportunityForTrip(workingTrip, destinationId), [destinationId, workingTrip]);
   const activeDestination = destinationId === "all" ? null : destinations.find((item) => item.id === destinationId) ?? null;
   const activeSourcePlan = exploreSourcePlan(category, workingTrip);
-  const navigationStops = useMemo(() => [
-    { id: "all", name: "All trip", dayLabel: "Whole journey", active: destinationId === "all", kind: "all" as const },
-    ...destinations.map((destination) => ({
-      id: destination.id,
-      name: destination.label,
-      dayLabel: destination.dayLabel,
-      image: destination.image,
-      active: destinationId === destination.id,
-      kind: "stop" as const,
-    })),
-  ], [destinationId, destinations]);
+  const navigationStops = useMemo(
+    () => routeTimelineStopsForTrip(workingTrip, { scopeId: destinationId }),
+    [destinationId, workingTrip],
+  );
 
   const closeDetail = useCallback(() => {
     setSelectedResultId(null);
@@ -360,24 +357,14 @@ export default function TripExploreWorkspace({
     "see",
     opportunity?.day.dayNumber,
   );
+  const relevantStatuses = [
+    ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants ? [organicStatus] : []),
+    ...(activeSourcePlan.tours ? [commercialStatus] : []),
+  ];
+  const resultsPresentation = exploreResultsPresentation(visibleResults.length, relevantStatuses);
 
-  return <section className={styles.workspace} aria-labelledby="explore-title">
+  return <section className={styles.workspace} aria-label="Explore recommendations">
     <div className={styles.main}>
-      <header className={styles.header}>
-        <div>
-          <p><Sparkles aria-hidden="true" />Discover your route</p>
-          <h2 id="explore-title">Explore</h2>
-          <span>Find places, experiences and food that fit your trip.</span>
-        </div>
-        <MorroviaSaveStatus state={mutation.saveState} />
-      </header>
-
-      {opportunity ? <aside className={styles.opportunity}>
-        <CalendarPlus aria-hidden="true" />
-        <div><strong>You’ve got space {opportunity.dayPart} on Day {opportunity.day.dayNumber} in {opportunity.stop.name}.</strong><span>Find something worth adding while you’re there.</span></div>
-        <EasyTLinkButton href={itineraryWorkspaceHref(workingTrip.id, opportunity.day.dayNumber)} size="small" variant="quiet">View day</EasyTLinkButton>
-      </aside> : null}
-
       {notice ? <div className={styles.notice} role="status"><Check aria-hidden="true" />{notice}<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton></div> : null}
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
 
@@ -387,9 +374,10 @@ export default function TripExploreWorkspace({
             stops={navigationStops}
             ariaLabel="Explore by trip stop"
             onSelectStop={(next) => {
-              setDestinationId(next);
+              const nextScopeId = routeTimelineScopeId(workingTrip.id, next);
+              setDestinationId(nextScopeId);
               setSelectedResultId(null);
-              trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: next === "all" ? "all" : "stop" });
+              trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: nextScopeId === "all" ? "all" : "stop" });
             }}
           />
         </div>
@@ -420,26 +408,16 @@ export default function TripExploreWorkspace({
         <small>{visibleResults.length} {visibleResults.length === 1 ? "idea" : "ideas"}</small>
       </div>
 
-      {organicStatus === "loading" && !visibleResults.length ? <div className={styles.loading} aria-label="Finding local trip ideas">
+      {resultsPresentation === "loading" ? <div className={styles.loading} aria-label="Finding local trip ideas">
         <MorroviaSectionStatus title="Finding ideas for this trip" detail={`Looking around ${destinationLabel}.`} />
         <div aria-hidden="true"><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /><MorroviaSkeleton height={330} radius="card" /></div>
       </div> : null}
-      {organicStatus === "loading" && visibleResults.length ? <p className={styles.degraded} role="status">More local ideas are loading. The results shown are ready to use.</p> : null}
-      {commercialStatus === "loading" ? <p className={styles.degraded} role="status">{visibleResults.some((result) => result.idea.source !== "live-provider-inventory") ? "Local ideas are ready. Bookable experiences are still loading." : "Bookable experiences are loading separately."}</p> : null}
-      {organicStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some local ideas are temporarily unavailable. You can still use the results shown here.</p> : null}
-      {commercialStatus === "degraded" && visibleResults.length ? <p className={styles.degraded}>Some bookable experiences are temporarily unavailable. The results shown remain ready to use.</p> : null}
-      {commercialStatus === "degraded" && !visibleResults.length && (activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants) ? <p className={styles.degraded}>Bookable experiences are temporarily unavailable. Local discovery is unaffected.</p> : null}
-      {organicStatus === "degraded" && !visibleResults.length ? <MorroviaSectionStatus
+      {resultsPresentation === "unavailable" ? <MorroviaSectionStatus
         state="error"
-        title="Local ideas are unavailable"
-        detail="Your trip and saved ideas are unchanged. Bookable experiences will remain separate."
+        title="We couldn’t load ideas right now"
+        detail="Try another category or come back shortly. Your trip and saved ideas are unchanged."
       /> : null}
-      {commercialStatus === "degraded" && !visibleResults.length && !activeSourcePlan.mapped && !activeSourcePlan.dayTrips && !activeSourcePlan.restaurants ? <MorroviaSectionStatus
-        state="error"
-        title="Bookable experiences are unavailable"
-        detail="Your trip is unchanged. Try this category again later."
-      /> : null}
-      {!visibleResults.length && organicStatus !== "loading" && commercialStatus !== "loading" && organicStatus !== "degraded" && !(commercialStatus === "degraded" && !activeSourcePlan.mapped && !activeSourcePlan.restaurants) ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
+      {resultsPresentation === "empty" ? <section className={styles.empty} aria-live="polite"><strong>No {exploreCategoryLabels[category].toLocaleLowerCase()} ideas found</strong><p>Try For you or another category for {destinationLabel}.</p></section> : null}
 
       {visibleResults.length ? <div className={styles.grid} id="explore-results">
         {visibleResults.map((result) => {
@@ -489,6 +467,7 @@ export default function TripExploreWorkspace({
                     variant="secondary"
                     onClick={() => trackEvent("explore_provider_handoff", { trip_id: workingTrip.id, stop_id: result.stopId, provider: "viator" })}
                   /> : null}
+                  {result.provider === "viator" && result.providerUrl ? <small className={styles.affiliateDisclosure}>{compactAffiliateDisclosure}</small> : null}
                   {state.state === "saved"
                     ? <span className={styles.savedState}><Bookmark aria-hidden="true" />Saved for later</span>
                     : <EasyTButton icon={Bookmark} size="small" variant="quiet" disabled={pending} aria-label={`Save ${result.title} for later`} onClick={() => saveResult(result)}>Save</EasyTButton>}
@@ -542,6 +521,7 @@ export default function TripExploreWorkspace({
               variant="secondary"
               onClick={() => trackEvent("explore_provider_handoff", { trip_id: workingTrip.id, stop_id: selectedResult.stopId, provider: "viator" })}
             /> : null}
+            {selectedResult.provider === "viator" && selectedResult.providerUrl ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
           </>}
         />;
       })() : <>
@@ -555,8 +535,6 @@ export default function TripExploreWorkspace({
             document.getElementById("explore-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}>Find ideas for this time</EasyTButton>
         </section> : null}
-        <section className={styles.railHint}><Sparkles aria-hidden="true" /><div><strong>Like something?</strong><span>Add it to a day or save it for later.</span></div></section>
-        {visibleResults.some((result) => result.provider === "viator") ? <small className={styles.disclosure}>Experiences from Viator · {affiliateDisclosure}</small> : null}
       </>}
     </aside>
   </section>;
