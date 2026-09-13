@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
+import { firstUsefulRecommendationResults } from "@/lib/easyt/recommendation-performance";
 
 type OverpassElement = {
   id: number;
@@ -78,6 +79,7 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
   const term = kind === "stay" ? "hotel" : "restaurant";
   const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "8", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
+    next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) return [];
@@ -166,6 +168,60 @@ async function googleOperationalStays(country: string, latitude: number, longitu
     });
 }
 
+async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
+  const radius = kind === "stay" ? 7500 : 5000;
+  const matcher = kind === "stay"
+    ? '["tourism"~"^(hotel|hostel|guest_house|motel)$"]'
+    : '["amenity"~"^(restaurant|cafe|fast_food)$"]';
+  const query = `[out:json][timeout:18];nwr(around:${radius},${latitude},${longitude})${matcher}["name"];out center tags 35;`;
+  const response = await fetch(`https://overpass.kumi.systems/api/interpreter?${new URLSearchParams({ data: query })}`, {
+    headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
+    next: { revalidate: 60 * 60 * 12 },
+    signal: AbortSignal.timeout(4500),
+  });
+  if (!response.ok) throw new Error("Local venue lookup unavailable");
+  const data = await response.json() as { elements?: OverpassElement[] };
+  const seen = new Set<string>();
+  const places: LocalPlace[] = [];
+  for (const place of data.elements ?? []) {
+    const tags = place.tags ?? {};
+    const lat = place.lat ?? place.center?.lat;
+    const lon = place.lon ?? place.center?.lon;
+    const displayName = resolveOsmPlaceDisplayName(tags, locale);
+    if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (!localPlaceWithinCanonicalScope({
+      anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: radius / 1_000,
+      requestedCountry: country, candidateCountry: tags["addr:country"],
+    })) continue;
+    const { name, nativeName } = displayName;
+    const address = addressFor(tags, country ? `${city}, ${country}` : city);
+    const searchQuery = `${name}, ${address}`;
+    const china = /china/i.test(country);
+    places.push({
+      id: `${place.id}`,
+      name,
+      ...(nativeName ? { nativeName } : {}),
+      address,
+      category: tags.cuisine || tags.tourism || tags.amenity || kind,
+      coordinates: [lon!, lat!] as [number, number],
+      mapsUrl: china
+        ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
+      distanceKm: distanceKm(latitude, longitude, lat!, lon!),
+      availability: "check",
+      provider: "openstreetmap",
+    });
+  }
+  return places
+    .filter((place) => {
+      const key = `${place.name}|${place.address}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
+}
+
 export async function GET(request: NextRequest) {
   const city = request.nextUrl.searchParams.get("city")?.trim();
   const country = request.nextUrl.searchParams.get("country")?.trim();
@@ -178,87 +234,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ places: [] }, { status: 400 });
   }
 
-  if (kind === "stay") {
-    try {
-      const places = await googleOperationalStays(country ?? "", latitude, longitude, locale);
-      if (places) return NextResponse.json({ places, source: "Google Places", inventory: false });
-    } catch {
-      // Keep the map-data fallback available, but never represent it as a live
-      // availability result. The client labels these as "Check availability".
-    }
-  }
-
-  const radius = kind === "stay" ? 7500 : 5000;
-  const matcher = kind === "stay"
-    ? '["tourism"~"^(hotel|hostel|guest_house|motel)$"]'
-    : '["amenity"~"^(restaurant|cafe|fast_food)$"]';
-  const query = `[out:json][timeout:18];nwr(around:${radius},${latitude},${longitude})${matcher}["name"];out center tags 35;`;
-
   try {
-    // The Kumi mirror accepts a simple GET and has proved more reliable than the
-    // main Overpass endpoint for browser-originated prototype requests.
-    const response = await fetch(`https://overpass.kumi.systems/api/interpreter?${new URLSearchParams({ data: query })}`, {
-      headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
-      next: { revalidate: 60 * 60 * 12 },
-      // Overpass can be busy or unreachable. Never leave the finder in a
-      // loading state while a serverless request waits for the upstream API.
-      // This first-pass query is deliberately short. The interface should
-      // gracefully fall back to Photon rather than leave someone waiting for
-      // an overloaded Overpass mirror before they can choose a meal or stay.
-      signal: AbortSignal.timeout(4500),
+    // Restaurant sources are equivalent mapped-place lanes, so return the first
+    // useful bounded response. Stay discovery races the richer operational
+    // Google lane against mapped results; live date-specific inventory remains
+    // a separate client request and is never inferred here.
+    let primaryFailureCount = 0;
+    const providerRequests = kind === "stay"
+      ? [
+          () => googleOperationalStays(country ?? "", latitude, longitude, locale).then((places) => places ?? []),
+          () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
+        ]
+      : [
+          () => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale),
+          () => photonFallback(kind, city, country ?? "", latitude, longitude, locale),
+        ];
+    const primaryRequests = providerRequests.map((request) => async () => {
+      try { return await request(); }
+      catch { primaryFailureCount += 1; return []; }
     });
-    if (!response.ok) throw new Error("Local venue lookup unavailable");
-    const data = await response.json() as { elements?: OverpassElement[] };
-    const seen = new Set<string>();
-    const places: LocalPlace[] = [];
-    for (const place of data.elements ?? []) {
-        const tags = place.tags ?? {};
-        const lat = place.lat ?? place.center?.lat;
-        const lon = place.lon ?? place.center?.lon;
-        const displayName = resolveOsmPlaceDisplayName(tags, locale);
-        if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        if (!localPlaceWithinCanonicalScope({
-          anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: radius / 1_000,
-          requestedCountry: country, candidateCountry: tags["addr:country"],
-        })) continue;
-        const { name, nativeName } = displayName;
-        const address = addressFor(tags, country ? `${city}, ${country}` : city);
-        const searchQuery = `${name}, ${address}`;
-        const china = /china/i.test(country ?? "");
-        places.push({
-          id: `${place.id}`,
-          name,
-          ...(nativeName ? { nativeName } : {}),
-          address,
-          category: tags.cuisine || tags.tourism || tags.amenity || kind,
-          coordinates: [lon!, lat!] as [number, number],
-          mapsUrl: china
-            ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
-            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
-          distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-          availability: "check" as "check",
-          provider: "openstreetmap" as "openstreetmap",
-        });
+    const places = await firstUsefulRecommendationResults(primaryRequests);
+    if (places.length) {
+      const source = places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
+      return NextResponse.json({ places, source, inventory: false });
     }
-    const uniquePlaces = places
-      .filter((place) => {
-        const key = `${place.name}|${place.address}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 8);
-    return NextResponse.json({ places: uniquePlaces, source: "OpenStreetMap", inventory: false });
+    // Photon remains a bounded second-stage stay fallback when neither Google
+    // nor Overpass yields a usable property. It is already part of the initial
+    // restaurant race above, so it is never requested twice for food.
+    if (kind === "stay") {
+      const fallback = await photonFallback(kind, city, country ?? "", latitude, longitude, locale);
+      return NextResponse.json({ places: fallback, source: "OpenStreetMap", inventory: false });
+    }
+    return NextResponse.json({ places: [], source: "OpenStreetMap", inventory: false, ...(primaryFailureCount === providerRequests.length ? { unavailable: true } : {}) });
   } catch {
-    // Overpass mirrors can be busy. Photon is a dependable OpenStreetMap-backed
-    // fallback that still returns named, mapped venues.
-    try {
-      const places = await photonFallback(kind, city, country ?? "", latitude, longitude, locale);
-      return NextResponse.json({ places, source: "OpenStreetMap" });
-    } catch {
-      // Keep the response shape stable so the client can show its map fallback
-      // and continue the meal/stay questions even when live lookup is offline.
-      return NextResponse.json({ places: [], source: "OpenStreetMap", unavailable: true });
-    }
+    // Keep the response shape stable so the client can retain its day and map
+    // context even when every bounded mapped-place source is unavailable.
+    return NextResponse.json({ places: [], source: "OpenStreetMap", unavailable: true });
   }
 }

@@ -9,6 +9,8 @@ import ResilientImage from "./resilient-image";
 import { itineraryInterestReason } from "@/lib/easyt/itinerary-day-context";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
+import { trackEvent } from "@/lib/analytics";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
 import styles from "./live-activity-inventory.module.css";
@@ -51,6 +53,7 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
     if (initialItems) { setItems(initialItems); setStatus("ready"); return; }
     if (!stop.canonicalPlaceId) { setItems([]); setStatus("unavailable"); return; }
     const scope = createAbortableEffectScope(`Live activity inventory for ${stop.id}`);
+    const startedAt = performance.now();
     setItems([]);
     setStatus("loading");
     void fetch("/api/journey-activity-inventory", {
@@ -72,18 +75,23 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
       return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
     }).then((payload) => {
       scope.commit(() => {
-        setItems(payload.activities ?? []);
-        setStatus((payload.activities ?? []).length ? "ready" : "unavailable");
+        const activities = payload.activities ?? [];
+        setItems(activities);
+        setStatus(activities.length ? "ready" : "unavailable");
+        const properties = { surface: workspace, recommendation_kind: "activity" as const, lane: "commercial" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: activities.length, outcome: activities.length ? "ready" as const : "empty" as const };
+        if (activities.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+        trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
       });
     }).catch((error: unknown) => {
       if (scope.isCancellation(error)) return;
       scope.commit(() => {
         setItems([]);
         setStatus("unavailable");
+        trackEvent("recommendation_performance", { surface: workspace, recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       });
     });
     return () => scope.dispose();
-  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency]);
+  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, workspace]);
 
   const ranked = useMemo(() => rankActivityInventory(items, interests).slice(0, 4), [interests, items]);
   if (status === "loading") return <section className={styles.group}><h4>Things to do</h4><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;

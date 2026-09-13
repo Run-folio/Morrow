@@ -62,6 +62,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Country verification depends only on the requested search centre, not on
+    // Wikipedia's result payload. Start both bounded requests together so a
+    // trustworthy shortlist never pays their latency serially.
+    const countryVerification = isWithinRequestedCountry(latitude, longitude, country);
     const params = new URLSearchParams({
       action: "query",
       format: "json",
@@ -92,7 +96,7 @@ export async function GET(request: NextRequest) {
     // Verify the search centre itself before considering its nearby results.
     // A 10 km Wikimedia geosearch is local, so this prevents an entire wrong-
     // country result set without making a reverse-geocode request per result.
-    if (!(await isWithinRequestedCountry(latitude, longitude, country))) return NextResponse.json({ places: [] });
+    if (!(await countryVerification)) return NextResponse.json({ places: [] });
     const places = Object.values(data.query?.pages ?? {})
       .filter((page) => {
         const coordinate = page.coordinates?.[0];

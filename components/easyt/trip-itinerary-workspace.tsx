@@ -89,6 +89,7 @@ import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
@@ -1595,6 +1596,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       return;
     }
     const scope = createAbortableEffectScope(`Itinerary suggestions for day ${day.dayNumber}`);
+    const startedAt = performance.now();
     setPlaces([]);
     setError("");
     setStatus("loading");
@@ -1610,8 +1612,12 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
       })
       .then((payload) => {
         scope.commit(() => {
-          setPlaces(payload.places ?? []);
+          const nextPlaces = payload.places ?? [];
+          setPlaces(nextPlaces);
           setStatus("ready");
+          const properties = { surface: "itinerary" as const, recommendation_kind: "activity" as const, lane: "core" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: nextPlaces.length, outcome: nextPlaces.length ? "ready" as const : "empty" as const };
+          if (nextPlaces.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+          trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
         });
       })
       .catch((caught: unknown) => {
@@ -1619,6 +1625,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         scope.commit(() => {
           setPlaces([]);
           setStatus("error");
+          trackEvent("recommendation_performance", { surface: "itinerary", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
         });
       });
     return () => scope.dispose();

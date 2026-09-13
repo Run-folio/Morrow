@@ -57,6 +57,15 @@ export type LaunchAnalyticsEventMap = {
   explore_added_to_day: { trip_id: string; stop_id: string; day_number: number; result_kind: "activity" | "restaurant" | "tour" };
   explore_saved_for_later: { trip_id: string; stop_id: string; result_kind: "activity" | "restaurant" | "tour" };
   explore_provider_handoff: { trip_id: string; stop_id: string; provider: string };
+  recommendation_performance: {
+    surface: "explore" | "itinerary" | "map";
+    recommendation_kind: "activity" | "restaurant" | "accommodation" | "mixed";
+    lane: "core" | "commercial";
+    milestone: "first_useful" | "lane_ready";
+    duration_ms: number;
+    result_count: number;
+    outcome: "ready" | "empty" | "unavailable";
+  };
   affiliate_click: { category: string; provider: string; trip_id?: string; stop_id?: string; placement?: string; workspace_view?: WorkspaceView; destination_count?: number };
   affiliate_link_clicked: {
     partner: "viator" | "omio";

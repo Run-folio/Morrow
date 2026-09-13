@@ -33,12 +33,14 @@ import {
   exploreSourcePlan,
   filterExploreResults,
   streamExploreDiscoveryLane,
+  type ExploreDiscoveryLaneSnapshot,
   type ExploreDiscoveryLaneStatus,
   type ExploreCategory,
   type ExploreLocalPlace,
   type ExploreResult,
 } from "@/lib/easyt/explore";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { itineraryInterestReason, type ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
@@ -250,6 +252,26 @@ export default function TripExploreWorkspace({
       ? destinations.map((item) => item.stop)
       : destinations.filter((item) => item.id === destinationId).map((item) => item.stop);
     const plan = exploreSourcePlan(category, trip);
+    const startedAt = performance.now();
+    let firstUsefulReported = false;
+    const recommendationKind = category === "food" ? "restaurant" as const
+      : category === "for-you" ? "mixed" as const
+        : "activity" as const;
+    const reportSnapshot = (lane: "core" | "commercial", snapshot: ExploreDiscoveryLaneSnapshot) => {
+      const properties = {
+        surface: "explore" as const,
+        recommendation_kind: recommendationKind,
+        lane,
+        duration_ms: recommendationDurationMs(startedAt, performance.now()),
+        result_count: snapshot.results.length,
+        outcome: snapshot.status === "degraded" ? "unavailable" as const : snapshot.results.length ? "ready" as const : "empty" as const,
+      };
+      if (snapshot.results.length && !firstUsefulReported) {
+        firstUsefulReported = true;
+        trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+      }
+      if (snapshot.pendingCount === 0) trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+    };
     setOrganicResults([]);
     setCommercialResults([]);
     const organicRequests = scopedStops.flatMap((stop) => [
@@ -262,10 +284,12 @@ export default function TripExploreWorkspace({
     void streamExploreDiscoveryLane(organicRequests, (snapshot) => scope.commit(() => {
       setOrganicResults(snapshot.results);
       setOrganicStatus(snapshot.status);
+      if (organicRequests.length) reportSnapshot("core", snapshot);
     }));
     void streamExploreDiscoveryLane(commercialRequests, (snapshot) => scope.commit(() => {
       setCommercialResults(snapshot.results);
       setCommercialStatus(snapshot.status);
+      if (commercialRequests.length) reportSnapshot("commercial", snapshot);
     }));
     return () => scope.dispose();
   }, [category, destinationId, destinations, initialResults, trip]);

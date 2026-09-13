@@ -4,7 +4,7 @@ import TripBuilder from "@/app/journey/new/trip-builder";
 import type { JourneyCalendarDay, JourneyStop } from "@/lib/journey";
 import { tripFromBuilder, type EasyTTrip } from "@/lib/easyt/trip";
 import { JourneyItineraryRefinement } from "./journey-itinerary-refinement";
-import { JourneyLocalFinder } from "./journey-local-finder";
+import { JourneyLocalFinder, type JourneyLocalPlace } from "./journey-local-finder";
 import { PlanWorkspace, type PlanWorkspaceCopy } from "./journey-plan-workspace";
 import { JourneyTripQuality } from "./journey-trip-quality";
 
@@ -38,6 +38,18 @@ const selectedStop: JourneyStop = {
 const selectedDay: JourneyCalendarDay = {
   id: "storybook-day-1", date: "Aug 20", label: "Day 1", stopId: "tokyo", city: "Tokyo", title: "Arrive in Tokyo", items: ["Check in", "Walk one nearby area", "Keep dinner easy"],
   travel: { mode: "flight", from: "London", duration: "14h 20m", detail: "Airport transfer and arrival buffer" },
+};
+
+const mappedTokyoStay: JourneyLocalPlace = {
+  id: "mapped-tokyo-stay",
+  name: "Yanaka neighbourhood stay",
+  address: "Yanaka, Taito City, Tokyo",
+  category: "guest house",
+  coordinates: [139.766, 35.727],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Yanaka%20Tokyo",
+  distanceKm: 1.2,
+  availability: "check",
+  provider: "openstreetmap",
 };
 
 function PlanWorkspaceStory() {
@@ -95,6 +107,15 @@ export const ShapeTheDayPlan: Story = {
 
 export const ShapeTheDayStay: Story = {
   render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} /></div>,
+};
+
+export const StayCoreReadyCommercialLoading: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-progressive" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "loading" }} /></div>,
+};
+
+export const StayCoreReadyProviderUnavailableMobile390: Story = {
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  render: () => <div style={{ maxWidth: 390 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-provider-failed" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "unavailable" }} /></div>,
 };
 
 export const ShapeTheDayEat: Story = {

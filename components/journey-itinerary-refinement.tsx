@@ -13,6 +13,7 @@ import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import type { ItineraryIdea } from "@/lib/easyt/trip";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import styles from "./journey-itinerary-refinement.module.css";
 
 export type JourneyItineraryDiscoveryResult = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number };
@@ -39,6 +40,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
     if (!stop || stop.latitude === null || stop.longitude === null) return;
     let active = true;
     const controller = new AbortController();
+    const startedAt = performance.now();
     const retryingCurrentStop = searchVersion > 0 && loadedStopIdRef.current === stop.id;
     setLoading(true);
     setSearchUnavailable(false);
@@ -48,11 +50,19 @@ export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, o
         if (!response.ok) throw new Error("Attraction discovery unavailable");
         return response.json() as Promise<{ places?: JourneyItineraryDiscoveryResult[] }>;
       })
-      .then((payload) => { if (active) { setPlaces(payload.places ?? []); loadedStopIdRef.current = stop.id; } })
+      .then((payload) => { if (active) {
+        const nextPlaces = payload.places ?? [];
+        setPlaces(nextPlaces);
+        loadedStopIdRef.current = stop.id;
+        const properties = { surface: "map" as const, recommendation_kind: "activity" as const, lane: "core" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: nextPlaces.length, outcome: nextPlaces.length ? "ready" as const : "empty" as const };
+        if (nextPlaces.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+        trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+      } })
       .catch((error: unknown) => {
         if (!active || (error as { name?: string })?.name === "AbortError") return;
         if (!retryingCurrentStop) setPlaces([]);
         setSearchUnavailable(true);
+        trackEvent("recommendation_performance", { surface: "map", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; controller.abort(); };
