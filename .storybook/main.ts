@@ -34,6 +34,17 @@ const config: StorybookConfig = {
         ...viteConfig.optimizeDeps,
         exclude: [...(viteConfig.optimizeDeps?.exclude ?? []), "maplibre-gl"],
       },
+      plugins: [
+        ...(viteConfig.plugins ?? []),
+        {
+          name: "storybook-json-import-attributes",
+          enforce: "post",
+          transform(code, id) {
+            if (!/\.[cm]?[jt]sx?(?:\?|$)/.test(id) || !/\s(?:with|assert)\s+\{\s*type:\s*["']json["']\s*\}/.test(code)) return null;
+            return code.replace(/\s+(?:with|assert)\s+\{\s*type:\s*["']json["']\s*\}/g, "");
+          },
+        },
+      ],
     };
   },
 };

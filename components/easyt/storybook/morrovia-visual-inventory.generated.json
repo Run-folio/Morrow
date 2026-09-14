@@ -5281,7 +5281,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 498,
+        "count": 499,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5291,7 +5291,7 @@
       },
       {
         "value": "10px",
-        "count": 488,
+        "count": 491,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5361,7 +5361,7 @@
       },
       {
         "value": "20px",
-        "count": 230,
+        "count": 231,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5421,7 +5421,7 @@
       },
       {
         "value": "3px",
-        "count": 145,
+        "count": 146,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -7665,7 +7665,7 @@
     "breakpoints": [
       {
         "value": "max-width: 520px",
-        "count": 33,
+        "count": 34,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",

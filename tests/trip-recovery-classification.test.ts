@@ -84,6 +84,19 @@ test("save header and dashboard source keep historical recovery separate and tri
   assert.match(dashboard, /recoveryIssues\[trip\.id\]/);
   assert.match(dashboard, /tripRecoveryIsAwaitingCanonicalSave\(recovery\)/);
   assert.match(dashboard, /listTripRecoveries\(ownerId\)/);
+  assert.match(dashboard, /classifyTripRecovery\(\{[\s\S]{0,180}previousCanonicalTrip: loadCachedTrip\(recovery\.tripId, ownerId\)/);
+  assert.match(dashboard, /classification === "equivalent"\) resolveCanonicalEquivalentTripRecovery/);
+  assert.match(dashboard, /classification === "historical-superseded"\) cacheCanonicalTrip\(canonicalTrip\)/);
   assert.match(dashboard, /has device changes to review/);
   assert.doesNotMatch(dashboard, /Cloud copy kept safe/);
+});
+
+test("dashboard groups detached recoveries behind one calm disclosure while keeping each review path", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  const stories = readFileSync(new URL("../app/journey/dashboard/dashboard-client.stories.tsx", import.meta.url), "utf8");
+  assert.match(dashboard, /\$\{orphanRecoveryIssues\.length\} protected device copies are available/);
+  assert.match(dashboard, /setShowDetachedRecoveries\(\(shown\) => !shown\)/);
+  assert.match(dashboard, /orphanRecoveryIssues\.map\(\(issue\) => <article key=\{issue\.tripId\}>/);
+  assert.match(dashboard, /recovery\.conflictReason === "cloud-deleted"/);
+  assert.match(stories, /export const DashboardDetachedRecoveriesGrouped/);
 });

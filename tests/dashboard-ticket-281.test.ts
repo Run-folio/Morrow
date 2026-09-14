@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { dashboardLibraryTrips } from "../lib/easyt/dashboard-library.ts";
@@ -77,4 +78,9 @@ test("dashboard cards prefer reviewed destination photography and reject unknown
   assert.equal(dashboardTripPhoto(asia)?.place, "Tokyo");
   assert.equal(dashboardTripPhoto(established)?.place, "Lisbon");
   assert.equal(dashboardTripPhoto(noPhoto), null);
+});
+
+test("upcoming cards only layer a map inset over reviewed photography", () => {
+  const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
+  assert.match(dashboard, /resolvedKind === "upcoming" && photo \? <div className=\{styles\.cardMapInset\}>/);
 });

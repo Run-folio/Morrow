@@ -51,6 +51,40 @@
 .actionNotice { display: flex; justify-content: flex-end; margin: 0 0 20px; }
 .dashboardNotice { margin: 0 0 20px; }
 
+.detachedRecoveryList {
+  display: grid;
+  gap: 8px;
+  margin: -10px 0 20px;
+  padding: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.detachedRecoveryList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+
+.detachedRecoveryList article > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.detachedRecoveryList strong { font: var(--morrovia-type-control); }
+.detachedRecoveryList span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+
+@media (max-width: 520px) {
+  .detachedRecoveryList article { grid-template-columns: 1fr; }
+  .detachedRecoveryList article > a { width: 100%; }
+}
+
 .currentJourney {
   position: relative;
   display: grid;

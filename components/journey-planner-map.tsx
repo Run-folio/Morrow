@@ -497,7 +497,7 @@ export function JourneyPlannerMap({
     let disposed = false;
     const ensureRoute = () => {
       if (disposed) return;
-      if (map.loaded()) {
+      if (map.isStyleLoaded()) {
         drawRoute();
         return;
       }

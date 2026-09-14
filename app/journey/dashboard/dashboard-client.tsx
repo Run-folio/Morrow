@@ -28,7 +28,9 @@ import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
 import {
   cacheCanonicalTrip,
+  classifyTripRecovery,
   EASYT_TRIP_STORAGE_CHANGE_EVENT,
+  loadCachedTrip,
   listTripRecoveries,
   loadTripRecovery,
   reconcileTripCloudMutation,
@@ -166,6 +168,7 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
   const [recoveryIssues, setRecoveryIssues] = useState<Record<string, DashboardRecoveryIssue>>({});
   const [recoveryState, setRecoveryState] = useState<"checking" | "none" | "syncing" | "issue">("checking");
   const [recoveryVersion, setRecoveryVersion] = useState(0);
+  const [showDetachedRecoveries, setShowDetachedRecoveries] = useState(false);
   const copy = easytCopy[language].dashboard;
 
   useEffect(() => {
@@ -212,7 +215,13 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
       if (tripRecoveryIsAwaitingCanonicalSave(recovery)) continue;
       const canonicalTrip = trips.find((candidate) => candidate.id === recovery.tripId);
       if (canonicalTrip) {
-        resolveCanonicalEquivalentTripRecovery(canonicalTrip, recovery);
+        const classification = classifyTripRecovery({
+          recovery,
+          canonicalTrip,
+          previousCanonicalTrip: loadCachedTrip(recovery.tripId, ownerId),
+        });
+        if (classification === "equivalent") resolveCanonicalEquivalentTripRecovery(canonicalTrip, recovery);
+        else if (classification === "historical-superseded") cacheCanonicalTrip(canonicalTrip);
         const remaining = loadTripRecovery(recovery.tripId, ownerId);
         if (!remaining) continue;
         nextIssues[recovery.tripId] = {
@@ -391,11 +400,23 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
     <>
       {actionNotice ? <div className={styles.actionNotice}><MorroviaBriefNotice title={actionNotice.title} detail={actionNotice.detail} autoDismissMs={6500} onDismiss={() => setActionNotice(null)} /></div> : null}
       {actionError ? <MorroviaStatusBanner className={styles.dashboardNotice} tone="danger" title={actionError} actions={actionError.includes("session") ? <EasyTLinkButton size="small" href={journeyReauthenticationPath("/journey/dashboard")}>Sign in again</EasyTLinkButton> : failedAction ? <EasyTButton size="small" variant="secondary" onClick={() => void runAction(failedAction.id, failedAction.action)}>{isSpanish ? "Reintentar" : "Try again"}</EasyTButton> : undefined} /> : null}
-      {orphanRecoveryIssues.map((issue) => <MorroviaStatusBanner key={issue.tripId} className={styles.dashboardNotice} tone="warning"
-        title={`${issue.tripTitle} has device changes to review`}
-        detail={issue.detail}
-        actions={<EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(issue.tripId)}>Review device copy</EasyTLinkButton>}
-      />)}
+      {orphanRecoveryIssues.length ? <>
+        <MorroviaStatusBanner
+          className={styles.dashboardNotice}
+          tone="warning"
+          title={orphanRecoveryIssues.length === 1 ? `${orphanRecoveryIssues[0].tripTitle} has a protected device copy` : `${orphanRecoveryIssues.length} protected device copies are available`}
+          detail={orphanRecoveryIssues.length === 1 ? orphanRecoveryIssues[0].detail : "Their cloud trips are not currently in this dashboard. The device copies remain safe until you choose to review them."}
+          actions={orphanRecoveryIssues.length === 1
+            ? <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(orphanRecoveryIssues[0].tripId)}>Review device copy</EasyTLinkButton>
+            : <EasyTButton size="small" variant="secondary" aria-expanded={showDetachedRecoveries} aria-controls="dashboard-detached-recoveries" onClick={() => setShowDetachedRecoveries((shown) => !shown)}>{showDetachedRecoveries ? "Hide device copies" : "Review device copies"}</EasyTButton>}
+        />
+        {showDetachedRecoveries && orphanRecoveryIssues.length > 1 ? <section id="dashboard-detached-recoveries" className={styles.detachedRecoveryList} aria-label="Protected device copies">
+          {orphanRecoveryIssues.map((issue) => <article key={issue.tripId}>
+            <div><strong>{issue.tripTitle}</strong><span>{issue.detail}</span></div>
+            <EasyTLinkButton size="small" variant="secondary" href={tripSyncRecoveryPath(issue.tripId)}>Review device copy</EasyTLinkButton>
+          </article>)}
+        </section> : null}
+      </> : null}
       {featuredTrip ? (
         <article className={styles.currentJourney} aria-labelledby="current-journey-title">
           <div className={styles.currentMedia}>
@@ -676,7 +697,7 @@ export function TripCard({ kind, trip, language, copy, recoveryIssues, working, 
   return <article className={`${styles.tripCard} ${styles[`${resolvedKind}Card`]} ${working ? styles.working : ""}`} aria-busy={working || undefined}>
     <Link className={styles.cardMedia} href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)} tabIndex={working ? -1 : undefined} aria-disabled={working || undefined}>
       {resolvedKind === "idea" ? <TripRoutePreview trip={trip} label={`${title} ${language === "es" ? "boceto de ruta" : "route sketch"}`} /> : <ResilientImage src={photo?.src} alt={photo?.alt ?? ""} fallback={<div className={styles.tripImageFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, copy.routeWaiting)}</span></div>} />}
-      {resolvedKind === "upcoming" ? <div className={styles.cardMapInset}><TripRoutePreview compact trip={trip} label={`${title} ${language === "es" ? "vista previa de la ruta" : "route preview"}`} /></div> : null}
+      {resolvedKind === "upcoming" && photo ? <div className={styles.cardMapInset}><TripRoutePreview compact trip={trip} label={`${title} ${language === "es" ? "vista previa de la ruta" : "route preview"}`} /></div> : null}
     </Link>
     {resolvedKind !== "idea" && photo?.creditLabel ? <MorroviaPhotoCredit photoLabel={photo.alt} credit={photo.creditLabel} sourceHref={photo.creditHref} licenseHref={photo.licenseHref} fullCreditHref={photo.fullCreditHref} /> : null}
     <div className={styles.cardBody}>

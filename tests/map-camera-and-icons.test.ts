@@ -109,3 +109,10 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.doesNotMatch(source, /<MarkerIcon style=/);
   assert.doesNotMatch(source, /duration: (?:420|550)/);
 });
+
+test("route geometry draws as soon as the style is ready instead of waiting for all tiles", () => {
+  const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
+  const ensureRoute = source.slice(source.indexOf("const ensureRoute = () =>"), source.indexOf("ensureRoute();", source.indexOf("const ensureRoute = () =>")));
+  assert.match(ensureRoute, /map\.isStyleLoaded\(\)/);
+  assert.doesNotMatch(ensureRoute, /map\.loaded\(\)/);
+});
