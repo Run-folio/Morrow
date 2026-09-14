@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { composeItineraryDay, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { assignItineraryIdeaDayPart } from "@/lib/easyt/itinerary-ideas";
@@ -61,6 +61,7 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [draggedActivity, setDraggedActivity] = useState<ComposedItineraryActivity | null>(null);
+  const draggedActivityRef = useRef<ComposedItineraryActivity | null>(null);
   const composition = useMemo(() => composeItineraryDay(workingTrip, dayId), [dayId, workingTrip]);
   if (!composition) return null;
   const assign = (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => {
@@ -117,12 +118,15 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
           onActivityDragStart={(activity, event) => {
             event.dataTransfer.effectAllowed = "move";
             event.dataTransfer.setData("text/plain", activity.id);
+            draggedActivityRef.current = activity;
             setDraggedActivity(activity);
           }}
-          onActivityDragEnd={() => setDraggedActivity(null)}
+          onActivityDragEnd={() => { draggedActivityRef.current = null; setDraggedActivity(null); }}
           onActivityDrop={(part, insertionIndex) => {
-            if (!draggedActivity) return;
-            setWorkingTrip((current) => placeItineraryActivity(current, composition.day.id, draggedActivity.id, part, insertionIndex).trip);
+            const dragged = draggedActivityRef.current ?? draggedActivity;
+            if (!dragged) return;
+            setWorkingTrip((current) => placeItineraryActivity(current, composition.day.id, dragged.id, part, insertionIndex).trip);
+            draggedActivityRef.current = null;
             setDraggedActivity(null);
           }}
         />

@@ -448,6 +448,25 @@ test("canonical drag placement reorders within a period and moves between period
   assert.equal(Object.values(withMovedIdea.planned).flat().filter((activity) => activity.id === idea.id).length, 1);
 });
 
+test("canonical drag placement appends into an occupied period without replacing its items", () => {
+  const base = tripFixture();
+  const authored: EasyTTrip = {
+    ...base,
+    brief: { ...base.brief, customActivities: { 4: ["Planned museum", "Existing afternoon"] } },
+    planItems: base.planItems.map((item) => item.id === "kyoto-4" ? {
+      ...item,
+      notes: ["Planned museum", "Existing afternoon"],
+      noteDayParts: [null, "afternoon"],
+    } : item),
+  };
+  const planned = composeItineraryDay(authored, "kyoto-4")!.unslotted.find((activity) => activity.title === "Planned museum")!;
+  const moved = placeItineraryActivity(authored, "kyoto-4", planned.id, "afternoon", 1);
+  const composition = composeItineraryDay(moved.trip, "kyoto-4")!;
+  assert.equal(moved.changed, true);
+  assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Existing afternoon", "Planned museum"]);
+  assert.equal([...Object.values(composition.planned).flat(), ...composition.unslotted].filter((activity) => activity.id === planned.id).length, 1);
+});
+
 test("saved ideas remain unscheduled until the canonical schedule action is used", () => {
   const source = tripFixture();
   const idea = itineraryIdeaForPlace({ stopId: "kyoto", place: place("garden", "Murin-an Garden"), reasons: ["destination-significance"] });

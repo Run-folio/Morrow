@@ -38,6 +38,37 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
   assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
 });
 
+test("native drag uses a dedicated pointer source while preserving every canonical placement path", () => {
+  assert.match(component, /<span[\s\S]{0,180}data-itinerary-drag-handle=\{activity\.id\}[\s\S]{0,180}draggable[\s\S]{0,180}onDragStart=\{onDragStart\}/);
+  assert.doesNotMatch(component, /<EasyTButton[\s\S]{0,180}className=\{styles\.dragHandle\}/);
+  assert.match(component, /onDragStart=\{\(event\) => onActivityDragStart\?\.\(activity, event\)\}/);
+  assert.match(workspace, /event\.dataTransfer\.setData\("text\/plain", activity\.id\)/);
+  assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity \}\)/);
+  assert.match(workspace, /plannerDragRef\.current = dragged/);
+  assert.match(workspace, /const dropPlannerItem = \(dayPart: ItineraryDayPart, insertionIndex: number\)/);
+  assert.match(workspace, /const dragged = plannerDragRef\.current \?\? plannerDrag/);
+  assert.match(workspace, /placeItineraryActivity\(current, active\.id, dragged\.activity\.id, dayPart, insertionIndex\)/);
+  assert.match(workspace, /mutation\.mutateTrip/);
+});
+
+test("whole, empty, populated, and insertion drop targets retain native acceptance semantics", () => {
+  assert.match(component, /data-day-part=\{part\}[\s\S]{0,420}onDragOver=\{\(event\) => \{ if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,320}onActivityDrop\?\.\(part, activities\.length\)/);
+  assert.match(component, /className=\{`\$\{styles\.freePeriod\}[\s\S]{0,400}onDragOver=\{\(event\) => \{ event\.stopPropagation\(\); if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,240}onActivityDrop\?\.\(part, 0\)/);
+  const populatedMarker = component.slice(component.indexOf("data-drop-index={activityIndex}"), component.indexOf("<ActivityRow", component.indexOf("data-drop-index={activityIndex}")));
+  const appendMarker = component.slice(component.indexOf("data-drop-index={activities.length}"), component.indexOf("</div>", component.indexOf("data-drop-index={activities.length}")));
+  assert.match(populatedMarker, /onActivityDrop\?\.\(part, activityIndex\)/);
+  assert.match(appendMarker, /onActivityDrop\?\.\(part, activities\.length\)/);
+  assert.match(component, /onDragEnd=\{\(\) => \{ setDropTarget\(null\); onActivityDragEnd\?\.\(\); \}\}/);
+});
+
+test("mobile hides pointer drag without removing the explicit scheduling and reorder controls", () => {
+  assert.match(styles, /@media \(max-width: 680px\)[\s\S]*\.dragHandle \{[\s\S]*display: none/);
+  assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*\.dragHandle \{[\s\S]*display: none/);
+  assert.match(component, /<EasyTSelect[\s\S]{0,520}<option value="">\{copy\.unsetPeriod\}<\/option>/);
+  assert.match(component, /onMoveActivity\(activity, "earlier"\)/);
+  assert.match(component, /onMoveActivity\(activity, "later"\)/);
+});
+
 test("compact empty periods, contextual add controls, first-class travel, and tonight context stay distinct", () => {
   assert.doesNotMatch(component, /No activity is set for this part of the day|copy\.freeDetail/);
   assert.match(component, /Add something/);

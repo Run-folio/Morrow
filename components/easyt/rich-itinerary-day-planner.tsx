@@ -44,7 +44,7 @@ type RichItineraryDayPlannerProps = {
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
   dragActive?: boolean;
   draggedActivityId?: string | null;
-  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
+  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLSpanElement>) => void;
   onActivityDragEnd?: () => void;
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
   selectedActivityId?: string | null;
@@ -150,7 +150,7 @@ function ActivityRow({
   onMoveActivity?: RichItineraryDayPlannerProps["onMoveActivity"];
   draggable: boolean;
   dragging: boolean;
-  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragStart?: (event: DragEvent<HTMLSpanElement>) => void;
   onDragEnd?: () => void;
   selected: boolean;
   onSelect?: (trigger: HTMLButtonElement) => void;
@@ -181,16 +181,14 @@ function ActivityRow({
         {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
         {warnings.map((warning) => <span className={styles.activityWarning} role="status" key={warning}><AlertTriangle aria-hidden="true" />{warning}</span>)}
       </EasyTButton>
-      {draggable && allowsDayPart ? <EasyTButton
+      {draggable && allowsDayPart ? <span
         className={styles.dragHandle}
-        icon={GripVertical}
-        iconOnly
-        size="small"
-        variant="quiet"
+        data-itinerary-drag-handle={activity.id}
         draggable
+        aria-hidden="true"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-      >Drag to organise: {activity.title}</EasyTButton> : null}
+      ><GripVertical /></span> : null}
       {activity.dayPartEditable && allowsDayPart ? <details className={styles.activityMenu}>
         <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
@@ -324,9 +322,9 @@ export default function RichItineraryDayPlanner({
               aria-labelledby={headingId}
               key={part}
               onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-              onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
+              onDragOver={(event) => { if (onActivityDrop) event.preventDefault(); }}
               onDrop={(event) => {
-                if (!dragActive) return;
+                if (!onActivityDrop) return;
                 event.preventDefault();
                 onActivityDrop?.(part, activities.length);
                 setDropTarget(null);
@@ -344,7 +342,7 @@ export default function RichItineraryDayPlanner({
                       data-drop-index={activityIndex}
                       aria-hidden="true"
                       onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
-                      onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                      onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
                       onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
                     >{dragActive ? "Drop here" : null}</div>
                     <ActivityRow
@@ -371,7 +369,7 @@ export default function RichItineraryDayPlanner({
                     data-drop-index={activities.length}
                     aria-hidden="true"
                     onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-                    onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                    onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
                     onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
                   >{dragActive ? "Drop here" : null}</div>
                 </div>
@@ -380,7 +378,7 @@ export default function RichItineraryDayPlanner({
                   className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
                   data-drop-index="0"
                   onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:0`); }}
-                  onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                  onDragOver={(event) => { event.stopPropagation(); if (onActivityDrop) event.preventDefault(); }}
                   onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, 0); setDropTarget(null); }}
                 >
                   {dragActive ? <p>Drop activity here</p> : null}

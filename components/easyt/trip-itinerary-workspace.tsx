@@ -445,6 +445,7 @@ export default function TripItineraryWorkspace({
   const [removeError, setRemoveError] = useState("");
   const [draggedActivity, setDraggedActivity] = useState<ActivityTarget | null>(null);
   const [plannerDrag, setPlannerDrag] = useState<PlannerDragItem | null>(null);
+  const plannerDragRef = useRef<PlannerDragItem | null>(null);
   const [openSavedPickerId, setOpenSavedPickerId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -892,10 +893,20 @@ export default function TripItineraryWorkspace({
     return true;
   };
 
-  const dropPlannerItem = (dayPart: ItineraryDayPart, insertionIndex: number) => {
-    const dragged = plannerDrag;
-    if (!dragged) return;
+  const beginPlannerDrag = (dragged: PlannerDragItem) => {
+    plannerDragRef.current = dragged;
+    setPlannerDrag(dragged);
+  };
+
+  const clearPlannerDrag = () => {
+    plannerDragRef.current = null;
     setPlannerDrag(null);
+  };
+
+  const dropPlannerItem = (dayPart: ItineraryDayPart, insertionIndex: number) => {
+    const dragged = plannerDragRef.current ?? plannerDrag;
+    if (!dragged) return;
+    clearPlannerDrag();
     setPlannerError("");
     if (dragged.kind === "suggestion") {
       scheduleIdea(dragged.idea, active.id, dayPart);
@@ -1142,9 +1153,9 @@ export default function TripItineraryWorkspace({
             onActivityDragStart={(activity, event) => {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", activity.id);
-              setPlannerDrag({ kind: "activity", activity });
+              beginPlannerDrag({ kind: "activity", activity });
             }}
-            onActivityDragEnd={() => setPlannerDrag(null)}
+            onActivityDragEnd={clearPlannerDrag}
             onActivityDrop={dropPlannerItem}
             selectedActivityId={selectedActivity?.id ?? null}
             onActivitySelect={(activity, trigger) => {
@@ -1422,9 +1433,9 @@ export default function TripItineraryWorkspace({
             onDragStart={(idea, event) => {
               event.dataTransfer.effectAllowed = "copyMove";
               event.dataTransfer.setData("text/plain", idea.id);
-              setPlannerDrag({ kind: "suggestion", idea });
+              beginPlannerDrag({ kind: "suggestion", idea });
             }}
-            onDragEnd={() => setPlannerDrag(null)}
+            onDragEnd={clearPlannerDrag}
           />
           {stop && experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`${active.id}-experience-handoff`}>
             <div>
@@ -1467,9 +1478,9 @@ export default function TripItineraryWorkspace({
               onDragStart={allowsDayPart ? (event) => {
                 event.dataTransfer.effectAllowed = "copyMove";
                 event.dataTransfer.setData("text/plain", idea.id);
-                setPlannerDrag({ kind: "suggestion", idea });
+                beginPlannerDrag({ kind: "suggestion", idea });
               } : undefined}
-              onDragEnd={allowsDayPart ? () => setPlannerDrag(null) : undefined}
+              onDragEnd={allowsDayPart ? clearPlannerDrag : undefined}
             >
               <ItineraryActivityIdentity title={idea.title} category={idea.category} image={idea.image} meta={`Saved for ${stop?.name ?? "this stop"}`} compact />
               <div className={styles.savedIdeaActions}>

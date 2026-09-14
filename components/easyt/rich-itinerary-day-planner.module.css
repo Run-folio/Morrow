@@ -322,7 +322,25 @@
   height: 34px;
   min-height: 34px;
   padding: 0;
+  border-radius: var(--morrovia-control-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--morrovia-ink-soft);
   cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.dragHandle:hover {
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+}
+
+.dragHandle svg {
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
 }
 
 .dragHandle:active {
