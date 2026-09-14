@@ -7,6 +7,7 @@ import {
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
+  loadCachedTrip,
   loadTripRecovery,
   markTripRecoveryState,
   saveTripRecovery,
@@ -14,7 +15,7 @@ import {
   type TripRecoveryHandle,
 } from "@/lib/easyt/storage";
 import { cloneItineraryMutationDocument } from "@/lib/easyt/itinerary-mutations";
-import { createTripMutationPersistenceQueue } from "@/lib/easyt/trip-mutation-persistence";
+import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from "@/lib/easyt/trip-mutation-persistence";
 import { canonicalTripRevisionCanReplace } from "@/lib/easyt/trip-continuity";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 
@@ -54,17 +55,24 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     // client owner has acknowledged B. Never let that stale prop reset the
     // current document or its next CAS base.
     if (sameDocument && !canonicalTripRevisionCanReplace(current, initialTrip)) return;
-    propIdentityRef.current = identity;
-    ownerScopeRef.current = initialTrip.ownerId;
-    tripRef.current = initialTrip;
-    setTripState(initialTrip);
+    // A route transition can rerender the server layout while an optimistic
+    // write is still queued. Its prop is not allowed to sever that sequence.
+    if (sameDocument && pendingSavesRef.current.size > 0) return;
+    const canonical = newestTripMutationCanonical(
+      initialTrip,
+      loadCachedTrip(initialTrip.id, initialTrip.ownerId),
+    );
+    propIdentityRef.current = `${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`;
+    ownerScopeRef.current = canonical.ownerId;
+    tripRef.current = canonical;
+    setTripState(canonical);
     setSaveState("idle");
     setFailure(null);
     setConflictTrip(null);
     setError("");
     conflictRef.current = false;
-    const recovery = loadTripRecovery(initialTrip.id, initialTrip.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(initialTrip);
+    const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
+    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(canonical);
     recoveryHandleRef.current = matchingRecovery ? recovery : null;
     if (recovery && !matchingRecovery) {
       conflictRef.current = true;
@@ -72,12 +80,20 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       setError("This browser has newer trip changes saved separately. Review them before editing this version.");
       setSaveState("error");
     }
-    queueRef.current?.reset(initialTrip);
+    queueRef.current?.reset(canonical);
   }, [initialTrip]);
 
   useEffect(() => {
-    const recovery = loadTripRecovery(initialTrip.id, initialTrip.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(initialTrip);
+    const canonical = newestTripMutationCanonical(
+      initialTrip,
+      loadCachedTrip(initialTrip.id, initialTrip.ownerId),
+    );
+    propIdentityRef.current = `${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`;
+    ownerScopeRef.current = canonical.ownerId;
+    tripRef.current = canonical;
+    setTripState(canonical);
+    const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
+    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(canonical);
     recoveryHandleRef.current = matchingRecovery ? recovery : null;
     if (recovery && !matchingRecovery) {
       conflictRef.current = true;
@@ -85,7 +101,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       setError("This browser has newer trip changes saved separately. Review them before editing this version.");
       setSaveState("error");
     }
-    queueRef.current?.reset(initialTrip);
+    queueRef.current?.reset(canonical);
   }, []); // The initial document establishes the queue's only trusted CAS base.
 
   const updatePending = useCallback((key: string, delta: 1 | -1) => {

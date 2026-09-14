@@ -1,5 +1,6 @@
 import type { EasyTTrip } from "./trip";
 import type { TripRecoveryHandle } from "./storage";
+import { canonicalTripRevisionCanReplace } from "./trip-continuity.ts";
 
 type PersistTripMutation = (trip: EasyTTrip, recovery: TripRecoveryHandle) => Promise<EasyTTrip>;
 
@@ -7,6 +8,23 @@ type JsonObject = Record<string, unknown>;
 
 function sameTripDocument(left: EasyTTrip, right: EasyTTrip) {
   return left.id === right.id && left.ownerId === right.ownerId;
+}
+
+/**
+ * Choose the newest acknowledged canonical document available to one browser
+ * tab. A cached API acknowledgement can be newer than a persisted Next layout
+ * prop after workspace navigation; the older prop must not become a new CAS
+ * base. Unknown, older, or differently scoped documents still fail closed.
+ */
+export function newestTripMutationCanonical(
+  rendered: EasyTTrip,
+  ...acknowledged: Array<EasyTTrip | null | undefined>
+) {
+  return acknowledged.reduce<EasyTTrip>((current, candidate) => (
+    candidate && canonicalTripRevisionCanReplace(current, candidate)
+      ? candidate
+      : current
+  ), rendered);
 }
 
 function isObject(value: unknown): value is JsonObject {

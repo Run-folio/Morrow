@@ -1000,6 +1000,12 @@ export function loadTripRecovery(tripId: string, ownerId: string | null) {
   return storage ? loadTripRecoveryFromStorage(storage, tripId, ownerId) : null;
 }
 
+/** Read only the last acknowledged cloud document for this owner and trip. */
+export function loadCachedTrip(tripId: string, ownerId: string | null) {
+  const storage = browserStorage();
+  return storage ? loadCachedTripFromStorage(storage, tripId, ownerId) : null;
+}
+
 export function loadLocalTrip(
   tripId: string,
   ownerId: string | null,

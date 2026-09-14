@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { selectMappedStayForStop, stayBookingForStop } from "../lib/easyt/accommodation.ts";
 import { saveItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "../lib/easyt/trip-display.ts";
-import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "../lib/easyt/trip-mutation-persistence.ts";
+import { createTripMutationPersistenceQueue, mergeTripMutationDocuments, newestTripMutationCanonical } from "../lib/easyt/trip-mutation-persistence.ts";
 import { EasyTTripSaveConflictError } from "../lib/easyt/trip-continuity.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
 import {
@@ -106,6 +107,17 @@ const idea: ItineraryIdea = {
   category: "activity",
   source: "personalised-recommendation",
   reasons: ["interest-relevance"],
+};
+
+const hotel = {
+  id: "keio-plaza",
+  name: "Keio Plaza Hotel",
+  address: "Shinjuku, Tokyo",
+  category: "Hotel",
+  coordinates: [139.6949, 35.6906] as [number, number],
+  mapsUrl: "https://maps.example/keio-plaza",
+  availability: "check" as const,
+  provider: "google-places" as const,
 };
 
 test("reproduces the stale header queue after an Explore save", async () => {
@@ -236,6 +248,126 @@ test("Rename followed by Explore and Itinerary additions keeps the returned revi
   assert.equal(scheduled.brief.itineraryIdeas?.[0]?.dayPart, "midday");
 });
 
+test("a workspace remount uses the acknowledged Explore revision for the next Stay CAS", async () => {
+  const base = trip();
+  const repository = fakeRepository(base);
+  const exploreQueue = createTripMutationPersistenceQueue((next) => repository.persist(next));
+  exploreQueue.reset(base);
+
+  const explored = await exploreQueue.enqueue(
+    scheduleItineraryIdea(base, idea, "day-1", "midday"),
+    recovery("explore-add"),
+  );
+  assert.equal(explored.updatedAt, "2026-09-01T00:00:01.000Z");
+
+  // Next can remount the client owner with the still-persisted layout prop A.
+  // The acknowledged browser cache B is the authoritative same-tab baseline.
+  const remountedBaseline = newestTripMutationCanonical(base, explored);
+  const stayQueue = createTripMutationPersistenceQueue((next) => repository.persist(next));
+  stayQueue.reset(remountedBaseline);
+  const stayed = await stayQueue.enqueue(
+    selectMappedStayForStop(remountedBaseline, "tokyo", hotel),
+    recovery("stay-select"),
+  );
+
+  assert.deepEqual(repository.submissions.map((item) => item.updatedAt), [
+    "2026-09-01T00:00:00.000Z",
+    "2026-09-01T00:00:01.000Z",
+  ]);
+  assert.equal(stayBookingForStop(stayed, stayed.stops[0]!)?.title, "Keio Plaza Hotel");
+  assert.equal(stayed.brief.itineraryIdeas?.[0]?.title, "Tsukiji market");
+});
+
+test("the hosted Explore to Stay sequence finishes canonical with no stranded recovery", async () => {
+  const base = trip();
+  const storage = new MemoryStorage();
+  const repository = fakeRepository(base);
+  cacheCanonicalTripWithRecoveryToStorage(storage, base);
+
+  const exploreQueue = createTripMutationPersistenceQueue((next) => repository.persist(next));
+  exploreQueue.reset(base);
+  const exploreEdit = scheduleItineraryIdea(base, idea, "day-1", "midday");
+  const exploreRecovery = saveTripRecoveryToStorage(storage, exploreEdit, {
+    ownerId: "owner-a",
+    writeId: "hosted-explore",
+  });
+  const explored = await exploreQueue.enqueue(exploreEdit, exploreRecovery.handle);
+  assert.deepEqual(
+    cacheCanonicalTripWithRecoveryToStorage(storage, explored, exploreRecovery.handle),
+    { stored: true, recoveryResolved: true },
+  );
+
+  const staleLayoutProp = base;
+  const remountedBaseline = newestTripMutationCanonical(
+    staleLayoutProp,
+    loadCachedTripFromStorage(storage, base.id, "owner-a"),
+  );
+  const stayEdit = selectMappedStayForStop(remountedBaseline, "tokyo", hotel);
+  const stayRecovery = saveTripRecoveryToStorage(storage, stayEdit, {
+    ownerId: "owner-a",
+    writeId: "hosted-stay",
+  });
+  const stayQueue = createTripMutationPersistenceQueue((next) => repository.persist(next));
+  stayQueue.reset(remountedBaseline);
+  const stayed = await stayQueue.enqueue(stayEdit, stayRecovery.handle);
+  assert.deepEqual(
+    cacheCanonicalTripWithRecoveryToStorage(storage, stayed, stayRecovery.handle),
+    { stored: true, recoveryResolved: true },
+  );
+
+  const freshClient = loadCachedTripFromStorage(storage, base.id, "owner-a")!;
+  assert.equal(loadTripRecoveryFromStorage(storage, base.id, "owner-a"), null);
+  assert.equal(freshClient.updatedAt, "2026-09-01T00:00:02.000Z");
+  assert.equal(freshClient.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(stayBookingForStop(freshClient, freshClient.stops[0]!)?.title, "Keio Plaza Hotel");
+});
+
+test("immediate Explore and Stay mutations share the returned canonical revision", async () => {
+  const base = trip();
+  let releaseExplore: ((saved: EasyTTrip) => void) | undefined;
+  const exploreResponse = new Promise<EasyTTrip>((resolve) => { releaseExplore = resolve; });
+  const submissions: EasyTTrip[] = [];
+  let canonicalTrip = base;
+  const queue = createTripMutationPersistenceQueue(async (submitted) => {
+    submissions.push(structuredClone(submitted));
+    if (submissions.length === 1) {
+      canonicalTrip = await exploreResponse;
+      return canonicalTrip;
+    }
+    assert.equal(submitted.updatedAt, canonicalTrip.updatedAt);
+    canonicalTrip = { ...structuredClone(submitted), updatedAt: "2026-09-01T00:00:02.000Z" };
+    return canonicalTrip;
+  });
+  queue.reset(base);
+  const explored = scheduleItineraryIdea(base, idea, "day-1", "midday");
+  const stayed = selectMappedStayForStop(explored, "tokyo", hotel);
+  const first = queue.enqueue(explored, recovery("explore-immediate"));
+  const second = queue.enqueue(stayed, recovery("stay-immediate"));
+  await Promise.resolve();
+
+  releaseExplore?.({ ...explored, updatedAt: "2026-09-01T00:00:01.000Z" });
+  await first;
+  const canonical = await second;
+
+  assert.equal(submissions[1]?.updatedAt, "2026-09-01T00:00:01.000Z");
+  assert.equal(canonical.brief.itineraryIdeas?.[0]?.dayPart, "midday");
+  assert.equal(stayBookingForStop(canonical, canonical.stops[0]!)?.title, "Keio Plaza Hotel");
+});
+
+test("canonical baseline selection is owner-scoped, monotonic and accepts normalized output", () => {
+  const rendered = trip();
+  const normalized = {
+    ...rendered,
+    title: "Server-normalized title",
+    updatedAt: "2026-09-01T00:00:01.000Z",
+  };
+  const older = { ...rendered, updatedAt: "2025-09-01T00:00:00.000Z" };
+  const wrongOwner = { ...normalized, ownerId: "owner-b", updatedAt: "2026-09-01T00:00:02.000Z" };
+
+  assert.deepEqual(newestTripMutationCanonical(rendered, older, normalized, wrongOwner), normalized);
+  assert.equal(newestTripMutationCanonical(normalized, rendered).updatedAt, normalized.updatedAt);
+});
+
 test("rename identity preserves normalization, clearing and the geographic fallback", () => {
   const base = trip();
   const renamed = renameTripIdentity(base, "  Café   日本  ");
@@ -330,6 +462,8 @@ test("stale server props and storage events cannot reset the canonical queue", (
   const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
 
   assert.match(persistence, /sameDocument && !canonicalTripRevisionCanReplace\(current, initialTrip\)/);
+  assert.match(persistence, /loadCachedTrip\(initialTrip\.id, initialTrip\.ownerId\)/);
+  assert.match(persistence, /sameDocument && pendingSavesRef\.current\.size > 0/);
   assert.match(shell, /if \(mutation\.hasPendingSaves\(\)\) return/);
   assert.match(shell, /mutation\.adoptCanonicalTrip\(cached\)/);
   assert.match(shell, /EASYT_ACTIVE_TRIP_CHANGE_EVENT[\s\S]*mutation\.adoptDeviceTrip\(next\)/);
