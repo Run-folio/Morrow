@@ -394,6 +394,13 @@
   text-align: center;
   font-size: .76rem;
 }
+.routePreviewOwner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--morrovia-lilac);
+}
 .tripImageFallback svg,
 .routePreviewFallback svg { width: 26px; height: 26px; }
 .cardBody { padding: 18px 2px 0; }

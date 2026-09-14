@@ -96,7 +96,7 @@ test("the itinerary preview is opt-in and the main Map default remains interacti
   assert.match(map, /selectedPlannerPinId = null/);
   assert.match(map, /interactive: !previewMode/);
   assert.match(map, /previewLabel \?\? "Whole-trip route map preview"/);
-  assert.match(map, /if \(!previewMode\) \{\s*removeMap\(\);\s*return;/);
+  assert.match(map, /map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
   assert.match(map, /\}, \[plannerPins, previewMode\]\);/);

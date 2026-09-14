@@ -105,11 +105,28 @@ function tripMapStops(trip: EasyTTrip): JourneyStop[] {
 }
 
 function TripRoutePreview({ trip, label, compact = false }: { trip: EasyTTrip; label: string; compact?: boolean }) {
+  const ownerRef = useRef<HTMLDivElement>(null);
+  const [ownsMap, setOwnsMap] = useState(false);
   const stops = tripMapStops(trip);
+  useEffect(() => {
+    const owner = ownerRef.current;
+    if (!owner) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setOwnsMap(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      setOwnsMap(Boolean(entry?.isIntersecting));
+    }, { rootMargin: "240px 0px" });
+    observer.observe(owner);
+    return () => observer.disconnect();
+  }, []);
+
   if (stops.filter((stop) => stop.coordinates).length < 2) {
     return <div className={styles.routePreviewFallback}><MapPin aria-hidden="true" /><span>{trip.stops.length} {trip.stops.length === 1 ? "place" : "places"} selected</span></div>;
   }
-  return <JourneyPlannerMap
+  return <div ref={ownerRef} className={styles.routePreviewOwner}>
+    {ownsMap ? <JourneyPlannerMap
     stops={stops}
     legs={mapRouteLegsFromTrip(trip)}
     selectedId=""
@@ -124,7 +141,8 @@ function TripRoutePreview({ trip, label, compact = false }: { trip: EasyTTrip; l
     onMapPinDrop={() => undefined}
     onPlannerPinSelect={() => undefined}
     onSelect={() => undefined}
-  />;
+    /> : <div className={styles.routePreviewFallback}><Globe2 aria-hidden="true" /><span>{routeLabel(trip, "Route preview")}</span></div>}
+  </div>;
 }
 
 function statusLabel(status: TripStatus, language: EasyTLanguage) {

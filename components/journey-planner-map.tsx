@@ -13,7 +13,7 @@ import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
-import { createMorroviaBasemapLifecycle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
+import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
 import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
@@ -131,7 +131,6 @@ export function JourneyPlannerMap({
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
   const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
-  const removalTimerRef = useRef<number | null>(null);
   const hasInitialisedViewRef = useRef(false);
   const lastCameraRequestKeyRef = useRef<string | null>(null);
   const currentCameraRequestRef = useRef<string | null>(null);
@@ -210,10 +209,6 @@ export function JourneyPlannerMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    if (removalTimerRef.current !== null) {
-      window.clearTimeout(removalTimerRef.current);
-      removalTimerRef.current = null;
-    }
     if (!mapRef.current) {
       maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
       const firstStop = selectedResult?.coordinates
@@ -238,17 +233,24 @@ export function JourneyPlannerMap({
 
     const map = mapRef.current;
     if (!map) return;
+    let ownerActive = true;
+    let removing = false;
     const basemapLifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
-      onChange: (snapshot) => setBasemapStatus(snapshot.status),
-      onStyleReady: () => setBasemapStyleRevision((revision) => revision + 1),
+      onChange: (snapshot) => {
+        if (ownerActive && mapRef.current === map) setBasemapStatus(snapshot.status);
+      },
+      onStyleReady: () => {
+        if (ownerActive && mapRef.current === map) setBasemapStyleRevision((revision) => revision + 1);
+      },
     });
     basemapLifecycleRef.current = basemapLifecycle;
     const handleMapError = (event: maplibregl.ErrorEvent) => {
+      const value = event.error;
+      if (removing && value instanceof Error && (value.name === "AbortError" || /aborted|cancelled/i.test(value.message))) return;
       if (basemapLifecycle.handleError(event)) {
         console.warn("Morrovia detailed basemap unavailable; local route geography remains visible.");
         return;
       }
-      const value = event.error;
       if (typeof Event !== "undefined" && value instanceof Event) {
         console.warn("Morrovia MapLibre resource request ended before the map finished loading.", { type: value.type });
         return;
@@ -263,26 +265,18 @@ export function JourneyPlannerMap({
     map.on("error", handleMapError);
 
     return () => {
-      map.off("error", handleMapError);
+      ownerActive = false;
       basemapLifecycle.dispose();
       if (basemapLifecycleRef.current === basemapLifecycle) basemapLifecycleRef.current = null;
-      const removeMap = () => {
-        stopMarkersRef.current.forEach((marker) => marker.remove());
-        legMarkersRef.current.forEach((marker) => marker.remove());
-        pinMarkersRef.current.forEach((marker) => marker.remove());
-        localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-        draftPinRef.current?.remove();
-        mapRef.current?.remove();
-        mapRef.current = null;
-      };
-      if (!previewMode) {
-        removeMap();
-        return;
-      }
-      removalTimerRef.current = window.setTimeout(() => {
-        removalTimerRef.current = null;
-        removeMap();
-      }, 0);
+      stopMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current.forEach((marker) => marker.remove());
+      pinMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      draftPinRef.current?.remove();
+      removing = true;
+      map.remove();
+      map.off("error", handleMapError);
+      if (mapRef.current === map) mapRef.current = null;
     };
   }, []);
 
@@ -497,7 +491,7 @@ export function JourneyPlannerMap({
     let disposed = false;
     const ensureRoute = () => {
       if (disposed) return;
-      if (map.isStyleLoaded()) {
+      if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) {
         drawRoute();
         return;
       }
@@ -629,7 +623,7 @@ export function JourneyPlannerMap({
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(stop.coordinates!).addTo(map);
       });
     };
-    if (map.isStyleLoaded()) drawMarkers();
+    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawMarkers();
     else map.once("load", drawMarkers);
     return () => { map.off("load", drawMarkers); };
   }, [destinationCards, previewMode, stops]);
@@ -679,7 +673,7 @@ export function JourneyPlannerMap({
     // Preview pins are DOM overlays and can update while raster resources are
     // still settling; the main Map keeps its established style lifecycle.
     if (previewMode) drawPins();
-    else if (map.isStyleLoaded()) drawPins();
+    else if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawPins();
     else map.once("load", drawPins);
     return () => { map.off("load", drawPins); };
   }, [plannerPins, previewMode]);
@@ -736,7 +730,7 @@ export function JourneyPlannerMap({
       element.innerHTML = "<span>+</span>";
       draftPinRef.current = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(draftPinCoordinates).addTo(map);
     };
-    if (map.isStyleLoaded()) drawDraftPin();
+    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawDraftPin();
     else map.once("load", drawDraftPin);
     return () => { map.off("load", drawDraftPin); };
   }, [draftPinCoordinates]);

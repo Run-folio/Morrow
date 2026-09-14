@@ -80,16 +80,27 @@ test("Overview effects use semantic dependencies, stale guards, and the shared c
   assert.match(source, /\}, \[imageResolutionCandidates\]\);/);
 });
 
-test("Map preview cleanup preserves a Strict Mode remount without changing full Map cleanup", () => {
+test("each Map owner removes only its captured instance and ignores stale lifecycle callbacks", () => {
   const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
-  assert.match(mapSource, /removalTimerRef/);
   assert.match(mapSource, /map\.on\("error", handleMapError\)/);
   assert.match(mapSource, /basemapLifecycle\.handleError\(event\)/);
   assert.doesNotMatch(mapSource, /if \(previewMode\) map\.on\("error", handleMapError\)/);
   assert.match(mapSource, /value instanceof Event/);
   assert.match(mapSource, /Morrovia MapLibre resource request ended before the map finished loading/);
-  assert.match(mapSource, /if \(!previewMode\) \{\s*removeMap\(\);\s*return;/);
-  assert.match(mapSource, /mapRef\.current\?\.remove\(\)/);
+  assert.match(mapSource, /ownerActive && mapRef\.current === map/);
+  assert.match(mapSource, /removing = true;\s*map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
+  assert.match(mapSource, /if \(mapRef\.current === map\) mapRef\.current = null/);
+  assert.doesNotMatch(mapSource, /removalTimerRef|mapRef\.current\?\.remove/);
+});
+
+test("dashboard route previews release off-screen MapLibre owners", () => {
+  const dashboardSource = readFileSync("app/journey/dashboard/dashboard-client.tsx", "utf8");
+  assert.match(dashboardSource, /function TripRoutePreview/);
+  assert.match(dashboardSource, /new IntersectionObserver/);
+  assert.match(dashboardSource, /setOwnsMap\(Boolean\(entry\?\.isIntersecting\)\)/);
+  assert.match(dashboardSource, /rootMargin: "240px 0px"/);
+  assert.match(dashboardSource, /ownsMap \? <JourneyPlannerMap/);
+  assert.match(dashboardSource, /routePreviewFallback/);
 });
 
 test("Itinerary preview selection does not recreate map pins or redraw route data", () => {

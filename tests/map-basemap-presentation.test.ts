@@ -11,6 +11,7 @@ import {
 } from "../components/easyt/morrovia-map-presentation.ts";
 import {
   createMorroviaBasemapLifecycle,
+  hasMorroviaActiveStyle,
   inspectMorroviaBasemap,
   isMorroviaDetailedBasemapError,
   type MorroviaBasemapMap,
@@ -28,6 +29,7 @@ class FakeBasemap implements MorroviaBasemapMap {
   layers: Array<{ id: string; source?: string; minzoom?: number; maxzoom?: number; layout?: { visibility?: string } }> = [];
   listeners = new Map<string, Set<Listener>>();
   setStyleCalls: Array<string | StyleSpecification> = [];
+  styleLoadedChecks = 0;
 
   loadDetailed(sourceLoaded = false) {
     this.styleLoaded = true;
@@ -48,7 +50,7 @@ class FakeBasemap implements MorroviaBasemapMap {
   getStyle() { return this.styleAvailable ? { layers: this.layers } : undefined; }
   getZoom() { return this.zoom; }
   isSourceLoaded(id: string) { return id === MORROVIA_DETAILED_BASEMAP_SOURCE_ID && this.detailedSourceLoaded; }
-  isStyleLoaded() { return this.styleLoaded; }
+  isStyleLoaded() { this.styleLoadedChecks += 1; return this.styleLoaded; }
   on(type: string, listener: Listener) {
     const listeners = this.listeners.get(type) ?? new Set<Listener>();
     listeners.add(listener);
@@ -221,6 +223,54 @@ test("provider errors recover to local geography and an explicit retry restores 
   lifecycle.dispose();
 });
 
+test("a detailed style error before style.load installs the bundled fallback", () => {
+  const map = new FakeBasemap();
+  map.styleAvailable = false;
+  const lifecycle = createMorroviaBasemapLifecycle(map, { timeoutMs: 0 });
+
+  assert.equal(lifecycle.handleError({ error: { url: "https://tiles.openfreemap.org/styles/positron", message: "Load failed" } }), true);
+  assert.equal(lifecycle.getSnapshot().status, "fallback");
+  assert.equal(typeof map.setStyleCalls[0], "object");
+
+  map.styleAvailable = true;
+  map.styleLoaded = true;
+  map.emit("style.load");
+  assert.equal(lifecycle.getSnapshot().styleLoaded, true);
+  lifecycle.dispose();
+});
+
+test("a disposed basemap lifecycle ignores stale provider and style callbacks", () => {
+  const map = new FakeBasemap();
+  const changes: MorroviaBasemapSnapshot[] = [];
+  let styleReadyCount = 0;
+  const lifecycle = createMorroviaBasemapLifecycle(map, {
+    timeoutMs: 0,
+    onChange: (snapshot) => changes.push(snapshot),
+    onStyleReady: () => { styleReadyCount += 1; },
+  });
+  lifecycle.dispose();
+
+  map.loadDetailed(true);
+  map.emit("style.load");
+  map.emit("sourcedata", { sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID });
+  assert.equal(lifecycle.handleError({ sourceId: MORROVIA_DETAILED_BASEMAP_SOURCE_ID, error: new Error("late") }), false);
+  assert.equal(map.setStyleCalls.length, 0);
+  assert.equal(styleReadyCount, 0);
+  assert.equal(changes.length, 1, "only the initial loading snapshot was published");
+});
+
+test("style readiness never asks MapLibre to inspect a missing style", () => {
+  const map = new FakeBasemap();
+  map.styleAvailable = false;
+  assert.equal(hasMorroviaActiveStyle(map), false);
+  assert.equal(map.styleLoadedChecks, 0);
+
+  map.styleAvailable = true;
+  map.styleLoaded = true;
+  assert.equal(hasMorroviaActiveStyle(map), true);
+  assert.equal(map.styleLoadedChecks, 1);
+});
+
 test("route overlay errors cannot replace the basemap or selection lifecycle", () => {
   const map = new FakeBasemap();
   map.loadDetailed(true);
@@ -240,6 +290,10 @@ test("the MapLibre owner rehydrates overlays after style recovery without touchi
   assert.match(source, /\[basemapStyleRevision,[\s\S]*routeFocusKey,[\s\S]*spatialLegs, stops\]\);/);
   assert.match(source, /Try detailed map again/);
   assert.match(source, /data-basemap-status=\{basemapStatus\}/);
+  assert.match(source, /hasMorroviaActiveStyle/);
+  assert.match(source, /ownerActive && mapRef\.current === map/);
+  assert.match(source, /map\.remove\(\);\s*map\.off\("error", handleMapError\);\s*if \(mapRef\.current === map\) mapRef\.current = null/);
+  assert.doesNotMatch(source, /removalTimerRef/);
   assert.doesNotMatch(source, /setStyle\([^)]*zoom/);
   const snapshot = inspectMorroviaBasemap(new FakeBasemap(), "loading");
   assert.equal(snapshot.zoom, 4);

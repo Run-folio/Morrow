@@ -47,6 +47,11 @@ export type MorroviaBasemapSnapshot = {
   reason: string | null;
 };
 
+export function hasMorroviaActiveStyle(map: Pick<MorroviaBasemapMap, "getStyle" | "isStyleLoaded">) {
+  const style = map.getStyle();
+  return Boolean(style && map.isStyleLoaded());
+}
+
 function recordValue(value: unknown, key: string) {
   return value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
 }
@@ -83,7 +88,7 @@ function hasDetailedLayers(map: MorroviaBasemapMap) {
 export function inspectMorroviaBasemap(map: MorroviaBasemapMap, status: MorroviaBasemapStatus, reason: string | null = null): MorroviaBasemapSnapshot {
   const style = map.getStyle();
   const zoom = map.getZoom();
-  const styleLoaded = Boolean(map.isStyleLoaded());
+  const styleLoaded = Boolean(style && map.isStyleLoaded());
   const detailedSourcePresent = Boolean(map.getSource(MORROVIA_DETAILED_BASEMAP_SOURCE_ID));
   let detailedSourceLoaded = false;
   if (detailedSourcePresent) {
