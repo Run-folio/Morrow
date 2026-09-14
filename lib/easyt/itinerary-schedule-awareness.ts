@@ -41,6 +41,20 @@ export function isFullDayActivity(duration: ActivityDuration | undefined) {
   return Boolean(bounds?.minimumMinutes !== undefined && bounds.minimumMinutes >= 8 * 60);
 }
 
+/**
+ * Broad placement truth for the current four-part itinerary model. Unknown
+ * provider duration stays unknown; sourced durations of eight hours or more
+ * consume most of a day and must not be presented as a single day-part fit.
+ */
+export function activityDayPartFit(duration: ActivityDuration | undefined) {
+  const bounds = activityDurationBounds(duration);
+  if (!bounds) return "unknown" as const;
+  if (isFullDayActivity(duration)) return "full-day" as const;
+  if (bounds.exact && (bounds.minimumMinutes ?? 0) > 5 * 60) return "extended" as const;
+  if (bounds.maximumMinutes !== undefined && bounds.maximumMinutes <= 5 * 60) return "slot" as const;
+  return "unknown" as const;
+}
+
 function exactStartMinutes(value: string | undefined) {
   const match = value?.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;

@@ -50,7 +50,7 @@ import { applyRecommendation, recommendationImpact, reviewTrip, tripHealthSummar
 import { accommodationProgress, removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { getCurrentPartnerAction, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
-import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, parseMapWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
+import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, mapWorkspaceSelectionForTarget, parseMapWorkspaceTarget } from "@/lib/easyt/trip-workspace-links";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
@@ -381,15 +381,12 @@ export function JourneyMapPlannerWorkspace({
     providedTrip?.id ?? searchParams.get("trip") ?? null,
   ]);
   const mapTargetQuery = searchParams.toString();
-  const initialMapTarget = useMemo(
-    () => providedTrip ? parseMapWorkspaceTarget(providedTrip, searchParams) : null,
+  const initialMapSelection = useMemo(
+    () => providedTrip ? mapWorkspaceSelectionForTarget(providedTrip, searchParams) : null,
     [mapTargetQuery, providedTrip, searchParams],
   );
-  const firstProvidedItem = providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)
-    .find((item) => item.dayNumber === initialMapTarget?.dayNumber)
-    ?? providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)
-    .find((item) => item.stopId === initialMapTarget?.stopId)
-    ?? providedTrip?.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)[0];
+  const initialMapTarget = initialMapSelection?.target ?? null;
+  const firstProvidedItem = initialMapSelection?.selectedDay ?? null;
   const [selectedDayId, setSelectedDayId] = useState(firstProvidedItem ? `${providedTrip?.id}-calendar-${firstProvidedItem.dayNumber}` : "day-03");
   const [language, setLanguage] = useState<EasyTLanguage>("en");
   const [selectedId, setSelectedId] = useState(firstProvidedItem ? `${providedTrip?.id}-day-${firstProvidedItem.dayNumber}` : "tokyo");
@@ -2115,7 +2112,10 @@ export function JourneyMapPlannerWorkspace({
   }, [autoSaveRequested, cloudSaveState, customTrip, isPlanningPreview, savePlan, session?.user]);
 
   useEffect(() => {
-    if (!customBrief) return;
+    // TripShell URLs own their stop/day selection. Re-applying this preview
+    // default after shell hydration can replace an explicit handoff with the
+    // first route stop while leaving the selected POI unchanged.
+    if (!customBrief || isShellPresentation) return;
     const generated = customTrip ? makeEasyTJourney(customTrip) : makeCustomJourney(customBrief);
     const firstDay = generated.calendar[0];
     if (firstDay) {
@@ -2129,12 +2129,7 @@ export function JourneyMapPlannerWorkspace({
     const queryKey = `${customTrip.id}?${searchParams.toString()}`;
     if (appliedDeepLinkRef.current === queryKey) return;
     appliedDeepLinkRef.current = queryKey;
-    const target = parseMapWorkspaceTarget(customTrip, searchParams);
-    const item = customTrip.planItems.find((candidate) => candidate.dayNumber === target.dayNumber)
-      ?? customTrip.planItems
-      .filter((candidate) => candidate.stopId === target.stopId)
-      .sort((left, right) => left.dayNumber - right.dayNumber)[0]
-      ?? customTrip.planItems.slice().sort((left, right) => left.dayNumber - right.dayNumber)[0];
+    const { target, selectedDay: item } = mapWorkspaceSelectionForTarget(customTrip, searchParams);
     if (item) {
       setSelectedDayId(`${customTrip.id}-calendar-${item.dayNumber}`);
       setSelectedId(`${customTrip.id}-day-${item.dayNumber}`);

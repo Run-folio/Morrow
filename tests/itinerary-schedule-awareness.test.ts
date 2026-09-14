@@ -5,6 +5,7 @@ import { itineraryIdeaForActivityInventory } from "../lib/easyt/activity-invento
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { removeItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import {
+  activityDayPartFit,
   activityDurationLabel,
   activityStartTimeLabel,
   isFullDayActivity,
@@ -43,6 +44,16 @@ test("provider duration stays truthful across fixed, range, one-sided and unknow
   assert.equal(isFullDayActivity({ fromMinutes: 360, toMinutes: 480 }), false, "a broad range is not converted into an invented midpoint");
   assert.equal(activityStartTimeLabel("08:30"), "08:30");
   assert.equal(activityStartTimeLabel("morning"), null);
+});
+
+test("broad day-part fit distinguishes short, medium, full-day and unknown duration evidence", () => {
+  assert.equal(activityDayPartFit({ fixedMinutes: 120 }), "slot");
+  assert.equal(activityDayPartFit({ fromMinutes: 240, toMinutes: 300 }), "slot");
+  assert.equal(activityDayPartFit({ fixedMinutes: 360 }), "extended");
+  assert.equal(activityDayPartFit({ fixedMinutes: 660 }), "full-day");
+  assert.equal(activityDayPartFit({ fromMinutes: 480, toMinutes: 720 }), "full-day");
+  assert.equal(activityDayPartFit(undefined), "unknown");
+  assert.equal(activityDayPartFit({ toMinutes: 720 }), "unknown", "an unknown minimum is not fabricated into a precise fit");
 });
 
 test("exact overlap warns only when canonical start and fixed duration are both known", () => {

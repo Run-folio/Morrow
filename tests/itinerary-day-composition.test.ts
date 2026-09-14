@@ -315,6 +315,22 @@ test("automatic Add to Day chooses a deterministic suitable available period wit
   assert.equal(composeItineraryDay(scheduled, "kyoto-4")?.planned.morning[0]?.id, attraction.id);
 });
 
+test("a full-day provider activity cannot be dragged into one time-of-day slot", () => {
+  const source = tripFixture();
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("regional-tour", "Eleven-hour regional tour"), reasons: ["destination-significance"] }),
+    providerMetadata: {
+      duration: { fixedMinutes: 660 },
+      provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" },
+    },
+  };
+  const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", null);
+  const placed = placeItineraryActivity(scheduled, "kyoto-4", idea.id, "afternoon", 0);
+  assert.equal(placed.changed, false);
+  assert.match(placed.reason ?? "", /needs most of the day/);
+  assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+});
+
 test("suggestion metadata and stable identity survive scheduling and JSON reload", () => {
   const source = tripFixture();
   const idea = itineraryIdeaForPlace({

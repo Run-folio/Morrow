@@ -51,6 +51,16 @@ test("full-day fit distinguishes open, busy and evening contexts without exact t
   assert.doesNotMatch([open.whyFit, busy.whyFit, evening.whyFit].join(" "), /minutes away|near your hotel|will fit exactly/i);
 });
 
+test("a persisted full-day activity remains day-level and explains that it needs most of the day", () => {
+  const trip = tripFixture();
+  const result = fullDayResult(trip);
+  const scheduled = scheduleItineraryIdea(trip, result.idea, "day-open", null);
+  const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
+  const planned = recommendationDetailForExploreResult({ trip: reloaded, result, context: { surface: "explore", activeDayId: "day-open", activeDayPart: "afternoon" } });
+  assert.match(planned.whyFit!, /^Needs most of the day\. Already planned for Day 1\./);
+  assert.doesNotMatch(planned.whyFit!, /Afternoon/);
+});
+
 test("provider facts, product identity and image provenance survive shared projection", () => {
   const trip = tripFixture();
   const result = fullDayResult(trip);

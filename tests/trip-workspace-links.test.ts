@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -11,6 +12,7 @@ import {
   itineraryWorkspaceHref,
   initialMapCameraMode,
   mapWorkspaceHref,
+  mapWorkspaceSelectionForTarget,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
   parseStayWorkspaceTarget,
@@ -33,6 +35,19 @@ const trip = {
     { id: "day-1", stopId: "cusco", dayNumber: 1 },
     { id: "day-2", stopId: "cusco", dayNumber: 2 },
     { id: "day-3", stopId: "sacred-valley", dayNumber: 3 },
+  ],
+} as Pick<EasyTTrip, "id" | "stops" | "planItems">;
+
+const handoffTrip = {
+  id: "trip-japan-korea",
+  stops: [
+    { id: "tokyo-primary", order: 0, name: "Tokyo", nights: 2 },
+    { id: "seoul-primary", order: 1, name: "Seoul", nights: 3 },
+  ],
+  planItems: [
+    { id: "tokyo-day-1", stopId: "tokyo-primary", dayNumber: 1 },
+    { id: "tokyo-day-2", stopId: "tokyo-primary", dayNumber: 2 },
+    { id: "seoul-day-3", stopId: "seoul-primary", dayNumber: 3 },
   ],
 } as Pick<EasyTTrip, "id" | "stops" | "planItems">;
 
@@ -125,6 +140,39 @@ test("Map camera opens route-first unless the traveller explicitly targets a val
   assert.equal(initialMapCameraMode(trip, new URLSearchParams()), "overview");
   assert.equal(initialMapCameraMode(trip, new URLSearchParams("stop=missing")), "overview");
   assert.equal(initialMapCameraMode(trip, new URLSearchParams("stop=sacred-valley")), "detail");
+});
+
+test("Map handoffs settle on the exact canonical stop while direct entry keeps the normal default", () => {
+  const direct = mapWorkspaceSelectionForTarget(handoffTrip, new URLSearchParams());
+  assert.equal(direct.target.stopId, "tokyo-primary");
+  assert.equal(direct.selectedDay?.id, "tokyo-day-1");
+
+  const exploreSeoul = mapWorkspaceSelectionForTarget(handoffTrip, new URLSearchParams("stop=seoul-primary&mode=see&day=3&result=result:see:seoul-primary:myeongdong-cathedral"));
+  assert.equal(exploreSeoul.target.stopId, "seoul-primary");
+  assert.equal(exploreSeoul.target.mode, "see");
+  assert.equal(exploreSeoul.target.resultSelectionId, "result:see:seoul-primary:myeongdong-cathedral");
+  assert.equal(exploreSeoul.selectedDay?.id, "seoul-day-3");
+
+  const stayTokyo = mapWorkspaceSelectionForTarget(handoffTrip, new URLSearchParams("stop=tokyo-primary&mode=stay&day=1&result=result:stay:tokyo-primary:keio-plaza"));
+  assert.equal(stayTokyo.target.stopId, "tokyo-primary");
+  assert.equal(stayTokyo.target.mode, "stay");
+  assert.equal(stayTokyo.target.resultSelectionId, "result:stay:tokyo-primary:keio-plaza");
+  assert.equal(stayTokyo.selectedDay?.id, "tokyo-day-1");
+
+  const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
+  assert.match(mapWorkspace, /providedTrip \? mapWorkspaceSelectionForTarget\(providedTrip, searchParams\) : null/, "the explicit handoff owns initial render state");
+  assert.match(mapWorkspace, /if \(!customBrief \|\| isShellPresentation\) return;/, "the preview default cannot overwrite an explicit TripShell handoff after hydration");
+});
+
+test("repeated destination instances settle by stop ID rather than destination name", () => {
+  const repeated = {
+    ...handoffTrip,
+    stops: [...handoffTrip.stops, { ...handoffTrip.stops[1]!, id: "seoul-return", order: 2 }],
+    planItems: [...handoffTrip.planItems, { ...handoffTrip.planItems[2]!, id: "seoul-day-6", stopId: "seoul-return", dayNumber: 6 }],
+  };
+  const settled = mapWorkspaceSelectionForTarget(repeated, new URLSearchParams("stop=seoul-return&mode=see&day=6&result=result:see:seoul-return:viewpoint"));
+  assert.equal(settled.target.stopId, "seoul-return");
+  assert.equal(settled.selectedDay?.id, "seoul-day-6");
 });
 
 test("Trip Health and route cards use deterministic itinerary days", () => {

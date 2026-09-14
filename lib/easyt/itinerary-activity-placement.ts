@@ -8,6 +8,7 @@ import {
 } from "./itinerary-mutations.ts";
 import type { EasyTTrip, ItineraryDayPart, ItineraryIdea } from "./trip.ts";
 import type { ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
+import { activityDayPartFit } from "./itinerary-schedule-awareness.ts";
 
 function unchanged(trip: EasyTTrip, reason: string): ItineraryMutationResult {
   return { trip, changed: false, reason };
@@ -118,6 +119,10 @@ export function placeItineraryActivity(
   if (!initial.composition || !initial.activity) return unchanged(trip, "This activity is no longer available.");
   if (!initial.activity.dayPartEditable || (initial.activity.source === "authored-activity" && initial.activity.noteIndex === null)) {
     return unchanged(trip, "This activity cannot be safely moved.");
+  }
+  const durationFit = activityDayPartFit(initial.activity.providerMetadata?.duration);
+  if (durationFit === "full-day" || durationFit === "extended") {
+    return unchanged(trip, "This activity needs most of the day and cannot fit in one part of the day.");
   }
 
   const assigned = assignPart(trip, initial.composition.day.dayNumber, initial.activity, dayPart);

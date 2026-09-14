@@ -134,12 +134,30 @@ test("Add to Day schedules exactly one canonical item and survives JSON reload",
   const result = exploreResultForPlace(base.stops[0]!, place);
   const target = exploreScheduleTarget(base, result);
   assert.equal(target?.day.id, "day-2");
+  assert.equal(target?.dayPart, null, "missing duration stays day-level instead of fabricating a slot fit");
   const scheduled = scheduleItineraryIdea(base, result.idea, target!.day.id, target!.dayPart);
   const repeated = scheduleItineraryIdea(scheduled, result.idea, target!.day.id, target!.dayPart);
   const reloaded = JSON.parse(JSON.stringify(repeated)) as EasyTTrip;
   assert.equal(reloaded.brief.itineraryIdeas?.filter((idea) => idea.placeId === place.id).length, 1);
   assert.equal(reloaded.planItems[1]!.notes.filter((note) => note === place.title).length, 1);
   assert.equal(exploreResultState(reloaded, result).state, "planned");
+});
+
+test("an eleven-hour activity is persisted as day-level rather than an afternoon-only fit", () => {
+  const base = trip();
+  const result = exploreResultForActivity(base.stops[0]!, {
+    provider: "viator", source: "viator", providerProductId: "full-day-11h", title: "Eleven-hour regional tour",
+    destination: { canonicalPlaceId: "athens-gr", label: "Athens" }, duration: { fixedMinutes: 660 },
+    provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T00:00:00.000Z" },
+  }, base);
+  const target = exploreScheduleTarget(base, result, 2);
+  assert.equal(target?.day.id, "day-2");
+  assert.equal(target?.dayPart, null);
+  const scheduled = scheduleItineraryIdea(base, result.idea, target!.day.id, target!.dayPart);
+  const reloaded = JSON.parse(JSON.stringify(scheduled)) as EasyTTrip;
+  const stored = reloaded.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  assert.equal(stored?.dayPart, null);
+  assert.deepEqual(stored?.providerMetadata?.duration, { fixedMinutes: 660 });
 });
 
 test("Save and Add update card state without changing the active provider order", () => {
@@ -238,6 +256,7 @@ test("Viator results preserve provider identity, sourced metadata and affiliate 
   assert.equal(result.rating, 4.7);
   assert.equal(result.reviewCount, 842);
   assert.equal(result.providerUrl, item.productUrl);
+  assert.equal(exploreScheduleTarget(base, result, 2)?.dayPart, "morning", "a sourced 4–5h activity keeps the existing slot model");
   assert.deepEqual(filterExploreResults(base, [result], "all", "day-trips"), [result]);
 });
 
@@ -254,6 +273,29 @@ test("eligibility rejects the destination and administrative records but keeps u
   assert.equal(exploreResultEligible(base, region), false);
   for (const result of [neighbourhood, attraction, restaurant, tour]) assert.equal(exploreResultEligible(base, result), true);
   assert.deepEqual(filterExploreResults(base, [city, region, neighbourhood, attraction, restaurant, tour], "all", "for-you").map((result) => result.title).sort(), ["Ancient Agora", "Athens walking tour", "Plaka", "Taverna"]);
+});
+
+test("For you filters non-visitable entities and ranks traveller-useful places ahead of weak generic records", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const candidates = [
+    exploreResultForPlace(stop, { ...place, id: "university", title: "Athens Technical University", type: "Education", tags: ["Cities"], description: "A public university and educational institution.", qualityScore: 30 }),
+    exploreResultForPlace(stop, { ...place, id: "incident", title: "Athens incident", type: "Historic site", tags: ["Culture"], description: "A historical incident represented as an encyclopedia article.", qualityScore: 30 }),
+    exploreResultForPlace(stop, { ...place, id: "admin", title: "Attica Regional Authority", type: "Administrative entity", tags: ["Cities"], description: "A government administrative entity.", qualityScore: 30 }),
+    exploreResultForPlace(stop, { ...place, id: "generic", title: "Central Star", type: "Place", tags: ["Cities"], description: "A named entity with no visitor information.", qualityScore: 20 }),
+    exploreResultForPlace(stop, { ...place, id: "church", title: "Small hillside church", type: "Church", tags: ["Culture"], description: "A local church open to visitors.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "museum", title: "City Museum", type: "Museum", tags: ["Culture"], description: "A visitor museum.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "neighbourhood", title: "Old artisan quarter", type: "Neighbourhood", tags: ["Cities"], description: "A walkable neighbourhood.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "unusual", title: "Underground olive press", type: "Attraction", tags: ["Culture"], description: "An unusual but genuine visitor attraction with guided tours.", qualityScore: 12 }),
+  ];
+  const ranked = filterExploreResults(base, candidates, "all", "for-you");
+  for (const rejected of ["Athens Technical University", "Athens incident", "Attica Regional Authority"]) {
+    assert.equal(ranked.some((result) => result.title === rejected), false, rejected);
+  }
+  for (const preserved of ["Small hillside church", "City Museum", "Old artisan quarter", "Underground olive press"]) {
+    assert.equal(ranked.some((result) => result.title === preserved), true, preserved);
+  }
+  assert.equal(ranked.at(-1)?.title, "Central Star", "weak generic entities are strongly demoted rather than outranking visitable places");
 });
 
 test("category classification favors truthful place anatomy over incidental prose", () => {

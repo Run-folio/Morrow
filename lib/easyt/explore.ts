@@ -3,6 +3,7 @@ import { activityInventoryIdentity, itineraryIdeaForActivityInventory } from "./
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestAffinity, type ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
 import { preferredItineraryDayPart } from "./itinerary-activity-placement.ts";
+import { activityDayPartFit } from "./itinerary-schedule-awareness.ts";
 import { ideaStateForPlace, itineraryIdeaForLocalPlace, itineraryIdeaForPlace, validIdeaDays } from "./itinerary-ideas.ts";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripStop } from "./trip.ts";
 import type { TripInterest } from "./trip-interest.ts";
@@ -485,7 +486,15 @@ export function filterExploreResults(
       tags: result.tags,
       description: result.description ?? "",
     }, interests);
-    return { result, index, score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score };
+    const relevance = discoveryVisitorRelevance({
+      title: result.title,
+      category: result.category,
+      tags: result.tags,
+      description: result.description,
+      qualityScore: result.qualityScore,
+      kind: result.kind,
+    });
+    return { result, index, score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score + relevance.scoreAdjustment };
   }).sort((left, right) => right.score - left.score || left.index - right.index).map(({ result }) => result);
   if (category !== "for-you" && category !== "must-see") return ranked;
   const organic = ranked.filter((result) => result.idea.source !== "live-provider-inventory");
@@ -504,7 +513,9 @@ export function exploreScheduleTarget(trip: EasyTTrip, result: ExploreResult, re
   if (!day) return null;
   return {
     day,
-    dayPart: preferredItineraryDayPart(trip, day.id, result.idea.category),
+    dayPart: activityDayPartFit(result.idea.providerMetadata?.duration) === "slot"
+      ? preferredItineraryDayPart(trip, day.id, result.idea.category)
+      : null,
   };
 }
 

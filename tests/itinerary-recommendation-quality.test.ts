@@ -49,6 +49,24 @@ test("visitor relevance rejects generic stations, regions, events and theatres b
   assert.equal(discoveryVisitorRelevance({ title: "Historic theatre", category: "Theatre", description: "A visitor attraction with guided architecture tours.", kind: "activity" }).eligible, true);
 });
 
+test("visitor relevance rejects institutions and incidents while preserving varied visitable places", () => {
+  const rejected = [
+    { title: "Korea Science Academy of KAIST", category: "Place", description: "A science school and educational institution." },
+    { title: "Busan National University of Education", category: "Place", description: "A public university." },
+    { title: "Kinmon incident", category: "Historic site", description: "A historical incident represented as an encyclopedia article.", qualityScore: 30 },
+    { title: "Regional planning corporation", category: "Place", description: "A generic organization and government agency." },
+  ];
+  for (const candidate of rejected) assert.equal(discoveryVisitorRelevance({ ...candidate, kind: "activity" }).eligible, false, candidate.title);
+  const preserved = [
+    { title: "Myeongdong Cathedral", category: "Church", description: "A cathedral open to visitors." },
+    { title: "University Church", category: "Church", description: "A university church open to visitors." },
+    { title: "Busan Museum", category: "Museum", description: "A public visitor museum." },
+    { title: "Gamcheon Culture Village", category: "Neighbourhood", description: "A walkable cultural neighbourhood." },
+    { title: "Underground olive press", category: "Attraction", description: "An unusual visitor attraction with guided tours." },
+  ];
+  for (const candidate of preserved) assert.equal(discoveryVisitorRelevance({ ...candidate, kind: "activity" }).eligible, true, candidate.title);
+});
+
 test("one usefulness-ranked rail can contain organic and commercial results without a commercial boost", () => {
   const trip = tripCopilotFixture();
   const day = { ...trip.planItems[3]!, notes: [] };

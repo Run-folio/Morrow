@@ -191,6 +191,20 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
 }
 
 /**
+ * Resolve the concrete planner day that should accompany a Map URL target.
+ * The URL's canonical stop instance always wins; a missing/invalid handoff
+ * keeps the normal first-stop default supplied by parseMapWorkspaceTarget.
+ */
+export function mapWorkspaceSelectionForTarget(trip: WorkspaceTrip, query: QueryReader) {
+  const target = parseMapWorkspaceTarget(trip, query);
+  const selectedDay = orderedDays(trip).find((candidate) => candidate.dayNumber === target.dayNumber && candidate.stopId === target.stopId)
+    ?? orderedDays(trip).find((candidate) => candidate.stopId === target.stopId)
+    ?? orderedDays(trip)[0]
+    ?? null;
+  return { target, selectedDay };
+}
+
+/**
  * A normal Map visit is route-first. Only a valid, explicit stop target is
  * allowed to open the local camera; the selected day used by the planner is
  * otherwise presentation context, not persisted camera state.

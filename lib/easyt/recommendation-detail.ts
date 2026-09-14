@@ -117,7 +117,8 @@ export function recommendationTripFit(
   if (state.state === "planned") {
     const composition = composeItineraryDay(trip, state.day.id);
     const warning = composition ? itineraryScheduleWarnings(composition).find((candidate) => candidate.activityIds.includes(state.idea.id)) : null;
-    return `Already planned for Day ${state.day.dayNumber}${state.idea.dayPart ? ` · ${titleCase(state.idea.dayPart)}` : ""}.${warning ? ` ${warning.message}` : ""}${interest ? ` ${interest}.` : ""}`;
+    const fullDay = isFullDayActivity(state.idea.providerMetadata?.duration);
+    return `${fullDay ? "Needs most of the day. " : ""}Already planned for Day ${state.day.dayNumber}${state.idea.dayPart && !fullDay ? ` · ${titleCase(state.idea.dayPart)}` : ""}.${warning ? ` ${warning.message}` : ""}${interest ? ` ${interest}.` : ""}`;
   }
   const day = context.activeDayId
     ? trip.planItems.find((candidate) => candidate.id === context.activeDayId && candidate.stopId === result.stopId) ?? null
