@@ -175,7 +175,6 @@
 .periodDropReady {
   border-color: color-mix(in srgb, var(--morrovia-action) 55%, var(--morrovia-line));
   background: color-mix(in srgb, var(--morrovia-lilac) 42%, var(--morrovia-paper));
-  min-height: 132px;
   user-select: none;
 }
 
@@ -443,10 +442,6 @@
 
 .freePeriod {
   min-height: 0;
-}
-
-.periodDropReady .freePeriod {
-  min-height: 44px;
 }
 
 .freePeriodDropActive {

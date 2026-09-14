@@ -52,6 +52,7 @@ test("native drag uses a dedicated pointer source while preserving every canonic
 });
 
 test("whole, empty, populated, and insertion drop targets retain native acceptance semantics", () => {
+  assert.equal((component.match(/onDragEnter=\{\(event\) => \{ event\.preventDefault\(\);/g) ?? []).length, 4, "every native drop target cancels dragenter so a fast pointer drop is accepted");
   assert.match(component, /data-day-part=\{part\}[\s\S]{0,420}onDragOver=\{\(event\) => \{ if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,320}onActivityDrop\?\.\(part, activities\.length\)/);
   assert.match(component, /className=\{`\$\{styles\.freePeriod\}[\s\S]{0,400}onDragOver=\{\(event\) => \{ event\.stopPropagation\(\); if \(onActivityDrop\) event\.preventDefault\(\); \}\}[\s\S]{0,240}onActivityDrop\?\.\(part, 0\)/);
   const populatedMarker = component.slice(component.indexOf("data-drop-index={activityIndex}"), component.indexOf("<ActivityRow", component.indexOf("data-drop-index={activityIndex}")));
@@ -59,6 +60,12 @@ test("whole, empty, populated, and insertion drop targets retain native acceptan
   assert.match(populatedMarker, /onActivityDrop\?\.\(part, activityIndex\)/);
   assert.match(appendMarker, /onActivityDrop\?\.\(part, activities\.length\)/);
   assert.match(component, /onDragEnd=\{\(\) => \{ setDropTarget\(null\); onActivityDragEnd\?\.\(\); \}\}/);
+});
+
+test("entering native drag mode never changes period geometry", () => {
+  assert.doesNotMatch(styles, /\.periodDropReady\s*\{[^}]*min-height:/);
+  assert.doesNotMatch(styles, /\.periodDropReady \.freePeriod/);
+  assert.doesNotMatch(component, /Drop activity here/);
 });
 
 test("mobile hides pointer drag without removing the explicit scheduling and reorder controls", () => {

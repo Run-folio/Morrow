@@ -30,12 +30,14 @@ export function MorroviaSkeleton({
 }
 
 export function MorroviaSectionStatus({
+  compact = false,
   detail,
   onRetry,
   retryLabel = "Try again",
   state = "loading",
   title,
 }: {
+  compact?: boolean;
   detail: string;
   onRetry?: () => void;
   retryLabel?: string;
@@ -47,7 +49,7 @@ export function MorroviaSectionStatus({
   return (
     <div
       aria-busy={!failed && !complete ? true : undefined}
-      className={`${styles.sectionStatus} ${failed ? styles.sectionError : complete ? styles.sectionSuccess : ""}`}
+      className={`${styles.sectionStatus} ${compact ? styles.sectionStatusCompact : ""} ${failed ? styles.sectionError : complete ? styles.sectionSuccess : ""}`}
       role={failed ? "alert" : "status"}
     >
       <span className={styles.sectionIcon} aria-hidden="true">

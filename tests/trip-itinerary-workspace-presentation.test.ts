@@ -272,6 +272,24 @@ test("suggestion requests use the shared stale-result and cancellation guard", (
   assert.match(itinerary, /return \(\) => scope\.dispose\(\)/);
 });
 
+test("planner drag ownership survives native pointer timing and is cleared at workspace boundaries", () => {
+  assert.match(itinerary, /const beginPlannerDrag = \(dragged: PlannerDragItem\) => \{\s*plannerDragRef\.current = dragged;\s*setPlannerDrag\(dragged\);\s*\}/);
+  assert.match(itinerary, /const clearPlannerDrag = \(\) => \{\s*plannerDragRef\.current = null;\s*setPlannerDrag\(null\);\s*\}/);
+  assert.match(itinerary, /\}, \[activeDayId\]\);/);
+  assert.match(itinerary, /onDragStart=\{\(idea, event\) => \{[\s\S]{0,220}beginPlannerDrag\(\{ kind: "suggestion", idea \}\);/);
+  assert.match(itinerary, /onDragEnd=\{clearPlannerDrag\}/);
+  assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
+});
+
+test("an unavailable Suggestions lane is compact, resets active drag, and retries without overlap", () => {
+  const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
+  assert.match(itinerary, /const interactionResetRef = useRef\(onInteractionReset\)/);
+  assert.match(itinerary, /if \(unavailable\) interactionResetRef\.current\(\);\s*\}, \[unavailable\]\);/);
+  assert.match(itinerary, /<MorroviaSectionStatus compact state="error"/);
+  assert.match(itinerary, /onRetry=\{\(\) => \{ onInteractionReset\(\); setRetryVersion/);
+  assert.match(stories, /export const NativeDragAfterSuggestionsFailure/);
+});
+
 test("Logistics reuses canonical stay state, affiliate handoff, accessible controls and persistence", () => {
   assert.match(itinerary, /<DestinationAccommodationModule/);
   assert.match(destinationAccommodation, /destinationStayState\(trip, stop/);

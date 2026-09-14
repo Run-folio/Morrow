@@ -490,6 +490,7 @@ export default function TripItineraryWorkspace({
     setRemoveTarget(null);
     setRemoveError("");
     setDraggedActivity(null);
+    plannerDragRef.current = null;
     setPlannerDrag(null);
     setOpenSavedPickerId(null);
     setPlannerError("");
@@ -1040,9 +1041,9 @@ export default function TripItineraryWorkspace({
             onDragStart={(idea, event) => {
               event.dataTransfer.effectAllowed = "copyMove";
               event.dataTransfer.setData("text/plain", idea.id);
-              setPlannerDrag({ kind: "suggestion", idea });
+              beginPlannerDrag({ kind: "suggestion", idea });
             }}
-            onDragEnd={() => setPlannerDrag(null)}
+            onDragEnd={clearPlannerDrag}
           />
         </div> : null}
       </div>
@@ -1398,6 +1399,7 @@ export default function TripItineraryWorkspace({
               beginPlannerDrag({ kind: "suggestion", idea });
             }}
             onDragEnd={clearPlannerDrag}
+            onInteractionReset={clearPlannerDrag}
           />
           <EasyTLinkButton
             className={styles.contextAction}
@@ -1623,7 +1625,7 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd, onInteractionReset }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
@@ -1642,6 +1644,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   draggingIdeaId: string | null;
   onDragStart: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
+  onInteractionReset: () => void;
 }) {
   const [places, setPlaces] = useState<ItineraryDiscoveryPlace[]>(initialPlaces ?? []);
   const [organicStatus, setOrganicStatus] = useState<"idle" | "loading" | "ready" | "error">(initialPlaces ? "ready" : "idle");
@@ -1650,6 +1653,8 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
   const [openPickerId, setOpenPickerId] = useState<string | null>(null);
+  const interactionResetRef = useRef(onInteractionReset);
+  interactionResetRef.current = onInteractionReset;
   const interests = tripIntentForTrip(trip).preferences.interests;
 
   useEffect(() => {
@@ -1761,12 +1766,16 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     if (current) onSelectedDetailRefresh(current);
   }, [onSelectedDetailRefresh, results, selectedResultId]);
   const loading = organicStatus === "loading" || commercialStatus === "loading";
+  const unavailable = !results.length && (organicStatus === "error" || commercialStatus === "error");
+  useEffect(() => {
+    if (unavailable) interactionResetRef.current();
+  }, [unavailable]);
   const hasLiveViatorProduct = results.some((result) => result.provider === "viator" && Boolean(result.providerUrl));
   const experienceFallback = stop && experienceAction && commercialStatus !== "loading" && !hasLiveViatorProduct
     ? <CompactExperienceHandoff action={experienceAction} tripId={trip.id} stopId={stop.id} />
     : null;
   if (!results.length && loading) return <div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>;
-  if (!results.length && (organicStatus === "error" || commercialStatus === "error")) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => setRetryVersion((current) => current + 1)} /></div>{experienceFallback}</>;
+  if (unavailable) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus compact state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => { onInteractionReset(); setRetryVersion((current) => current + 1); }} /></div>{experienceFallback}</>;
   if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}</>;
   return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
     <h4>Shortlist for {stop?.name}</h4>

@@ -54,6 +54,16 @@
 .sectionSuccess .sectionIcon { color: var(--morrovia-success); }
 .sectionSuccess .sectionIcon svg { animation: none; }
 
+.sectionStatusCompact {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.sectionStatusCompact > button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .planning {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(230px, .72fr);

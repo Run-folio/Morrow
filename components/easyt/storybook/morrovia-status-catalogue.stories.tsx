@@ -38,6 +38,7 @@ export const ProgressAndLoading: Story = {
     <MorroviaSectionStatus title="Checking route timing" detail="Your stops and edits remain in place." />
     <MorroviaSectionStatus title="Route ready" detail="All known transfers are represented." state="success" />
     <MorroviaSectionStatus title="The provider did not respond" detail="Your trip was not changed." state="error" onRetry={() => {}} />
+    <div style={{ width: 320 }}><MorroviaSectionStatus compact title="Suggestions are unavailable just now." detail="Your saved day is unchanged." state="error" onRetry={() => {}} retryLabel="Try suggestions again" /></div>
   </div>,
 };
 

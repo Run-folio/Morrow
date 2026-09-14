@@ -422,6 +422,16 @@ export const RichDayPlannerIntegrated: Story = {
   },
 };
 
+export const NativeDragAfterSuggestionsFailure: Story = {
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...RichDayPlannerIntegrated.args!.trip!,
+      id: "storybook-native-drag-after-suggestions-failure",
+    },
+  },
+};
+
 const openScheduledItem = (itemId: string) => async ({ canvasElement }: { canvasElement: HTMLElement }) => {
   canvasElement.querySelector<HTMLElement>(`[data-itinerary-activity-id="${itemId}"]`)?.querySelector<HTMLButtonElement>("button")?.click();
 };
