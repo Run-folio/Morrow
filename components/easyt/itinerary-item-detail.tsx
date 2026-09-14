@@ -18,6 +18,7 @@ import {
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
 import type { RecommendationDetailModel } from "@/lib/easyt/recommendation-detail";
+import { recommendationDetailTitleTier } from "@/lib/easyt/recommendation-detail-title";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ResilientImage from "./resilient-image";
 import styles from "./itinerary-item-detail.module.css";
@@ -64,6 +65,7 @@ export default function RecommendationDetail({
   const [mobileSheet, setMobileSheet] = useState(false);
   const [mapPending, setMapPending] = useState(false);
   const KindIcon = detail.kind === "restaurant" ? Utensils : detail.kind === "accommodation" ? BedDouble : Sparkles;
+  const titleTier = recommendationDetailTitleTier(detail.title);
 
   useEffect(() => {
     if (embedded) return;
@@ -115,7 +117,7 @@ export default function RecommendationDetail({
       <div className={styles.content}>
         <header className={styles.header}>
           <span><KindIcon aria-hidden="true" />{detail.kind === "accommodation" ? "Your stay" : detail.kind === "restaurant" ? "Restaurant" : detail.kind === "tour" ? "Bookable experience" : "Activity"}</span>
-          <h2 id={headingId}>{detail.title}</h2>
+          <h2 id={headingId} className={titleTier === "compact" ? styles.compactTitle : undefined} data-title-tier={titleTier}>{detail.title}</h2>
           {detail.location ? <p><MapPin aria-hidden="true" />{detail.location}</p> : null}
           {detail.summary ? <div className={styles.description}>{detail.summary}</div> : null}
         </header>

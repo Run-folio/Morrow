@@ -4,6 +4,7 @@ import test from "node:test";
 
 const component = readFileSync(new URL("../components/easyt/rich-itinerary-day-planner.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../components/easyt/rich-itinerary-day-planner.module.css", import.meta.url), "utf8");
+const identityStyles = readFileSync(new URL("../components/easyt/itinerary-activity-identity.module.css", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/rich-itinerary-day-planner.stories.tsx", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const workspaceStories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
@@ -21,7 +22,7 @@ test("the production itinerary owner consumes canonical composition and persists
 
 test("broad periods use semantic headings, canonical controls, and a keyboard-accessible clear state", () => {
   assert.match(component, /itineraryDayParts\.map/);
-  assert.match(component, /<section className=\{`\$\{styles\.period\}/);
+  assert.match(component, /<section[\s\S]{0,180}className=\{`\$\{styles\.period\}/);
   assert.match(component, /<EasyTSelect/);
   assert.match(component, /<option value="">/);
   assert.match(component, /event\.target\.value \? event\.target\.value as ItineraryDayPart : null/);
@@ -31,6 +32,9 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
   assert.match(component, /onActivityDrop/);
   assert.match(component, /data-day-part=\{part\}/);
   assert.match(component, /data-drop-index/);
+  assert.match(component, /data-drop-zone={dragActive \? "ready" : undefined}/);
+  assert.match(component, /onActivityDrop\?\.\(part, activities\.length\)/);
+  assert.match(component, /event\.stopPropagation\(\)/);
   assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
 });
 
@@ -53,9 +57,13 @@ test("compact empty periods, contextual add controls, first-class travel, and to
 test("long names and compact breakpoints remain contained without a parallel mobile data path", () => {
   assert.match(styles, /min-width: 0/);
   assert.match(styles, /overflow-wrap: anywhere/);
+  assert.match(styles, /\.unslottedList \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /\.unslottedList \.activity \+ \.activity \{[\s\S]*border-top:/);
+  assert.doesNotMatch(styles, /\.unslottedList \{[\s\S]{0,100}repeat\(2/);
   assert.match(styles, /\.periodGrid \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.doesNotMatch(styles, /\.periodGrid \{[\s\S]{0,100}repeat\(2/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*\.unslottedList/);
+  assert.match(identityStyles, /\.copy \{[\s\S]*white-space: normal/);
   assert.doesNotMatch(component, /innerWidth|matchMedia|mobileComposition|desktopComposition/);
 });
 
@@ -109,6 +117,11 @@ test("Storybook uses the production component for composed planner and responsiv
     "AccommodationNotYetOrganised",
     "SparseProviderEvidence",
     "LongActivityNames",
+    "OnePlannedItem",
+    "ThreePlannedItems",
+    "VeryLongProviderTitle",
+    "OccupiedAllPeriods",
+    "DesktopShortHeightViewport",
     "Mobile320",
     "Mobile390",
     "Mobile430",

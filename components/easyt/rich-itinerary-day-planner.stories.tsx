@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { composeItineraryDay, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
 import { assignItineraryIdeaDayPart } from "@/lib/easyt/itinerary-ideas";
 import { assignItineraryActivityDayPart, insertItineraryActivity, moveItineraryActivity, moveItineraryIdeaActivity } from "@/lib/easyt/itinerary-mutations";
+import { placeItineraryActivity } from "@/lib/easyt/itinerary-activity-placement";
 import { defaultTripIntent, type EasyTTrip, type ItineraryDayPart } from "@/lib/easyt/trip";
 import RichItineraryDayPlanner from "./rich-itinerary-day-planner";
 
@@ -59,6 +60,7 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
   const [addPart, setAddPart] = useState<ItineraryDayPart | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  const [draggedActivity, setDraggedActivity] = useState<ComposedItineraryActivity | null>(null);
   const composition = useMemo(() => composeItineraryDay(workingTrip, dayId), [dayId, workingTrip]);
   if (!composition) return null;
   const assign = (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => {
@@ -110,6 +112,19 @@ function StoryFrame({ trip, dayId }: { trip: EasyTTrip; dayId: string }) {
           onAddSubmit={add}
           onDayPartChange={assign}
           onMoveActivity={move}
+          dragActive={Boolean(draggedActivity)}
+          draggedActivityId={draggedActivity?.id ?? null}
+          onActivityDragStart={(activity, event) => {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", activity.id);
+            setDraggedActivity(activity);
+          }}
+          onActivityDragEnd={() => setDraggedActivity(null)}
+          onActivityDrop={(part, insertionIndex) => {
+            if (!draggedActivity) return;
+            setWorkingTrip((current) => placeItineraryActivity(current, composition.day.id, draggedActivity.id, part, insertionIndex).trip);
+            setDraggedActivity(null);
+          }}
         />
       </div>
     </main>
@@ -201,6 +216,33 @@ const overlapTrip: EasyTTrip = {
   planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: ["Museum visit", "Coffee stop"], noteDayParts: ["afternoon", "afternoon"] } : day),
 };
 
+const plannedItems = [
+  { id: "idea-planned-one", placeId: "planned-one", title: "Nanzen-ji garden walk", area: "Higashiyama" },
+  { id: "idea-planned-two", placeId: "planned-two", title: "Traditional tea and seasonal sweets", area: "Gion" },
+  { id: "idea-planned-long", placeId: "planned-long", title: "Private Kyoto cultural discovery experience with temple gardens, artisan workshops, neighbourhood food stops and a local guide", area: "Kyoto" },
+].map((idea) => ({
+  ...idea,
+  stopId: "kyoto",
+  category: "activity" as const,
+  placeType: "Bookable experience",
+  source: "live-provider-inventory" as const,
+  sourceUrl: "https://www.viator.com/",
+  reasons: [],
+  provider: "viator" as const,
+  providerProductId: idea.id,
+  providerMetadata: { duration: { fixedMinutes: 120 }, provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T12:00:00.000Z" } },
+  dayId: "kyoto-2",
+  dayPart: null,
+}));
+
+const threePlannedTrip: EasyTTrip = {
+  ...baseTrip,
+  brief: { ...baseTrip.brief, itineraryIdeas: plannedItems },
+  planItems: baseTrip.planItems.map((day) => day.id === "kyoto-2"
+    ? { ...day, notes: plannedItems.map((idea) => idea.title), noteDayParts: [null, null, null] }
+    : day),
+};
+
 export const FullFourSectionDay: Story = {
   render: () => <StoryFrame trip={baseTrip} dayId="kyoto-2" />,
 };
@@ -281,9 +323,23 @@ export const LongActivityNames: Story = {
   }} dayId="kyoto-2" />,
 };
 
-export const Mobile320: Story = { ...SparseDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
-export const Mobile390: Story = { ...MultipleActivitiesInAfternoon, globals: { viewport: { value: "morrovia390", isRotated: false } } };
-export const Mobile430: Story = { ...LongActivityNames, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const OnePlannedItem: Story = {
+  render: () => <StoryFrame trip={{
+    ...threePlannedTrip,
+    brief: { ...threePlannedTrip.brief, itineraryIdeas: plannedItems.slice(0, 1) },
+    planItems: threePlannedTrip.planItems.map((day) => day.id === "kyoto-2" ? { ...day, notes: [plannedItems[0]!.title], noteDayParts: [null] } : day),
+  }} dayId="kyoto-2" />,
+};
+export const ThreePlannedItems: Story = { render: () => <StoryFrame trip={threePlannedTrip} dayId="kyoto-2" /> };
+export const VeryLongProviderTitle: Story = ThreePlannedItems;
+export const OccupiedAllPeriods: Story = FullFourSectionDay;
+export const DesktopShortHeightViewport: Story = {
+  render: () => <div style={{ maxHeight: 620, overflow: "auto" }}><StoryFrame trip={threePlannedTrip} dayId="kyoto-2" /></div>,
+};
+
+export const Mobile320: Story = { ...OnePlannedItem, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const Mobile390: Story = { ...ThreePlannedItems, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const Mobile430: Story = { ...VeryLongProviderTitle, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { ...SparseDay, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { ...FullFourSectionDay, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { ...FullFourSectionDay, globals: { viewport: { value: "morrovia1440", isRotated: false } } };

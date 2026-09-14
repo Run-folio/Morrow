@@ -11,6 +11,7 @@ import {
 } from "../lib/easyt/recommendation-detail.ts";
 import { scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import { defaultTripIntent, type EasyTTrip } from "../lib/easyt/trip.ts";
+import { recommendationDetailTitleTier } from "../lib/easyt/recommendation-detail-title.ts";
 
 function tripFixture(): EasyTTrip {
   const intent = defaultTripIntent({ durationDays: 2, stopIds: ["cusco"] });
@@ -131,6 +132,16 @@ test("a six-hour activity uses extended day-level reasoning rather than standard
   assert.doesNotMatch(detail.whyFit!, /Choose a part of day/i);
   const scheduled = scheduleItineraryIdea(trip, result.idea, "day-open", "afternoon");
   assert.equal(scheduled.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id)?.dayPart, null);
+});
+
+test("detail headings use a deterministic compact tier for long provider titles", () => {
+  assert.equal(recommendationDetailTitleTier("Sainte-Chapelle"), "standard");
+  assert.equal(recommendationDetailTitleTier("The Sainte-Chapelle Royal Chapel and Medieval Palais de la Cité Historical Architecture Experience with Expert Guide"), "compact");
+  const component = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../components/easyt/itinerary-item-detail.module.css", import.meta.url), "utf8");
+  assert.match(component, /data-title-tier=\{titleTier\}/);
+  assert.match(styles, /\.header h2\.compactTitle \{[\s\S]*font-size: clamp\(1\.25rem, 2\.2vw, 1\.55rem\)/);
+  assert.doesNotMatch(component, /ResizeObserver|getBoundingClientRect/);
 });
 
 test("all entry surfaces use one presentation and one canonical mutation path", () => {

@@ -317,7 +317,21 @@ export default function RichItineraryDayPlanner({
           const activities = composition.planned[part];
           const headingId = `${titleId}-${part}`;
           return (
-            <section className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`} data-day-part={part} aria-labelledby={headingId} key={part}>
+            <section
+              className={`${styles.period} ${dragActive ? styles.periodDropReady : ""} ${dropTarget?.startsWith(`${part}:`) ? styles.periodDropActive : ""}`}
+              data-day-part={part}
+              data-drop-zone={dragActive ? "ready" : undefined}
+              aria-labelledby={headingId}
+              key={part}
+              onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
+              onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
+              onDrop={(event) => {
+                if (!dragActive) return;
+                event.preventDefault();
+                onActivityDrop?.(part, activities.length);
+                setDropTarget(null);
+              }}
+            >
               <div className={styles.periodHeading}>
                 <h3 id={headingId}>{dayPartLabels[language][part]}</h3>
                 {activities.length ? <span>{activities.length}</span> : null}
@@ -329,9 +343,9 @@ export default function RichItineraryDayPlanner({
                       className={`${styles.dropMarker} ${dropTarget === `${part}:${activityIndex}` ? styles.dropMarkerActive : ""}`}
                       data-drop-index={activityIndex}
                       aria-hidden="true"
-                      onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
-                      onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
-                      onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
+                      onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activityIndex}`); }}
+                      onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                      onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activityIndex); setDropTarget(null); }}
                     >{dragActive ? "Drop here" : null}</div>
                     <ActivityRow
                       activity={activity}
@@ -356,18 +370,18 @@ export default function RichItineraryDayPlanner({
                     className={`${styles.dropMarker} ${dropTarget === `${part}:${activities.length}` ? styles.dropMarkerActive : ""}`}
                     data-drop-index={activities.length}
                     aria-hidden="true"
-                    onDragEnter={() => { if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
-                    onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
-                    onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
+                    onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:${activities.length}`); }}
+                    onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                    onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, activities.length); setDropTarget(null); }}
                   >{dragActive ? "Drop here" : null}</div>
                 </div>
               ) : (
                 <div
                   className={`${styles.freePeriod} ${dropTarget === `${part}:0` ? styles.freePeriodDropActive : ""}`}
                   data-drop-index="0"
-                  onDragEnter={() => { if (dragActive) setDropTarget(`${part}:0`); }}
-                  onDragOver={(event) => { if (dragActive) event.preventDefault(); }}
-                  onDrop={(event) => { event.preventDefault(); onActivityDrop?.(part, 0); setDropTarget(null); }}
+                  onDragEnter={(event) => { event.stopPropagation(); if (dragActive) setDropTarget(`${part}:0`); }}
+                  onDragOver={(event) => { event.stopPropagation(); if (dragActive) event.preventDefault(); }}
+                  onDrop={(event) => { event.preventDefault(); event.stopPropagation(); onActivityDrop?.(part, 0); setDropTarget(null); }}
                 >
                   {dragActive ? <p>Drop activity here</p> : null}
                 </div>

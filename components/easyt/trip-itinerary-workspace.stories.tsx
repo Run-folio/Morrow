@@ -393,6 +393,39 @@ const openScheduledItem = (itemId: string) => async ({ canvasElement }: { canvas
 };
 
 export const SelectedActivityDesktop: Story = { ...RichDayPlannerIntegrated, play: openScheduledItem("idea-cusco-qorikancha") };
+export const DetailRailLongProviderTitle: Story = {
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...(RichDayPlannerIntegrated.args?.trip ?? trip),
+      brief: {
+        ...(RichDayPlannerIntegrated.args?.trip?.brief ?? trip.brief),
+        itineraryIdeas: (RichDayPlannerIntegrated.args?.trip?.brief.itineraryIdeas ?? []).map((idea) => idea.id === "idea-cusco-qorikancha" ? {
+          ...idea,
+          title: "The Sainte-Chapelle Royal Chapel and Medieval Palais de la Cité Historical Architecture Experience with Expert Guide",
+        } : idea),
+      },
+      planItems: (RichDayPlannerIntegrated.args?.trip?.planItems ?? trip.planItems).map((day) => day.id === "day-2" ? {
+        ...day,
+        notes: day.notes.map((note) => note === "Qorikancha" ? "The Sainte-Chapelle Royal Chapel and Medieval Palais de la Cité Historical Architecture Experience with Expert Guide" : note),
+      } : day),
+    },
+  },
+  play: openScheduledItem("idea-cusco-qorikancha"),
+};
+export const SelectedPlannedItemDesktop: Story = {
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: {
+      ...(RichDayPlannerIntegrated.args?.trip ?? trip),
+      brief: {
+        ...(RichDayPlannerIntegrated.args?.trip?.brief ?? trip.brief),
+        itineraryIdeas: (RichDayPlannerIntegrated.args?.trip?.brief.itineraryIdeas ?? []).map((idea) => idea.id === "idea-cusco-qorikancha" ? { ...idea, dayPart: null } : idea),
+      },
+    },
+  },
+  play: openScheduledItem("idea-cusco-qorikancha"),
+};
 export const SelectedRestaurantDesktop: Story = { ...RichDayPlannerIntegrated, play: openScheduledItem("idea-cusco-market") };
 export const SelectedActivityMobile390: Story = { ...SelectedActivityDesktop, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const SelectedRestaurantMobile390: Story = { ...SelectedRestaurantDesktop, globals: { viewport: { value: "morrovia390", isRotated: false } } };

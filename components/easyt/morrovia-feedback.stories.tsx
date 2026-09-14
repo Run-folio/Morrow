@@ -205,6 +205,7 @@ export const TripSaveSaving: Story = { render: () => <TripSaveContext initialSta
 export const ReducedMotionSaving: Story = { render: () => <div className={styles.forceReducedMotion}><TripSaveContext initialState="saving" /></div> };
 export const TripSaveSavedToAccount: Story = { render: () => <TripSaveContext initialState="saved" /> };
 export const TripSaveFailedDeviceSafe: Story = { render: () => <TripSaveContext initialState="error" /> };
+export const CurrentSaveFailure: Story = TripSaveFailedDeviceSafe;
 export const NightsChangedInline: Story = { render: () => <NightsContext /> };
 export const BriefTripDuplicatedNotice: Story = { render: () => <BriefNoticeContext /> };
 export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoticeContext /> };

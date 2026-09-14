@@ -175,6 +175,8 @@
 .periodDropReady {
   border-color: color-mix(in srgb, var(--morrovia-action) 55%, var(--morrovia-line));
   background: color-mix(in srgb, var(--morrovia-lilac) 42%, var(--morrovia-paper));
+  min-height: 132px;
+  user-select: none;
 }
 
 .periodDropActive {
@@ -268,6 +270,7 @@
   opacity: .45;
   background: var(--morrovia-lilac);
   transform: scale(.985);
+  user-select: none;
 }
 
 .activitySelected {
@@ -477,11 +480,11 @@
 }
 
 .unslottedList {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.unslottedList .activity:nth-child(even) {
-  border-left: 1px solid var(--morrovia-line);
+.unslottedList .activity + .activity {
+  border-top: 1px solid var(--morrovia-line);
 }
 
 .tonight {
@@ -564,10 +567,6 @@
 
   .unslottedList {
     grid-template-columns: 1fr;
-  }
-
-  .unslottedList .activity:nth-child(even) {
-    border-left: 0;
   }
 
   .tonight {

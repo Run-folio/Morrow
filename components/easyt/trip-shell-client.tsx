@@ -140,6 +140,7 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
     && !tripRecoveryIsAwaitingCanonicalSave(deviceRecovery)
     ? deviceRecovery
     : null;
+  const currentSaveFailed = mutation.saveState === "error" && !mutation.historicalRecovery;
   useEffect(() => {
     const refreshOwner = () => setRememberedOwnerId(loadRememberedOwner());
     const onStorage = (event: StorageEvent) => {
@@ -260,9 +261,11 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       ) : null}
       {visibleDeviceRecovery ? (
         <div className={styles.content}>
-          <MorroviaStatusBanner tone={discardFailed ? "danger" : "warning"} title="Device edits kept safe" detail={discardFailed
+          <MorroviaStatusBanner tone={discardFailed ? "danger" : "warning"} title={currentSaveFailed ? "Device edits kept safe" : `${tripDisplayTitle(trip)} has device changes to review`} detail={discardFailed
               ? "Morrovia couldn’t discard this device copy because browser storage is unavailable. Your edits remain intact."
-              : "You’re viewing the cloud copy. Unsynced edits on this device remain separate until you resume or discard them."}
+              : currentSaveFailed
+                ? "The latest account save did not complete. This exact device edit remains protected while you retry or review it."
+                : "This cloud copy is saved. A separate device copy remains protected; review it before editing this trip here."}
             actions={<><EasyTLinkButton size="small" href={conflictActions.deviceHref}>{conflictActions.openDeviceLabel}</EasyTLinkButton><EasyTButton size="small" variant="danger" onClick={() => setDiscardDialogOpen(true)}>{conflictActions.discardDeviceLabel}</EasyTButton></>}
           />
         </div>

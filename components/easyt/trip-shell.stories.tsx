@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import TripShell, { TripWorkspacePlaceholder } from "./trip-shell";
 
 const trip: EasyTTrip = {
@@ -53,6 +56,22 @@ const trip: EasyTTrip = {
   updatedAt: "2026-08-01T10:00:00.000Z",
 };
 
+function HistoricalRecoveryShell() {
+  setStorybookAuthOwner("storybook-traveller");
+  const [ready, setReady] = useState(false);
+  const writeId = "storybook-historical-recovery";
+  useEffect(() => {
+    saveTripRecoveryToStorage(window.localStorage, {
+      ...trip,
+      title: "Cusco device notes",
+      brief: { ...trip.brief, customTitle: "Cusco device notes" },
+    }, { state: "conflict", writeId, now: "2026-09-14T08:00:00.000Z" });
+    setReady(true);
+    return () => window.localStorage.removeItem(tripRecoveryStorageKey(trip.ownerId, trip.id, writeId));
+  }, []);
+  return ready ? <TripShell trip={trip}><TripWorkspacePlaceholder title="Overview" description="The cloud trip remains saved while its separate device copy is reviewed." /></TripShell> : null;
+}
+
 const meta = {
   title: "Morrovia/04 Structure/Trip shell",
   component: TripShell,
@@ -86,6 +105,9 @@ export const Overview: Story = {
     ),
   },
 };
+
+export const CleanTrip: Story = Overview;
+export const GenuineHistoricalDeviceDivergence: Story = { ...Overview, render: () => <HistoricalRecoveryShell /> };
 
 export const Itinerary: Story = {
   args: {

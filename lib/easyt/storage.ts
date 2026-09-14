@@ -54,6 +54,14 @@ export type TripRecoveryRecord = {
 
 export type TripRecoveryHandle = Pick<TripRecoveryRecord, "ownerId" | "tripId" | "writeId">;
 
+export type TripRecoveryClassification =
+  | "clean"
+  | "pending-current-save"
+  | "current-save-failed"
+  | "equivalent"
+  | "historical-superseded"
+  | "genuine-divergence";
+
 export type TripRecoveryWriteResult = {
   stored: boolean;
   handle: TripRecoveryHandle;
@@ -635,6 +643,40 @@ export function tripRecoveryMatchesCanonical(
   return tripDocumentsCanonicalEquivalent(recovery.trip, canonicalTrip);
 }
 
+function recoveryHandlesMatch(left: TripRecoveryHandle, right: TripRecoveryHandle) {
+  return left.ownerId === right.ownerId
+    && left.tripId === right.tripId
+    && left.writeId === right.writeId;
+}
+
+/**
+ * Classify recovery separately from the current save indicator. A durable
+ * record is a current save only while this mounted document owns its exact
+ * write handle; after reload it is historical recovery, regardless of the
+ * persisted failure label. Timestamp ordering is deliberately not used.
+ */
+export function classifyTripRecovery({
+  recovery,
+  canonicalTrip,
+  previousCanonicalTrip,
+  currentWrite,
+}: {
+  recovery: TripRecoveryRecord | null;
+  canonicalTrip: EasyTTrip;
+  previousCanonicalTrip?: EasyTTrip | null;
+  currentWrite?: TripRecoveryHandle | null;
+}): TripRecoveryClassification {
+  if (!recovery) return "clean";
+  if (currentWrite && recoveryHandlesMatch(recovery, currentWrite)) {
+    return recovery.state === "pending" ? "pending-current-save" : "current-save-failed";
+  }
+  if (tripRecoveryMatchesCanonical(recovery, canonicalTrip)) return "equivalent";
+  if (previousCanonicalTrip && tripRecoveryMatchesCanonical(recovery, previousCanonicalTrip)) {
+    return "historical-superseded";
+  }
+  return "genuine-divergence";
+}
+
 function writeTripRecoveryToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
@@ -1018,6 +1060,12 @@ export function loadLocalTrip(
 export function loadCurrentTripRecovery(ownerId: string | null) {
   const storage = browserStorage();
   return storage ? loadCurrentTripRecoveryFromStorage(storage, ownerId) : null;
+}
+
+/** List every newest trip-scoped recovery for this exact owner. */
+export function listTripRecoveries(ownerId: string | null) {
+  const storage = browserStorage();
+  return storage ? listTripRecoveriesFromStorage(storage, ownerId) : [];
 }
 
 export function claimGuestTripRecoveryForOwnerInStorage(

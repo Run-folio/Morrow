@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import {
   cacheCanonicalTrip,
+  classifyTripRecovery,
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
@@ -35,6 +36,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   const [failure, setFailure] = useState<TripMutationFailure>(null);
   const [conflictTrip, setConflictTrip] = useState<EasyTTrip | null>(null);
   const [error, setError] = useState("");
+  const [historicalRecovery, setHistoricalRecovery] = useState(false);
   const [pendingKeys, setPendingKeys] = useState<Record<string, number>>({});
   const tripRef = useRef(initialTrip);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
@@ -72,13 +74,12 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setError("");
     conflictRef.current = false;
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(canonical);
-    recoveryHandleRef.current = matchingRecovery ? recovery : null;
-    if (recovery && !matchingRecovery) {
+    const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    recoveryHandleRef.current = null;
+    const divergentRecovery = recoveryClass === "genuine-divergence";
+    setHistoricalRecovery(divergentRecovery);
+    if (divergentRecovery) {
       conflictRef.current = true;
-      setFailure("recovery");
-      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
-      setSaveState("error");
     }
     queueRef.current?.reset(canonical);
   }, [initialTrip]);
@@ -93,13 +94,12 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     tripRef.current = canonical;
     setTripState(canonical);
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(canonical);
-    recoveryHandleRef.current = matchingRecovery ? recovery : null;
-    if (recovery && !matchingRecovery) {
+    const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    recoveryHandleRef.current = null;
+    const divergentRecovery = recoveryClass === "genuine-divergence";
+    setHistoricalRecovery(divergentRecovery);
+    if (divergentRecovery) {
       conflictRef.current = true;
-      setFailure("recovery");
-      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
-      setSaveState("error");
     }
     queueRef.current?.reset(canonical);
   }, []); // The initial document establishes the queue's only trusted CAS base.
@@ -128,6 +128,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     else if (isCurrentRecovery && remainingRecovery) {
       recoveryHandleRef.current = null;
       conflictRef.current = true;
+      setHistoricalRecovery(true);
       setFailure("recovery");
       setError("Newer changes on this device were preserved while this version finished syncing. Review them before continuing.");
       setSaveState("error");
@@ -139,7 +140,11 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     update: (current: EasyTTrip) => EasyTTrip,
     pendingKey: string,
   ) => {
-    if (!enabled || conflictRef.current) return false;
+    if (!enabled) return false;
+    if (conflictRef.current) {
+      setError("Review the separate device copy before editing this cloud version.");
+      return false;
+    }
     const current = tripRef.current;
     const sessionOwnerId = session?.user?.id ?? null;
     if (sessionOwnerId && current.ownerId && sessionOwnerId !== current.ownerId) {
@@ -173,6 +178,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     }
 
     recoveryHandleRef.current = recovery.handle;
+    setHistoricalRecovery(false);
     tripRef.current = next;
     setTripState(next);
     setFailure(null);
@@ -196,6 +202,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         setTripState(saved);
         setFailure(null);
         setError("");
+        setHistoricalRecovery(false);
         setSaveState("saved");
       })
       .catch((caught: unknown) => {
@@ -213,6 +220,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
           queueRef.current?.reset(caught.canonicalTrip);
         }
         setFailure(auth ? "auth" : conflict ? "conflict" : "network");
+        setHistoricalRecovery(false);
         setError(auth
           ? "Your session expired. Your edits remain safe on this device; sign in again to sync them."
           : conflict
@@ -249,6 +257,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         setTripState(saved);
         setFailure(null);
         setError("");
+        setHistoricalRecovery(false);
         setSaveState("saved");
       })
       .catch((caught: unknown) => {
@@ -266,6 +275,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
           queueRef.current?.reset(caught.canonicalTrip);
         }
         setFailure(auth ? "auth" : conflict ? "conflict" : "network");
+        setHistoricalRecovery(false);
         setError(auth
           ? "Your session expired. Your edits remain safe on this device; sign in again to sync them."
           : conflict
@@ -295,6 +305,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setTripState(next);
     queueRef.current?.reset(next);
     conflictRef.current = false;
+    setHistoricalRecovery(false);
     setFailure(null);
     setConflictTrip(null);
     setError("");
@@ -308,6 +319,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     const recoveryOwnerId = recoveryHandleRef.current?.ownerId ?? saved.ownerId;
     if (loadTripRecovery(saved.id, recoveryOwnerId)) {
       conflictRef.current = true;
+      setHistoricalRecovery(true);
       setFailure("recovery");
       setError("The saved trip changed, while newer changes on this device remain preserved separately. Review them before continuing.");
       setSaveState("error");
@@ -318,6 +330,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setTripState(saved);
     queueRef.current?.reset(saved);
     conflictRef.current = false;
+    setHistoricalRecovery(false);
     setFailure(null);
     setConflictTrip(null);
     setError("");
@@ -342,6 +355,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     if (!conflictTrip) return false;
     setConflictTrip(null);
     setFailure("recovery");
+    setHistoricalRecovery(true);
     setError("The account copy is open. Your separate device edits remain preserved until you review or discard them.");
     setSaveState("error");
     return true;
@@ -355,6 +369,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     error,
     failure,
     hasPendingSaves,
+    historicalRecovery,
     isPending: (key: string) => Boolean(pendingKeys[key]),
     mutateTrip,
     openConflictCloudCopy,

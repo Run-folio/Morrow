@@ -134,6 +134,10 @@
   border-radius: 0 0 var(--morrovia-radius) var(--morrovia-radius);
 }
 
+.featuredRecoveryNotice {
+  align-self: start;
+}
+
 .currentFacts,
 .tripFacts {
   display: flex;
@@ -374,6 +378,28 @@
   font-style: italic;
 }
 .readinessLine svg { width: 12px; height: 12px; }
+.tripRecoveryNotice {
+  display: grid;
+  gap: 5px;
+  margin-top: 13px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-warning) 32%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  padding: 11px 12px;
+  background: color-mix(in srgb, var(--morrovia-warning) 6%, var(--morrovia-paper));
+}
+.tripRecoveryNotice strong {
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-control);
+  overflow-wrap: anywhere;
+}
+.tripRecoveryNotice span {
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+.tripRecoveryNotice a {
+  width: max-content;
+  margin-top: 3px;
+}
 .tripCardActions { position: relative; z-index: 5; justify-content: space-between; gap: 8px; margin-top: 13px; }
 .openAction { padding-left: 0 !important; }
 

@@ -188,7 +188,7 @@ test("long canonical and provider content stays inside the timeline and planning
   assert.match(styles, /\.discoveryCopy > p \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryActions button \{ min-height: 40px/);
   assert.match(stories, /Taipei 101 \(Chinese: 台北101; pinyin: Táiběi Yīlíngyī/);
-  for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentMobile430", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680"]) {
+  for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentMobile430", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680", "DetailRailLongProviderTitle", "SelectedPlannedItemDesktop"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
 });
