@@ -9,6 +9,7 @@ import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type Itinerar
 import type { TripInterest } from "./trip-interest.ts";
 import { discoveryVisitorRelevance } from "./discovery-quality.ts";
 import { activityDurationLabel as faithfulActivityDurationLabel } from "./itinerary-schedule-awareness.ts";
+import { canonicalPlaceDuplicate, normalizeCanonicalPlaceText } from "./canonical-place-identity.ts";
 import {
   discoveryCategories,
   discoveryCategoryLabels,
@@ -244,6 +245,9 @@ export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPl
     providerUrl: place.mapsUrl,
     rating: place.rating,
     reviewCount: place.reviewCount,
+    qualityScore: place.rating !== undefined
+      ? Math.round(place.rating * 2 + Math.min(5, Math.log10((place.reviewCount ?? 0) + 1)))
+      : undefined,
     price: place.priceLevel ? place.priceLevel.replace(/^PRICE_LEVEL_/, "").replaceAll("_", " ").toLocaleLowerCase() : undefined,
     idea,
   };
@@ -339,6 +343,25 @@ function sameProviderProduct(left: ExploreResult, right: ExploreResult) {
     && left.providerProductId === right.providerProductId;
 }
 
+function sameCanonicalVenue(left: ExploreResult, right: ExploreResult) {
+  if (left.stopId !== right.stopId) return false;
+  return canonicalPlaceDuplicate({
+    provider: left.provider,
+    sourceId: left.sourceId,
+    name: left.title,
+    address: left.location,
+    category: `${left.kind} ${left.category}`,
+    coordinates: left.coordinates,
+  }, {
+    provider: right.provider,
+    sourceId: right.sourceId,
+    name: right.title,
+    address: right.location,
+    category: `${right.kind} ${right.category}`,
+    coordinates: right.coordinates,
+  });
+}
+
 function mergeExploreResult(primary: ExploreResult, incoming: ExploreResult) {
   const primaryOrganicOwned = primary.idea.source !== "live-provider-inventory";
   const incomingOrganicOwned = incoming.idea.source !== "live-provider-inventory";
@@ -389,6 +412,7 @@ export function dedupeExploreResults(results: readonly ExploreResult[]) {
   for (const result of results) {
     const duplicateIndex = deduped.findIndex((candidate) => candidate.identity === result.identity
       || sameProviderProduct(candidate, result)
+      || sameCanonicalVenue(candidate, result)
       || obviousCrossLaneDuplicate(candidate, result));
     if (duplicateIndex === -1) {
       deduped.push(result);
@@ -476,7 +500,7 @@ export function filterExploreResults(
   destinationId: string,
   category: ExploreCategory,
 ) {
-  const scoped = results.filter((result) => exploreResultEligible(trip, result)
+  const scoped = dedupeExploreResults(results).filter((result) => exploreResultEligible(trip, result)
     && (destinationId === "all" || result.stopId === destinationId)
     // Nearby settlements remain useful in the dedicated Day trips view, but
     // a bare city/town record is not a visitor attraction for the first-page
@@ -501,15 +525,105 @@ export function filterExploreResults(
       qualityScore: result.qualityScore,
       kind: result.kind,
     });
-    return { result, index, score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score + relevance.scoreAdjustment };
-  }).sort((left, right) => right.score - left.score || left.index - right.index).map(({ result }) => result);
-  if (category !== "for-you" && category !== "must-see") return ranked;
-  const organic = ranked.filter((result) => result.idea.source !== "live-provider-inventory");
-  const commercial = ranked.filter((result) => result.idea.source === "live-provider-inventory");
-  if (!organic.length || !commercial.length) return ranked;
-  // Keep already rendered organic cards stable when commercial enrichment
-  // arrives later; provider-only inventory appends without reordering them.
-  return [...organic, ...commercial];
+    const distinctivenessAdjustment = category === "for-you" ? exploreNameDistinctivenessAdjustment(trip, result) : 0;
+    return {
+      result,
+      index,
+      score: (result.qualityScore ?? Math.max(0, 12 - index)) + affinity.score + relevance.scoreAdjustment + distinctivenessAdjustment,
+    };
+  }).sort((left, right) => right.score - left.score || left.index - right.index);
+  const rankedResults = ranked.map(({ result }) => result);
+  if (category === "for-you") return diversifyForYouResults(rankedResults);
+  if (category !== "must-see") return rankedResults;
+  const organic = rankedResults.filter((result) => result.idea.source !== "live-provider-inventory");
+  const commercial = rankedResults.filter((result) => result.idea.source === "live-provider-inventory");
+  return organic.length && commercial.length ? [...organic, ...commercial] : rankedResults;
+}
+
+const genericVenueType = /^(?:restaurant|cafe|coffee shop|bar|pub|eatery|diner)$/;
+
+function exploreNameDistinctivenessAdjustment(trip: EasyTTrip, result: ExploreResult) {
+  if (result.kind !== "restaurant") return 0;
+  const title = normalizeCanonicalPlaceText(result.title);
+  const stop = trip.stops.find((candidate) => candidate.id === result.stopId);
+  const destination = normalizeCanonicalPlaceText(stop?.name);
+  if (genericVenueType.test(title)) return -4;
+  if (!destination || !title.startsWith(`${destination} `)) return 0;
+  const withoutDestination = title.slice(destination.length + 1);
+  const words = withoutDestination.split(" ");
+  return words.length <= 3 && /(?:restaurant|cafe|bar|pub|eatery|diner)$/.test(withoutDestination) ? -4 : 0;
+}
+
+function exploreDiversityCategory(result: ExploreResult) {
+  const evidence = normalizeCanonicalPlaceText(`${result.category} ${result.tags.join(" ")}`);
+  if (/\bday trips?\b/.test(evidence)) return "day-trip";
+  if (result.kind === "tour") return "tour";
+  if (/\bmuseum\b/.test(evidence)) return "museum";
+  if (/\b(?:neighbourhood|neighborhood|quarter)\b/.test(evidence)) return "neighbourhood";
+  if (/\bmarket\b/.test(evidence)) return "market";
+  if (/\b(?:park|garden|viewpoint|nature|outdoors|beach|hike|trail)\b/.test(evidence)) return "outdoors";
+  if (/\b(?:historic|archaeological|heritage)\b/.test(evidence)) return "historic-site";
+  if (/\b(?:landmark|monument|cathedral|church|temple|palace|castle)\b/.test(evidence)) return "landmark";
+  if (/\b(?:culture|gallery|theatre|theater)\b/.test(evidence)) return "culture";
+  if (result.kind === "restaurant") return "food-drink";
+  return "attraction";
+}
+
+function exploreResultFamily(result: ExploreResult) {
+  return `${exploreDiversityCategory(result)}:${normalizeCanonicalPlaceText(result.title)}`;
+}
+
+function interleaveResultFamilies(results: readonly ExploreResult[]) {
+  const families = new Map<string, ExploreResult[]>();
+  for (const result of results) {
+    const family = exploreResultFamily(result);
+    const queue = families.get(family) ?? [];
+    queue.push(result);
+    families.set(family, queue);
+  }
+  const interleaved: ExploreResult[] = [];
+  while (interleaved.length < results.length) {
+    for (const queue of families.values()) {
+      const result = queue.shift();
+      if (result) interleaved.push(result);
+    }
+  }
+  return interleaved;
+}
+
+/**
+ * Diversifies only the mixed For you leading page. Category and normalized
+ * name-family queues preserve ranked order internally; unselected results are
+ * appended in their original rank order so the remainder is stable.
+ */
+function diversifyForYouResults(ranked: readonly ExploreResult[], leadingLimit = 12) {
+  if (ranked.length < 2) return [...ranked];
+  const categoryQueues = new Map<string, ExploreResult[]>();
+  for (const result of ranked) {
+    const category = exploreDiversityCategory(result);
+    const queue = categoryQueues.get(category) ?? [];
+    queue.push(result);
+    categoryQueues.set(category, queue);
+  }
+  if (categoryQueues.size < 2) return [...ranked];
+  for (const [category, queue] of categoryQueues) categoryQueues.set(category, interleaveResultFamilies(queue));
+
+  const leading: ExploreResult[] = [];
+  const selected = new Set<ExploreResult>();
+  const target = Math.min(leadingLimit, ranked.length);
+  while (leading.length < target) {
+    let selectedThisRound = 0;
+    for (const queue of categoryQueues.values()) {
+      const result = queue.shift();
+      if (!result) continue;
+      leading.push(result);
+      selected.add(result);
+      selectedThisRound += 1;
+      if (leading.length === target) break;
+    }
+    if (!selectedThisRound) break;
+  }
+  return [...leading, ...ranked.filter((result) => !selected.has(result))];
 }
 
 export function exploreScheduleTarget(trip: EasyTTrip, result: ExploreResult, requestedDayNumber?: number | null) {

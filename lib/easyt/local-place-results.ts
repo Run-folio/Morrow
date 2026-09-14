@@ -1,3 +1,5 @@
+import { canonicalPlaceDuplicate } from "./canonical-place-identity.ts";
+
 export type LocalPlaceResult = {
   id: string;
   name: string;
@@ -11,10 +13,6 @@ export type LocalPlaceResult = {
   priceLevel?: string;
   image?: string;
 };
-
-function normalized(value: string) {
-  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
 
 function malformedName(name: string) {
   const value = name.trim();
@@ -36,14 +34,21 @@ function identityStrength(place: LocalPlaceResult) {
 }
 
 function duplicatePlace(left: LocalPlaceResult, right: LocalPlaceResult) {
-  if (left.provider === right.provider && left.id === right.id) return true;
-  if (normalized(left.name) !== normalized(right.name)) return false;
-  const [leftLongitude, leftLatitude] = left.coordinates;
-  const [rightLongitude, rightLatitude] = right.coordinates;
-  // At restaurant-search scale, this is deliberately conservative: exact
-  // normalized names still need coordinates within roughly one city block.
-  return Math.abs(leftLatitude - rightLatitude) <= 0.001
-    && Math.abs(leftLongitude - rightLongitude) <= 0.001;
+  return canonicalPlaceDuplicate({
+    provider: left.provider,
+    sourceId: left.id,
+    name: left.name,
+    address: left.address,
+    category: left.category,
+    coordinates: left.coordinates,
+  }, {
+    provider: right.provider,
+    sourceId: right.id,
+    name: right.name,
+    address: right.address,
+    category: right.category,
+    coordinates: right.coordinates,
+  });
 }
 
 /**

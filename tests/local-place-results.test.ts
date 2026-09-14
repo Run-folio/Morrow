@@ -35,6 +35,23 @@ test("similar restaurant names and repeated provider identities retain conservat
   assert.deepEqual(results.map((result) => result.id), ["osm-1", "osm-2", "osm-3"]);
 });
 
+test("nearby same-name records collapse only with corroborating venue evidence", () => {
+  const results = qualityControlledLocalPlaces([
+    place({ id: "osm-node", coordinates: [139.785, 35.644], address: "6 Chome-6-1 Toyosu, Tokyo" }),
+    place({ id: "google-place", provider: "google-places", coordinates: [139.78545, 35.644], address: "6 Chome-6-1 Toyosu, Tokyo", rating: 4.6 }),
+  ]);
+  assert.equal(results.length, 1);
+  assert.equal(results[0]?.id, "google-place");
+});
+
+test("same-name branches at meaningfully different locations remain distinct", () => {
+  const results = qualityControlledLocalPlaces([
+    place({ id: "branch-east", address: "East Market, Tokyo" }),
+    place({ id: "branch-west", address: "West Market, Tokyo", coordinates: [139.805, 35.644] }),
+  ]);
+  assert.deepEqual(results.map((result) => result.id), ["branch-east", "branch-west"]);
+});
+
 test("malformed and generic unnamed candidates are rejected without inventing metadata", () => {
   const results = qualityControlledLocalPlaces([
     place({ id: "blank", name: "  " }),

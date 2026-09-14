@@ -112,6 +112,17 @@ test("exact stable place and provider identities deduplicate without fuzzy title
   assert.deepEqual(dedupeExploreResults([first, exact, uncertain]).map((item) => item.sourceId), [place.id, "authored-lycabettus"]);
 });
 
+test("canonical duplicate venues collapse across sources while distant same-name branches remain", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const mapped = exploreResultForPlace(stop, { ...place, id: "mapped-taverna", title: "Taverna Athena", area: "12 Market Street, Athens", type: "Restaurant", tags: ["Food"], coordinates: [23.72, 37.98] });
+  const localDuplicate = exploreResultForLocalPlace(stop, { id: "google-taverna", name: "Taverna Athena", address: "12 Market Street, Athens", category: "restaurant", coordinates: [23.7205, 37.98], mapsUrl: "https://maps.example/taverna", provider: "google-places" });
+  const distantBranch = exploreResultForLocalPlace(stop, { id: "google-taverna-port", name: "Taverna Athena", address: "Port Road, Athens", category: "restaurant", coordinates: [23.75, 37.98], mapsUrl: "https://maps.example/taverna-port", provider: "google-places" });
+  const results = dedupeExploreResults([mapped, localDuplicate, distantBranch]);
+  assert.equal(results.length, 2);
+  assert.equal(results.some((result) => result.sourceId === "google-taverna-port"), true);
+});
+
 test("restaurant results use the canonical itinerary idea model and remain unscheduled when saved", () => {
   const base = trip();
   const result = exploreResultForLocalPlace(base.stops[0]!, {
@@ -348,7 +359,74 @@ test("For you keeps organic results and mixes commercial inventory without repla
   const mixed = filterExploreResults(base, [...commercial, ...organic], "all", "for-you");
   assert.equal(mixed.filter((result) => !result.providerProductId).length, 3);
   assert.equal(mixed.filter((result) => result.providerProductId).length, 2);
-  assert.equal(mixed.slice(0, 2).every((result) => !result.providerProductId), true);
+  assert.equal(mixed.slice(0, 3).some((result) => result.providerProductId), true);
+});
+
+test("For you deterministically interleaves categories and repeated name families", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const restaurants = Array.from({ length: 15 }, (_, index) => exploreResultForLocalPlace(stop, {
+    id: `restaurant-${index}`,
+    name: index < 12 ? "Athens Fish Restaurant" : `Distinct taverna ${index}`,
+    address: `${index + 1} Different Street, Athens`,
+    category: "restaurant",
+    coordinates: [23.72 + index * 0.002, 37.98],
+    mapsUrl: `https://maps.example/restaurant-${index}`,
+    provider: "openstreetmap",
+  }));
+  const alternatives = [
+    exploreResultForPlace(stop, { ...place, id: "museum-choice", title: "Acropolis Museum", type: "Museum", tags: ["Culture"], qualityScore: 18 }),
+    exploreResultForPlace(stop, { ...place, id: "museum-choice-2", title: "Benaki Museum", type: "Museum", tags: ["Culture"], qualityScore: 14 }),
+    exploreResultForPlace(stop, { ...place, id: "market-choice", title: "Central Market", type: "Market", tags: ["Food"], qualityScore: 17 }),
+    exploreResultForPlace(stop, { ...place, id: "market-choice-2", title: "Monastiraki Market", type: "Market", tags: ["Food"], qualityScore: 13 }),
+    exploreResultForPlace(stop, { ...place, id: "park-choice", title: "National Garden", type: "Park", tags: ["Nature"], qualityScore: 16 }),
+    exploreResultForPlace(stop, { ...place, id: "park-choice-2", title: "Philopappos Hill", type: "Viewpoint", tags: ["Nature"], qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "historic-choice", title: "Ancient Agora", type: "Historic site", tags: ["Culture"], qualityScore: 15 }),
+    exploreResultForPlace(stop, { ...place, id: "historic-choice-2", title: "Roman Agora", type: "Historic site", tags: ["Culture"], qualityScore: 11 }),
+  ];
+  const input = [...restaurants, ...alternatives];
+  const first = filterExploreResults(base, input, "all", "for-you");
+  const second = filterExploreResults(base, input, "all", "for-you");
+  const leading = first.slice(0, 12);
+  assert.deepEqual(second.map((result) => result.identity), first.map((result) => result.identity));
+  assert.equal(leading.filter((result) => result.category.toLocaleLowerCase() === "restaurant").length <= 4, true);
+  assert.equal(new Set(leading.filter((result) => result.kind !== "restaurant").map((result) => result.category)).size, 4);
+  assert.equal(leading.filter((result) => result.title === "Athens Fish Restaurant").length <= 2, true);
+  const remainingFamilyIndexes = first.slice(12)
+    .filter((result) => result.title === "Athens Fish Restaurant")
+    .map((result) => input.indexOf(result));
+  assert.deepEqual(remainingFamilyIndexes, [...remainingFamilyIndexes].sort((left, right) => left - right), "the unselected family remainder keeps base rank order");
+});
+
+test("Food retains distinct restaurants and provider quality ordering without mixed-feed diversification", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const restaurants = Array.from({ length: 15 }, (_, index) => exploreResultForLocalPlace(stop, {
+    id: `food-${index}`,
+    name: index === 14 ? "Distinctive provider favourite" : `Athens restaurant ${index + 1}`,
+    address: `${index + 1} Food Street, Athens`,
+    category: "restaurant",
+    coordinates: [23.72 + index * 0.002, 37.98],
+    mapsUrl: `https://maps.example/food-${index}`,
+    provider: "openstreetmap",
+    ...(index === 14 ? { rating: 4.9, reviewCount: 2_000 } : {}),
+  }));
+  const food = filterExploreResults(base, restaurants, "all", "food");
+  assert.equal(food.length, 15);
+  assert.equal(food[0]?.title, "Distinctive provider favourite");
+  assert.deepEqual(food.slice(1).map((result) => result.sourceId), restaurants.slice(0, 14).map((result) => result.sourceId));
+  assert.equal(filterExploreResults(base, restaurants, "all", "for-you")[0]?.title, "Distinctive provider favourite");
+});
+
+test("legitimate Seoul, Kyoto and Amsterdam visitor places survive the shared quality boundary", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const controls = [
+    exploreResultForPlace(stop, { ...place, id: "seoul-palace", title: "Gyeongbokgung Palace", type: "Landmark", tags: ["Culture"], qualityScore: 18 }),
+    exploreResultForPlace(stop, { ...place, id: "kyoto-market", title: "Nishiki Market", type: "Market", tags: ["Food"], qualityScore: 17 }),
+    exploreResultForPlace(stop, { ...place, id: "amsterdam-museum", title: "Rijksmuseum", type: "Museum", tags: ["Culture"], qualityScore: 19 }),
+  ];
+  assert.equal(filterExploreResults(base, controls, "all", "for-you").length, controls.length);
 });
 
 test("commercial metadata remains absent when the provider does not source it", () => {
