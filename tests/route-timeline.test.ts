@@ -67,19 +67,25 @@ test("Map and Explore share selection identity semantics", () => {
   assert.equal(routeTimelineScopeId("timeline-trip", "naxos"), "naxos");
 });
 
-test("Map and Explore consume the same route model and scrolling component while actions remain local", () => {
+test("Map, Explore and Stay consume one route model and shared scrolling track while actions remain local", () => {
   const model = readFileSync(new URL("../lib/easyt/route-timeline.ts", import.meta.url), "utf8");
   const strip = readFileSync(new URL("../components/journey-planner-strip.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
   const explore = readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
+  const stay = readFileSync(new URL("../components/easyt/trip-stay-workspace.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../components/journey-planner-strip.module.css", import.meta.url), "utf8");
   assert.match(model, /routeTimelineStopsForTrip/);
   assert.match(map, /routeTimelineStopsForTrip\(customTrip/);
   assert.match(explore, /routeTimelineStopsForTrip\(workingTrip/);
-  assert.match(strip, /export function JourneyStopNavigation/);
+  assert.match(strip, /export function JourneyRouteStopTrack/);
   assert.match(map, /<JourneyPlannerStrip/);
-  assert.match(explore, /<JourneyStopNavigation/);
+  assert.match(strip, /<JourneyRouteStopTrack/);
+  assert.match(explore, /<JourneyRouteStopTrack/);
+  assert.match(stay, /<JourneyRouteStopTrack/);
   assert.match(styles, /overflow-x:\s*auto/);
-  assert.match(explore, />Open map<\/EasyTLinkButton>/);
+  assert.match(explore, /presentation="integrated"/);
+  assert.match(stay, /presentation="integrated"/);
+  assert.doesNotMatch(explore, />Open map<\/EasyTLinkButton>/);
   assert.doesNotMatch(explore, />Add stop<|>Whole route<|Fullscreen map/);
+  assert.doesNotMatch(stay, />Add stop<|>Whole route<|Fullscreen map|name: "All trip"/);
 });

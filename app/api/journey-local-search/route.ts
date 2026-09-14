@@ -31,6 +31,7 @@ type LocalPlace = {
   operational?: true;
   availability: "available" | "check";
   provider: "google-places" | "openstreetmap";
+  providerProductId?: string;
   rating?: number;
   reviewCount?: number;
   priceLevel?: string;
@@ -180,6 +181,7 @@ async function googleOperationalPlaces(kind: "restaurant" | "stay", country: str
         operational: operationalPlaceStatus({ provider: "google-places", businessStatus: place.businessStatus }),
         availability: "check" as const,
         provider: "google-places" as const,
+        providerProductId: place.id,
         rating: place.rating,
         reviewCount: place.userRatingCount,
         priceLevel: place.priceLevel && place.priceLevel !== "PRICE_LEVEL_UNSPECIFIED" ? place.priceLevel : undefined,

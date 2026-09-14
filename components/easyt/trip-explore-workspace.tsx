@@ -6,7 +6,6 @@ import {
   Check,
   Clock3,
   Compass,
-  Map as MapIcon,
   MapPin,
   Mountain,
   Sparkles,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
-import { JourneyStopNavigation } from "@/components/journey-planner-strip";
+import { JourneyRouteStopTrack } from "@/components/journey-planner-strip";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import {
   exploreCategories,
@@ -329,12 +328,6 @@ export default function TripExploreWorkspace({
   };
 
   const destinationLabel = activeDestination?.label ?? "your trip";
-  const pageMapHref = mapWorkspaceHref(
-    workingTrip.id,
-    activeDestination?.id ?? opportunity?.stop.id ?? destinations[0]?.id,
-    "see",
-    opportunity?.day.dayNumber,
-  );
   const relevantStatuses = [
     ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants ? [organicStatus] : []),
     ...(activeSourcePlan.tours ? [commercialStatus] : []),
@@ -346,11 +339,12 @@ export default function TripExploreWorkspace({
       {notice ? <div className={styles.notice} role="status"><Check aria-hidden="true" />{notice}<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton></div> : null}
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
 
-      <div className={styles.filtersRow}>
-        <div className={styles.stopNavigation}>
-          <JourneyStopNavigation
+      <div className={styles.stopNavigation}>
+          <JourneyRouteStopTrack
             stops={navigationStops}
             ariaLabel="Explore by trip stop"
+            presentation="integrated"
+            surface="standalone"
             onSelectStop={(next) => {
               const nextScopeId = routeTimelineScopeId(workingTrip.id, next);
               setDestinationId(nextScopeId);
@@ -358,8 +352,6 @@ export default function TripExploreWorkspace({
               trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: nextScopeId === "all" ? "all" : "stop" });
             }}
           />
-        </div>
-        <EasyTLinkButton href={pageMapHref} icon={MapIcon} variant="secondary">Open map</EasyTLinkButton>
       </div>
 
       <div className={styles.categories} role="group" aria-label="Explore categories">

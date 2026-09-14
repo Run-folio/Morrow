@@ -190,6 +190,7 @@ export function JourneyPlannerMap({
     });
   }, [legs, stops]);
   const overviewRouteKey = stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? "unmapped"}`).join("|");
+  const previewResultKey = mapResults.map((result) => `${result.selectionId}:${result.coordinates.join(",")}`).join("|");
   const overviewPaddingKey = overviewPadding
     ? `${overviewPadding.top}:${overviewPadding.right}:${overviewPadding.bottom}:${overviewPadding.left}`
     : "default";
@@ -215,14 +216,17 @@ export function JourneyPlannerMap({
     }
     if (!mapRef.current) {
       maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-      const firstStop = stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
+      const firstStop = selectedResult?.coordinates
+        ?? mapResults[0]?.coordinates
+        ?? stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
         ?? stops.find((stop) => stop.coordinates)?.coordinates
+        ?? focusCoordinates
         ?? [-90.5069, 14.6349];
       const map = new maplibregl.Map({
         container: containerRef.current,
         style: morroviaMapStyle,
         center: firstStop,
-        zoom: 9,
+        zoom: previewMode && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
         interactive: !previewMode,
       });
       // North-up is fixed in this workspace, so a compass beside the route-fit
@@ -281,6 +285,25 @@ export function JourneyPlannerMap({
       }, 0);
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !previewMode || !mapResults.length) return;
+    const fitPreviewResults = () => {
+      if (mapResults.length === 1) {
+        focusMapCamera(map as unknown as MapCamera, { center: mapResults[0]!.coordinates, zoom: focusZoom ?? 14, duration: 0 });
+        return;
+      }
+      const bounds = mapResults.slice(1).reduce(
+        (result, place) => result.extend(place.coordinates),
+        new maplibregl.LngLatBounds(mapResults[0]!.coordinates, mapResults[0]!.coordinates),
+      );
+      fitMapCamera(map as unknown as MapCamera, bounds, { padding: 28, maxZoom: focusZoom ?? 14 }, true);
+    };
+    if (map.loaded()) fitPreviewResults();
+    else map.once("load", fitPreviewResults);
+    return () => { map.off("load", fitPreviewResults); };
+  }, [focusZoom, mapResults, previewMode, previewResultKey]);
 
   useEffect(() => {
     const container = containerRef.current;

@@ -24,8 +24,8 @@ test("Explore is a canonical TripShell workspace without a second navigation own
 });
 
 test("Map and Explore reuse one canonical route model and controlled scrolling presentation", () => {
-  assert.match(routeStrip, /export function JourneyStopNavigation/);
-  assert.match(workspace, /<JourneyStopNavigation/);
+  assert.match(routeStrip, /export function JourneyRouteStopTrack/);
+  assert.match(workspace, /<JourneyRouteStopTrack/);
   assert.match(workspace, /routeTimelineStopsForTrip\(workingTrip/);
   assert.match(mapWorkspace, /routeTimelineStopsForTrip\(customTrip/);
   assert.match(routeTimeline, /name: "All trip",[\s\S]*dayLabel: `From \$\{origin\}`/);
@@ -35,6 +35,7 @@ test("Map and Explore reuse one canonical route model and controlled scrolling p
   assert.doesNotMatch(workspace, /map camera|selectedMap|persisted route-selection/);
   assert.match(routeStrip, /active\.scrollIntoView\?\./);
   assert.match(routeStripStyles, /\.stopTrack\{[\s\S]*overflow-x:auto/);
+  assert.doesNotMatch(workspace, />Open map<\/EasyTLinkButton>/);
 });
 
 test("desktop uses a results workspace and contextual right rail, not a centred modal", () => {

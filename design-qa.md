@@ -1,3 +1,21 @@
+# Stay consistency QA
+
+## 2026-09-14 simplification, shared route track, imagery and mini-map
+
+- **Source evidence:** the founder Stay, Map, Explore, route-track and mini-map screenshots supplied with this task. The Stay comparison uses `codex-clipboard-dc727574-9cc0-4234-90eb-49fb280d4c32.png` as the primary before-state.
+- **Browser evidence:** production-built Storybook stories at 320, 390, 430, 768, 1024 and 1440px; the combined source/build review image is `/private/tmp/morrovia-stay-source-build-contact-sheet.png`.
+- **Hierarchy:** the normal useful-results state now moves directly from the shared stop track to `Where to stay in Tokyo`, then the two-card decision grid. The former eyebrow, subtitle, shortlist label, count, ready-state prose and empty decision explainer are absent.
+- **Visual composition:** property cards are dominant, image/no-image geometry is stable, the chosen/selected border does not shift layout, and the desktop rail preserves both the shortlist map and shared Recommendation Detail. At compact widths the rail follows the cards instead of squeezing them.
+- **Route consistency:** Map, Explore and Stay render `JourneyRouteStopTrack`; Map retains its separate Whole route, Fullscreen and More actions, Explore retains genuine All-trip semantics without a duplicate Open map action, and Stay remains overnight-stop-only.
+- **Interaction/accessibility:** in-app browser checks confirmed Enter on a card opens the exact property, a map-marker click selects the exact matching card/detail, `Choose stay` changes the stop-scoped chosen state, and the exact selected property is encoded in the full-map handoff. Controls remain semantic and separately focusable.
+- **Map evidence:** the in-app browser rendered all six exact shortlist marker controls in the single finder-backed mini-map and preserved the map when detail opened. A headless still captured before remote tiles completed, but the interactive in-app pass confirmed the bounded map canvas and marker behavior.
+- **Responsive evidence:** 320px shows one unclipped card column and a horizontally scrollable one-line route track; 390/430 use the same structure; 768 stacks the rail after the cards; 1024/1440 retain the two-card grid and desktop rail. No actionable P0, P1 or P2 mismatch remained after adding an explicit containing block to the mini-map preview.
+- **Provider truth:** Google imagery is exact-Place-ID, progressively fetched through a no-store server proxy with sanitized attribution. OSM/Photon and Booking-only properties retain the intentional no-image state; no generic destination image is used in production.
+
+**final result: passed**
+
+---
+
 # Morrovia Help page QA
 
 ## 2026-08-29 content-composition implementation

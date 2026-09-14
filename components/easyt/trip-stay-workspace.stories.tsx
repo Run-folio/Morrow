@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { JourneyLocalFinderInitialState, JourneyLocalPlace } from "@/lib/easyt/local-place";
 import type { EasyTTrip, PlanItem } from "@/lib/easyt/trip";
+import { selectMappedStayForStop } from "@/lib/easyt/accommodation";
 import TripShell from "./trip-shell";
 import TripStayWorkspace from "./trip-stay-workspace";
 
@@ -83,6 +84,11 @@ const mappedPlaces: JourneyLocalPlace[] = [
   mappedStay("tokyo-guesthouse", "Tokyo Guesthouse", [139.721, 35.69], { provider: "openstreetmap", category: "Guest house" }),
 ];
 
+const imagedPlaces = mappedPlaces.map((place, index) => index < 2 ? {
+  ...place,
+  image: index === 0 ? "/journey/ginza-night.jpg" : "/journey/kanazawa.jpg",
+} : place);
+
 const bookingStay = mappedStay("booking-property-42", "Kadoya Hotel", [139.698, 35.691], {
   address: "Nishi-Shinjuku, Tokyo",
   provider: "booking-demand",
@@ -121,6 +127,13 @@ const partiallyEnriched: JourneyLocalFinderInitialState = { corePlaces: mappedPl
 const rankingComparison: JourneyLocalFinderInitialState = { corePlaces: [strongMapped, ...mappedPlaces.slice(1, 4)], commercialPlaces: [weakBooking], accommodationInventoryStatus: "live" };
 const unavailable: JourneyLocalFinderInitialState = { corePlaces: mappedPlaces, accommodationInventoryStatus: "unavailable" };
 const sparse: JourneyLocalFinderInitialState = { corePlaces: [mappedStay("small-ryokan", "Small Ryokan", [139.7, 35.68], { category: "Ryokan", provider: "openstreetmap" })], accommodationInventoryStatus: "unconfigured" };
+const withImages: JourneyLocalFinderInitialState = { corePlaces: imagedPlaces, accommodationInventoryStatus: "unconfigured" };
+const sameNamePlaces: JourneyLocalFinderInitialState = { corePlaces: [
+  mappedStay("garden-hotel-east", "Garden Hotel", [139.712, 35.684], { address: "Shinjuku East, Tokyo" }),
+  mappedStay("garden-hotel-west", "Garden Hotel", [139.703, 35.69], { address: "Shinjuku West, Tokyo" }),
+], accommodationInventoryStatus: "unconfigured" };
+const chosenTrip = selectMappedStayForStop(trip, "tokyo-first", mappedPlaces[0]!);
+const mismatchTrip = selectMappedStayForStop(trip, "tokyo-first", mappedStay("saved-outside-shortlist", "Tokyo Station Hotel", [139.767, 35.681]));
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trip workspace/Stay",
@@ -151,6 +164,17 @@ export const BookingFailureMappedShortlist: Story = { args: { initialFinderState
 export const NoPropertyImage: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };
 export const SparsePropertyDetail: Story = { args: { initialFinderState: sparse, initialSelectedPlaceId: "small-ryokan" } };
 export const RichPropertyDetail: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" } };
+export const StayWithImages: Story = { args: { initialFinderState: withImages } };
+export const StayWithoutImages: Story = { args: { initialFinderState: sparse } };
+export const ChosenStay: Story = { args: { trip: chosenTrip, initialFinderState: ready, initialSelectedPlaceId: "sakura-house" } };
+export const SavedStayNotInShortlist: Story = { args: { trip: mismatchTrip, initialFinderState: ready } };
+export const SelectedPropertyWithMiniMap: Story = { args: { initialFinderState: ready, initialSelectedPlaceId: "garden-hotel" } };
+export const MultipleSameNameProperties: Story = { args: { initialFinderState: sameNamePlaces, initialSelectedPlaceId: "garden-hotel-west" } };
+export const BookingEnrichedMappedProperty: Story = { args: { initialFinderState: partiallyEnriched, initialSelectedPlaceId: "garden-hotel" } };
+export const BookingOnlyNoImageProperty: Story = { args: { initialFinderState: { corePlaces: [], commercialPlaces: [bookingStay], accommodationInventoryStatus: "live" }, initialSelectedPlaceId: "booking-property-42" } };
 export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Mobile390: Story = { args: { initialFinderState: enriched, initialSelectedPlaceId: "booking-property-42" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const Desktop1440: Story = { args: { initialFinderState: withImages, initialSelectedPlaceId: "sakura-house" }, globals: { viewport: { value: "morrovia1440", isRotated: false } } };

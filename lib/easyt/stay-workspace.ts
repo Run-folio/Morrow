@@ -161,19 +161,15 @@ export function rankedStayShortlist(
 }
 
 export function stayCandidateFit(place: JourneyLocalPlace, context: StayWorkspaceContext) {
-  const facts: string[] = [];
-  if (place.availability === "available" && context.checkIn && context.checkOut) {
-    facts.push(`Available for ${context.dateLabel} in the current provider response.`);
-  }
   if (context.plannedCentroid && context.plannedCoordinates.length >= 2) {
     const distance = mapDistanceKm(context.plannedCentroid, place.coordinates);
-    facts.push(`${distance.toFixed(1)} km straight-line from the centre of ${context.plannedCoordinates.length} mapped plans for this stop.`);
-  } else if (context.searchCoordinates) {
-    const distance = mapDistanceKm(context.searchCoordinates, place.coordinates);
-    facts.push(`${distance.toFixed(1)} km straight-line from the selected stop's mapped reference point.`);
+    return `${distance.toFixed(1)} km from the centre of your mapped plans.`;
   }
-  if (!facts.length) facts.push(`This option belongs to the selected ${context.nights}-night ${context.stop.name} stop. Compare its location on Map before choosing.`);
-  return facts.join(" ");
+  if (context.searchCoordinates) {
+    const distance = mapDistanceKm(context.searchCoordinates, place.coordinates);
+    return `${distance.toFixed(1)} km from this stop.`;
+  }
+  return `Mapped for this ${context.stop.name} stop.`;
 }
 
 export function stayIsSelected(trip: EasyTTrip, context: StayWorkspaceContext, place: JourneyLocalPlace) {

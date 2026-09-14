@@ -209,11 +209,11 @@ test("saving a stay is stop-scoped and never schedules it as a daypart activity"
   assert.equal(stayBookingForStop(removed, removed.stops[2]!)?.title, "Return Hotel");
 });
 
-test("fit copy exposes straight-line geometry without inventing neighbourhood or travel-time claims", () => {
+test("fit copy keeps distance truthful and concise without inventing neighbourhood or travel-time claims", () => {
   const context = stayWorkspaceContext(tripFixture(), "tokyo-first")!;
   const fit = stayCandidateFit(mappedHotel(), context);
-  assert.match(fit, /km straight-line/);
-  assert.match(fit, /2 mapped plans/);
+  assert.match(fit, /km from the centre of your mapped plans/);
+  assert.doesNotMatch(fit, /straight-line|selected stop's mapped reference point/);
   assert.doesNotMatch(fit, /minutes|near your hotel|easy transport|perfect|nightlife|quiet|safe/i);
 });
 
@@ -222,7 +222,7 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   const styles = readFileSync(new URL("../components/easyt/trip-stay-workspace.module.css", import.meta.url), "utf8");
   const finder = readFileSync(new URL("../components/journey-local-finder.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
-  assert.match(workspace, /<JourneyStopNavigation/);
+  assert.match(workspace, /<JourneyRouteStopTrack/);
   assert.match(workspace, /<JourneyLocalFinder/);
   assert.match(workspace, /recommendationDetailForStayResult/);
   assert.match(workspace, /<ItineraryItemDetail/);
@@ -231,7 +231,7 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /Check independently on Trip\.com/);
   assert.match(workspace, /may differ from the Booking\.com live information above/);
   assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
-  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.railSelected \{[\s\S]*position: static;[\s\S]*max-height: none;[\s\S]*overflow: visible;/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.rail \{ position: static; max-height: none; overflow: visible;/);
   assert.doesNotMatch(workspace, /useTripMutationPersistence|OpenAI|LLM|Best Value|More comfortable/);
   assert.match(workspace, /key=\{context\.key\}/);
   assert.match(finder, /controller\.abort\(\)/);
@@ -248,8 +248,11 @@ test("Stay stories cover the required evidence, provider and compact viewport ma
     "TokyoThreeNightStay", "RepeatedTokyoStay", "StrongAreaEvidence", "NoNeighbourhoodFallback",
     "SixOptionShortlist", "MappedResultsBookingLoading", "BookingEnriched", "PartiallyEnrichedShortlist",
     "BookingFactsSeparateTripComCta", "RankingComparison", "ProviderUnavailableMappedBaseReady", "BookingFailureMappedShortlist",
-    "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "Mobile320", "Mobile390", "Mobile430",
+    "NoPropertyImage", "SparsePropertyDetail", "RichPropertyDetail", "StayWithImages", "StayWithoutImages",
+    "ChosenStay", "SavedStayNotInShortlist", "SelectedPropertyWithMiniMap", "MultipleSameNameProperties",
+    "BookingEnrichedMappedProperty", "BookingOnlyNoImageProperty", "Mobile320", "Mobile390", "Mobile430",
+    "Tablet768", "Desktop1024", "Desktop1440",
   ]) assert.match(stories, new RegExp(`export const ${story}`));
-  for (const viewport of ["morrovia320", "morrovia390", "morrovia430"]) assert.match(stories, new RegExp(viewport));
+  for (const viewport of ["morrovia320", "morrovia390", "morrovia430", "morrovia768", "morrovia1024", "morrovia1440"]) assert.match(stories, new RegExp(viewport));
   assert.doesNotMatch(stories, /https:\/\/images\.unsplash|generic Tokyo image/i);
 });

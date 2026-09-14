@@ -10,16 +10,20 @@ import styles from "./journey-planner-strip.module.css";
 
 export type JourneyPlannerStripStop = RouteTimelineStop;
 
-export function JourneyStopNavigation({
+export function JourneyRouteStopTrack({
   stops,
   onSelectStop,
   ariaLabel = "Trip stops",
   trailing,
+  presentation = "default",
+  surface = "embedded",
 }: {
   stops: JourneyPlannerStripStop[];
   onSelectStop: (id: string) => void;
   ariaLabel?: string;
   trailing?: ReactNode;
+  presentation?: "default" | "integrated";
+  surface?: "embedded" | "standalone";
 }) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
   const activeId = stops.find((stop) => stop.active)?.id;
@@ -31,7 +35,12 @@ export function JourneyStopNavigation({
     return () => window.cancelAnimationFrame(frame);
   }, [activeId]);
 
-  return <nav className={styles.stopTrack} aria-label={ariaLabel} data-route-stop-navigation>
+  return <nav
+    className={`${styles.stopTrack} ${presentation === "integrated" ? styles.stopTrackIntegrated : ""} ${surface === "standalone" ? styles.stopTrackStandalone : ""}`}
+    aria-label={ariaLabel}
+    data-route-stop-navigation
+    data-route-track-presentation={presentation}
+  >
     {stops.map((stop, index) => (
       <div className={styles.stopGroup} key={stop.id}>
         <button
@@ -55,6 +64,9 @@ export function JourneyStopNavigation({
     {trailing}
   </nav>;
 }
+
+/** @deprecated Use JourneyRouteStopTrack for new workspace route timelines. */
+export const JourneyStopNavigation = JourneyRouteStopTrack;
 
 export function JourneyPlannerStrip({
   summary,
@@ -96,9 +108,10 @@ export function JourneyPlannerStrip({
         <span>{summary}</span>
       </div> : null}
 
-      <JourneyStopNavigation
+      <JourneyRouteStopTrack
         stops={stops}
         onSelectStop={onSelectStop}
+        presentation={presentation === "integrated" ? "integrated" : "default"}
         trailing={<Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>}
       />
 
