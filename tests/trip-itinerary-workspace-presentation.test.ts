@@ -15,7 +15,7 @@ const refinement = readFileSync(new URL("../components/journey-itinerary-refinem
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
 test("the itinerary redesign stays below TripShell and composes the three workspace regions", () => {
-  assert.match(itinerary, /className=\{styles\.rail\}/);
+  assert.match(itinerary, /className=\{`\$\{styles\.rail\}/);
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
   assert.match(itinerary, /styles\.contextRail/);
   assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
@@ -32,29 +32,28 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /const mutation = shellMutation \?\? localMutation/);
 });
 
-test("day header keeps the core actions and removes the More and Luna presentation", () => {
-  const actionStart = itinerary.indexOf("className={styles.dayActionRegion}");
-  const actionEnd = itinerary.indexOf("mutation.saveState === \"error\"", actionStart);
-  const actions = itinerary.slice(actionStart, actionEnd);
-  assert.ok(actionStart > -1 && actionEnd > actionStart);
-  assert.ok(actions.indexOf("copy.findIdeas") < actions.indexOf("copy.addNote"));
-  assert.doesNotMatch(actions, />More<\/EasyTButton>|copy\.askMorrovia|role="menu"/);
+test("day header keeps only canonical day context and navigation", () => {
+  const headerStart = itinerary.indexOf("className={styles.dayHeader}");
+  const headerEnd = itinerary.indexOf("<DayNavigation", headerStart);
+  const header = itinerary.slice(headerStart, headerEnd);
+  assert.ok(headerStart > -1 && headerEnd > headerStart);
+  assert.match(header, /DAY \{pad\(active\.dayNumber\)\}/);
+  assert.match(header, /displayDayDate\(active\.date, language\)/);
+  assert.match(header, /stop\?\.name \?\? active\.title/);
+  assert.match(header, /className=\{styles\.dayRole\}>\{active\.title\}/);
+  assert.doesNotMatch(header, /active\.reason|dayCount|copy\.items/);
+  assert.doesNotMatch(itinerary, /className=\{styles\.dayActionRegion\}|copy\.findIdeas|noteComposerOpen/);
   assert.doesNotMatch(itinerary, /<EasyTTripCopilot|copy\.aiPlanning|copilotOpen/);
-  assert.doesNotMatch(actions, /copy\.shapeDay/);
-  assert.match(itinerary, /role="dialog" aria-labelledby=\{`\$\{tabIdPrefix\}-note-title`\}/);
   assert.match(itinerary, /noteInputRef\.current\?\.focus\(\)/);
-  assert.match(itinerary, /event\.key === "Escape"/);
-  assert.match(styles, /\.headerNoteComposer[\s\S]*position: absolute/);
-  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.headerNoteComposer \{[\s\S]*position: fixed/);
+  assert.doesNotMatch(styles, /\.headerNoteComposer|\.dayCount|\.dayActionRegion/);
 });
 
-test("Find ideas focuses the existing current-day suggestion surface and becomes a narrow-layout sheet", () => {
-  assert.match(itinerary, /ideasPanelRef\.current\?\.scrollIntoView/);
-  assert.match(itinerary, /ideasPanelRef\.current\?\.focus/);
+test("Explore remains the canonical discovery handoff without a second header action", () => {
   assert.match(itinerary, /id=\{`\$\{tabIdPrefix\}-ideas`\}/);
   assert.match(itinerary, /key=\{`\$\{workingTrip\.id\}-\$\{active\.id\}`\}/);
-  assert.match(styles, /\.ideasSectionFocused/);
-  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.ideasSectionFocused \{[\s\S]*position: fixed/);
+  assert.match(itinerary, /exploreWorkspaceHref\(workingTrip\.id, active\.stopId, active\.dayNumber\)/);
+  assert.match(itinerary, />See more ideas in Explore<\/EasyTLinkButton>/);
+  assert.doesNotMatch(itinerary, /copy\.findIdeas|ideasPanelOpen|ideasSectionFocused/);
 });
 
 test("Map attraction Add schedules the canonical activity instead of only toggling selectedPlaces", () => {
@@ -72,7 +71,7 @@ test("device-copy recovery is calm, explicit, and links to the protected review 
   assert.match(itinerary, />Review device changes<\/EasyTLinkButton>/);
 });
 
-test("the contextual rail renders only canonical map, booking, recommendation, note and saved-place data", () => {
+test("the contextual rail renders canonical map, booking, recommendation, and note data", () => {
   assert.match(itinerary, /<JourneyPlannerMap/);
   assert.match(itinerary, /previewMode/);
   assert.match(itinerary, /itineraryDayMapContext\(workingTrip, active, null\)/);
@@ -85,7 +84,6 @@ test("the contextual rail renders only canonical map, booking, recommendation, n
   assert.match(itinerary, /bookingsForDay\(workingTrip, active, stop\)/);
   assert.match(itinerary, /itineraryDayLegs\(workingTrip, active\)/);
   assert.match(itinerary, /workingTrip\.recommendations\.filter/);
-  assert.match(itinerary, /workingTrip\.brief\.selectedPlaces/);
   assert.match(itinerary, /scheduleItineraryIdea/);
   assert.match(ideas, /addMappedPlaceToTrip/);
   assert.match(itinerary, /addItineraryDayNote\(current, active\.dayNumber, railNoteDraft\)/);
@@ -116,24 +114,24 @@ test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's ma
 test("day navigation is semantically grouped beside day context and precedes planner actions and content", () => {
   const headerIndex = itinerary.indexOf("className={styles.dayHeader}");
   const navigationIndex = itinerary.indexOf("<DayNavigation", headerIndex);
-  const actionsIndex = itinerary.indexOf("className={styles.dayActionRegion}", headerIndex);
   const plannerIndex = itinerary.indexOf("<RichItineraryDayPlanner", headerIndex);
-  assert.ok(headerIndex < navigationIndex && navigationIndex < actionsIndex && actionsIndex < plannerIndex);
+  assert.ok(headerIndex < navigationIndex && navigationIndex < plannerIndex);
   assert.match(itinerary, /<nav className=\{styles\.dayNavigation\} aria-label="Day navigation">/);
   assert.match(itinerary, /disabled=\{index === 0\}/);
   assert.match(itinerary, /disabled=\{index === count - 1\}/);
+  assert.doesNotMatch(itinerary, /Day \{index \+ 1\} of \{count\}/);
 });
 
 test("tablet and mobile layouts collapse instead of squeezing three columns", () => {
   assert.match(styles, /@media \(max-width: 1200px\)[\s\S]*grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.workspace \{ grid-template-columns: minmax\(0, 1fr\); \}/);
   assert.match(styles, /\.dayList \{[\s\S]*overflow-x: auto/);
-  assert.match(styles, /max-height: calc\(100vh - 180px\)/);
+  assert.match(styles, /\.railSavedIdeas \{[\s\S]*max-height: min\(34vh, 300px\)/);
   assert.match(itinerary, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
 });
 
-test("mobile composition keeps day navigation and actions ahead of the plan, with discovery after it", () => {
-  const rail = itinerary.indexOf("className={styles.rail}");
+test("mobile composition keeps navigation and compact saved ideas ahead of the plan", () => {
+  const rail = itinerary.indexOf("ref={itineraryDaysOrientationTarget}");
   const dayPanel = itinerary.indexOf("className={styles.dayPanel}");
   const planner = itinerary.indexOf("<RichItineraryDayPlanner", dayPanel);
   const contextRail = itinerary.indexOf("styles.contextRail");
@@ -149,7 +147,7 @@ test("mobile composition keeps day navigation and actions ahead of the plan, wit
   assert.match(mobile, /\.dayPanel \{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
   assert.match(mobile, /\.dayHeader \{ order: 0; \}/);
   assert.match(mobile, /\.dayNavigation \{ order: 1; \}/);
-  assert.match(mobile, /\.dayActionRegion \{ order: 2; \}/);
+  assert.match(mobile, /\.mobileSavedIdeas \{ order: 2; display: block;/);
   assert.match(mobile, /\.dayPanel > \.details \{ order: 4; \}/);
   assert.match(mobile, /\.sequenceEditor \{ order: 5; \}/);
   assert.match(mobile, /\.rail \{ display: none; \}/);
@@ -183,7 +181,7 @@ test("long canonical and provider content stays inside the timeline and planning
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
   assert.match(styles, /grid-template-columns: minmax\(240px, 270px\) minmax\(0, 1fr\) minmax\(280px, 320px\)/);
   assert.match(styles, /\.rowSelect \{[\s\S]*white-space: normal/);
-  assert.match(styles, /\.logisticsCard,[\s\S]*\.savedIdeas > button \{[\s\S]*white-space: normal/);
+  assert.match(styles, /\.savedIdeaSelect \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.discoveryCopy > strong \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryCopy > p \{[\s\S]*-webkit-line-clamp: 2/);
   assert.match(styles, /\.discoveryActions button \{ min-height: 40px/);
@@ -191,6 +189,45 @@ test("long canonical and provider content stays inside the timeline and planning
   for (const story of ["LongContentMobile320", "LongContentMobile390", "LongContentMobile430", "LongContentTablet768", "LongContentDesktop1024", "LongContentDesktop1440", "LongContentDesktop1680", "DetailRailLongProviderTitle", "SelectedPlannedItemDesktop"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
+});
+
+test("saved ideas have one shared stop-scoped unscheduled owner in the planning rail", () => {
+  const railIndex = itinerary.indexOf("className={styles.rail}");
+  const desktopSavedIndex = itinerary.indexOf("className={styles.railSavedIdeas}", railIndex);
+  const panelIndex = itinerary.indexOf("className={styles.dayPanel}", railIndex);
+  assert.ok(railIndex < desktopSavedIndex && desktopSavedIndex < panelIndex);
+  assert.match(itinerary, /const unscheduledSavedIdeas = \(workingTrip\.brief\.itineraryIdeas \?\? \[\]\)\.filter\(\(idea\) => idea\.stopId === active\.stopId && !idea\.dayId\)/);
+  assert.match(itinerary, /function SavedIdeasSection/);
+  assert.match(itinerary, /if \(!ideas\.length\) return null/);
+  assert.match(itinerary, /className=\{styles\.savedIdeas\} role="list"/);
+  assert.match(itinerary, /aria-pressed=\{selectedIdeaId === idea\.id\}/);
+  assert.match(itinerary, /exploreResultForIdea\(workingTrip, idea\)/);
+  assert.match(itinerary, /<ItineraryItemDetail/);
+  assert.match(itinerary, /onSchedule=\{scheduleIdea\}/);
+  assert.match(itinerary, /removeItineraryIdea\(current, idea\.id\)/);
+  assert.match(styles, /\.railSavedIdeas \{[\s\S]*overflow-y: auto/);
+  assert.match(styles, /\.mobileSavedIdeas \{[\s\S]*display: none/);
+});
+
+test("Notes is the only note-entry owner and stays after the contextual body", () => {
+  const bodyIndex = itinerary.indexOf("className={styles.contextRailBody}");
+  const bodyCloseIndex = itinerary.indexOf("</div>", itinerary.indexOf("See more ideas in Explore", bodyIndex));
+  const notesIndex = itinerary.indexOf(`<summary><span>{copy.notes}</span>`, bodyIndex);
+  assert.ok(bodyIndex < bodyCloseIndex && bodyCloseIndex < notesIndex);
+  assert.equal((itinerary.match(/submitRailNote\(\)/g) ?? []).length, 1, "the Notes form is the only day-note submit owner");
+  assert.equal((itinerary.match(/<EasyTField ref=\{noteInputRef\}/g) ?? []).length, 1);
+  assert.doesNotMatch(itinerary, /onAddNote=/);
+});
+
+test("Viator inventory uses compact disclosure and suppresses the generic fallback when a live product is visible", () => {
+  const affiliate = readFileSync(new URL("../components/easyt/affiliate-link.tsx", import.meta.url), "utf8");
+  assert.match(affiliate, /visibleAffiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you\."/);
+  assert.match(affiliate, /Booking, payment and provider terms apply on \$\{providerLabel\}’s site\./);
+  assert.match(affiliate, /<MorroviaContextualDisclosure/);
+  assert.match(itinerary, /hasLiveViatorProduct = results\.some/);
+  assert.match(itinerary, /commercialStatus !== "loading" && !hasLiveViatorProduct/);
+  assert.match(itinerary, /"More tours on Viator"/);
+  assert.doesNotMatch(itinerary, /Bookable experience ·/);
 });
 
 test("recommendation cards use canonical day scoring, an accessible itinerary menu, and separate Add and Save actions", () => {

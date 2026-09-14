@@ -12,6 +12,7 @@ export type MorroviaStatusTone = "info" | "success" | "warning" | "danger";
 export function MorroviaContextualDisclosure({
   actions,
   align = "end",
+  className = "",
   detail,
   id,
   linkHref,
@@ -25,6 +26,7 @@ export function MorroviaContextualDisclosure({
 }: {
   actions?: ReactNode;
   align?: "start" | "end";
+  className?: string;
   detail: string;
   id?: string;
   linkHref?: string;
@@ -74,7 +76,7 @@ export function MorroviaContextualDisclosure({
     window.requestAnimationFrame(() => returnFocusRef.current?.focus());
   };
 
-  return <div ref={rootRef} className={styles.contextualDisclosure} data-align={align}>
+  return <div ref={rootRef} className={`${styles.contextualDisclosure} ${className}`} data-align={align}>
     <EasyTButton
       ref={triggerRef}
       className={styles.contextualDisclosureTrigger}

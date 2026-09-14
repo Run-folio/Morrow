@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
-import { defaultTripIntent, type EasyTTrip, type PlanItem } from "@/lib/easyt/trip";
+import { defaultTripIntent, type EasyTTrip, type ItineraryIdea, type PlanItem } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { affiliatePartners, getActivityBookingAction } from "@/lib/easyt/booking-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
@@ -367,6 +367,40 @@ export const UnscheduledSavedIdea: Story = {
   args: { trip: { ...trip, brief: { ...trip.brief, itineraryIdeas: [{ id: "idea-cusco-wiki-qorikancha", stopId: "cusco", placeId: "wiki-qorikancha", title: "Qorikancha", category: "activity", coordinates: [-71.981, -13.519], source: "destination-highlight", reasons: ["destination-significance"] }] } } },
 };
 
+const savedIdea = (index: number, title = `Saved Cusco idea ${index}`): ItineraryIdea => ({
+  id: `idea-cusco-saved-${index}`,
+  stopId: "cusco",
+  placeId: `saved-cusco-${index}`,
+  title,
+  category: index % 3 === 0 ? "restaurant" : "activity",
+  coordinates: [-71.981 + index * .0001, -13.519 - index * .0001],
+  image: index % 2 === 0 ? "/journey/peru-sacred-valley-route.jpg" : undefined,
+  area: "Cusco",
+  placeType: index % 3 === 0 ? "Food" : "Culture",
+  description: "A saved recommendation kept available for later scheduling.",
+  source: "personalised-recommendation",
+  reasons: ["interest-relevance"],
+});
+
+const tripWithSavedIdeas = (ideas: ItineraryIdea[]): EasyTTrip => ({
+  ...trip,
+  id: `storybook-itinerary-saved-${ideas.length}`,
+  brief: { ...trip.brief, itineraryIdeas: ideas },
+});
+
+export const SimplifiedHeaderExploreDay: Story = { args: { selectedDayNumber: 2 } };
+export const SimplifiedHeaderTravelDay: Story = { args: { selectedDayNumber: 4 } };
+export const SimplifiedHeaderFirstDay: Story = { args: { selectedDayNumber: 1 } };
+export const SimplifiedHeaderFinalDay: Story = { args: { selectedDayNumber: 7 } };
+
+export const SavedIdeasEmpty: Story = { args: { trip: tripWithSavedIdeas([]) } };
+export const SavedIdeasOne: Story = { args: { trip: tripWithSavedIdeas([savedIdea(1, "Qorikancha")]) } };
+export const SavedIdeasMany: Story = { args: { trip: tripWithSavedIdeas(Array.from({ length: 9 }, (_, index) => savedIdea(index + 1))) } };
+export const SavedIdeasLongTitle: Story = { args: { trip: tripWithSavedIdeas([savedIdea(1, "The Sainte-Chapelle Royal Chapel and Medieval Palais de la Cité Historical Architecture Experience with an intentionally long provider title")]) } };
+export const SavedIdeasMobile320: Story = { ...SavedIdeasMany, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const SavedIdeasMobile390: Story = { ...SavedIdeasMany, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const SavedIdeasMobile430: Story = { ...SavedIdeasMany, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+
 export const RecommendationAlreadyScheduled: Story = {
   args: { trip: { ...trip, brief: { ...trip.brief, itineraryIdeas: [{ id: "idea-cusco-wiki-qorikancha", stopId: "cusco", placeId: "wiki-qorikancha", title: "Qorikancha", category: "activity", coordinates: [-71.981, -13.519], source: "destination-highlight", reasons: ["destination-significance", "interest-relevance"], dayId: "day-2" }] } } },
 };
@@ -513,6 +547,18 @@ export const EveningFreeContext: Story = {
 };
 export const MixedShortlistMobile390: Story = { ...MixedOrganicAndCommercialShortlist, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 
+export const ViatorLiveProduct: Story = MixedOrganicAndCommercialShortlist;
+export const ViatorDisclosureInfoOpen: Story = {
+  ...MixedOrganicAndCommercialShortlist,
+  play: async ({ canvasElement }) => {
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.getAttribute("aria-label") === "About this Viator partner link")?.click();
+  },
+};
+export const ViatorCompactFallback: Story = {
+  args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: [] } },
+};
+
 export const ActivityHandoffViator: Story = RecommendationDefault;
 
 export const ActivityHandoffTripComFallback: Story = {
@@ -582,27 +628,8 @@ export const SavedIdeaScheduling: Story = UnscheduledSavedIdea;
 export const AlreadyAddedSuggestionState: Story = RecommendationAlreadyScheduled;
 export const MobileAddFallback390: Story = { ...RecommendationDefault, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 
-export const AddNoteComposerOpen: Story = {
-  play: async ({ canvasElement }) => {
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Add note"))?.click();
-  },
-};
-
-export const AddNoteMobileSheet390: Story = {
-  ...AddNoteComposerOpen,
-  globals: { viewport: { value: "morrovia390", isRotated: false } },
-};
-
-export const FindIdeasFocused: Story = {
-  play: async ({ canvasElement }) => {
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Find ideas"))?.click();
-  },
-};
-
-export const FindIdeasMobileSheet390: Story = {
-  ...FindIdeasFocused,
-  globals: { viewport: { value: "morrovia390", isRotated: false } },
-};
+export const NotesWithEntry: Story = Default;
+export const NotesEmpty: Story = { args: { trip: { ...trip, brief: { ...trip.brief, dayNotes: {} } } } };
 
 export const SparseRecommendationEvidence: Story = {
   args: { trip: tripWithInterests([]), initialSuggestions: { 1: [interestSuggestionPool[0]] } },
@@ -744,4 +771,5 @@ export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", i
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const DesktopLaptopHeight: Story = { globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };

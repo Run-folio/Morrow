@@ -19,7 +19,6 @@ import {
   Map as MapIcon,
   MapPin,
   MoreHorizontal,
-  NotebookPen,
   Pencil,
   Plane,
   Route,
@@ -28,7 +27,6 @@ import {
   TrainFront,
   Trash2,
   Utensils,
-  X,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -74,7 +72,7 @@ import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity 
 import { placeItineraryActivity, preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
 import DestinationAccommodationModule from "@/components/easyt/destination-accommodation-module";
@@ -83,12 +81,12 @@ import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-clie
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
 import ItineraryItemDetail, { type ItineraryItemDetailModel } from "@/components/easyt/itinerary-item-detail";
 import ItineraryActivityIdentity from "@/components/easyt/itinerary-activity-identity";
-import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
+import { affiliateDisclosure, MorroviaAffiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { MorroviaPartnerPromotion } from "@/components/easyt/partner-promotion";
 import TripExplicitPlans from "@/components/easyt/trip-explicit-plans";
 import { removeExplicitVisitIntent, removeFixedCommitment, scheduleExplicitVisitIntent } from "@/lib/easyt/trip-explicit-plans";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
-import { dedupeExploreResults, exploreResultForActivity, exploreResultForPlace, type ExploreResult } from "@/lib/easyt/explore";
+import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, exploreResultForPlace, type ExploreResult } from "@/lib/easyt/explore";
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { activityAllowsDayPart, activityDayPartFit } from "@/lib/easyt/itinerary-schedule-awareness";
@@ -451,13 +449,7 @@ export default function TripItineraryWorkspace({
   const [notice, setNotice] = useState<string | null>(null);
   const [railNoteDraft, setRailNoteDraft] = useState("");
   const [railNoteError, setRailNoteError] = useState("");
-  const [noteComposerOpen, setNoteComposerOpen] = useState(false);
-  const [ideasPanelOpen, setIdeasPanelOpen] = useState(false);
-  const noteButtonRef = useRef<HTMLButtonElement>(null);
-  const noteComposerRef = useRef<HTMLFormElement>(null);
   const noteInputRef = useRef<HTMLInputElement>(null);
-  const findIdeasButtonRef = useRef<HTMLButtonElement>(null);
-  const ideasPanelRef = useRef<HTMLDetailsElement>(null);
   const selectedItemOriginRef = useRef<HTMLButtonElement | null>(null);
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
@@ -503,60 +495,7 @@ export default function TripItineraryWorkspace({
     setPlannerError("");
     setRailNoteDraft("");
     setRailNoteError("");
-    setNoteComposerOpen(false);
-    setIdeasPanelOpen(false);
   }, [activeDayId]);
-
-  useEffect(() => {
-    if (!noteComposerOpen) return;
-    const frame = window.requestAnimationFrame(() => noteInputRef.current?.focus());
-    const onPointerDown = (event: PointerEvent) => {
-      if (noteComposerRef.current?.contains(event.target as Node) || noteButtonRef.current?.contains(event.target as Node)) return;
-      setNoteComposerOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setNoteComposerOpen(false);
-        window.requestAnimationFrame(() => noteButtonRef.current?.focus());
-      }
-      if (event.key === "Tab" && noteComposerRef.current) {
-        const focusable = [...noteComposerRef.current.querySelectorAll<HTMLElement>('input, button, [href], [tabindex]:not([tabindex="-1"])')];
-        if (!focusable.length) return;
-        const first = focusable[0]!;
-        const last = focusable.at(-1)!;
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [noteComposerOpen]);
-
-  useEffect(() => {
-    if (!ideasPanelOpen) return;
-    const frame = window.requestAnimationFrame(() => {
-      if (ideasPanelRef.current) ideasPanelRef.current.open = true;
-      ideasPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      ideasPanelRef.current?.focus({ preventScroll: true });
-    });
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      setIdeasPanelOpen(false);
-      window.requestAnimationFrame(() => findIdeasButtonRef.current?.focus());
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [ideasPanelOpen]);
 
   useEffect(() => {
     if (!activeDayId) return;
@@ -630,14 +569,10 @@ export default function TripItineraryWorkspace({
   const itineraryDaysOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-days");
   const itineraryPlannerOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-planner");
   const itinerarySuggestionsOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-suggestions");
-  const itinerarySuggestionsRef = useCallback((element: HTMLDetailsElement | null) => {
-    ideasPanelRef.current = element;
-    itinerarySuggestionsOrientationTarget(element);
-  }, [itinerarySuggestionsOrientationTarget]);
   useWorkspaceOrientationReady(
     "itinerary",
     Boolean(presentation === "shell" && active && mapContext && dayComposition),
-    mutation.saveState === "error" || Boolean(removeTarget) || noteComposerOpen,
+    mutation.saveState === "error" || Boolean(removeTarget),
   );
 
   if (presentation === "shell" && workspaceView === "transport") {
@@ -708,13 +643,8 @@ export default function TripItineraryWorkspace({
   const customActivities = workingTrip.brief.customActivities?.[active.dayNumber] ?? [];
   const recommendations = workingTrip.recommendations.filter((recommendation) => recommendation.status === "open" && recommendation.affectedDays.includes(active.dayNumber));
   const logisticsLegs = itineraryDayLegs(workingTrip, active);
-  const selectedPlaces = stop ? workingTrip.brief.selectedPlaces[stop.id] ?? [] : [];
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
-  const savedPins = (workingTrip.brief.mapPins ?? []).filter((pin) => pin.dayNumber === active.dayNumber);
-  const savedIdeas = [...new Map<string, { id: string; title: string; meta: string; pinId?: string }>([
-    ...selectedPlaces.map((title) => ({ id: `place-${title}`, title, meta: stop?.name ?? copy.dayPlan })),
-    ...savedPins.map((pin) => ({ id: pin.id, pinId: pin.id, title: pin.title, meta: planItemLabel(pin.category === "restaurant" ? "food" : pin.category === "stay" ? "stay" : "activity", language) })),
-  ].map((idea) => [normalized(idea.title), idea])).values()];
+  const unscheduledSavedIdeas = (workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
   const hasContextRail = true;
   const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber);
   const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber);
@@ -757,8 +687,6 @@ export default function TripItineraryWorkspace({
       mapResultHandoffForExploreResult(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber),
     )
     : null;
-  const itemCount = displayNotes.length + (dayComposition?.ideas.scheduledHereCount ?? 0) + (incomingLeg ? 1 : 0);
-  const ActiveDayIcon = iconForPlanItem(active.type);
   const dayPendingKey = `itinerary-day-${active.dayNumber}`;
   const dayPending = mutation.isPending(dayPendingKey);
   const firstVisibleNoteIndex = displayNotes[0]?.sourceIndex ?? active.notes.length;
@@ -868,7 +796,6 @@ export default function TripItineraryWorkspace({
     }
     setRailNoteDraft("");
     setRailNoteError("");
-    setNoteComposerOpen(false);
     setNotice(copy.noteAdded);
   };
 
@@ -1046,7 +973,7 @@ export default function TripItineraryWorkspace({
   return (
     <section className={`${styles.workspace} ${hasContextRail ? "" : styles.workspaceWithoutContext}`} aria-label="Trip itinerary">
       <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
-      <div ref={itineraryDaysOrientationTarget} className={styles.rail}>
+      <div ref={itineraryDaysOrientationTarget} className={`${styles.rail} ${unscheduledSavedIdeas.length ? styles.railWithSavedIdeas : ""}`}>
         <div className={styles.railHeader}>
           <h2>{copy.dayByDay}</h2>
           <span>{days.length} {copy.days}</span>
@@ -1089,6 +1016,35 @@ export default function TripItineraryWorkspace({
             );
           })}
         </div>
+        {unscheduledSavedIdeas.length ? <div className={styles.railSavedIdeas}>
+          <SavedIdeasSection
+            ideas={unscheduledSavedIdeas}
+            trip={workingTrip}
+            stopName={stop?.name ?? active.title}
+            language={language}
+            copy={copy}
+            openPickerId={openSavedPickerId}
+            selectedIdeaId={selectedRecommendation?.idea.id ?? null}
+            pending={(idea) => mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
+            onPickerOpenChange={(ideaId, open) => setOpenSavedPickerId(open ? ideaId : null)}
+            onSchedule={scheduleIdea}
+            onRemove={(idea) => mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`)}
+            onOpenDetail={(idea, origin) => {
+              const result = exploreResultForIdea(workingTrip, idea);
+              if (!result) return;
+              selectedItemOriginRef.current = origin;
+              setSelectedItemId(null);
+              setSelectedRecommendation(result);
+            }}
+            draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
+            onDragStart={(idea, event) => {
+              event.dataTransfer.effectAllowed = "copyMove";
+              event.dataTransfer.setData("text/plain", idea.id);
+              setPlannerDrag({ kind: "suggestion", idea });
+            }}
+            onDragEnd={() => setPlannerDrag(null)}
+          />
+        </div> : null}
       </div>
 
       <div
@@ -1101,25 +1057,35 @@ export default function TripItineraryWorkspace({
           <div>
             <p><span>DAY {pad(active.dayNumber)}</span><i aria-hidden="true">·</i><time dateTime={active.date}>{displayDayDate(active.date, language)}</time></p>
             <h2>{stop?.name ?? active.title}</h2>
-            <span className={styles.daySummary}><ActiveDayIcon aria-hidden="true" />{active.title}{active.reason ? <i aria-hidden="true">·</i> : null}{active.reason ? <em>{active.reason}</em> : null}</span>
+            <span className={styles.dayRole}>{active.title}</span>
           </div>
-          <span className={styles.dayCount}>{itemCount} {copy.items}</span>
         </header>
 
         <DayNavigation index={index} count={days.length} setSelectedIndex={setSelectedIndex} copy={copy} />
 
-        <div className={styles.dayActionRegion}>
-          <div className={styles.actions} aria-label="Selected day actions">
-            <EasyTButton ref={findIdeasButtonRef} icon={Lightbulb} size="small" variant="secondary" aria-expanded={ideasPanelOpen} aria-controls={`${tabIdPrefix}-ideas`} onClick={() => setIdeasPanelOpen(true)}>{copy.findIdeas}</EasyTButton>
-            <EasyTButton ref={noteButtonRef} icon={NotebookPen} size="small" variant="secondary" aria-expanded={noteComposerOpen} aria-controls={`${tabIdPrefix}-note-composer`} onClick={() => setNoteComposerOpen((open) => !open)}>{copy.addNote}</EasyTButton>
-            {mutation.saveState !== "idle" && mutation.saveState !== "error" ? <span className={styles.saveStatus}><MorroviaSaveStatus state={mutation.saveState} /></span> : null}
-          </div>
-          {noteComposerOpen ? <form ref={noteComposerRef} id={`${tabIdPrefix}-note-composer`} className={styles.headerNoteComposer} role="dialog" aria-labelledby={`${tabIdPrefix}-note-title`} onSubmit={(event) => { event.preventDefault(); submitRailNote(); }}>
-            <div className={styles.headerNoteComposerTitle}><strong id={`${tabIdPrefix}-note-title`}>{copy.addDayNote}</strong><EasyTButton icon={X} iconOnly size="small" variant="quiet" aria-label="Close note composer" onClick={() => { setNoteComposerOpen(false); noteButtonRef.current?.focus(); }}>Close</EasyTButton></div>
-            <EasyTField ref={noteInputRef} label={copy.noteText} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
-            <div className={styles.headerNoteComposerActions}><EasyTButton type="submit" icon={CirclePlus} size="small" loading={dayPending}>{copy.addNote}</EasyTButton><EasyTButton size="small" variant="quiet" onClick={() => { setNoteComposerOpen(false); noteButtonRef.current?.focus(); }}>{copy.cancel}</EasyTButton></div>
-          </form> : null}
-        </div>
+        {unscheduledSavedIdeas.length ? <div className={styles.mobileSavedIdeas}>
+          <SavedIdeasSection
+            ideas={unscheduledSavedIdeas}
+            trip={workingTrip}
+            stopName={stop?.name ?? active.title}
+            language={language}
+            copy={copy}
+            mobile
+            openPickerId={openSavedPickerId}
+            selectedIdeaId={selectedRecommendation?.idea.id ?? null}
+            pending={(idea) => mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
+            onPickerOpenChange={(ideaId, open) => setOpenSavedPickerId(open ? ideaId : null)}
+            onSchedule={scheduleIdea}
+            onRemove={(idea) => mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`)}
+            onOpenDetail={(idea, origin) => {
+              const result = exploreResultForIdea(workingTrip, idea);
+              if (!result) return;
+              selectedItemOriginRef.current = origin;
+              setSelectedItemId(null);
+              setSelectedRecommendation(result);
+            }}
+          />
+        </div> : null}
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
@@ -1285,16 +1251,12 @@ export default function TripItineraryWorkspace({
               action={{ provider: "viator", category: "activities", href: selectedRecommendation.providerUrl, cta: "View on Viator", affiliate: true }}
               context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: selectedRecommendation.stopId, workspaceView: "itinerary" }}
               variant="secondary"
-            /><small className={styles.commercialDisclosure}>Bookable experience · {affiliateDisclosure}</small></> : null}
+            /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
           </> : undefined}
           onDayPartChange={selectedActivity?.dayPartEditable
             && activityAllowsDayPart(selectedActivity.providerMetadata?.duration, "morning")
             ? (part) => changeActivityDayPart(selectedActivity, part)
             : undefined}
-          onAddNote={() => {
-            setSelectedItemId(null);
-            setNoteComposerOpen(true);
-          }}
           onManage={!selectedActivity && stayBooking && stop ? () => {
             closeSelectedDetail();
             window.requestAnimationFrame(() => {
@@ -1401,9 +1363,8 @@ export default function TripItineraryWorkspace({
           </div>
         </details> : null}
 
-        <details ref={itinerarySuggestionsRef} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection} ${ideasPanelOpen ? styles.ideasSectionFocused : ""}`} tabIndex={-1} open>
+        <details ref={itinerarySuggestionsOrientationTarget} id={`${tabIdPrefix}-ideas`} className={`${styles.contextSection} ${styles.ideasSection}`} open>
           <summary><span>{copy.suggestions}</span><Lightbulb aria-hidden="true" /></summary>
-          {ideasPanelOpen ? <EasyTButton className={styles.mobileIdeasClose} icon={X} iconOnly size="small" variant="quiet" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setIdeasPanelOpen(false); window.requestAnimationFrame(() => findIdeasButtonRef.current?.focus()); }}>Close ideas</EasyTButton> : null}
           {recommendations.length ? <div className={styles.contextList}>{recommendations.map((recommendation) => <article className={styles.suggestionCard} key={recommendation.id}><Lightbulb aria-hidden="true" /><div><strong>{recommendation.message}</strong><p>{recommendation.evidence}</p></div></article>)}</div> : null}
           <ItineraryDaySuggestions
             key={`${workingTrip.id}-${active.id}`}
@@ -1414,6 +1375,7 @@ export default function TripItineraryWorkspace({
             language={language}
             initialPlaces={initialSuggestions?.[active.dayNumber]}
             initialActivityInventory={initialActivityInventory?.[active.dayNumber]}
+            experienceAction={stop ? experienceAction : null}
             isPending={(placeId) => mutation.isPending(`itinerary-suggestion-${active.stopId}-${placeId}`)}
             onSave={(idea) => {
               const accepted = mutation.mutateTrip((current) => saveItineraryIdea(current, idea), `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
@@ -1437,15 +1399,6 @@ export default function TripItineraryWorkspace({
             }}
             onDragEnd={clearPlannerDrag}
           />
-          {stop && experienceAction ? <section className={styles.experienceHandoff} aria-labelledby={`${active.id}-experience-handoff`}>
-            <div>
-              <strong id={`${active.id}-experience-handoff`}>{language === "es" ? "¿Quieres más opciones?" : "Want more options?"}</strong>
-              <p>{language === "es" ? `Explora tours y actividades cerca de ${stop.name} sin cambiar este día.` : `Browse tours and activities around ${stop.name} without changing this day.`}</p>
-              <span>{language === "es" ? "Opciones de reserva de" : "Booking options from"} {affiliateProviderLabel(experienceAction.provider)}</span>
-            </div>
-            <MorroviaAffiliateLink action={experienceAction} context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: stop.id, workspaceView: "itinerary" }} fullWidth />
-            <small>{affiliateDisclosure}</small>
-          </section> : null}
           <EasyTLinkButton
             className={styles.contextAction}
             href={exploreWorkspaceHref(workingTrip.id, active.stopId, active.dayNumber)}
@@ -1456,56 +1409,16 @@ export default function TripItineraryWorkspace({
           >See more ideas in Explore</EasyTLinkButton>
         </details>
 
+        </div>
+
         <details className={styles.contextSection} open>
           <summary><span>{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
           <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
           <form className={styles.railNoteComposer} onSubmit={(event) => { event.preventDefault(); submitRailNote(); }}>
-            <EasyTField label={copy.addDayNote} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
+            <EasyTField ref={noteInputRef} label={copy.addDayNote} value={railNoteDraft} error={railNoteError || undefined} placeholder={copy.notePlaceholder} onChange={(event) => { setRailNoteDraft(event.target.value); setRailNoteError(""); }} />
             <EasyTButton type="submit" icon={CirclePlus} size="small" variant="secondary" loading={dayPending}>{copy.addNote}</EasyTButton>
           </form>
         </details>
-
-        {(workingTrip.brief.itineraryIdeas ?? []).some((idea) => idea.stopId === active.stopId && !idea.dayId) || savedIdeas.length ? <details className={styles.contextSection} open>
-          <summary><span>{copy.savedIdeas}</span><span className={styles.sectionCount}>{(workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId).length}</span></summary>
-          <div className={styles.savedIdeas}>{(workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId).map((idea) => {
-            const options = itineraryIdeaDayOptions(workingTrip, idea.stopId);
-            const preferredDay = preferredItineraryIdeaDay(workingTrip, idea.stopId);
-            const allowsDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, "morning");
-            return <article
-              key={idea.id}
-              className={plannerDrag?.kind === "suggestion" && plannerDrag.idea.id === idea.id ? styles.discoveryCardDragging : undefined}
-              draggable={allowsDayPart}
-              onDragStart={allowsDayPart ? (event) => {
-                event.dataTransfer.effectAllowed = "copyMove";
-                event.dataTransfer.setData("text/plain", idea.id);
-                beginPlannerDrag({ kind: "suggestion", idea });
-              } : undefined}
-              onDragEnd={allowsDayPart ? clearPlannerDrag : undefined}
-            >
-              <ItineraryActivityIdentity title={idea.title} category={idea.category} image={idea.image} meta={`Saved for ${stop?.name ?? "this stop"}`} compact />
-              <div className={styles.savedIdeaActions}>
-                {preferredDay ? <ItineraryDayPicker
-                  placeTitle={idea.title}
-                  language={language}
-                  options={options}
-                  preferredDayId={preferredDay.id}
-                  preferredDayPart={activityDayPartFit(idea.providerMetadata?.duration) === "slot" ? preferredItineraryDayPart(workingTrip, preferredDay.id, idea.category) : null}
-                  allowsDayPart={allowsDayPart}
-                  currentDayId={null}
-                  currentDayPart={null}
-                  label={`Add to Day ${preferredDay.dayNumber}`}
-                  open={openSavedPickerId === idea.id}
-                  pending={mutation.isPending(`itinerary-suggestion-${idea.stopId}-${idea.placeId}`)}
-                  onOpenChange={(open) => setOpenSavedPickerId(open ? idea.id : null)}
-                  onDefault={() => scheduleIdea(idea, preferredDay.id)}
-                  onChoose={(dayId, dayPart) => scheduleIdea(idea, dayId, dayPart)}
-                /> : null}
-                <EasyTButton size="small" variant="quiet" onClick={() => mutation.mutateTrip((current) => removeItineraryIdea(current, idea.id), `itinerary-idea-remove-${idea.id}`)}>{copy.remove}</EasyTButton>
-              </div>
-            </article>;
-          })}</div>
-        </details> : null}
-        </div>
       </aside> : null}
 
       <MorroviaConfirmationDialog
@@ -1521,6 +1434,84 @@ export default function TripItineraryWorkspace({
       />
     </section>
   );
+}
+
+function SavedIdeasSection({
+  ideas,
+  trip,
+  stopName,
+  language,
+  copy,
+  mobile = false,
+  openPickerId,
+  selectedIdeaId,
+  pending,
+  onPickerOpenChange,
+  onSchedule,
+  onRemove,
+  onOpenDetail,
+  draggingIdeaId = null,
+  onDragStart,
+  onDragEnd,
+}: {
+  ideas: ItineraryIdea[];
+  trip: EasyTTrip;
+  stopName: string;
+  language: "en" | "es";
+  copy: ReturnType<typeof itineraryCopy>;
+  mobile?: boolean;
+  openPickerId: string | null;
+  selectedIdeaId: string | null;
+  pending: (idea: ItineraryIdea) => boolean;
+  onPickerOpenChange: (ideaId: string, open: boolean) => void;
+  onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
+  onRemove: (idea: ItineraryIdea) => boolean;
+  onOpenDetail: (idea: ItineraryIdea, origin: HTMLButtonElement) => void;
+  draggingIdeaId?: string | null;
+  onDragStart?: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
+  onDragEnd?: () => void;
+}) {
+  if (!ideas.length) return null;
+  return <details className={styles.savedIdeasSection} open={mobile ? undefined : true}>
+    <summary><span>{copy.savedIdeas}</span><span className={styles.sectionCount}>{ideas.length}</span></summary>
+    <div className={styles.savedIdeas} role="list">{ideas.map((idea) => {
+      const options = itineraryIdeaDayOptions(trip, idea.stopId);
+      const preferredDay = preferredItineraryIdeaDay(trip, idea.stopId);
+      const allowsDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, "morning");
+      const draggable = !mobile && allowsDayPart && Boolean(onDragStart);
+      return <article
+        role="listitem"
+        key={idea.id}
+        className={draggingIdeaId === idea.id ? styles.discoveryCardDragging : undefined}
+        draggable={draggable}
+        onDragStart={draggable ? (event) => onDragStart?.(idea, event) : undefined}
+        onDragEnd={draggable ? onDragEnd : undefined}
+      >
+        <EasyTButton className={styles.savedIdeaSelect} variant="quiet" aria-label={`Open details for ${idea.title}`} aria-pressed={selectedIdeaId === idea.id} onClick={(event) => onOpenDetail(idea, event.currentTarget)}>
+          <ItineraryActivityIdentity title={idea.title} category={idea.category} image={idea.image} meta={`Saved for ${stopName}`} compact />
+        </EasyTButton>
+        <div className={styles.savedIdeaActions}>
+          {preferredDay ? <ItineraryDayPicker
+            placeTitle={idea.title}
+            language={language}
+            options={options}
+            preferredDayId={preferredDay.id}
+            preferredDayPart={activityDayPartFit(idea.providerMetadata?.duration) === "slot" ? preferredItineraryDayPart(trip, preferredDay.id, idea.category) : null}
+            allowsDayPart={allowsDayPart}
+            currentDayId={null}
+            currentDayPart={null}
+            label={`Add to Day ${preferredDay.dayNumber}`}
+            open={openPickerId === idea.id}
+            pending={pending(idea)}
+            onOpenChange={(open) => onPickerOpenChange(idea.id, open)}
+            onDefault={() => onSchedule(idea, preferredDay.id)}
+            onChoose={(dayId, dayPart) => onSchedule(idea, dayId, dayPart)}
+          /> : null}
+          <EasyTButton size="small" variant="quiet" disabled={pending(idea)} onClick={() => onRemove(idea)}>{copy.remove}</EasyTButton>
+        </div>
+      </article>;
+    })}</div>
+  </details>;
 }
 
 function ItinerarySubviewSwitch({ value, onChange, copy }: {
@@ -1632,7 +1623,7 @@ function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateA
   </div>;
 }
 
-function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd }: {
+function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlaces, initialActivityInventory, experienceAction, isPending, onSave, onSchedule, onRemove, onOpenDetail, selectedResultId, onSelectedDetailRefresh, draggingIdeaId, onDragStart, onDragEnd }: {
   trip: EasyTTrip;
   day: PlanItem;
   stop: TripStop | null;
@@ -1640,6 +1631,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   language: "en" | "es";
   initialPlaces?: ItineraryDiscoveryPlace[];
   initialActivityInventory?: ActivityInventoryItem[];
+  experienceAction?: ResolvedAffiliateAction | null;
   isPending: (placeId: string) => boolean;
   onSave: (idea: ItineraryIdea) => boolean;
   onSchedule: (idea: ItineraryIdea, dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
@@ -1769,10 +1761,14 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     if (current) onSelectedDetailRefresh(current);
   }, [onSelectedDetailRefresh, results, selectedResultId]);
   const loading = organicStatus === "loading" || commercialStatus === "loading";
+  const hasLiveViatorProduct = results.some((result) => result.provider === "viator" && Boolean(result.providerUrl));
+  const experienceFallback = stop && experienceAction && commercialStatus !== "loading" && !hasLiveViatorProduct
+    ? <CompactExperienceHandoff action={experienceAction} tripId={trip.id} stopId={stop.id} />
+    : null;
   if (!results.length && loading) return <div className={styles.suggestionStatus}><MorroviaSectionStatus title={copy.suggestionsLoading} detail={copy.suggestionsLoadingDetail} /></div>;
-  if (!results.length && (organicStatus === "error" || commercialStatus === "error")) return <div className={styles.suggestionStatus}><MorroviaSectionStatus state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => setRetryVersion((current) => current + 1)} /></div>;
-  if (!results.length) return <p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>;
-  return <section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
+  if (!results.length && (organicStatus === "error" || commercialStatus === "error")) return <><div className={styles.suggestionStatus}><MorroviaSectionStatus state="error" title={copy.suggestionsUnavailable} detail="Your saved day is unchanged." retryLabel="Try suggestions again" onRetry={() => setRetryVersion((current) => current + 1)} /></div>{experienceFallback}</>;
+  if (!results.length) return <><p className={styles.suggestionEmpty}>{copy.noNewSuggestions}</p>{experienceFallback}</>;
+  return <><section className={styles.discoveryGroup} aria-label={`Useful ideas for Day ${day.dayNumber}`}>
     <h4>Shortlist for {stop?.name}</h4>
     <div className={styles.discoveryList}>{results.map((result) => {
       const idea = result.idea;
@@ -1809,6 +1805,15 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
     })}</div>
     {loading ? <p className={styles.suggestionProgress} role="status">More ideas are still loading…</p> : null}
     {error ? <p className={styles.suggestionError} role="alert">{error}</p> : null}
+  </section>{experienceFallback}</>;
+}
+
+function CompactExperienceHandoff({ action, tripId, stopId }: { action: ResolvedAffiliateAction; tripId: string; stopId: string }) {
+  const cta = action.provider === "viator" ? "More tours on Viator" : `More activities on ${affiliateProviderLabel(action.provider)}`;
+  const compactAction = { ...action, cta };
+  return <section className={styles.experienceHandoff} aria-label={cta}>
+    <MorroviaAffiliateLink action={compactAction} context={{ placement: "itinerary_day_experiences", tripId, stopId, workspaceView: "itinerary" }} variant="quiet" fullWidth />
+    <MorroviaAffiliateDisclosure provider={action.provider} />
   </section>;
 }
 
@@ -1851,7 +1856,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
       {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
       {preferredDay ? <ItineraryDayPicker placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
       {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
-      {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><small className={styles.commercialDisclosure}>Bookable experience · {affiliateDisclosure}</small></> : null}
+      {action ? <><MorroviaAffiliateLink action={action} context={{ placement: "itinerary_day_experiences", tripId, stopId: result.stopId, workspaceView: "itinerary" }} variant="quiet" /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
     </div>
   </article>;
 }
@@ -2222,7 +2227,6 @@ function DayNavigation({ index, count, setSelectedIndex, copy }: {
   return (
     <nav className={styles.dayNavigation} aria-label="Day navigation">
       <button type="button" disabled={index === 0} onClick={() => setSelectedIndex(index - 1)}><ChevronLeft aria-hidden="true" />{copy.previousDay}</button>
-      <span>Day {index + 1} of {count}</span>
       <button type="button" disabled={index === count - 1} onClick={() => setSelectedIndex(index + 1)}>{copy.nextDay}<ChevronRight aria-hidden="true" /></button>
     </nav>
   );

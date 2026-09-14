@@ -1,18 +1,45 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { affiliateClickEventForAction, type AffiliateClickContext } from "@/lib/easyt/affiliate-click";
 import { affiliateProviderLabel, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { EasyTLinkButton } from "./easyt-controls";
+import { MorroviaContextualDisclosure } from "./morrovia-feedback";
+import styles from "./affiliate-link.module.css";
 
 export const affiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you. Booking, payment and provider terms apply on the partner’s site.";
 export const compactAffiliateDisclosure = "Partner links · Morrovia may earn a commission at no extra cost to you.";
+export const visibleAffiliateDisclosure = "Partner link · Morrovia may earn a commission at no extra cost to you.";
 export const worldNomadsAffiliateDisclosure = "We receive a fee when you get a quote from World Nomads using this link. We do not represent World Nomads. This is not a recommendation to buy travel insurance.";
 
 export function affiliateDisclosureForProvider(provider: string) {
   return provider === "world-nomads" ? worldNomadsAffiliateDisclosure : affiliateDisclosure;
+}
+
+export function MorroviaAffiliateDisclosure({
+  className = "",
+  provider,
+}: {
+  className?: string;
+  provider: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const providerLabel = affiliateProviderLabel(provider);
+  return <div className={`${styles.disclosure} ${className}`}>
+    <small>{visibleAffiliateDisclosure}</small>
+    <MorroviaContextualDisclosure
+      className={styles.info}
+      align="end"
+      detail={`Booking, payment and provider terms apply on ${providerLabel}’s site.`}
+      onOpenChange={setOpen}
+      open={open}
+      title={`${providerLabel} booking information`}
+      triggerIconOnly
+      triggerLabel={`About this ${providerLabel} partner link`}
+    />
+  </div>;
 }
 
 export function MorroviaAffiliateLink({
