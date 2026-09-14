@@ -110,12 +110,27 @@ test("context keys isolate trip, stop, product, day and part against stale detai
   assert.notEqual(morning, otherProduct);
 });
 
-test("scheduling into an occupied part preserves existing rows", () => {
+test("a forced full-day slot request stays day-level and preserves existing rows", () => {
   const trip = tripFixture();
   const result = fullDayResult(trip);
   const next = scheduleItineraryIdea(trip, result.idea, "day-busy", "morning");
   assert.deepEqual(next.planItems.find((day) => day.id === "day-busy")?.notes.slice(0, 2), ["Museum visit", "Market walk"]);
-  assert.equal(next.brief.itineraryIdeas?.find((idea) => idea.providerProductId === "CUSCO-11H")?.dayPart, "morning");
+  assert.equal(next.brief.itineraryIdeas?.find((idea) => idea.providerProductId === "CUSCO-11H")?.dayPart, null);
+});
+
+test("a six-hour activity uses extended day-level reasoning rather than standard-slot copy", () => {
+  const trip = tripFixture();
+  const result = exploreResultForActivity(trip.stops[0]!, {
+    provider: "viator", source: "viator", providerProductId: "CUSCO-6H", title: "Six-hour valley visit",
+    destination: { canonicalPlaceId: "cusco", label: "Cusco" }, duration: { fixedMinutes: 360 },
+    provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T00:00:00.000Z" },
+  }, trip);
+  const detail = recommendationDetailForExploreResult({ trip, result, context: { surface: "itinerary", activeDayId: "day-open", activeDayPart: null } });
+  assert.match(detail.whyFit!, /needs a large part of Day 1/i);
+  assert.match(detail.whyFit!, /kept at day level/i);
+  assert.doesNotMatch(detail.whyFit!, /Choose a part of day/i);
+  const scheduled = scheduleItineraryIdea(trip, result.idea, "day-open", "afternoon");
+  assert.equal(scheduled.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id)?.dayPart, null);
 });
 
 test("all entry surfaces use one presentation and one canonical mutation path", () => {
@@ -123,6 +138,7 @@ test("all entry surfaces use one presentation and one canonical mutation path", 
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
   const detail = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+  const planner = readFileSync(new URL("../components/easyt/rich-itinerary-day-planner.tsx", import.meta.url), "utf8");
   assert.match(explore, /recommendationDetailForExploreResult/);
   assert.match(itinerary, /recommendationDetailForExploreResult/);
   assert.match(itinerary, /selectedResultId=\{selectedRecommendation\?\.identity \?\? null\}/);
@@ -133,6 +149,8 @@ test("all entry surfaces use one presentation and one canonical mutation path", 
   assert.match(itinerary, /useOptionalTripShellMutation/);
   assert.match(map, /canonicalMutation/);
   assert.doesNotMatch(detail, /mutateTrip|saveItineraryIdea|scheduleItineraryIdea/);
+  assert.match(planner, /activityAllowsDayPart/);
+  assert.match(planner, /Needs a large part of the day/);
   assert.match(detail, /onClick=\{\(\) => setMapPending\(true\)\}/);
   assert.match(detail, /mapPending \? "Opening map…" : "View on map"/);
   assert.doesNotMatch(map, /\"Nearby\"|category} near/);

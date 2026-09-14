@@ -17,7 +17,7 @@ const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
 
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
 const nonVisitPage = /\b(administrative division|administrative region|country|continent|province|state of|county|municipality|rapid transit line|metro line|railway station|train station|bus station|airport|transport hub|population density|electoral district|disambiguation|politics of|demographics of|transport in)\b/i;
-const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|piazza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|neighbou?rhood|quarter|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
+const strongPlaceSignal = /\b(?:museums?|palaces?|cathedrals?|churches|monaster(?:y|ies)|temples?|castles?|fortresses|squares?|plazas?|piazzas?|markets?|parks?|gardens?|galler(?:y|ies)|theat(?:re|er)s?|monuments?|towers?|bridges?|beaches|mountains?|lakes?|historic|landmarks?|neighbou?rhoods?|quarters?|zoos?|aquariums?|viewpoints?|observator(?:y|ies)|archaeological|ruins?|heritage)\b/i;
 
 function visitorValue(page: WikiPage) {
   const text = `${page.title ?? ""} ${page.extract ?? ""}`;

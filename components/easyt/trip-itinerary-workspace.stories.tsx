@@ -438,6 +438,13 @@ const storyCommercialInventory = [{
   provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-13T12:00:00.000Z" },
 }] satisfies import("@/lib/easyt/activity-inventory").ActivityInventoryItem[];
 
+const extendedCommercialInventory = [{
+  ...storyCommercialInventory[0],
+  providerProductId: "CUSCO-EXTENDED-6H",
+  title: "Six-hour Sacred Valley highlights",
+  duration: { fixedMinutes: 360 },
+}] satisfies import("@/lib/easyt/activity-inventory").ActivityInventoryItem[];
+
 export const MixedOrganicAndCommercialShortlist: Story = {
   args: {
     initialSuggestions: {
@@ -456,6 +463,7 @@ export const CommercialProviderUnavailable: Story = { ...MixedOrganicAndCommerci
 export const OrganicProviderUnavailable: Story = { args: { initialSuggestions: { 1: [] }, initialActivityInventory: { 1: storyCommercialInventory } } };
 export const FullDayExperienceOnOpenDay: Story = MixedOrganicAndCommercialShortlist;
 export const FullDayExperienceOnBusyDay: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, selectedDayNumber: 2, initialActivityInventory: { 2: storyCommercialInventory } } };
+export const ExtendedExperienceDayLevel: Story = { ...MixedOrganicAndCommercialShortlist, args: { ...MixedOrganicAndCommercialShortlist.args, initialActivityInventory: { 1: extendedCommercialInventory } } };
 export const EveningFreeContext: Story = {
   args: {
     trip: {

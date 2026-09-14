@@ -1,7 +1,7 @@
 import { exploreResultState, type ExploreResult, type ExploreResultState } from "./explore.ts";
 import { composeItineraryDay } from "./itinerary-day-composition.ts";
 import { itineraryInterestReason } from "./itinerary-day-context.ts";
-import { activityDurationLabel, isFullDayActivity, itineraryScheduleWarnings } from "./itinerary-schedule-awareness.ts";
+import { activityDayPartFit, activityDurationLabel, isFullDayActivity, itineraryScheduleWarnings } from "./itinerary-schedule-awareness.ts";
 import { hasBookingLiveInformation, type JourneyLocalPlace } from "./local-place.ts";
 import type { MapResultPlace } from "./map-result-selection.ts";
 import { stayBookingForStop } from "./accommodation.ts";
@@ -117,14 +117,17 @@ export function recommendationTripFit(
   if (state.state === "planned") {
     const composition = composeItineraryDay(trip, state.day.id);
     const warning = composition ? itineraryScheduleWarnings(composition).find((candidate) => candidate.activityIds.includes(state.idea.id)) : null;
-    const fullDay = isFullDayActivity(state.idea.providerMetadata?.duration);
-    return `${fullDay ? "Needs most of the day. " : ""}Already planned for Day ${state.day.dayNumber}${state.idea.dayPart && !fullDay ? ` · ${titleCase(state.idea.dayPart)}` : ""}.${warning ? ` ${warning.message}` : ""}${interest ? ` ${interest}.` : ""}`;
+    const fit = activityDayPartFit(state.idea.providerMetadata?.duration);
+    const dayLevel = fit === "full-day" || fit === "extended";
+    const prefix = fit === "full-day" ? "Needs most of the day. " : fit === "extended" ? "Needs a large part of the day. " : "";
+    return `${prefix}Already planned for Day ${state.day.dayNumber}${state.idea.dayPart && !dayLevel ? ` · ${titleCase(state.idea.dayPart)}` : ""}.${warning ? ` ${warning.message}` : ""}${interest ? ` ${interest}.` : ""}`;
   }
   const day = context.activeDayId
     ? trip.planItems.find((candidate) => candidate.id === context.activeDayId && candidate.stopId === result.stopId) ?? null
     : null;
   const duration = result.idea.providerMetadata?.duration;
   const fullDay = isFullDayActivity(duration);
+  const durationFit = activityDayPartFit(duration);
   if (!day) return interest ? `${interest}. Choose a day to check how it fits the current plan.` : "Choose a day to check how this fits the current plan.";
   const composition = composeItineraryDay(trip, day.id);
   if (!composition) return interest ? `${interest}. Day capacity has not been inferred.` : "Day capacity has not been inferred.";
@@ -138,6 +141,8 @@ export function recommendationTripFit(
   }
   if (fullDay && (otherPlans > 0 || composition.transfers.length > 0)) return `This ${activityDurationLabel(duration) ?? "full-day"} experience may overlap with other plans on Day ${day.dayNumber}. Adding it will not replace them.${suffix}`;
   if (fullDay) return `Day ${day.dayNumber} currently has no other activities or transfers, so it is the clearest fit for this ${activityDurationLabel(duration) ?? "full-day"} experience.${suffix}`;
+  if (durationFit === "extended") return `This ${activityDurationLabel(duration) ?? "extended"} experience needs a large part of Day ${day.dayNumber} and will be kept at day level.${otherPlans > 0 || composition.transfers.length > 0 ? " Review the day's other plans for overlap." : " The day currently has no other activities or transfers."}${suffix}`;
+  if (durationFit === "unknown") return `No reliable duration is available for this experience. Keep it at day level until you confirm how long it takes.${suffix}`;
   if (part && occupiedPart) return `Day ${day.dayNumber} already has ${composition.planned[part].length} ${part} ${composition.planned[part].length === 1 ? "plan" : "plans"}. Adding this keeps them in place, so review the order.${suffix}`;
   if (part) return `The ${part} on Day ${day.dayNumber} currently has no planned activity.${suffix}`;
   return `Day ${day.dayNumber} is the selected planning context. Choose a part of day to place it without replacing existing plans.${suffix}`;

@@ -5,6 +5,7 @@ import { itineraryIdeaForActivityInventory } from "../lib/easyt/activity-invento
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import { removeItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
 import {
+  activityAllowsDayPart,
   activityDayPartFit,
   activityDurationLabel,
   activityStartTimeLabel,
@@ -54,6 +55,12 @@ test("broad day-part fit distinguishes short, medium, full-day and unknown durat
   assert.equal(activityDayPartFit({ fromMinutes: 480, toMinutes: 720 }), "full-day");
   assert.equal(activityDayPartFit(undefined), "unknown");
   assert.equal(activityDayPartFit({ toMinutes: 720 }), "unknown", "an unknown minimum is not fabricated into a precise fit");
+  assert.equal(activityAllowsDayPart({ fixedMinutes: 120 }, "afternoon"), true);
+  assert.equal(activityAllowsDayPart({ fixedMinutes: 360 }, "afternoon"), false);
+  assert.equal(activityAllowsDayPart({ fixedMinutes: 660 }, "afternoon"), false);
+  assert.equal(activityAllowsDayPart(undefined, "afternoon"), true, "unknown duration remains traveller-controlled without a fit claim");
+  assert.equal(activityAllowsDayPart({ fromMinutes: 600, toMinutes: 480 }, "afternoon"), true, "malformed evidence remains unknown");
+  assert.equal(activityAllowsDayPart({ fixedMinutes: 660 }, null), true, "day-level placement is always valid");
 });
 
 test("exact overlap warns only when canonical start and fixed duration are both known", () => {
@@ -75,13 +82,14 @@ test("a sourced full-day experience warns beside a substantial plan without bloc
     providerIdea("full-day", "Long day tour", { fixedMinutes: 600 }),
     providerIdea("museum", "Museum visit", { fixedMinutes: 90 }),
   ]);
-  assert.equal(composition.planned.afternoon.length, 2, "both activities remain scheduled in the occupied container");
+  assert.equal(composition.planned.afternoon.length, 1, "the slot activity remains in the selected period");
+  assert.equal(composition.unslotted.some((activity) => activity.id.includes("full-day")), true, "the full-day activity stays at day level");
   assert.equal(itineraryScheduleWarnings(composition).some((warning) => warning.kind === "long-duration" && warning.message.includes("10h")), true);
   const cleared = scheduled([providerIdea("full-day", "Long day tour", { fixedMinutes: 600 })]);
   assert.equal(itineraryScheduleWarnings(cleared).some((warning) => warning.kind === "long-duration"), false);
 });
 
-test("duration, provenance and optional exact time survive scheduling and JSON persistence", () => {
+test("duration, provenance and optional exact time survive day-level scheduling and JSON persistence", () => {
   const idea = { ...providerIdea("range", "Range tour", { fromMinutes: 480, toMinutes: 600 }), startsAt: "08:30" };
   const trip = scheduleItineraryIdea(tripCopilotFixture(), idea, "japan-day-2", "morning");
   const reloaded = JSON.parse(JSON.stringify(trip)) as EasyTTrip;
@@ -89,7 +97,7 @@ test("duration, provenance and optional exact time survive scheduling and JSON p
   assert.deepEqual(stored?.providerMetadata?.duration, { fromMinutes: 480, toMinutes: 600 });
   assert.equal(stored?.providerMetadata?.provenance.provider, "viator");
   assert.equal(stored?.startsAt, "08:30");
-  assert.equal(composeItineraryDay(reloaded, "japan-day-2")?.planned.morning[0]?.startsAt, "08:30");
+  assert.equal(composeItineraryDay(reloaded, "japan-day-2")?.unslotted.find((activity) => activity.id === idea.id)?.startsAt, "08:30");
 });
 
 test("adding three activities to one daypart appends deterministically and removing one preserves siblings", () => {

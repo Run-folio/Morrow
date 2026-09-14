@@ -185,7 +185,7 @@ export function exploreDiscoveryCategory(title: string, sourceType: string, desc
   return "Place";
 }
 
-const rejectedExploreEntity = /\b(?:country|continent|macro[- ]?region|administrative|admin(?:istration)?|state|province|county|municipality|metropolitan area|electoral district|transport hub|airport|railway station|train station|bus station|metro station|rapid transit|disambiguation|wikipedia article)\b/i;
+const rejectedExploreEntity = /\b(?:country|continent|macro[- ]?region|administrative|admin(?:istration)?|state|province|county|municipality|metropolitan area|city|town|village|locality|district|electoral district|transport hub|airport|railway station|train station|bus station|metro station|rapid transit|disambiguation|wikipedia article)\b/i;
 const usefulExploreEntity = /\b(?:attraction|landmark|museum|archaeological|historic|neighbou?rhood|quarter|viewpoint|park|garden|beach|natural area|hike|trail|market|restaurant|cafe|tour|experience|ticket|boat trip|day trip)\b/i;
 
 export function exploreResultEligible(trip: Pick<EasyTTrip, "stops">, result: ExploreResult) {
@@ -476,7 +476,14 @@ export function filterExploreResults(
   destinationId: string,
   category: ExploreCategory,
 ) {
-  const scoped = results.filter((result) => exploreResultEligible(trip, result) && (destinationId === "all" || result.stopId === destinationId));
+  const scoped = results.filter((result) => exploreResultEligible(trip, result)
+    && (destinationId === "all" || result.stopId === destinationId)
+    // Nearby settlements remain useful in the dedicated Day trips view, but
+    // a bare city/town record is not a visitor attraction for the first-page
+    // For you shortlist.
+    && !(category === "for-you"
+      && result.tags.some((tag) => normal(tag) === "day-trips" || normal(tag) === "day trip")
+      && result.idea.source !== "live-provider-inventory"));
   const matching = scoped.filter((result) => discoveryCategoryMatches(result, category));
   const interests = tripIntentForTrip(trip).preferences.interests;
   const ranked = matching.map((result, index) => {

@@ -197,7 +197,7 @@ test("a shared queue preserves Explore, itinerary metadata, rename, Map and a se
   assert.equal(final.startDate, base.startDate);
 });
 
-test("an occupied Afternoon keeps both activities and 11-hour provider metadata through Rename and reload", async () => {
+test("an occupied Afternoon keeps its slot activity while an 11-hour activity stays day-level through Rename and reload", async () => {
   const firstIdea = { ...idea, id: "idea-first", placeId: "first", title: "First activity" };
   const longIdea: ItineraryIdea = {
     ...idea,
@@ -221,9 +221,10 @@ test("an occupied Afternoon keeps both activities and 11-hour provider metadata 
   const withSecond = await queue.enqueue(scheduleItineraryIdea(base, longIdea, "day-1", "afternoon"), recovery("second-activity"));
   const renamed = await queue.enqueue(renameTripIdentity(withSecond, "Fuji and food"), recovery("rename-after-itinerary"));
   const reloaded = JSON.parse(JSON.stringify(renamed)) as EasyTTrip;
-  const afternoon = composeItineraryDay(reloaded, "day-1")?.planned.afternoon ?? [];
+  const composition = composeItineraryDay(reloaded, "day-1")!;
 
-  assert.deepEqual(afternoon.map((item) => item.title), ["First activity", "Mt Fuji 11-hour experience"]);
+  assert.deepEqual(composition.planned.afternoon.map((item) => item.title), ["First activity"]);
+  assert.deepEqual(composition.unslotted.map((item) => item.title), ["Mt Fuji 11-hour experience"]);
   assert.equal(reloaded.brief.itineraryIdeas?.find((item) => item.id === longIdea.id)?.providerMetadata?.duration?.fixedMinutes, 660);
   assert.equal(reloaded.brief.itineraryIdeas?.find((item) => item.id === longIdea.id)?.startsAt, "07:00");
   assert.equal(tripCustomTitle(reloaded), "Fuji and food");
@@ -441,7 +442,7 @@ test("guest promotion preserves the custom title, itinerary additions and provid
   assert.equal(promoted.ownerId, "owner-a");
   assert.equal(tripCustomTitle(promoted), "Guest Fuji trip");
   assert.equal(promotedIdea?.dayId, "day-1");
-  assert.equal(promotedIdea?.dayPart, "afternoon");
+  assert.equal(promotedIdea?.dayPart, null);
   assert.equal(promotedIdea?.providerMetadata?.duration?.fixedMinutes, 660);
   assert.equal(promotedIdea?.providerMetadata?.provenance.provider, "viator");
 });

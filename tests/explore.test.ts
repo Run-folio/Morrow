@@ -280,22 +280,49 @@ test("For you filters non-visitable entities and ranks traveller-useful places a
   const stop = base.stops[0]!;
   const candidates = [
     exploreResultForPlace(stop, { ...place, id: "university", title: "Athens Technical University", type: "Education", tags: ["Cities"], description: "A public university and educational institution.", qualityScore: 30 }),
-    exploreResultForPlace(stop, { ...place, id: "incident", title: "Athens incident", type: "Historic site", tags: ["Culture"], description: "A historical incident represented as an encyclopedia article.", qualityScore: 30 }),
+    exploreResultForPlace(stop, { ...place, id: "incident", title: "Tokyo subway sarin attack", type: "Place", tags: ["Cities"], description: "A domestic chemical terrorist attack and historical incident represented as an encyclopedia article.", qualityScore: 30 }),
     exploreResultForPlace(stop, { ...place, id: "admin", title: "Attica Regional Authority", type: "Administrative entity", tags: ["Cities"], description: "A government administrative entity.", qualityScore: 30 }),
-    exploreResultForPlace(stop, { ...place, id: "generic", title: "Central Star", type: "Place", tags: ["Cities"], description: "A named entity with no visitor information.", qualityScore: 20 }),
+    exploreResultForPlace(stop, { ...place, id: "generic", title: "Central Star", type: "Place", tags: ["Cities"], description: "Four residential skyscrapers under construction, including a residential tower.", qualityScore: 20 }),
+    exploreResultForPlace(stop, { ...place, id: "artefact", title: "Municipal reference record", type: "Place", tags: ["Cities"], description: "A non-visitable data artefact and encyclopedia article.", qualityScore: 28 }),
+    exploreResultForPlace(stop, { ...place, id: "organisation", title: "Regional trade council", type: "Place", tags: ["Cities"], description: "A professional association and generic organization.", qualityScore: 28 }),
+    exploreResultForPlace(stop, { ...place, id: "memorial", title: "Subway attack memorial", type: "Memorial", tags: ["Culture"], description: "A visitor memorial about the historical terrorist attack.", qualityScore: 12 }),
     exploreResultForPlace(stop, { ...place, id: "church", title: "Small hillside church", type: "Church", tags: ["Culture"], description: "A local church open to visitors.", qualityScore: 12 }),
     exploreResultForPlace(stop, { ...place, id: "museum", title: "City Museum", type: "Museum", tags: ["Culture"], description: "A visitor museum.", qualityScore: 12 }),
     exploreResultForPlace(stop, { ...place, id: "neighbourhood", title: "Old artisan quarter", type: "Neighbourhood", tags: ["Cities"], description: "A walkable neighbourhood.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "market", title: "Central produce market", type: "Market", tags: ["Food"], description: "A covered market visited for local produce.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "park", title: "Hilltop park", type: "Park", tags: ["Nature"], description: "A public park with a city viewpoint.", qualityScore: 12 }),
     exploreResultForPlace(stop, { ...place, id: "unusual", title: "Underground olive press", type: "Attraction", tags: ["Culture"], description: "An unusual but genuine visitor attraction with guided tours.", qualityScore: 12 }),
   ];
   const ranked = filterExploreResults(base, candidates, "all", "for-you");
-  for (const rejected of ["Athens Technical University", "Athens incident", "Attica Regional Authority"]) {
+  for (const rejected of ["Athens Technical University", "Tokyo subway sarin attack", "Attica Regional Authority", "Central Star", "Municipal reference record", "Regional trade council"]) {
     assert.equal(ranked.some((result) => result.title === rejected), false, rejected);
   }
-  for (const preserved of ["Small hillside church", "City Museum", "Old artisan quarter", "Underground olive press"]) {
+  for (const preserved of ["Subway attack memorial", "Small hillside church", "City Museum", "Old artisan quarter", "Central produce market", "Hilltop park", "Underground olive press"]) {
     assert.equal(ranked.some((result) => result.title === preserved), true, preserved);
   }
-  assert.equal(ranked.at(-1)?.title, "Central Star", "weak generic entities are strongly demoted rather than outranking visitable places");
+});
+
+test("For you excludes administrative nearby settlements while preserving the dedicated day-trip lane", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const nearby = [
+    exploreResultForPlace(stop, { ...place, id: "jangan", title: "Jangan-eup", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby town 20 km from Busan.", qualityScore: 13 }),
+    exploreResultForPlace(stop, { ...place, id: "seosaeng", title: "Seosaeng-myeon", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby town 30 km from Busan.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "onyang", title: "Onyang-eup", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby town 40 km from Busan.", qualityScore: 12 }),
+    exploreResultForPlace(stop, { ...place, id: "changwon", title: "Changwon", type: "Day trip", tags: ["Day trip", "day-trips"], description: "A verified nearby city 41 km from Busan.", qualityScore: 12 }),
+  ];
+  assert.deepEqual(filterExploreResults(base, nearby, "all", "for-you"), []);
+  assert.deepEqual(filterExploreResults(base, nearby, "all", "day-trips").map((result) => result.title), ["Changwon"], "the city remains discoverable only when the traveller asks for day trips");
+});
+
+test("raw city entities do not become attractions, while quality score changes final Explore order", () => {
+  const base = trip();
+  const stop = base.stops[0]!;
+  const city = exploreResultForPlace(stop, { ...place, id: "piraeus", title: "Piraeus", type: "City", tags: ["Cities"], description: "A municipality and city inside the wider destination.", qualityScore: 30 });
+  const lower = exploreResultForPlace(stop, { ...place, id: "small-museum", title: "Small museum", type: "Museum", tags: ["Culture"], description: "A visitor museum.", qualityScore: 7 });
+  const higher = exploreResultForPlace(stop, { ...place, id: "major-museum", title: "Major museum", type: "Museum", tags: ["Culture"], description: "A visitor museum.", qualityScore: 18 });
+  const ranked = filterExploreResults(base, [lower, city, higher], "all", "for-you");
+  assert.deepEqual(ranked.map((result) => result.title), ["Major museum", "Small museum"]);
 });
 
 test("category classification favors truthful place anatomy over incidental prose", () => {

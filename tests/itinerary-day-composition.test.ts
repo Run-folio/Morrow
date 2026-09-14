@@ -325,10 +325,54 @@ test("a full-day provider activity cannot be dragged into one time-of-day slot",
     },
   };
   const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", null);
+  const forcedAtSchedule = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
+  assert.equal(forcedAtSchedule.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null, "the scheduling boundary normalises a full-day request to day level");
+  const directlyAssigned = assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon");
+  assert.equal(directlyAssigned, scheduled, "the direct mutation helper rejects a forced single-part write");
   const placed = placeItineraryActivity(scheduled, "kyoto-4", idea.id, "afternoon", 0);
   assert.equal(placed.changed, false);
   assert.match(placed.reason ?? "", /needs most of the day/);
   assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+});
+
+test("slot, extended and full-day ideas enforce one duration model at the mutation boundary", () => {
+  const source = tripFixture();
+  const ideaWithDuration = (id: string, minutes: number) => ({
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place(id, id), reasons: ["destination-significance" as const] }),
+    providerMetadata: {
+      duration: { fixedMinutes: minutes },
+      provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" },
+    },
+  });
+
+  for (const part of ["morning", "midday", "afternoon", "evening"] as const) {
+    const idea = ideaWithDuration(`two-hour-${part}`, 120);
+    const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", part);
+    assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, part);
+  }
+
+  for (const [id, minutes] of [["six-hour", 360], ["eight-hour", 480], ["twelve-hour", 720]] as const) {
+    const idea = ideaWithDuration(id, minutes);
+    const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", "afternoon");
+    assert.equal(scheduled.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+    assert.equal(assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon"), scheduled);
+  }
+});
+
+test("the hosted-equivalent eleven-hour activity remains day-level after JSON reload", () => {
+  const source = tripFixture();
+  const idea = {
+    ...itineraryIdeaForPlace({ stopId: "kyoto", place: place("hosted-eleven-hour", "Mt Fuji and Hakone day tour"), reasons: ["destination-significance" as const] }),
+    providerMetadata: {
+      duration: { fixedMinutes: 660 },
+      provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-13T00:00:00.000Z" },
+    },
+  };
+  const scheduled = scheduleItineraryIdea(source, idea, "kyoto-4", null);
+  const attempted = assignItineraryIdeaDayPart(scheduled, idea.id, "afternoon");
+  const reloaded = JSON.parse(JSON.stringify(attempted)) as EasyTTrip;
+  assert.equal(reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id)?.dayPart, null);
+  assert.equal(composeItineraryDay(reloaded, "kyoto-4")?.unslotted.some((activity) => activity.id === idea.id), true);
 });
 
 test("suggestion metadata and stable identity survive scheduling and JSON reload", () => {

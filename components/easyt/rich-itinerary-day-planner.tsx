@@ -23,7 +23,7 @@ import {
   type ItineraryDayComposition,
 } from "@/lib/easyt/itinerary-day-composition";
 import type { ItineraryDayPart } from "@/lib/easyt/trip";
-import { activityDurationLabel, activityStartTimeLabel, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
+import { activityAllowsDayPart, activityDayPartFit, activityDurationLabel, activityStartTimeLabel, isFullDayActivity, itineraryScheduleWarnings } from "@/lib/easyt/itinerary-schedule-awareness";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ItineraryActivityIdentity from "./itinerary-activity-identity";
 import styles from "./rich-itinerary-day-planner.module.css";
@@ -158,10 +158,13 @@ function ActivityRow({
 }) {
   const copy = copyFor(language);
   const duration = activityDurationLabel(activity.providerMetadata?.duration);
+  const durationFit = activityDayPartFit(activity.providerMetadata?.duration);
+  const allowsDayPart = activityAllowsDayPart(activity.providerMetadata?.duration, "morning");
   const meta = [
     activityStartTimeLabel(activity.startsAt),
     duration,
     isFullDayActivity(activity.providerMetadata?.duration) ? (language === "es" ? "Experiencia de día completo" : "Full-day experience") : null,
+    durationFit === "extended" ? (language === "es" ? "Necesita gran parte del día" : "Needs a large part of the day") : null,
     activity.placeType,
     activity.area,
   ].filter(Boolean).join(" · ");
@@ -178,7 +181,7 @@ function ActivityRow({
         {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
         {warnings.map((warning) => <span className={styles.activityWarning} role="status" key={warning}><AlertTriangle aria-hidden="true" />{warning}</span>)}
       </EasyTButton>
-      {draggable ? <EasyTButton
+      {draggable && allowsDayPart ? <EasyTButton
         className={styles.dragHandle}
         icon={GripVertical}
         iconOnly
@@ -188,7 +191,7 @@ function ActivityRow({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >Drag to organise: {activity.title}</EasyTButton> : null}
-      {activity.dayPartEditable ? <details className={styles.activityMenu}>
+      {activity.dayPartEditable && allowsDayPart ? <details className={styles.activityMenu}>
         <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>
           <EasyTSelect

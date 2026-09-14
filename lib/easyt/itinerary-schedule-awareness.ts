@@ -1,5 +1,5 @@
 import type { ComposedItineraryActivity, ItineraryDayComposition } from "./itinerary-day-composition.ts";
-import type { ItineraryIdea } from "./trip.ts";
+import type { ItineraryDayPart, ItineraryIdea } from "./trip.ts";
 
 export type ActivityDuration = NonNullable<NonNullable<ItineraryIdea["providerMetadata"]>["duration"]>;
 
@@ -53,6 +53,18 @@ export function activityDayPartFit(duration: ActivityDuration | undefined) {
   if (bounds.exact && (bounds.minimumMinutes ?? 0) > 5 * 60) return "extended" as const;
   if (bounds.maximumMinutes !== undefined && bounds.maximumMinutes <= 5 * 60) return "slot" as const;
   return "unknown" as const;
+}
+
+/** Day-part writes are valid only when duration evidence does not say the
+ * activity consumes most of the day. Unknown duration keeps the existing
+ * traveller-controlled broad placement without claiming a precise fit. */
+export function activityAllowsDayPart(
+  duration: ActivityDuration | undefined,
+  dayPart: ItineraryDayPart | null,
+) {
+  if (dayPart === null) return true;
+  const fit = activityDayPartFit(duration);
+  return fit !== "extended" && fit !== "full-day";
 }
 
 function exactStartMinutes(value: string | undefined) {

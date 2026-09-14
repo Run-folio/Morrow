@@ -1,6 +1,7 @@
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "./map-place-itinerary.ts";
 import type { EasyTTrip, ItineraryDayPart, ItineraryIdea, PlanItem } from "./trip.ts";
 import type { ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
+import { activityAllowsDayPart } from "./itinerary-schedule-awareness.ts";
 
 const normalize = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 const ideaId = (stopId: string, placeId: string) => `idea-${stopId}-${placeId.replace(/[^a-z0-9_-]+/gi, "-")}`;
@@ -79,7 +80,10 @@ export function scheduleItineraryIdea(
   const existing = (trip.brief.itineraryIdeas ?? []).find((item) => item.id === idea.id
     || Boolean(idea.provider && idea.providerProductId && item.stopId === idea.stopId && item.provider === idea.provider && item.providerProductId === idea.providerProductId));
   if (existing && existing.id !== idea.id) return trip;
-  const scheduledDayPart = dayPart === undefined ? existing?.dayPart ?? null : dayPart;
+  const requestedDayPart = dayPart === undefined ? existing?.dayPart ?? null : dayPart;
+  const scheduledDayPart = activityAllowsDayPart(idea.providerMetadata?.duration, requestedDayPart)
+    ? requestedDayPart
+    : null;
   const exactDuplicate = existing?.placeId === idea.placeId
     && existing.dayId === dayId
     && (existing.dayPart ?? null) === scheduledDayPart;
@@ -107,6 +111,7 @@ export function assignItineraryIdeaDayPart(
   const ideas = trip.brief.itineraryIdeas ?? [];
   const idea = ideas.find((item) => item.id === ideaId);
   if (!idea?.dayId || !trip.planItems.some((day) => day.id === idea.dayId && day.stopId === idea.stopId)) return trip;
+  if (!activityAllowsDayPart(idea.providerMetadata?.duration, dayPart)) return trip;
   if ((idea.dayPart ?? null) === dayPart) return trip;
   return {
     ...trip,
