@@ -27,6 +27,15 @@ type Story = StoryObj<typeof meta>;
 
 export const ActiveOmioNewCustomerOffer: Story = { render: renderOmioHandoff };
 
+export const CompactTransportOffer: Story = {
+  args: { presentation: "compact" },
+};
+
+export const CompactTransportOfferMobile390: Story = {
+  args: { presentation: "compact" },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 export const ExpiredOffer: Story = {
   args: { now: new Date("2026-11-30T23:00:01Z") },
 };

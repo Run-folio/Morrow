@@ -26,6 +26,9 @@ test("the web promotion is complete, cautious and excludes the app-only code", (
   assert.match(component, /purchases up to €\{promotion\.maximumPurchase\.amount\}/);
   assert.match(component, /First-time Omio customers only/);
   assert.match(component, /Valid until 30 Nov 2026/);
+  assert.match(component, /presentation === "compact"/);
+  assert.match(component, /MorroviaContextualDisclosure/);
+  assert.match(component, /triggerLabel=\{title\}/);
   assert.match(component, /aria-label="Omio promotion terms, opens in a new tab"/);
   assert.doesNotMatch(component, /APPNEW10/);
 });
@@ -60,6 +63,8 @@ test("Storybook uses production owners for active, expired, provider and 390px s
   assert.match(story, /MorroviaAffiliateLink action=\{omioTransportAction\}/);
   assert.match(story, /<small>\{affiliateDisclosure\}<\/small>/);
   assert.match(story, /ActiveOmioNewCustomerOffer/);
+  assert.match(story, /CompactTransportOffer/);
+  assert.match(story, /CompactTransportOfferMobile390/);
   assert.match(story, /ExpiredOffer/);
   assert.match(story, /NonOmioProvider/);
   assert.match(story, /defaultViewport: "mobile390"/);
