@@ -65,7 +65,7 @@
 .periodHeading,
 .unslottedHeading,
 .travelDay,
-.transfer > span {
+.transferSelect > span {
   font-family: var(--morrovia-meta);
   text-transform: uppercase;
   letter-spacing: .08em;
@@ -160,7 +160,25 @@
   background: var(--morrovia-lilac);
 }
 
-.transfer > span {
+.transferSelected {
+  outline: 2px solid var(--morrovia-action);
+  outline-offset: 2px;
+}
+
+.transferSelect {
+  width: 100%;
+  padding: 0;
+  display: block;
+  color: inherit;
+  text-align: left;
+  white-space: normal;
+}
+
+.transferSelect:hover:not(:disabled) {
+  transform: none;
+}
+
+.transferSelect > span {
   display: block;
   margin-bottom: 4px;
   color: var(--morrovia-muted);

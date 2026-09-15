@@ -194,3 +194,25 @@ test("represents every canonical day in a five-week month-crossing trip without 
   assert.equal(projectedDates[0], "2026-08-20");
   assert.equal(projectedDates.at(-1), "2026-09-23");
 });
+
+test("keeps every day reachable in a 65-day trip across month boundaries", () => {
+  const trip = representativeTrip();
+  trip.legs = [];
+  trip.brief.bookings = [];
+  trip.brief.itineraryIdeas = [];
+  trip.startDate = "2026-08-21";
+  trip.endDate = "2026-10-24";
+  trip.stops = [{ ...trip.stops[0]!, arrivalDate: trip.startDate, departureDate: "2026-10-25", nights: 65 }];
+  trip.planItems = Array.from({ length: 65 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 7, 21 + index)).toISOString().slice(0, 10);
+    return day(`extended-day-${index + 1}`, trip.stops[0]!.id, index + 1, date, index === 0 ? "Arrive in Tokyo" : "Explore Tokyo", index === 0 ? "arrival" : "activity");
+  });
+
+  const weeks = itineraryCalendarWeeks(trip);
+  const projectedDays = weeks.flatMap((week) => week.days).filter(Boolean).map((item) => item!.day);
+  assert.equal(weeks.length, 10);
+  assert.equal(projectedDays.length, 65);
+  assert.equal(projectedDays[0]?.id, "extended-day-1");
+  assert.equal(projectedDays.at(-1)?.id, "extended-day-65");
+  assert.equal(projectedDays.at(-1)?.date, "2026-10-24");
+});

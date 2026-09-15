@@ -130,6 +130,15 @@
   background: var(--morrovia-paper);
 }
 
+.calendarDay[data-drop-eligible="true"] {
+  outline: 2px dashed var(--morrovia-action);
+  outline-offset: 2px;
+}
+
+.calendarItemDragging {
+  opacity: .52;
+}
+
 .calendarBlank {
   border-style: dashed;
   background: var(--morrovia-paper);
@@ -1253,6 +1262,120 @@
   height: 14px;
 }
 
+.bookingCardSelected {
+  border-color: var(--morrovia-action);
+}
+
+.bookingCardSelect {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  justify-content: stretch;
+  text-align: left;
+  white-space: normal;
+}
+
+.bookingCardSelect > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.bookingCardSelect small {
+  color: var(--morrovia-muted);
+  font: 650 8px/1.4 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetailScrim {
+  display: none;
+}
+
+.logisticsDetail {
+  position: relative;
+  min-width: 0;
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+  background: var(--morrovia-paper);
+}
+
+.logisticsDetailClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.logisticsDetail header {
+  min-width: 0;
+  padding-right: 42px;
+}
+
+.logisticsDetail header > span {
+  color: var(--morrovia-signal);
+  font: 800 9px/1.2 var(--morrovia-meta);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.logisticsDetail h2 {
+  margin: 8px 0 0;
+  color: var(--morrovia-ink);
+  font: 650 28px/1.04 var(--morrovia-display);
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetail header p,
+.logisticsDetailSummary {
+  margin: 8px 0 0;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+
+.logisticsDetail > dl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.logisticsDetail > dl > div {
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.logisticsDetail dt {
+  color: var(--morrovia-muted);
+  font: 750 9px/1.35 var(--morrovia-meta);
+  text-transform: uppercase;
+}
+
+.logisticsDetail dd {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-supporting-body);
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetail > ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+
+.logisticsDetailActions {
+  display: grid;
+  gap: 8px;
+}
+
+.logisticsDetailActions .omioAction {
+  margin: 0;
+}
+
 .suggestionCard {
   align-items: start;
 }
@@ -1884,4 +2007,29 @@
   .dayPanel { padding: 16px; }
   .mobileSavedIdeas { order: 6; display: block; }
   .workspaceToolbar h2 { font-size: 24px; }
+  .logisticsDetailScrim {
+    position: fixed;
+    z-index: 89;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: var(--morrovia-overlay);
+  }
+  .logisticsDetail {
+    position: fixed;
+    z-index: 90;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(760px, calc(100svh - 24px));
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border: 1px solid var(--morrovia-line);
+    border-bottom: 0;
+    border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
+    box-shadow: var(--morrovia-shadow-overlay);
+  }
 }

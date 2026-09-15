@@ -5,6 +5,12 @@ import test from "node:test";
 import { itineraryIdeaForActivityInventory, type ActivityInventoryItem } from "../lib/easyt/activity-inventory.ts";
 import { composeItineraryDay } from "../lib/easyt/itinerary-day-composition.ts";
 import {
+  addItineraryActivityWithUndo,
+  moveItineraryActivityAcrossDays,
+  scheduleItineraryIdeaWithUndo,
+  undoItineraryItemAction,
+} from "../lib/easyt/itinerary-activity-placement.ts";
+import {
   assignItineraryIdeaDayPart,
   ideaStateForPlace,
   itineraryIdeaForLocalPlace,
@@ -228,6 +234,118 @@ test("traveller-authored activities move between canonical days without a second
   assert.deepEqual(moved.trip.brief.customActivities?.[7], ["Walk the National Garden"]);
   assert.equal(projectPersistedMapResults(moved.trip).results.length, 0, "authored text does not invent a location");
   assert.deepEqual(JSON.parse(JSON.stringify(moved.trip)), moved.trip);
+});
+
+test("canonical cross-day Move preserves an idea's provider, image and map identity and rejects another stop occurrence", () => {
+  const source = tripFixture();
+  const result = exploreResultForPlace(source.stops[0]!, lycabettusPlace);
+  const scheduled = scheduleItineraryIdea(source, {
+    ...result.idea,
+    provider: "viator",
+    providerProductId: "ATHENS-WALK-1",
+    providerMetadata: {
+      duration: { fixedMinutes: 120 },
+      provenance: { kind: "live_provider_search", provider: "viator", checkedAt: "2026-09-15T00:00:00.000Z" },
+    },
+  }, "day-6", "midday");
+  const moved = moveItineraryActivityAcrossDays(scheduled, "day-6", result.idea.id, "day-7", "afternoon");
+  assert.equal(moved.changed, true);
+  assert.ok(moved.undo);
+  const stored = moved.trip.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  assert.equal(stored?.dayId, "day-7");
+  assert.equal(stored?.dayPart, "afternoon");
+  assert.equal(stored?.providerProductId, "ATHENS-WALK-1");
+  assert.equal(stored?.image, lycabettusPlace.image);
+  assert.equal(moved.trip.brief.mapPins?.length, 1);
+  assert.equal(moved.trip.brief.mapPins?.[0]?.dayNumber, 7);
+
+  const invalid = moveItineraryActivityAcrossDays(moved.trip, "day-7", result.idea.id, "day-9", "morning");
+  assert.equal(invalid.changed, false);
+  assert.match(invalid.reason ?? "", /same route stop/);
+});
+
+test("item-scoped Undo restores Activity A after an unrelated Activity B edit", () => {
+  const source = tripFixture();
+  const withA = addItineraryActivityWithUndo(source, 6, 0, "Activity A", "morning").trip;
+  const withB = addItineraryActivityWithUndo(withA, 7, 0, "Activity B", "evening").trip;
+  const moved = moveItineraryActivityAcrossDays(withB, "day-6", "day-6-activity-activity a", "day-7", "afternoon");
+  assert.equal(moved.changed, true);
+  assert.ok(moved.undo);
+  assert.deepEqual(moved.trip.planItems.find((day) => day.id === "day-7")?.notes, ["Activity B", "Activity A"], "occupied targets insert without replacing siblings");
+  const editedB = {
+    ...moved.trip,
+    brief: {
+      ...moved.trip.brief,
+      customActivities: { ...moved.trip.brief.customActivities, 7: (moved.trip.brief.customActivities?.[7] ?? []).map((title) => title === "Activity B" ? "Activity B edited" : title) },
+    },
+    planItems: moved.trip.planItems.map((day) => day.id === "day-7" ? { ...day, notes: day.notes.map((title) => title === "Activity B" ? "Activity B edited" : title) } : day),
+  };
+  const undone = undoItineraryItemAction(editedB, moved.undo!);
+  assert.equal(undone.changed, true);
+  assert.deepEqual(undone.trip.planItems.find((day) => day.id === "day-6")?.notes, ["Activity A"]);
+  assert.deepEqual(undone.trip.planItems.find((day) => day.id === "day-7")?.notes, ["Activity B edited"]);
+  assert.equal(undone.trip.planItems.find((day) => day.id === "day-6")?.noteDayParts?.[0], "morning");
+});
+
+test("item-scoped Undo fails closed when the moved item itself changed", () => {
+  const source = tripFixture();
+  const result = exploreResultForPlace(source.stops[0]!, lycabettusPlace);
+  const scheduled = scheduleItineraryIdea(source, result.idea, "day-6", "morning");
+  const moved = moveItineraryActivityAcrossDays(scheduled, "day-6", result.idea.id, "day-7", "afternoon");
+  assert.equal(moved.changed, true);
+  assert.ok(moved.undo);
+  const edited = {
+    ...moved.trip,
+    brief: {
+      ...moved.trip.brief,
+      itineraryIdeas: moved.trip.brief.itineraryIdeas?.map((idea) => idea.id === result.idea.id
+        ? { ...idea, description: "Traveller changed this after moving it." }
+        : idea),
+    },
+  };
+  const undone = undoItineraryItemAction(edited, moved.undo!);
+  assert.equal(undone.changed, false);
+  assert.match(undone.reason ?? "", /changed after the action/);
+  const preserved = undone.trip.brief.itineraryIdeas?.find((idea) => idea.id === result.idea.id);
+  assert.equal(preserved?.dayId, "day-7");
+  assert.equal(preserved?.description, "Traveller changed this after moving it.");
+});
+
+test("cross-day planning protects bookings and generated or structural rows", () => {
+  const source = tripFixture();
+  const protectedTrip: EasyTTrip = {
+    ...source,
+    brief: {
+      ...source.brief,
+      customActivities: { 6: ["Booked lunch"] },
+      bookings: [{ id: "lunch", type: "reservation", title: "Booked lunch", date: "2026-09-06", confirmation: "LUNCH-1", url: null }],
+    },
+    planItems: source.planItems.map((item) => item.id === "day-6" ? { ...item, notes: ["Booked lunch", "Keep this day flexible"] } : item),
+  };
+  const composition = composeItineraryDay(protectedTrip, "day-6")!;
+  const booking = [...Object.values(composition.planned).flat(), ...composition.unslotted].find((activity) => activity.title === "Booked lunch")!;
+  const generated = [...Object.values(composition.planned).flat(), ...composition.unslotted].find((activity) => activity.title === "Keep this day flexible")!;
+  assert.equal(moveItineraryActivityAcrossDays(protectedTrip, "day-6", booking.id, "day-7", "midday").changed, false);
+  assert.equal(moveItineraryActivityAcrossDays(protectedTrip, "day-6", generated.id, "day-7", "midday").changed, false);
+});
+
+test("Undo reverses only a newly added item and restores a previously saved idea", () => {
+  const source = tripFixture();
+  const added = addItineraryActivityWithUndo(source, 6, 0, "Coffee stop", "midday");
+  assert.ok(added.undo);
+  const afterUnrelatedNote = { ...added.trip, brief: { ...added.trip.brief, dayNotes: { 7: ["Keep this note"] } } };
+  const undoneAdd = undoItineraryItemAction(afterUnrelatedNote, added.undo!);
+  assert.equal(undoneAdd.trip.planItems.find((day) => day.id === "day-6")?.notes.includes("Coffee stop"), false);
+  assert.deepEqual(undoneAdd.trip.brief.dayNotes?.[7], ["Keep this note"]);
+
+  const idea = exploreResultForPlace(source.stops[0]!, lycabettusPlace).idea;
+  const saved = saveItineraryIdea(source, idea);
+  const planned = scheduleItineraryIdeaWithUndo(saved, idea, "day-6", "afternoon");
+  assert.ok(planned.undo);
+  const undoneIdea = undoItineraryItemAction(planned.trip, planned.undo!);
+  const restored = undoneIdea.trip.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+  assert.equal(restored?.dayId, undefined);
+  assert.equal(restored?.providerMetadata, idea.providerMetadata);
 });
 
 test("day-part and same-stop day moves update every projection without changing place identity", () => {

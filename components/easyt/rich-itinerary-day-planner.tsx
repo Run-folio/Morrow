@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BedDouble,
   CalendarDays,
+  CalendarRange,
   CirclePlus,
   Clock3,
   GripVertical,
@@ -42,6 +43,7 @@ type RichItineraryDayPlannerProps = {
   onAddSubmit?: () => void;
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
+  onMoveToDay?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   dragActive?: boolean;
   draggedActivityId?: string | null;
   onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLSpanElement>) => void;
@@ -49,6 +51,8 @@ type RichItineraryDayPlannerProps = {
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
   selectedActivityId?: string | null;
   onActivitySelect?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
+  onTransferSelect?: (transferId: string, trigger: HTMLButtonElement) => void;
+  selectedTransferId?: string | null;
   onTonightSelect?: (trigger: HTMLButtonElement) => void;
   selectedTonight?: boolean;
   showHeader?: boolean;
@@ -76,6 +80,7 @@ function copyFor(language: "en" | "es") {
     cancel: "Cancelar",
     moveEarlier: "Mover antes en",
     moveLater: "Mover después en",
+    moveToDay: "Mover a otro día",
     bookedActivity: "Reservado",
     timeNotSet: "PLANIFICADO · HORA SIN FIJAR",
     choosePeriod: "Momento del día",
@@ -100,6 +105,7 @@ function copyFor(language: "en" | "es") {
     cancel: "Cancel",
     moveEarlier: "Move earlier in",
     moveLater: "Move later in",
+    moveToDay: "Move to another day",
     bookedActivity: "Booked",
     timeNotSet: "Planned",
     choosePeriod: "Part of day",
@@ -133,6 +139,7 @@ function ActivityRow({
   onBeforeDayPartChange,
   onDayPartChange,
   onMoveActivity,
+  onMoveToDay,
   draggable,
   dragging,
   onDragStart,
@@ -150,6 +157,7 @@ function ActivityRow({
   onBeforeDayPartChange: (activityId: string) => void;
   onDayPartChange?: RichItineraryDayPlannerProps["onDayPartChange"];
   onMoveActivity?: RichItineraryDayPlannerProps["onMoveActivity"];
+  onMoveToDay?: RichItineraryDayPlannerProps["onMoveToDay"];
   draggable: boolean;
   dragging: boolean;
   onDragStart?: (event: DragEvent<HTMLSpanElement>) => void;
@@ -228,6 +236,13 @@ function ActivityRow({
           onClick={() => { onBeforeDayPartChange(activity.id); onMoveActivity(activity, "later"); }}
         >{copy.moveLater} {dayPartLabels[language][activity.dayPart]}: {activity.title}</EasyTButton>
           </div> : null}
+          {onMoveToDay ? <EasyTButton
+            icon={CalendarRange}
+            size="small"
+            variant="quiet"
+            disabled={pending}
+            onClick={(event) => onMoveToDay(activity, event.currentTarget)}
+          >{copy.moveToDay}</EasyTButton> : null}
         </div>
       </details> : null}
     </article>
@@ -248,6 +263,7 @@ export default function RichItineraryDayPlanner({
   onAddSubmit,
   onDayPartChange,
   onMoveActivity,
+  onMoveToDay,
   dragActive = false,
   draggedActivityId = null,
   onActivityDragStart,
@@ -255,6 +271,8 @@ export default function RichItineraryDayPlanner({
   onActivityDrop,
   selectedActivityId = null,
   onActivitySelect,
+  onTransferSelect,
+  selectedTransferId = null,
   onTonightSelect,
   selectedTonight = false,
   showHeader = true,
@@ -299,15 +317,17 @@ export default function RichItineraryDayPlanner({
             {composition.transfers.map((transfer) => {
               const duration = transfer.durationMinutes === null ? null : formatTripDuration(transfer.durationMinutes);
               return (
-                <article className={styles.transfer} key={`${transfer.direction}-${transfer.id}`}>
-                  <span>{transfer.direction === "arriving" ? copy.arriving : copy.departing}</span>
-                  <strong>{transfer.origin && transfer.destination ? `${transfer.origin} → ${transfer.destination}` : tripLegClassificationLabel(transfer.classification)}</strong>
-                  <p>
-                    {transfer.mode !== "unknown" ? transfer.mode : tripLegClassificationLabel(transfer.classification)}
-                    {duration ? ` · ${transfer.durationIsEstimate ? "~" : ""}${duration}` : ` · ${copy.timingUnknown}`}
-                    {duration && transfer.durationIsEstimate ? ` · ${copy.estimate}` : ""}
-                  </p>
-                  {transfer.scheduleNeedsChecking ? <small>{copy.scheduleCheck}</small> : null}
+                <article className={`${styles.transfer} ${selectedTransferId === transfer.id ? styles.transferSelected : ""}`} key={`${transfer.direction}-${transfer.id}`}>
+                  <EasyTButton className={styles.transferSelect} variant="quiet" aria-pressed={selectedTransferId === transfer.id} onClick={(event) => onTransferSelect?.(transfer.id, event.currentTarget)}>
+                    <span>{transfer.direction === "arriving" ? copy.arriving : copy.departing}</span>
+                    <strong>{transfer.origin && transfer.destination ? `${transfer.origin} → ${transfer.destination}` : tripLegClassificationLabel(transfer.classification)}</strong>
+                    <p>
+                      {transfer.mode !== "unknown" ? transfer.mode : tripLegClassificationLabel(transfer.classification)}
+                      {duration ? ` · ${transfer.durationIsEstimate ? "~" : ""}${duration}` : ` · ${copy.timingUnknown}`}
+                      {duration && transfer.durationIsEstimate ? ` · ${copy.estimate}` : ""}
+                    </p>
+                    {transfer.scheduleNeedsChecking ? <small>{copy.scheduleCheck}</small> : null}
+                  </EasyTButton>
                 </article>
               );
             })}
@@ -360,6 +380,7 @@ export default function RichItineraryDayPlanner({
                       onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                       onDayPartChange={onDayPartChange}
                       onMoveActivity={onMoveActivity}
+                      onMoveToDay={onMoveToDay}
                       draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                       dragging={draggedActivityId === activity.id}
                       onDragStart={(event) => onActivityDragStart?.(activity, event)}
@@ -437,6 +458,7 @@ export default function RichItineraryDayPlanner({
                 onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
+                onMoveToDay={onMoveToDay}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                 dragging={draggedActivityId === activity.id}
                 onDragStart={(event) => onActivityDragStart?.(activity, event)}

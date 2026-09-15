@@ -104,7 +104,7 @@ test("the itinerary preview is opt-in and the main Map default remains interacti
 
 test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook", () => {
   assert.match(itinerary, /fetch\(`\/api\/journey-discover\?/);
-  assert.match(itinerary, /scheduleItineraryIdea\(/);
+  assert.match(itinerary, /scheduleItineraryIdeaWithUndo\(/);
   assert.match(ideas, /addMappedPlaceToTrip\(/);
   assert.match(itinerary, /mutation\.mutateTrip/);
   assert.match(itinerary, /itinerarySuggestionCandidates\(trip, day, places\)/);
@@ -245,7 +245,7 @@ test("recommendation cards use canonical day scoring, an accessible itinerary me
   assert.match(itinerary, /event\.key === "Escape"/);
   assert.match(itinerary, /event\.key === "ArrowDown"/);
   assert.match(itinerary, /triggerRef\.current\?\.focus\(\)/);
-  assert.match(itinerary, /scheduleItineraryIdea\(current, idea, dayId, scheduledPart\)/);
+  assert.match(itinerary, /scheduleItineraryIdeaWithUndo\(current, idea, dayId, scheduledPart\)/);
   assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
   assert.match(itinerary, /placeItineraryActivity\(current, active\.id/);
   assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
@@ -281,7 +281,7 @@ test("planner drag ownership survives native pointer timing and is cleared at wo
   assert.match(itinerary, /onDragStart=\{nativePlannerDrag \? \(idea, event\) => \{[\s\S]{0,220}beginPlannerDrag\(\{ kind: "suggestion", idea \}\);/);
   assert.match(itinerary, /onDragEnd=\{nativePlannerDrag \? clearPlannerDrag : undefined\}/);
   assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
-  assert.match(itinerary, /scheduleItineraryIdeaAtPosition\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
+  assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
   assert.match(itinerary, /window\.matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)/);
 });
 

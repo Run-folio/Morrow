@@ -22,11 +22,13 @@ import {
   Pencil,
   Plane,
   Route,
+  RotateCcw,
   Ship,
   Sparkles,
   TrainFront,
   Trash2,
   Utensils,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -39,7 +41,6 @@ import { itineraryNotesWithSourceIndexesForDisplay, semanticSamePlaceArrival } f
 import {
   addItineraryDayNote,
   assignItineraryActivityDayPart,
-  insertItineraryActivity,
   itineraryActivityProtection,
   moveItineraryActivity,
   moveItineraryIdeaActivity,
@@ -54,7 +55,7 @@ import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLe
 import { removeStayBooking, stayBookingForStop, upsertStayBooking } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, mapWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -67,12 +68,21 @@ import {
   type ItineraryDiscoveryPlace,
 } from "@/lib/easyt/itinerary-day-context";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
+import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
-import { placeItineraryActivity, preferredItineraryDayPart, scheduleItineraryIdeaAtPosition } from "@/lib/easyt/itinerary-activity-placement";
+import {
+  addItineraryActivityWithUndo,
+  moveItineraryActivityAcrossDays,
+  placeItineraryActivity,
+  preferredItineraryDayPart,
+  scheduleItineraryIdeaAtPositionWithUndo,
+  scheduleItineraryIdeaWithUndo,
+  undoItineraryItemAction,
+  type ItineraryItemUndoReceipt,
+} from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
 import DestinationAccommodationModule from "@/components/easyt/destination-accommodation-module";
@@ -91,6 +101,7 @@ import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendati
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { activityAllowsDayPart, activityDayPartFit } from "@/lib/easyt/itinerary-schedule-awareness";
 import { itineraryCalendarNightBands, itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";
+import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
@@ -121,8 +132,15 @@ type AddFlow = {
 
 type ActivityTarget = ItineraryActivityLocation & { title: string };
 type PlannerDragItem =
-  | { kind: "activity"; activity: ComposedItineraryActivity }
+  | { kind: "activity"; activity: ComposedItineraryActivity; sourceDayId: string; sourceStopId: string }
   | { kind: "suggestion"; idea: ItineraryIdea };
+
+type MoveFlow = {
+  activity: ComposedItineraryActivity;
+  sourceDayId: string;
+  targetDayId: string;
+  targetDayPart: ItineraryDayPart | null;
+};
 
 const itineraryDayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {
   en: { morning: "Morning", midday: "Midday", afternoon: "Afternoon", evening: "Evening" },
@@ -229,6 +247,29 @@ function itineraryCopy(language: "en" | "es") {
     cancel: "Cancelar",
     moveEarlier: "Mover antes",
     moveLater: "Mover después",
+    moveActivity: "Mover actividad",
+    moveActivityEyebrow: "MOVER ACTIVIDAD",
+    moveActivityDetail: "Elige otro día elegible en esta parada exacta de la ruta. Los planes existentes de ese día se conservarán.",
+    moveTo: "Mover a",
+    partOfDay: "Momento del día",
+    undoActivityAction: "Deshacer acción de actividad",
+    activityActionUndone: "Se deshizo la última acción de actividad",
+    sameStopMoveError: "Elige un día en la misma parada de la ruta para esta actividad.",
+    moveFailed: "Esta actividad no se pudo mover de forma segura.",
+    movedToDay: "se movió al día",
+    openTransport: "Abrir espacio de Transporte",
+    mode: "Modo",
+    duration: "Duración",
+    confirmation: "Confirmación",
+    provider: "Proveedor",
+    transportDetails: "Detalles de transporte",
+    transferToConfirm: "Traslado por confirmar",
+    transportBookingSaved: "Reserva de transporte guardada",
+    planningDetailsAvailable: "Detalles de planificación disponibles",
+    confirmedTransport: "Transporte confirmado",
+    confirmedBooking: "Reserva confirmada",
+    savedBookingDetails: "Detalles de reserva guardados",
+    unknownTiming: "Desconocida · horario por confirmar",
     dragActivity: "Arrastrar para reordenar",
     reservation: "Reserva",
     unresolved: "Sin resolver",
@@ -313,6 +354,29 @@ function itineraryCopy(language: "en" | "es") {
     cancel: "Cancel",
     moveEarlier: "Move earlier",
     moveLater: "Move later",
+    moveActivity: "Move activity",
+    moveActivityEyebrow: "MOVE ACTIVITY",
+    moveActivityDetail: "Choose another eligible day in this exact route stop. Existing plans on that day will be kept.",
+    moveTo: "Move to",
+    partOfDay: "Part of day",
+    undoActivityAction: "Undo activity action",
+    activityActionUndone: "Last activity action undone",
+    sameStopMoveError: "Choose a day in the same route stop for this activity.",
+    moveFailed: "This activity could not be moved safely.",
+    movedToDay: "moved to Day",
+    openTransport: "Open Transport workspace",
+    mode: "Mode",
+    duration: "Duration",
+    confirmation: "Confirmation",
+    provider: "Provider",
+    transportDetails: "Transport details",
+    transferToConfirm: "Transfer to confirm",
+    transportBookingSaved: "Transport booking saved",
+    planningDetailsAvailable: "Planning details available",
+    confirmedTransport: "Confirmed transport",
+    confirmedBooking: "Confirmed booking",
+    savedBookingDetails: "Saved booking details",
+    unknownTiming: "Unknown · timing to confirm",
     dragActivity: "Drag to reorder",
     reservation: "Reservation",
     unresolved: "Unresolved",
@@ -473,6 +537,10 @@ export default function TripItineraryWorkspace({
   const [openSavedPickerId, setOpenSavedPickerId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  const [undoReceipt, setUndoReceipt] = useState<ItineraryItemUndoReceipt | null>(null);
+  const [moveFlow, setMoveFlow] = useState<MoveFlow | null>(null);
+  const [moveError, setMoveError] = useState("");
+  const moveOriginRef = useRef<HTMLElement | null>(null);
   const [railNoteDraft, setRailNoteDraft] = useState("");
   const [railNoteError, setRailNoteError] = useState("");
   const noteInputRef = useRef<HTMLInputElement>(null);
@@ -525,10 +593,11 @@ export default function TripItineraryWorkspace({
   }, [days, selectedDayNumber, workingTrip.id]);
 
   useEffect(() => {
-    setSelectedItemId(calendarItemRequestRef.current);
+    const requestedCalendarItem = calendarItemRequestRef.current;
+    setSelectedItemId(requestedCalendarItem);
     calendarItemRequestRef.current = null;
     setSelectedRecommendation(null);
-    selectedItemOriginRef.current = null;
+    if (!requestedCalendarItem) selectedItemOriginRef.current = null;
     setAddFlow(null);
     setAddDraft("");
     setAddError("");
@@ -542,6 +611,8 @@ export default function TripItineraryWorkspace({
     setPlannerDrag(null);
     setOpenSavedPickerId(null);
     setPlannerError("");
+    setMoveFlow(null);
+    setMoveError("");
     setRailNoteDraft("");
     setRailNoteError("");
   }, [activeDayId]);
@@ -677,12 +748,23 @@ export default function TripItineraryWorkspace({
   }
 
   const dayBookings = bookingsForDay(workingTrip, active, stop);
-  const otherDayBookings = dayBookings.filter((booking) => booking.type !== "stay");
   const stayBooking = stop ? stayBookingForStop(workingTrip, stop) ?? null : null;
   const dayNotes = workingTrip.brief.dayNotes?.[active.dayNumber] ?? [];
   const customActivities = workingTrip.brief.customActivities?.[active.dayNumber] ?? [];
   const recommendations = workingTrip.recommendations.filter((recommendation) => recommendation.status === "open" && recommendation.affectedDays.includes(active.dayNumber));
   const logisticsLegs = itineraryDayLegs(workingTrip, active);
+  const transportAgenda = itineraryTransportAgenda(workingTrip);
+  const selectedTransportAgenda = selectedItemId?.startsWith("leg-")
+    ? transportAgenda.find((item) => item.leg.id === selectedItemId.slice(4)) ?? null
+    : null;
+  const representedTransportBookingIds = new Set(logisticsLegs.flatMap((leg) => {
+    const bookingId = transportAgenda.find((item) => item.leg.id === leg.id)?.booking?.id;
+    return bookingId ? [bookingId] : [];
+  }));
+  const otherDayBookings = dayBookings.filter((booking) => booking.type !== "stay" && !representedTransportBookingIds.has(booking.id));
+  const selectedBooking = selectedItemId?.startsWith("booking:")
+    ? (workingTrip.brief.bookings ?? []).find((booking) => booking.id === selectedItemId.slice("booking:".length)) ?? null
+    : null;
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
   const unscheduledSavedIdeas = (workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
   const hasContextRail = true;
@@ -801,10 +883,15 @@ export default function TripItineraryWorkspace({
   const submitAddFlow = () => {
     if (!addFlow) return;
     let mutationReason = "";
+    let receipt: ItineraryItemUndoReceipt | null = null;
     const accepted = mutation.mutateTrip((current) => {
-      const result = addFlow.kind === "activity"
-        ? insertItineraryActivity(current, addFlow.dayNumber, addFlow.noteIndex, addDraft, addFlow.dayPart)
-        : addItineraryDayNote(current, addFlow.dayNumber, addDraft);
+      if (addFlow.kind === "activity") {
+        const result = addItineraryActivityWithUndo(current, addFlow.dayNumber, addFlow.noteIndex, addDraft, addFlow.dayPart);
+        mutationReason = result.reason ?? "";
+        receipt = result.undo ?? null;
+        return result.trip;
+      }
+      const result = addItineraryDayNote(current, addFlow.dayNumber, addDraft);
       mutationReason = result.reason ?? "";
       return result.trip;
     }, `itinerary-day-${addFlow.dayNumber}`);
@@ -813,6 +900,7 @@ export default function TripItineraryWorkspace({
       return;
     }
     setNotice(addFlow.kind === "activity" ? copy.activityAdded : copy.noteAdded);
+    setUndoReceipt(receipt);
     setAddFlow(null);
     setAddDraft("");
     setAddError("");
@@ -841,6 +929,7 @@ export default function TripItineraryWorkspace({
 
   const scheduleIdea = (idea: ItineraryIdea, dayId: string, requestedPart?: ItineraryDayPart | null) => {
     let scheduledPart: ItineraryDayPart | null = requestedPart ?? null;
+    let receipt: ItineraryItemUndoReceipt | null = null;
     const accepted = mutation.mutateTrip((current) => {
       const preferredPart = requestedPart === undefined
         ? activityDayPartFit(idea.providerMetadata?.duration) === "slot"
@@ -848,9 +937,12 @@ export default function TripItineraryWorkspace({
           : null
         : requestedPart;
       scheduledPart = activityAllowsDayPart(idea.providerMetadata?.duration, preferredPart) ? preferredPart : null;
-      return scheduleItineraryIdea(current, idea, dayId, scheduledPart);
+      const result = scheduleItineraryIdeaWithUndo(current, idea, dayId, scheduledPart);
+      receipt = result.undo ?? null;
+      return result.trip;
     }, `itinerary-suggestion-${idea.stopId}-${idea.placeId}`);
     if (!accepted) return false;
+    setUndoReceipt(receipt);
     const target = workingTrip.planItems.find((day) => day.id === dayId);
     const partLabel = scheduledPart ? scheduledPart[0]!.toUpperCase() + scheduledPart.slice(1) : null;
     setNotice(target && partLabel
@@ -877,12 +969,14 @@ export default function TripItineraryWorkspace({
     setPlannerError("");
     if (dragged.kind === "suggestion") {
       let mutationReason = "";
+      let receipt: ItineraryItemUndoReceipt | null = null;
       const accepted = mutation.mutateTrip((current) => {
-        const result = scheduleItineraryIdeaAtPosition(current, dragged.idea, active.id, dayPart, insertionIndex);
+        const result = scheduleItineraryIdeaAtPositionWithUndo(current, dragged.idea, active.id, dayPart, insertionIndex);
         mutationReason = result.reason ?? "";
+        receipt = result.undo ?? null;
         return result.trip;
       }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
-      if (accepted) setNotice(`${dragged.idea.title} added to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`);
+      if (accepted) { setUndoReceipt(receipt); setNotice(`${dragged.idea.title} added to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`); }
       else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
@@ -1011,6 +1105,100 @@ export default function TripItineraryWorkspace({
     setNotice(copy.activityMoved);
   };
 
+  const eligibleMoveDays = (sourceDayId: string) => {
+    const sourceDay = workingTrip.planItems.find((day) => day.id === sourceDayId);
+    return sourceDay ? days.filter((day) => day.stopId === sourceDay.stopId) : [];
+  };
+
+  const openMoveFlow = (activity: ComposedItineraryActivity, sourceDayId: string, origin?: HTMLElement | null) => {
+    const options = eligibleMoveDays(sourceDayId);
+    if (options.length < 2 || activity.booking || !activity.dayPartEditable) return;
+    const targetDay = options.find((day) => day.id !== sourceDayId) ?? options[0]!;
+    moveOriginRef.current = origin ?? null;
+    setSelectedItemId(null);
+    setSelectedRecommendation(null);
+    setMoveError("");
+    setMoveFlow({ activity, sourceDayId, targetDayId: targetDay.id, targetDayPart: activity.dayPart });
+  };
+
+  const closeMoveFlow = () => {
+    const origin = moveOriginRef.current;
+    setMoveFlow(null);
+    setMoveError("");
+    moveOriginRef.current = null;
+    window.requestAnimationFrame(() => {
+      if (origin?.isConnected) origin.focus();
+      else document.querySelector<HTMLElement>(`[data-itinerary-activity-id="${CSS.escape(moveFlow?.activity.id ?? "")}"] button`)?.focus();
+    });
+  };
+
+  const moveCanonicalActivity = (
+    activity: ComposedItineraryActivity,
+    sourceDayId: string,
+    targetDayId: string,
+    targetDayPart: ItineraryDayPart | null,
+  ) => {
+    let mutationReason = "";
+    let receipt: ItineraryItemUndoReceipt | null = null;
+    const accepted = mutation.mutateTrip((current) => {
+      const result = moveItineraryActivityAcrossDays(current, sourceDayId, activity.id, targetDayId, targetDayPart);
+      mutationReason = result.reason ?? "";
+      receipt = result.undo ?? null;
+      return result.trip;
+    }, `itinerary-activity-move-${activity.id}`);
+    if (!accepted) {
+      setMoveError(mutationReason || copy.moveFailed);
+      setPlannerError(mutationReason || copy.moveFailed);
+      return false;
+    }
+    const targetIndex = days.findIndex((day) => day.id === targetDayId);
+    setUndoReceipt(receipt);
+    setNotice(`${activity.title} ${copy.movedToDay} ${days[targetIndex]?.dayNumber ?? ""}`.trim());
+    setPlannerError("");
+    if (targetIndex >= 0) setSelectedIndex(targetIndex);
+    return true;
+  };
+
+  const submitMoveFlow = () => {
+    if (!moveFlow) return;
+    if (moveCanonicalActivity(moveFlow.activity, moveFlow.sourceDayId, moveFlow.targetDayId, moveFlow.targetDayPart)) {
+      setMoveFlow(null);
+      setMoveError("");
+      moveOriginRef.current = null;
+    }
+  };
+
+  const undoLastItemAction = () => {
+    if (!undoReceipt) return;
+    let mutationReason = "";
+    const accepted = mutation.mutateTrip((current) => {
+      const result = undoItineraryItemAction(current, undoReceipt);
+      mutationReason = result.reason ?? "";
+      return result.trip;
+    }, "itinerary-item-undo");
+    if (!accepted) {
+      setPlannerError(mutationReason || "This item changed after the action and was not undone.");
+      return;
+    }
+    setUndoReceipt(null);
+    setNotice(copy.activityActionUndone);
+  };
+
+  const dropCalendarItem = (targetDay: ItineraryCalendarDay) => {
+    const dragged = plannerDragRef.current ?? plannerDrag;
+    if (!dragged) return;
+    clearPlannerDrag();
+    if (dragged.kind === "suggestion") {
+      if (dragged.idea.stopId !== targetDay.day.stopId) {
+        setPlannerError(copy.sameStopMoveError);
+        return;
+      }
+      scheduleIdea(dragged.idea, targetDay.id);
+      return;
+    }
+    moveCanonicalActivity(dragged.activity, dragged.sourceDayId, targetDay.id, dragged.activity.dayPart);
+  };
+
   const selectPreviewPin = (target: EventTarget | null) => {
     const pinId = (target as HTMLElement | null)?.closest<HTMLElement>("[data-planner-pin-id]")?.dataset.plannerPinId;
     const pin = pinId ? mapContext.pins.find((candidate) => candidate.id === pinId) : null;
@@ -1041,8 +1229,23 @@ export default function TripItineraryWorkspace({
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
       </header>
-      {workspaceView === "calendar" ? <ItineraryCalendar weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))} selectedDayId={active.id} copy={copy} language={language} onSelect={(day, item) => {
-        const itemId = item?.kind === "activity" ? item.activity.id : item?.kind === "accommodation" ? `stay:${item.booking.id}` : item?.kind === "transfer" ? `leg-${item.agenda.leg.id}` : null;
+      {workspaceView === "calendar" ? <ItineraryCalendar
+        weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
+        selectedDayId={active.id}
+        copy={copy}
+        language={language}
+        dragItem={plannerDrag}
+        nativeDrag={nativePlannerDrag}
+        onDragStart={(day, activity, event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", activity.id);
+          beginPlannerDrag({ kind: "activity", activity, sourceDayId: day.id, sourceStopId: day.day.stopId });
+        }}
+        onDragEnd={clearPlannerDrag}
+        onDrop={dropCalendarItem}
+        onSelect={(day, item, origin) => {
+        const itemId = item?.kind === "activity" ? item.activity.id : item?.kind === "accommodation" ? `stay:${item.booking.id}` : item?.kind === "transfer" ? `leg-${item.agenda.leg.id}` : item?.kind === "booking" ? `booking:${item.booking.id}` : null;
+        selectedItemOriginRef.current = origin ?? null;
         if (day.id !== active.id) { calendarItemRequestRef.current = itemId; setSelectedIndex(days.findIndex((candidate) => candidate.id === day.id)); return; }
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
@@ -1120,7 +1323,12 @@ export default function TripItineraryWorkspace({
           detail={plannerError}
           safety="Your itinerary is unchanged. Try the part-of-day control instead."
         /></div> : null}
-        {notice ? <div className={styles.notice}><MorroviaBriefNotice title={notice} autoDismissMs={3200} onDismiss={() => setNotice(null)} /></div> : null}
+        {notice ? <div className={styles.notice}><MorroviaBriefNotice
+          title={notice}
+          autoDismissMs={undoReceipt ? undefined : 3200}
+          action={undoReceipt ? <EasyTButton icon={RotateCcw} size="small" variant="secondary" onClick={undoLastItemAction}>{copy.undoActivityAction}</EasyTButton> : undefined}
+          onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
+        /></div> : null}
 
         {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
@@ -1136,12 +1344,13 @@ export default function TripItineraryWorkspace({
             onAddSubmit={submitAddFlow}
             onDayPartChange={changeActivityDayPart}
             onMoveActivity={moveComposedActivity}
+            onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
             dragActive={Boolean(plannerDrag)}
             draggedActivityId={plannerDrag?.kind === "activity" ? plannerDrag.activity.id : null}
             onActivityDragStart={nativePlannerDrag ? (activity, event) => {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", activity.id);
-              beginPlannerDrag({ kind: "activity", activity });
+              beginPlannerDrag({ kind: "activity", activity, sourceDayId: active.id, sourceStopId: active.stopId });
             } : undefined}
             onActivityDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
             onActivityDrop={dropPlannerItem}
@@ -1149,6 +1358,12 @@ export default function TripItineraryWorkspace({
             onActivitySelect={(activity, trigger) => {
               selectedItemOriginRef.current = trigger;
               setSelectedItemId(activity.id);
+            }}
+            selectedTransferId={selectedTransportAgenda?.leg.id ?? null}
+            onTransferSelect={(transferId, trigger) => {
+              selectedItemOriginRef.current = trigger;
+              setSelectedRecommendation(null);
+              setSelectedItemId(`leg-${transferId}`);
             }}
             onTonightSelect={stayBooking ? (trigger) => {
               selectedItemOriginRef.current = trigger;
@@ -1251,8 +1466,18 @@ export default function TripItineraryWorkspace({
         </details>
       </div>
 
-      {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail ? styles.contextRailDetail : ""}`} aria-label={selectedDetail ? "Selected itinerary item details" : "Selected day planning context"}>
-        {selectedDetail ? <ItineraryItemDetail
+      {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
+        {selectedTransportAgenda ? <ItineraryLogisticsDetail
+          trip={workingTrip}
+          agenda={selectedTransportAgenda}
+          language={language}
+          onClose={closeSelectedDetail}
+        /> : selectedBooking ? <ItineraryLogisticsDetail
+          trip={workingTrip}
+          booking={selectedBooking}
+          language={language}
+          onClose={closeSelectedDetail}
+        /> : selectedDetail ? <ItineraryItemDetail
           detail={selectedDetail}
           mapHref={selectedRecommendation ? selectedRecommendationMapHref : selectedItemMapHref}
           pending={selectedRecommendation ? mutation.isPending(`itinerary-suggestion-${selectedRecommendation.stopId}-${selectedRecommendation.idea.placeId}`) : selectedActivity ? mutation.isPending(`itinerary-activity-day-part-${selectedActivity.id}`) : stayBooking ? mutation.isPending(`itinerary-stay-${stop?.id}`) : false}
@@ -1275,7 +1500,11 @@ export default function TripItineraryWorkspace({
               context={{ placement: "itinerary_day_experiences", tripId: workingTrip.id, stopId: selectedRecommendation.stopId, workspaceView: "itinerary" }}
               variant="secondary"
             /><MorroviaAffiliateDisclosure className={styles.commercialDisclosure} provider="viator" /></> : null}
-          </> : undefined}
+          </> : selectedActivity && selectedActivity.dayPartEditable && !selectedActivity.booking && eligibleMoveDays(active.id).length > 1 ? <EasyTButton
+            fullWidth
+            variant="secondary"
+            onClick={(event) => openMoveFlow(selectedActivity, active.id, event.currentTarget)}
+          >Move to…</EasyTButton> : undefined}
           onDayPartChange={selectedActivity?.dayPartEditable
             && activityAllowsDayPart(selectedActivity.providerMetadata?.duration, "morning")
             ? (part) => changeActivityDayPart(selectedActivity, part)
@@ -1307,7 +1536,7 @@ export default function TripItineraryWorkspace({
             if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
           } : undefined}
         /> : null}
-        <div className={styles.contextRailBody} hidden={Boolean(selectedDetail)}>
+        <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
         {mapContext.stops.length || mapContext.pins.length ? <details className={styles.contextSection} open>
           <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
           <div
@@ -1343,7 +1572,7 @@ export default function TripItineraryWorkspace({
         {logisticsLegs.length || dayBookings.length || (stop?.nights ?? 0) > 0 ? <details className={styles.contextSection} open>
           <summary><span>{copy.logistics}</span><span className={styles.sectionCount}>{otherDayBookings.length + logisticsLegs.length + ((stop?.nights ?? 0) > 0 ? 1 : 0)}</span></summary>
           <div className={styles.contextList}>
-            {logisticsLegs.map((leg) => <LogisticsLeg leg={leg} trip={workingTrip} copy={copy} key={leg.id} selected={selectedItemId === `leg-${leg.id}`} onSelect={() => setSelectedItemId(`leg-${leg.id}`)} />)}
+            {logisticsLegs.map((leg) => <LogisticsLeg leg={leg} trip={workingTrip} copy={copy} key={leg.id} selected={selectedItemId === `leg-${leg.id}`} onSelect={(origin) => { selectedItemOriginRef.current = origin; setSelectedItemId(`leg-${leg.id}`); }} />)}
             {stop && (stop.nights ?? 0) > 0 ? <DestinationAccommodationModule
               trip={workingTrip}
               stop={stop}
@@ -1361,7 +1590,7 @@ export default function TripItineraryWorkspace({
                 return changed;
               }}
             /> : null}
-            {otherDayBookings.map((booking) => <BookingCard booking={booking} copy={copy} key={booking.id} />)}
+            {otherDayBookings.map((booking) => <BookingCard booking={booking} copy={copy} key={booking.id} selected={selectedItemId === `booking:${booking.id}`} onSelect={(origin) => { selectedItemOriginRef.current = origin; setSelectedItemId(`booking:${booking.id}`); }} />)}
           </div>
         </details> : null}
 
@@ -1473,6 +1702,36 @@ export default function TripItineraryWorkspace({
           </form>
         </details>
       </aside> : null}
+
+      <MorroviaFormDialog
+        open={Boolean(moveFlow)}
+        eyebrow={copy.moveActivityEyebrow}
+        title={moveFlow ? `${copy.moveActivity}: ${moveFlow.activity.title}` : copy.moveActivity}
+        detail={copy.moveActivityDetail}
+        submitLabel={copy.moveActivity}
+        error={moveError || undefined}
+        onCancel={closeMoveFlow}
+        onSubmit={submitMoveFlow}
+      >
+        {moveFlow ? <>
+          <EasyTSelect
+            autoFocus
+            label={copy.moveTo}
+            value={moveFlow.targetDayId}
+            onChange={(event) => { setMoveError(""); setMoveFlow((current) => current ? { ...current, targetDayId: event.target.value } : current); }}
+          >
+            {eligibleMoveDays(moveFlow.sourceDayId).filter((day) => day.id !== moveFlow.sourceDayId).map((day) => <option value={day.id} key={day.id}>Day {day.dayNumber} · {displayDayDate(day.date, language)} · {stopForDay(workingTrip, day)?.name ?? day.title}</option>)}
+          </EasyTSelect>
+          {activityAllowsDayPart(moveFlow.activity.providerMetadata?.duration, "morning") ? <EasyTSelect
+            label={copy.partOfDay}
+            value={moveFlow.targetDayPart ?? ""}
+            onChange={(event) => { setMoveError(""); setMoveFlow((current) => current ? { ...current, targetDayPart: event.target.value ? event.target.value as ItineraryDayPart : null } : current); }}
+          >
+            <option value="">{copy.timeNotSet}</option>
+            {itineraryDayParts.map((part) => <option value={part} key={part}>{itineraryDayPartLabels[language][part]}</option>)}
+          </EasyTSelect> : null}
+        </> : null}
+      </MorroviaFormDialog>
 
       <MorroviaConfirmationDialog
         open={Boolean(removeTarget)}
@@ -1597,12 +1856,17 @@ function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "act
   return copy.flexible;
 }
 
-function ItineraryCalendar({ weeks, selectedDayId, copy, language, onSelect }: {
+function ItineraryCalendar({ weeks, selectedDayId, copy, language, dragItem, nativeDrag, onDragStart, onDragEnd, onDrop, onSelect }: {
   weeks: ItineraryCalendarWeek[];
   selectedDayId: string | null;
   copy: ReturnType<typeof itineraryCopy>;
   language: "en" | "es";
-  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem) => void;
+  dragItem: PlannerDragItem | null;
+  nativeDrag: boolean;
+  onDragStart: (day: ItineraryCalendarDay, activity: ComposedItineraryActivity, event: DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
+  onDrop: (day: ItineraryCalendarDay) => void;
+  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem, origin?: HTMLButtonElement) => void;
 }) {
   const weekdayLabels = calendarWeekdayLabels(language);
   const panelId = "itinerary-calendar";
@@ -1617,13 +1881,22 @@ function ItineraryCalendar({ weeks, selectedDayId, copy, language, onSelect }: {
         {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><span>{band.stop.name} · {band.span} {band.span === 1 ? "night" : "nights"}{band.continued ? " · continued" : ""}</span></div>)}
       </div>
       <div className={styles.calendarGrid}>
-        {week.days.map((day, dayIndex) => day ? <article className={styles.calendarDay} data-selected={selectedDayId === day.id || undefined} key={day.id}>
+        {week.days.map((day, dayIndex) => day ? <article
+          className={styles.calendarDay}
+          data-selected={selectedDayId === day.id || undefined}
+          data-drop-eligible={Boolean(dragItem && (dragItem.kind === "suggestion" ? dragItem.idea.stopId : dragItem.sourceStopId) === day.day.stopId) || undefined}
+          key={day.id}
+          onDragOver={(event) => {
+            if (dragItem && (dragItem.kind === "suggestion" ? dragItem.idea.stopId : dragItem.sourceStopId) === day.day.stopId) event.preventDefault();
+          }}
+          onDrop={(event) => { event.preventDefault(); onDrop(day); }}
+        >
           <EasyTButton
             className={styles.calendarDaySelect}
             variant="quiet"
             aria-pressed={selectedDayId === day.id}
             aria-label={`${copy.day} ${day.day.dayNumber}, ${day.stop?.name ?? day.day.title}, ${displayDayDate(day.day.date, language)}`}
-            onClick={() => onSelect(day)}
+            onClick={(event) => onSelect(day, undefined, event.currentTarget)}
           >
             <span><time dateTime={day.day.date}>{displayDayDate(day.day.date, language)}</time><i>{pad(day.day.dayNumber)}</i></span>
             <strong>{day.stop?.name ?? day.day.title}</strong>
@@ -1631,7 +1904,7 @@ function ItineraryCalendar({ weeks, selectedDayId, copy, language, onSelect }: {
             {day.arrival || day.departure ? <em>{[day.arrival ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
           </EasyTButton>
           {day.items.length ? <ul className={styles.calendarItems}>
-            {day.items.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} onSelect={onSelect} /></li>)}
+            {day.items.slice(0, 4).map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} draggable={nativeDrag && item.kind === "activity" && item.activity.dayPartEditable && !item.activity.booking} dragging={dragItem?.kind === "activity" && dragItem.activity.id === (item.kind === "activity" ? item.activity.id : null)} onDragStart={onDragStart} onDragEnd={onDragEnd} onSelect={onSelect} /></li>)}
             {day.items.length > 4 ? <li><EasyTButton size="small" variant="quiet" onClick={() => onSelect(day)} aria-label={`Show all ${day.items.length} items for Day ${day.day.dayNumber}`}>+{day.items.length - 4} more</EasyTButton></li> : null}
           </ul> : <p className={styles.calendarEmptyDay}>{copy.noCalendarPlans}</p>}
         </article> : <span className={styles.calendarBlank} aria-hidden="true" key={`${week.id}-${dayIndex}`} />)}
@@ -1640,12 +1913,16 @@ function ItineraryCalendar({ weeks, selectedDayId, copy, language, onSelect }: {
   </div>;
 }
 
-function CalendarItemButton({ item, day, copy, language, onSelect }: {
+function CalendarItemButton({ item, day, copy, language, draggable, dragging, onDragStart, onDragEnd, onSelect }: {
   item: ItineraryCalendarItem;
   day: ItineraryCalendarDay;
   copy: ReturnType<typeof itineraryCopy>;
   language: "en" | "es";
-  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem) => void;
+  draggable: boolean;
+  dragging: boolean;
+  onDragStart: (day: ItineraryCalendarDay, activity: ComposedItineraryActivity, event: DragEvent<HTMLElement>) => void;
+  onDragEnd: () => void;
+  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem, origin?: HTMLButtonElement) => void;
 }) {
   let Icon: LucideIcon = CalendarDays;
   let title = "";
@@ -1668,7 +1945,7 @@ function CalendarItemButton({ item, day, copy, language, onSelect }: {
     title = item.booking.title;
     meta = [copy.booking, item.booking.type, item.booking.confirmation ? copy.confirmed : copy.saved].filter(Boolean).join(" · ");
   }
-  return <EasyTButton className={styles.calendarItem} variant="quiet" aria-label={`${title}, ${meta}`} onClick={() => onSelect(day, item)}>
+  return <EasyTButton className={`${styles.calendarItem} ${dragging ? styles.calendarItemDragging : ""}`} variant="quiet" aria-label={`${title}, ${meta}`} draggable={draggable} onDragStart={draggable && item.kind === "activity" ? (event) => onDragStart(day, item.activity, event) : undefined} onDragEnd={draggable ? onDragEnd : undefined} onClick={(event) => onSelect(day, item, event.currentTarget)}>
     <Icon aria-hidden="true" />
     <span>{item.kind === "activity" && item.activity.image ? <ResilientImage className={styles.calendarThumbnail} src={item.activity.image} alt="" fallback={null} /> : null}<strong>{title}</strong><small>{meta}</small></span>
     <ChevronRight aria-hidden="true" />
@@ -2303,7 +2580,7 @@ function TransferRow({ leg, copy, trip, selected, onSelect }: { leg: TripLeg; co
   );
 }
 
-function LogisticsLeg({ leg, trip, copy, selected, onSelect }: { leg: TripLeg; trip: EasyTTrip; copy: ReturnType<typeof itineraryCopy>; selected: boolean; onSelect: () => void }) {
+function LogisticsLeg({ leg, trip, copy, selected, onSelect }: { leg: TripLeg; trip: EasyTTrip; copy: ReturnType<typeof itineraryCopy>; selected: boolean; onSelect: (origin: HTMLButtonElement) => void }) {
   const Icon = iconForLeg(leg.mode);
   const from = routeEndpointForLeg(trip, leg, "from")?.name;
   const to = routeEndpointForLeg(trip, leg, "to")?.name;
@@ -2311,13 +2588,92 @@ function LogisticsLeg({ leg, trip, copy, selected, onSelect }: { leg: TripLeg; t
   const arrivalLabel = semanticSamePlaceArrival(trip, leg);
   const transferLabel = transferJourneyModeLabel(leg);
   const segmentSummary = transferJourneySegmentSummary(leg);
-  return <EasyTButton variant="quiet" className={`${styles.logisticsCard} ${selected ? styles.logisticsSelected : ""}`} aria-pressed={selected} onClick={onSelect}><Icon aria-hidden="true" /><div><small>{transferLabel}</small><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival into your first overnight destination" : durationMinutes === null ? "Timing needs confirmation" : `~${formatTripDuration(durationMinutes)} total · ${leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing"}`}</span>{segmentSummary ? <span>{segmentSummary}</span> : null}</div><ArrowRight aria-hidden="true" /></EasyTButton>;
+  return <EasyTButton variant="quiet" className={`${styles.logisticsCard} ${selected ? styles.logisticsSelected : ""}`} aria-pressed={selected} onClick={(event) => onSelect(event.currentTarget)}><Icon aria-hidden="true" /><div><small>{transferLabel}</small><strong>{arrivalLabel ?? (from && to ? `${from} → ${to}` : leg.mode)}</strong><span>{arrivalLabel ? "Arrival into your first overnight destination" : durationMinutes === null ? "Timing needs confirmation" : `~${formatTripDuration(durationMinutes)} total · ${leg.provenance === "planning_estimate" || leg.provenance === "routing_engine" ? copy.estimate : "Saved timing"}`}</span>{segmentSummary ? <span>{segmentSummary}</span> : null}</div><ArrowRight aria-hidden="true" /></EasyTButton>;
 }
 
-function BookingCard({ booking, copy }: { booking: TripBooking; copy: ReturnType<typeof itineraryCopy> }) {
+function BookingCard({ booking, copy, selected, onSelect }: { booking: TripBooking; copy: ReturnType<typeof itineraryCopy>; selected: boolean; onSelect: (origin: HTMLButtonElement) => void }) {
   const Icon = booking.type === "stay" ? BedDouble : booking.type === "transport" ? Route : booking.type === "reservation" ? Utensils : BookOpenText;
   const state = booking.confirmation ? copy.confirmed : booking.type === "reservation" ? copy.reservation : copy.saved;
-  return <article className={styles.bookingCard}><Icon aria-hidden="true" /><div><strong>{booking.title}</strong><span>{state}{booking.confirmation ? ` · ${booking.confirmation}` : ""}{booking.date ? ` · ${booking.date}` : ""}</span></div>{booking.confirmation ? <CheckCircle2 aria-hidden="true" /> : booking.url ? <a href={booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.bookingLink}: ${booking.title}`}><ExternalLink aria-hidden="true" /></a> : null}</article>;
+  return <article className={`${styles.bookingCard} ${selected ? styles.bookingCardSelected : ""}`}><Icon aria-hidden="true" /><EasyTButton className={styles.bookingCardSelect} variant="quiet" aria-pressed={selected} onClick={(event) => onSelect(event.currentTarget)}><span><strong>{booking.title}</strong><small>{state}{booking.confirmation ? ` · ${booking.confirmation}` : ""}{booking.date ? ` · ${booking.date}` : ""}</small></span></EasyTButton>{booking.confirmation ? <CheckCircle2 aria-hidden="true" /> : booking.url ? <a href={booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.bookingLink}: ${booking.title}`}><ExternalLink aria-hidden="true" /></a> : null}</article>;
+}
+
+function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, language, onClose }: {
+  trip: EasyTTrip;
+  agenda?: ItineraryTransportAgendaLeg | null;
+  booking?: TripBooking | null;
+  language: "en" | "es";
+  onClose: () => void;
+}) {
+  const copy = itineraryCopy(language);
+  const shellRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const [mobileSheet, setMobileSheet] = useState(false);
+  const ownedBooking = agenda?.booking ?? booking;
+  const from = agenda?.from.name ?? ownedBooking?.transportDetails?.from ?? null;
+  const to = agenda?.to.name ?? ownedBooking?.transportDetails?.to ?? null;
+  const title = agenda && from && to ? `${from} → ${to}` : ownedBooking?.title ?? copy.transportDetails;
+  const durationMinutes = agenda ? agenda.leg.doorToDoorMinutes ?? agenda.leg.durationMinutes : null;
+  const duration = typeof durationMinutes === "number" ? formatTripDuration(durationMinutes) : null;
+  const mode = agenda ? transferJourneyModeLabel(agenda.leg) : ownedBooking?.transportDetails?.mode ?? null;
+  const status = agenda
+    ? agenda.booking?.confirmation ? copy.confirmedTransport
+      : agenda.status === "booked" ? copy.transportBookingSaved
+        : agenda.status === "confirm" ? copy.transferToConfirm
+          : copy.planningDetailsAvailable
+    : ownedBooking?.confirmation ? copy.confirmedBooking : copy.savedBookingDetails;
+  const partnerAction = agenda ? omioBookingActionForLeg(trip, agenda.leg) : null;
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 900px)").matches;
+    setMobileSheet(mobile);
+    const previousOverflow = document.body.style.overflow;
+    if (mobile) document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => closeRef.current?.focus({ preventScroll: true }));
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); return; }
+      if (event.key !== "Tab" || !mobile || !shellRef.current) return;
+      const focusable = [...shellRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+      if (mobile) document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose, title]);
+
+  return <>
+    <EasyTButton className={styles.logisticsDetailScrim} iconOnly variant="quiet" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton>
+    <section ref={shellRef} className={styles.logisticsDetail} role={mobileSheet ? "dialog" : "region"} aria-modal={mobileSheet || undefined} aria-label={`${copy.details}: ${title}`}>
+      <EasyTButton ref={closeRef} className={styles.logisticsDetailClose} icon={X} iconOnly variant="secondary" aria-label={`${copy.cancel}: ${title}`} onClick={onClose}>{copy.cancel}</EasyTButton>
+      <header>
+        <span>{agenda ? copy.transfer : copy.booking}</span>
+        <h2>{title}</h2>
+        <p>{status}</p>
+      </header>
+      <dl>
+        {agenda?.date ? <div><dt>{copy.day}</dt><dd>{displayDate(agenda.date, language)}</dd></div> : ownedBooking?.date ? <div><dt>{copy.day}</dt><dd>{displayDate(ownedBooking.date, language)}</dd></div> : null}
+        {mode ? <div><dt>{copy.mode}</dt><dd>{mode}</dd></div> : null}
+        {agenda ? <div><dt>{copy.duration}</dt><dd>{duration ? `${agenda.leg.provenance === "planning_estimate" || agenda.leg.provenance === "routing_engine" ? "~" : ""}${duration}` : copy.unknownTiming}</dd></div> : null}
+        {agenda?.leg.confidence ? <div><dt>{copy.confidence}</dt><dd>{agenda.leg.confidence}</dd></div> : null}
+        {ownedBooking?.confirmation ? <div><dt>{copy.confirmation}</dt><dd>{ownedBooking.confirmation}</dd></div> : null}
+        {ownedBooking?.importDetails?.provider ? <div><dt>{copy.provider}</dt><dd>{ownedBooking.importDetails.provider}</dd></div> : null}
+      </dl>
+      {agenda && transferJourneySegmentSummary(agenda.leg) ? <p className={styles.logisticsDetailSummary}>{transferJourneySegmentSummary(agenda.leg)}</p> : null}
+      {agenda?.leg.warnings?.length ? <ul>{agenda.leg.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+      {ownedBooking?.notes?.length ? <ul>{ownedBooking.notes.map((note) => <li key={note}>{note}</li>)}</ul> : null}
+      <div className={styles.logisticsDetailActions}>
+        {ownedBooking?.url ? <EasyTLinkButton href={ownedBooking.url} target="_blank" rel="noopener noreferrer" icon={ExternalLink}>{copy.openBooking}</EasyTLinkButton> : null}
+        {agenda || ownedBooking?.type === "transport" ? <EasyTLinkButton href={transportWorkspaceHref(trip.id)} icon={Route} variant="secondary">{copy.openTransport}</EasyTLinkButton> : null}
+        {partnerAction && agenda ? <OmioTransportAction action={partnerAction} trip={trip} leg={agenda.leg} /> : null}
+      </div>
+    </section>
+  </>;
 }
 
 function DayNavigation({ index, count, setSelectedIndex, copy }: {

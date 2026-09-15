@@ -7,7 +7,7 @@ const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-
 
 test("the center timeline exposes direct add, edit, remove, reorder, and local selection controls", () => {
   assert.match(workspace, /function InsertionControl/);
-  assert.match(workspace, /insertItineraryActivity/);
+  assert.match(workspace, /addItineraryActivityWithUndo/);
   assert.match(workspace, /addItineraryDayNote/);
   assert.match(workspace, /renameItineraryActivity/);
   assert.match(workspace, /removeItineraryActivity/);
