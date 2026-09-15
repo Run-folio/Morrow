@@ -5,7 +5,7 @@ export function authFormErrorMessage(input: {
 }) {
   const detail = `${input.code ?? ""} ${input.message ?? ""}`.toLowerCase();
   if (detail.includes("email not verified")) {
-    return "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again.";
+    return "Email not verified. Request a new verification link to continue.";
   }
   if (input.mode === "sign-up" && /already|exist|duplicate|taken/.test(detail)) {
     return "An account already uses this email. Sign in instead, or reset your password if needed.";

@@ -20,7 +20,7 @@ export default async function EasyTLoginPage({ searchParams }: { searchParams: P
     <EasyTNavigation current="login" />
     <div className={styles.authWrap}>
       <div className={styles.authGrid}>
-        <LoginForm callbackURL={callbackURL} googleEnabled={googleEnabled} configured={configured} emailVerificationRequired={emailVerificationRequired} showSetupNotice={setup === "required"} initialMode={sent === "1" ? "sign-in" : initialMode} initialEmail={email} verificationSent={sent === "1" && emailVerificationRequired} backToTripHref={backToTripHref} initialError={oauth === "google" && error ? googleAuthCallbackErrorMessage(error) : undefined} />
+        <LoginForm callbackURL={callbackURL} googleEnabled={googleEnabled} configured={configured} emailVerificationRequired={emailVerificationRequired} showSetupNotice={setup === "required"} initialMode={sent === "1" ? "sign-in" : initialMode} initialEmail={email} verificationSent={sent === "1" && emailVerificationRequired && Boolean(email)} backToTripHref={backToTripHref} initialError={oauth === "google" && error ? googleAuthCallbackErrorMessage(error) : undefined} />
       </div>
     </div>
   </main>;

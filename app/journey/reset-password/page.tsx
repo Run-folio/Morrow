@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { authClient } from "@/lib/auth-client";
-import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
+import { EasyTPasswordField } from "@/components/easyt/easyt-password-field";
 import EasyTNavigation from "../easyt-navigation";
 import styles from "../account.module.css";
 
@@ -29,7 +30,7 @@ function ResetPasswordForm() {
   return <main className={styles.page}><EasyTNavigation current="login" /><div className={styles.authWrap}><section className={styles.authPanel}>
     <p className={styles.eyebrow}>Morrovia account</p><h2>{done ? "Password updated." : "Choose a new password."}</h2>
     <p className={styles.muted}>{done ? "You can now sign in with your new password." : "Use at least 8 characters."}</p>
-    {!done && <form className={styles.form} onSubmit={submit}><EasyTField label="New password" name="password" type="password" minLength={8} required autoComplete="new-password" placeholder="At least 8 characters" /><EasyTField label="Confirm password" name="confirm" type="password" minLength={8} required autoComplete="new-password" placeholder="Repeat your password" />{error && <p className={styles.error}>{error}</p>}<EasyTButton type="submit" fullWidth loading={busy} disabled={!token}>Update password →</EasyTButton></form>}
+    {!done && <form className={styles.form} onSubmit={submit}><EasyTPasswordField label="New password" name="password" minLength={8} required autoComplete="new-password" placeholder="At least 8 characters" /><EasyTPasswordField label="Confirm password" name="confirm" minLength={8} required autoComplete="new-password" placeholder="Repeat your password" />{error && <p className={styles.error}>{error}</p>}<EasyTButton type="submit" fullWidth loading={busy} disabled={!token}>Update password →</EasyTButton></form>}
     {done && <Link className={styles.forgotLink} href="/journey/login">Back to sign in</Link>}
   </section></div></main>;
 }

@@ -320,6 +320,26 @@
   line-height: 1.45;
   margin: 0 0 24px;
 }
+.verificationEmail {
+  margin: 12px 0 0;
+  color: var(--morrovia-ink);
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.verificationInstructions {
+  margin: 14px 0 0;
+  color: var(--morrovia-ink-soft);
+  line-height: 1.55;
+}
+.verificationActions {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.verificationActions + .tripReturnLink {
+  margin-top: 18px;
+}
 .dashboard {
   width: min(1320px, calc(100% - 40px));
   margin: 46px auto 90px;

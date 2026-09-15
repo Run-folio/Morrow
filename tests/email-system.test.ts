@@ -115,6 +115,7 @@ test("email delivery is disabled in tests and non-production by default, with an
   assert.equal(isMorroviaEmailDeliveryConfigured(deliveryEnvironment), true);
   assert.equal(isMorroviaEmailDeliveryConfigured({ ...deliveryEnvironment, EMAIL_ALLOWED_RECIPIENTS: "" }), false);
   assert.deepEqual(emailDeliveryDecision({ NODE_ENV: "production", NEXT_PUBLIC_APP_URL: "https://morrovia.com", CONTEXT: "production" }, "traveller@example.test"), { allowed: true, mode: "live" });
+  assert.deepEqual(emailDeliveryDecision({ NODE_ENV: "production", NEXT_PUBLIC_APP_URL: "https://morrovia.com", CONTEXT: "production", EMAIL_DELIVERY_MODE: "live", EMAIL_ALLOWED_RECIPIENTS: "staging-only@example.test" }, "traveller@example.test"), { allowed: true, mode: "live" });
 });
 
 test("the provider boundary enforces the Morrovia sender, plaintext, reply-to and Resend idempotency header", async () => {

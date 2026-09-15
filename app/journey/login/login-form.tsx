@@ -3,12 +3,22 @@
 import { FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authFormErrorMessage } from "@/lib/easyt/auth-feedback";
+import {
+  emailVerificationStatePath,
+  requestAcknowledgedVerificationEmail,
+  signInEmailHandoffPath,
+  submitEmailSignIn,
+  submitEmailSignUp,
+} from "@/lib/easyt/auth-email-flow";
 import { googleSignInErrorPath } from "@/lib/easyt/trip-continuity";
 import {
   EasyTButton,
   EasyTField,
+  EasyTLinkButton,
   EasyTSegmentedControl,
 } from "@/components/easyt/easyt-controls";
+import { EasyTPasswordField } from "@/components/easyt/easyt-password-field";
+import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import styles from "../account.module.css";
 
 export default function LoginForm({
@@ -39,29 +49,61 @@ export default function LoginForm({
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState(initialError ?? "");
   const [email, setEmail] = useState(initialEmail ?? "");
+  const [verificationFailure, setVerificationFailure] = useState<{ email: string; source: "sign-in" | "sign-up" } | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendError, setResendError] = useState("");
+  const [resendConfirmed, setResendConfirmed] = useState(false);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault();
+    if (busy || googleBusy) return;
+    setBusy(true); setError(""); setVerificationFailure(null);
     const data = new FormData(event.currentTarget);
     const submittedEmail = String(data.get("email") || "");
     const password = String(data.get("password") || "");
     const name = String(data.get("name") || "Traveller");
-    try {
-      const result = mode === "sign-up"
-        ? await authClient.signUp.email({ name, email, password, callbackURL })
-        : await authClient.signIn.email({ email: submittedEmail, password, callbackURL });
-      if (result.error) {
-        setError(authFormErrorMessage({ mode, message: result.error.message, code: result.error.code }));
-      } else if (mode === "sign-up" && emailVerificationRequired) {
-        window.location.assign(`/journey/login?next=${encodeURIComponent(callbackURL)}&email=${encodeURIComponent(submittedEmail)}&sent=1`);
-      } else {
-        window.location.assign(callbackURL);
-      }
-    } catch {
-      setError(authFormErrorMessage({ mode }));
-    } finally {
-      setBusy(false);
+    const result = mode === "sign-up"
+      ? await submitEmailSignUp({
+        callbackURL,
+        email: submittedEmail,
+        emailVerificationRequired,
+        name,
+        password,
+        signUpEmail: (credentials) => authClient.signUp.email(credentials),
+        sendVerificationEmail: (request) => authClient.sendVerificationEmail(request),
+      })
+      : await submitEmailSignIn({
+        callbackURL,
+        email: submittedEmail,
+        password,
+        signInEmail: (credentials) => authClient.signIn.email(credentials),
+        sendVerificationEmail: (request) => authClient.sendVerificationEmail(request),
+      });
+    if (result.kind === "auth-error") {
+      setError(authFormErrorMessage({ mode, message: result.error?.message, code: result.error?.code }));
+    } else if (result.kind === "verification-delivery-error") {
+      setVerificationFailure({ email: result.email, source: mode });
+    } else if (result.kind === "verification-sent") {
+      window.location.assign(emailVerificationStatePath(callbackURL, result.email));
+    } else {
+      window.location.assign(callbackURL);
     }
+    setBusy(false);
+  };
+
+  const resendVerification = async (destination = verificationFailure?.email || initialEmail?.trim() || "") => {
+    if (!destination || resendBusy) return;
+    setResendBusy(true); setResendError(""); setResendConfirmed(false);
+    const result = await requestAcknowledgedVerificationEmail({
+      callbackURL,
+      email: destination,
+      sendVerificationEmail: (request) => authClient.sendVerificationEmail(request),
+    });
+    if (result.kind === "verification-sent") {
+      if (verificationFailure) window.location.assign(emailVerificationStatePath(callbackURL, destination));
+      else setResendConfirmed(true);
+    } else setResendError("We still couldn’t send the verification email. Try again in a moment.");
+    setResendBusy(false);
   };
 
   const continueWithGoogle = async () => {
@@ -85,16 +127,34 @@ export default function LoginForm({
     }
   };
 
+  const sentEmail = initialEmail?.trim() || "";
+  if (verificationSent && sentEmail) {
+    return <section className={styles.authPanel}>
+      <p className={styles.eyebrow}>Check your email</p>
+      <h2>Confirm your address.</h2>
+      <p className={styles.muted}>We sent a one-time verification link to:</p>
+      <p className={styles.verificationEmail}>{sentEmail}</p>
+      <p className={styles.verificationInstructions}>Open the link to verify your account and continue to your trip. If it isn’t in your inbox, check spam or send another email.</p>
+      {resendConfirmed ? <MorroviaStatusBanner tone="success" title="Another verification email was sent." /> : null}
+      {resendError ? <MorroviaStatusBanner tone="warning" title="Verification email not sent" detail={resendError} /> : null}
+      <div className={styles.verificationActions}>
+        <EasyTLinkButton fullWidth href={signInEmailHandoffPath(callbackURL, sentEmail)}>Go to sign in</EasyTLinkButton>
+        <EasyTButton fullWidth variant="secondary" loading={resendBusy} onClick={() => void resendVerification(sentEmail)}>Send another email</EasyTButton>
+      </div>
+      {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}
+    </section>;
+  }
+
   return <section className={styles.authPanel}>
     <p className={styles.eyebrow}>Morrovia account</p>
     <h2>{backToTripHref ? "Save this trip." : mode === "sign-in" ? "Welcome back." : "Start travelling."}</h2>
-    <p className={styles.muted}>{verificationSent ? `Your account is ready. We sent a one-time verification link to ${initialEmail || "your email"}. Confirm it, then sign in below.` : backToTripHref ? "Sign in to keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
+    <p className={styles.muted}>{backToTripHref ? "Sign in to keep this exact trip and continue planning on another device." : mode === "sign-in" ? "Open your saved plans and pick up where you left off." : "Save your first plan and keep every trip in one place."}</p>
     {(!configured || showSetupNotice) && <p className={styles.setupNotice}>Accounts are being connected to the live site. The Tokyo Marathon+ prototype and trip builder are still available.</p>}
     <EasyTSegmentedControl
       ariaLabel="Account action"
       className={styles.tabs}
       value={mode}
-      onChange={(next) => { setMode(next); setError(""); }}
+      onChange={(next) => { setMode(next); setError(""); setVerificationFailure(null); }}
       options={[
         { label: "Sign in", value: "sign-in" },
         { label: "New here?", value: "sign-up" },
@@ -108,12 +168,20 @@ export default function LoginForm({
       <div className={styles.divider}>or use email</div>
     </>}
     {error && <p className={styles.error} role="alert">{error}</p>}
-    <form className={styles.form} onSubmit={submit}>
+    {verificationFailure ? <MorroviaStatusBanner
+      tone="warning"
+      title={verificationFailure.source === "sign-up" ? "Your account was created, but the verification email was not sent." : "Your email is not verified, and a new link could not be sent."}
+      detail="Try sending the verification email again. Your password has not been stored by this page."
+      actions={<EasyTButton size="small" variant="secondary" loading={resendBusy} onClick={() => void resendVerification(verificationFailure.email)}>Try again</EasyTButton>}
+    /> : null}
+    {resendConfirmed && verificationFailure ? <MorroviaStatusBanner tone="success" title="Verification email sent" detail={`Check ${verificationFailure.email}, including spam.`} /> : null}
+    {resendError && verificationFailure ? <p className={styles.error} role="alert">{resendError}</p> : null}
+    <form className={styles.form} onSubmit={submit} aria-busy={busy || undefined}>
       {mode === "sign-up" && <EasyTField label="Your name" name="name" autoComplete="name" required placeholder="Your name" />}
-      <EasyTField label="Email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} />
-      <EasyTField label="Password" name="password" type="password" minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
+      <EasyTField label="Email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" value={email} onChange={(event) => { setEmail(event.target.value); setVerificationFailure(null); }} />
+      <EasyTPasswordField label="Password" name="password" minLength={8} autoComplete={mode === "sign-in" ? "current-password" : "new-password"} required placeholder="At least 8 characters" />
       {mode === "sign-in" && <a className={styles.forgotLink} href="/journey/forgot-password">Forgot password?</a>}
-      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured || googleBusy}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
+      <EasyTButton className={styles.authSubmit} type="submit" fullWidth loading={busy} disabled={!configured || googleBusy || Boolean(verificationFailure)}>{configured ? mode === "sign-in" ? "Sign in →" : "Create account →" : "Accounts coming online"}</EasyTButton>
     </form>
     {backToTripHref ? <a className={styles.tripReturnLink} href={backToTripHref}>← Back to this trip</a> : null}
     <p className={styles.legalLink}>{mode === "sign-up" ? <>By creating an account, you agree to the <a href="/journey/terms">Terms of Use</a> and acknowledge the <a href="/journey/privacy">Privacy Notice</a>.</> : <>Read the <a href="/journey/terms">Terms of Use</a> and how Morrovia handles your data in our <a href="/journey/privacy">Privacy Notice</a>.</>}</p>

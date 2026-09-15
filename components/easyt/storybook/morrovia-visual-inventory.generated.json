@@ -5300,7 +5300,7 @@
       },
       {
         "value": "12px",
-        "count": 424,
+        "count": 426,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5310,7 +5310,7 @@
       },
       {
         "value": "14px",
-        "count": 317,
+        "count": 318,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5330,7 +5330,7 @@
       },
       {
         "value": "18px",
-        "count": 306,
+        "count": 307,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5370,7 +5370,7 @@
       },
       {
         "value": "24px",
-        "count": 230,
+        "count": 231,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5660,7 +5660,7 @@
       },
       {
         "value": "56px",
-        "count": 14,
+        "count": 15,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -8282,6 +8282,6 @@
         }
       ]
     },
-    "documentedExceptions": 31
+    "documentedExceptions": 32
   }
 }
