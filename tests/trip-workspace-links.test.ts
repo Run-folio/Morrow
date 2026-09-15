@@ -20,6 +20,7 @@ import {
   tripSaveSignInHref,
   tripWorkspaceHref,
   stayWorkspaceHref,
+  transportWorkspaceHref,
   workspaceViewFromPathname,
   workspaceVisitKey,
 } from "../lib/easyt/trip-workspace-links.ts";
@@ -105,8 +106,15 @@ test("login return links accept canonical trip workspaces but not account surfac
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/map?stop=tokyo"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/explore?stop=tokyo&day=2"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/stay?stop=tokyo"), true);
+  assert.equal(isCanonicalTripWorkspaceHref("/journey/trip-123/transport"), true);
   assert.equal(isCanonicalTripWorkspaceHref("/journey/dashboard"), false);
   assert.equal(isCanonicalTripWorkspaceHref("https://example.com/journey/trip-123"), false);
+});
+
+test("Transport has a canonical direct workspace href and pathname identity", () => {
+  assert.equal(transportWorkspaceHref("trip-real"), "/journey/trip-real/transport");
+  assert.equal(workspaceViewFromPathname("/journey/trip-real/transport", "trip-real"), "transport");
+  assert.equal(workspaceViewFromPathname("/journey/trip-real/itinerary", "trip-real"), "itinerary");
 });
 
 test("Stay links preserve stop-scoped property identity", () => {

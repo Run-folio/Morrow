@@ -73,6 +73,24 @@ test("uses canonical transport bookings as the only booked truth", () => {
   assert.equal(itineraryTransportAgendaStatus(leg, { id: leg.id, type: "reservation", title: "Dinner", date: null, confirmation: null, url: null }), "available");
 });
 
+test("does not reuse a free-text booking for the reverse repeated-city leg", () => {
+  const source = trip();
+  source.stops.push({ ...source.stops[0]!, id: "paris-return", order: 3, arrivalDate: "2026-10-10", departureDate: "2026-10-11", nights: 1 });
+  source.planItems.push({ id: "day-10", stopId: "paris-return", dayNumber: 10, date: "2026-10-10", type: "transport", title: "Return to Paris", reason: "", notes: [], startsAt: null, endsAt: null, bookingUrl: null, latitude: null, longitude: null });
+  source.legs.push({
+    ...source.legs[1]!,
+    id: "rome-paris-return",
+    fromStopId: "rome",
+    toStopId: "paris-return",
+    fromEndpoint: { kind: "stop", id: "rome", name: "Rome", country: "Italy", coordinates: [12.4964, 41.9028] },
+    toEndpoint: { kind: "stop", id: "paris-return", name: "Paris", country: "France", coordinates: [2.3522, 48.8566] },
+  });
+  source.brief.bookings = [{ id: "free-text-paris-rome", type: "transport", title: "Paris to Rome train", date: "2026-10-04", confirmation: "OUTBOUND", url: null }];
+  const agenda = itineraryTransportAgenda(source);
+  assert.equal(agenda.find((item) => item.leg.id === "paris-rome")?.status, "booked");
+  assert.equal(agenda.find((item) => item.leg.id === "rome-paris-return")?.status, "available");
+});
+
 test("omits a fabricated final movement when the journey end is unknown", () => {
   const source = trip();
   source.brief.journeyEnd = { mode: "unknown" };

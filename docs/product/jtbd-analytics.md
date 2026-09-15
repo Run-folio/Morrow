@@ -28,7 +28,7 @@ These typed events answer the minimum launch questions without replacing the exi
 | `trip_generation_failed` | Capture fails or the builder cannot produce a usable result. | `trip_source`, coarse `error_type`, `is_authenticated` |
 | `trip_saved` | A meaningful local generation save or cloud persistence boundary succeeds. Passive local autosaves do not emit it. | opaque `trip_id`, `trip_source`, `save_state`, `stop_count`, `is_authenticated` |
 | `trip_save_failed` | The same meaningful persistence boundary fails. | opaque `trip_id`, `trip_source`, `save_state`, coarse `error_type`, `is_authenticated` |
-| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
+| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` / `trip_transport_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
 | `trip_reopened` | A saved trip is deliberately opened from the dashboard. | opaque `trip_id`, `source`, `save_state`, `stop_count` |
 | `trip_edit_started` | Edit is deliberately opened from the dashboard. | opaque `trip_id`, `source` |
 | `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |

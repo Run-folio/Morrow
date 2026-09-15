@@ -688,15 +688,20 @@ export const TravelDay: Story = {
   },
 };
 
-export const TransportAgenda: Story = {
-  args: { trip: transportAgendaTrip },
+export const Calendar: Story = {
+  args: { trip },
   play: async ({ canvasElement }) => {
-    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Transport")?.click();
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
   },
 };
-export const TransportAgendaMobile390: Story = { ...TransportAgenda, globals: { viewport: { value: "morrovia390", isRotated: false } } };
-export const TransportAgendaTablet768: Story = { ...TransportAgenda, globals: { viewport: { value: "morrovia768", isRotated: false } } };
-export const TransportAgendaDesktop1440: Story = { ...TransportAgenda, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const CalendarMobile320: Story = { ...Calendar, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const CalendarMobile390: Story = { ...Calendar, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const CalendarMobile430: Story = { ...Calendar, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const CalendarTablet768: Story = { ...Calendar, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const CalendarDesktop1024: Story = { ...Calendar, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const CalendarDesktop1440: Story = { ...Calendar, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const CalendarLongMonthCrossing: Story = { ...Calendar, args: { trip: longTrip } };
+export const CalendarRepeatedStopTransferHeavy: Story = { ...Calendar, args: { trip: transportAgendaTrip } };
 
 export const DeepLinkedTravelDay: Story = { args: { selectedDayNumber: 4 } };
 export const RoadResolvedTravelDay: Story = { args: { trip: roadResolvedTrip, selectedDayNumber: 4 } };

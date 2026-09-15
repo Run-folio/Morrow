@@ -7,7 +7,7 @@ export type AnalyticsEventProperties = Record<string, AnalyticsPrimitive>;
 type TripSource = "homepage" | "dashboard" | "builder" | "route";
 type SaveState = "local" | "cloud";
 // `prep` remains accepted only when normalising historical commercial events.
-type WorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "prep";
+type WorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "transport" | "prep";
 type RouteMode = "shell" | "focused";
 type StampStatus = "unmarked" | "visited" | "want";
 type StampStatusSource = "map" | "explorer" | "country_card";
@@ -51,6 +51,7 @@ export type LaunchAnalyticsEventMap = {
   trip_itinerary_viewed: { trip_id?: string; workspace_view: "itinerary"; route_mode: RouteMode; stop_count?: number };
   trip_map_viewed: { trip_id?: string; workspace_view: "map"; route_mode: RouteMode; stop_count?: number };
   trip_stay_viewed: { trip_id?: string; workspace_view: "stay"; route_mode: RouteMode; stop_count?: number };
+  trip_transport_viewed: { trip_id?: string; workspace_view: "transport"; route_mode: RouteMode; stop_count?: number };
   explore_opened: { trip_id: string; workspace_view: "explore"; stop_count: number };
   explore_destination_changed: { trip_id: string; destination_scope: "all" | "stop" };
   explore_category_changed: { trip_id: string; category: string };

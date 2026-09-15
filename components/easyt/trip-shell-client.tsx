@@ -229,6 +229,8 @@ export function TripShellTripProvider({ trip, children, cacheTrip = true }: { tr
       trackEvent("explore_opened", { trip_id: trip.id, workspace_view: "explore", stop_count: trip.stops.length });
     } else if (view === "stay") {
       trackEvent("trip_stay_viewed", { ...common, workspace_view: "stay" });
+    } else if (view === "transport") {
+      trackEvent("trip_transport_viewed", { ...common, workspace_view: "transport" });
     } else {
       trackEvent("trip_overview_viewed", { ...common, workspace_view: "overview" });
     }
@@ -301,6 +303,7 @@ const views = [
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
   { id: "stay", label: "Stay", icon: BedDouble, suffix: "/stay" },
+  { id: "transport", label: "Transport", icon: Route, suffix: "/transport" },
 ] as const;
 
 export function TripShellNavigation({ tripId }: { tripId: string }) {
@@ -309,7 +312,9 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
   const decodedPathname = decodeURIComponent(pathname);
   const decodedBase = `/journey/${tripId}`;
   const remainder = decodedPathname.slice(decodedBase.length);
-  const activeView = remainder.startsWith("/itinerary")
+  const activeView = remainder.startsWith("/transport")
+    ? "transport"
+    : remainder.startsWith("/itinerary")
     ? "itinerary"
     : remainder.startsWith("/map")
       ? "map"

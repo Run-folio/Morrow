@@ -240,8 +240,13 @@ export function transportBookingForLeg(trip: EasyTTrip, leg: TripLeg, from?: Tri
   return (trip.brief.bookings ?? []).find((booking) => {
     if (booking.type !== "transport") return false;
     if (booking.id === leg.id || booking.id === `transport-${leg.id}`) return true;
+    const explicitFrom = normalise(booking.transportDetails?.from ?? "");
+    const explicitTo = normalise(booking.transportDetails?.to ?? "");
+    if (explicitFrom || explicitTo) return explicitFrom === fromName && explicitTo === toName;
     const title = normalise(booking.title);
-    return Boolean(fromName && toName && title.includes(fromName) && title.includes(toName));
+    const fromIndex = title.indexOf(fromName);
+    const toIndex = title.indexOf(toName, fromIndex + fromName.length);
+    return Boolean(fromName && toName && fromName !== toName && fromIndex >= 0 && toIndex > fromIndex);
   });
 }
 

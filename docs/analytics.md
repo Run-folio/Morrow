@@ -89,7 +89,7 @@ The PostHog launch funnel is intentionally small:
 
 - Planning/generation: `homepage_prompt_started` is a leading prompt-engagement signal; `trip_generation_started` is the submitted planning action; `trip_intent_created`, `route_generated`, `trip_generated` and `trip_generation_failed` measure the resulting journey stages.
 - Persistence: `trip_saved`, `trip_save_failed`, `trip_reopened`.
-- Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`.
+- Shared workspace: `trip_overview_viewed`, `trip_itinerary_viewed`, `trip_map_viewed`, `trip_transport_viewed`.
 - Monetisation: the documented commercial outbound-click reporting union (`affiliate_click` plus established Omio/Viator `affiliate_link_clicked`) and `accommodation_search_started`.
 - Supported edits/repairs: `trip_refined`, `trip_edit_started`, `route_repair_applied` and `trip_ready`.
 

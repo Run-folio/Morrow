@@ -3,60 +3,60 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
-const styles = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.module.css", import.meta.url), "utf8");
+const transport = readFileSync(new URL("../components/easyt/trip-transport-workspace.tsx", import.meta.url), "utf8");
+const transportStyles = readFileSync(new URL("../components/easyt/trip-transport-workspace.module.css", import.meta.url), "utf8");
 const projection = readFileSync(new URL("../lib/easyt/itinerary-transport-agenda.ts", import.meta.url), "utf8");
-const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
+const stories = readFileSync(new URL("../components/easyt/trip-transport-workspace.stories.tsx", import.meta.url), "utf8");
+const shell = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
+const route = readFileSync(new URL("../app/journey/[tripId]/transport/page.tsx", import.meta.url), "utf8");
 
-test("Itinerary adds one accessible subview switch and keeps Day by day as the default", () => {
-  assert.match(itinerary, /useState<"days" \| "transport">\("days"\)/);
-  assert.match(itinerary, /<EasyTSegmentedControl[\s\S]*ariaLabel="Itinerary view"/);
+test("Transport is first-class while Itinerary exposes Day by day and Calendar", () => {
+  assert.match(shell, /label: "Transport"[\s\S]*suffix: "\/transport"/);
+  assert.match(route, /useTripShellTrip\(\)/);
+  assert.match(route, /<TripTransportWorkspace trip=\{trip\}/);
+  assert.match(itinerary, /useState<"days" \| "calendar">\("days"\)/);
   assert.match(itinerary, /\{ value: "days", label: copy\.dayByDay \}/);
-  assert.match(itinerary, /\{ value: "transport", label: copy\.transport \}/);
-  assert.match(itinerary, /role="region" aria-labelledby=\{`\$\{panelId\}-heading`\}/);
-  assert.doesNotMatch(itinerary, /role="tab"[^>]*>Transport/);
+  assert.match(itinerary, /\{ value: "calendar", label: copy\.calendar \}/);
+  assert.doesNotMatch(itinerary, /function TransportAgenda\(/);
+  assert.doesNotMatch(itinerary, /value: "transport", label: copy\.transport/);
 });
 
-test("Transport is a read-only projection of canonical legs, endpoints, dates and bookings", () => {
+test("Transport remains a read-only projection of canonical legs, endpoints, dates and bookings", () => {
   assert.match(projection, /trip\.legs\.flatMap/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "from"\)/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "to"\)/);
   assert.match(projection, /transportBookingForLeg\(trip, leg, fromStop, toStop\)/);
   assert.match(projection, /to\.kind === "end"/);
   assert.doesNotMatch(projection, /mutate|setTrip|fetch\(/);
-
-  const agendaStart = itinerary.indexOf("function TransportAgenda(");
-  const agendaEnd = itinerary.indexOf("function ItineraryDaySuggestions", agendaStart);
-  const agenda = itinerary.slice(agendaStart, agendaEnd);
-  assert.ok(agendaStart > -1 && agendaEnd > agendaStart);
-  assert.doesNotMatch(agenda, /mutation\.|mutateTrip|onTripApplied|fetch\(/);
+  assert.doesNotMatch(transport, /useTripMutationPersistence|useTripShellMutation|mutateTrip|setTrip/);
 });
 
 test("transport rows expose route, mode, duration, uncertainty, details and truthful booking evidence", () => {
-  assert.match(itinerary, /item\.from\.name[\s\S]*item\.to\.name/);
-  assert.match(itinerary, /transferJourneyModeLabel\(leg\)/);
-  assert.match(itinerary, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/);
-  assert.match(itinerary, /data-status=\{item\.status\}/);
-  assert.match(itinerary, /<details className=\{styles\.transportDetails\}>/);
-  assert.match(itinerary, /item\.booking\?\.url/);
-  assert.match(itinerary, /item\.booking \? null : omioBookingActionForLeg\(trip, leg\)/);
+  assert.match(transport, /item\.from\.name[\s\S]*item\.to\.name/);
+  assert.match(transport, /transferJourneyModeLabel\(leg\)/);
+  assert.match(transport, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/);
+  assert.match(transport, /data-status=\{item\.status\}/);
+  assert.match(transport, /<details className=\{styles\.details\}>/);
+  assert.match(transport, /item\.booking\?\.url/);
+  assert.match(transport, /item\.booking \? null : omioBookingActionForLeg\(trip, leg\)/);
+  assert.match(transport, /durationMinutes === null \? null/);
 });
 
-test("Omio uses the existing canonical affiliate link and cannot mutate booking state", () => {
-  assert.match(itinerary, /function OmioTransportAction/);
-  assert.match(itinerary, /<MorroviaAffiliateLink action=\{action\}/);
-  assert.match(itinerary, /placement: "itinerary_transfer"/);
-  assert.match(itinerary, /<MorroviaPartnerPromotion action=\{action\}/);
-  const actionStart = itinerary.indexOf("function OmioTransportAction");
-  const actionEnd = itinerary.indexOf("function ItineraryDaySuggestions", actionStart);
-  assert.doesNotMatch(itinerary.slice(actionStart, actionEnd), /mutate|booked\s*=|status\s*=/);
+test("Omio uses the existing affiliate handoff and cannot mutate canonical state", () => {
+  assert.match(transport, /function OmioAction/);
+  assert.match(transport, /<MorroviaAffiliateLink action=\{action\}/);
+  assert.match(transport, /placement: "itinerary_transfer"/);
+  assert.match(transport, /<MorroviaPartnerPromotion action=\{action\}/);
+  const action = transport.slice(transport.indexOf("function OmioAction"));
+  assert.doesNotMatch(action, /mutate|booked\s*=|status\s*=|fetch\(/);
 });
 
-test("the agenda has responsive Storybook coverage and clears the mobile dock", () => {
-  for (const story of ["TransportAgenda", "TransportAgendaMobile390", "TransportAgendaTablet768", "TransportAgendaDesktop1440"]) {
+test("the first-class workspace has responsive Storybook coverage and narrow-screen containment", () => {
+  for (const story of ["CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
-  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.transportAgenda \{[\s\S]*--morrovia-mobile-dock-offset/);
-  assert.match(styles, /\.transportDetails > summary \{[\s\S]*min-height: 40px/);
-  assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.transportDetails > summary \{ min-height: 44px/);
-  assert.match(styles, /\.transportRoute h4 \{[\s\S]*overflow-wrap: anywhere/);
+  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*--morrovia-mobile-dock-offset/);
+  assert.match(transportStyles, /\.route h4 \{[\s\S]*overflow-wrap: anywhere/);
+  assert.match(transportStyles, /\.details > summary \{[\s\S]*min-height: 40px/);
+  assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*\.details > summary \{ min-height: 44px/);
 });

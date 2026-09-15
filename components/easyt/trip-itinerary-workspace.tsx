@@ -53,7 +53,6 @@ import { trackEvent } from "@/lib/analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
 import { removeStayBooking, stayBookingForStop, upsertStayBooking } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
-import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/lib/easyt/itinerary-transport-agenda";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import { exploreWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
@@ -91,6 +90,7 @@ import { dedupeExploreResults, exploreResultForActivity, exploreResultForIdea, e
 import { rankItineraryRecommendations } from "@/lib/easyt/itinerary-recommendations";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import { activityAllowsDayPart, activityDayPartFit } from "@/lib/easyt/itinerary-schedule-awareness";
+import { itineraryCalendarWeeks, type ItineraryCalendarDay, type ItineraryCalendarItem, type ItineraryCalendarWeek } from "@/lib/easyt/itinerary-calendar";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import legacyStyles from "@/app/journey/new/trip-builder.module.css";
 import legacyMobile from "@/app/journey/new/trip-builder-mobile.module.css";
@@ -170,14 +170,18 @@ function itineraryCopy(language: "en" | "es") {
     draft: "Borrador · editable",
     editBrief: "Editar resumen",
     dayByDay: "Día a día",
-    transport: "Transporte",
-    transportHeading: "Tus traslados, en orden",
-    transportIntro: "Una vista sencilla de cómo te mueves entre cada lugar.",
-    transportEmpty: "El transporte aparecerá cuando la ruta incluya un trayecto entre lugares.",
-    routeOrder: "Orden de la ruta",
-    booked: "Reservado",
-    available: "Estimación de viaje",
-    confirm: "Traslado por confirmar",
+    calendar: "Calendario",
+    calendarHeading: "Todo tu viaje, semana a semana",
+    calendarIntro: "Una vista continua de los días, traslados, planes y estancias de este viaje.",
+    weekOf: "Semana del",
+    day: "Día",
+    arrival: "Llegada",
+    departure: "Salida",
+    fullDay: "Día completo",
+    timeNotSet: "Hora por decidir",
+    accommodation: "Estancia",
+    booking: "Reserva",
+    noCalendarPlans: "Sin planes guardados todavía",
     details: "Detalles",
     distance: "Distancia",
     confidence: "Confianza",
@@ -250,14 +254,18 @@ function itineraryCopy(language: "en" | "es") {
     draft: "Draft · editable",
     editBrief: "Edit brief",
     dayByDay: "Day by day",
-    transport: "Transport",
-    transportHeading: "Your transport, in journey order",
-    transportIntro: "A simple view of how you move between each place.",
-    transportEmpty: "Transport will appear once the route includes a journey between places.",
-    routeOrder: "Route order",
-    booked: "Booked",
-    available: "Planning estimate",
-    confirm: "Transfer to confirm",
+    calendar: "Calendar",
+    calendarHeading: "Your whole trip, week by week",
+    calendarIntro: "A continuous view of this trip’s days, transfers, plans and stays.",
+    weekOf: "Week of",
+    day: "Day",
+    arrival: "Arrival",
+    departure: "Departure",
+    fullDay: "Full day",
+    timeNotSet: "Time not set",
+    accommodation: "Stay",
+    booking: "Booking",
+    noCalendarPlans: "No saved plans yet",
     details: "Details",
     distance: "Distance",
     confidence: "Confidence",
@@ -429,7 +437,7 @@ export default function TripItineraryWorkspace({
     [workingTrip.planItems],
   );
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, days.findIndex((day) => day.dayNumber === selectedDayNumber)));
-  const [workspaceView, setWorkspaceView] = useState<"days" | "transport">("days");
+  const [workspaceView, setWorkspaceView] = useState<"days" | "calendar">("days");
   const [remoteImages, setRemoteImages] = useState<Record<string, JourneyImage>>({});
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<ExploreResult | null>(null);
@@ -456,7 +464,7 @@ export default function TripItineraryWorkspace({
   const selectedDayRequestRef = useRef({ tripId: workingTrip.id, dayNumber: selectedDayNumber });
   const tabIdPrefix = useId().replaceAll(":", "");
   const copy = useMemo(() => itineraryCopy(language), [language]);
-  const transportAgenda = useMemo(() => itineraryTransportAgenda(workingTrip), [workingTrip]);
+  const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
   const closeSelectedDetail = useCallback(() => {
     setSelectedItemId(null);
@@ -586,11 +594,30 @@ export default function TripItineraryWorkspace({
     mutation.saveState === "error" || Boolean(removeTarget),
   );
 
-  if (presentation === "shell" && workspaceView === "transport") {
+  if (presentation === "shell" && workspaceView === "calendar") {
     return (
-      <section className={`${styles.workspace} ${styles.transportWorkspace}`} aria-label="Trip itinerary">
+      <section className={`${styles.workspace} ${styles.calendarWorkspace}`} aria-label="Trip itinerary">
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
-        <TransportAgenda trip={workingTrip} items={transportAgenda} copy={copy} language={language} panelId={`${tabIdPrefix}-transport-panel`} />
+        <ItineraryCalendar
+          weeks={calendarWeeks}
+          selectedDayId={activeDayId}
+          copy={copy}
+          language={language}
+          onSelect={(calendarDay, item) => {
+            const targetIndex = days.findIndex((day) => day.id === calendarDay.id);
+            if (targetIndex < 0) return;
+            setSelectedIndex(targetIndex);
+            setSelectedRecommendation(null);
+            setSelectedItemId(item?.kind === "activity"
+              ? item.activity.id
+              : item?.kind === "accommodation"
+                ? `stay:${item.booking.id}`
+                : item?.kind === "transfer"
+                  ? `leg-${item.agenda.leg.id}`
+                : null);
+            setWorkspaceView("days");
+          }}
+        />
       </section>
     );
   }
@@ -1534,8 +1561,8 @@ function SavedIdeasSection({
 }
 
 function ItinerarySubviewSwitch({ value, onChange, copy }: {
-  value: "days" | "transport";
-  onChange: (value: "days" | "transport") => void;
+  value: "days" | "calendar";
+  onChange: (value: "days" | "calendar") => void;
   copy: ReturnType<typeof itineraryCopy>;
 }) {
   return <div className={styles.subviewBar}>
@@ -1543,7 +1570,7 @@ function ItinerarySubviewSwitch({ value, onChange, copy }: {
       ariaLabel="Itinerary view"
       options={[
         { value: "days", label: copy.dayByDay },
-        { value: "transport", label: copy.transport },
+        { value: "calendar", label: copy.calendar },
       ]}
       value={value}
       onChange={onChange}
@@ -1551,87 +1578,98 @@ function ItinerarySubviewSwitch({ value, onChange, copy }: {
   </div>;
 }
 
-function transportAgendaGroups(items: ItineraryTransportAgendaLeg[]) {
-  return items.reduce<Array<{ date: string | null; items: ItineraryTransportAgendaLeg[] }>>((groups, item) => {
-    const current = groups.at(-1);
-    if (current && current.date === item.date) current.items.push(item);
-    else groups.push({ date: item.date, items: [item] });
-    return groups;
-  }, []);
+function calendarWeekdayLabels(language: "en" | "es") {
+  const formatter = new Intl.DateTimeFormat(language === "es" ? "es" : "en", { weekday: "short", timeZone: "UTC" });
+  return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(Date.UTC(2024, 0, index + 1))));
 }
 
-function TransportAgenda({ trip, items, copy, language, panelId }: {
-  trip: EasyTTrip;
-  items: ItineraryTransportAgendaLeg[];
+function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "activity" }>, copy: ReturnType<typeof itineraryCopy>, language: "en" | "es") {
+  if (item.schedule.kind === "time") return item.schedule.startsAt;
+  if (item.schedule.kind === "day-part") return itineraryDayPartLabels[language][item.schedule.dayPart];
+  if (item.schedule.kind === "full-day") return copy.fullDay;
+  return copy.timeNotSet;
+}
+
+function ItineraryCalendar({ weeks, selectedDayId, copy, language, onSelect }: {
+  weeks: ItineraryCalendarWeek[];
+  selectedDayId: string | null;
   copy: ReturnType<typeof itineraryCopy>;
   language: "en" | "es";
-  panelId: string;
+  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem) => void;
 }) {
-  const groups = transportAgendaGroups(items);
-  return <div className={styles.transportAgenda} id={panelId} role="region" aria-labelledby={`${panelId}-heading`}>
-    <header className={styles.transportHeader}>
+  const weekdayLabels = calendarWeekdayLabels(language);
+  const dayCount = weeks.reduce((count, week) => count + week.days.filter(Boolean).length, 0);
+  const panelId = "itinerary-calendar";
+  return <div className={styles.calendarView} id={panelId} role="region" aria-labelledby={`${panelId}-heading`}>
+    <header className={styles.calendarHeader}>
       <div>
-        <span>{copy.transport}</span>
-        <h2 id={`${panelId}-heading`}>{copy.transportHeading}</h2>
-        <p>{copy.transportIntro}</p>
+        <span>{copy.calendar}</span>
+        <h2 id={`${panelId}-heading`}>{copy.calendarHeading}</h2>
+        <p>{copy.calendarIntro}</p>
       </div>
-      {items.length ? <strong>{items.length} {items.length === 1 ? (language === "es" ? "trayecto" : "journey") : (language === "es" ? "trayectos" : "journeys")}</strong> : null}
+      {dayCount ? <strong>{dayCount} {copy.days.toLocaleLowerCase()}</strong> : null}
     </header>
-    {!items.length ? <div className={styles.transportEmpty}><Route aria-hidden="true" /><p>{copy.transportEmpty}</p></div> : null}
-    {groups.map((group, groupIndex) => <section className={styles.transportGroup} key={`${group.date ?? "route"}-${groupIndex}`} aria-labelledby={`${panelId}-group-${groupIndex}`}>
-      <h3 id={`${panelId}-group-${groupIndex}`}>
-        <CalendarDays aria-hidden="true" />
-        {group.date ? <time dateTime={group.date}>{displayDate(group.date, language)}</time> : copy.routeOrder}
-      </h3>
-      <div className={styles.transportList}>
-        {group.items.map((item) => <TransportAgendaRow trip={trip} item={item} copy={copy} language={language} key={item.leg.id} />)}
+    <div className={styles.calendarWeekdays} aria-hidden="true">
+      {weekdayLabels.map((label) => <span key={label}>{label}</span>)}
+    </div>
+    {weeks.map((week, weekIndex) => <section className={styles.calendarWeek} key={week.id} aria-labelledby={`${panelId}-week-${weekIndex}`}>
+      <h3 id={`${panelId}-week-${weekIndex}`}>{copy.weekOf} {week.startDate ? <time dateTime={week.startDate}>{displayDate(week.startDate, language)}</time> : copy.timeNotSet}</h3>
+      <div className={styles.calendarGrid}>
+        {week.days.map((day, dayIndex) => day ? <article className={styles.calendarDay} data-selected={selectedDayId === day.id || undefined} key={day.id}>
+          <EasyTButton
+            className={styles.calendarDaySelect}
+            variant="quiet"
+            aria-pressed={selectedDayId === day.id}
+            aria-label={`${copy.day} ${day.day.dayNumber}, ${day.stop?.name ?? day.day.title}, ${displayDayDate(day.day.date, language)}`}
+            onClick={() => onSelect(day)}
+          >
+            <span><time dateTime={day.day.date}>{displayDayDate(day.day.date, language)}</time><i>{pad(day.day.dayNumber)}</i></span>
+            <strong>{day.stop?.name ?? day.day.title}</strong>
+            <small>{planItemLabel(day.day.type, language)}</small>
+            {day.arrival || day.departure ? <em>{[day.arrival ? copy.arrival : null, day.departure ? copy.departure : null].filter(Boolean).join(" · ")}</em> : null}
+          </EasyTButton>
+          {day.items.length ? <ul className={styles.calendarItems}>
+            {day.items.map((item) => <li key={item.id}><CalendarItemButton item={item} day={day} copy={copy} language={language} onSelect={onSelect} /></li>)}
+          </ul> : <p className={styles.calendarEmptyDay}>{copy.noCalendarPlans}</p>}
+        </article> : <span className={styles.calendarBlank} aria-hidden="true" key={`${week.id}-${dayIndex}`} />)}
       </div>
     </section>)}
   </div>;
 }
 
-function TransportAgendaRow({ trip, item, copy, language }: {
-  trip: EasyTTrip;
-  item: ItineraryTransportAgendaLeg;
+function CalendarItemButton({ item, day, copy, language, onSelect }: {
+  item: ItineraryCalendarItem;
+  day: ItineraryCalendarDay;
   copy: ReturnType<typeof itineraryCopy>;
   language: "en" | "es";
+  onSelect: (day: ItineraryCalendarDay, item?: ItineraryCalendarItem) => void;
 }) {
-  const { leg } = item;
-  const Icon = iconForLeg(leg.mode);
-  const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
-  const mode = transferJourneyModeLabel(leg);
-  const segmentSummary = transferJourneySegmentSummary(leg);
-  const omioAction = item.booking ? null : omioBookingActionForLeg(trip, leg);
-  const statusLabel = item.status === "booked" ? copy.booked : item.status === "confirm" ? copy.confirm : copy.available;
-  const source = leg.provider ?? leg.provenance?.replaceAll("_", " ") ?? null;
-  return <article className={styles.transportCard}>
-    <span className={styles.transportModeIcon}><Icon aria-hidden="true" /></span>
-    <div className={styles.transportSummary}>
-      <div className={styles.transportRoute}>
-        <div>
-          <h4>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" /> {item.to.name}</h4>
-          <p>{mode}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
-        </div>
-        <span className={styles.transportStatus} data-status={item.status}>{statusLabel}</span>
-      </div>
-      {segmentSummary ? <p className={styles.transportSegments}>{segmentSummary}</p> : null}
-      <details className={styles.transportDetails}>
-        <summary>{copy.details}</summary>
-        <dl>
-          {item.dayNumber ? <><dt>{language === "es" ? "Día" : "Day"}</dt><dd>{item.dayNumber}</dd></> : null}
-          {leg.distanceKm !== null ? <><dt>{copy.distance}</dt><dd>{Math.round(leg.distanceKm)} km</dd></> : null}
-          {leg.confidence ? <><dt>{copy.confidence}</dt><dd>{leg.confidence}</dd></> : null}
-          {source ? <><dt>{copy.planningSource}</dt><dd>{source}</dd></> : null}
-          {item.booking?.confirmation ? <><dt>{language === "es" ? "Confirmación" : "Confirmation"}</dt><dd>{item.booking.confirmation}</dd></> : null}
-        </dl>
-        {leg.warnings?.length ? <ul>{leg.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
-      </details>
-      <div className={styles.transportActions}>
-        {item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="secondary">{copy.openBooking}</EasyTLinkButton> : null}
-        {omioAction ? <OmioTransportAction action={omioAction} trip={trip} leg={leg} /> : null}
-      </div>
-    </div>
-  </article>;
+  let Icon: LucideIcon = CalendarDays;
+  let title = "";
+  let meta = "";
+  if (item.kind === "activity") {
+    Icon = item.activity.category === "restaurant" ? Utensils : Sparkles;
+    title = item.activity.title;
+    meta = [calendarScheduleLabel(item, copy, language), providerDuration(item.activity)].filter(Boolean).join(" · ");
+  } else if (item.kind === "transfer") {
+    Icon = iconForLeg(item.agenda.leg.mode);
+    title = `${item.agenda.from.name} → ${item.agenda.to.name}`;
+    const durationMinutes = item.agenda.leg.doorToDoorMinutes ?? item.agenda.leg.durationMinutes;
+    meta = [copy.transfer, transferJourneyModeLabel(item.agenda.leg), durationMinutes === null ? copy.timeNotSet : `~${formatTripDuration(durationMinutes)}`].join(" · ");
+  } else if (item.kind === "accommodation") {
+    Icon = BedDouble;
+    title = item.booking.title;
+    meta = [copy.accommodation, item.destination, item.booking.confirmation ? copy.confirmed : copy.saved].filter(Boolean).join(" · ");
+  } else {
+    Icon = BookOpenText;
+    title = item.booking.title;
+    meta = [copy.booking, item.booking.type, item.booking.confirmation ? copy.confirmed : copy.saved].filter(Boolean).join(" · ");
+  }
+  return <EasyTButton className={styles.calendarItem} variant="quiet" aria-label={`${title}, ${meta}`} onClick={() => onSelect(day, item)}>
+    <Icon aria-hidden="true" />
+    <span><strong>{title}</strong><small>{meta}</small></span>
+    <ChevronRight aria-hidden="true" />
+  </EasyTButton>;
 }
 
 function OmioTransportAction({ action, trip, leg }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg }) {

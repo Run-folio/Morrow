@@ -42,7 +42,7 @@ export function isFirstTripWorkspaceArrival(search: string) {
 }
 
 export function isCanonicalTripWorkspaceHref(href: string) {
-  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|stay|prep))?(?:[?#].*)?$/.test(href);
+  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|stay|transport|prep))?(?:[?#].*)?$/.test(href);
 }
 
 export function mapWorkspaceHref(
@@ -98,6 +98,10 @@ export function stayWorkspaceHref(tripId: string, stopId?: string | null, result
   if (resultSelectionId) query.set("result", resultSelectionId);
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/stay${suffix ? `?${suffix}` : ""}`;
+}
+
+export function transportWorkspaceHref(tripId: string) {
+  return `/journey/${encodeURIComponent(tripId)}/transport`;
 }
 
 export function parseStayWorkspaceTarget(trip: Pick<WorkspaceTrip, "stops">, query: QueryReader) {
@@ -239,7 +243,7 @@ export function itineraryDayForRecommendation(
     .find((dayNumber) => canonicalDays.has(dayNumber)) ?? null;
 }
 
-export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay";
+export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "transport";
 
 export function workspaceVisitKey(href: string) {
   return href.split(/[?#]/, 1)[0];
@@ -250,6 +254,7 @@ export function workspaceViewFromPathname(pathname: string, tripId: string): Tri
   const remainder = decodedPathname.slice(`/journey/${tripId}`.length);
   if (remainder.startsWith("/explore")) return "explore";
   if (remainder.startsWith("/stay")) return "stay";
+  if (remainder.startsWith("/transport")) return "transport";
   if (remainder.startsWith("/itinerary")) return "itinerary";
   if (remainder.startsWith("/map")) return "map";
   return "overview";
