@@ -79,7 +79,7 @@
   gap: 14px;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
-  background: color-mix(in srgb, var(--morrovia-paper) 94%, var(--morrovia-lilac));
+  background: var(--morrovia-paper);
 }
 
 .modeIcon {

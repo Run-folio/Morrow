@@ -95,6 +95,23 @@ copying a number from an unrelated surface.
 Use token names rather than copying their current values. The canonical swatch
 and grouped raw-value reference is `Morrovia/01 Foundations — Colours`.
 
+### Large-surface neutrality
+
+Core page, workspace, rail and large-card backgrounds use
+`--morrovia-paper`. Lilac, indigo, transparency and blur remain available for
+compact semantic accents, map overlays that need spatial legibility, imagery
+fallbacks and genuine brand moments; they are not workspace-scale washes.
+
+The `large-accent-surface` rule in `audit:ui` protects the named owners for the
+homepage planner/booking chapter, TripShell, route strip, Overview, Itinerary,
+Calendar, Explore, Stay and Transport. Add a selector to that explicit owner
+map when a new recurring large planning surface is introduced. A necessary
+map or brand exception must stay owner-scoped and documented rather than
+weakening the rule globally.
+
+Large selected and hover states follow the same rule: retain a compact signal,
+border or icon treatment instead of repainting the complete row, card or panel.
+
 ### Spacing
 
 There is no repository-wide spacing-token scale today. Shared controls and

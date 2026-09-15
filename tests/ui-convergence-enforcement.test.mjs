@@ -32,6 +32,46 @@ test("a representative raw token violation fails and its canonical correction pa
   assert.equal(passed.directiveErrors.length, 0);
 });
 
+test("large workspace surfaces reject accent washes while compact accents remain available", async (t) => {
+  const root = await fixture();
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, "components/easyt/trip-stay-workspace.module.css");
+  const itineraryPath = join(root, "components/easyt/trip-itinerary-workspace.module.css");
+  await mkdir(join(root, "components/easyt"), { recursive: true });
+  await writeFile(path, [
+    ".main { background: color-mix(in srgb, var(--morrovia-paper) 92%, var(--morrovia-lilac)); }",
+    ".rail { backdrop-filter: blur(16px); }",
+    ".chosenBadge { background: var(--morrovia-lilac); }",
+    "",
+  ].join("\n"));
+  await writeFile(itineraryPath, [
+    ".calendarDay { background: var(--morrovia-lilac); }",
+    ".dayButton:hover { background: var(--morrovia-lilac); }",
+    ".dayButtonActive { background: color-mix(in srgb, var(--morrovia-paper) 80%, var(--morrovia-action)); }",
+    "",
+  ].join("\n"));
+
+  const failed = await auditWorkspace({ root, baseline: emptyBaseline, contracts: [] });
+  assert.equal(failed.currentBaseline.rules["large-accent-surface"]?.["components/easyt/trip-stay-workspace.module.css"], 2);
+  assert.equal(failed.currentBaseline.rules["large-accent-surface"]?.["components/easyt/trip-itinerary-workspace.module.css"], 3);
+  assert.match(formatAuditReport(failed), /Keep protected page, workspace, rail and large-card surfaces on --morrovia-paper/);
+
+  await writeFile(path, [
+    ".main { background: var(--morrovia-paper); }",
+    ".rail { background: var(--morrovia-paper); }",
+    ".chosenBadge { background: var(--morrovia-lilac); }",
+    "",
+  ].join("\n"));
+  await writeFile(itineraryPath, [
+    ".calendarDay { background: var(--morrovia-paper); }",
+    ".dayButton:hover { background: var(--morrovia-paper); }",
+    ".dayButtonActive { background: var(--morrovia-paper); }",
+    "",
+  ].join("\n"));
+  const passed = await auditWorkspace({ root, baseline: emptyBaseline, contracts: [] });
+  assert.equal(passed.increases.filter((item) => item.rule.id === "large-accent-surface").length, 0);
+});
+
 test("token-aware typography and shadow rules ignore canonical values without overlooking raw declarations", async (t) => {
   const root = await fixture();
   t.after(() => rm(root, { recursive: true, force: true }));

@@ -7,10 +7,9 @@
   min-height:72px;
   padding:0 16px 0 28px;
   color:var(--morrovia-ink);
-  background:rgba(255,255,255,.96);
+  background:var(--morrovia-paper);
   border-bottom:1px solid var(--morrovia-line);
   box-shadow:0 5px 18px rgba(23,16,111,.06);
-  backdrop-filter:blur(16px);
 }
 .brand{position:relative;margin-right:22px;display:inline-flex;align-items:center;text-decoration:none}
 .tripSummary{display:grid;min-width:154px;gap:3px;padding:0 20px 0 18px;border-left:1px solid var(--morrovia-line);font-family:var(--morrovia-ui)}.tripSummary strong{font-size:11px}.tripSummary span{color:var(--morrovia-muted);font-size:9px;white-space:nowrap}

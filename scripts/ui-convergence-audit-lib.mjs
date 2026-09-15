@@ -11,6 +11,28 @@ const SKIPPED_DIRECTORIES = new Set([".git", ".next", ".next-check", ".next-dev"
 const FOUNDATION_STYLESHEET = "app/journey/journey-design.css";
 const MINIMUM_EXCEPTION_REASON_LENGTH = 20;
 
+const protectedNeutralSurfaceSelectors = new Map([
+  ["app/journey/home/immersive/immersive.module.css", new Set([".planner", ".booking"])],
+  ["components/journey-planner-strip.module.css", new Set([".strip"])],
+  ["components/easyt/trip-shell.module.css", new Set([".shell", ".placeholder"])],
+  ["components/easyt/trip-overview-workspace.module.css", new Set([".nextAction", ".healthCard", ".progressCard", ".beforeGo", ".routeCard"])],
+  ["components/easyt/trip-itinerary-workspace.module.css", new Set([".workspace", ".subviewBar", ".calendarDay", ".calendarDay[data-selected=\"true\"]", ".calendarBlank", ".rail", ".dayButton:hover", ".dayButtonActive", ".sequenceEditor", ".contextRail"])],
+  ["components/easyt/trip-explore-workspace.module.css", new Set([".workspace", ".main", ".feedbackRow", ".rail"])],
+  ["components/easyt/trip-stay-workspace.module.css", new Set([".workspace", ".main", ".feedbackRow", ".rail"])],
+  ["components/easyt/trip-transport-workspace.module.css", new Set([".workspace", ".card"])],
+]);
+
+const cssBlockSelectors = (block) => {
+  const openBrace = block.indexOf("{");
+  return block.slice(block.startsWith("}") ? 1 : 0, openBrace).split(",").map((selector) => selector.trim());
+};
+
+const hasLargeAccentSurfaceTreatment = (block) => {
+  const body = block.slice(block.indexOf("{") + 1, block.lastIndexOf("}"));
+  return /background(?:-color)?\s*:[^;}]*(?:var\(--morrovia-(?:lilac(?:-strong)?|action)\)|rgba?\s*\()/i.test(body)
+    || /backdrop-filter\s*:\s*(?!none\b)[^;}]+/i.test(body);
+};
+
 const nativeControlOwners = new Set([
   "app/journey/easyt-navigation.tsx",
   "components/easyt/easyt-controls.tsx",
@@ -83,6 +105,18 @@ export const RULES = [
     pattern: /(?:#[0-9a-f]{3,8}\b|\brgba?\s*\()/gi,
     ignorePath: (path) => path === FOUNDATION_STYLESHEET,
     alternative: "Use the closest --morrovia-* semantic colour token from app/journey/journey-design.css.",
+  }),
+  rule({
+    id: "large-accent-surface",
+    files: "style",
+    pattern: /[^{}]+\{[^{}]*\}/g,
+    appliesTo: (path) => protectedNeutralSurfaceSelectors.has(path),
+    ignoreMatch: ({ match, path }) => {
+      const protectedSelectors = protectedNeutralSurfaceSelectors.get(path);
+      return !cssBlockSelectors(match).some((selector) => protectedSelectors.has(selector))
+        || !hasLargeAccentSurfaceTreatment(match);
+    },
+    alternative: "Keep protected page, workspace, rail and large-card surfaces on --morrovia-paper; reserve lilac, indigo and transparency for compact semantic, map or brand contexts.",
   }),
   rule({
     id: "raw-radius",
