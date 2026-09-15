@@ -75,12 +75,12 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     conflictRef.current = false;
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
     const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
-    recoveryHandleRef.current = null;
+    const activeLocalRecovery = recoveryClass === "active-local-document";
+    recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
     const divergentRecovery = recoveryClass === "genuine-divergence";
     setHistoricalRecovery(divergentRecovery);
-    if (divergentRecovery) {
-      conflictRef.current = true;
-    }
+    conflictRef.current = divergentRecovery;
+    setSaveState(activeLocalRecovery ? "device" : "idle");
     queueRef.current?.reset(canonical);
   }, [initialTrip]);
 
@@ -95,12 +95,12 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     setTripState(canonical);
     const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
     const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
-    recoveryHandleRef.current = null;
+    const activeLocalRecovery = recoveryClass === "active-local-document";
+    recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
     const divergentRecovery = recoveryClass === "genuine-divergence";
     setHistoricalRecovery(divergentRecovery);
-    if (divergentRecovery) {
-      conflictRef.current = true;
-    }
+    conflictRef.current = divergentRecovery;
+    setSaveState(activeLocalRecovery ? "device" : "idle");
     queueRef.current?.reset(canonical);
   }, []); // The initial document establishes the queue's only trusted CAS base.
 
@@ -142,7 +142,10 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   ) => {
     if (!enabled) return false;
     if (conflictRef.current) {
+      setFailure("recovery");
+      setHistoricalRecovery(true);
       setError("Review the separate device copy before editing this cloud version.");
+      setSaveState("error");
       return false;
     }
     const current = tripRef.current;

@@ -4,6 +4,9 @@ import test from "node:test";
 
 import {
   classifyTripRecovery,
+  loadTripRecoveryFromStorage,
+  saveTripRecoveryToStorage,
+  type EasyTBrowserStorage,
   type TripRecoveryHandle,
   type TripRecoveryRecord,
 } from "../lib/easyt/storage.ts";
@@ -34,7 +37,7 @@ function trip(overrides: Partial<EasyTTrip> = {}): EasyTTrip {
 function recovery(recoveryTrip: EasyTTrip, state: TripRecoveryRecord["state"] = "pending"): TripRecoveryRecord {
   return {
     version: 2,
-    ownerId: "owner-a",
+    ownerId: recoveryTrip.ownerId,
     tripId: recoveryTrip.id,
     trip: recoveryTrip,
     state,
@@ -44,6 +47,15 @@ function recovery(recoveryTrip: EasyTTrip, state: TripRecoveryRecord["state"] = 
 }
 
 const currentWrite: TripRecoveryHandle = { ownerId: "owner-a", tripId: "trip-recovery-classification", writeId: "write-a" };
+
+class MemoryStorage implements EasyTBrowserStorage {
+  private readonly values = new Map<string, string>();
+  get length() { return this.values.size; }
+  getItem(key: string) { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string) { this.values.set(key, value); }
+  removeItem(key: string) { this.values.delete(key); }
+  key(index: number) { return [...this.values.keys()][index] ?? null; }
+}
 
 test("clean canonical trip has no recovery state", () => {
   assert.equal(classifyTripRecovery({ recovery: null, canonicalTrip: trip() }), "clean");
@@ -65,6 +77,41 @@ test("canonical-equivalent recovery is safe to reconcile", () => {
   assert.equal(classifyTripRecovery({ recovery: recovery(trip({ updatedAt: "device-time" })), canonicalTrip: trip({ updatedAt: "cloud-time" }) }), "equivalent");
 });
 
+test("the exact ownerless recovery is the active local document after reload", () => {
+  const guest = trip({ ownerId: null, title: "Guest trip" });
+  assert.equal(classifyTripRecovery({ recovery: recovery(guest), canonicalTrip: guest }), "active-local-document");
+  assert.equal(classifyTripRecovery({
+    recovery: recovery(guest),
+    canonicalTrip: { ...guest, updatedAt: "render-only-timestamp" },
+  }), "active-local-document");
+});
+
+test("a different ownerless recovery remains protected as genuine divergence", () => {
+  const active = trip({ ownerId: null, title: "Active guest trip" });
+  const separate = trip({ ownerId: null, title: "Separate guest edit" });
+  assert.equal(classifyTripRecovery({ recovery: recovery(separate), canonicalTrip: active }), "genuine-divergence");
+});
+
+test("the active ownerless recovery handle permits the next exactly-once local edit", () => {
+  const storage = new MemoryStorage();
+  const guest = trip({ ownerId: null, title: "Guest trip" });
+  const first = saveTripRecoveryToStorage(storage, guest, { ownerId: null, writeId: "guest-a" });
+  const loaded = loadTripRecoveryFromStorage(storage, guest.id, null);
+  assert.ok(loaded);
+  assert.equal(classifyTripRecovery({ recovery: loaded, canonicalTrip: guest }), "active-local-document");
+
+  const edited = { ...guest, title: "Guest trip edited", updatedAt: "revision-b" };
+  const second = saveTripRecoveryToStorage(storage, edited, {
+    ownerId: null,
+    replace: first.handle,
+    writeId: "guest-b",
+  });
+
+  assert.equal(second.stored, true);
+  assert.equal(second.blockedByExistingRecovery, false);
+  assert.equal(loadTripRecoveryFromStorage(storage, guest.id, null)?.trip.title, "Guest trip edited");
+});
+
 test("a prior canonical snapshot is historical-superseded only through semantic comparison", () => {
   const previous = trip({ title: "Previous cloud title", updatedAt: "revision-a" });
   const current = trip({ title: "Current cloud title", updatedAt: "revision-b" });
@@ -80,6 +127,9 @@ test("save header and dashboard source keep historical recovery separate and tri
   const persistence = readFileSync(new URL("../components/easyt/use-trip-mutation-persistence.ts", import.meta.url), "utf8");
   const dashboard = readFileSync(new URL("../app/journey/dashboard/dashboard-client.tsx", import.meta.url), "utf8");
   assert.match(persistence, /setHistoricalRecovery\(divergentRecovery\)/);
+  assert.match(persistence, /activeLocalRecovery \? recovery : null/);
+  assert.match(persistence, /setSaveState\(activeLocalRecovery \? "device" : "idle"\)/);
+  assert.match(persistence, /if \(conflictRef\.current\) \{[\s\S]{0,180}setFailure\("recovery"\)[\s\S]{0,180}setHistoricalRecovery\(true\)[\s\S]{0,180}setSaveState\("error"\)/);
   assert.doesNotMatch(persistence, /if \(divergentRecovery\) \{[\s\S]{0,160}setSaveState\("error"\)/);
   assert.match(dashboard, /recoveryIssues\[trip\.id\]/);
   assert.match(dashboard, /tripRecoveryIsAwaitingCanonicalSave\(recovery\)/);

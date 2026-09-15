@@ -58,6 +58,7 @@ export type TripRecoveryClassification =
   | "clean"
   | "pending-current-save"
   | "current-save-failed"
+  | "active-local-document"
   | "equivalent"
   | "historical-superseded"
   | "genuine-divergence";
@@ -669,6 +670,19 @@ export function classifyTripRecovery({
   if (!recovery) return "clean";
   if (currentWrite && recoveryHandlesMatch(recovery, currentWrite)) {
     return recovery.state === "pending" ? "pending-current-save" : "current-save-failed";
+  }
+  // An ownerless trip has no separate canonical cloud document. When the
+  // resolver reopened this exact durable guest recovery, it is the active
+  // local document and its write handle must remain available for subsequent
+  // edits. A different guest document is still genuine divergence and remains
+  // protected below.
+  if (recovery.ownerId === null
+    && canonicalTrip.ownerId === null
+    && recovery.tripId === canonicalTrip.id
+    && recovery.trip.id === canonicalTrip.id
+    && recovery.trip.ownerId === null
+    && sameRecoveryDocument(recovery.trip, canonicalTrip)) {
+    return "active-local-document";
   }
   if (tripRecoveryMatchesCanonical(recovery, canonicalTrip)) return "equivalent";
   if (previousCanonicalTrip && tripRecoveryMatchesCanonical(recovery, previousCanonicalTrip)) {
