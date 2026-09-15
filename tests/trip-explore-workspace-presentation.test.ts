@@ -4,6 +4,7 @@ import test from "node:test";
 
 const workspace = readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../components/easyt/trip-explore-workspace.module.css", import.meta.url), "utf8");
+const shellStyles = readFileSync(new URL("../components/easyt/trip-shell.module.css", import.meta.url), "utf8");
 const navigation = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
 const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
 const detail = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
@@ -141,6 +142,7 @@ test("Itinerary keeps discovery secondary and links to the canonical Explore wor
 });
 
 test("responsive cards avoid horizontal overflow and retain 44px touch controls", () => {
+  assert.match(shellStyles, /\.resolverStack \{[^}]*min-width: 0;[^}]*grid-template-columns: minmax\(0, 1fr\);/, "TripShell must contain intrinsically wide workspace strips inside the viewport");
   assert.match(styles, /\.stopNavigation \{[^}]*min-width: 0;[^}]*overflow: hidden;/);
   assert.match(styles, /\.categories \{[\s\S]*overflow-x: auto/);
   assert.match(styles, /\.categories button \{ flex: none; min-height: 44px; \}/);
