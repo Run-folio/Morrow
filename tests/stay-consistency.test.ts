@@ -108,9 +108,10 @@ test("Google photo helpers bind a photo resource to the exact provider place", (
   assert.equal(validGooglePlaceId("../../secret"), false);
 });
 
-test("fallback property photos require exact normalized identity within 100 metres", () => {
-  const input = { name: "Tokyo Station Hotel", coordinates: [139.7671, 35.6812] as [number, number] };
-  assert.equal(exactGooglePropertyMatch(input, { name: " Tokyo   Station Hotel ", coordinates: [139.7674, 35.6814] }), true);
+test("fallback place photos require exact normalized identity and available address within 100 metres", () => {
+  const input = { name: "Tokyo Station Hotel", address: "1 Marunouchi, Tokyo", coordinates: [139.7671, 35.6812] as [number, number] };
+  assert.equal(exactGooglePropertyMatch(input, { name: " Tokyo   Station Hotel ", address: "1 Marunouchi, Tokyo", coordinates: [139.7674, 35.6814] }), true);
+  assert.equal(exactGooglePropertyMatch(input, { name: "Tokyo Station Hotel", address: "2 Marunouchi, Tokyo", coordinates: [139.7674, 35.6814] }), false);
   assert.equal(exactGooglePropertyMatch(input, { name: "Tokyo Station Hotel Annex", coordinates: [139.7671, 35.6812] }), false);
   assert.equal(exactGooglePropertyMatch(input, { name: "Tokyo Station Hotel", coordinates: [139.77, 35.69] }), false);
 });
@@ -144,7 +145,7 @@ test("Google photo retrieval is server-side, no-store, bounded, and outside firs
   assert.match(photoRoute, /pageSize: 5/);
   assert.match(photoRoute, /Cache-Control": "private, no-store"/);
   assert.doesNotMatch(photoRoute, /\?key=|NEXT_PUBLIC_GOOGLE|photoUri/);
-  assert.match(photoClient, /\.slice\(0, 6\)/);
+  assert.match(photoClient, /Math\.min\(options\.limit \?\? 6, 18\)/);
   assert.match(photoClient, /place\.provider === "google-places"/);
   assert.match(photoClient, /place\.provider === "openstreetmap"/);
   assert.match(photoClient, /URL\.createObjectURL/);
@@ -160,6 +161,7 @@ test("image fallbacks and provider boundaries never borrow unrelated hotel media
   assert.match(photoClient, /query\.set\("address", place\.address\)/);
   assert.match(photoClient, /query\.set\("lon", String\(place\.coordinates\[0\]\)\)/);
   assert.match(photoClient, /query\.set\("lat", String\(place\.coordinates\[1\]\)\)/);
+  assert.match(photoClient, /query\.set\("kind", kind\)/);
   assert.doesNotMatch(photoClient, /query\.set\("city"/);
   assert.doesNotMatch(bookingSearch, /image\??:|images\??:|photo/);
   assert.match(stories, /BookingOnlyNoImageProperty/);

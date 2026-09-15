@@ -43,11 +43,13 @@ test("must-see requires strong provider evidence and day trips require explicit 
   assert.equal(discoveryCategoryMatches({ kind: "tour", category: "Day trip", tags: ["day-trips"] }, "day-trips"), true);
 });
 
-test("organic day trips are spatially bounded, settlement-only and independent from Viator", () => {
+test("organic day trips are spatially bounded, destination-safe and independent from Viator", () => {
   const route = readFileSync("app/api/journey-day-trips/route.ts", "utf8");
+  const discovery = readFileSync("lib/easyt/day-trip-discovery.ts", "utf8");
   const explore = readFileSync("components/easyt/trip-explore-workspace.tsx", "utf8");
-  assert.match(route, /MINIMUM_DAY_TRIP_DISTANCE_KM = 20/);
-  assert.match(route, /MAXIMUM_DAY_TRIP_DISTANCE_KM = 80/);
+  assert.match(discovery, /MINIMUM_DAY_TRIP_DISTANCE_KM = 20/);
+  assert.match(discovery, /MAXIMUM_DAY_TRIP_DISTANCE_KM = 140/);
+  assert.match(discovery, /place\.routability !== "direct_destination"/);
   assert.match(route, /searchOpenWorldNearbyBaseSuggestions/);
   assert.doesNotMatch(route, /duration|hour|minute|Viator/i);
   assert.match(explore, /plan\.dayTrips[\s\S]*loadDayTrips/);

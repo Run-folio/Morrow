@@ -107,6 +107,8 @@
 .card:hover { border-color: color-mix(in srgb, var(--morrovia-action) 44%, var(--morrovia-line)); }
 .cardSelected { border-color: var(--morrovia-signal); outline: 2px solid color-mix(in srgb, var(--morrovia-signal) 14%, transparent); outline-offset: -3px; }
 .card:focus-within { box-shadow: var(--morrovia-focus-shadow); }
+.cardCompact { display: block; }
+.cardCompact .cardBody { min-height: 0; }
 
 .cardImage {
   position: relative;
@@ -212,6 +214,7 @@
   .grid,
   .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
   .card { display: grid; grid-template-columns: minmax(170px, 34%) minmax(0, 1fr); }
+  .cardCompact { display: block; }
   .cardImage { height: 100%; min-height: 220px; }
 }
 

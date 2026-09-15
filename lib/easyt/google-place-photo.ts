@@ -5,7 +5,7 @@ export type GooglePlacePhotoAttribution = {
 
 const googlePlaceIdPattern = /^[A-Za-z0-9_-]{10,255}$/;
 
-const normalizedPropertyName = (value: string) => value
+const normalizedPropertyText = (value: string) => value
   .normalize("NFKC")
   .trim()
   .replace(/\s+/g, " ")
@@ -32,19 +32,24 @@ export function exactGooglePhotoResource(placeId: string, value: unknown) {
 }
 
 /**
- * A fallback map property may request Google media only after the server has
- * resolved the same normalized property name within 100 metres. Ambiguous or
- * merely similar hotels deliberately keep the neutral image treatment.
+ * A fallback mapped place may request Google media only after the server has
+ * resolved the same normalized name and, when both sources provide it, exact
+ * normalized address within 100 metres. Ambiguous or merely similar venues
+ * deliberately keep the neutral image treatment.
  */
 export function exactGooglePropertyMatch(input: {
   name: string;
+  address?: string;
   coordinates: [number, number];
 }, candidate: {
   name?: string;
+  address?: string;
   coordinates?: [number, number];
 }) {
   if (!candidate.name || !candidate.coordinates) return false;
-  if (normalizedPropertyName(input.name) !== normalizedPropertyName(candidate.name)) return false;
+  if (normalizedPropertyText(input.name) !== normalizedPropertyText(candidate.name)) return false;
+  if (input.address && candidate.address
+    && normalizedPropertyText(input.address) !== normalizedPropertyText(candidate.address)) return false;
   return coordinateDistanceKm(input.coordinates, candidate.coordinates) <= 0.1;
 }
 

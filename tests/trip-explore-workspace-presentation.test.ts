@@ -13,6 +13,7 @@ const routeStripStyles = readFileSync(new URL("../components/journey-planner-str
 const routeTimeline = readFileSync(new URL("../lib/easyt/route-timeline.ts", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/trip-explore-workspace.stories.tsx", import.meta.url), "utf8");
+const explorePage = readFileSync(new URL("../app/journey/[tripId]/explore/page.tsx", import.meta.url), "utf8");
 const design = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
 const appNavigationStyles = readFileSync(new URL("../app/journey/easyt-navigation.module.css", import.meta.url), "utf8");
 
@@ -44,6 +45,16 @@ test("Map and Explore reuse one canonical route model and controlled scrolling p
   assert.equal(feedbackIndex < timelineIndex && timelineIndex < mainIndex && mainIndex < railIndex, true, "feedback and route context are full-width siblings ahead of both workspace columns");
   assert.match(styles, /\.feedbackRow \{[\s\S]*grid-column: 1 \/ -1;/);
   assert.match(styles, /\.stopNavigation \{ grid-column: 1 \/ -1;/);
+});
+
+test("Explore exposes only real route stops and defaults to the first canonical stop", () => {
+  assert.match(workspace, /resolveExploreDestinationId\(destinations, initialDestinationId\)/);
+  assert.match(workspace, /\.filter\(\(item\) => item\.kind === "stop"/);
+  assert.match(workspace, /onSelectStop=\{\(next\) => \{[\s\S]*setDestinationId\(next\)/);
+  assert.doesNotMatch(workspace, /initialDestinationId = "all"|destinationId === "all"|destination_scope: nextScopeId/);
+  assert.doesNotMatch(workspace, /routeTimelineScopeId/);
+  assert.doesNotMatch(explorePage, /: "all"/);
+  assert.match(stories, /Mobile390HorizontalStops:[\s\S]*initialDestinationId: "arequipa"/);
 });
 
 test("desktop uses a results workspace and contextual right rail, not a centred modal", () => {
