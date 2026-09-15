@@ -120,6 +120,7 @@ test("auth UI owns truthful check-email, loading and shared password controls", 
   const controls = readFileSync("components/easyt/easyt-password-field.tsx", "utf8");
   assert.match(login, /Check your email/);
   assert.match(login, /verification-delivery-error/);
+  assert.match(login, /const submittedEmail[\s\S]*setEmail\(submittedEmail\.trim\(\)\)[\s\S]*submitEmailSignUp/);
   assert.match(login, /verification-delivery-error[\s\S]*setEmail\(result\.email\)[\s\S]*setVerificationFailure/);
   assert.match(login, /else \{[\s\S]*setEmail\(destination\);[\s\S]*setResendError/);
   assert.match(login, /aria-busy=\{busy \|\| undefined\}/);

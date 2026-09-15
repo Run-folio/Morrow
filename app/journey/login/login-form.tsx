@@ -62,6 +62,9 @@ export default function LoginForm({
     const submittedEmail = String(data.get("email") || "");
     const password = String(data.get("password") || "");
     const name = String(data.get("name") || "Traveller");
+    // Keep the submitted destination as the canonical field value before any
+    // asynchronous auth response can rerender the form after a failed send.
+    setEmail(submittedEmail.trim());
     const result = mode === "sign-up"
       ? await submitEmailSignUp({
         callbackURL,
