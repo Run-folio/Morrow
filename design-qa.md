@@ -1,3 +1,56 @@
+# Itinerary implementation checkpoint — 2026-09-15
+
+Final result: blocked
+
+Scope: ticket 311, production Day by day and Calendar, local only. Historical QA below is preserved.
+
+## Functional completion pass — 2026-09-15
+
+- The P1 implementation blockers from the Astra handoff are resolved locally. Explicit Move, Day by day Move and desktop Calendar drag now call one canonical cross-day mutation. Eligibility uses the exact route-stop occurrence ID, so repeated destinations remain distinct. Provider metadata, image/source provenance, map identity, duration and broad schedule intent survive the move; occupied destinations insert without replacing siblings.
+- Transport, accommodation, fixed bookings, generated guidance and structural rows remain protected. Calendar transfer and booking selection now opens a domain-native logistics detail owner instead of coercing those records into recommendation details. Transport-backed bookings are represented once, selected stays are not labelled booked without booking evidence and unresolved timing remains explicit.
+- Add/Move actions create item-scoped inverse receipts. Undo applies to the latest canonical document, retains unrelated edits and fails closed if the affected item itself changed; no whole-trip snapshot or parallel save path was introduced.
+- Browser acceptance covered native Calendar drag and Undo, explicit Move and focus return, one-owner Details→Move transitions, Add composer, Saved Ideas detail/Add, provider failure/retry, 19-day week navigation, 65-day late-trip reachability, and the real Next route's guest device persistence, reload and browser back/forward continuity. The synthetic fixtures and a disposable local guest trip were used; no founder account or recovery data was accessed.
+- The final matched-content review retained the accepted Astra composition. Exact-place image plumbing remains unchanged, missing images use the compact existing fallback, Saved Ideas is a complete compact list, and logistics has one transfer/stay/booking owner without duplicated trip facts. Day by day and Calendar retain the same typography, neutral surfaces and compact control system.
+- The current code/evidence remains on HOLD because a real authenticated browser mutation and genuine stale-CAS collision could not be exercised without an approved disposable account, and the locked macOS host prevented true operating-system software-keyboard and 200% browser-zoom evidence. Unit persistence/CAS tests pass but are not represented as equivalent end-to-end evidence.
+
+## Sources and evidence
+
+- Approved Day by day: `/Users/shaun/Downloads/ChatGPT Image Sep 15, 2026, 07_56_06 AM.png`.
+- Approved Calendar: `/Users/shaun/Downloads/ChatGPT Image Sep 15, 2026, 07_41_47 AM.png`.
+- Rendered production Storybook owner, synthetic seven-day Cusco fixture, Day 2. No founder trips/accounts/recovery data used.
+- Screenshots: `docs/ui-convergence/evidence/311/day-desktop.png`, `calendar-desktop.png`, `day-390.png`, `calendar-390.png`.
+- Desktop frame: 1440×1100 CSS pixels, captured at 1075×821 pixels. Mobile frame: 390×844 CSS pixels, captured at 291×630 pixels. The in-app browser scales screenshot output; frame `html.clientWidth` and `scrollWidth` were independently verified. These are scaled evidence, not 1:1 pixel-comparison artifacts.
+- Source images are approximately 1312×1200 pixels. Content/state differs deliberately: synthetic Peru data versus illustrative Japan/Korea. No mock travel facts were copied.
+- Both references and implementation captures were opened together for comparison. Full-view comparison established three-part day layout and calendar/detail proportions; focused calendar labels/detail rows exposed truncation and excessive control width.
+
+## Comparison history and fidelity
+
+1. Initial Calendar comparison: P2 event labels ellipsized; narrow detail rows reserved space for desktop drag controls and wrapped short titles excessively. Fix: wrapping event labels and container-responsive planner rows/drag affordance. Revised `calendar-desktop.png` confirms readable Qorikancha and San Pedro Market labels.
+2. Day by day: compact horizontal daypart labels on wide panels, smaller empty Add rows, plan before context on mobile, and one stay owner. Existing serif/UI/metadata families retained. No new fonts, gradients, global tokens or accent-washed workspace surfaces.
+3. Typography and rhythm: heading hierarchy follows the references; existing canonical control and metadata sizes retained. Full optical/200% zoom acceptance remains unavailable.
+4. Image quality: existing activity image plumbing retained, compact thumbnails added to Calendar. The existing synthetic story uses landscape placeholder photos for activities, so these captures do not prove exact-place photo fidelity. No generated travel assets were added.
+5. Copy/truth: unknown day-note provenance is retained under Day context and notes rather than promoted to Calendar events. Identical explicitly authored activity text stays scheduled. This is source-type presentation, not string filtering or migration. Calendar uses shared full-day semantics; no new times, prices, timetables or confirmation facts.
+
+## Verified checks
+
+- Production UI: Day 2 survives Day by day→Calendar; selecting Day 3 stays in Calendar; Open full day opens Day 3.
+- At 390px: tap Add to Afternoon opens the existing composer; Cancel closes it; Qorikancha opens the existing detail dialog; Escape closes it and focus returns to the activity. These checks did not submit persistent changes.
+- Both views: `html.clientWidth === scrollWidth` at 320, 390, 430, 768, 1440 CSS pixels. This is a containment check, not complete touch/keyboard acceptance.
+- 230 focused tests passed: itinerary composition/calendar/placement/mutation/schedule/presentation, workspace gauntlet, Map/TripShell coherence, canonical mutation, persistence and orientation suites.
+- Typecheck, build:check, Storybook build, strict audit:ui, UI convergence and git diff --check passed. Build/Storybook emitted existing bundling warnings, not errors.
+- Storybook interaction checks exercised `SharedDayCalendarOrientation`, `CalendarActivityDrag`, 19-day and 65-day fixtures, provider failure/retry, booking/unknown-transfer details, mobile Move/Add/Details and Saved Ideas. Calendar drag moved one canonical activity, kept its metadata and unrelated sibling, then item-scoped Undo restored it.
+- A real local guest trip retained a newly added activity through reload with `Saved on this device`; Day by day/Calendar selection survived view switching and browser back/forward through URL-owned canonical day IDs.
+
+## Remaining acceptance blockers
+
+- No P1 implementation blocker remains in the scoped #311 code.
+- P2 evidence: authenticated persistence and a genuine stale-CAS collision remain unverified in a browser because no approved disposable account was available. The canonical account queue/CAS suites pass, but that is not end-to-end evidence.
+- P2 evidence: true 200% browser zoom and software-keyboard behavior remain unavailable because the macOS host was locked during native-browser control. Short-height mobile geometry, focused inputs, Escape/focus return and containment were verified, but are not substitutes for those two operating-system checks.
+
+See `docs/ui-convergence/311-local-implementation.md` for base, ownership and handoff.
+
+---
+
 # Stay consistency QA
 
 ## 2026-09-14 simplification, shared route track, imagery and mini-map
