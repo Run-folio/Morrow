@@ -20,14 +20,19 @@ test("Calendar is a pure alternate projection of canonical itinerary state", () 
   assert.doesNotMatch(itinerary.slice(calendarStart, calendarEnd), /draggable=|onDrop=|mutateTrip|mutation\./);
 });
 
-test("Calendar selection resolves exact canonical IDs and returns to shared day details", () => {
-  assert.match(itinerary, /days\.findIndex\(\(day\) => day\.id === calendarDay\.id\)/);
+test("Calendar selection resolves canonical IDs in place, with an explicit full-day switch", () => {
+  assert.match(itinerary, /days\.findIndex\(\(candidate\) => candidate\.id === day\.id\)/);
   assert.match(itinerary, /item\.activity\.id/);
   assert.match(itinerary, /`stay:\$\{item\.booking\.id\}`/);
   assert.match(itinerary, /`leg-\$\{item\.agenda\.leg\.id\}`/);
   assert.match(itinerary, /setWorkspaceView\("days"\)/);
   assert.match(itinerary, /data-selected=\{selectedDayId === day\.id/);
   assert.match(itinerary, /aria-pressed=\{selectedDayId === day\.id\}/);
+  assert.match(itinerary, /calendarItemRequestRef\.current = itemId/);
+  assert.match(itinerary, /Open full day/);
+  assert.match(itinerary, /searchParams\.set\("itineraryDay", day\.id\)/);
+  assert.match(itinerary, /window\.addEventListener\("popstate", restoreOrientation\)/);
+  assert.match(itinerary, /items\.slice\(0, 4\)/);
 });
 
 test("Calendar exposes truthful temporal and item semantics without relying on colour", () => {

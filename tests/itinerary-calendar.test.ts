@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { itineraryCalendarDays, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
+import { itineraryCalendarDays, itineraryCalendarNightBands, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
 
 const day = (id: string, stopId: string, dayNumber: number, date: string, title: string, type: PlanItem["type"] = "activity"): PlanItem => ({
@@ -98,6 +98,35 @@ test("projects canonical days and repeated destinations by stable IDs without mu
   assert.deepEqual(days.map((item) => item.id), ["tokyo-day-1", "tokyo-day-2", "kyoto-day-3", "kyoto-day-4", "tokyo-return-day-5"]);
   assert.deepEqual(days.filter((item) => item.stop?.name === "Tokyo").map((item) => item.stop?.id), ["tokyo-first", "tokyo-first", "tokyo-return"]);
   assert.equal(JSON.stringify(trip), before);
+});
+
+test("night bands preserve repeated occurrence IDs and exclude departure nights", () => {
+  const trip = representativeTrip();
+  const bands = itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands);
+  assert.deepEqual(bands.map((band) => [band.stop.id, band.span]), [["tokyo-first", 2], ["kyoto", 2], ["tokyo-return", 1]]);
+  trip.stops[2]!.departureDate = "2026-09-02";
+  assert.equal(itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands).some((band) => band.stop.id === "tokyo-return"), false);
+});
+
+test("legacy day context is retained outside events while identical authored text remains planned", () => {
+  const trip = representativeTrip();
+  const text = "Choose one walkable neighbourhood";
+  trip.planItems[0]!.notes = [text];
+  trip.planItems[1]!.notes = [text];
+  trip.brief.customActivities = { 2: [text] };
+  const days = itineraryCalendarDays(trip);
+  assert.equal(days[0]!.contextNotes[0]!.title, text);
+  assert.equal(days[0]!.items.some((item) => item.kind === "activity" && item.activity.title === text), false);
+  assert.equal(days[1]!.items.some((item) => item.kind === "activity" && item.activity.title === text), true);
+  assert.equal(trip.planItems[0]!.notes[0], text);
+});
+
+test("night bands mark continuation over a Monday boundary without adding nights", () => {
+  const trip = representativeTrip();
+  trip.stops[0]!.departureDate = "2026-09-02";
+  trip.planItems[2]!.stopId = "tokyo-first";
+  const bands = itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands).filter((band) => band.stop.id === "tokyo-first");
+  assert.deepEqual(bands.map((band) => [band.span, band.continued]), [[2, false], [1, true]]);
 });
 
 test("projects each canonical transfer once with truthful booked and unknown state", () => {

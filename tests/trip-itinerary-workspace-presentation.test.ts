@@ -34,7 +34,7 @@ test("the selected day timeline uses canonical content and the shared Map persis
 
 test("day header keeps only canonical day context and navigation", () => {
   const headerStart = itinerary.indexOf("className={styles.dayHeader}");
-  const headerEnd = itinerary.indexOf("<DayNavigation", headerStart);
+  const headerEnd = itinerary.indexOf("</header>", headerStart);
   const header = itinerary.slice(headerStart, headerEnd);
   assert.ok(headerStart > -1 && headerEnd > headerStart);
   assert.match(header, /DAY \{pad\(active\.dayNumber\)\}/);
@@ -113,9 +113,9 @@ test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's ma
 
 test("day navigation is semantically grouped beside day context and precedes planner actions and content", () => {
   const headerIndex = itinerary.indexOf("className={styles.dayHeader}");
-  const navigationIndex = itinerary.indexOf("<DayNavigation", headerIndex);
+  const navigationIndex = itinerary.indexOf("className={styles.dateNavigation}");
   const plannerIndex = itinerary.indexOf("<RichItineraryDayPlanner", headerIndex);
-  assert.ok(headerIndex < navigationIndex && navigationIndex < plannerIndex);
+  assert.ok(navigationIndex < headerIndex && headerIndex < plannerIndex);
   assert.match(itinerary, /<nav className=\{styles\.dayNavigation\} aria-label="Day navigation">/);
   assert.match(itinerary, /disabled=\{index === 0\}/);
   assert.match(itinerary, /disabled=\{index === count - 1\}/);
@@ -130,7 +130,7 @@ test("tablet and mobile layouts collapse instead of squeezing three columns", ()
   assert.match(itinerary, /scrollIntoView\(\{ block: "nearest", inline: "nearest" \}\)/);
 });
 
-test("mobile composition keeps navigation and compact saved ideas ahead of the plan", () => {
+test("mobile composition keeps the plan before Saved Ideas and secondary discovery", () => {
   const rail = itinerary.indexOf("ref={itineraryDaysOrientationTarget}");
   const dayPanel = itinerary.indexOf("className={styles.dayPanel}");
   const planner = itinerary.indexOf("<RichItineraryDayPlanner", dayPanel);
@@ -147,7 +147,8 @@ test("mobile composition keeps navigation and compact saved ideas ahead of the p
   assert.match(mobile, /\.dayPanel \{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
   assert.match(mobile, /\.dayHeader \{ order: 0; \}/);
   assert.match(mobile, /\.dayNavigation \{ order: 1; \}/);
-  assert.match(mobile, /\.mobileSavedIdeas \{ order: 2; display: block;/);
+  assert.ok(itinerary.indexOf("<SavedIdeasSection") > planner);
+  assert.equal((itinerary.match(/<SavedIdeasSection/g) ?? []).length, 1);
   assert.match(mobile, /\.dayPanel > \.details \{ order: 4; \}/);
   assert.match(mobile, /\.sequenceEditor \{ order: 5; \}/);
   assert.match(mobile, /\.rail \{ display: none; \}/);
@@ -192,10 +193,10 @@ test("long canonical and provider content stays inside the timeline and planning
 });
 
 test("saved ideas have one shared stop-scoped unscheduled owner in the planning rail", () => {
-  const railIndex = itinerary.indexOf("className={styles.rail}");
-  const desktopSavedIndex = itinerary.indexOf("className={styles.railSavedIdeas}", railIndex);
-  const panelIndex = itinerary.indexOf("className={styles.dayPanel}", railIndex);
-  assert.ok(railIndex < desktopSavedIndex && desktopSavedIndex < panelIndex);
+  const railIndex = itinerary.indexOf("className={styles.contextRailBody}");
+  const desktopSavedIndex = itinerary.indexOf("<SavedIdeasSection", railIndex);
+  const panelIndex = itinerary.indexOf("className={styles.dayPanel}");
+  assert.ok(panelIndex < railIndex && railIndex < desktopSavedIndex);
   assert.match(itinerary, /const unscheduledSavedIdeas = \(workingTrip\.brief\.itineraryIdeas \?\? \[\]\)\.filter\(\(idea\) => idea\.stopId === active\.stopId && !idea\.dayId\)/);
   assert.match(itinerary, /function SavedIdeasSection/);
   assert.match(itinerary, /if \(!ideas\.length\) return null/);
@@ -235,7 +236,8 @@ test("recommendation cards use canonical day scoring, an accessible itinerary me
   assert.match(itinerary, /itineraryIdeaDayOptions\(trip, stop\.id\)/);
   assert.match(itinerary, /rankItineraryRecommendations\(trip, day/);
   assert.match(itinerary, /dedupeExploreResults\(\[\.\.\.organic, \.\.\.commercial\]\)/);
-  assert.doesNotMatch(itinerary, /<EasyTSelect|<option[^>]*>Choose a day/);
+  const suggestionOwner = itinerary.slice(itinerary.indexOf("function ItineraryDaySuggestions"));
+  assert.doesNotMatch(suggestionOwner, /<EasyTSelect|<option[^>]*>Choose a day/);
   assert.match(itinerary, /aria-haspopup="menu"/);
   assert.match(itinerary, /role="menu"/);
   assert.match(itinerary, /role="menuitem"/);

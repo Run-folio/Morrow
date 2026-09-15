@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(280px, 320px);
   min-height: 650px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: #fff;
@@ -1817,4 +1817,71 @@
 @media (hover: none), (pointer: coarse) {
   .dragHint { display: none; }
   .discoveryCard { cursor: default; }
+}
+
+/* Ticket 311: one orientation toolbar and a plan-first compact composition. */
+.workspaceToolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+.workspaceToolbar > div:first-child { flex: 1; min-width: 180px; }
+.workspaceToolbar h2 { margin: 0; font: 700 28px/1.1 var(--morrovia-display); }
+.workspaceToolbar p { margin: 6px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.workspaceToolbar .subviewBar { padding: 0; border: 0; }
+.dateNavigation { display: flex; align-items: end; gap: 6px; min-width: 0; }
+.dateNavigation > label { width: 260px; min-width: 0; }
+.dayPanel { min-width: 0; padding: 20px; container-type: inline-size; }
+.dayHeader h2 { font-size: clamp(30px, 3vw, 44px); }
+.dayList { max-height: 70svh; }
+.calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.calendarWorkspace .rail { display: none; }
+.calendarWorkspace .calendarView { grid-column: 1; padding: 16px; min-width: 0; }
+.calendarWorkspace .dayPanel { grid-column: 2; border-left: 1px solid var(--morrovia-line); }
+.calendarWorkspace .contextRail { grid-column: 1 / -1; grid-row: auto; border-top: 1px solid var(--morrovia-line); }
+.calendarDaySelect { min-height: 100px; padding: 10px; }
+.calendarDaySelect time, .calendarDaySelect small, .calendarDaySelect em { font: var(--morrovia-type-fine-print); }
+.calendarItem strong { font: 700 13px/1.35 var(--morrovia-ui); }
+.calendarItem small { font: var(--morrovia-type-fine-print); }
+.calendarItem strong, .calendarItem small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.calendarBlank { border: 0; }
+.calendarWeek { margin-top: 12px; }
+.calendarBands { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.calendarBands > div { display: flex; align-items: center; min-width: 0; gap: 6px; padding: 8px; border-bottom: 2px solid var(--morrovia-signal); font: var(--morrovia-type-fine-print); }
+.calendarBands svg { width: 16px; height: 16px; flex: none; }
+.calendarBands span { overflow-wrap: anywhere; }
+.calendarThumbnail { width: 100%; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); margin-bottom: 4px; }
+.mobileSavedIdeas { order: 6; }
+@media (max-width: 1399px) {
+  .calendarWorkspace { grid-template-columns: minmax(0, 1fr); }
+  .calendarWorkspace .dayPanel { grid-column: 1; border-left: 0; border-top: 1px solid var(--morrovia-line); }
+}
+@media (max-width: 900px) {
+  .workspaceToolbar { gap: 12px; }
+  .workspaceToolbar .subviewBar { order: -1; width: 100%; }
+  .workspaceToolbar .subviewBar > div { width: 100%; }
+  .dateNavigation { width: 100%; }
+  .dateNavigation > label { flex: 1; width: auto; }
+  .rail { display: none; }
+  .calendarWorkspace .calendarGrid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .calendarWorkspace .calendarBlank { display: block; min-height: 0; }
+  .calendarWorkspace .calendarDay { min-height: 0; }
+  .calendarWorkspace .calendarDaySelect { padding: 8px 2px; min-height: 44px; }
+  .calendarWorkspace .calendarDaySelect > span { display: block; }
+  .calendarWorkspace .calendarDaySelect time { font-size: 11px; }
+  .calendarWorkspace .calendarDaySelect i,
+  .calendarWorkspace .calendarDaySelect strong,
+  .calendarWorkspace .calendarDaySelect small,
+  .calendarWorkspace .calendarDaySelect em,
+  .calendarWorkspace .calendarItems,
+  .calendarWorkspace .calendarEmptyDay { display: none; }
+  .calendarWorkspace .calendarView { padding: 12px; }
+  .calendarBands { display: none; }
+  .dayPanel { padding: 16px; }
+  .mobileSavedIdeas { order: 6; display: block; }
+  .workspaceToolbar h2 { font-size: 24px; }
 }

@@ -124,7 +124,7 @@ test("the scheduled card is the primary selection target and editing chrome is s
 test("the rendered planner follows Travel, chronological day parts, unslotted context, then Tonight", () => {
   const travelIndex = component.indexOf("composition.transfers.length");
   const periodsIndex = component.indexOf("className={styles.periodGrid}");
-  const unslottedIndex = component.indexOf("composition.unslotted.length");
+  const unslottedIndex = component.indexOf("unslotted.length ? (");
   const tonightIndex = component.indexOf("className={`${styles.tonight}");
   assert.ok(travelIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
   assert.match(composition, /itineraryDayParts = \["morning", "midday", "afternoon", "evening"\]/);

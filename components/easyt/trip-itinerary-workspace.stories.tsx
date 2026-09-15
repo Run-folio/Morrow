@@ -703,6 +703,27 @@ export const CalendarDesktop1440: Story = { ...Calendar, globals: { viewport: { 
 export const CalendarLongMonthCrossing: Story = { ...Calendar, args: { trip: longTrip } };
 export const CalendarRepeatedStopTransferHeavy: Story = { ...Calendar, args: { trip: transportAgendaTrip } };
 
+/** Production UI state only: changing orientation must not invoke trip mutations. */
+export const SharedDayCalendarOrientation: Story = {
+  ...RichDayPlannerIntegrated,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const select = canvasElement.querySelector<HTMLSelectElement>('select');
+    if (!select) throw new Error("Missing canonical day selector");
+    select.value = "day-3";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await settle();
+    const switchView = (label: string) => [...canvasElement.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === label)?.click();
+    switchView("Calendar");
+    await settle();
+    if (select.value !== "day-3" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost selected canonical day");
+    switchView("Open full day");
+    await settle();
+    if (select.value !== "day-3") throw new Error("Full day lost Calendar context");
+    if (canvasElement.querySelectorAll('[aria-label="Day 3 planner"]').length !== 1) throw new Error("Expected one canonical planner");
+  },
+};
+
 export const DeepLinkedTravelDay: Story = { args: { selectedDayNumber: 4 } };
 export const RoadResolvedTravelDay: Story = { args: { trip: roadResolvedTrip, selectedDayNumber: 4 } };
 export const RoadResolvedTravelDayMobile320: Story = { ...RoadResolvedTravelDay, globals: { viewport: { value: "morrovia320", isRotated: false } } };
