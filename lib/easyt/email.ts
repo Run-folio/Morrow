@@ -14,5 +14,9 @@ export async function sendMorroviaEmail(email: MorroviaEmail) {
     fetcher: fetch,
     reserveDelivery: reserveEasyTEmailEvent,
     finishDelivery: finishEasyTEmailEvent,
+    reportFailure: (diagnostic) => {
+      // This deliberately excludes addresses, tokens, message bodies and credentials.
+      console.error("[morrovia-email] delivery failed", diagnostic);
+    },
   });
 }

@@ -11,6 +11,19 @@ type DeliveryReservation = {
   providerId?: string | null;
 };
 
+export type EmailDeliveryDiagnostic = {
+  operation: MorroviaEmail["template"];
+  provider: "resend";
+  category: "configuration" | "policy" | "provider_unavailable" | "provider_rejected";
+  mode: string;
+  senderConfigured: boolean;
+  recipientAllowed: boolean;
+  providerStatus: number | null;
+  providerCode: string | null;
+  providerReason: string | null;
+  requestId: string | null;
+};
+
 type DeliveryDependencies = {
   environment: Environment;
   fetcher: typeof fetch;
@@ -26,6 +39,7 @@ type DeliveryDependencies = {
     status: "sent" | "failed";
     errorMessage?: string | null;
   }) => Promise<void>;
+  reportFailure?: (diagnostic: EmailDeliveryDiagnostic) => void;
 };
 
 export class MorroviaEmailDeliveryError extends Error {
@@ -42,16 +56,57 @@ function validIdempotencyKey(value: string) {
   return value.length > 0 && value.length <= 256 && /^[A-Za-z0-9._:/-]+$/.test(value);
 }
 
+function boundedProviderValue(value: unknown) {
+  return typeof value === "string" && /^[A-Za-z0-9._-]{1,80}$/.test(value) ? value : null;
+}
+
+function providerReason(message: unknown) {
+  if (typeof message !== "string") return null;
+  const normalized = message.toLowerCase();
+  if (normalized.includes("domain") && normalized.includes("not verified")) return "domain_not_verified";
+  if (normalized.includes("only send") && normalized.includes("own email")) return "testing_recipient_restricted";
+  if (normalized.includes("api key") && (normalized.includes("invalid") || normalized.includes("restricted"))) return "invalid_api_key";
+  if (normalized.includes("from") && normalized.includes("required")) return "sender_missing";
+  if (normalized.includes("rate limit") || normalized.includes("too many requests")) return "rate_limited";
+  return null;
+}
+
+function safeRequestId(response: Response) {
+  return boundedProviderValue(response.headers.get("x-resend-request-id") ?? response.headers.get("x-request-id"));
+}
+
 export async function deliverMorroviaEmail(email: MorroviaEmail, dependencies: DeliveryDependencies) {
   const { environment } = dependencies;
   const apiKey = environment.RESEND_API_KEY;
   const configuredFrom = environment.EMAIL_FROM;
-  if (!apiKey || !configuredFrom) throw new MorroviaEmailDeliveryError("not_configured");
-
   const recipient = normalizedEmailAddress(email.to);
   const decision = emailDeliveryDecision(environment, recipient);
-  if (!decision.allowed) throw new MorroviaEmailDeliveryError("recipient_blocked");
-  if (!validIdempotencyKey(email.idempotencyKey)) throw new MorroviaEmailDeliveryError("not_configured");
+  const diagnostic = (input: Partial<EmailDeliveryDiagnostic> & Pick<EmailDeliveryDiagnostic, "category">) => {
+    dependencies.reportFailure?.({
+      operation: email.template,
+      provider: "resend",
+      category: input.category,
+      mode: decision.mode,
+      senderConfigured: Boolean(configuredFrom),
+      recipientAllowed: decision.allowed,
+      providerStatus: input.providerStatus ?? null,
+      providerCode: input.providerCode ?? null,
+      providerReason: input.providerReason ?? null,
+      requestId: input.requestId ?? null,
+    });
+  };
+  if (!apiKey || !configuredFrom) {
+    diagnostic({ category: "configuration", providerReason: !apiKey ? "credential_missing" : "sender_missing" });
+    throw new MorroviaEmailDeliveryError("not_configured");
+  }
+  if (!decision.allowed) {
+    diagnostic({ category: "policy", providerReason: decision.reason });
+    throw new MorroviaEmailDeliveryError("recipient_blocked");
+  }
+  if (!validIdempotencyKey(email.idempotencyKey)) {
+    diagnostic({ category: "configuration", providerReason: "invalid_idempotency_key" });
+    throw new MorroviaEmailDeliveryError("not_configured");
+  }
 
   const from = morroviaSender(configuredFrom);
   const replyTo = email.replyTo ? normalizedEmailAddress(email.replyTo) : undefined;
@@ -87,7 +142,7 @@ export async function deliverMorroviaEmail(email: MorroviaEmail, dependencies: D
       }),
       signal: AbortSignal.timeout(EMAIL_PROVIDER_TIMEOUT_MS),
     });
-  } catch {
+  } catch (error) {
     if (reservation?.eventId && dependencies.finishDelivery) {
       await dependencies.finishDelivery({
         eventId: reservation.eventId,
@@ -95,17 +150,38 @@ export async function deliverMorroviaEmail(email: MorroviaEmail, dependencies: D
         errorMessage: "Email provider unavailable or timed out",
       }).catch(() => undefined);
     }
+    diagnostic({
+      category: "provider_unavailable",
+      providerReason: error instanceof DOMException && error.name === "TimeoutError" ? "timeout" : "network_error",
+    });
     throw new MorroviaEmailDeliveryError("provider_unavailable");
   }
 
   if (!response.ok) {
+    const responseText = await response.text().catch(() => "");
+    const providerPayload = (() => {
+      try {
+        return JSON.parse(responseText) as { code?: unknown; name?: unknown; message?: unknown };
+      } catch {
+        return {} as { code?: unknown; name?: unknown; message?: unknown };
+      }
+    })();
+    const providerCode = boundedProviderValue(providerPayload.code) ?? boundedProviderValue(providerPayload.name);
+    const reason = providerReason(providerPayload.message);
     if (reservation?.eventId && dependencies.finishDelivery) {
       await dependencies.finishDelivery({
         eventId: reservation.eventId,
         status: "failed",
-        errorMessage: `Email provider rejected request (${response.status})`,
+        errorMessage: `Email provider rejected request (${response.status}${providerCode ? ` · ${providerCode}` : ""}${reason ? ` · ${reason}` : ""})`,
       }).catch(() => undefined);
     }
+    diagnostic({
+      category: "provider_rejected",
+      providerStatus: response.status,
+      providerCode,
+      providerReason: reason,
+      requestId: safeRequestId(response),
+    });
     throw new MorroviaEmailDeliveryError("provider_rejected");
   }
 

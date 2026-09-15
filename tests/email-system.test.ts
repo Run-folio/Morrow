@@ -157,19 +157,88 @@ test("a durable duplicate reservation prevents a second provider request", async
 test("provider failures expose only a bounded error code and categorical event detail", async () => {
   const email: MorroviaEmail = { to: "traveller@example.test", ...passwordResetEmail("https://morrovia.com/reset?token=private-token") };
   const finished: Array<Record<string, unknown>> = [];
+  const diagnostics: Array<Record<string, unknown>> = [];
   await assert.rejects(
     deliverMorroviaEmail(email, {
       environment: deliveryEnvironment,
-      fetcher: (async () => new Response("provider secret response", { status: 503 })) as typeof fetch,
+      fetcher: (async () => new Response(JSON.stringify({ name: "validation_error", message: "The sending domain is not verified for private-token@example.test" }), {
+        status: 403,
+        headers: { "x-resend-request-id": "req_safe-123" },
+      })) as typeof fetch,
       reserveDelivery: async () => ({ eventId: "event-1", duplicate: false }),
       finishDelivery: async (input) => { finished.push(input); },
+      reportFailure: (input) => { diagnostics.push(input); },
     }),
     (error: unknown) => error instanceof MorroviaEmailDeliveryError
       && error.code === "provider_rejected"
       && !error.message.includes("provider secret response")
       && !error.message.includes("private-token"),
   );
-  assert.deepEqual(finished, [{ eventId: "event-1", status: "failed", errorMessage: "Email provider rejected request (503)" }]);
+  assert.deepEqual(finished, [{ eventId: "event-1", status: "failed", errorMessage: "Email provider rejected request (403 · validation_error · domain_not_verified)" }]);
+  assert.deepEqual(diagnostics, [{
+    operation: "password_reset",
+    provider: "resend",
+    category: "provider_rejected",
+    mode: "allowlist",
+    senderConfigured: true,
+    recipientAllowed: true,
+    providerStatus: 403,
+    providerCode: "validation_error",
+    providerReason: "domain_not_verified",
+    requestId: "req_safe-123",
+  }]);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /private-token|traveller@example/);
+});
+
+test("provider network failure reports a privacy-safe unavailable category", async () => {
+  const diagnostics: Array<Record<string, unknown>> = [];
+  await assert.rejects(
+    deliverMorroviaEmail({ to: "traveller@example.test", ...verificationEmail("https://morrovia.com/verify?token=private-token") }, {
+      environment: deliveryEnvironment,
+      fetcher: (async () => { throw new TypeError("network failed for traveller@example.test"); }) as typeof fetch,
+      reportFailure: (input) => { diagnostics.push(input); },
+    }),
+    (error: unknown) => error instanceof MorroviaEmailDeliveryError && error.code === "provider_unavailable",
+  );
+  assert.deepEqual(diagnostics, [{
+    operation: "verification",
+    provider: "resend",
+    category: "provider_unavailable",
+    mode: "allowlist",
+    senderConfigured: true,
+    recipientAllowed: true,
+    providerStatus: null,
+    providerCode: null,
+    providerReason: "network_error",
+    requestId: null,
+  }]);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /private-token|traveller@example/);
+});
+
+test("blocked staging recipients fail before the provider and report policy only", async () => {
+  let providerCalls = 0;
+  const diagnostics: Array<Record<string, unknown>> = [];
+  await assert.rejects(
+    deliverMorroviaEmail({ to: "blocked@example.test", ...verificationEmail("https://morrovia.com/verify?token=private-token") }, {
+      environment: deliveryEnvironment,
+      fetcher: (async () => { providerCalls += 1; return new Response(null, { status: 200 }); }) as typeof fetch,
+      reportFailure: (input) => { diagnostics.push(input); },
+    }),
+    (error: unknown) => error instanceof MorroviaEmailDeliveryError && error.code === "recipient_blocked",
+  );
+  assert.equal(providerCalls, 0);
+  assert.deepEqual(diagnostics[0], {
+    operation: "verification",
+    provider: "resend",
+    category: "policy",
+    mode: "allowlist",
+    senderConfigured: true,
+    recipientAllowed: false,
+    providerStatus: null,
+    providerCode: null,
+    providerReason: "recipient_not_allowed",
+    requestId: null,
+  });
 });
 
 test("trip invitation and email-event persistence own retry idempotency without storing raw tokens", () => {

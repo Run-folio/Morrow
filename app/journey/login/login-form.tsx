@@ -82,6 +82,7 @@ export default function LoginForm({
     if (result.kind === "auth-error") {
       setError(authFormErrorMessage({ mode, message: result.error?.message, code: result.error?.code }));
     } else if (result.kind === "verification-delivery-error") {
+      setEmail(result.email);
       setVerificationFailure({ email: result.email, source: mode });
     } else if (result.kind === "verification-sent") {
       window.location.assign(emailVerificationStatePath(callbackURL, result.email));
@@ -102,7 +103,10 @@ export default function LoginForm({
     if (result.kind === "verification-sent") {
       if (verificationFailure) window.location.assign(emailVerificationStatePath(callbackURL, destination));
       else setResendConfirmed(true);
-    } else setResendError("We still couldn’t send the verification email. Try again in a moment.");
+    } else {
+      setEmail(destination);
+      setResendError("We still couldn’t send the verification email. Try again in a moment.");
+    }
     setResendBusy(false);
   };
 
