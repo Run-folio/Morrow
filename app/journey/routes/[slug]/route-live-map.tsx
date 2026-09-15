@@ -8,7 +8,7 @@ import { normalizeRouteMapFailure } from "@/lib/easyt/route-map-runtime";
 import type { RouteMapSelection } from "./route-map-selection";
 import styles from "./route-overview.module.css";
 
-type RouteStop = { id: string; name: string; coordinates: [number, number] };
+type RouteStop = { id: string; name: string; coordinates: [number, number] | null };
 
 export default function RouteLiveMap({ title, stops, className, selected = null, onSelect, resetVersion = 0 }: {
   title: string; stops: RouteStop[]; className?: string; selected?: RouteMapSelection;
@@ -24,7 +24,9 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
 
   useEffect(() => {
     const container = containerRef.current;
-    const mappedStops = stops.map((stop, index) => ({ ...stop, index })).filter((stop) => Number.isFinite(stop.coordinates[0]) && Number.isFinite(stop.coordinates[1]));
+    const mappedStops = stops
+      .map((stop, index) => ({ ...stop, index }))
+      .filter((stop): stop is typeof stop & { coordinates: [number, number] } => Boolean(stop.coordinates && Number.isFinite(stop.coordinates[0]) && Number.isFinite(stop.coordinates[1])));
     if (!container) return;
     if (!mappedStops.length) {
       setStatus("unavailable");
@@ -100,7 +102,7 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
             features: stops.slice(0, -1).flatMap((stop, index) => {
               const next = stops[index + 1];
               // Never bridge over a missing coordinate and imply a different leg.
-              if (![...stop.coordinates, ...next.coordinates].every(Number.isFinite)) return [];
+              if (!stop.coordinates || !next.coordinates || ![...stop.coordinates, ...next.coordinates].every(Number.isFinite)) return [];
               return [{ type: "Feature" as const, properties: { index }, geometry: { type: "LineString" as const, coordinates: [stop.coordinates, next.coordinates] } }];
             }),
           },

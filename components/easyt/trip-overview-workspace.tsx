@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowUpRight,
   BedDouble,
   CalendarCheck2,
   CarFront,
@@ -55,6 +56,7 @@ import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./w
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import { MorroviaPartnerPromotion } from "./partner-promotion";
 import TripExplicitPlans from "./trip-explicit-plans";
+import { personalRouteHref } from "@/lib/easyt/personal-route";
 
 type OverviewAction = {
   title: string;
@@ -520,6 +522,7 @@ export default function TripOverviewWorkspace({
         <section className={styles.routeCard} aria-labelledby="overview-route-title">
           <div className={styles.sectionHeading}>
             <div><p>Your route</p><h2 id="overview-route-title">{routeHeading}</h2><span className={styles.sectionDetail}>{routeDetail}</span></div>
+            <EasyTLinkButton href={personalRouteHref(trip.id)} size="small" variant="secondary" icon={ArrowUpRight}>View my route</EasyTLinkButton>
           </div>
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>

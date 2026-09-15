@@ -1,4 +1,4 @@
-import { journeyMedia, type JourneyImage } from "@/lib/journey";
+import { journeyMedia, type JourneyImage } from "../journey.ts";
 
 const MEDIA_KEYS: Record<string, string> = {
   "guatemala city": "guatemala",
