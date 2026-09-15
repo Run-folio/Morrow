@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOsmPlaceDisplayName, resolvePlaceDisplayName } from "@/lib/easyt/place-display-name";
 import { operationalPlaceStatus } from "@/lib/easyt/place-status";
 import { localPlaceWithinCanonicalScope } from "@/lib/easyt/local-place-geography";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
+import { qualityControlledLocalPlaces } from "@/lib/easyt/local-place-results";
+import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
+import {
+  firstUsefulLocalSearchWithFallback,
+  localSearchProviderOutcome,
+  localSearchScope,
+} from "@/lib/easyt/local-search-strategy";
 
 type OverpassElement = {
   id: number;
@@ -23,7 +31,9 @@ type LocalPlace = {
   operational?: true;
   availability: "available" | "check";
   provider: "google-places" | "openstreetmap";
+  providerProductId?: string;
   rating?: number;
+  reviewCount?: number;
   priceLevel?: string;
 };
 
@@ -35,7 +45,9 @@ type GooglePlace = {
   businessStatus?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "FUTURE_OPENING";
   googleMapsUri?: string;
   rating?: number;
+  userRatingCount?: number;
   priceLevel?: string;
+  primaryTypeDisplayName?: { text?: string };
 };
 
 type PhotonPlace = {
@@ -74,10 +86,19 @@ function distanceKm(latitude: number, longitude: number, targetLatitude: number,
   return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
 }
 
-async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string) {
+function validPhotonCategory(kind: "restaurant" | "stay", properties: NonNullable<PhotonPlace["properties"]>) {
+  const category = `${properties.osm_value ?? ""} ${properties.type ?? ""}`.toLocaleLowerCase();
+  return kind === "stay"
+    ? /\b(?:hotel|hostel|guest_house|guesthouse|motel|apartment)\b/.test(category)
+    : /\b(?:restaurant|cafe|café|fast_food)\b/u.test(category);
+}
+
+async function photonFallback(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
   const term = kind === "stay" ? "hotel" : "restaurant";
-  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: term, lat: String(latitude), lon: String(longitude), limit: "8", lang: locale })}`, {
+  const destinationQuery = [term, city === "your location" ? "" : city, country].filter(Boolean).join(" ");
+  const response = await fetch(`https://photon.komoot.io/api/?${new URLSearchParams({ q: destinationQuery, lat: String(latitude), lon: String(longitude), limit: "20", lang: locale })}`, {
     headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
+    next: { revalidate: 60 * 60 * 12 },
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) return [];
@@ -87,9 +108,9 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
       const properties = place.properties ?? {};
       const [lon, lat] = place.geometry?.coordinates ?? [];
       const displayName = resolveOsmPlaceDisplayName(photonNameTags(properties), locale);
-      if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (!displayName || !validPhotonCategory(kind, properties) || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       if (!localPlaceWithinCanonicalScope({
-        anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: kind === "stay" ? 7.5 : 5,
+        anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm,
         requestedCountry: country, candidateCountry: typeof properties.country === "string" ? properties.country : undefined,
       })) continue;
       const { name, nativeName } = displayName;
@@ -111,38 +132,38 @@ async function photonFallback(kind: "restaurant" | "stay", city: string, country
         provider: "openstreetmap" as "openstreetmap",
       });
   }
-  return places;
+  return qualityControlledLocalPlaces(places);
 }
 
-async function googleOperationalStays(country: string, latitude: number, longitude: number, locale: string) {
+async function googleOperationalPlaces(kind: "restaurant" | "stay", country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) throw new Error("Google Places lookup unavailable");
   const response = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.rating,places.priceLevel",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.businessStatus,places.googleMapsUri,places.rating,places.userRatingCount,places.priceLevel,places.primaryTypeDisplayName",
     },
     body: JSON.stringify({
-      includedTypes: ["lodging"],
+      includedTypes: [kind === "stay" ? "lodging" : "restaurant"],
       maxResultCount: 12,
-      rankPreference: "DISTANCE",
-      locationRestriction: { circle: { center: { latitude, longitude }, radius: 7000 } },
+      rankPreference: kind === "stay" ? "DISTANCE" : "POPULARITY",
+      locationRestriction: { circle: { center: { latitude, longitude }, radius: radiusKm * 1_000 } },
       languageCode: locale,
     }),
     next: { revalidate: 60 * 15 },
     signal: AbortSignal.timeout(7000),
   });
-  if (!response.ok) throw new Error("Google Places stay lookup unavailable");
+  if (!response.ok) throw new Error("Google Places lookup unavailable");
   const seen = new Set<string>();
-  return ((await response.json() as { places?: GooglePlace[] }).places ?? [])
+  return qualityControlledLocalPlaces(((await response.json() as { places?: GooglePlace[] }).places ?? [])
     .flatMap((place) => {
       const displayName = resolvePlaceDisplayName({ defaultName: place.displayName?.text }, locale);
       const lat = place.location?.latitude;
       const lon = place.location?.longitude;
       if (!displayName || !place.id || !Number.isFinite(lat) || !Number.isFinite(lon) || place.businessStatus !== "OPERATIONAL") return [];
-      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: 7 })) return [];
+      if (!localPlaceWithinCanonicalScope({ anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm })) return [];
       const { name, nativeName } = displayName;
       const key = `${name}|${place.formattedAddress ?? ""}`.toLocaleLowerCase();
       if (seen.has(key)) return [];
@@ -153,112 +174,139 @@ async function googleOperationalStays(country: string, latitude: number, longitu
         name,
         ...(nativeName ? { nativeName } : {}),
         address: place.formattedAddress ?? country,
-        category: "lodging",
+        category: place.primaryTypeDisplayName?.text?.trim() || (kind === "stay" ? "lodging" : "restaurant"),
         coordinates: [lon!, lat!] as [number, number],
         mapsUrl: place.googleMapsUri ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
         distanceKm: distanceKm(latitude, longitude, lat!, lon!),
         operational: operationalPlaceStatus({ provider: "google-places", businessStatus: place.businessStatus }),
         availability: "check" as const,
         provider: "google-places" as const,
+        providerProductId: place.id,
         rating: place.rating,
-        priceLevel: place.priceLevel,
+        reviewCount: place.userRatingCount,
+        priceLevel: place.priceLevel && place.priceLevel !== "PRICE_LEVEL_UNSPECIFIED" ? place.priceLevel : undefined,
       } satisfies LocalPlace];
-    });
+    }));
 }
 
-export async function GET(request: NextRequest) {
-  const city = request.nextUrl.searchParams.get("city")?.trim();
-  const country = request.nextUrl.searchParams.get("country")?.trim();
-  const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
-  const latitude = Number(request.nextUrl.searchParams.get("lat"));
-  const longitude = Number(request.nextUrl.searchParams.get("lon"));
-  const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim().toLocaleLowerCase() || "en";
-  const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(requestedLocale) ? requestedLocale : "en";
-  if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
-    return NextResponse.json({ places: [] }, { status: 400 });
-  }
-
-  if (kind === "stay") {
-    try {
-      const places = await googleOperationalStays(country ?? "", latitude, longitude, locale);
-      if (places) return NextResponse.json({ places, source: "Google Places", inventory: false });
-    } catch {
-      // Keep the map-data fallback available, but never represent it as a live
-      // availability result. The client labels these as "Check availability".
-    }
-  }
-
-  const radius = kind === "stay" ? 7500 : 5000;
+async function openStreetMapPlaces(kind: "restaurant" | "stay", city: string, country: string, latitude: number, longitude: number, locale: string, radiusKm: number) {
+  const radius = Math.round(radiusKm * 1_000);
   const matcher = kind === "stay"
     ? '["tourism"~"^(hotel|hostel|guest_house|motel)$"]'
     : '["amenity"~"^(restaurant|cafe|fast_food)$"]';
   const query = `[out:json][timeout:18];nwr(around:${radius},${latitude},${longitude})${matcher}["name"];out center tags 35;`;
+  const response = await fetch(`https://overpass.kumi.systems/api/interpreter?${new URLSearchParams({ data: query })}`, {
+    headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
+    next: { revalidate: 60 * 60 * 12 },
+    signal: AbortSignal.timeout(4500),
+  });
+  if (!response.ok) throw new Error("Local venue lookup unavailable");
+  const data = await response.json() as { elements?: OverpassElement[] };
+  const seen = new Set<string>();
+  const places: LocalPlace[] = [];
+  for (const place of data.elements ?? []) {
+    const tags = place.tags ?? {};
+    const lat = place.lat ?? place.center?.lat;
+    const lon = place.lon ?? place.center?.lon;
+    const displayName = resolveOsmPlaceDisplayName(tags, locale);
+    if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (!localPlaceWithinCanonicalScope({
+      anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: radius / 1_000,
+      requestedCountry: country, candidateCountry: tags["addr:country"],
+    })) continue;
+    const { name, nativeName } = displayName;
+    const address = addressFor(tags, country ? `${city}, ${country}` : city);
+    const searchQuery = `${name}, ${address}`;
+    const china = /china/i.test(country);
+    places.push({
+      id: `${place.id}`,
+      name,
+      ...(nativeName ? { nativeName } : {}),
+      address,
+      category: tags.cuisine || tags.tourism || tags.amenity || kind,
+      coordinates: [lon!, lat!] as [number, number],
+      mapsUrl: china
+        ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
+      distanceKm: distanceKm(latitude, longitude, lat!, lon!),
+      availability: "check",
+      provider: "openstreetmap",
+    });
+  }
+  return qualityControlledLocalPlaces(places)
+    .filter((place) => {
+      const key = `${place.name}|${place.address}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 12);
+}
+
+export async function GET(request: NextRequest) {
+  const startedAt = performance.now();
+  const baseResponse = (body: Record<string, unknown>) => NextResponse.json(body, {
+    headers: { "Server-Timing": `first-base;dur=${recommendationDurationMs(startedAt, performance.now())}` },
+  });
+  const city = request.nextUrl.searchParams.get("city")?.trim();
+  const country = request.nextUrl.searchParams.get("country")?.trim();
+  const canonicalPlaceId = request.nextUrl.searchParams.get("canonicalPlaceId")?.trim();
+  const kind = request.nextUrl.searchParams.get("kind") === "stay" ? "stay" : "restaurant";
+  const requestedLatitude = Number(request.nextUrl.searchParams.get("lat"));
+  const requestedLongitude = Number(request.nextUrl.searchParams.get("lon"));
+  const requestedLocale = request.nextUrl.searchParams.get("locale")?.trim().toLocaleLowerCase() || "en";
+  const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(requestedLocale) ? requestedLocale : "en";
+  const catalogPlace = canonicalPlaceId ? findCatalogPlaceById(canonicalPlaceId) : undefined;
+  const normalized = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const catalogMatchesRequest = Boolean(catalogPlace
+    && (!country || catalogPlace.parentCountries.some((candidate) => normalized(candidate) === normalized(country)))
+    && [catalogPlace.canonicalName, ...catalogPlace.aliases].some((candidate) => normalized(candidate) === normalized(city ?? "")));
+  const canonicalCoordinates = catalogMatchesRequest && catalogPlace?.coordinates
+    ? [catalogPlace.coordinates[0], catalogPlace.coordinates[1]] as [number, number]
+    : null;
+  const requestedCoordinatesValid = Number.isFinite(requestedLatitude)
+    && Number.isFinite(requestedLongitude)
+    && Math.abs(requestedLatitude) <= 90
+    && Math.abs(requestedLongitude) <= 180;
+  const [longitude, latitude] = requestedCoordinatesValid
+    ? [requestedLongitude, requestedLatitude]
+    : canonicalCoordinates ?? [Number.NaN, Number.NaN];
+  if (!city || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return NextResponse.json({ places: [], searchStatus: "failed", unavailable: true }, { status: 400 });
+  }
 
   try {
-    // The Kumi mirror accepts a simple GET and has proved more reliable than the
-    // main Overpass endpoint for browser-originated prototype requests.
-    const response = await fetch(`https://overpass.kumi.systems/api/interpreter?${new URLSearchParams({ data: query })}`, {
-      headers: { "User-Agent": "Journey local venue finder (portfolio prototype)" },
-      next: { revalidate: 60 * 60 * 12 },
-      // Overpass can be busy or unreachable. Never leave the finder in a
-      // loading state while a serverless request waits for the upstream API.
-      // This first-pass query is deliberately short. The interface should
-      // gracefully fall back to Photon rather than leave someone waiting for
-      // an overloaded Overpass mirror before they can choose a meal or stay.
-      signal: AbortSignal.timeout(4500),
+    // Google and OSM remain independent immediate lanes. Exactly one bounded,
+    // destination-aware Photon fallback is hedged after one second, so a slow
+    // provider cannot block useful local results. Live stay inventory remains
+    // a separate client request and is never inferred here.
+    const scope = localSearchScope(kind, catalogMatchesRequest ? catalogPlace?.placeType : undefined);
+    const outcome = await firstUsefulLocalSearchWithFallback([
+      () => localSearchProviderOutcome(() => googleOperationalPlaces(kind, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
+      () => localSearchProviderOutcome(() => openStreetMapPlaces(kind, city, country ?? "", latitude, longitude, locale, scope.primaryRadiusKm)),
+    ], () => localSearchProviderOutcome(() => photonFallback(
+      kind,
+      city,
+      country ?? "",
+      latitude,
+      longitude,
+      locale,
+      scope.fallbackRadiusKm,
+    )));
+    if (outcome.state === "ready") {
+      const source = outcome.places[0]?.provider === "google-places" ? "Google Places" : "OpenStreetMap";
+      return baseResponse({ places: outcome.places, source, inventory: false, searchStatus: "ready" });
+    }
+    return baseResponse({
+      places: [],
+      source: "OpenStreetMap",
+      inventory: false,
+      searchStatus: outcome.state,
+      ...(outcome.state === "failed" ? { unavailable: true } : {}),
     });
-    if (!response.ok) throw new Error("Local venue lookup unavailable");
-    const data = await response.json() as { elements?: OverpassElement[] };
-    const seen = new Set<string>();
-    const places: LocalPlace[] = [];
-    for (const place of data.elements ?? []) {
-        const tags = place.tags ?? {};
-        const lat = place.lat ?? place.center?.lat;
-        const lon = place.lon ?? place.center?.lon;
-        const displayName = resolveOsmPlaceDisplayName(tags, locale);
-        if (!displayName || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-        if (!localPlaceWithinCanonicalScope({
-          anchor: [longitude, latitude], candidate: [lon!, lat!], radiusKm: radius / 1_000,
-          requestedCountry: country, candidateCountry: tags["addr:country"],
-        })) continue;
-        const { name, nativeName } = displayName;
-        const address = addressFor(tags, country ? `${city}, ${country}` : city);
-        const searchQuery = `${name}, ${address}`;
-        const china = /china/i.test(country ?? "");
-        places.push({
-          id: `${place.id}`,
-          name,
-          ...(nativeName ? { nativeName } : {}),
-          address,
-          category: tags.cuisine || tags.tourism || tags.amenity || kind,
-          coordinates: [lon!, lat!] as [number, number],
-          mapsUrl: china
-            ? `https://www.amap.com/search?query=${encodeURIComponent(searchQuery)}`
-            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`,
-          distanceKm: distanceKm(latitude, longitude, lat!, lon!),
-          availability: "check" as "check",
-          provider: "openstreetmap" as "openstreetmap",
-        });
-    }
-    const uniquePlaces = places
-      .filter((place) => {
-        const key = `${place.name}|${place.address}`.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 8);
-    return NextResponse.json({ places: uniquePlaces, source: "OpenStreetMap", inventory: false });
   } catch {
-    // Overpass mirrors can be busy. Photon is a dependable OpenStreetMap-backed
-    // fallback that still returns named, mapped venues.
-    try {
-      const places = await photonFallback(kind, city, country ?? "", latitude, longitude, locale);
-      return NextResponse.json({ places, source: "OpenStreetMap" });
-    } catch {
-      // Keep the response shape stable so the client can show its map fallback
-      // and continue the meal/stay questions even when live lookup is offline.
-      return NextResponse.json({ places: [], source: "OpenStreetMap", unavailable: true });
-    }
+    // Keep the response shape stable so the client can retain its day and map
+    // context even when every bounded mapped-place source is unavailable.
+    return baseResponse({ places: [], source: "OpenStreetMap", searchStatus: "failed", unavailable: true });
   }
 }

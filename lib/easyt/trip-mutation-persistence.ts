@@ -1,5 +1,6 @@
 import type { EasyTTrip } from "./trip";
 import type { TripRecoveryHandle } from "./storage";
+import { canonicalTripRevisionCanReplace } from "./trip-continuity.ts";
 
 type PersistTripMutation = (trip: EasyTTrip, recovery: TripRecoveryHandle) => Promise<EasyTTrip>;
 
@@ -7,6 +8,23 @@ type JsonObject = Record<string, unknown>;
 
 function sameTripDocument(left: EasyTTrip, right: EasyTTrip) {
   return left.id === right.id && left.ownerId === right.ownerId;
+}
+
+/**
+ * Choose the newest acknowledged canonical document available to one browser
+ * tab. A cached API acknowledgement can be newer than a persisted Next layout
+ * prop after workspace navigation; the older prop must not become a new CAS
+ * base. Unknown, older, or differently scoped documents still fail closed.
+ */
+export function newestTripMutationCanonical(
+  rendered: EasyTTrip,
+  ...acknowledged: Array<EasyTTrip | null | undefined>
+) {
+  return acknowledged.reduce<EasyTTrip>((current, candidate) => (
+    candidate && canonicalTripRevisionCanReplace(current, candidate)
+      ? candidate
+      : current
+  ), rendered);
 }
 
 function isObject(value: unknown): value is JsonObject {
@@ -80,6 +98,13 @@ function mergeAuthoredDocument(base: unknown, authored: unknown, canonical: unkn
   return structuredClone(authored);
 }
 
+export function mergeTripMutationDocuments(base: EasyTTrip, authored: EasyTTrip, canonical: EasyTTrip) {
+  if (!sameTripDocument(base, authored) || !sameTripDocument(base, canonical)) return structuredClone(authored);
+  const merged = mergeAuthoredDocument(base, authored, canonical) as EasyTTrip;
+  merged.updatedAt = canonical.updatedAt;
+  return merged;
+}
+
 /**
  * Serialize edits made by one open trip document. Each queued edit is rebased
  * from its known canonical revision onto the preceding successful account
@@ -103,9 +128,8 @@ export function createTripMutationPersistenceQueue(persist: PersistTripMutation)
           && sameTripDocument(authoredBase, authored)
           && sameTripDocument(latestCanonical, authored);
         const submitted = canRebase
-          ? mergeAuthoredDocument(authoredBase, authored, latestCanonical) as EasyTTrip
+          ? mergeTripMutationDocuments(authoredBase, authored, latestCanonical)
           : authored;
-        if (canRebase) submitted.updatedAt = latestCanonical.updatedAt;
         const saved = await persist(submitted, recovery);
         if (requestGeneration === generation) canonicalByRevision.set(saved.updatedAt, structuredClone(saved));
         return saved;

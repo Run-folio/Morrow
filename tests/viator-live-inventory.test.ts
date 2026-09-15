@@ -71,9 +71,11 @@ test("stable product identity prevents duplicate Save while similar titles from 
     planItems: [...once.planItems, { ...once.planItems[0]!, id: "day-3", stopId: "paris-return", dayNumber: 3, date: "2026-09-03" }],
   };
   const sameProductAtRepeatedStop = itineraryIdeaForActivityInventory("paris-return", item("A", "Louvre highlights tour"));
-  assert.equal(saveItineraryIdea(repeatedStop, sameProductAtRepeatedStop), repeatedStop);
-  assert.equal(scheduleItineraryIdea(repeatedStop, sameProductAtRepeatedStop, "day-3"), repeatedStop);
-  assert.equal(ideaStateForPlace(repeatedStop, "paris-return", sameProductAtRepeatedStop.placeId).state, "saved");
+  const savedAtBothStops = saveItineraryIdea(repeatedStop, sameProductAtRepeatedStop);
+  assert.deepEqual(savedAtBothStops.brief.itineraryIdeas?.map((idea) => idea.stopId), ["paris-stop", "paris-return"]);
+  const plannedReturn = scheduleItineraryIdea(savedAtBothStops, sameProductAtRepeatedStop, "day-3");
+  assert.equal(ideaStateForPlace(plannedReturn, "paris-stop", sameProductAtRepeatedStop.placeId).state, "saved");
+  assert.equal(ideaStateForPlace(plannedReturn, "paris-return", sameProductAtRepeatedStop.placeId).state, "planned");
 });
 
 test("selected provider metadata survives reload and moving/removing a coordinate-less activity cleans canonical day state", () => {
@@ -94,9 +96,14 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
   const map = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
   const route = readFileSync(new URL("../app/api/journey-activity-inventory/route.ts", import.meta.url), "utf8");
-  assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*<LiveActivityInventory/);
+  assert.match(itinerary, /<ItineraryDaySuggestions[\s\S]*initialActivityInventory/);
+  assert.match(itinerary, /exploreResultForActivity/);
+  assert.match(itinerary, /rankItineraryRecommendations/);
   assert.match(map, /JourneyItineraryRefinement[\s\S]*LiveActivityInventory/);
-  assert.match(inventory, /controller\.abort\(\)/);
+  assert.match(inventory, /createAbortableEffectScope\(`Live activity inventory for \$\{stop\.id\}`\)/);
+  assert.match(inventory, /scope\.commit\(\(\) =>/);
+  assert.match(inventory, /scope\.isCancellation\(error\)/);
+  assert.match(inventory, /scope\.dispose\(\)/);
   assert.match(inventory, /MorroviaAffiliateLink/);
   assert.match(inventory, /country:\s*stop\.country/);
   assert.match(inventory, /countryCode:\s*stop\.countryCode/);
@@ -111,7 +118,8 @@ test("UI integration keeps Morrovia discovery, aborts stale requests, uses canon
   assert.match(inventory, /onRemove\(state\.idea\)/);
   assert.match(inventory, /Day \{state\.day\.dayNumber\}[\s\S]*state\.idea\.dayPart/);
   assert.match(itinerary, /preferredItineraryDayPart\(current, dayId, idea\.category\)/);
-  assert.match(itinerary, /onRemove=\{\(idea\) => \{[\s\S]*removeItineraryIdea\(current, idea\.id\)/);
+  assert.match(itinerary, /onRemove=\{\(idea\) => removeSuggestion\(idea\.placeId, idea\.id\)\}/);
+  assert.match(itinerary, /removeItineraryIdea\(current, ideaId\)/);
   assert.match(route, /count:\s*4/);
   assert.doesNotMatch(route, /while\s*\(|for\s*\(.*start|database|repository/);
 });

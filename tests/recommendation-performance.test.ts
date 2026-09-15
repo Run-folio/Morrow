@@ -1,0 +1,284 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import {
+  firstUsefulRecommendationResults,
+  firstUsefulRecommendationResultsWithFallback,
+  recommendationFallbackHedgeMs,
+  recommendationDurationMs,
+  streamIndependentRecommendationLanes,
+} from "../lib/easyt/recommendation-performance.ts";
+
+function deferred<Value>() {
+  let resolve!: (value: Value) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<Value>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("a useful core lane publishes while commercial enrichment never resolves", async () => {
+  const core = deferred<string[]>();
+  const commercial = deferred<string[]>();
+  const settlements: Array<{ lane: string; status: string; value?: string[] }> = [];
+  void streamIndependentRecommendationLanes([
+    { lane: "core", request: () => core.promise },
+    { lane: "commercial", request: () => commercial.promise },
+  ], (settlement) => settlements.push(settlement.status === "ready"
+    ? { lane: settlement.lane, status: settlement.status, value: settlement.value }
+    : { lane: settlement.lane, status: settlement.status }));
+
+  core.resolve(["Acropolis Museum"]);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(settlements, [{ lane: "core", status: "ready", value: ["Acropolis Museum"] }]);
+});
+
+test("one failed lane remains local and cannot clear a successful lane", async () => {
+  const settlements: Array<{ lane: string; status: string; value?: string[] }> = [];
+  await streamIndependentRecommendationLanes([
+    { lane: "core", request: async () => ["O Thanasis"] },
+    { lane: "commercial", request: async () => { throw new Error("fixture provider failed"); } },
+  ], (settlement) => settlements.push(settlement.status === "ready"
+    ? { lane: settlement.lane, status: settlement.status, value: settlement.value }
+    : { lane: settlement.lane, status: settlement.status }));
+
+  assert.deepEqual(settlements.find((item) => item.lane === "core")?.value, ["O Thanasis"]);
+  assert.equal(settlements.find((item) => item.lane === "commercial")?.status, "failed");
+});
+
+test("late commercial enrichment appends after core without delaying its settlement", async () => {
+  const core = deferred<string[]>();
+  const commercial = deferred<string[]>();
+  const settlements: Array<{ lane: string; value: string[] }> = [];
+  const completed = streamIndependentRecommendationLanes([
+    { lane: "core", request: () => core.promise },
+    { lane: "commercial", request: () => commercial.promise },
+  ], (settlement) => {
+    if (settlement.status === "ready") settlements.push({ lane: settlement.lane, value: settlement.value });
+  });
+
+  core.resolve(["Mapped stay"]);
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(settlements, [{ lane: "core", value: ["Mapped stay"] }]);
+
+  commercial.resolve(["Live room"]);
+  await completed;
+  assert.deepEqual(settlements, [
+    { lane: "core", value: ["Mapped stay"] },
+    { lane: "commercial", value: ["Live room"] },
+  ]);
+});
+
+test("the first useful bounded local provider wins without waiting for a slower source", async () => {
+  const slow = deferred<string[]>();
+  const fast = deferred<string[]>();
+  const resultPromise = firstUsefulRecommendationResults([
+    () => slow.promise,
+    () => fast.promise,
+  ]);
+
+  fast.resolve(["Useful mapped restaurant"]);
+  assert.deepEqual(await resultPromise, ["Useful mapped restaurant"]);
+});
+
+test("empty and failed providers fall through without fabricating a result", async () => {
+  assert.deepEqual(await firstUsefulRecommendationResults<string>([
+    async () => [],
+    async () => { throw new Error("fixture unavailable"); },
+  ]), []);
+});
+
+test("fast Google can publish while slow OSM does not start the fallback", async () => {
+  const google = deferred<string[]>();
+  const osm = deferred<string[]>();
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = firstUsefulRecommendationResultsWithFallback(
+    [() => google.promise, () => osm.promise],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  google.resolve(["Google stay"]);
+  assert.deepEqual(await result, ["Google stay"]);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("fast OSM can publish while slow Google does not start the fallback", async () => {
+  const google = deferred<string[]>();
+  const osm = deferred<string[]>();
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = firstUsefulRecommendationResultsWithFallback(
+    [() => google.promise, () => osm.promise],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  osm.resolve(["OSM stay"]);
+  assert.deepEqual(await result, ["OSM stay"]);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("an empty Google response does not delay useful OSM results", async () => {
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = await firstUsefulRecommendationResultsWithFallback(
+    [async () => [], async () => ["OSM stay"]],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  assert.deepEqual(result, ["OSM stay"]);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("an empty OSM response does not delay useful Google results", async () => {
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = await firstUsefulRecommendationResultsWithFallback(
+    [async () => ["Google stay"], async () => []],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  assert.deepEqual(result, ["Google stay"]);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("one primary error cannot block the other primary's useful result", async () => {
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = await firstUsefulRecommendationResultsWithFallback(
+    [async () => { throw new Error("Google unavailable"); }, async () => ["OSM stay"]],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  assert.deepEqual(result, ["OSM stay"]);
+  assert.equal(fallbackCalls, 0);
+});
+
+test("a hedge releases useful Photon results without waiting for slow primary timeouts", async () => {
+  assert.equal(recommendationFallbackHedgeMs, 1_000);
+  const google = deferred<string[]>();
+  const osm = deferred<string[]>();
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = firstUsefulRecommendationResultsWithFallback(
+    [() => google.promise, () => osm.promise],
+    async () => { fallbackCalls += 1; return ["Photon stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  google.resolve([]);
+  fallbackGate.resolve();
+  assert.deepEqual(await result, ["Photon stay"]);
+  assert.equal(fallbackCalls, 1);
+});
+
+test("both primary empty responses activate fallback immediately", async () => {
+  const fallbackGate = deferred<void>();
+  let fallbackCalls = 0;
+  const result = await firstUsefulRecommendationResultsWithFallback(
+    [async () => [], async () => []],
+    async () => { fallbackCalls += 1; return ["Fallback stay"]; },
+    () => fallbackGate.promise,
+  );
+
+  assert.deepEqual(result, ["Fallback stay"]);
+  assert.equal(fallbackCalls, 1);
+});
+
+test("an empty fallback still allows a later useful primary to win", async () => {
+  const slowPrimary = deferred<string[]>();
+  const fallbackGate = deferred<void>();
+  const result = firstUsefulRecommendationResultsWithFallback(
+    [async () => [], () => slowPrimary.promise],
+    async () => [],
+    () => fallbackGate.promise,
+  );
+
+  fallbackGate.resolve();
+  await Promise.resolve();
+  slowPrimary.resolve(["Late trustworthy primary"]);
+  assert.deepEqual(await result, ["Late trustworthy primary"]);
+});
+
+test("primary and fallback failures resolve truthfully empty", async () => {
+  assert.deepEqual(await firstUsefulRecommendationResultsWithFallback<string>(
+    [async () => { throw new Error("Google unavailable"); }, async () => { throw new Error("OSM unavailable"); }],
+    async () => { throw new Error("Photon unavailable"); },
+    async () => {},
+  ), []);
+});
+
+test("performance durations are coarse, non-negative and bounded", () => {
+  assert.equal(recommendationDurationMs(1_000, 2_237), 1_225);
+  assert.equal(recommendationDurationMs(2_000, 1_000), 0);
+  assert.equal(recommendationDurationMs(0, 80_000), 60_000);
+});
+
+test("stay base and live inventory use independent client lanes with stale-context cleanup", () => {
+  const finder = source("components/journey-local-finder.tsx");
+  const providerEffect = finder.match(/useEffect\(\(\) => \{\s*let active = true;[\s\S]*?\}, \[[^\]]+\]\);/)?.[0] ?? "";
+  assert.match(providerEffect, /streamIndependentRecommendationLanes/);
+  assert.doesNotMatch(providerEffect, /Promise\.all\(\[localSearch, inventorySearch\]\)/);
+  assert.match(providerEffect, /setCorePlaces\(nextPlaces\)/);
+  assert.match(providerEffect, /setCommercialPlaces\(properties\)/);
+  assert.match(providerEffect, /setLoading\(false\)/);
+  assert.match(providerEffect, /setCommercialPlaces\(\[\]\)/, "unconfirmed no-store inventory is never retained through a retry");
+  assert.match(providerEffect, /return \(\) => \{ active = false; controller\.abort\(\); \}/);
+  const commercialSettlement = providerEffect.match(/const \{ properties, unavailable, configured \}[\s\S]*?reportPerformance\("commercial"[^\n]+/)?.[0] ?? "";
+  assert.ok(commercialSettlement);
+  assert.doesNotMatch(commercialSettlement, /setChosen|setSaved/, "late enrichment must not replace the traveller's selection");
+  assert.match(finder, /Mapped stays are ready to use\. Current room availability is still loading\./);
+  assert.match(finder, /mergeLocalFinderPlaces\(corePlaces, commercialPlaces\)/);
+  assert.match(providerEffect, /loadLocalFinderBaseResult\(baseResultKey/);
+  assert.match(providerEffect, /setLoading\(!retainExistingResults\)/);
+  assert.match(finder, /firstUsefulPerformanceRef[\s\S]*?milestone: "first_useful"/, "first useful is measured after the base result reaches committed component state");
+  assert.doesNotMatch(providerEffect.match(/loadLocalFinderBaseResult[\s\S]*?return \{ lane: "core", payload \};/)?.[0] ?? "", /staySearch|journey-accommodation-search/, "safe base cache never contains commercial inventory");
+  assert.match(finder, /hasBookingLiveInformation\(chosen\)[\s\S]*?chosen\.availability === "available" && \(chosen\.price \|\| \(chosen\.provider === "booking-demand" && chosen\.rating\)\)/, "commercial facts render only within a Booking-scoped boundary");
+});
+
+test("restaurant fallback sources and stay base sources are bounded parallel work", () => {
+  const route = source("app/api/journey-local-search/route.ts");
+  assert.match(route, /firstUsefulLocalSearchWithFallback/);
+  assert.match(route, /localSearchProviderOutcome/);
+  assert.match(route, /primaryRadiusKm/);
+  assert.match(route, /fallbackRadiusKm/);
+  assert.match(route, /Server-Timing.*first-base/);
+  assert.match(route, /googleOperationalPlaces[\s\S]*openStreetMapPlaces/);
+  assert.match(route, /openStreetMapPlaces[\s\S]*photonFallback/);
+  assert.match(route, /destinationQuery = \[term, city === "your location" \? "" : city, country\]/);
+  assert.match(route, /photon\.komoot\.io[\s\S]*next: \{ revalidate: 60 \* 60 \* 12 \}/);
+  assert.match(route, /AbortSignal\.timeout\(4500\)/);
+  assert.match(route, /AbortSignal\.timeout\(5000\)/);
+  assert.match(route, /AbortSignal\.timeout\(7000\)/);
+});
+
+test("activity discovery starts country verification before awaiting Wikipedia", () => {
+  const route = source("app/api/journey-discover/route.ts");
+  const verificationStart = route.indexOf("const countryVerification = isWithinRequestedCountry");
+  const wikipediaAwait = route.indexOf("const response = await fetch(`https://en.wikipedia.org");
+  const verificationAwait = route.indexOf("if (!(await countryVerification))");
+  assert.ok(verificationStart > 0 && wikipediaAwait > verificationStart && verificationAwait > wikipediaAwait);
+  assert.match(route, /next: \{ revalidate: 60 \* 60 \* 24 \* 7 \}/);
+  assert.match(route, /next: \{ revalidate: 60 \* 60 \* 24 \* 30 \}/);
+});
+
+test("recommendation timing telemetry excludes trip content, coordinates, prices and URLs", () => {
+  const analytics = source("lib/analytics.ts");
+  const contract = analytics.slice(analytics.indexOf("recommendation_performance:"), analytics.indexOf("affiliate_click:"));
+  assert.match(contract, /surface:/);
+  assert.match(contract, /recommendation_kind:/);
+  assert.match(contract, /duration_ms:/);
+  assert.doesNotMatch(contract, /trip_id|stop_id|destination|coordinates|price|url/i);
+});

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { composeItineraryDayWithExplicitPeriods } from "../lib/easyt/itinerary-day-part-intent.ts";
 import { assignItineraryActivityDayPart } from "../lib/easyt/itinerary-mutations.ts";
+import { mapPlanAgendaForDay } from "../lib/easyt/map-plan-agenda.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
 function tripFixture(): EasyTTrip {
@@ -82,4 +83,23 @@ test("clearing an authored period returns the same canonical item to planned-tim
   const composition = composeItineraryDayWithExplicitPeriods(cleared.trip, "kyoto-1");
   assert.equal(composition?.unslotted.some((activity) => activity.title === "Tea in Higashiyama"), true);
   assert.equal(composition?.planned.afternoon.some((activity) => activity.title === "Tea in Higashiyama"), false);
+});
+
+test("Map Plan projects every item in an occupied daypart as a separate stable row", () => {
+  const source = tripFixture();
+  const trip = {
+    ...source,
+    brief: { ...source.brief, customActivities: { 1: ["Museum", "Coffee", "Viewpoint"] }, itineraryIdeas: [] },
+    planItems: source.planItems.map((day) => ({
+      ...day,
+      notes: ["Museum", "Coffee", "Viewpoint"],
+      noteDayParts: ["afternoon", "afternoon", "afternoon"] as Array<"afternoon">,
+    })),
+  };
+  const agenda = mapPlanAgendaForDay(trip, "kyoto-1")!;
+  assert.deepEqual(agenda.items.filter((item) => item.kind === "activity").map((item) => [item.title, item.scheduleLabel]), [
+    ["Museum", "Afternoon"],
+    ["Coffee", "Afternoon"],
+    ["Viewpoint", "Afternoon"],
+  ]);
 });

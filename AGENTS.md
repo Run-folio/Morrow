@@ -114,6 +114,14 @@ Before making changes:
 9. Run the relevant lint, typecheck, tests or build checks before completing a task.
 10. Summarise meaningful changes and call out unresolved risks or assumptions.
 
+## Browser automation
+
+Browser automation is opt-in, not part of normal implementation validation. Do not launch Chrome, use Chrome DevTools Protocol (CDP) or full browser debugging, use Computer Use or native browser control, or inspect browser debugging ports unless the task explicitly requires browser-level reproduction **and** repository or test evidence is insufficient to diagnose or validate the issue.
+
+Default to repository evidence and existing project validation as applicable: focused automated tests, Storybook or build-time responsive fixtures, accessibility and responsive checks available through existing tooling, persistence and recovery tests, typecheck, `build:check`, `audit:ui`, and `git diff --check`. Where practical, add automated regression coverage for the investigated behaviour.
+
+If real hosted or browser verification is still necessary after implementation, report `MANUAL HOSTED VERIFICATION REQUIRED`; do not block ticket completion indefinitely waiting for browser permissions. This rule does not relax functional correctness, production deployment confirmation, or explicit approval requirements for production pushes, destructive actions, or sensitive operations.
+
 ## UI and design-system contract
 
 This section applies to every task that creates, edits or restyles UI. A UI task

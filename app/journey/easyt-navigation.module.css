@@ -1,6 +1,6 @@
 .header {
   width: 100%;
-  min-height: 78px;
+  min-height: var(--morrovia-navigation-height, 78px);
   padding: 0 clamp(20px, 4vw, 64px);
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -295,7 +295,7 @@
 }
 @media (max-width: 820px) {
   .header {
-    min-height: 66px;
+    min-height: var(--morrovia-navigation-height, 66px);
     padding-inline: 16px;
     grid-template-columns: auto 1fr auto;
   }
@@ -328,7 +328,7 @@
   .accountTrigger > svg:last-child {
     display: none;
   }
-  .landingHeader { grid-template-columns: auto 1fr auto; min-height: 66px; padding-inline: 16px; }
+  .landingHeader { grid-template-columns: auto 1fr auto; min-height: var(--morrovia-navigation-height, 66px); padding-inline: 16px; }
   .landingActions { grid-column: 3; gap: 8px; }
   .landingActions > a, .landingDivider, .landingTour, .landingLanguage, .landingActions > .accountMenu { display: none; }
   .compactMenu { position: relative; display: block; }

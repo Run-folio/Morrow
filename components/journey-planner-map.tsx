@@ -2,16 +2,18 @@
 
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource } from "maplibre-gl";
-import { BedDouble, Utensils } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { BedDouble, Landmark, Utensils } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { morroviaMapStyle, mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
+import { EasyTButton } from "./easyt/easyt-controls";
 import { mapTransportIcon, mapTransportIconRotation } from "./easyt/morrovia-transport-icons";
 import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
-import type { JourneyLocalPlace } from "@/components/journey-local-finder";
+import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
+import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
 import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
@@ -34,9 +36,8 @@ type JourneyPlannerMapProps = {
   plannerPins: PlannerMapPin[];
   /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */
   selectedPlannerPinId?: string | null;
-  localPlaces?: JourneyLocalPlace[];
-  localPlaceKind?: "restaurant" | "stay";
-  selectedLocalPlaceId?: string | null;
+  mapResults?: MapResultPlace[];
+  selectedMapResult?: MapResultPlace | null;
   focusOffset?: [number, number];
   focusZoom?: number;
   focusCoordinates: [number, number] | null;
@@ -53,7 +54,7 @@ type JourneyPlannerMapProps = {
   cameraInteractionKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
-  onLocalPlaceSelect?: (place: JourneyLocalPlace) => void;
+  onMapResultSelect?: (place: MapResultPlace) => void;
   onLegSelect?: (leg: MapRouteLeg) => void;
   onSelect: (id: string) => void;
 };
@@ -104,9 +105,8 @@ export function JourneyPlannerMap({
   contextCardsHidden = false,
   plannerPins,
   selectedPlannerPinId = null,
-  localPlaces = [],
-  localPlaceKind = "stay",
-  selectedLocalPlaceId,
+  mapResults = [],
+  selectedMapResult = null,
   focusOffset,
   focusZoom,
   focusCoordinates,
@@ -119,32 +119,34 @@ export function JourneyPlannerMap({
   cameraInteractionKey,
   onMapPinDrop,
   onPlannerPinSelect,
-  onLocalPlaceSelect,
+  onMapResultSelect,
   onLegSelect,
   onSelect,
 }: JourneyPlannerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const basemapLifecycleRef = useRef<MorroviaBasemapLifecycle | null>(null);
   const stopMarkersRef = useRef<maplibregl.Marker[]>([]);
   const legMarkersRef = useRef<maplibregl.Marker[]>([]);
   const pinMarkersRef = useRef<maplibregl.Marker[]>([]);
   const localPlaceMarkersRef = useRef<maplibregl.Marker[]>([]);
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
-  const removalTimerRef = useRef<number | null>(null);
   const hasInitialisedViewRef = useRef(false);
   const lastCameraRequestKeyRef = useRef<string | null>(null);
   const currentCameraRequestRef = useRef<string | null>(null);
   const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);
+  const [basemapStatus, setBasemapStatus] = useState<MorroviaBasemapStatus>("loading");
+  const [basemapStyleRevision, setBasemapStyleRevision] = useState(0);
   const selectedLegIdRef = useRef(selectedLegId);
   const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);
   const onLegSelectRef = useRef(onLegSelect);
   const onSelectRef = useRef(onSelect);
   const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
-  const onLocalPlaceSelectRef = useRef(onLocalPlaceSelect);
+  const onMapResultSelectRef = useRef(onMapResultSelect);
   onLegSelectRef.current = onLegSelect;
   onSelectRef.current = onSelect;
   onPlannerPinSelectRef.current = onPlannerPinSelect;
-  onLocalPlaceSelectRef.current = onLocalPlaceSelect;
+  onMapResultSelectRef.current = onMapResultSelect;
   selectedLegIdRef.current = selectedLegId;
   selectedPlannerPinIdRef.current = selectedPlannerPinId;
   const routeFocusKey = previewMode ? null : focusCoordinates;
@@ -187,17 +189,18 @@ export function JourneyPlannerMap({
     });
   }, [legs, stops]);
   const overviewRouteKey = stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? "unmapped"}`).join("|");
+  const previewResultKey = mapResults.map((result) => `${result.selectionId}:${result.coordinates.join(",")}`).join("|");
   const overviewPaddingKey = overviewPadding
     ? `${overviewPadding.top}:${overviewPadding.right}:${overviewPadding.bottom}:${overviewPadding.left}`
     : "default";
   const selectedStop = stops.find((stop) => stop.id === selectedId && stop.coordinates);
-  const selectedLocalPlace = localPlaces.find((place) => place.id === selectedLocalPlaceId);
+  const selectedResult = selectedMapResult;
   const cameraRequestKey = previewMode
     ? null
     : overviewMode
       ? `overview:${overviewRouteKey}`
-      : selectedLocalPlace
-        ? `place:${selectedLocalPlace.id}:${selectedLocalPlace.coordinates.join(",")}`
+      : selectedResult
+        ? `result:${selectedResult.selectionId}:${selectedResult.coordinates.join(",")}`
         : focusCoordinates
           ? `focus:${focusCoordinates.join(",")}`
           : selectedStop?.coordinates
@@ -206,38 +209,21 @@ export function JourneyPlannerMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    if (removalTimerRef.current !== null) {
-      window.clearTimeout(removalTimerRef.current);
-      removalTimerRef.current = null;
-    }
     if (!mapRef.current) {
       maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
-      const firstStop = stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
+      const firstStop = selectedResult?.coordinates
+        ?? mapResults[0]?.coordinates
+        ?? stops.find((stop) => stop.id === selectedId && stop.coordinates)?.coordinates
         ?? stops.find((stop) => stop.coordinates)?.coordinates
+        ?? focusCoordinates
         ?? [-90.5069, 14.6349];
       const map = new maplibregl.Map({
         container: containerRef.current,
         style: morroviaMapStyle,
         center: firstStop,
-        zoom: 9,
+        zoom: previewMode && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
         interactive: !previewMode,
       });
-      const handleMapError = (event: maplibregl.ErrorEvent) => {
-        const value = event.error;
-        if (typeof Event !== "undefined" && value instanceof Event) {
-          console.warn("Morrovia MapLibre resource request ended before the map finished loading.", {
-            type: value.type,
-          });
-          return;
-        }
-        const error = value instanceof Error ? value : new Error("Morrovia MapLibre reported an unknown error.");
-        if (/Failed to fetch|Could not load|NetworkError|Load failed|AJAXError/i.test(error.message)) {
-          console.warn("Morrovia MapLibre could not load a map resource.", error);
-          return;
-        }
-        console.error(error);
-      };
-      if (previewMode) map.on("error", handleMapError);
       // North-up is fixed in this workspace, so a compass beside the route-fit
       // control duplicated intent and looked like an unexplained third zoom
       // button. Keep the familiar MapLibre zoom controls only.
@@ -245,26 +231,73 @@ export function JourneyPlannerMap({
       mapRef.current = map;
     }
 
-    return () => {
-      const removeMap = () => {
-        stopMarkersRef.current.forEach((marker) => marker.remove());
-        legMarkersRef.current.forEach((marker) => marker.remove());
-        pinMarkersRef.current.forEach((marker) => marker.remove());
-        localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-        draftPinRef.current?.remove();
-        mapRef.current?.remove();
-        mapRef.current = null;
-      };
-      if (!previewMode) {
-        removeMap();
+    const map = mapRef.current;
+    if (!map) return;
+    let ownerActive = true;
+    let removing = false;
+    const basemapLifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
+      onChange: (snapshot) => {
+        if (ownerActive && mapRef.current === map) setBasemapStatus(snapshot.status);
+      },
+      onStyleReady: () => {
+        if (ownerActive && mapRef.current === map) setBasemapStyleRevision((revision) => revision + 1);
+      },
+    });
+    basemapLifecycleRef.current = basemapLifecycle;
+    const handleMapError = (event: maplibregl.ErrorEvent) => {
+      const value = event.error;
+      if (removing && value instanceof Error && (value.name === "AbortError" || /aborted|cancelled/i.test(value.message))) return;
+      if (basemapLifecycle.handleError(event)) {
+        console.warn("Morrovia detailed basemap unavailable; local route geography remains visible.");
         return;
       }
-      removalTimerRef.current = window.setTimeout(() => {
-        removalTimerRef.current = null;
-        removeMap();
-      }, 0);
+      if (typeof Event !== "undefined" && value instanceof Event) {
+        console.warn("Morrovia MapLibre resource request ended before the map finished loading.", { type: value.type });
+        return;
+      }
+      const error = value instanceof Error ? value : new Error("Morrovia MapLibre reported an unknown error.");
+      if (/Failed to fetch|Could not load|NetworkError|Load failed|AJAXError/i.test(error.message)) {
+        console.warn("Morrovia MapLibre could not load a non-basemap resource.", error);
+        return;
+      }
+      console.error(error);
+    };
+    map.on("error", handleMapError);
+
+    return () => {
+      ownerActive = false;
+      basemapLifecycle.dispose();
+      if (basemapLifecycleRef.current === basemapLifecycle) basemapLifecycleRef.current = null;
+      stopMarkersRef.current.forEach((marker) => marker.remove());
+      legMarkersRef.current.forEach((marker) => marker.remove());
+      pinMarkersRef.current.forEach((marker) => marker.remove());
+      localPlaceMarkersRef.current.forEach((marker) => marker.remove());
+      draftPinRef.current?.remove();
+      removing = true;
+      map.remove();
+      map.off("error", handleMapError);
+      if (mapRef.current === map) mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !previewMode || !mapResults.length) return;
+    const fitPreviewResults = () => {
+      if (mapResults.length === 1) {
+        focusMapCamera(map as unknown as MapCamera, { center: mapResults[0]!.coordinates, zoom: focusZoom ?? 14, duration: 0 });
+        return;
+      }
+      const bounds = mapResults.slice(1).reduce(
+        (result, place) => result.extend(place.coordinates),
+        new maplibregl.LngLatBounds(mapResults[0]!.coordinates, mapResults[0]!.coordinates),
+      );
+      fitMapCamera(map as unknown as MapCamera, bounds, { padding: 28, maxZoom: focusZoom ?? 14 }, true);
+    };
+    if (map.loaded()) fitPreviewResults();
+    else map.once("load", fitPreviewResults);
+    return () => { map.off("load", fitPreviewResults); };
+  }, [focusZoom, mapResults, previewMode, previewResultKey]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -458,7 +491,7 @@ export function JourneyPlannerMap({
     let disposed = false;
     const ensureRoute = () => {
       if (disposed) return;
-      if (map.loaded()) {
+      if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) {
         drawRoute();
         return;
       }
@@ -474,7 +507,7 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, previewMode, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
+  }, [basemapStyleRevision, focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, previewMode, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -590,7 +623,7 @@ export function JourneyPlannerMap({
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(stop.coordinates!).addTo(map);
       });
     };
-    if (map.isStyleLoaded()) drawMarkers();
+    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawMarkers();
     else map.once("load", drawMarkers);
     return () => { map.off("load", drawMarkers); };
   }, [destinationCards, previewMode, stops]);
@@ -640,7 +673,7 @@ export function JourneyPlannerMap({
     // Preview pins are DOM overlays and can update while raster resources are
     // still settling; the main Map keeps its established style lifecycle.
     if (previewMode) drawPins();
-    else if (map.isStyleLoaded()) drawPins();
+    else if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawPins();
     else map.once("load", drawPins);
     return () => { map.off("load", drawPins); };
   }, [plannerPins, previewMode]);
@@ -657,16 +690,16 @@ export function JourneyPlannerMap({
     if (!map) return;
     const drawLocalPlaces = () => {
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
-      localPlaceMarkersRef.current = localPlaces.map((place) => {
+      localPlaceMarkersRef.current = mapResults.map((place) => {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = `planner-map__local-place ${place.id === selectedLocalPlaceId ? "is-active" : ""}`;
-        element.dataset.localPlaceId = place.id;
+        element.className = `planner-map__local-place is-${place.kind} ${place.selectionId === selectedMapResult?.selectionId ? "is-active" : ""}`;
+        element.dataset.mapResultId = place.selectionId;
         element.setAttribute("aria-label", `Show ${place.name}`);
         element.title = `Show ${place.name}`;
-        const PlaceIcon = localPlaceKind === "stay" ? BedDouble : Utensils;
-        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : localPlaceKind === "stay" ? "Stay" : "Eat"}</span></>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLocalPlaceSelectRef.current?.(place); });
+        const PlaceIcon = place.kind === "stay" ? BedDouble : place.kind === "eat" ? Utensils : Landmark;
+        element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
+        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
     };
@@ -678,11 +711,11 @@ export function JourneyPlannerMap({
       localPlaceMarkersRef.current.forEach((marker) => marker.remove());
       localPlaceMarkersRef.current = [];
     };
-  }, [localPlaceKind, localPlaces]);
+  }, [mapResults]);
 
   useEffect(() => {
-    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.localPlaceId === selectedLocalPlaceId));
-  }, [selectedLocalPlaceId]);
+    localPlaceMarkersRef.current.forEach((marker) => marker.getElement().classList.toggle("is-active", marker.getElement().dataset.mapResultId === selectedMapResult?.selectionId));
+  }, [selectedMapResult?.selectionId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -697,7 +730,7 @@ export function JourneyPlannerMap({
       element.innerHTML = "<span>+</span>";
       draftPinRef.current = new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(draftPinCoordinates).addTo(map);
     };
-    if (map.isStyleLoaded()) drawDraftPin();
+    if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawDraftPin();
     else map.once("load", drawDraftPin);
     return () => { map.off("load", drawDraftPin); };
   }, [draftPinCoordinates]);
@@ -740,15 +773,15 @@ export function JourneyPlannerMap({
       });
       return;
     }
-    const target = selectedLocalPlace?.coordinates ?? focusCoordinates ?? selectedStop?.coordinates;
+    const target = selectedResult?.coordinates ?? focusCoordinates ?? selectedStop?.coordinates;
     if (!target) return;
     const compactViewport = window.innerWidth <= 980;
     const offset: [number, number] = compactViewport ? [0, -90] : focusOffset ?? [0, 0];
-    const zoom = selectedLocalPlace || focusCoordinates
+    const zoom = selectedResult || focusCoordinates
       ? Math.max(map.getZoom(), 14)
       : compactViewport ? 11 : focusZoom ?? Math.max(map.getZoom(), 11);
     focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
-  }, [cameraRequestKey, focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, selectedLocalPlace, selectedStop, stops]);
+  }, [cameraRequestKey, focusCoordinates, focusOffset, focusZoom, overviewMode, overviewPadding, selectedResult, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -773,5 +806,12 @@ export function JourneyPlannerMap({
     };
   }, [previewMode]);
 
-  return <div ref={containerRef} className={`planner-map ${mapPresentation.surface}`} aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"} />;
+  return <div className={`planner-map ${mapPresentation.surface}`} data-basemap-status={basemapStatus} aria-busy={basemapStatus === "loading" || undefined} aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
+    <div ref={containerRef} className={mapPresentation.canvas} />
+    {!previewMode && basemapStatus !== "detailed" ? <div className={mapPresentation.basemapStatus} role={basemapStatus === "fallback" ? "alert" : "status"}>
+      <strong>{basemapStatus === "fallback" ? "Detailed map unavailable" : "Opening detailed map"}</strong>
+      <span>{basemapStatus === "fallback" ? "Showing local route geography instead." : "Loading roads, places and labels."}</span>
+      {basemapStatus === "fallback" ? <EasyTButton variant="quiet" size="small" onClick={() => basemapLifecycleRef.current?.retry()}>Try detailed map again</EasyTButton> : null}
+    </div> : null}
+  </div>;
 }

@@ -8,8 +8,13 @@ import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
 import { itineraryInterestReason } from "@/lib/easyt/itinerary-day-context";
 import { activityInventoryIdentity, itineraryIdeaForActivityInventory, rankActivityInventory, type ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
+import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
+import { trackEvent } from "@/lib/analytics";
 import { ideaStateForPlace } from "@/lib/easyt/itinerary-ideas";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryIdea, type PlanItem, type TripStop } from "@/lib/easyt/trip";
+import { discoveryCategoryMatches, type DiscoveryCategory } from "@/lib/easyt/discovery-taxonomy";
+import { activityDurationLabel as faithfulActivityDurationLabel } from "@/lib/easyt/itinerary-schedule-awareness";
 import styles from "./live-activity-inventory.module.css";
 
 type LiveActivityInventoryProps = {
@@ -24,14 +29,11 @@ type LiveActivityInventoryProps = {
   onRemove?: (idea: ItineraryIdea) => boolean;
   isPending?: (idea: ItineraryIdea) => boolean;
   initialItems?: ActivityInventoryItem[];
+  discoveryCategory?: Exclude<DiscoveryCategory, "food">;
 };
 
 function durationLabel(duration: ActivityInventoryItem["duration"]) {
-  if (!duration) return null;
-  const minutes = duration.fixedMinutes ?? duration.fromMinutes;
-  if (!minutes) return null;
-  const formatted = minutes >= 60 ? `${Math.floor(minutes / 60)}h${minutes % 60 ? ` ${minutes % 60}m` : ""}` : `${minutes}m`;
-  return duration.fixedMinutes ? formatted : `From ${formatted}`;
+  return faithfulActivityDurationLabel(duration);
 }
 
 function priceLabel(price: ActivityInventoryItem["price"]) {
@@ -40,16 +42,19 @@ function priceLabel(price: ActivityInventoryItem["price"]) {
   catch { return `From ${price.currency} ${price.amount}`; }
 }
 
-export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems }: LiveActivityInventoryProps) {
+export default function LiveActivityInventory({ trip, stop, day, placement, workspace, fallback = null, onSave, onSchedule, onRemove, isPending = () => false, initialItems, discoveryCategory = "for-you" }: LiveActivityInventoryProps) {
   const [items, setItems] = useState<ActivityInventoryItem[]>(initialItems ?? []);
   const [status, setStatus] = useState<"loading" | "ready" | "unavailable">(initialItems ? "ready" : "loading");
   const interests = tripIntentForTrip(trip).preferences.interests;
   const placeMention = trip.brief.structuredBrief?.placeMentions?.find((mention) => mention.canonicalPlaceId === stop.canonicalPlaceId);
+  const usesCommercialInventory = discoveryCategory !== "outdoors";
 
   useEffect(() => {
+    if (!usesCommercialInventory) { setItems([]); setStatus("ready"); return; }
     if (initialItems) { setItems(initialItems); setStatus("ready"); return; }
     if (!stop.canonicalPlaceId) { setItems([]); setStatus("unavailable"); return; }
-    const controller = new AbortController();
+    const scope = createAbortableEffectScope(`Live activity inventory for ${stop.id}`);
+    const startedAt = performance.now();
     setItems([]);
     setStatus("loading");
     void fetch("/api/journey-activity-inventory", {
@@ -65,25 +70,40 @@ export default function LiveActivityInventory({ trip, stop, day, placement, work
         aliases: placeMention?.aliases,
         placeType: placeMention?.placeType,
       }, currency: trip.currency }),
-      signal: controller.signal,
+      signal: scope.signal,
     }).then(async (response) => {
       if (!response.ok) throw new Error("Activity inventory unavailable");
       return response.json() as Promise<{ activities?: ActivityInventoryItem[] }>;
     }).then((payload) => {
-      if (controller.signal.aborted) return;
-      setItems(payload.activities ?? []);
-      setStatus((payload.activities ?? []).length ? "ready" : "unavailable");
+      scope.commit(() => {
+        const activities = payload.activities ?? [];
+        setItems(activities);
+        setStatus(activities.length ? "ready" : "unavailable");
+        const properties = { surface: workspace, recommendation_kind: "activity" as const, lane: "commercial" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: activities.length, outcome: activities.length ? "ready" as const : "empty" as const };
+        if (activities.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+        trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+      });
     }).catch((error: unknown) => {
-      if ((error as { name?: string })?.name === "AbortError") return;
-      setItems([]);
-      setStatus("unavailable");
+      if (scope.isCancellation(error)) return;
+      scope.commit(() => {
+        setItems([]);
+        setStatus("unavailable");
+        trackEvent("recommendation_performance", { surface: workspace, recommendation_kind: "activity", lane: "commercial", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
+      });
     });
-    return () => controller.abort();
-  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency]);
+    return () => scope.dispose();
+  }, [initialItems, placeMention?.aliases, placeMention?.placeType, stop.canonicalPlaceId, stop.country, stop.countryCode, stop.id, stop.latitude, stop.longitude, stop.name, stop.region, trip.currency, usesCommercialInventory, workspace]);
 
-  const ranked = useMemo(() => rankActivityInventory(items, interests).slice(0, 4), [interests, items]);
+  const ranked = useMemo(() => rankActivityInventory(items, interests)
+    .filter((item) => discoveryCategoryMatches({
+      kind: "tour",
+      category: /\b(?:day trip|full[- ]day|half[- ]day|excursion)\b/i.test(`${item.title} ${(item.tags ?? []).join(" ")}`) ? "Day trip" : "Tour",
+      tags: item.tags,
+      qualityScore: item.rating !== undefined ? Math.round(item.rating * 2 + Math.min(5, Math.log10((item.reviewCount ?? 0) + 1))) : undefined,
+    }, discoveryCategory))
+    .slice(0, 4), [discoveryCategory, interests, items]);
   if (status === "loading") return <section className={styles.group}><h4>Things to do</h4><MorroviaSectionStatus title="Finding experiences" detail={`Checking current options around ${stop.name}.`} /></section>;
-  if (!ranked.length) return <>{fallback}</>;
+  if (!ranked.length) return <>{discoveryCategory === "for-you" || discoveryCategory === "tours" ? fallback : null}</>;
 
   return <section className={styles.group} aria-labelledby={`${workspace}-live-experiences-${stop.id}`}>
     <header><h4 id={`${workspace}-live-experiences-${stop.id}`}>Things to do</h4></header>

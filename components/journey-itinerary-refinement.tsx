@@ -10,47 +10,90 @@ import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/a
 import { MorroviaSectionStatus, MorroviaSkeleton } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
 import LiveActivityInventory from "@/components/easyt/live-activity-inventory";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { ActivityInventoryItem } from "@/lib/easyt/activity-inventory";
 import type { ItineraryIdea } from "@/lib/easyt/trip";
+import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
+import {
+  discoveryCategoryLabels,
+  discoveryCategoryMatches,
+  mapSeeDiscoveryCategories,
+  type DiscoveryCategory,
+} from "@/lib/easyt/discovery-taxonomy";
+import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
 import styles from "./journey-itinerary-refinement.module.css";
 
-type Place = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number };
-const filters = ["All", "Food", "Nature", "Cities", "Beach"];
+export type JourneyItineraryDiscoveryResult = { id: string; title: string; area: string; type: string; tags: string[]; description: string; image?: string; coordinates: [number, number]; qualityScore?: number; distanceKm?: number };
+type MapSeeDiscoveryCategory = Exclude<DiscoveryCategory, "food">;
 
-export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange, onExploreMap, onSaveInventoryIdea, onScheduleInventoryIdea, onRemoveInventoryIdea, compact = false, activityAction, initialActivityInventory }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; onSelectionChange: (stopId: string, place: Place | string, selected: boolean) => void; onExploreMap: () => void; onSaveInventoryIdea?: (idea: ItineraryIdea) => boolean; onScheduleInventoryIdea?: (idea: ItineraryIdea) => boolean; onRemoveInventoryIdea?: (idea: ItineraryIdea) => boolean; compact?: boolean; activityAction?: ResolvedAffiliateAction | null; initialActivityInventory?: ActivityInventoryItem[] }) {
-  const [places, setPlaces] = useState<Place[]>([]);
+export function JourneyItineraryRefinement({ trip, stop, day, selectedPlaceId, onPlaceSelect, onPlacesChange, onSelectionChange, onExploreMap, onSaveInventoryIdea, onScheduleInventoryIdea, onRemoveInventoryIdea, compact = false, activityAction, initialActivityInventory }: { trip: EasyTTrip; stop?: TripStop; day?: PlanItem; selectedPlaceId?: string | null; onPlaceSelect?: (place: JourneyItineraryDiscoveryResult) => void; onPlacesChange?: (places: JourneyItineraryDiscoveryResult[]) => void; onSelectionChange: (stopId: string, place: JourneyItineraryDiscoveryResult | string, selected: boolean) => void; onExploreMap: () => void; onSaveInventoryIdea?: (idea: ItineraryIdea) => boolean; onScheduleInventoryIdea?: (idea: ItineraryIdea) => boolean; onRemoveInventoryIdea?: (idea: ItineraryIdea) => boolean; compact?: boolean; activityAction?: ResolvedAffiliateAction | null; initialActivityInventory?: ActivityInventoryItem[] }) {
+  const [places, setPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchUnavailable, setSearchUnavailable] = useState(false);
   const [searchVersion, setSearchVersion] = useState(0);
-  const loadedStopIdRef = useRef<string | null>(null);
-  const [filter, setFilter] = useState("All");
+  const loadedDiscoveryKeyRef = useRef<string | null>(null);
+  const [filter, setFilter] = useState<MapSeeDiscoveryCategory>("for-you");
   const selected = stop ? trip.brief.selectedPlaces[stop.id] ?? [] : [];
-  const interests = tripIntentForTrip(trip).preferences.interests;
-  const visible = useMemo(() => rankItineraryDiscoveryPlaces(places, interests).filter((place) => filter === "All" || place.tags.includes(filter)).slice(0, 3), [filter, interests, places]);
+  const interests = useMemo(() => tripIntentForTrip(trip).preferences.interests, [trip]);
+  const visible = useMemo(() => rankItineraryDiscoveryPlaces(places.filter((place) => discoveryVisitorRelevance({
+    title: place.title,
+    category: place.type,
+    tags: place.tags,
+    description: place.description,
+    qualityScore: place.qualityScore,
+    kind: "activity",
+  }).eligible), interests)
+    .filter((place) => discoveryCategoryMatches({ kind: "activity", category: place.type, tags: place.tags, qualityScore: place.qualityScore }, filter))
+    .slice(0, compact ? 4 : 8), [compact, filter, interests, places]);
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
 
   useEffect(() => {
+    onPlacesChange?.(visible);
+    return () => onPlacesChange?.([]);
+  }, [onPlacesChange, visible]);
+
+  useEffect(() => {
     if (!stop || stop.latitude === null || stop.longitude === null) return;
+    if (filter === "tours") {
+      setPlaces([]);
+      setLoading(false);
+      setSearchUnavailable(false);
+      return;
+    }
     let active = true;
     const controller = new AbortController();
-    const retryingCurrentStop = searchVersion > 0 && loadedStopIdRef.current === stop.id;
+    const startedAt = performance.now();
+    const discoveryKey = `${stop.id}:${filter}`;
+    const retryingCurrentStop = searchVersion > 0 && loadedDiscoveryKeyRef.current === discoveryKey;
     setLoading(true);
     setSearchUnavailable(false);
     if (!retryingCurrentStop) setPlaces([]);
-    void fetch(`/api/journey-discover?${new URLSearchParams({ destination: stop.name, country: stop.country, lat: String(stop.latitude), lon: String(stop.longitude) })}`, { signal: controller.signal })
+    const endpoint = filter === "day-trips" ? "/api/journey-day-trips" : "/api/journey-discover";
+    void fetch(`${endpoint}?${new URLSearchParams({ destination: stop.name, country: stop.country, canonicalPlaceId: stop.canonicalPlaceId ?? stop.id, region: stop.region ?? "", lat: String(stop.latitude), lon: String(stop.longitude) })}`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Attraction discovery unavailable");
-        return response.json() as Promise<{ places?: Place[] }>;
+        return response.json() as Promise<{ places?: JourneyItineraryDiscoveryResult[] }>;
       })
-      .then((payload) => { if (active) { setPlaces(payload.places ?? []); loadedStopIdRef.current = stop.id; } })
+      .then((payload) => { if (active) {
+        const routeStops = new Set(trip.stops.map((routeStop) => `${routeStop.name.trim().toLocaleLowerCase()}|${routeStop.country.trim().toLocaleLowerCase()}`));
+        const nextPlaces = filter === "day-trips"
+          ? (payload.places ?? []).filter((place) => !routeStops.has(`${place.title.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`))
+          : payload.places ?? [];
+        setPlaces(nextPlaces);
+        loadedDiscoveryKeyRef.current = discoveryKey;
+        const properties = { surface: "map" as const, recommendation_kind: "activity" as const, lane: "core" as const, duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: nextPlaces.length, outcome: nextPlaces.length ? "ready" as const : "empty" as const };
+        if (nextPlaces.length) trackEvent("recommendation_performance", { ...properties, milestone: "first_useful" });
+        trackEvent("recommendation_performance", { ...properties, milestone: "lane_ready" });
+      } })
       .catch((error: unknown) => {
         if (!active || (error as { name?: string })?.name === "AbortError") return;
         if (!retryingCurrentStop) setPlaces([]);
         setSearchUnavailable(true);
+        trackEvent("recommendation_performance", { surface: "map", recommendation_kind: "activity", lane: "core", milestone: "lane_ready", duration_ms: recommendationDurationMs(startedAt, performance.now()), result_count: 0, outcome: "unavailable" });
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; controller.abort(); };
-  }, [searchVersion, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name]);
+  }, [filter, searchVersion, stop?.canonicalPlaceId, stop?.country, stop?.id, stop?.latitude, stop?.longitude, stop?.name, stop?.region]);
 
   useEffect(() => {
     if (!stop) return;
@@ -67,9 +110,9 @@ export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange,
     <small>{affiliateDisclosure}</small>
   </section> : null;
   return <section className={`${styles.panel} ${compact ? styles.compact : ""}`} aria-labelledby={`refinement-${stop.id}`}>
-    <header><div><p>SEE IN {stop.name}</p><h3 id={`refinement-${stop.id}`}>Best fits</h3><span>{loading ? "Finding mapped attractions…" : `${places.length} places nearby`}</span></div><Sparkles aria-hidden="true" /></header>
+    <header><div><p>SEE IN {stop.name}</p><h3 id={`refinement-${stop.id}`}>Best fits</h3><span>{loading ? "Finding mapped attractions…" : `${visible.length} ${visible.length === 1 ? "idea" : "ideas"}`}</span></div><Sparkles aria-hidden="true" /></header>
     {selected.length ? <div className={styles.selected}><small>IN YOUR TRIP</small><div>{selected.map((title) => <span key={title}>{title}<button type="button" onClick={() => { onSelectionChange(stop.id, title, false); trackEvent("attraction_removed", { trip_id: trip.id, stop_id: stop.id }); }} aria-label={`Remove ${title}`}><X /></button></span>)}</div></div> : null}
-    <div className={styles.filters} aria-label="Attraction categories">{filters.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => { setFilter(item); if (item !== "All") trackEvent("attraction_filter_used", { trip_id: trip.id, stop_id: stop.id, filter: item.toLowerCase() }); }}>{item}</button>)}</div>
+    <div className={styles.filters} aria-label="Attraction categories">{mapSeeDiscoveryCategories.map((item) => <button type="button" key={item} aria-pressed={filter === item} onClick={() => { setFilter(item); trackEvent("attraction_filter_used", { trip_id: trip.id, stop_id: stop.id, filter: item }); }}>{discoveryCategoryLabels[item]}</button>)}</div>
     {loading ? <MorroviaSectionStatus title="Finding places nearby" detail="Keeping this day and your selected places in place while mapped attractions load." /> : null}
     {loading && !places.length ? <div className={styles.loadingSkeletons} aria-hidden="true"><MorroviaSkeleton height={54} radius="card" /><MorroviaSkeleton height={54} radius="card" /></div> : null}
     {!loading && searchUnavailable ? <MorroviaSectionStatus state="error" title="Attractions are unavailable" detail="Your day and existing selections are unchanged. Try the provider again when you’re ready." retryLabel="Try places again" onRetry={() => setSearchVersion((current) => current + 1)} /> : null}
@@ -78,8 +121,10 @@ export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange,
       const isSelected = selected.includes(place.title) || Boolean(scheduledIdea);
       const interestReason = itineraryInterestReason(place, interests);
       const scheduledPart = scheduledIdea?.dayPart ? scheduledIdea.dayPart[0]!.toUpperCase() + scheduledIdea.dayPart.slice(1) : null;
-      return <article key={place.id}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><div><small>{place.area} · {place.type}{interestReason ? ` · ${interestReason}` : ""}</small><strong>{place.title}</strong><p>{place.description}</p></div><button type="button" aria-pressed={isSelected} onClick={() => { onSelectionChange(stop.id, place, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id, day_number: day?.dayNumber }); }}>{isSelected ? <>{scheduledPart ? `Added to ${scheduledPart}` : "Added"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to trip"}</>}</button></article>;
-    })}</div> : !loading && !searchUnavailable ? <p className={styles.state}>No short list is available yet. Explore the map when you want a deeper look.</p> : null}
+      const scheduledDay = scheduledIdea?.dayId ? trip.planItems.find((item) => item.id === scheduledIdea.dayId)?.dayNumber : day?.dayNumber;
+      const mapSelected = selectedPlaceId === place.id;
+      return <article key={place.id} className={mapSelected ? styles.placeSelected : ""}><ResilientImage className={styles.placeImage} src={place.image} alt="" fallback={<span className={styles.placeImageFallback} aria-hidden="true"><MapPin /></span>} /><EasyTButton variant="quiet" size="small" className={styles.placeSelect} aria-pressed={mapSelected} onClick={() => onPlaceSelect?.(place)}><small>{place.area} · {place.type}{interestReason ? ` · ${interestReason}` : ""}</small><strong>{place.title}</strong><p>{place.description}</p><span>View on map</span></EasyTButton><button type="button" aria-pressed={isSelected} onClick={() => { onPlaceSelect?.(place); onSelectionChange(stop.id, place, !isSelected); trackEvent(isSelected ? "attraction_removed" : "attraction_selected", { trip_id: trip.id, stop_id: stop.id, day_number: day?.dayNumber }); }}>{isSelected ? <>{scheduledDay ? `Added to Day ${scheduledDay}${scheduledPart ? ` · ${scheduledPart}` : ""}` : "Added to a day"} <X /></> : <><Plus /> {day ? `Add to Day ${day.dayNumber}` : "Add to a day"}</>}</button></article>;
+    })}</div> : !loading && !searchUnavailable && filter !== "tours" ? <p className={styles.state}>No {discoveryCategoryLabels[filter].toLocaleLowerCase()} short list is available for this stop yet.</p> : null}
     <button type="button" className={styles.explore} onClick={() => { trackEvent("attraction_map_opened", { trip_id: trip.id, stop_id: stop.id }); onExploreMap(); }}>Explore more on map <Map /></button>
     {day && onSaveInventoryIdea && onScheduleInventoryIdea ? <LiveActivityInventory
       trip={trip}
@@ -92,6 +137,7 @@ export function JourneyItineraryRefinement({ trip, stop, day, onSelectionChange,
       onSchedule={onScheduleInventoryIdea}
       onRemove={onRemoveInventoryIdea}
       fallback={genericExperienceHandoff}
+      discoveryCategory={filter}
     /> : genericExperienceHandoff}
   </section>;
 }

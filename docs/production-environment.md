@@ -39,7 +39,7 @@ This list proves names and enabled integrations only. It does not prove values a
 | `NEXT_PUBLIC_APP_URL` | Required | Public by design | Yes | Canonical browser origin. Use `https://morrovia.com` for a failover-ready production build. |
 | `BETTER_AUTH_URL` | Required | Server-only configuration, not a secret | Yes | Better Auth canonical origin. Must normalise to the same origin as `NEXT_PUBLIC_APP_URL`. |
 
-`/api/health` fails closed when this critical set is absent, invalid, mismatched, or cannot reach Postgres.
+`/api/health` fails closed when this critical set is absent, invalid, mismatched, or cannot reach Postgres. Its separate `deployment` section reports the validated commit and allowlisted hosting context captured from Netlify or Vercel build metadata. Provenance needs no manually configured variable or secret; `unknown` is non-fatal but cannot prove that a release reached the serving deployment.
 
 ## Auth, email, and operations parity
 

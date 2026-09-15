@@ -29,7 +29,9 @@ Better Auth secret, or a production provider credential.
    Set `MORROVIA_STAGING_PROVIDER_MODE=openai-only` and configure the
    server-only `OPENAI_API_KEY` for the Luna co-pilot acceptance scenarios.
    Set `NEXT_PUBLIC_ANALYTICS_ENVIRONMENT=preview`.
-5. Deploy, then run the preflight from a shell with the same staging values:
+5. Deploy, confirm `/api/health` returns the exact intended SHA in
+   `deployment.commit` (a `200` response alone is insufficient), then run the
+   preflight from a shell with the same staging values:
 
    ```bash
    npm run staging:preflight

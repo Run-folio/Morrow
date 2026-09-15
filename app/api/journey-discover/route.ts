@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isWithinDestinationRadius } from "@/lib/easyt/destination-resolution";
+import { conciseExploreDescription, exploreDiscoveryCategory, trustedExploreImage } from "@/lib/easyt/explore";
+import { discoveryVisitorRelevance } from "@/lib/easyt/discovery-quality";
 
 type WikiPage = {
   pageid?: number;
@@ -14,8 +16,8 @@ type GeocodeCountry = { address?: { country?: string } };
 const WIKIPEDIA_DISCOVERY_TIMEOUT_MS = 6_000;
 
 const irrelevant = /^(tourism|tourist attraction|visitor cent(?:er|re)|tourist gateway|tourist information|list of|travel|tour operator|tourism in|geography of|history of|economy of|line \d+|metro line|bus line|culture of|architecture of)/i;
-const nonVisitPage = /\b(administrative division|rapid transit line|metro line|population density|electoral district|neighbourhood of madrid|disambiguation|politics of|demographics of|transport in)\b/i;
-const strongPlaceSignal = /museum|palace|cathedral|church|monastery|temple|castle|fortress|square|plaza|market|park|garden|gallery|theatre|theater|monument|tower|bridge|beach|mountain|lake|historic|landmark|zoo|aquarium|viewpoint|observatory|archaeological|ruins|heritage/i;
+const nonVisitPage = /\b(administrative division|administrative region|country|continent|province|state of|county|municipality|rapid transit line|metro line|railway station|train station|bus station|airport|transport hub|population density|electoral district|disambiguation|politics of|demographics of|transport in)\b/i;
+const strongPlaceSignal = /\b(?:museums?|palaces?|cathedrals?|churches|monaster(?:y|ies)|temples?|castles?|fortresses|squares?|plazas?|piazzas?|markets?|parks?|gardens?|galler(?:y|ies)|theat(?:re|er)s?|monuments?|towers?|bridges?|beaches|mountains?|lakes?|historic|landmarks?|neighbou?rhoods?|quarters?|zoos?|aquariums?|viewpoints?|observator(?:y|ies)|archaeological|ruins?|heritage)\b/i;
 
 function visitorValue(page: WikiPage) {
   const text = `${page.title ?? ""} ${page.extract ?? ""}`;
@@ -27,11 +29,8 @@ function visitorValue(page: WikiPage) {
 }
 
 function classify(title: string, extract: string) {
-  const text = `${title} ${extract}`.toLowerCase();
-  if (/park|garden|mountain|beach|lake|forest|trail|viewpoint|hill/.test(text)) return { type: "Nature", tags: ["Nature"] };
-  if (/market|food|restaurant|culinary/.test(text)) return { type: "Food", tags: ["Food"] };
-  if (/museum|gallery|theatre|theater|cultural/.test(text)) return { type: "Culture", tags: ["Cities"] };
-  return { type: "Landmark", tags: ["Cities"] };
+  const type = exploreDiscoveryCategory(title, "", extract);
+  return { type, tags: [type === "Nature" || type === "Beach" || type === "Hike" || type === "Viewpoint" ? "Nature" : type === "Food" || type === "Restaurant" || type === "Market" ? "Food" : "Cities"] };
 }
 
 function suggestedVisitLength(title: string, extract: string) {
@@ -64,6 +63,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Country verification depends only on the requested search centre, not on
+    // Wikipedia's result payload. Start both bounded requests together so a
+    // trustworthy shortlist never pays their latency serially.
+    const countryVerification = isWithinRequestedCountry(latitude, longitude, country);
     const params = new URLSearchParams({
       action: "query",
       format: "json",
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Verify the search centre itself before considering its nearby results.
     // A 10 km Wikimedia geosearch is local, so this prevents an entire wrong-
     // country result set without making a reverse-geocode request per result.
-    if (!(await isWithinRequestedCountry(latitude, longitude, country))) return NextResponse.json({ places: [] });
+    if (!(await countryVerification)) return NextResponse.json({ places: [] });
     const places = Object.values(data.query?.pages ?? {})
       .filter((page) => {
         const coordinate = page.coordinates?.[0];
@@ -106,11 +109,23 @@ export async function GET(request: NextRequest) {
           && coordinate
           && isWithinDestinationRadius([longitude, latitude], [coordinate.lon ?? Number.NaN, coordinate.lat ?? Number.NaN])
           && !irrelevant.test(page.title)
+          && page.title.trim().toLocaleLowerCase() !== destination.toLocaleLowerCase()
           && !nonVisitPage.test(text)
           && strongPlaceSignal.test(text)
           && !seen.has(key)
           && seen.add(key),
         );
+      })
+      .filter((page) => {
+        const category = classify(page.title!, page.extract!);
+        return discoveryVisitorRelevance({
+          title: page.title!,
+          category: category.type,
+          tags: category.tags,
+          description: page.extract!,
+          qualityScore: visitorValue(page),
+          kind: "activity",
+        }).eligible;
       })
       .sort((a, b) => visitorValue(b) - visitorValue(a))
       .slice(0, 10)
@@ -125,8 +140,8 @@ export async function GET(request: NextRequest) {
           tags: category.tags,
           qualityScore: visitorValue(page),
           cost: suggestedVisitLength(page.title!, page.extract!),
-          description: `${page.extract!.slice(0, 190).replace(/\s+\S*$/, "")}…`,
-          image: page.thumbnail?.source,
+          description: conciseExploreDescription(page.extract!),
+          image: trustedExploreImage(page.thumbnail?.source, "reviewed"),
           sourceUrl: `https://en.wikipedia.org/?curid=${page.pageid}`,
           country: country || destination,
           coordinates: [coordinate.lon, coordinate.lat] as [number, number],
@@ -137,6 +152,6 @@ export async function GET(request: NextRequest) {
     console.error("Journey discovery failed.", {
       errorName: error instanceof Error ? error.name : "UnknownError",
     });
-    return NextResponse.json({ places: [] });
+    return NextResponse.json({ places: [], unavailable: true });
   }
 }

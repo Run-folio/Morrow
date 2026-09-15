@@ -137,6 +137,8 @@ test("Overview uses the shared outbound owner with the mandatory nearby disclosu
   assert.ok(affiliateLink.includes(mandatoryDisclosure));
   assert.doesNotMatch(preparation, /tkqlhce/);
   assert.doesNotMatch(readinessRoute, /tkqlhce/);
-  assert.doesNotMatch(preparation.match(/provider === "world-nomads"[\s\S]*?<\/MorroviaAffiliateLink>|provider === "world-nomads"[\s\S]*?\/>/)?.[0] ?? "", /trackEvent\(/);
+  const sharedAffiliateBranch = preparation.match(/if \(action\.affiliate && \(action\.provider === "world-nomads" \|\| action\.provider === "saily"\)\) \{[\s\S]*?<\/MorroviaAffiliateLink>;/)?.[0] ?? "";
+  assert.match(sharedAffiliateBranch, /renderAsSurface/);
+  assert.doesNotMatch(sharedAffiliateBranch, /trackEvent\(/);
   for (const unrelatedSurface of [itinerary, map, homepage]) assert.doesNotMatch(unrelatedSurface, /World Nomads|world-nomads|tkqlhce/);
 });

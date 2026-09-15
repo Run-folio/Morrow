@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
+import { setStorybookAuthOwner } from "../../.storybook/auth-client.mock";
 import TripShell, { TripWorkspacePlaceholder } from "./trip-shell";
 
 const trip: EasyTTrip = {
@@ -53,6 +56,22 @@ const trip: EasyTTrip = {
   updatedAt: "2026-08-01T10:00:00.000Z",
 };
 
+function HistoricalRecoveryShell() {
+  setStorybookAuthOwner("storybook-traveller");
+  const [ready, setReady] = useState(false);
+  const writeId = "storybook-historical-recovery";
+  useEffect(() => {
+    saveTripRecoveryToStorage(window.localStorage, {
+      ...trip,
+      title: "Cusco device notes",
+      brief: { ...trip.brief, customTitle: "Cusco device notes" },
+    }, { state: "conflict", writeId, now: "2026-09-14T08:00:00.000Z" });
+    setReady(true);
+    return () => window.localStorage.removeItem(tripRecoveryStorageKey(trip.ownerId, trip.id, writeId));
+  }, []);
+  return ready ? <TripShell trip={trip}><TripWorkspacePlaceholder title="Overview" description="The cloud trip remains saved while its separate device copy is reviewed." /></TripShell> : null;
+}
+
 const meta = {
   title: "Morrovia/04 Structure/Trip shell",
   component: TripShell,
@@ -86,6 +105,9 @@ export const Overview: Story = {
     ),
   },
 };
+
+export const CleanTrip: Story = Overview;
+export const GenuineHistoricalDeviceDivergence: Story = { ...Overview, render: () => <HistoricalRecoveryShell /> };
 
 export const Itinerary: Story = {
   args: {
@@ -135,10 +157,67 @@ export const LongTitleAndMissingImage: Story = {
   },
 };
 
+export const GeneratedOneCountry: Story = {
+  args: {
+    trip: { ...trip, brief: { ...trip.brief, customTitle: null } },
+    children: <TripWorkspacePlaceholder title="Overview" description="A single-country route uses the country as its concise trip identity." />,
+  },
+};
+
+export const GeneratedTwoCountries: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, customTitle: null },
+      stops: [
+        { ...trip.stops[0]!, id: "paris", name: "Paris", country: "France" },
+        { ...trip.stops[1]!, id: "bruges", name: "Bruges", country: "Belgium" },
+      ],
+    },
+    children: <TripWorkspacePlaceholder title="Overview" description="Two resolved countries remain concise while the route stays on its own line." />,
+  },
+};
+
+export const GeneratedLongMultiCountry: Story = {
+  args: {
+    trip: {
+      ...trip,
+      brief: { ...trip.brief, customTitle: null },
+      stops: [
+        { ...trip.stops[0]!, id: "paris", name: "Paris", country: "France" },
+        { ...trip.stops[1]!, id: "bruges", name: "Bruges", country: "Belgium" },
+        { ...trip.stops[2]!, id: "amsterdam", name: "Amsterdam", country: "Netherlands" },
+        { ...trip.stops[2]!, id: "cologne", order: 3, name: "Cologne", country: "Germany" },
+        { ...trip.stops[2]!, id: "prague", order: 4, name: "Prague", country: "Czechia" },
+      ],
+    },
+    children: <TripWorkspacePlaceholder title="Overview" description="Long multi-country identities stay bounded without hiding the route." />,
+  },
+};
+
+export const CustomUnicodeTitle: Story = {
+  args: {
+    trip: { ...trip, title: "春の家族旅行 — Perú", brief: { ...trip.brief, customTitle: "春の家族旅行 — Perú" } },
+    children: <TripWorkspacePlaceholder title="Overview" description="Traveller-authored Unicode names survive the shared shell presentation." />,
+  },
+};
+
+export const LongCustomTitle: Story = {
+  args: {
+    trip: { ...trip, title: "A long-awaited spring journey with family across old favourites and entirely new places", brief: { ...trip.brief, customTitle: "A long-awaited spring journey with family across old favourites and entirely new places" } },
+    children: <TripWorkspacePlaceholder title="Overview" description="Long custom identity wraps independently of the unchanged route line." />,
+  },
+};
+
 export const Mobile320: Story = {
   ...Overview,
   parameters: { ...meta.parameters },
   globals: { viewport: { value: "morrovia320", isRotated: false } },
+};
+
+export const Mobile390LongGeneratedTitle: Story = {
+  ...GeneratedLongMultiCountry,
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const Tablet768: Story = {

@@ -44,8 +44,8 @@ test("generic handoffs use comparison copy and do not present unconfirmed live i
   assert.match(readiness, /confirm fares and availability on Google Flights/);
   assert.doesNotMatch(overview, /Compare live options/);
   assert.match(overview, /open a separate Trip\.com search/);
-  assert.doesNotMatch(finder, /Trip\.com confirms its own availability|Check live options on Trip\.com/);
-  assert.match(finder, />Check availability <ArrowUpRight/);
+  assert.match(finder, /Trip\.com confirms its own price, availability and terms/);
+  assert.match(finder, />Check separately on Trip\.com <ArrowUpRight/);
   assert.doesNotMatch(finder, />Book now|Check options on Trip\.com/);
 });
 

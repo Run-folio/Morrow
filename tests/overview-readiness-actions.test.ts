@@ -13,19 +13,25 @@ test("every readiness category retains one canonical semantic action with a whol
   for (const id of ["itinerary", "accommodation", "transport", "passport", "insurance", "connectivity", "checklist"]) {
     assert.match(overview, new RegExp(`category\\.id === "${id}"`));
   }
-  assert.match(overview, /<MorroviaAffiliateLink action=\{action\.action\} context=\{\{ placement: "trip_readiness"/);
-  assert.match(overview, /onClick=\{onOpenTravellerDetails\}/);
-  assert.match(overviewStyles, /\.progressAction::after \{ position: absolute; z-index: 1; inset: 0;/);
-  assert.match(overviewStyles, /\.progressItemInteractive:focus-within/);
-  assert.doesNotMatch(overview.match(/function ProgressItem[\s\S]*$/)?.[0] ?? "", /<article[^>]*onClick=/);
+  for (const label of ["Open itinerary", "View stays", "Review transport/route", "Add details", "Open checklist"]) {
+    assert.match(overview, new RegExp(`label: "${label.replace("/", "\\/")}"`));
+  }
+  assert.match(overview, /<MorroviaAffiliateLink[\s\S]*className=\{className\}[\s\S]*renderAsSurface[\s\S]*>\{content\}/);
+  assert.match(overview, /<a className=\{className\} href="#overview-traveller-details"[\s\S]*>\{content\}<\/a>/);
+  assert.match(overview, /<Link className=\{className\} href=\{action\.href\}[\s\S]*>\{content\}<\/Link>/);
+  assert.match(overviewStyles, /\.progressItemInteractive:focus-visible/);
+  assert.doesNotMatch(overviewStyles, /\.progressAction::after/);
+  assert.doesNotMatch(overview.match(/const content = <>[\s\S]*?<\/\>;/)?.[0] ?? "", /<(?:a|button|Link|EasyTButton|EasyTLinkButton|MorroviaAffiliateLink)\b/);
 });
 
 test("task rows expose their single action across the row without nested controls", () => {
   assert.match(preparation, /const interactive = Boolean\(task\.action\?\.href \|\| task\.action\?\.opensTravellerDetails\)/);
-  assert.match(preparationStyles, /\.taskAction::after \{ position: absolute; z-index: 1; inset: 0;/);
-  assert.match(preparationStyles, /\.taskRowInteractive:focus-within/);
-  assert.doesNotMatch(preparation, /<article[^>]*onClick=/);
-  assert.doesNotMatch(preparation, /iconOnly size="small" variant="secondary"/);
+  assert.match(preparation, /<MorroviaAffiliateLink[\s\S]*className=\{className\}[\s\S]*renderAsSurface[\s\S]*>\{content\}/);
+  assert.match(preparation, /<a className=\{className\} href="#overview-traveller-details"[\s\S]*>\{content\}<\/a>/);
+  assert.match(preparation, /<Link className=\{className\} href=\{action\.href\}[\s\S]*>\{content\}<\/Link>/);
+  assert.match(preparationStyles, /\.taskRowInteractive:focus-visible/);
+  assert.doesNotMatch(preparationStyles, /\.taskAction::after/);
+  assert.doesNotMatch(preparation.match(/const content = <>[\s\S]*?<\/\>;/)?.[0] ?? "", /<(?:a|button|Link|EasyTButton|EasyTLinkButton|MorroviaAffiliateLink)\b/);
 });
 
 test("Must do stays open while Good to do uses one accessible disclosure", () => {
@@ -49,7 +55,8 @@ test("Insurance and connectivity retain canonical state-neutral affiliate bounda
   assert.match(overview, /taskAction\.provider === "saily" \? "connectivity"/);
   assert.match(overview, /affiliateDisclosureForProvider\(insuranceTask\.action\.provider/);
   assert.match(overview, /connectivityTask\?\.action\?\.affiliate \? <small>\{affiliateDisclosure\}<\/small>/);
-  assert.match(preparation, /provider === "world-nomads"[\s\S]*<MorroviaAffiliateLink/);
+  assert.match(preparation, /action\.provider === "world-nomads" \|\| action\.provider === "saily"/);
+  assert.match(preparation, /category: action\.provider === "world-nomads" \? "travel_insurance" : "connectivity"/);
   assert.doesNotMatch(overview.match(/function ProgressItem[\s\S]*$/)?.[0] ?? "", /setProfile|complete: true|saveTrip|mutate/);
 });
 

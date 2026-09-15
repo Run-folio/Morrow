@@ -30,7 +30,7 @@ test("the convergence guard audits production and shared component roots", () =>
   const audit = read("scripts/ui-convergence-audit-lib.mjs");
   const baseline = JSON.parse(read("scripts/ui-convergence-baseline.json")) as { version: number; rules: Record<string, unknown> };
   assert.match(audit, /\["app\/journey", "components"\]/);
-  for (const signal of ["native-control", "raw-color", "raw-radius", "raw-shadow", "raw-font-family", "legacy-ui-import", "storybook-feedback", "storybook-trip-capture", "storybook-luna-copilot", "storybook-overview-readiness", "storybook-privacy-choices", "storybook-structure-owners"]) {
+  for (const signal of ["native-control", "raw-color", "large-accent-surface", "raw-radius", "raw-shadow", "raw-font-family", "legacy-ui-import", "storybook-feedback", "storybook-trip-capture", "storybook-luna-copilot", "storybook-overview-readiness", "storybook-privacy-choices", "storybook-structure-owners"]) {
     assert.match(audit, new RegExp(signal));
   }
   assert.equal(baseline.version, 1);

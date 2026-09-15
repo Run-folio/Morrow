@@ -8,13 +8,14 @@ type ItineraryActivityIdentityProps = {
   meta?: string | null;
   image?: string;
   compact?: boolean;
+  card?: boolean;
 };
 
 /** Shared identity used as a discovery suggestion becomes a planned activity. */
-export default function ItineraryActivityIdentity({ title, category, meta, image, compact = false }: ItineraryActivityIdentityProps) {
+export default function ItineraryActivityIdentity({ title, category, meta, image, compact = false, card = false }: ItineraryActivityIdentityProps) {
   const Icon = category === "restaurant" ? Utensils : MapPin;
   return (
-    <div className={`${styles.identity} ${compact ? styles.compact : ""}`}>
+    <div className={`${styles.identity} ${compact ? styles.compact : ""} ${card ? styles.card : ""}`}>
       {image ? <span className={styles.media}><ResilientImage src={image} alt="" fallback={<Icon aria-hidden="true" />} /></span> : <span className={styles.icon}><Icon aria-hidden="true" /></span>}
       <span className={styles.copy}>
         <strong>{title}</strong>

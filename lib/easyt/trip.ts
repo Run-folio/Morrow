@@ -263,6 +263,8 @@ export type ItineraryIdea = {
   dayId?: string;
   /** Explicit broad scheduling intent; null means planned on a day but not slotted. */
   dayPart?: ItineraryDayPart | null;
+  /** Optional traveller/provider-authored local clock time. Never inferred. */
+  startsAt?: string;
 };
 
 export type TripRecommendation = {
@@ -288,6 +290,8 @@ export type TripChange = {
 
 export type TripBrief = {
   origin: string;
+  /** Traveller-authored identity. Null explicitly opts back into the generated geographic title. */
+  customTitle?: string | null;
   originCoordinates?: [number, number];
   originCanonicalPlaceId?: string;
   originCountry?: string;

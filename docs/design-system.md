@@ -95,6 +95,23 @@ copying a number from an unrelated surface.
 Use token names rather than copying their current values. The canonical swatch
 and grouped raw-value reference is `Morrovia/01 Foundations — Colours`.
 
+### Large-surface neutrality
+
+Core page, workspace, rail and large-card backgrounds use
+`--morrovia-paper`. Lilac, indigo, transparency and blur remain available for
+compact semantic accents, map overlays that need spatial legibility, imagery
+fallbacks and genuine brand moments; they are not workspace-scale washes.
+
+The `large-accent-surface` rule in `audit:ui` protects the named owners for the
+homepage planner/booking chapter, TripShell, route strip, Overview, Itinerary,
+Calendar, Explore, Stay and Transport. Add a selector to that explicit owner
+map when a new recurring large planning surface is introduced. A necessary
+map or brand exception must stay owner-scoped and documented rather than
+weakening the rule globally.
+
+Large selected and hover states follow the same rule: retain a compact signal,
+border or icon treatment instead of repainting the complete row, card or panel.
+
 ### Spacing
 
 There is no repository-wide spacing-token scale today. Shared controls and
@@ -184,6 +201,8 @@ not permission to reproduce their styling page-locally.
 | Overview/readiness/next action | `components/easyt/trip-overview-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Overview` |
 | Itinerary day and transfer presentation | `components/easyt/trip-itinerary-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Itinerary` |
 | Map route, selected place and spatial actions | `components/easyt/trip-map-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Map` |
+| Trip-aware place and experience discovery | `components/easyt/trip-explore-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Explore` |
+| Stop-scoped accommodation decisions | `components/easyt/trip-stay-workspace.tsx`; `Morrovia/05 Product Patterns/Trip workspace/Stay` |
 | Practical tasks and completion | `components/easyt/trip-overview-workspace.tsx`, composed from `components/easyt/trip-preparation.tsx`; `Morrovia/05 Product Patterns/Catalogue` |
 | Route discovery/detail | `app/journey/discover/` and `app/journey/routes/[slug]/route-detail-view.tsx`; `Morrovia/05 Product Patterns/Routes` |
 | Personal trip cards and empty state | `app/journey/dashboard/dashboard-client.tsx`; `Morrovia/05 Product Patterns/Trips dashboard` |
@@ -232,7 +251,7 @@ These are layout expectations, not wrapper components:
    clear progress/form hierarchy and explicit recovery.
 3. **Personal library** — Trips and Stamps: filterable personal content with
    strong empty, loading and continuation states.
-4. **Trip workspace** — Overview, Itinerary and Map: shared `TripShell`
+4. **Trip workspace** — Overview, Map, Itinerary, Explore and Stay: shared `TripShell`
    and navigation with a view-specific working area.
 5. **Safety overlay** — Tour, clarification, recovery and confirmation:
    focus-managed, truthful about consequences and dismissible only when safe.
@@ -424,7 +443,7 @@ Routes retains its page-specific collage and editorial spread. `DiscoveryPhoto` 
 
 `components/easyt/morrovia-map-presentation.ts` owns the canonical Trip Map basemap and route paints for both Trip Map and Routes. Its CSS module owns stop markers, zoom controls and attribution typography. MapLibre paint literals and the circular geographic marker are narrow documented audit exceptions. Planning state, trip edits and route selection stay in their respective existing owners.
 
-CARTO now requires a browser-safe Basemaps key. `NEXT_PUBLIC_CARTO_BASEMAP_KEY` enables the same detailed tiles; without it the shared presentation keeps local Natural Earth land and borders visible at every zoom and sends no CARTO requests. This avoids the provider’s unauthenticated watermark. Route geometry, stop identity and planning logic are unchanged. Detailed street tiles require that optional key; never use a private CARTO account credential here.
+The shared MapLibre presentation uses OpenFreeMap Positron for detailed roads, places and labels without a deployment-specific browser key. `JourneyPlannerMap` owns the style/source lifecycle: it verifies the detailed source and visible layers after style load and detailed zoom transitions, keeps the style stable during ordinary camera movement, and falls back to bundled Natural Earth geography with an explicit retry when the provider fails. Route geometry, stop identity, selection and planning logic remain in their existing owners.
 
 ### Trip workspace width
 

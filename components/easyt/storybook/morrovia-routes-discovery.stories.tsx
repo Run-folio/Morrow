@@ -1,12 +1,14 @@
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import DiscoveryBrowser from "@/app/journey/discover/discovery-browser";
+import RoutePreview from "@/app/journey/discover/route-preview";
 import { discoveryCatalogue, type DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import { initialDiscoveryFilters } from "@/lib/easyt/route-discovery";
 import { catalogueWithEditorialImages, routesOverviewEditorial } from "@/lib/easyt/routes-overview-editorial";
 import styles from "@/app/journey/discover/discover.module.css";
 const routes = discoveryCatalogue();
 const japan = routes.find(r => r.key === "japan-slow")!;
+const mexicoGuatemala = routes.find(r => r.key === "mexico-guatemala")!;
 // Structural QA specimens only. Never imported by the application or offered a valid handoff.
 const names = ["Tokyo", "Kanazawa", "Takayama", "Kyoto", "Osaka", "Hiroshima", "Fukuoka", "Nagasaki"];
 const coordinates: [number,number][] = [[139.69,35.68],[136.65,36.56],[137.25,36.14],[135.77,35.01],[135.50,34.69],[132.46,34.38],[130.40,33.59],[129.87,32.75]];
@@ -32,6 +34,17 @@ export const FourStops: Story = {args:{routes:[specimen(4)],initialSelected:"lay
 export const FiveStops: Story = {args:{routes:[specimen(5)],initialSelected:"layout-specimen-5"}};
 export const EightStops: Story = {args:{routes:[specimen(8)],initialSelected:"layout-specimen-8"}};
 export const At390: Story = {globals:{viewport:{value:"morrovia390",isRotated:false}}};
+
+const preview = (route: DiscoveryRoute) => <RoutePreview route={route} onClose={() => undefined} />;
+const selectStop = (name: string) => async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('[aria-label="Route stops in order"] button')].find((button) => button.textContent?.includes(name))?.click();
+};
+export const SelectedFirst1440: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia1440",isRotated:false}} };
+export const SelectedMiddle1024: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia1024",isRotated:false}}, play: selectStop("Takayama") };
+export const SelectedLongName768: Story = { render: () => preview(mexicoGuatemala), globals:{viewport:{value:"morrovia768",isRotated:false}}, play: selectStop("San Cristóbal de las Casas") };
+export const SelectedMiddle390: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia390",isRotated:false}}, play: selectStop("Takayama") };
+export const SelectedFinal430: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia430",isRotated:false}}, play: selectStop(japan.stops.at(-1)!.name) };
 
 // The same catalogue cards retain imagery and full identity in the Map rail.
 export const MapAt390: Story = {args:{initialView:"map"},globals:{viewport:{value:"morrovia390",isRotated:false}}};

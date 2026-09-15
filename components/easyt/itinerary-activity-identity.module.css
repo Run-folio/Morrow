@@ -36,6 +36,7 @@
   min-width: 0;
   display: grid;
   gap: 2px;
+  white-space: normal;
 }
 
 .copy strong {
@@ -64,4 +65,29 @@
 
 .compact .copy strong {
   font-size: .82rem;
+}
+
+.card {
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+}
+
+.card .media,
+.card .icon {
+  width: 82px;
+  height: 72px;
+}
+
+.card .copy {
+  padding-top: 3px;
+  gap: 5px;
+}
+
+.card .copy strong {
+  font-size: .92rem;
+}
+
+.card .copy small {
+  font-size: .72rem;
 }

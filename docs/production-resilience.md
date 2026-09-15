@@ -43,10 +43,12 @@ Do not change nameservers during an application outage. The incident action is a
 `GET /api/health` is the single readiness endpoint. It returns only bounded states:
 
 ```json
-{"state":"ok","checks":{"auth":"ok","applicationUrl":"ok","database":"ok"}}
+{"state":"ok","checks":{"auth":"ok","applicationUrl":"ok","database":"ok"},"deployment":{"commit":"<full Git SHA or unknown>","context":"production"}}
 ```
 
-It returns `200` only when critical auth/base-URL configuration is coherent and a `select 1` database probe succeeds; otherwise it returns `503`. It has `Cache-Control: no-store` and never returns environment values, hostnames, database URLs, provider errors, user counts, secrets, or stack details.
+It returns `200` only when critical auth/base-URL configuration is coherent and a `select 1` database probe succeeds; otherwise it returns `503`. Deployment provenance is informational: an unavailable or malformed commit reports `unknown` and never makes an otherwise healthy runtime unhealthy. Netlify `COMMIT_REF`/`CONTEXT` and Vercel's equivalent Git metadata are captured at build time, reduced to a validated full Git SHA and an allowlisted context, and embedded for the server route. The endpoint has `Cache-Control: no-store` and never returns arbitrary environment values, hostnames, database URLs, provider errors, user counts, secrets, or stack details.
+
+Release verification must compare `deployment.commit` with the exact intended release SHA. A `200` response with a different SHA proves that a previous deploy is still serving traffic; `unknown` means provenance is unavailable and is not evidence that the release was deployed.
 
 Database connectivity belongs in this readiness check because account access and durable trip read/write are core application availability. A host-only liveness check would report a misleading success while travellers could not load or save trips. The query is read-only and carries no user data.
 
@@ -67,8 +69,8 @@ These steps create a warm secondary without taking ownership of production DNS:
 4. Confirm Vercel is using `npm ci` and `npm run build` from `vercel.json`. Do not set an output override.
 5. Add only the Production variables required by `docs/production-environment.md`. Mark server-only secrets Sensitive. Do not place production secrets in Preview or Development unless a separately approved test requires them.
 6. For a canonical failover build, set both URL variables to `https://morrovia.com`. This means the generated `vercel.app` URL can prove homepage, assets, APIs, and database readiness, but a full cookie/OAuth sign-in rehearsal must use an explicitly configured test origin or the approved DNS cutover.
-7. Deploy `main`, record the full `VERCEL_GIT_COMMIT_SHA`, and compare it with the currently published Netlify production commit. A backup build is not accepted when the SHAs differ.
-8. On the generated hostname, verify `/`, `/journey/home`, `/journey/login`, and `/api/health`. `/api/health` must return `200` with `state: "ok"`.
+7. Deploy `main`, record the full intended Git SHA, and compare it with `deployment.commit` from both the generated Vercel hostname and the currently published Netlify production health response. A backup build is not accepted when the SHAs differ or either response reports `unknown`.
+8. On the generated hostname, verify `/`, `/journey/home`, `/journey/login`, and `/api/health`. `/api/health` must return `200` with `state: "ok"` and the exact intended `deployment.commit`.
 9. Keep the generated hostname and project available. Do not attach the production domain until the founder approves domain staging or a real failover.
 
 For a direct authenticated rehearsal before DNS cutover, temporarily use the generated Vercel origin for both URL variables, add its exact Google callback URI if Google login is in scope, redeploy, test, then return both variables to `https://morrovia.com` and redeploy. Never cut DNS while the backup build still has the generated origin configured.
@@ -89,7 +91,7 @@ Monitoring is **not verified active**. The browser reached the UptimeRobot login
 
 1. **Verify the outage.** Capture UTC time, affected URLs, HTTP/TLS result, and probe region. Compare `https://morrovia.com`, `/journey/home`, and `/api/health` from UptimeRobot and one independent connection.
 2. **Classify it.** Distinguish DNS/TLS, Netlify origin, database, auth, or upstream-provider failure. Do not switch hosts for a Neon/database outage that will follow the application to Vercel.
-3. **Verify the backup.** On the generated Vercel hostname, confirm the deployed commit matches the intended Netlify production commit, `/journey/home` loads, static/external images render, and `/api/health` returns `200`/`ok`.
+3. **Verify the backup.** On the generated Vercel hostname, confirm `/api/health` reports the exact intended `deployment.commit`, `/journey/home` loads, static/external images render, and health returns `200`/`ok`.
 4. **Verify failover configuration.** Confirm both application/auth URL variables equal `https://morrovia.com`; the production Neon database and Better Auth secret are the intended shared values; enabled provider variables match the inventory; and the build after the last variable change succeeded.
 5. **Prepare domain/TLS.** Add `morrovia.com` and `www.morrovia.com` to `morrovia-secondary` only under founder approval. Use the exact DNS targets shown by Vercel and wait until Vercel is ready to issue a certificate.
 6. **Change DNS narrowly.** In the existing Netlify DNS zone, change only the application-serving apex and `www` records required by Vercel. Do not change nameservers, `staging`, MX, TXT, DKIM, SPF, DMARC, receiving subdomains, or unrelated records.
@@ -104,7 +106,7 @@ A real DNS cutover always requires explicit founder approval immediately before 
 
 1. Confirm the Netlify account and project are accessible and the incident cause is resolved.
 2. Deploy the same verified commit currently running on Vercel to Netlify `morrovia`.
-3. On the Netlify deploy URL, verify build success, `/journey/home`, `/journey/login`, `/api/health`, database access, assets, and enabled integrations.
+3. On the Netlify deploy URL, verify build success, `/journey/home`, `/journey/login`, `/api/health`, database access, assets, and enabled integrations. Require `deployment.commit` to equal the exact commit being restored before changing DNS.
 4. Confirm the Netlify production environment inventory and canonical auth URLs still match the recovery record.
 5. With founder approval, restore only the apex/`www` application records to the exact pre-incident values captured before failover. Preserve every email and unrelated DNS record.
 6. Confirm TLS, auth, homepage, health, and the same safe disposable-trip checks on `https://morrovia.com`.

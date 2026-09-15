@@ -28,13 +28,20 @@ These typed events answer the minimum launch questions without replacing the exi
 | `trip_generation_failed` | Capture fails or the builder cannot produce a usable result. | `trip_source`, coarse `error_type`, `is_authenticated` |
 | `trip_saved` | A meaningful local generation save or cloud persistence boundary succeeds. Passive local autosaves do not emit it. | opaque `trip_id`, `trip_source`, `save_state`, `stop_count`, `is_authenticated` |
 | `trip_save_failed` | The same meaningful persistence boundary fails. | opaque `trip_id`, `trip_source`, `save_state`, coarse `error_type`, `is_authenticated` |
-| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
+| `trip_overview_viewed` / `trip_itinerary_viewed` / `trip_map_viewed` / `trip_transport_viewed` | The corresponding shared Trip Workspace route is visited. | opaque `trip_id`, `workspace_view`, `route_mode`, `stop_count` |
 | `trip_reopened` | A saved trip is deliberately opened from the dashboard. | opaque `trip_id`, `source`, `save_state`, `stop_count` |
 | `trip_edit_started` | Edit is deliberately opened from the dashboard. | opaque `trip_id`, `source` |
 | `route_repair_applied` | An existing map health recommendation is deliberately applied. | opaque `trip_id`, `repair_count`, machine-safe `repair_category`, `source` |
 | `accommodation_search_started` | The existing stay finder starts its map/inventory search. | `source`, `destination_count`, `has_dates`, `provider` |
+| `recommendation_performance` | A recommendation lane first becomes useful or finishes, independently of slower lanes. | categorical `surface`, `recommendation_kind`, `lane`, `milestone`, coarse bounded `duration_ms`, `result_count`, `outcome` |
 
 `affiliate_click` remains the generic monetisation handoff event and retains its existing `category` and `provider` contract. The established Omio/Viator `affiliate_link_clicked` event remains a separate source only where it is already in use; do not introduce PostHog-specific aliases for the same click.
+
+Recommendation performance events deliberately omit trip, stop, destination,
+query, coordinates, provider response content, prices and URLs. Durations are
+rounded to 25 ms and capped at 60 seconds. `first_useful` measures the first
+truthful interactive recommendation; `lane_ready` measures core or commercial
+completion without making the slower lane part of the first-useful contract.
 
 ## Commercial outbound-click reporting contract
 

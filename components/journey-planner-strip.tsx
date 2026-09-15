@@ -2,19 +2,71 @@
 
 import Link from "next/link";
 import { ChevronRight, Maximize2, Minimize2, MoreHorizontal, Plus, Route } from "lucide-react";
-import type { ReactNode, Ref } from "react";
+import { useEffect, useRef, type ReactNode, type Ref } from "react";
 import ResilientImage from "@/components/easyt/resilient-image";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
+import type { RouteTimelineStop } from "@/lib/easyt/route-timeline";
 import styles from "./journey-planner-strip.module.css";
 
-export type JourneyPlannerStripStop = {
-  id: string;
-  name: string;
-  dayLabel: string;
-  image?: string;
-  active: boolean;
-  kind?: "origin" | "stop";
-};
+export type JourneyPlannerStripStop = RouteTimelineStop;
+
+export function JourneyRouteStopTrack({
+  stops,
+  onSelectStop,
+  ariaLabel = "Trip stops",
+  trailing,
+  presentation = "default",
+  surface = "embedded",
+}: {
+  stops: JourneyPlannerStripStop[];
+  onSelectStop: (id: string) => void;
+  ariaLabel?: string;
+  trailing?: ReactNode;
+  presentation?: "default" | "integrated";
+  surface?: "embedded" | "standalone";
+}) {
+  const activeRef = useRef<HTMLButtonElement | null>(null);
+  const activeId = stops.find((stop) => stop.active)?.id;
+
+  useEffect(() => {
+    const active = activeRef.current;
+    if (!active) return;
+    const frame = window.requestAnimationFrame(() => active.scrollIntoView?.({ block: "nearest", inline: "nearest" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeId]);
+
+  return <nav
+    className={`${styles.stopTrack} ${presentation === "integrated" ? styles.stopTrackIntegrated : ""} ${surface === "standalone" ? styles.stopTrackStandalone : ""}`}
+    aria-label={ariaLabel}
+    data-route-stop-navigation
+    data-route-track-presentation={presentation}
+  >
+    {stops.map((stop, index) => (
+      <div className={styles.stopGroup} key={stop.id}>
+        <button
+          ref={stop.active ? activeRef : undefined}
+          type="button"
+          className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
+          aria-current={stop.active ? (stop.kind === "origin" ? "page" : "step") : undefined}
+          aria-pressed={stop.active}
+          onClick={() => onSelectStop(stop.id)}
+        >
+          <ResilientImage
+            src={stop.image}
+            alt=""
+            fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "All" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>}
+          />
+          <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
+        </button>
+        {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
+      </div>
+    ))}
+    {trailing}
+  </nav>;
+}
+
+/** @deprecated Use JourneyRouteStopTrack for new workspace route timelines. */
+export const JourneyStopNavigation = JourneyRouteStopTrack;
 
 export function JourneyPlannerStrip({
   summary,
@@ -56,23 +108,12 @@ export function JourneyPlannerStrip({
         <span>{summary}</span>
       </div> : null}
 
-      <nav className={styles.stopTrack} aria-label="Trip stops">
-        {stops.map((stop, index) => (
-          <div className={styles.stopGroup} key={stop.id}>
-            <button
-              type="button"
-              className={`${styles.stop} ${stop.active ? styles.stopActive : ""}`}
-              aria-current={stop.active ? "step" : undefined}
-              onClick={() => onSelectStop(stop.id)}
-            >
-              <ResilientImage src={stop.image} alt="" fallback={<span className={`${styles.stopIndex} ${stop.kind === "origin" ? styles.originIndex : ""}`}>{stop.kind === "origin" ? "From" : stops.slice(0, index + 1).filter((item) => item.kind !== "origin").length}</span>} />
-              <span><strong>{stop.name}</strong><small>{stop.dayLabel}</small></span>
-            </button>
-            {index < stops.length - 1 ? <ChevronRight className={styles.connector} aria-hidden="true" /> : null}
-          </div>
-        ))}
-        <Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>
-      </nav>
+      <JourneyRouteStopTrack
+        stops={stops}
+        onSelectStop={onSelectStop}
+        presentation={presentation === "integrated" ? "integrated" : "default"}
+        trailing={<Link className={styles.addStop} href={addStopHref}><Plus aria-hidden="true" />Add stop</Link>}
+      />
 
       <div className={styles.actions}>
         {onWholeRoute ? <button data-map-route-reset type="button" className={`${styles.fullTrip} ${styles.wholeRoute}`} onClick={onWholeRoute} aria-pressed={wholeRouteActive} title="Fit map to whole route"><Route aria-hidden="true" />Whole route</button> : null}

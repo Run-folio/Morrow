@@ -54,6 +54,15 @@ export type TripRecoveryRecord = {
 
 export type TripRecoveryHandle = Pick<TripRecoveryRecord, "ownerId" | "tripId" | "writeId">;
 
+export type TripRecoveryClassification =
+  | "clean"
+  | "pending-current-save"
+  | "current-save-failed"
+  | "active-local-document"
+  | "equivalent"
+  | "historical-superseded"
+  | "genuine-divergence";
+
 export type TripRecoveryWriteResult = {
   stored: boolean;
   handle: TripRecoveryHandle;
@@ -569,6 +578,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
     currency: trip.currency,
     brief: {
       originIdentity,
+      customTitle: brief.customTitle,
       journeyEnd: brief.journeyEnd,
       mustDo: brief.mustDo,
       pace: brief.pace,
@@ -632,6 +642,53 @@ export function tripRecoveryMatchesCanonical(
     || recovery.trip.id !== canonicalTrip.id
     || (recovery.trip.ownerId !== null && recovery.trip.ownerId !== canonicalTrip.ownerId)) return false;
   return tripDocumentsCanonicalEquivalent(recovery.trip, canonicalTrip);
+}
+
+function recoveryHandlesMatch(left: TripRecoveryHandle, right: TripRecoveryHandle) {
+  return left.ownerId === right.ownerId
+    && left.tripId === right.tripId
+    && left.writeId === right.writeId;
+}
+
+/**
+ * Classify recovery separately from the current save indicator. A durable
+ * record is a current save only while this mounted document owns its exact
+ * write handle; after reload it is historical recovery, regardless of the
+ * persisted failure label. Timestamp ordering is deliberately not used.
+ */
+export function classifyTripRecovery({
+  recovery,
+  canonicalTrip,
+  previousCanonicalTrip,
+  currentWrite,
+}: {
+  recovery: TripRecoveryRecord | null;
+  canonicalTrip: EasyTTrip;
+  previousCanonicalTrip?: EasyTTrip | null;
+  currentWrite?: TripRecoveryHandle | null;
+}): TripRecoveryClassification {
+  if (!recovery) return "clean";
+  if (currentWrite && recoveryHandlesMatch(recovery, currentWrite)) {
+    return recovery.state === "pending" ? "pending-current-save" : "current-save-failed";
+  }
+  // An ownerless trip has no separate canonical cloud document. When the
+  // resolver reopened this exact durable guest recovery, it is the active
+  // local document and its write handle must remain available for subsequent
+  // edits. A different guest document is still genuine divergence and remains
+  // protected below.
+  if (recovery.ownerId === null
+    && canonicalTrip.ownerId === null
+    && recovery.tripId === canonicalTrip.id
+    && recovery.trip.id === canonicalTrip.id
+    && recovery.trip.ownerId === null
+    && sameRecoveryDocument(recovery.trip, canonicalTrip)) {
+    return "active-local-document";
+  }
+  if (tripRecoveryMatchesCanonical(recovery, canonicalTrip)) return "equivalent";
+  if (previousCanonicalTrip && tripRecoveryMatchesCanonical(recovery, previousCanonicalTrip)) {
+    return "historical-superseded";
+  }
+  return "genuine-divergence";
 }
 
 function writeTripRecoveryToStorage(
@@ -999,6 +1056,12 @@ export function loadTripRecovery(tripId: string, ownerId: string | null) {
   return storage ? loadTripRecoveryFromStorage(storage, tripId, ownerId) : null;
 }
 
+/** Read only the last acknowledged cloud document for this owner and trip. */
+export function loadCachedTrip(tripId: string, ownerId: string | null) {
+  const storage = browserStorage();
+  return storage ? loadCachedTripFromStorage(storage, tripId, ownerId) : null;
+}
+
 export function loadLocalTrip(
   tripId: string,
   ownerId: string | null,
@@ -1011,6 +1074,12 @@ export function loadLocalTrip(
 export function loadCurrentTripRecovery(ownerId: string | null) {
   const storage = browserStorage();
   return storage ? loadCurrentTripRecoveryFromStorage(storage, ownerId) : null;
+}
+
+/** List every newest trip-scoped recovery for this exact owner. */
+export function listTripRecoveries(ownerId: string | null) {
+  const storage = browserStorage();
+  return storage ? listTripRecoveriesFromStorage(storage, ownerId) : [];
 }
 
 export function claimGuestTripRecoveryForOwnerInStorage(

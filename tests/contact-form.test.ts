@@ -3,11 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import {
   CONTACT_MESSAGE_MAX_LENGTH,
-  contactDelivery,
-  contactEmail,
   contactTopic,
   parseContactMessage,
 } from "../lib/easyt/contact-message.ts";
+import { contactDelivery, contactEmail } from "../lib/easyt/contact-email.ts";
 import { createContactRateLimiter } from "../lib/easyt/contact-rate-limit.server.ts";
 
 const read = (path: string) => readFileSync(path, "utf8");
@@ -39,8 +38,8 @@ test("contact input is normalised and cannot inject a subject or reply address",
   assert.equal(parsed.input.email, "alex@example.com");
   assert.equal(parsed.input.topic, "general");
   assert.doesNotMatch(parsed.input.message, /\r|\u0007/);
-  const email = contactEmail(parsed.input);
-  assert.equal(email.subject, "Morrovia contact: General enquiry");
+  const email = contactEmail(parsed.input, "private@example.test");
+  assert.equal(email.subject, "Morrovia contact · General enquiry");
   assert.match(email.text, /Reply email: alex@example\.com/);
   assert.deepEqual(contactDelivery(parsed.input, "private@example.test"), {
     to: "private@example.test",
@@ -67,7 +66,7 @@ test("contact is a public, canonical form route with resilient client states", (
   const page = read("app/journey/contact/page.tsx");
   const form = read("app/journey/contact/contact-form.tsx");
   const api = read("app/api/easyt/contact/route.ts");
-  const email = read("lib/easyt/email.ts");
+  const email = read("lib/easyt/email-delivery.ts");
   assert.equal(existsSync("app/journey/contact/page.tsx"), true);
   assert.match(page, /EasyTNavigation/);
   assert.match(form, /EasyTField/);
@@ -81,7 +80,8 @@ test("contact is a public, canonical form route with resilient client states", (
   assert.match(api, /contactRateLimitAllows/);
   assert.match(api, /parsed\.spam/);
   assert.match(email, /reply_to/);
-  assert.match(email, /escapeHtml\(email\.text\)/);
+  assert.match(email, /html: email\.html/);
+  assert.match(email, /Idempotency-Key/);
 });
 
 test("public Morrovia contact surfaces do not expose a mailbox or destination config", () => {

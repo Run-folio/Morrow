@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { contactDelivery, parseContactMessage } from "@/lib/easyt/contact-message";
+import { contactDelivery } from "@/lib/easyt/contact-email";
+import { parseContactMessage } from "@/lib/easyt/contact-message";
 import { contactRateLimitAllows } from "@/lib/easyt/contact-rate-limit.server";
-import { sendEasyTEmail } from "@/lib/easyt/email";
+import { sendMorroviaEmail } from "@/lib/easyt/email";
 
 const MAX_REQUEST_BYTES = 12_000;
 
@@ -39,10 +40,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Contact is temporarily unavailable. Please try again later." }, { status: 503 });
   }
   try {
-    await sendEasyTEmail(contactDelivery(parsed.input, recipient));
+    await sendMorroviaEmail(contactDelivery(parsed.input, recipient));
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Contact delivery failed.", error instanceof Error ? error.message : "Unknown error");
+    console.error("Contact delivery failed.", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode: (error as { code?: unknown } | null)?.code,
+    });
     return NextResponse.json({ error: "Your message could not be sent. Please try again." }, { status: 502 });
   }
 }

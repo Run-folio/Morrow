@@ -105,6 +105,28 @@ test("route_started is a no-op without analytics consent", () => {
   assert.deepEqual(calls, []);
 });
 
+test("recommendation performance emits only coarse bounded lane metadata", () => {
+  const calls: unknown[][] = [];
+  const restore = installAnalyticsWindow("granted", calls);
+  try {
+    trackEvent("recommendation_performance", {
+      surface: "explore",
+      recommendation_kind: "restaurant",
+      lane: "core",
+      milestone: "first_useful",
+      duration_ms: 1_250,
+      result_count: 4,
+      outcome: "ready",
+    });
+    const [, name, payload] = calls[0] as [string, string, Record<string, unknown>];
+    assert.equal(name, "recommendation_performance");
+    assert.deepEqual(Object.keys(payload).sort(), ["duration_ms", "environment", "lane", "milestone", "outcome", "page_path", "recommendation_kind", "result_count", "surface"]);
+    assert.equal(JSON.stringify(payload).includes("Athens"), false);
+  } finally {
+    restore();
+  }
+});
+
 test("workspace orientation analytics stays off before consent", () => {
   const calls: unknown[][] = [];
   const restore = installAnalyticsWindow("declined", calls);

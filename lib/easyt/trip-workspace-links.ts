@@ -1,4 +1,5 @@
 import type { EasyTTrip, TripRecommendation } from "./trip.ts";
+import type { MapResultHandoffTarget } from "./map-result-selection.ts";
 
 export type MapWorkspaceMode = "plan" | "stay" | "eat" | "see";
 
@@ -41,14 +42,39 @@ export function isFirstTripWorkspaceArrival(search: string) {
 }
 
 export function isCanonicalTripWorkspaceHref(href: string) {
-  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|prep))?(?:[?#].*)?$/.test(href);
+  return /^\/journey\/trip-[^/?#]+(?:\/(?:itinerary|map|explore|stay|transport|prep))?(?:[?#].*)?$/.test(href);
 }
 
-export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: MapWorkspaceMode = "plan", dayNumber?: number | null) {
+export function mapWorkspaceHref(
+  tripId: string,
+  stopId?: string | null,
+  mode: MapWorkspaceMode = "plan",
+  dayNumber?: number | null,
+  resultSelectionId?: string | null,
+  resultHandoff?: MapResultHandoffTarget | null,
+) {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);
   if (mode !== "plan") query.set("mode", mode);
   if (dayNumber) query.set("day", String(dayNumber));
+  if (resultSelectionId) query.set("result", resultSelectionId);
+  if (resultSelectionId
+    && stopId
+    && resultHandoff?.selectionId === resultSelectionId
+    && resultHandoff.stopId === stopId
+    && resultHandoff.kind === mode) {
+    query.set("targetId", resultHandoff.sourceId);
+    query.set("targetName", resultHandoff.name);
+    query.set("targetLng", String(resultHandoff.coordinates[0]));
+    query.set("targetLat", String(resultHandoff.coordinates[1]));
+    query.set("targetKind", resultHandoff.kind);
+    query.set("targetAddress", resultHandoff.address);
+    query.set("targetCategory", resultHandoff.category);
+    if (resultHandoff.provider) query.set("targetProvider", resultHandoff.provider);
+    if (resultHandoff.providerProductId) query.set("targetProduct", resultHandoff.providerProductId);
+    if (resultHandoff.commercialProvider) query.set("targetCommercialProvider", resultHandoff.commercialProvider);
+    if (resultHandoff.commercialProviderProductId) query.set("targetCommercialProduct", resultHandoff.commercialProviderProductId);
+  }
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
 }
@@ -56,6 +82,41 @@ export function mapWorkspaceHref(tripId: string, stopId?: string | null, mode: M
 export function itineraryWorkspaceHref(tripId: string, dayNumber?: number | null) {
   const base = `/journey/${encodeURIComponent(tripId)}/itinerary`;
   return dayNumber ? `${base}?day=${dayNumber}` : base;
+}
+
+export function exploreWorkspaceHref(tripId: string, stopId?: string | null, dayNumber?: number | null) {
+  const query = new URLSearchParams();
+  if (stopId) query.set("stop", stopId);
+  if (dayNumber) query.set("day", String(dayNumber));
+  const suffix = query.toString();
+  return `/journey/${encodeURIComponent(tripId)}/explore${suffix ? `?${suffix}` : ""}`;
+}
+
+export function stayWorkspaceHref(tripId: string, stopId?: string | null, resultSelectionId?: string | null) {
+  const query = new URLSearchParams();
+  if (stopId) query.set("stop", stopId);
+  if (resultSelectionId) query.set("result", resultSelectionId);
+  const suffix = query.toString();
+  return `/journey/${encodeURIComponent(tripId)}/stay${suffix ? `?${suffix}` : ""}`;
+}
+
+export function transportWorkspaceHref(tripId: string) {
+  return `/journey/${encodeURIComponent(tripId)}/transport`;
+}
+
+export function parseStayWorkspaceTarget(trip: Pick<WorkspaceTrip, "stops">, query: QueryReader) {
+  const stops = orderedStops(trip).filter((stop) => (stop.nights ?? 0) > 0);
+  const requestedStop = query.get("stop");
+  const stopId = requestedStop && stops.some((stop) => stop.id === requestedStop)
+    ? requestedStop
+    : stops[0]?.id ?? null;
+  const rawResultSelectionId = query.get("result");
+  const resultSelectionId = rawResultSelectionId
+    && rawResultSelectionId.length <= 240
+    && /^result:stay:[^\s]+$/.test(rawResultSelectionId)
+    ? rawResultSelectionId
+    : null;
+  return { stopId, resultSelectionId };
 }
 
 export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader) {
@@ -73,7 +134,78 @@ export function parseMapWorkspaceTarget(trip: WorkspaceTrip, query: QueryReader)
   const requestedDay = Number.isInteger(requestedDayNumber)
     ? orderedDays(trip).find((day) => day.dayNumber === requestedDayNumber && day.stopId === stopId)
     : undefined;
-  return { stopId, mode, dayNumber: requestedDay?.dayNumber ?? null };
+  const rawResultSelectionId = query.get("result");
+  const resultSelectionId = rawResultSelectionId
+    && rawResultSelectionId.length <= 240
+    && /^(?:idea:|saved:|result:(?:stay|eat|see):)[^\s]+$/.test(rawResultSelectionId)
+    ? rawResultSelectionId
+    : null;
+  const dayNumber = requestedDay?.dayNumber ?? null;
+  const targetSourceId = query.get("targetId")?.trim() ?? "";
+  const targetName = query.get("targetName")?.trim() ?? "";
+  const rawTargetLongitude = query.get("targetLng");
+  const rawTargetLatitude = query.get("targetLat");
+  const targetLongitude = rawTargetLongitude?.trim() ? Number(rawTargetLongitude) : Number.NaN;
+  const targetLatitude = rawTargetLatitude?.trim() ? Number(rawTargetLatitude) : Number.NaN;
+  const targetKind = query.get("targetKind");
+  const targetAddress = query.get("targetAddress")?.trim() ?? "";
+  const targetCategory = query.get("targetCategory")?.trim() ?? "";
+  const rawProvider = query.get("targetProvider");
+  const provider = rawProvider === "booking-demand" || rawProvider === "google-places" || rawProvider === "openstreetmap" || rawProvider === "viator"
+    ? rawProvider
+    : undefined;
+  const providerProductId = query.get("targetProduct")?.trim() || undefined;
+  const commercialProvider = query.get("targetCommercialProvider") === "booking-demand" ? "booking-demand" as const : undefined;
+  const commercialProviderProductId = query.get("targetCommercialProduct")?.trim() || undefined;
+  const resultHandoff = resultSelectionId
+    && stopId
+    && targetKind === mode
+    && targetKind !== "plan"
+    && targetSourceId.length > 0 && targetSourceId.length <= 240
+    && targetName.length > 0 && targetName.length <= 200
+    && targetAddress.length <= 300
+    && targetCategory.length <= 120
+    && Number.isFinite(targetLongitude) && Math.abs(targetLongitude) <= 180
+    && Number.isFinite(targetLatitude) && Math.abs(targetLatitude) <= 90
+    && (!providerProductId || providerProductId.length <= 240)
+    && (!commercialProviderProductId || Boolean(commercialProvider) && commercialProviderProductId.length <= 240)
+    ? {
+        selectionId: resultSelectionId,
+        sourceId: targetSourceId,
+        stopId,
+        dayNumber,
+        name: targetName,
+        coordinates: [targetLongitude, targetLatitude] as [number, number],
+        kind: targetKind,
+        address: targetAddress || trip.stops.find((candidate) => candidate.id === stopId)?.name || "Selected map result",
+        category: targetCategory || (targetKind === "stay" ? "Accommodation" : targetKind === "eat" ? "Restaurant" : "Activity"),
+        ...(provider ? { provider } : {}),
+        ...(providerProductId ? { providerProductId } : {}),
+        ...(commercialProvider ? { commercialProvider } : {}),
+        ...(commercialProvider && commercialProviderProductId ? { commercialProviderProductId } : {}),
+      } satisfies MapResultHandoffTarget
+    : null;
+  return {
+    stopId,
+    mode,
+    dayNumber,
+    resultSelectionId,
+    ...(resultHandoff ? { resultHandoff } : {}),
+  };
+}
+
+/**
+ * Resolve the concrete planner day that should accompany a Map URL target.
+ * The URL's canonical stop instance always wins; a missing/invalid handoff
+ * keeps the normal first-stop default supplied by parseMapWorkspaceTarget.
+ */
+export function mapWorkspaceSelectionForTarget(trip: WorkspaceTrip, query: QueryReader) {
+  const target = parseMapWorkspaceTarget(trip, query);
+  const selectedDay = orderedDays(trip).find((candidate) => candidate.dayNumber === target.dayNumber && candidate.stopId === target.stopId)
+    ?? orderedDays(trip).find((candidate) => candidate.stopId === target.stopId)
+    ?? orderedDays(trip)[0]
+    ?? null;
+  return { target, selectedDay };
 }
 
 /**
@@ -111,7 +243,7 @@ export function itineraryDayForRecommendation(
     .find((dayNumber) => canonicalDays.has(dayNumber)) ?? null;
 }
 
-export type TripWorkspaceView = "overview" | "itinerary" | "map";
+export type TripWorkspaceView = "overview" | "itinerary" | "map" | "explore" | "stay" | "transport";
 
 export function workspaceVisitKey(href: string) {
   return href.split(/[?#]/, 1)[0];
@@ -120,6 +252,9 @@ export function workspaceVisitKey(href: string) {
 export function workspaceViewFromPathname(pathname: string, tripId: string): TripWorkspaceView {
   const decodedPathname = decodeURIComponent(workspaceVisitKey(pathname));
   const remainder = decodedPathname.slice(`/journey/${tripId}`.length);
+  if (remainder.startsWith("/explore")) return "explore";
+  if (remainder.startsWith("/stay")) return "stay";
+  if (remainder.startsWith("/transport")) return "transport";
   if (remainder.startsWith("/itinerary")) return "itinerary";
   if (remainder.startsWith("/map")) return "map";
   return "overview";

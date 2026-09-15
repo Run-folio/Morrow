@@ -30,9 +30,12 @@ const preview: Preview = {
       options: {
         morrovia320: { name: "Morrovia 320", styles: { width: "320px", height: "640px" } },
         morrovia390: { name: "Morrovia 390", styles: { width: "390px", height: "844px" } },
+        morrovia390short: { name: "Morrovia 390 short", styles: { width: "390px", height: "600px" } },
         morrovia430: { name: "Morrovia 430", styles: { width: "430px", height: "932px" } },
+        morroviaLandscape: { name: "Morrovia landscape", styles: { width: "844px", height: "390px" } },
         morrovia768: { name: "Morrovia 768", styles: { width: "768px", height: "1024px" } },
         morrovia1024: { name: "Morrovia 1024", styles: { width: "1024px", height: "900px" } },
+        morroviaLaptop: { name: "Morrovia laptop", styles: { width: "1366px", height: "768px" } },
         morrovia1440: { name: "Morrovia 1440", styles: { width: "1440px", height: "1000px" } },
         morrovia1680: { name: "Morrovia 1680", styles: { width: "1680px", height: "1050px" } },
         morrovia1920: { name: "Morrovia 1920", styles: { width: "1920px", height: "1080px" } },

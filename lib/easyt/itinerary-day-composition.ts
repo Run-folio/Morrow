@@ -1,6 +1,7 @@
 import { stayBookingForStop } from "./accommodation.ts";
 import { itineraryActivityProtection } from "./itinerary-mutations.ts";
 import { itineraryNotesWithSourceIndexesForDisplay } from "./itinerary-presentation.ts";
+import { mappedPlacePinId } from "./map-place-itinerary.ts";
 import {
   incomingLegForPlanItem,
   legForTransition,
@@ -9,6 +10,7 @@ import {
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import type {
   EasyTTrip,
+  ItineraryIdea,
   ItineraryDayPart,
   PlanItem,
   TripBooking,
@@ -33,6 +35,12 @@ export type ComposedItineraryActivity = {
   sourceUrl?: string;
   area?: string;
   placeType?: string;
+  description?: string;
+  mapPinId?: string;
+  placeId?: string;
+  provider?: ItineraryIdea["provider"];
+  providerMetadata?: ItineraryIdea["providerMetadata"];
+  startsAt?: string;
 };
 
 export type ComposedItineraryTransfer = {
@@ -169,7 +177,11 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
   if (!day) return null;
   const stop = trip.stops.find((candidate) => candidate.id === day.stopId) ?? null;
   const transfers = transfersForDay(trip, day);
-  const scheduledIdeas = (trip.brief.itineraryIdeas ?? []).filter((idea) => idea.dayId === day.id);
+  // Presentation dedupes only exact canonical/provider identity. Distinct
+  // authored or imported rows remain visible even when their labels resemble.
+  const scheduledIdeas = [...new Map((trip.brief.itineraryIdeas ?? [])
+    .filter((idea) => idea.dayId === day.id)
+    .map((idea) => [idea.provider && idea.providerProductId ? `${idea.provider}:${idea.providerProductId}` : idea.id, idea] as const)).values()];
   const incoming = incomingLegForPlanItem(trip, day);
   const ideasByTitle = scheduledIdeas.reduce<Map<string, typeof scheduledIdeas>>((result, idea) => {
     const key = normalized(idea.title);
@@ -186,7 +198,9 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
     const explicitPart = idea?.dayPart ?? day.noteDayParts?.[sourceIndex] ?? null;
     return {
       id: idea?.id ?? (protection.editable ? `${day.id}-activity-${normalized(note)}` : `${day.id}-note-${sourceIndex}`),
-      title: note,
+      // A provider/canonical place name wins; otherwise preserve the authored row.
+      // Description/body copy is never promoted into the title slot.
+      title: idea?.title ?? note,
       category: idea?.category ?? (day.type === "food" ? "restaurant" as const : "other" as const),
       booking,
       source: idea ? "itinerary-idea" as const : protection.editable ? "authored-activity" as const : "day-note" as const,
@@ -197,6 +211,12 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       sourceUrl: idea?.sourceUrl,
       area: idea?.area,
       placeType: idea?.placeType,
+      description: idea?.description,
+      mapPinId: idea?.coordinates ? mappedPlacePinId(day.dayNumber, idea.category, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }) : undefined,
+      placeId: idea?.placeId,
+      provider: idea?.provider,
+      providerMetadata: idea?.providerMetadata,
+      startsAt: idea?.startsAt,
     };
   });
   for (const ideas of ideasByTitle.values()) {
@@ -213,27 +233,39 @@ export function composeItineraryDay(trip: EasyTTrip, dayId: string): ItineraryDa
       sourceUrl: idea.sourceUrl,
       area: idea.area,
       placeType: idea.placeType,
+      description: idea.description,
+      mapPinId: idea.coordinates ? mappedPlacePinId(day.dayNumber, idea.category, { id: idea.placeId, name: idea.title, coordinates: idea.coordinates }) : undefined,
+      placeId: idea.placeId,
+      provider: idea.provider,
+      providerMetadata: idea.providerMetadata,
+      startsAt: idea.startsAt,
     });
   }
-  const allActivities: ComposedItineraryActivity[] = drafts.map((activity, index) => ({
+  const allActivities: ComposedItineraryActivity[] = drafts.map((activity) => ({
     id: activity.id,
     title: activity.title,
     category: activity.category,
     booking: activity.booking,
     source: activity.source,
-    dayPart: activity.explicitPart ?? fallbackItineraryDayPart(index, drafts.length),
+    dayPart: activity.explicitPart,
     noteIndex: activity.noteIndex,
     dayPartEditable: activity.dayPartEditable,
     image: activity.image,
     sourceUrl: activity.sourceUrl,
     area: activity.area,
     placeType: activity.placeType,
+    description: activity.description,
+    mapPinId: activity.mapPinId,
+    placeId: activity.placeId,
+    provider: activity.provider,
+    providerMetadata: activity.providerMetadata,
+    startsAt: activity.startsAt,
   }));
   const planned = Object.fromEntries(itineraryDayParts.map((part) => [
     part,
     allActivities.filter((activity) => activity.dayPart === part),
   ])) as Record<ItineraryDayPart, ComposedItineraryActivity[]>;
-  const unslotted: ComposedItineraryActivity[] = [];
+  const unslotted = allActivities.filter((activity) => activity.dayPart === null);
 
   return {
     day,

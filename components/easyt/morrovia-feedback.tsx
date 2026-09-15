@@ -12,6 +12,7 @@ export type MorroviaStatusTone = "info" | "success" | "warning" | "danger";
 export function MorroviaContextualDisclosure({
   actions,
   align = "end",
+  className = "",
   detail,
   id,
   linkHref,
@@ -25,6 +26,7 @@ export function MorroviaContextualDisclosure({
 }: {
   actions?: ReactNode;
   align?: "start" | "end";
+  className?: string;
   detail: string;
   id?: string;
   linkHref?: string;
@@ -74,7 +76,7 @@ export function MorroviaContextualDisclosure({
     window.requestAnimationFrame(() => returnFocusRef.current?.focus());
   };
 
-  return <div ref={rootRef} className={styles.contextualDisclosure} data-align={align}>
+  return <div ref={rootRef} className={`${styles.contextualDisclosure} ${className}`} data-align={align}>
     <EasyTButton
       ref={triggerRef}
       className={styles.contextualDisclosureTrigger}
@@ -333,4 +335,67 @@ export function MorroviaConfirmationDialog({
       </div>
     </dialog>
   );
+}
+
+export function MorroviaFormDialog({
+  cancelLabel = "Cancel",
+  children,
+  detail,
+  error,
+  onCancel,
+  onSubmit,
+  open,
+  submitLabel,
+  submitting = false,
+  title,
+}: {
+  cancelLabel?: string;
+  children: ReactNode;
+  detail: string;
+  error?: string;
+  onCancel: () => void;
+  onSubmit: () => void;
+  open: boolean;
+  submitLabel: string;
+  submitting?: boolean;
+  title: string;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const detailId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      dialog.showModal();
+      window.requestAnimationFrame(() => dialog.querySelector<HTMLElement>("[data-dialog-autofocus='true']")?.focus());
+    } else if (!open && dialog.open) {
+      dialog.close();
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
+    }
+  }, [open]);
+
+  return <dialog
+    ref={dialogRef}
+    className={styles.dialog}
+    aria-labelledby={titleId}
+    aria-describedby={detailId}
+    onCancel={(event) => { event.preventDefault(); onCancel(); }}
+    onClick={(event) => { if (event.target === event.currentTarget) onCancel(); }}
+  >
+    <form className={styles.dialogForm} onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
+      <p className={styles.formEyebrow}>TRIP IDENTITY</p>
+      <h2 id={titleId}>{title}</h2>
+      <p id={detailId} className={styles.dialogDetail}>{detail}</p>
+      <div className={styles.dialogFields}>{children}</div>
+      {error ? <p className={styles.dialogError} role="alert">{error}</p> : null}
+      <div className={styles.dialogActions}>
+        <EasyTButton type="button" variant="secondary" disabled={submitting} onClick={onCancel}>{cancelLabel}</EasyTButton>
+        <EasyTButton type="submit" loading={submitting}>{submitLabel}</EasyTButton>
+      </div>
+    </form>
+  </dialog>;
 }

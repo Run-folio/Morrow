@@ -10,18 +10,24 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+  width: 100%;
   min-height: 72px;
+  box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-control-radius);
   background: var(--morrovia-paper);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
 }
 .taskRowInteractive {
   cursor: pointer;
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 .taskRowInteractive:hover { border-color: var(--morrovia-action); background: color-mix(in srgb, var(--morrovia-lilac) 45%, var(--morrovia-paper)); }
-.taskRowInteractive:focus-within { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.taskRowInteractive:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
 .taskIcon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--morrovia-control-radius); color: var(--morrovia-action); background: var(--morrovia-lilac); }
 .taskIcon svg { width: 19px; height: 19px; }
 .taskCopy { display: grid; min-width: 0; gap: 2px; }
@@ -32,9 +38,8 @@
 .status-in-progress .statusChip { color: var(--morrovia-warning); background: var(--morrovia-warning-soft); }
 .status-urgent { border-color: color-mix(in srgb, var(--morrovia-danger) 32%, var(--morrovia-line)); background: var(--morrovia-danger-soft); }
 .status-urgent .statusChip { color: var(--morrovia-danger); background: var(--morrovia-paper); }
-.taskAction { --control-height: 44px; position: static; align-self: center; max-width: 240px; height: auto; min-height: 44px; white-space: normal; }
-.taskAction::after { position: absolute; z-index: 1; inset: 0; content: ""; }
-.taskAction:focus-visible { box-shadow: none; }
+.taskAction { align-self: center; max-width: 240px; min-height: 44px; padding-inline: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: var(--morrovia-action); font: var(--morrovia-type-control); white-space: normal; }
+.taskAction svg { width: 16px; height: 16px; flex: none; }
 .insuranceAction { justify-self: end; width: auto; max-width: 240px; }
 .affiliateDisclosure { grid-column: 1 / -1; margin-top: -3px; padding-left: 44px; overflow-wrap: anywhere; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
 .partnerPromotion { margin-top: 10px; }

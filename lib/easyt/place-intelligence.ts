@@ -801,7 +801,7 @@ export function rankNearbyBaseCandidates(
   options: { limit?: number; maximumDistanceKm?: number } = {},
 ): NearbyBaseSuggestion[] {
   const maximumDistanceKm = Math.max(10, Math.min(options.maximumDistanceKm ?? 140, 200));
-  const limit = Math.max(1, Math.min(options.limit ?? 5, 5));
+  const limit = Math.max(1, Math.min(options.limit ?? 5, 8));
   const conflictedProviderIds = new Set<string>();
   const byProviderId = new Map<string, PlaceProviderCandidate[]>();
   for (const candidate of candidates) byProviderId.set(candidate.providerId, [...(byProviderId.get(candidate.providerId) ?? []), candidate]);

@@ -51,6 +51,40 @@
 .actionNotice { display: flex; justify-content: flex-end; margin: 0 0 20px; }
 .dashboardNotice { margin: 0 0 20px; }
 
+.detachedRecoveryList {
+  display: grid;
+  gap: 8px;
+  margin: -10px 0 20px;
+  padding: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-lilac);
+}
+
+.detachedRecoveryList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+
+.detachedRecoveryList article > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.detachedRecoveryList strong { font: var(--morrovia-type-control); }
+.detachedRecoveryList span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+
+@media (max-width: 520px) {
+  .detachedRecoveryList article { grid-template-columns: 1fr; }
+  .detachedRecoveryList article > a { width: 100%; }
+}
+
 .currentJourney {
   position: relative;
   display: grid;
@@ -132,6 +166,10 @@
   border: 1px solid var(--morrovia-line);
   border-top: 0;
   border-radius: 0 0 var(--morrovia-radius) var(--morrovia-radius);
+}
+
+.featuredRecoveryNotice {
+  align-self: start;
 }
 
 .currentFacts,
@@ -356,6 +394,13 @@
   text-align: center;
   font-size: .76rem;
 }
+.routePreviewOwner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--morrovia-lilac);
+}
 .tripImageFallback svg,
 .routePreviewFallback svg { width: 26px; height: 26px; }
 .cardBody { padding: 18px 2px 0; }
@@ -374,6 +419,28 @@
   font-style: italic;
 }
 .readinessLine svg { width: 12px; height: 12px; }
+.tripRecoveryNotice {
+  display: grid;
+  gap: 5px;
+  margin-top: 13px;
+  border: 1px solid color-mix(in srgb, var(--morrovia-warning) 32%, var(--morrovia-line));
+  border-radius: var(--morrovia-control-radius);
+  padding: 11px 12px;
+  background: color-mix(in srgb, var(--morrovia-warning) 6%, var(--morrovia-paper));
+}
+.tripRecoveryNotice strong {
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-control);
+  overflow-wrap: anywhere;
+}
+.tripRecoveryNotice span {
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+.tripRecoveryNotice a {
+  width: max-content;
+  margin-top: 3px;
+}
 .tripCardActions { position: relative; z-index: 5; justify-content: space-between; gap: 8px; margin-top: 13px; }
 .openAction { padding-left: 0 !important; }
 

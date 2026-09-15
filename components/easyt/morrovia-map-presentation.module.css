@@ -1,4 +1,9 @@
 /* Shared geographic marker presentation, extracted from the canonical Trip Map. */
+.canvas{position:absolute;inset:0}
+.basemapStatus{position:absolute;z-index:6;top:14px;left:14px;display:grid;gap:3px;width:min(360px,calc(100% - 86px));padding:10px 12px;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);background:color-mix(in srgb,var(--morrovia-paper) 94%,transparent);box-shadow:var(--morrovia-map-marker-shadow);color:var(--morrovia-ink);backdrop-filter:blur(10px);pointer-events:none}
+.basemapStatus strong{font:var(--morrovia-type-control)}
+.basemapStatus span{color:var(--morrovia-ink-soft);font:var(--morrovia-type-fine-print)}
+.basemapStatus button{justify-self:start;margin-top:5px;pointer-events:auto}
 .surface :global(.planner-map__stop){display:grid;width:44px;height:44px;place-items:center;padding:0;color:var(--morrovia-ink);background:var(--morrovia-paper);border:2px solid var(--morrovia-ink);box-shadow:var(--morrovia-map-marker-shadow);font:var(--morrovia-type-metadata);cursor:pointer;transition:background .16s,color .16s}
 /* morrovia-ui-audit-allow-next-line raw-radius -- Geographic stop markers retain the canonical circular silhouette. */
 .surface :global(.planner-map__stop){border-radius:50%}

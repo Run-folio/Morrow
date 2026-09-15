@@ -196,7 +196,7 @@ export function IconsFoundation() {
 export function LayoutFoundation() {
   const tracks = [
     ["Editorial page", "var(--morrovia-page)", "1180px maximum with 48px desktop and 32px mobile total gutters"],
-    ["Trip workspace", "100%", "TripShell owns a wider working area for Overview, Map and Itinerary"],
+    ["Trip workspace", "100%", "TripShell owns a wider working area for Overview, Map, Itinerary and Explore"],
     ["Map / Builder / Stamps", "100%", "Intentional wide-canvas or focused-workflow exceptions"],
   ] as const;
   return <Catalogue><Intro eyebrow="01 Foundations" title="Layout & widths" detail="Page widths follow the traveller job. The standard editorial width is canonical; workspace, spatial and workflow surfaces deliberately diverge." />

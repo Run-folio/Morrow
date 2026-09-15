@@ -4,12 +4,12 @@ import TripBuilder from "@/app/journey/new/trip-builder";
 import type { JourneyCalendarDay, JourneyStop } from "@/lib/journey";
 import { tripFromBuilder, type EasyTTrip } from "@/lib/easyt/trip";
 import { JourneyItineraryRefinement } from "./journey-itinerary-refinement";
-import { JourneyLocalFinder } from "./journey-local-finder";
+import { JourneyLocalFinder, type JourneyLocalPlace } from "./journey-local-finder";
 import { PlanWorkspace, type PlanWorkspaceCopy } from "./journey-plan-workspace";
 import { JourneyTripQuality } from "./journey-trip-quality";
 
 const planCopy: PlanWorkspaceCopy = {
-  travelConnection: "Travel connection", localTransfer: "Local transfer", editingHint: "Drag activities to reorder them. Suggestions stay intact unless you remove them.", scheduleHealth: "Schedule health", needsCheck: "Needs a quick check", comfortable: "Comfortable pace", dayClear: "No long transfer or crowded activity signal for this day.", moveDay: "Move this day", earlier: "Earlier", later: "Later", editActivity: "Edit your custom activity", yours: "Yours", addActivity: "Add a custom activity", add: "Add", notes: "Notes to self", dayOnly: "For this day only", editNote: "Edit note", save: "Save", cancel: "Cancel", addNote: "Add a note", addNoteButton: "Add note", meal: "Dinner", savedRestaurant: "saved restaurant", next: "Next",
+  addActivity: "Add activity", add: "Add", cancel: "Cancel",
 };
 
 const storyTrip = (bookings: EasyTTrip["brief"]["bookings"] = []) => {
@@ -40,31 +40,76 @@ const selectedDay: JourneyCalendarDay = {
   travel: { mode: "flight", from: "London", duration: "14h 20m", detail: "Airport transfer and arrival buffer" },
 };
 
+const mappedTokyoStay: JourneyLocalPlace = {
+  id: "mapped-tokyo-stay",
+  name: "Yanaka neighbourhood stay",
+  address: "Yanaka, Taito City, Tokyo",
+  category: "guest house",
+  coordinates: [139.766, 35.727],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Yanaka%20Tokyo",
+  distanceKm: 1.2,
+  availability: "check",
+  provider: "openstreetmap",
+};
+
+const photonTokyoStay: JourneyLocalPlace = {
+  ...mappedTokyoStay,
+  id: "photon-tokyo-stay",
+  name: "Asakusa mapped hotel",
+  address: "Asakusa, Taito City, Tokyo",
+  category: "hotel",
+  coordinates: [139.7967, 35.7148],
+};
+
+const liveTokyoStay: JourneyLocalPlace = {
+  id: "booking-tokyo-stay",
+  name: "Tokyo Station Hotel",
+  address: "Marunouchi, Tokyo",
+  category: "hotel",
+  coordinates: [139.765, 35.6812],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Tokyo%20Station%20Hotel",
+  availability: "available",
+  provider: "booking-demand",
+  price: { total: 640, currency: "GBP" },
+  rating: 9.1,
+};
+
+const antiguaRestaurant: JourneyLocalPlace = {
+  id: "photon-antigua-restaurant",
+  name: "Comedor Las Palmas",
+  address: "5a Avenida Sur, Antigua Guatemala, Guatemala",
+  category: "restaurant",
+  coordinates: [-90.7348, 14.5559],
+  mapsUrl: "https://www.google.com/maps/search/?api=1&query=Comedor%20Las%20Palmas%20Antigua%20Guatemala",
+  distanceKm: 0.4,
+  availability: "check",
+  provider: "openstreetmap",
+};
+
 function PlanWorkspaceStory() {
-  const [activities, setActivities] = useState(selectedDay.items);
   const [activityDraft, setActivityDraft] = useState("");
-  const [notes, setNotes] = useState(["Book the airport transfer once the flight is confirmed."]);
-  const [noteDraft, setNoteDraft] = useState("");
   return <div style={{ maxWidth: 760, padding: 24, border: "1px solid var(--morrovia-line)", borderRadius: "var(--morrovia-radius)", background: "#fff" }}>
     <p style={{ margin: "0 0 4px", color: "var(--morrovia-signal)", font: "800 10px/1.2 var(--morrovia-meta)", letterSpacing: ".12em" }}>AT TOKYO</p>
     <h2 style={{ margin: "0 0 16px", font: "600 28px/1 var(--morrovia-display)" }}>Shape the day</h2>
     <PlanWorkspace
-      context={{ selectedDay, selectedStop, selectedDayIndex: 0, totalDays: 3, planItem: storyTrip().planItems[0], transfer: selectedDay.travel }}
-      schedule={{ signals: ["Arrival transfer uses much of the day."], warning: "" }}
+      context={{
+        selectedDay,
+        selectedStop,
+        planItem: storyTrip().planItems[0],
+        days: [{ id: "storybook-day-1", dayNumber: 1, date: "2026-08-20" }, { id: "storybook-day-2", dayNumber: 2, date: "2026-08-21" }],
+        items: [
+          { id: "arrival-transfer", kind: "transfer", title: "London → Tokyo", scheduleLabel: "09:30", metadata: "14h 20m", detail: "Planning estimate · check current schedules", mapSelectionId: null, transferMode: "flight" },
+          { id: "check-in", kind: "activity", title: "Check in and take a short neighbourhood walk", scheduleLabel: "Afternoon", metadata: "Yanaka", detail: null, mapSelectionId: "idea:check-in" },
+        ],
+        freeTime: "evening",
+      }}
       activity={{
-        items: activities, customItems: activities, draft: activityDraft, dragged: null, onDraftChange: setActivityDraft,
-        onAdd: () => { if (activityDraft.trim()) { setActivities((items) => [...items, activityDraft.trim()]); setActivityDraft(""); } },
-        onRename: ({ index }, value) => setActivities((items) => items.map((item, itemIndex) => itemIndex === index ? value : item)),
-        onRemove: ({ index }) => setActivities((items) => items.filter((_, itemIndex) => itemIndex !== index)),
-        onMove: ({ index }, to) => setActivities((items) => { const next = [...items]; const [item] = next.splice(index, 1); next.splice(Math.max(0, Math.min(to.index, next.length)), 0, item); return next; }),
-        onDragStart: () => {}, onDragOver: (event) => event.preventDefault(), onDrop: (event) => event.preventDefault(), onDragEnd: () => {},
+        draft: activityDraft,
+        onDraftChange: setActivityDraft,
+        onAdd: () => setActivityDraft(""),
       }}
-      notes={{
-        items: notes, draft: noteDraft, editing: null, editingDraft: "", onDraftChange: setNoteDraft,
-        onAdd: () => { if (noteDraft.trim()) { setNotes((items) => [...items, noteDraft.trim()]); setNoteDraft(""); } },
-        onBeginEdit: () => {}, onEditingDraftChange: () => {}, onSaveEdit: () => {}, onCancelEdit: () => {}, onRemove: ({ index }) => setNotes((items) => items.filter((_, noteIndex) => noteIndex !== index)),
-      }}
-      navigation={{ onMoveDay: () => {}, onPreviousDay: () => {}, onNextDay: () => {}, nextDay: { date: "Aug 21", city: "Tokyo" } }}
+      navigation={{ onSelectDay: () => {}, onSelectItem: () => {}, onSelectTransfer: () => {}, onFindNearby: () => {} }}
+      editHref="/journey/storybook-tokyo/itinerary"
       copy={planCopy}
     />
   </div>;
@@ -97,8 +142,47 @@ export const ShapeTheDayStay: Story = {
   render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} /></div>,
 };
 
+export const StayBaseLoading: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-loading" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [], coreLoading: true, accommodationInventoryStatus: "not-requested" }} /></div>,
+};
+
+export const StayPhotonFallbackReady: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-photon" coordinates={[139.6917, 35.6895]} initialState={{ corePlaces: [photonTokyoStay], accommodationInventoryStatus: "not-requested" }} /></div>,
+};
+
+export const StayCoreReadyCommercialLoading: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-progressive" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "loading" }} /></div>,
+};
+
+export const StayBookingReadyAfterBase: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-booking-ready" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], commercialPlaces: [liveTokyoStay], accommodationInventoryStatus: "live" }} /></div>,
+};
+
+export const StayCoreReadyProviderUnavailableMobile390: Story = {
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+  render: () => <div style={{ maxWidth: 390 }}><JourneyLocalFinder kind="stay" city="Tokyo" country="Japan" dayId="storybook-tokyo-provider-failed" coordinates={[139.6917, 35.6895]} staySearch={{ checkIn: "2026-08-20", checkOut: "2026-08-23", adults: 2 }} initialState={{ corePlaces: [mappedTokyoStay], accommodationInventoryStatus: "unavailable" }} /></div>,
+};
+
 export const ShapeTheDayEat: Story = {
   render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder kind="restaurant" city="Tokyo" country="Japan" dayId="storybook-tokyo-day" coordinates={[139.6917, 35.6895]} /></div>,
+};
+
+export const EatAntiguaNamedFallbackReady: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-ready" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [antiguaRestaurant] }} /></div>,
+};
+
+export const EatPartialProviderFailureUseful: Story = EatAntiguaNamedFallbackReady;
+
+export const EatAllProvidersUnavailable: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-failed" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: true }} /></div>,
+};
+
+export const EatValidEmpty: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="restaurant" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-empty" coordinates={[-90.7339, 14.5586]} initialState={{ corePlaces: [], coreLoading: false, coreUnavailable: false }} /></div>,
+};
+
+export const StayBaseReadyBookingLoadingAntigua: Story = {
+  render: () => <div style={{ maxWidth: 620 }}><JourneyLocalFinder canonicalPlaceId="antigua-guatemala" kind="stay" city="Antigua Guatemala" country="Guatemala" dayId="storybook-antigua-stay" coordinates={[-90.7339, 14.5586]} staySearch={{ checkIn: "2026-10-03", checkOut: "2026-10-05", adults: 2 }} initialState={{ corePlaces: [{ ...mappedTokyoStay, id: "antigua-stay", name: "Casa del Arco", address: "Antigua Guatemala, Guatemala", coordinates: [-90.7328, 14.5574] }], accommodationInventoryStatus: "loading" }} /></div>,
 };
 
 export const ShapeTheDaySee: Story = {

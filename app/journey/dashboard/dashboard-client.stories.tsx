@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { saveTripRecoveryToStorage, tripRecoveryStorageKey } from "@/lib/easyt/storage";
 import { setStorybookAuthOwner } from "../../../.storybook/auth-client.mock";
 import DashboardClient, { TripCard } from "./dashboard-client";
 import styles from "./dashboard.module.css";
@@ -142,6 +144,7 @@ const pastTrips = [
 ];
 
 const allTrips = [currentJapan, upcomingAntigua, upcomingBalkans, ideaIberia, ...pastTrips];
+const detachedRecoveryTrips = pastTrips.slice(0, 3);
 const populatedStamps = [
   { countryId: "portugal", status: "visited" as const },
   { countryId: "spain", status: "visited" as const },
@@ -149,7 +152,41 @@ const populatedStamps = [
 ];
 const cardCopy = { routeWaiting: "Route to confirm", edit: "Edit trip", restore: "Restore", archive: "Archive", duplicate: "Duplicate", gift: "Share", delete: "Delete" };
 
-const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
+const renderCardGrid = () => <div className={styles.sectionGrid}>{[upcomingAntigua, upcomingBalkans].map((trip) => <TripCard key={trip.id} kind="upcoming" trip={trip} language="en" copy={cardCopy} recoveryIssues={{}} working={false} workingAction={null} onAction={() => undefined} onGift={() => undefined} onRemove={() => undefined} />)}</div>;
+
+function RecoveryDashboardStory({ trips }: { trips: EasyTTrip[] }) {
+  const [ready, setReady] = useState(false);
+  const affected = trips[0]!;
+  const writeId = `storybook-recovery-${affected.id}`;
+  useEffect(() => {
+    saveTripRecoveryToStorage(window.localStorage, {
+      ...affected,
+      title: `${affected.title} device edits`,
+      brief: { ...affected.brief, customTitle: `${affected.title} device edits` },
+    }, { state: "conflict", writeId, now: "2026-09-14T08:00:00.000Z" });
+    setReady(true);
+    return () => window.localStorage.removeItem(tripRecoveryStorageKey(affected.ownerId, affected.id, writeId));
+  }, [affected, writeId]);
+  return ready ? <DashboardClient trips={trips} stamps={populatedStamps} ownerId="storybook-first-traveller" /> : null;
+}
+
+function DetachedRecoveryDashboardStory() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const stored = detachedRecoveryTrips.map((trip) => {
+      const writeId = `storybook-detached-recovery-${trip.id}`;
+      saveTripRecoveryToStorage(window.localStorage, {
+        ...trip,
+        title: `${trip.title} device edits`,
+        brief: { ...trip.brief, customTitle: `${trip.title} device edits` },
+      }, { state: "conflict", writeId, now: "2026-09-14T08:00:00.000Z" });
+      return tripRecoveryStorageKey(trip.ownerId, trip.id, writeId);
+    });
+    setReady(true);
+    return () => stored.forEach((key) => window.localStorage.removeItem(key));
+  }, []);
+  return ready ? <DashboardClient trips={[currentJapan]} stamps={populatedStamps} ownerId="storybook-first-traveller" /> : null;
+}
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Trips dashboard",
@@ -168,6 +205,9 @@ type Story = StoryObj<typeof meta>;
 export const ZeroTrips: Story = {};
 export const ActiveTrips: Story = { args: { trips: allTrips, stamps: populatedStamps } };
 export const OneTrip: Story = { args: { trips: [currentJapan], stamps: populatedStamps } };
+export const DashboardOneTripRecovery: Story = { render: () => <RecoveryDashboardStory trips={[currentJapan]} /> };
+export const DashboardMultipleTripsOneAffected: Story = { render: () => <RecoveryDashboardStory trips={allTrips} /> };
+export const DashboardDetachedRecoveriesGrouped: Story = { render: () => <DetachedRecoveryDashboardStory /> };
 export const SixPlusPastJourneys: Story = { args: { trips: [currentJapan, ...pastTrips, { ...pastTrips[0]!, id: "storybook-past-9", title: "A return to the Atlantic" }, { ...pastTrips[1]!, id: "storybook-past-10", title: "Southern Spain remembered" }], stamps: populatedStamps } };
 export const Mobile390: Story = { args: { trips: allTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { args: { trips: allTrips, stamps: populatedStamps }, globals: { viewport: { value: "morrovia430", isRotated: false } } };

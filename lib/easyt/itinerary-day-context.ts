@@ -5,6 +5,7 @@ import { incomingLegForPlanItem, legForTransition, orderedTripPlanItems } from "
 import { routeEndpointForLeg, stopEndpoint } from "./trip-legs.ts";
 import { tripIntentForTrip, type CanonicalRouteEndpoint, type EasyTTrip, type PlanItem, type PlannerMapPin, type TripLeg } from "./trip.ts";
 import { tripInterestLabels, type TripInterest } from "./trip-interest.ts";
+import { discoveryVisitorRelevance } from "./discovery-quality.ts";
 
 export type ItineraryDiscoveryPlace = {
   id: string;
@@ -275,7 +276,8 @@ export function itinerarySuggestionCandidates(
       || (!canonicalIdea && visibleTitles.has(title))
       || (!canonicalIdea && pinIds.has(mappedPlacePinId(day.dayNumber, category, { id: place.id, name: place.title, coordinates: place.coordinates })));
     seen.add(title);
-    return !duplicate && validCoordinates(place.coordinates);
+    const relevance = discoveryVisitorRelevance({ title: place.title, category: place.type, tags: place.tags, description: place.description, qualityScore: place.qualityScore, kind: itineraryDiscoveryCategory(place) });
+    return !duplicate && relevance.eligible && validCoordinates(place.coordinates);
   });
   return rankItineraryDiscoveryPlaces(eligible, tripIntentForTrip(trip).preferences.interests);
 }

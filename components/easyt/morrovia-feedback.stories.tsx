@@ -4,9 +4,9 @@ import { useState, type ReactNode } from "react";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import TripShell from "./trip-shell";
-import { EasyTButton } from "./easyt-controls";
+import { EasyTButton, EasyTField } from "./easyt-controls";
 import { affiliateDisclosure } from "./affiliate-link";
-import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
+import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaFormDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner, type MorroviaSaveState } from "./morrovia-feedback";
 import styles from "./morrovia-feedback.stories.module.css";
 
 const prototypeTrip: EasyTTrip = {
@@ -176,6 +176,21 @@ function RemoveStopContext({ startOpen = true }: { startOpen?: boolean }) {
   return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>YOUR ROUTE</p><h2>Tokyo to Kyoto</h2><p className={styles.intro}>{removed ? "2 stops · 8 nights · 1 transfer" : "3 stops · 11 nights · 2 transfers"}</p><div className={styles.routeStops} aria-live="polite"><article><span>1</span><div><strong>Tokyo</strong><small>4 nights</small></div></article>{!removed ? <article><span>2</span><div><strong>Matsumoto</strong><small>3 nights · 3 planned days</small></div><EasyTButton variant="danger" onClick={() => setOpen(true)}>Remove stop</EasyTButton></article> : null}<article><span>{removed ? "2" : "3"}</span><div><strong>Kyoto</strong><small>4 nights</small></div></article></div><MorroviaConfirmationDialog open={open} title="Remove Matsumoto and its plan?" detail="This stop has downstream work that cannot be restored after the trip is saved." consequences={["3 nights and 3 itinerary days will be removed.", "Tokyo to Kyoto will become one direct route leg.", "Saved stays and notes in Matsumoto will be removed."]} cancelLabel="Keep stop" confirmLabel="Remove Matsumoto" onCancel={() => setOpen(false)} onConfirm={() => { setRemoved(true); setOpen(false); }} /></section></TripShell></main>;
 }
 
+function RenameTripContext() {
+  const [open, setOpen] = useState(true);
+  const [draft, setDraft] = useState("日本 & 中国 2027");
+  const [title, setTitle] = useState("Japan & China");
+  return <PrototypeChrome><section className={styles.workspace} aria-labelledby="rename-fixture-title">
+    <p className={styles.eyebrow}>TRIP IDENTITY</p>
+    <h2 id="rename-fixture-title">{title}</h2>
+    <p className={styles.intro}>Tokyo → Kyoto → Shanghai remains a separate, unchanged route.</p>
+    <EasyTButton variant="quiet" onClick={() => setOpen(true)}>Rename trip</EasyTButton>
+    <MorroviaFormDialog open={open} title="Rename this trip" detail="Give the trip a personal name, or leave it blank to use Morrovia’s geographic title. Your route and dates will not change." submitLabel="Save name" onCancel={() => setOpen(false)} onSubmit={() => { setTitle(draft.trim() || "Japan & China"); setOpen(false); }}>
+      <EasyTField data-dialog-autofocus="true" label="Trip name" value={draft} onChange={(event) => setDraft(event.target.value)} hint={`${Array.from(draft.trim()).length}/80 characters · optional`} autoComplete="off" />
+    </MorroviaFormDialog>
+  </section></PrototypeChrome>;
+}
+
 function AffiliateBoundaryContext() {
   const [providerOpened, setProviderOpened] = useState(false);
   return <main className={`${styles.page} morrovia-editorial-page`}><TripShell trip={prototypeTrip} cacheTrip={false}><section className={styles.workspace}><p className={styles.eyebrow}>ACCOMMODATION</p><h2>Keep the provider boundary honest.</h2><p className={styles.intro}>Opening a booking site is useful, but it does not prove that a stay was booked or paid for.</p><article className={styles.stayCard} aria-live="polite"><span className={styles.stayIcon}><BedDouble aria-hidden="true" /></span><div><span>KYOTO · 21–25 APRIL</span><h3>Kyoto stay</h3><p>No saved accommodation yet</p></div><strong>Needs a stay</strong><div className={styles.stayActions}><EasyTButton icon={ExternalLink} variant="secondary" onClick={() => setProviderOpened(true)}>Open Trip.com</EasyTButton></div>{providerOpened ? <p className={styles.providerOpened} role="status"><ExternalLink aria-hidden="true" />Trip.com opened. This stop still needs a stay.</p> : null}</article><p className={styles.partnerDisclosure}>{affiliateDisclosure}</p></section></TripShell></main>;
@@ -190,6 +205,7 @@ export const TripSaveSaving: Story = { render: () => <TripSaveContext initialSta
 export const ReducedMotionSaving: Story = { render: () => <div className={styles.forceReducedMotion}><TripSaveContext initialState="saving" /></div> };
 export const TripSaveSavedToAccount: Story = { render: () => <TripSaveContext initialState="saved" /> };
 export const TripSaveFailedDeviceSafe: Story = { render: () => <TripSaveContext initialState="error" /> };
+export const CurrentSaveFailure: Story = TripSaveFailedDeviceSafe;
 export const NightsChangedInline: Story = { render: () => <NightsContext /> };
 export const BriefTripDuplicatedNotice: Story = { render: () => <BriefNoticeContext /> };
 export const HarmlessAutoDismissNotice: Story = { render: () => <AutoDismissNoticeContext /> };
@@ -198,9 +214,11 @@ export const PersistentStatusBanners: Story = { render: () => <StatusBannerConte
 export const ContextualTransparencyDisclosure: Story = { render: () => <ContextualDisclosureContext /> };
 export const CloudConflictChoice: Story = { render: () => <CloudConflictContext /> };
 export const ConsequentialStopRemoval: Story = { render: () => <RemoveStopContext /> };
+export const RenameTripUnicode: Story = { render: () => <RenameTripContext /> };
 export const AffiliateBoundary: Story = { render: () => <AffiliateBoundaryContext /> };
 export const Mobile320SaveFailure: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } }, render: () => <TripSaveContext initialState="error" /> };
 export const Mobile390Dialog: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <RemoveStopContext /> };
+export const Mobile390RenameTrip: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <RenameTripContext /> };
 export const Mobile390StatusBanners: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } }, render: () => <StatusBannerContext /> };
 export const Tablet768AffiliateBoundary: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } }, render: () => <AffiliateBoundaryContext /> };
 export const DialogFocusAndRestore: Story = { render: () => <RemoveStopContext startOpen={false} /> };

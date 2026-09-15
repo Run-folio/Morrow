@@ -40,6 +40,7 @@
 }
 
 .control:disabled,
+.control[aria-disabled="true"],
 .disabled {
   opacity: 0.62;
   border-color: var(--morrovia-line);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { localFinderQueryKey, type LocalFinderQueryContext } from "../lib/easyt/local-finder-query.ts";
+import { localFinderBaseQueryKey, localFinderQueryKey, type LocalFinderQueryContext } from "../lib/easyt/local-finder-query.ts";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
@@ -53,6 +53,17 @@ test("destination, category, and provider-affecting stay inputs produce new quer
   assert.notEqual(localFinderQueryKey(tokyo), localFinderQueryKey({ ...tokyo, staySearch: { ...tokyo.staySearch, checkOut: "2026-10-08" } }));
 });
 
+test("base identity remains stop-scoped while commercial-only inputs stay out of its cache key", () => {
+  const tokyo = cases[0].query;
+  const first = localFinderBaseQueryKey(tokyo);
+  const changedDateQuery: LocalFinderQueryContext = { ...tokyo, staySearch: { ...tokyo.staySearch, checkOut: "2026-10-18" } };
+  const changedDates = localFinderBaseQueryKey(changedDateQuery);
+  const repeatedStop = localFinderBaseQueryKey({ ...tokyo, dayId: "tokyo-day-9" });
+
+  assert.equal(first, changedDates);
+  assert.notEqual(first, repeatedStop);
+});
+
 test("the finder remains mounted while selection drives the existing marker and focus contracts", () => {
   const workspace = read("components/journey-map-planner-workspace.tsx");
   const finder = read("components/journey-local-finder.tsx");
@@ -62,32 +73,42 @@ test("the finder remains mounted while selection drives the existing marker and 
   assert.ok(providerEffect);
   assert.match(providerEffect, /searchVersion/);
   assert.doesNotMatch(providerEffect, /selectedPlaceId|chosen|onPlaceSelect|onViewOnMap/);
+  assert.match(finder, /peekLocalFinderBaseResult/);
+  assert.match(finder, /loadLocalFinderBaseResult/);
+  assert.match(finder, /Shared base requests deliberately outlive an individual mount/);
   assert.match(workspace, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg\)/);
   assert.doesNotMatch(workspace, /const showDayPlanner = Boolean\([^\n]*!selectedLocalPlace/);
   assert.match(workspace, /onPlaceSelect=\{selectLocalPlace\} onViewOnMap=\{focusLocalPlace\}/);
-  assert.match(workspace, /focusCoordinates=\{mapMode === "detail" && selectedPlannerPin[^\n]*selectedLocalPlace \? localPlaceFocusCoordinates : null\}/);
+  assert.match(workspace, /const \[selectedMapResult, setSelectedMapResult\] = useState<MapResultPlace \| null>/);
+  assert.match(workspace, /selectedMapResult=\{selectedMapResult\}/);
+  assert.match(workspace, /mapResults=\{mapResults\}/);
   assert.match(finder, /const choosePlace = \(place: JourneyLocalPlace\) => \{\s*setChosen\(place\);\s*onPlaceSelect\?\.\(place\);\s*\}/);
   assert.match(finder, /onClick=\{\(\) => \(onViewOnMap \?\? onPlaceSelect\)\(chosen\)\}/);
-  assert.match(map, /classList\.toggle\("is-active", marker\.getElement\(\)\.dataset\.localPlaceId === selectedLocalPlaceId\)/);
-  assert.match(map, /const selectedLocalPlace = localPlaces\.find\(\(place\) => place\.id === selectedLocalPlaceId\)/);
-  assert.match(map, /selectedLocalPlace[\s\S]*?focusMapCamera\(map as unknown as MapCamera, \{ center: target, zoom, offset \}\)/);
-  assert.match(map, /planner-map__local-place[\s\S]*?interruptMapCamera\(map as unknown as MapCamera\)[\s\S]*?onLocalPlaceSelectRef\.current\?\.\(place\)/);
-  assert.match(workspace, /localPlaceKind=\{localFinderKind\}/);
-  assert.match(map, /const PlaceIcon = localPlaceKind === "stay" \? BedDouble : Utensils/);
+  assert.match(map, /classList\.toggle\("is-active", marker\.getElement\(\)\.dataset\.mapResultId === selectedMapResult\?\.selectionId\)/);
+  assert.match(map, /const selectedResult = selectedMapResult/);
+  assert.match(map, /selectedResult[\s\S]*?focusMapCamera\(map as unknown as MapCamera, \{ center: target, zoom, offset \}\)/);
+  assert.match(map, /planner-map__local-place[\s\S]*?interruptMapCamera\(map as unknown as MapCamera\)[\s\S]*?onMapResultSelectRef\.current\?\.\(place\)/);
+  assert.match(map, /place\.kind === "stay" \? BedDouble : place\.kind === "eat" \? Utensils : Landmark/);
+  assert.match(workspace, /projectPersistedMapResults\(customTrip\)/);
+  assert.match(workspace, /mergeMapResults\(/);
+  assert.match(workspace, /const selectedTripInterests = useMemo\(/);
+  assert.match(workspace, /interests=\{selectedTripInterests\}/);
 });
 
 test("selection is accessible, ephemeral, and leaves explicit Add semantics intact", () => {
   const workspace = read("components/journey-map-planner-workspace.tsx");
   const finder = read("components/journey-local-finder.tsx");
-  const selectHandler = workspace.match(/const selectLocalPlace = useCallback[\s\S]*?\}, \[\]\);/)?.[0] ?? "";
-  const focusHandler = workspace.match(/const focusLocalPlace = useCallback[\s\S]*?\}, \[\]\);/)?.[0] ?? "";
+  const selectHandler = workspace.slice(workspace.indexOf("const selectMapResult"), workspace.indexOf("const resetWholeRoute"));
 
   assert.match(finder, /aria-current="true"/);
   assert.match(finder, /aria-pressed=\{selected\}/);
   assert.match(finder, /aria-label=\{`View \$\{chosen\.name\} on the map`\}/);
-  assert.doesNotMatch(`${selectHandler}\n${focusHandler}`, /setCustomTrip|updatePlannerTrip|mutate|saveLocalVenue|localStorage/);
+  assert.match(selectHandler, /setSelectedMapResult\(result\)/);
+  assert.doesNotMatch(selectHandler, /setCustomTrip|updatePlannerTrip|mutate|saveLocalVenue|localStorage/);
   assert.match(workspace, /onSavePlace=\{saveLocalVenue\}/);
   assert.match(finder, /onClick=\{save\}/);
+  assert.match(finder, /const replaced = kind === "stay" && saved && saved\.id !== chosen\.id \? saved : undefined/);
+  assert.doesNotMatch(finder, /Replace restaurant/);
 });
 
 test("Stay presents one concise disclosure and a truthful generic handoff", () => {
@@ -96,7 +117,7 @@ test("Stay presents one concise disclosure and a truthful generic handoff", () =
 
   assert.match(affiliate, /compactAffiliateDisclosure = "Partner links · Morrovia may earn a commission at no extra cost to you\."/);
   assert.equal((finder.match(/\{compactAffiliateDisclosure\}/g) ?? []).length, 1);
-  assert.match(finder, />Check availability <ArrowUpRight/);
+  assert.match(finder, />Check separately on Trip\.com <ArrowUpRight/);
   assert.doesNotMatch(finder, />Book now</);
   assert.doesNotMatch(finder, /Live room availability is not configured here|Mapped property; operating status unverified|Check options on Trip\.com/);
   assert.equal((finder.match(/trackEvent\("affiliate_click"/g) ?? []).length, 1);

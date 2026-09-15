@@ -73,6 +73,7 @@ test("mobile uses only the compact header menu and retains safe-area-aware works
 
 test("the navigation Storybook fixture exercises the App Router and compact mobile state", () => {
   const story = read("app/journey/easyt-navigation.stories.tsx");
+  const structureStory = read("components/easyt/storybook/morrovia-structure-catalogue.stories.tsx");
 
   assert.match(story, /appDirectory: true/);
   assert.match(story, /pathname: "\/journey\/about"/);
@@ -80,4 +81,6 @@ test("the navigation Storybook fixture exercises the App Router and compact mobi
   assert.match(story, /export const MobileCompactMenu/);
   assert.match(story, /export const SignedOutAccountMenu/);
   assert.match(story, /export const SignedInAccountMenu/);
+  assert.match(structureStory, /export const MobileCompactHeader390/);
+  assert.doesNotMatch(structureStory, /MobileDock390/);
 });

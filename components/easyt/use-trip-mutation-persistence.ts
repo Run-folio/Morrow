@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import {
   cacheCanonicalTrip,
+  classifyTripRecovery,
   EasyTTripAuthError,
   EasyTTripPromotionConflictError,
   EasyTTripSaveConflictError,
+  loadCachedTrip,
   loadTripRecovery,
   markTripRecoveryState,
   saveTripRecovery,
@@ -14,28 +16,34 @@ import {
   type TripRecoveryHandle,
 } from "@/lib/easyt/storage";
 import { cloneItineraryMutationDocument } from "@/lib/easyt/itinerary-mutations";
-import { createTripMutationPersistenceQueue } from "@/lib/easyt/trip-mutation-persistence";
+import { createTripMutationPersistenceQueue, newestTripMutationCanonical } from "@/lib/easyt/trip-mutation-persistence";
+import { canonicalTripRevisionCanReplace } from "@/lib/easyt/trip-continuity";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 
 export type TripMutationSaveState = "idle" | "device" | "saving" | "saved" | "error";
 export type TripMutationFailure = "auth" | "conflict" | "recovery" | "network" | null;
 
 /**
- * The Itinerary uses the same durable mutation sequence as Map:
- * optimistic canonical EasyTTrip -> exact recovery handle -> serialized CAS
- * queue -> canonical cache acknowledgement. No page-specific trip model is
- * introduced here.
+ * One mounted TripShell uses this durable mutation sequence for Header,
+ * Explore, Itinerary and Map: optimistic canonical EasyTTrip -> exact recovery
+ * handle -> serialized CAS queue -> canonical cache acknowledgement. No
+ * workspace-specific trip model is introduced here.
  */
 export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: boolean) {
   const { data: session } = authClient.useSession();
   const [trip, setTripState] = useState(initialTrip);
   const [saveState, setSaveState] = useState<TripMutationSaveState>("idle");
   const [failure, setFailure] = useState<TripMutationFailure>(null);
+  const [conflictTrip, setConflictTrip] = useState<EasyTTrip | null>(null);
   const [error, setError] = useState("");
+  const [historicalRecovery, setHistoricalRecovery] = useState(false);
   const [pendingKeys, setPendingKeys] = useState<Record<string, number>>({});
   const tripRef = useRef(initialTrip);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
-  const queueRef = useRef(createTripMutationPersistenceQueue(saveTripRecoveryToEasyT));
+  const queueRef = useRef<ReturnType<typeof createTripMutationPersistenceQueue> | null>(null);
+  if (enabled && !queueRef.current) queueRef.current = createTripMutationPersistenceQueue(saveTripRecoveryToEasyT);
+  const pendingSavesRef = useRef(new Set<Promise<EasyTTrip>>());
+  const localRecoveryWriteRef = useRef(false);
   const propIdentityRef = useRef(`${initialTrip.id}:${initialTrip.ownerId ?? "guest"}:${initialTrip.updatedAt}`);
   const ownerScopeRef = useRef(initialTrip.ownerId);
   const conflictRef = useRef(false);
@@ -43,37 +51,57 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
   useEffect(() => {
     const identity = `${initialTrip.id}:${initialTrip.ownerId ?? "guest"}:${initialTrip.updatedAt}`;
     if (identity === propIdentityRef.current) return;
-    propIdentityRef.current = identity;
-    ownerScopeRef.current = initialTrip.ownerId;
-    tripRef.current = initialTrip;
-    setTripState(initialTrip);
+    const current = tripRef.current;
+    const sameDocument = current.id === initialTrip.id && current.ownerId === initialTrip.ownerId;
+    // A mounted server component can keep rendering revision A after this
+    // client owner has acknowledged B. Never let that stale prop reset the
+    // current document or its next CAS base.
+    if (sameDocument && !canonicalTripRevisionCanReplace(current, initialTrip)) return;
+    // A route transition can rerender the server layout while an optimistic
+    // write is still queued. Its prop is not allowed to sever that sequence.
+    if (sameDocument && pendingSavesRef.current.size > 0) return;
+    const canonical = newestTripMutationCanonical(
+      initialTrip,
+      loadCachedTrip(initialTrip.id, initialTrip.ownerId),
+    );
+    propIdentityRef.current = `${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`;
+    ownerScopeRef.current = canonical.ownerId;
+    tripRef.current = canonical;
+    setTripState(canonical);
     setSaveState("idle");
     setFailure(null);
+    setConflictTrip(null);
     setError("");
     conflictRef.current = false;
-    const recovery = loadTripRecovery(initialTrip.id, initialTrip.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(initialTrip);
-    recoveryHandleRef.current = matchingRecovery ? recovery : null;
-    if (recovery && !matchingRecovery) {
-      conflictRef.current = true;
-      setFailure("recovery");
-      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
-      setSaveState("error");
-    }
-    queueRef.current.reset(initialTrip);
+    const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
+    const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    const activeLocalRecovery = recoveryClass === "active-local-document";
+    recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
+    const divergentRecovery = recoveryClass === "genuine-divergence";
+    setHistoricalRecovery(divergentRecovery);
+    conflictRef.current = divergentRecovery;
+    setSaveState(activeLocalRecovery ? "device" : "idle");
+    queueRef.current?.reset(canonical);
   }, [initialTrip]);
 
   useEffect(() => {
-    const recovery = loadTripRecovery(initialTrip.id, initialTrip.ownerId);
-    const matchingRecovery = recovery && JSON.stringify(recovery.trip) === JSON.stringify(initialTrip);
-    recoveryHandleRef.current = matchingRecovery ? recovery : null;
-    if (recovery && !matchingRecovery) {
-      conflictRef.current = true;
-      setFailure("recovery");
-      setError("This browser has newer trip changes saved separately. Review them before editing this version.");
-      setSaveState("error");
-    }
-    queueRef.current.reset(initialTrip);
+    const canonical = newestTripMutationCanonical(
+      initialTrip,
+      loadCachedTrip(initialTrip.id, initialTrip.ownerId),
+    );
+    propIdentityRef.current = `${canonical.id}:${canonical.ownerId ?? "guest"}:${canonical.updatedAt}`;
+    ownerScopeRef.current = canonical.ownerId;
+    tripRef.current = canonical;
+    setTripState(canonical);
+    const recovery = loadTripRecovery(canonical.id, canonical.ownerId);
+    const recoveryClass = classifyTripRecovery({ recovery, canonicalTrip: canonical });
+    const activeLocalRecovery = recoveryClass === "active-local-document";
+    recoveryHandleRef.current = activeLocalRecovery ? recovery : null;
+    const divergentRecovery = recoveryClass === "genuine-divergence";
+    setHistoricalRecovery(divergentRecovery);
+    conflictRef.current = divergentRecovery;
+    setSaveState(activeLocalRecovery ? "device" : "idle");
+    queueRef.current?.reset(canonical);
   }, []); // The initial document establishes the queue's only trusted CAS base.
 
   const updatePending = useCallback((key: string, delta: 1 | -1) => {
@@ -100,6 +128,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     else if (isCurrentRecovery && remainingRecovery) {
       recoveryHandleRef.current = null;
       conflictRef.current = true;
+      setHistoricalRecovery(true);
       setFailure("recovery");
       setError("Newer changes on this device were preserved while this version finished syncing. Review them before continuing.");
       setSaveState("error");
@@ -111,7 +140,14 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     update: (current: EasyTTrip) => EasyTTrip,
     pendingKey: string,
   ) => {
-    if (!enabled || conflictRef.current) return false;
+    if (!enabled) return false;
+    if (conflictRef.current) {
+      setFailure("recovery");
+      setHistoricalRecovery(true);
+      setError("Review the separate device copy before editing this cloud version.");
+      setSaveState("error");
+      return false;
+    }
     const current = tripRef.current;
     const sessionOwnerId = session?.user?.id ?? null;
     if (sessionOwnerId && current.ownerId && sessionOwnerId !== current.ownerId) {
@@ -128,11 +164,13 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     const replacement = previousHandle?.tripId === current.id && previousHandle.ownerId === ownerId
       ? previousHandle
       : undefined;
+    localRecoveryWriteRef.current = true;
     const recovery = saveTripRecovery(next, {
       ownerId,
       replace: replacement,
       accountSavePending: Boolean(sessionOwnerId),
     });
+    localRecoveryWriteRef.current = false;
     if (!recovery.stored) {
       setFailure("recovery");
       setError(recovery.blockedByExistingRecovery
@@ -143,9 +181,11 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     }
 
     recoveryHandleRef.current = recovery.handle;
+    setHistoricalRecovery(false);
     tripRef.current = next;
     setTripState(next);
     setFailure(null);
+    setConflictTrip(null);
     setError("");
     setSaveState(sessionOwnerId ? "saving" : "device");
     updatePending(pendingKey, 1);
@@ -155,7 +195,9 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       return true;
     }
 
-    void queueRef.current.enqueue(next, recovery.handle)
+    const pendingSave = queueRef.current!.enqueue(next, recovery.handle);
+    pendingSavesRef.current.add(pendingSave);
+    void pendingSave
       .then((saved) => {
         if (!cacheSavedTrip(saved, recovery.handle)) return;
         ownerScopeRef.current = saved.ownerId;
@@ -163,6 +205,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         setTripState(saved);
         setFailure(null);
         setError("");
+        setHistoricalRecovery(false);
         setSaveState("saved");
       })
       .catch((caught: unknown) => {
@@ -171,7 +214,16 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         markTripRecoveryState(recovery.handle, auth ? "auth" : conflict ? "conflict" : "network");
         if (recoveryHandleRef.current?.writeId !== recovery.handle.writeId) return;
         conflictRef.current = conflict;
+        setConflictTrip(conflict ? caught.canonicalTrip : null);
+        if (conflict) {
+          cacheCanonicalTrip(caught.canonicalTrip);
+          ownerScopeRef.current = caught.canonicalTrip.ownerId;
+          tripRef.current = caught.canonicalTrip;
+          setTripState(caught.canonicalTrip);
+          queueRef.current?.reset(caught.canonicalTrip);
+        }
         setFailure(auth ? "auth" : conflict ? "conflict" : "network");
+        setHistoricalRecovery(false);
         setError(auth
           ? "Your session expired. Your edits remain safe on this device; sign in again to sync them."
           : conflict
@@ -179,7 +231,10 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
             : "Couldn’t save this trip just now. Your edits remain safe on this device.");
         setSaveState("error");
       })
-      .finally(() => updatePending(pendingKey, -1));
+      .finally(() => {
+        pendingSavesRef.current.delete(pendingSave);
+        updatePending(pendingKey, -1);
+      });
     return true;
   }, [cacheSavedTrip, enabled, session?.user?.id, updatePending]);
 
@@ -195,7 +250,9 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
       return;
     }
     setSaveState("saving");
-    void queueRef.current.enqueue(current, recovery)
+    const pendingSave = queueRef.current!.enqueue(current, recovery);
+    pendingSavesRef.current.add(pendingSave);
+    void pendingSave
       .then((saved) => {
         if (!cacheSavedTrip(saved, recovery)) return;
         ownerScopeRef.current = saved.ownerId;
@@ -203,6 +260,7 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         setTripState(saved);
         setFailure(null);
         setError("");
+        setHistoricalRecovery(false);
         setSaveState("saved");
       })
       .catch((caught: unknown) => {
@@ -211,28 +269,60 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
         markTripRecoveryState(recovery, auth ? "auth" : conflict ? "conflict" : "network");
         if (recoveryHandleRef.current?.writeId !== recovery.writeId) return;
         conflictRef.current = conflict;
+        setConflictTrip(conflict ? caught.canonicalTrip : null);
+        if (conflict) {
+          cacheCanonicalTrip(caught.canonicalTrip);
+          ownerScopeRef.current = caught.canonicalTrip.ownerId;
+          tripRef.current = caught.canonicalTrip;
+          setTripState(caught.canonicalTrip);
+          queueRef.current?.reset(caught.canonicalTrip);
+        }
         setFailure(auth ? "auth" : conflict ? "conflict" : "network");
+        setHistoricalRecovery(false);
         setError(auth
           ? "Your session expired. Your edits remain safe on this device; sign in again to sync them."
           : conflict
             ? "This trip changed on another device. Your edits remain safe here and did not replace the account copy."
             : "Couldn’t save this trip just now. Your edits remain safe on this device.");
         setSaveState("error");
-      });
+      })
+      .finally(() => pendingSavesRef.current.delete(pendingSave));
   }, [cacheSavedTrip, enabled, saveState, session?.user?.id]);
 
-  const acceptCanonicalTrip = useCallback((saved: EasyTTrip) => {
-    if (saved.id !== tripRef.current.id || saved.ownerId !== tripRef.current.ownerId) return false;
-    const cached = cacheCanonicalTrip(saved);
-    if (!cached.stored) {
-      setFailure("recovery");
-      setError("The account change succeeded, but this browser could not refresh its canonical cache.");
-      setSaveState("error");
-      return false;
+  const waitForPending = useCallback(async () => {
+    while (pendingSavesRef.current.size) {
+      await Promise.all([...pendingSavesRef.current]);
     }
+    return tripRef.current;
+  }, []);
+  const hasPendingSaves = useCallback(() => pendingSavesRef.current.size > 0, []);
+
+  const adoptDeviceTrip = useCallback((next: EasyTTrip) => {
+    if (localRecoveryWriteRef.current || pendingSavesRef.current.size > 0) return false;
+    if (next.id !== tripRef.current.id || next.ownerId !== tripRef.current.ownerId) return false;
+    const recovery = loadTripRecovery(next.id, next.ownerId);
+    if (!recovery || JSON.stringify(recovery.trip) !== JSON.stringify(next)) return false;
+    recoveryHandleRef.current = recovery;
+    tripRef.current = next;
+    ownerScopeRef.current = next.ownerId;
+    setTripState(next);
+    queueRef.current?.reset(next);
+    conflictRef.current = false;
+    setHistoricalRecovery(false);
+    setFailure(null);
+    setConflictTrip(null);
+    setError("");
+    setSaveState("device");
+    return true;
+  }, []);
+
+  const adoptCanonicalTrip = useCallback((saved: EasyTTrip) => {
+    if (saved.id !== tripRef.current.id || saved.ownerId !== tripRef.current.ownerId) return false;
+    if (!canonicalTripRevisionCanReplace(tripRef.current, saved)) return false;
     const recoveryOwnerId = recoveryHandleRef.current?.ownerId ?? saved.ownerId;
     if (loadTripRecovery(saved.id, recoveryOwnerId)) {
       conflictRef.current = true;
+      setHistoricalRecovery(true);
       setFailure("recovery");
       setError("The saved trip changed, while newer changes on this device remain preserved separately. Review them before continuing.");
       setSaveState("error");
@@ -241,21 +331,55 @@ export function useTripMutationPersistence(initialTrip: EasyTTrip, enabled: bool
     tripRef.current = saved;
     ownerScopeRef.current = saved.ownerId;
     setTripState(saved);
-    queueRef.current.reset(saved);
+    queueRef.current?.reset(saved);
     conflictRef.current = false;
+    setHistoricalRecovery(false);
     setFailure(null);
+    setConflictTrip(null);
     setError("");
     setSaveState("saved");
     return true;
   }, []);
 
+  const acceptCanonicalTrip = useCallback((saved: EasyTTrip) => {
+    if (saved.id !== tripRef.current.id || saved.ownerId !== tripRef.current.ownerId) return false;
+    if (!canonicalTripRevisionCanReplace(tripRef.current, saved)) return false;
+    const cached = cacheCanonicalTrip(saved);
+    if (!cached.stored) {
+      setFailure("recovery");
+      setError("The account change succeeded, but this browser could not refresh its canonical cache.");
+      setSaveState("error");
+      return false;
+    }
+    return adoptCanonicalTrip(saved);
+  }, [adoptCanonicalTrip]);
+
+  const openConflictCloudCopy = useCallback(() => {
+    if (!conflictTrip) return false;
+    setConflictTrip(null);
+    setFailure("recovery");
+    setHistoricalRecovery(true);
+    setError("The account copy is open. Your separate device edits remain preserved until you review or discard them.");
+    setSaveState("error");
+    return true;
+  }, [conflictTrip]);
+
   return {
     acceptCanonicalTrip,
+    adoptCanonicalTrip,
+    adoptDeviceTrip,
+    conflictTrip,
     error,
     failure,
+    hasPendingSaves,
+    historicalRecovery,
     isPending: (key: string) => Boolean(pendingKeys[key]),
     mutateTrip,
+    openConflictCloudCopy,
     saveState,
     trip,
+    waitForPending,
   };
 }
+
+export type TripMutationPersistence = ReturnType<typeof useTripMutationPersistence>;

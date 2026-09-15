@@ -9,6 +9,7 @@ out/
 output/
 dist/
 storybook-static/
+.email-previews/
 tmp/
 .env*
 !.env.staging.example

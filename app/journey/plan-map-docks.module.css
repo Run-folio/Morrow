@@ -71,11 +71,16 @@
   .plan :global([class*="pinDockExpanded"]) { width:min(200px,calc(100vw - 781px)); }
 }
 
-/* Mobile and tablet use the exact same dock and children as desktop. Only its
-   presentation changes: the map is the underlay and Shape the day is the
-   single, scrollable bottom sheet. */
+/* Mobile and tablet have one presentation owner: a contextual sheet over the
+   existing MapLibre canvas. Finder, result detail, trip status and pin tools
+   replace one another inside it instead of establishing competing docks. */
 @media (max-width:980px) {
   .plan {
+    --mobile-map-strip-height:72px;
+    --mobile-map-sheet-peek-height:clamp(132px,24%,172px);
+    --mobile-map-sheet-medium-height:min(52%,440px);
+    --mobile-map-sheet-expanded-height:calc(100% - var(--mobile-map-strip-height) - 8px);
+    --mobile-map-sheet-height:0px;
     height:100svh;
     min-height:100svh;
     padding:0;
@@ -84,42 +89,95 @@
 
   .plan :global(.journey-map),
   .plan :global(.planner-map) {
-    inset:149px 0 0;
+    inset:var(--mobile-map-strip-height) 0 0!important;
     height:auto;
     border:0;
   }
 
-  .plan :global([class*="destinationWithPinDock"]),
-  .plan :global([class*="itineraryWithFinder"]) { display:none; }
+  .plan:has(:global([class*="mobileMapSheetPeek"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-peek-height); }
+  .plan:has(:global([class*="mobileMapSheetMedium"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-medium-height); }
+  .plan:has(:global([class*="mobileMapSheetExpanded"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-expanded-height); }
 
-  .plan :global([class*="finderDock"]) {
-    position:fixed;
-    z-index:16;
+  .plan :global([class*="mapContextualSurface"]) {
+    position:absolute;
+    z-index:20;
     right:0;
     bottom:0;
     left:0;
     display:flex;
     flex-direction:column;
     width:100%;
-    height:min(52svh,440px);
-    max-height:calc(100svh - 175px);
-    margin:0;
-    padding:0 14px calc(18px + env(safe-area-inset-bottom));
+    height:var(--mobile-map-sheet-height);
+    max-height:calc(100% - var(--mobile-map-strip-height) - 8px);
+    margin:0 auto;
+    padding:0 12px env(safe-area-inset-bottom);
     overflow:hidden;
-    border-radius:18px 18px 0 0;
-    transform:none;
+    border:1px solid var(--hairline);
+    border-bottom:0;
+    border-radius:var(--morrovia-radius) var(--morrovia-radius) 0 0;
+    background:color-mix(in srgb,var(--morrovia-paper) 98%,transparent);
+    box-shadow:var(--morrovia-shadow-overlay);
+    backdrop-filter:blur(16px);
+    transition:height .2s ease;
   }
 
-  .plan :global([class*="finderDock"]) > header { position:relative;flex:0 0 auto;padding-top:14px; }
-  .plan :global([class*="finderDock"]) > header::before {
-    display:block;
-    width:34px;
-    height:4px;
-    margin:0 auto 10px;
-    border-radius:999px;
-    background:var(--hairline);
-    content:"";
+  .plan :global([class*="mapContextualSurface"][class*="mobileMapSheetCollapsed"]) { display:none; }
+  .plan :global([class*="mobileMapSheetControls"]) {
+    min-height:52px;
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+    border-bottom:1px solid var(--hairline);
   }
+  .plan :global([class*="mobileMapSheetControls"]) > strong {
+    overflow:hidden;
+    color:var(--accent);
+    font:700 11px/1.2 var(--morrovia-ui);
+    text-align:center;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .plan :global([class*="mobileMapSheetControls"]) > button { min-height:40px;padding-inline:8px; }
+  .plan :global([class*="mobileMapSheetControls"]) > div { display:flex;align-items:center;gap:2px; }
+  .plan :global([class*="mobileMapSheetControls"]) > div button { min-width:44px;min-height:40px;padding-inline:6px;font-size:8px; }
+  .plan :global([class*="mobileMapSheetControls"]) > div button[aria-pressed="true"] { color:#fff;background:var(--accent); }
+  .plan :global([class*="mobileMapSheetBody"]) { position:relative;display:block;flex:1;min-height:0;overflow:hidden; }
+
+  .plan :global([class*="mobileMapSheetBody"]) > :global([class*="finderDock"]),
+  .plan :global([class*="mobileMapSheetBody"]) > :global([class*="canonicalPlannerStatus"]),
+  .plan :global([class*="mobileMapSheetBody"]) > :global([class*="pinDock"]) {
+    position:absolute!important;
+    inset:0!important;
+    display:none!important;
+    width:100%!important;
+    height:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:0 2px 14px!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    transform:none!important;
+    backdrop-filter:none!important;
+  }
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="planner"]) :global([class*="finderDock"]),
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"]),
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="status"]) :global([class*="canonicalPlannerStatus"]),
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="pin"]) :global([class*="pinDock"]) { display:flex!important; }
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"]),
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="status"]) :global([class*="canonicalPlannerStatus"]) { display:block!important; }
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"][class*="mapContextHidden"]) { display:block!important; }
+  .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="pin"]) :global([class*="pinDock"]) { flex-direction:column; }
+  .plan :global([class*="fullscreenDestination"]) { display:none!important; }
+
+  .plan :global([class*="finderDock"]) > header { position:relative;flex:0 0 auto;padding-top:12px; }
+  .plan :global([class*="finderDock"]) > header::before { content:none; }
   .plan :global([class*="shapeDayPlan"]),
   .plan :global([class*="restaurantFinder"]),
   .plan :global([class*="shapeDaySee"]) {
@@ -131,39 +189,22 @@
     padding:0 2px 18px 0;
   }
 
-  .plan :global([class*="mobileTripStatus"]) { display:block; }
-  .plan :global([class*="mobileTripStatus"]) { position:static;justify-self:start;z-index:1; }
-  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--morrovia-meta); }
+  .plan :global([class*="mobileTripStatus"]) { position:static;z-index:1;display:block;justify-self:start; }
+  .plan :global([class*="mobileTripStatus"]) summary { display:flex;align-items:center;justify-content:space-between;min-height:32px;padding:0;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--morrovia-meta); }
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
   .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--morrovia-meta); }
-  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { position:fixed;z-index:15;top:160px;right:12px;bottom:12px;left:12px;display:block;width:auto;max-height:none;margin:0;padding:14px;overflow-y:auto;background:color-mix(in srgb,#fff 96%,var(--paper));box-shadow:var(--workspace-shadow); }
-  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="pinDock"]) { display:none; }
 
-  .plan :global([class*="pinDock"]) {
-    position:fixed;
-    z-index:15;
-    bottom:calc(min(52svh,440px) + 10px);
-    left:12px;
-    width:auto;
-    max-width:calc(100vw - 24px);
-    max-height:calc(100svh - min(52svh,440px) - 24px);
-    margin:0;
-    overflow:visible;
-    transform:none;
-  }
-
-  .plan :global([class*="pinDockExpanded"]) { width:min(320px, calc(100vw - 24px)); }
-
-  .plan :global([class*="pinDock"]) summary { min-height:38px;padding:6px 8px;gap:6px; }
-  .plan :global([class*="pinDock"]) summary > svg { width:14px;height:14px; }
-  .plan :global([class*="pinDock"]) summary small { display:none; }
-  .plan :global([class*="pinDock"]) summary strong { font-size:8px; }
-  .plan :global([class*="pinDock"]) summary b { width:18px;height:18px;font-size:7px; }
-  .plan :global([class*="pinDock"]) details[open] { max-height:calc(100svh - min(52svh,440px) - 24px);overflow:auto; }
-
+  .plan:has(:global([class*="mapContextualSurface"]:not([class*="mobileMapSheetCollapsed"]))) :global([class*="mapDayControl"]),
+  .plan:has(:global([class*="mapContextualSurface"]:not([class*="mobileMapSheetCollapsed"]))) :global([class*="mapAssistant"]) { display:none!important; }
+  .plan :global([class*="mapDayControl"]) { bottom:max(10px,env(safe-area-inset-bottom))!important; }
+  .plan :global(.planner-map .maplibregl-ctrl-bottom-right) { bottom:calc(var(--mobile-map-sheet-height) + 4px)!important; }
+  .plan :global([class*="undoToast"]),
+  .plan :global([class*="mapSaveStatus"]) { top:calc(var(--mobile-map-strip-height) + 8px)!important;bottom:auto!important; }
+  .plan :global([class*="mapRecoveryFeedback"]) { top:calc(var(--mobile-map-strip-height) + 8px)!important;bottom:auto!important;max-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-sheet-height) - 20px);overflow:auto; }
 }
 
 @media (max-width:680px) {
+  .plan { --mobile-map-strip-height:118px; }
   .plan :global([class*="finderDock"]) > header { display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding-top:13px; }
   .plan :global([class*="finderDock"]) > header > small { max-width:calc(100% - 112px);font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
   .plan :global([class*="finderDock"]) > header > span { display:flex;align-items:baseline;justify-content:space-between;gap:8px; }
@@ -184,23 +225,32 @@
 }
 
 @media (min-width:681px) and (max-width:980px) {
-  .plan :global([class*="finderDock"]) {
-    right:auto;
-    left:50%;
-    width:min(620px,calc(100vw - 28px));
-    transform:translateX(-50%);
-  }
+  .plan :global([class*="mapContextualSurface"]) { width:min(620px,calc(100% - 28px)); }
 }
 
 @media (max-width:360px) {
-  .plan :global([class*="finderDock"]) { padding-right:11px;padding-left:11px; }
+  .plan :global([class*="mapContextualSurface"]) { padding-right:8px;padding-left:8px; }
+  .plan :global([class*="mobileMapSheetControls"]) { grid-template-columns:auto minmax(0,1fr);gap:4px; }
+  .plan :global([class*="mobileMapSheetControls"]) > strong { display:none; }
+  .plan :global([class*="mobileMapSheetControls"]) > div { justify-self:end; }
   .plan :global([class*="finderTabs"]) { gap:3px;padding:3px; }
   .plan :global([class*="finderTabs"]) button { min-height:44px;padding:0 2px;font-size:9px; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:24px minmax(0,1fr) auto auto !important;gap:5px;padding:12px 0;font-size:13px; }
 }
 
 @media (max-width:520px) {
-  .plan :global([class*="finderDock"]) { bottom:var(--morrovia-mobile-dock-offset,82px);height:min(52svh,440px);max-height:calc(100svh - 175px - var(--morrovia-mobile-dock-offset,82px)); }
-  .plan :global([class*="pinDock"]) { bottom:calc(min(52svh,440px) + var(--morrovia-mobile-dock-offset,82px) + 10px); }
-  .plan:has(:global([class*="mobileTripStatus"][open])) :global([class*="itineraryWithFinder"]) { bottom:calc(var(--morrovia-mobile-dock-offset,82px) + 10px); }
+  .plan :global([class*="mobileMapSheetControls"]) > strong { display:none; }
+}
+
+@media (max-width:980px) and (max-height:520px) {
+  .plan {
+    --mobile-map-strip-height:72px;
+    --mobile-map-sheet-peek-height:112px;
+    --mobile-map-sheet-medium-height:min(48%,240px);
+    min-height:420px;
+  }
+  .plan :global([class*="mapContextualSurface"]) { max-height:calc(100% - var(--mobile-map-strip-height) - 4px); }
+  .plan :global([class*="finderDock"]) > header { padding-top:6px; }
+  .plan :global([class*="finderDock"]) > header > small,
+  .plan :global([class*="finderDock"]) > header > span { display:none; }
 }

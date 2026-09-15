@@ -41,12 +41,22 @@ test("network rejection becomes a deterministic settled mutation result", async 
 test("email-verification messaging can use the same configuration predicate as auth", () => {
   const previousKey = process.env.RESEND_API_KEY;
   const previousFrom = process.env.EMAIL_FROM;
+  const previousMode = process.env.EMAIL_DELIVERY_MODE;
+  const previousAllowlist = process.env.EMAIL_ALLOWED_RECIPIENTS;
+  const previousNodeEnvironment = process.env.NODE_ENV;
   delete process.env.RESEND_API_KEY;
   delete process.env.EMAIL_FROM;
   assert.equal(isEasyTEmailVerificationRequired(), false);
   process.env.RESEND_API_KEY = "configured";
-  process.env.EMAIL_FROM = "trips@example.test";
+  process.env.EMAIL_FROM = "Morrovia <trips@example.test>";
+  process.env.EMAIL_DELIVERY_MODE = "allowlist";
+  process.env.EMAIL_ALLOWED_RECIPIENTS = "traveller@example.test";
+  Object.defineProperty(process.env, "NODE_ENV", { value: "development", configurable: true, enumerable: true, writable: true });
   assert.equal(isEasyTEmailVerificationRequired(), true);
   if (previousKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = previousKey;
   if (previousFrom === undefined) delete process.env.EMAIL_FROM; else process.env.EMAIL_FROM = previousFrom;
+  if (previousMode === undefined) delete process.env.EMAIL_DELIVERY_MODE; else process.env.EMAIL_DELIVERY_MODE = previousMode;
+  if (previousAllowlist === undefined) delete process.env.EMAIL_ALLOWED_RECIPIENTS; else process.env.EMAIL_ALLOWED_RECIPIENTS = previousAllowlist;
+  if (previousNodeEnvironment === undefined) Reflect.deleteProperty(process.env, "NODE_ENV");
+  else Object.defineProperty(process.env, "NODE_ENV", { value: previousNodeEnvironment, configurable: true, enumerable: true, writable: true });
 });

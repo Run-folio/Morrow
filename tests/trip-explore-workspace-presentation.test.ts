@@ -1,0 +1,157 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const workspace = readFileSync(new URL("../components/easyt/trip-explore-workspace.tsx", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../components/easyt/trip-explore-workspace.module.css", import.meta.url), "utf8");
+const shellStyles = readFileSync(new URL("../components/easyt/trip-shell.module.css", import.meta.url), "utf8");
+const navigation = readFileSync(new URL("../components/easyt/trip-shell-client.tsx", import.meta.url), "utf8");
+const itinerary = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.tsx", import.meta.url), "utf8");
+const detail = readFileSync(new URL("../components/easyt/itinerary-item-detail.tsx", import.meta.url), "utf8");
+const routeStrip = readFileSync(new URL("../components/journey-planner-strip.tsx", import.meta.url), "utf8");
+const routeStripStyles = readFileSync(new URL("../components/journey-planner-strip.module.css", import.meta.url), "utf8");
+const routeTimeline = readFileSync(new URL("../lib/easyt/route-timeline.ts", import.meta.url), "utf8");
+const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
+const stories = readFileSync(new URL("../components/easyt/trip-explore-workspace.stories.tsx", import.meta.url), "utf8");
+const design = readFileSync(new URL("../app/journey/journey-design.css", import.meta.url), "utf8");
+const appNavigationStyles = readFileSync(new URL("../app/journey/easyt-navigation.module.css", import.meta.url), "utf8");
+
+test("Explore is a canonical TripShell workspace without a second navigation owner", () => {
+  assert.match(navigation, /id: "explore"[\s\S]*suffix: "\/explore"/);
+  assert.match(navigation, /remainder\.startsWith\("\/explore"\)/);
+  assert.match(navigation, /view === "explore"[\s\S]*trackEvent\("explore_opened"/);
+  assert.doesNotMatch(workspace, /bottomNav|fixedNavigation|globalDock/);
+  assert.doesNotMatch(workspace, /trackEvent\("explore_opened"/);
+});
+
+test("Map and Explore reuse one canonical route model and controlled scrolling presentation", () => {
+  assert.match(routeStrip, /export function JourneyRouteStopTrack/);
+  assert.match(workspace, /<JourneyRouteStopTrack/);
+  assert.match(workspace, /routeTimelineStopsForTrip\(workingTrip/);
+  assert.match(mapWorkspace, /routeTimelineStopsForTrip\(customTrip/);
+  assert.match(routeTimeline, /name: "All trip",[\s\S]*dayLabel: `From \$\{origin\}`/);
+  assert.match(routeTimeline, /sort\(\(left, right\) => left\.order - right\.order\)/);
+  assert.match(routeTimeline, /active: activeId === stop\.id/);
+  assert.doesNotMatch(workspace, /label="Explore destination"/);
+  assert.doesNotMatch(workspace, /map camera|selectedMap|persisted route-selection/);
+  assert.match(routeStrip, /active\.scrollIntoView\?\./);
+  assert.match(routeStripStyles, /\.stopTrack\{[\s\S]*overflow-x:auto/);
+  assert.doesNotMatch(workspace, />Open map<\/EasyTLinkButton>/);
+  const feedbackIndex = workspace.indexOf("className={styles.feedbackRow}");
+  const timelineIndex = workspace.indexOf("className={styles.stopNavigation}");
+  const mainIndex = workspace.indexOf("className={styles.main}", timelineIndex);
+  const railIndex = workspace.indexOf("className={`${styles.rail}", mainIndex);
+  assert.equal(feedbackIndex < timelineIndex && timelineIndex < mainIndex && mainIndex < railIndex, true, "feedback and route context are full-width siblings ahead of both workspace columns");
+  assert.match(styles, /\.feedbackRow \{[\s\S]*grid-column: 1 \/ -1;/);
+  assert.match(styles, /\.stopNavigation \{ grid-column: 1 \/ -1;/);
+});
+
+test("desktop uses a results workspace and contextual right rail, not a centred modal", () => {
+  assert.match(workspace, /className=\{styles\.grid\}/);
+  assert.match(workspace, /className=\{`\$\{styles\.rail\}/);
+  assert.match(workspace, /<ItineraryItemDetail/);
+  assert.doesNotMatch(workspace, /role="alertdialog"/);
+});
+
+test("desktop detail owns a navigation-aware sticky, viewport-bounded rail and mobile releases it", () => {
+  assert.match(design, /--morrovia-navigation-height: 78px/);
+  assert.match(design, /--morrovia-sticky-content-offset: calc\(var\(--morrovia-navigation-height\) \+ 14px\)/);
+  assert.match(appNavigationStyles, /\.header \{[\s\S]*min-height: var\(--morrovia-navigation-height, 78px\)/);
+  assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.railSelected \{ position: static;[\s\S]*max-height: none;[\s\S]*overflow: visible;/);
+});
+
+test("mobile detail reuses the canonical itinerary sheet interaction", () => {
+  assert.match(workspace, /<ItineraryItemDetail/);
+  assert.match(detail, /aria-modal=\{!embedded && mobileSheet \|\| undefined\}/);
+  assert.match(detail, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(detail, /window\.requestAnimationFrame\(\(\) => closeRef\.current\?\.focus/);
+  assert.match(workspace, /window\.requestAnimationFrame\(\(\) => origin\?\.focus\(\)\)/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.rail:not\(\.railSelected\) \{ display: none; \}/);
+});
+
+test("whole result-card detail and secondary Add/Save actions are separate semantic controls", () => {
+  assert.match(workspace, /<EasyTButton type="button" className=\{styles\.cardOpen\}[\s\S]*aria-label=\{`Open details for/);
+  assert.match(workspace, /aria-label=\{`Save \$\{result\.title\} for later`\}/);
+  assert.match(styles, /\.cardOpen \{ position: absolute; inset: 0; z-index: 1;/);
+  assert.match(styles, /\.cardActions \{[\s\S]*z-index: 2;/);
+});
+
+test("hover and keyboard focus cannot paint the full-card control over its content or change geometry", () => {
+  assert.match(styles, /\.card \.cardOpen:hover:not\(:disabled\),[\s\S]*background: transparent;[\s\S]*transform: none;/);
+  assert.match(styles, /\.card \.cardOpen:focus-visible:not\(:disabled\)/);
+  assert.match(styles, /\.card:focus-within \{ box-shadow:/);
+  assert.doesNotMatch(styles, /\.card:hover[^\{]*\{[^}]*display:\s*none/);
+  assert.doesNotMatch(styles, /\.card:hover[^\{]*\{[^}]*opacity:\s*0/);
+  assert.doesNotMatch(styles, /\.card:hover[^\{]*\{[^}]*transform:/);
+});
+
+test("usable results suppress provider status while blocking failure and valid empty stay distinct", () => {
+  assert.match(workspace, /exploreResultsPresentation\(visibleResults\.length, relevantStatuses\)/);
+  assert.match(workspace, /resultsPresentation === "loading"/);
+  assert.match(workspace, /resultsPresentation === "unavailable"/);
+  assert.match(workspace, /resultsPresentation === "empty"/);
+  assert.doesNotMatch(workspace, /Some local ideas are temporarily unavailable/);
+  assert.doesNotMatch(workspace, /Some bookable experiences are temporarily unavailable/);
+  assert.doesNotMatch(workspace, /Bookable experiences are loading separately/);
+  assert.match(workspace, /className=\{styles\.empty\}/);
+  assert.match(workspace, /fallback=\{<span><MapPin/);
+  assert.doesNotMatch(workspace, /console\.(?:log|error)/);
+});
+
+test("Explore reuses canonical persistence, scheduling, identity and detail owners", () => {
+  assert.match(workspace, /useTripShellMutation\(\)/);
+  assert.match(workspace, /saveItineraryIdea\(current, result\.idea\)/);
+  assert.match(workspace, /scheduleItineraryIdea\(current, result\.idea, target\.day\.id, target\.dayPart\)/);
+  assert.match(workspace, /projectExploreResults\(organicResults, commercialResults, persistedResults\)/);
+  assert.match(workspace, /ItineraryItemDetail/);
+  assert.doesNotMatch(workspace, /localStorage|sessionStorage/);
+  assert.match(workspace, /const mapHref = selectedResult\.coordinates[\s\S]*: null;/);
+});
+
+test("the simplified hierarchy removes duplicate explanation while the rail keeps only real free-time context", () => {
+  for (const phrase of ["route geometry", "exact saved pins", "No canonical activity", "add it to a real day", "trip destinations"]) {
+    assert.doesNotMatch(workspace, new RegExp(phrase, "i"));
+  }
+  for (const phrase of ["Discover your route", "Find places, experiences and food that fit your trip", "No changes to save", "Like something?", "Find something worth adding while you’re there"]) {
+    assert.doesNotMatch(workspace, new RegExp(phrase, "i"));
+  }
+  assert.doesNotMatch(workspace, /<h2[^>]*>Explore<\/h2>/);
+  assert.doesNotMatch(workspace, /MorroviaSaveStatus/);
+  assert.doesNotMatch(workspace, /styles\.mapContext|>Your trip</);
+  assert.match(workspace, />Free time</);
+  assert.match(workspace, />Find ideas for this time</);
+});
+
+test("commercial cards disclose only sourced facts and retain separate planning and affiliate actions", () => {
+  assert.match(workspace, /result\.rating !== undefined/);
+  assert.match(workspace, /result\.reviewCount !== undefined/);
+  assert.match(workspace, /result\.price \?/);
+  assert.match(workspace, /cta: "View tickets"/);
+  assert.match(workspace, /MorroviaAffiliateLink/);
+  assert.match(workspace, /className=\{styles\.affiliateDisclosure\}>\{compactAffiliateDisclosure\}/);
+  assert.match(workspace, /className=\{styles\.affiliateDisclosure\}>\{affiliateDisclosure\}/);
+  assert.doesNotMatch(workspace, /Experiences from Viator/);
+  assert.match(workspace, /scheduleResult\(result\)/);
+  assert.doesNotMatch(workspace, /Free cancellation|Instant confirmation/);
+});
+
+test("Itinerary keeps discovery secondary and links to the canonical Explore workspace", () => {
+  assert.match(itinerary, /See more ideas in Explore/);
+  assert.match(itinerary, /exploreWorkspaceHref\(workingTrip\.id, active\.stopId, active\.dayNumber\)/);
+});
+
+test("responsive cards avoid horizontal overflow and retain 44px touch controls", () => {
+  assert.match(shellStyles, /\.resolverStack \{[^}]*min-width: 0;[^}]*grid-template-columns: minmax\(0, 1fr\);/, "TripShell must contain intrinsically wide workspace strips inside the viewport");
+  assert.match(styles, /\.stopNavigation \{[^}]*min-width: 0;[^}]*overflow: hidden;/);
+  assert.match(styles, /\.categories \{[\s\S]*overflow-x: auto/);
+  assert.match(styles, /\.categories button \{ flex: none; min-height: 44px; \}/);
+  assert.match(styles, /@media \(max-width: 390px\)/);
+  assert.match(styles, /\.cardActions a,[\s\S]*min-height: 44px/);
+});
+
+test("Storybook covers destination, interaction, inventory and responsive Explore acceptance states", () => {
+  for (const story of [
+    "DefaultExplore", "FreeTimeRail", "LongRoute", "AllTripForYou", "SelectedRomeStop", "SelectedAthensStop", "MixedOrganicAndViator", "OrganicReadyCommercialLoading", "PartialProviderFailureNoBanner", "BlockingProviderFailure", "OrganicAttraction", "EntryTicket", "Tours", "Restaurant", "ScheduledResult", "SavedResult", "HoverContentStable", "KeyboardFocusStable", "MissingImage", "RejectedImageFallback", "EmptyCategory", "ProviderDegraded", "SelectedDetail", "DeepScrollStickyDetail", "Mobile390HorizontalStops", "Mobile430HorizontalStops", "Mobile390HorizontalCategories", "Mobile390OrganicCard", "Mobile430CommercialCard", "Mobile430SelectedDetail", "Mobile390ScheduledState", "Mobile430SavedState", "TokyoForYou", "TokyoMustSee", "TokyoFoodRichCandidates", "TokyoToursAvailable", "TokyoToursProviderUnavailable", "TokyoDayTripsOrganicAndCommercial", "TokyoOutdoorsSemantic", "SparseDestination", "TokyoNoImageRestaurants", "OrganicDayTripsWithoutViator",
+  ]) assert.match(stories, new RegExp(`export const ${story}`), story);
+});

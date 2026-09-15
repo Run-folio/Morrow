@@ -8,6 +8,7 @@ import {
 } from "./itinerary-mutations.ts";
 import type { EasyTTrip, ItineraryDayPart, ItineraryIdea } from "./trip.ts";
 import type { ItineraryDiscoveryPlace } from "./itinerary-day-context.ts";
+import { activityDayPartFit } from "./itinerary-schedule-awareness.ts";
 
 function unchanged(trip: EasyTTrip, reason: string): ItineraryMutationResult {
   return { trip, changed: false, reason };
@@ -119,6 +120,10 @@ export function placeItineraryActivity(
   if (!initial.activity.dayPartEditable || (initial.activity.source === "authored-activity" && initial.activity.noteIndex === null)) {
     return unchanged(trip, "This activity cannot be safely moved.");
   }
+  const durationFit = activityDayPartFit(initial.activity.providerMetadata?.duration);
+  if (durationFit === "full-day" || durationFit === "extended") {
+    return unchanged(trip, "This activity needs most of the day and cannot fit in one part of the day.");
+  }
 
   const assigned = assignPart(trip, initial.composition.day.dayNumber, initial.activity, dayPart);
   const afterAssignment = activityForId(assigned.trip, dayId, activityId);
@@ -146,4 +151,24 @@ export function placeItineraryActivity(
 
   if (moved.changed) return moved;
   return assigned.changed ? assigned : moved;
+}
+
+/**
+ * Schedule a saved or recommended idea, then place it at the same canonical
+ * insertion point used by activity drag/reorder. This keeps provider evidence
+ * on the ItineraryIdea while preventing an occupied period from behaving like
+ * a replacement slot.
+ */
+export function scheduleItineraryIdeaAtPosition(
+  trip: EasyTTrip,
+  idea: ItineraryIdea,
+  dayId: string,
+  dayPart: ItineraryDayPart,
+  insertionIndex: number,
+): ItineraryMutationResult {
+  const scheduled = scheduleItineraryIdea(trip, idea, dayId, dayPart);
+  const placed = placeItineraryActivity(scheduled, dayId, idea.id, dayPart, insertionIndex);
+  if (placed.changed) return placed;
+  if (scheduled !== trip) return { trip: scheduled, changed: true, reason: placed.reason };
+  return placed;
 }

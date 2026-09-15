@@ -20,7 +20,7 @@
   font-weight: 700;
 }
 
-.resolverStack { display: grid; gap: 12px; }
+.resolverStack { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .resolverNotice { width: var(--morrovia-trip-width); margin: 18px auto 0; }
 
 .shell {
@@ -268,9 +268,7 @@
   place-content: center;
   border: 1px dashed color-mix(in srgb, var(--morrovia-line) 78%, var(--morrovia-signal));
   border-radius: var(--morrovia-radius);
-  background:
-    radial-gradient(circle at 80% 12%, color-mix(in srgb, var(--morrovia-signal) 7%, transparent), transparent 26%),
-    color-mix(in srgb, #fff 96%, var(--morrovia-lilac));
+  background: var(--morrovia-paper);
   text-align: center;
 }
 
