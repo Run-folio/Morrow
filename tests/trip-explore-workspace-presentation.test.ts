@@ -36,6 +36,13 @@ test("Map and Explore reuse one canonical route model and controlled scrolling p
   assert.match(routeStrip, /active\.scrollIntoView\?\./);
   assert.match(routeStripStyles, /\.stopTrack\{[\s\S]*overflow-x:auto/);
   assert.doesNotMatch(workspace, />Open map<\/EasyTLinkButton>/);
+  const feedbackIndex = workspace.indexOf("className={styles.feedbackRow}");
+  const timelineIndex = workspace.indexOf("className={styles.stopNavigation}");
+  const mainIndex = workspace.indexOf("className={styles.main}", timelineIndex);
+  const railIndex = workspace.indexOf("className={`${styles.rail}", mainIndex);
+  assert.equal(feedbackIndex < timelineIndex && timelineIndex < mainIndex && mainIndex < railIndex, true, "feedback and route context are full-width siblings ahead of both workspace columns");
+  assert.match(styles, /\.feedbackRow \{[\s\S]*grid-column: 1 \/ -1;/);
+  assert.match(styles, /\.stopNavigation \{ grid-column: 1 \/ -1;/);
 });
 
 test("desktop uses a results workspace and contextual right rail, not a centred modal", () => {
@@ -134,7 +141,7 @@ test("Itinerary keeps discovery secondary and links to the canonical Explore wor
 });
 
 test("responsive cards avoid horizontal overflow and retain 44px touch controls", () => {
-  assert.match(styles, /\.stopNavigation \{ min-width: 0;[\s\S]*overflow: hidden;/);
+  assert.match(styles, /\.stopNavigation \{[^}]*min-width: 0;[^}]*overflow: hidden;/);
   assert.match(styles, /\.categories \{[\s\S]*overflow-x: auto/);
   assert.match(styles, /\.categories button \{ flex: none; min-height: 44px; \}/);
   assert.match(styles, /@media \(max-width: 390px\)/);

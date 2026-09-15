@@ -12,21 +12,30 @@ export type JourneyLocalPlacePhoto = {
 };
 
 export function useJourneyLocalPlacePhotos(places: readonly JourneyLocalPlace[]) {
-  const exactGooglePlaces = useMemo(() => places.filter((place) => (
+  const exactPhotoPlaces = useMemo(() => places.filter((place) => (
     !place.image
-    && place.provider === "google-places"
-    && Boolean(place.providerProductId)
+    && ((place.provider === "google-places" && Boolean(place.providerProductId))
+      || place.provider === "openstreetmap")
   )).slice(0, 6), [places]);
-  const requestKey = exactGooglePlaces.map((place) => `${place.id}:${place.providerProductId}`).join("|");
+  const requestKey = exactPhotoPlaces.map((place) => `${place.id}:${place.providerProductId ?? `${place.name}:${place.coordinates.join(":")}`}`).join("|");
   const [photos, setPhotos] = useState<Record<string, JourneyLocalPlacePhoto>>({});
 
   useEffect(() => {
     const controller = new AbortController();
     const objectUrls: string[] = [];
     setPhotos({});
-    void Promise.all(exactGooglePlaces.map(async (place) => {
+    void Promise.all(exactPhotoPlaces.map(async (place) => {
       try {
-        const response = await fetch(`/api/journey-place-photo?${new URLSearchParams({ placeId: place.providerProductId! })}`, {
+        const query = new URLSearchParams();
+        if (place.provider === "google-places" && place.providerProductId) {
+          query.set("placeId", place.providerProductId);
+        } else {
+          query.set("name", place.name);
+          query.set("address", place.address);
+          query.set("lon", String(place.coordinates[0]));
+          query.set("lat", String(place.coordinates[1]));
+        }
+        const response = await fetch(`/api/journey-place-photo?${query}`, {
           cache: "no-store",
           signal: controller.signal,
         });

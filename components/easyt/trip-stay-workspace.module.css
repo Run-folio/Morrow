@@ -15,6 +15,15 @@
 
 .layoutNoRail { grid-template-columns: minmax(0, 1fr); }
 
+.feedbackRow {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px 14px 0;
+  display: grid;
+  gap: 10px;
+  background: color-mix(in srgb, var(--morrovia-paper) 98%, var(--morrovia-lilac));
+}
+
 .main {
   min-width: 0;
   padding: clamp(18px, 2vw, 28px);
@@ -28,8 +37,8 @@
 .layoutNoRail .main { border-right: 0; }
 
 .stopNavigation {
+  grid-column: 1 / -1;
   min-width: 0;
-  margin: calc(clamp(18px, 2vw, 28px) * -1) calc(clamp(18px, 2vw, 28px) * -1) 0;
   overflow: hidden;
   border-bottom: 1px solid var(--morrovia-line);
 }
@@ -252,7 +261,7 @@
 
 @media (max-width: 620px) {
   .main { padding: 16px 14px 24px; }
-  .stopNavigation { margin: -16px -14px 0; }
+  .feedbackRow { padding: 10px 10px 0; }
   .intro h2 { font-size: 34px; }
   .grid, .loading > div:last-child { grid-template-columns: minmax(0, 1fr); }
   .card { display: flex; }

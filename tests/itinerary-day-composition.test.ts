@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { composeItineraryDay, fallbackItineraryDayPart } from "../lib/easyt/itinerary-day-composition.ts";
-import { placeItineraryActivity, preferredItineraryDayPart } from "../lib/easyt/itinerary-activity-placement.ts";
+import { placeItineraryActivity, preferredItineraryDayPart, scheduleItineraryIdeaAtPosition } from "../lib/easyt/itinerary-activity-placement.ts";
 import {
   assignItineraryIdeaDayPart,
   itineraryIdeaForPlace,
@@ -465,6 +465,49 @@ test("canonical drag placement appends into an occupied period without replacing
   assert.equal(moved.changed, true);
   assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Existing afternoon", "Planned museum"]);
   assert.equal([...Object.values(composition.planned).flat(), ...composition.unslotted].filter((activity) => activity.id === planned.id).length, 1);
+});
+
+test("dragging a provider suggestion into an occupied period inserts exactly once and preserves its evidence", () => {
+  const base = tripFixture();
+  const occupied: EasyTTrip = {
+    ...base,
+    brief: { ...base.brief, customActivities: { 4: ["Existing afternoon"] } },
+    planItems: base.planItems.map((item) => item.id === "kyoto-4" ? {
+      ...item,
+      notes: ["Existing afternoon"],
+      noteDayParts: ["afternoon"],
+    } : item),
+  };
+  const idea = {
+    ...itineraryIdeaForPlace({
+      stopId: "kyoto",
+      place: { ...place("provider-tour", "Provider walking tour"), image: "https://images.example.test/tour.jpg", sourceUrl: "https://provider.example.test/tour" },
+      reasons: ["interest-relevance"] as const,
+    }),
+    provider: "viator" as const,
+    providerProductId: "TOUR-306",
+    providerMetadata: {
+      duration: { fixedMinutes: 120 },
+      price: { amount: 48, currency: "GBP" },
+      rating: 4.8,
+      reviewCount: 920,
+      affiliateUrl: "https://provider.example.test/tour?affiliate=1",
+      provenance: { kind: "live_provider_search" as const, provider: "viator" as const, checkedAt: "2026-09-14T00:00:00.000Z" },
+    },
+  };
+  const placed = scheduleItineraryIdeaAtPosition(occupied, idea, "kyoto-4", "afternoon", 0);
+  const reloaded = JSON.parse(JSON.stringify(placed.trip)) as EasyTTrip;
+  const composition = composeItineraryDay(reloaded, "kyoto-4")!;
+  const stored = reloaded.brief.itineraryIdeas?.find((candidate) => candidate.id === idea.id);
+
+  assert.equal(placed.changed, true);
+  assert.deepEqual(composition.planned.afternoon.map((activity) => activity.title), ["Provider walking tour", "Existing afternoon"]);
+  assert.equal(Object.values(composition.planned).flat().filter((activity) => activity.id === idea.id).length, 1);
+  assert.deepEqual(stored?.coordinates, idea.coordinates);
+  assert.equal(stored?.image, idea.image);
+  assert.equal(stored?.sourceUrl, idea.sourceUrl);
+  assert.equal(stored?.providerProductId, "TOUR-306");
+  assert.deepEqual(stored?.providerMetadata, idea.providerMetadata);
 });
 
 test("saved ideas remain unscheduled until the canonical schedule action is used", () => {

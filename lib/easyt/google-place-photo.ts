@@ -5,6 +5,21 @@ export type GooglePlacePhotoAttribution = {
 
 const googlePlaceIdPattern = /^[A-Za-z0-9_-]{10,255}$/;
 
+const normalizedPropertyName = (value: string) => value
+  .normalize("NFKC")
+  .trim()
+  .replace(/\s+/g, " ")
+  .toLocaleLowerCase();
+
+function coordinateDistanceKm(left: [number, number], right: [number, number]) {
+  const radians = (value: number) => value * Math.PI / 180;
+  const latitudeDelta = radians(right[1] - left[1]);
+  const longitudeDelta = radians(right[0] - left[0]);
+  const a = Math.sin(latitudeDelta / 2) ** 2
+    + Math.cos(radians(left[1])) * Math.cos(radians(right[1])) * Math.sin(longitudeDelta / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export function validGooglePlaceId(value: unknown): value is string {
   return typeof value === "string" && googlePlaceIdPattern.test(value);
 }
@@ -14,6 +29,23 @@ export function exactGooglePhotoResource(placeId: string, value: unknown) {
   return value.startsWith(`places/${placeId}/photos/`) && /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(value)
     ? value
     : null;
+}
+
+/**
+ * A fallback map property may request Google media only after the server has
+ * resolved the same normalized property name within 100 metres. Ambiguous or
+ * merely similar hotels deliberately keep the neutral image treatment.
+ */
+export function exactGooglePropertyMatch(input: {
+  name: string;
+  coordinates: [number, number];
+}, candidate: {
+  name?: string;
+  coordinates?: [number, number];
+}) {
+  if (!candidate.name || !candidate.coordinates) return false;
+  if (normalizedPropertyName(input.name) !== normalizedPropertyName(candidate.name)) return false;
+  return coordinateDistanceKm(input.coordinates, candidate.coordinates) <= 0.1;
 }
 
 export function safeGooglePhotoAttributions(value: unknown): GooglePlacePhotoAttribution[] {

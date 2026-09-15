@@ -29,7 +29,8 @@ import {
   Utensils,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlanItem, type TripBooking, type TripLeg, type TripStop } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import type { JourneyImage } from "@/lib/journey";
@@ -69,7 +70,7 @@ import {
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
-import { placeItineraryActivity, preferredItineraryDayPart } from "@/lib/easyt/itinerary-activity-placement";
+import { placeItineraryActivity, preferredItineraryDayPart, scheduleItineraryIdeaAtPosition } from "@/lib/easyt/itinerary-activity-placement";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSegmentedControl } from "@/components/easyt/easyt-controls";
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
@@ -444,6 +445,7 @@ export default function TripItineraryWorkspace({
   const [draggedActivity, setDraggedActivity] = useState<ActivityTarget | null>(null);
   const [plannerDrag, setPlannerDrag] = useState<PlannerDragItem | null>(null);
   const plannerDragRef = useRef<PlannerDragItem | null>(null);
+  const [nativePlannerDrag, setNativePlannerDrag] = useState(false);
   const [openSavedPickerId, setOpenSavedPickerId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -467,6 +469,14 @@ export default function TripItineraryWorkspace({
   useEffect(() => {
     setSelectedIndex((current) => Math.min(current, Math.max(0, days.length - 1)));
   }, [days.length]);
+
+  useEffect(() => {
+    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setNativePlannerDrag(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const request = selectedDayRequestRef.current;
@@ -837,7 +847,14 @@ export default function TripItineraryWorkspace({
     clearPlannerDrag();
     setPlannerError("");
     if (dragged.kind === "suggestion") {
-      scheduleIdea(dragged.idea, active.id, dayPart);
+      let mutationReason = "";
+      const accepted = mutation.mutateTrip((current) => {
+        const result = scheduleItineraryIdeaAtPosition(current, dragged.idea, active.id, dayPart, insertionIndex);
+        mutationReason = result.reason ?? "";
+        return result.trip;
+      }, `itinerary-suggestion-${dragged.idea.stopId}-${dragged.idea.placeId}`);
+      if (accepted) setNotice(`${dragged.idea.title} added to ${dayPart[0]!.toUpperCase()}${dayPart.slice(1)}`);
+      else if (mutationReason && !mutationReason.includes("already")) setPlannerError(mutationReason);
       return;
     }
     let mutationReason = "";
@@ -1038,12 +1055,12 @@ export default function TripItineraryWorkspace({
               setSelectedRecommendation(result);
             }}
             draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
-            onDragStart={(idea, event) => {
+            onDragStart={nativePlannerDrag ? (idea, event) => {
               event.dataTransfer.effectAllowed = "copyMove";
               event.dataTransfer.setData("text/plain", idea.id);
               beginPlannerDrag({ kind: "suggestion", idea });
-            }}
-            onDragEnd={clearPlannerDrag}
+            } : undefined}
+            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
           />
         </div> : null}
       </div>
@@ -1117,12 +1134,12 @@ export default function TripItineraryWorkspace({
             onMoveActivity={moveComposedActivity}
             dragActive={Boolean(plannerDrag)}
             draggedActivityId={plannerDrag?.kind === "activity" ? plannerDrag.activity.id : null}
-            onActivityDragStart={(activity, event) => {
+            onActivityDragStart={nativePlannerDrag ? (activity, event) => {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", activity.id);
               beginPlannerDrag({ kind: "activity", activity });
-            }}
-            onActivityDragEnd={clearPlannerDrag}
+            } : undefined}
+            onActivityDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
             onActivityDrop={dropPlannerItem}
             selectedActivityId={selectedActivity?.id ?? null}
             onActivitySelect={(activity, trigger) => {
@@ -1206,8 +1223,8 @@ export default function TripItineraryWorkspace({
                 onRemove={() => { setRemoveTarget(target); setRemoveError(""); setOpenMenuId(null); }}
                 onMoveEarlier={() => moveActivityTo(target, previous?.sourceIndex ?? sourceIndex)}
                 onMoveLater={() => moveActivityTo(target, next ? next.sourceIndex + 1 : active.notes.length)}
-                onDragStart={() => setDraggedActivity(target)}
-                onDragEnd={() => setDraggedActivity(null)}
+                onDragStart={nativePlannerDrag ? () => setDraggedActivity(target) : undefined}
+                onDragEnd={nativePlannerDrag ? () => setDraggedActivity(null) : undefined}
               />
               <InsertionControl
                 addFlow={addFlow?.dayNumber === active.dayNumber && addFlow.noteIndex === sourceIndex + 1 ? addFlow : null}
@@ -1393,12 +1410,12 @@ export default function TripItineraryWorkspace({
             selectedResultId={selectedRecommendation?.identity ?? null}
             onSelectedDetailRefresh={(result) => setSelectedRecommendation((current) => current?.identity === result.identity ? result : current)}
             draggingIdeaId={plannerDrag?.kind === "suggestion" ? plannerDrag.idea.id : null}
-            onDragStart={(idea, event) => {
+            onDragStart={nativePlannerDrag ? (idea, event) => {
               event.dataTransfer.effectAllowed = "copyMove";
               event.dataTransfer.setData("text/plain", idea.id);
               beginPlannerDrag({ kind: "suggestion", idea });
-            }}
-            onDragEnd={clearPlannerDrag}
+            } : undefined}
+            onDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
             onInteractionReset={clearPlannerDrag}
           />
           <EasyTLinkButton
@@ -1642,8 +1659,8 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
   selectedResultId: string | null;
   onSelectedDetailRefresh: (result: ExploreResult) => void;
   draggingIdeaId: string | null;
-  onDragStart: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
-  onDragEnd: () => void;
+  onDragStart?: (idea: ItineraryIdea, event: DragEvent<HTMLElement>) => void;
+  onDragEnd?: () => void;
   onInteractionReset: () => void;
 }) {
   const [places, setPlaces] = useState<ItineraryDiscoveryPlace[]>(initialPlaces ?? []);
@@ -1808,7 +1825,7 @@ function ItineraryDaySuggestions({ trip, day, stop, copy, language, initialPlace
         }}
         onRemove={state.idea ? () => { setError(""); if (!onRemove(state.idea!)) setError("This activity could not be removed safely."); } : undefined}
         onOpenDetail={(origin) => onOpenDetail(result, origin)}
-        onDragStart={(event) => onDragStart(idea, event)}
+        onDragStart={onDragStart ? (event) => onDragStart(idea, event) : undefined}
         onDragEnd={onDragEnd}
       />;
     })}</div>
@@ -1843,8 +1860,8 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
   onSchedule: (dayId: string, dayPart?: ItineraryDayPart | null) => boolean;
   onRemove?: () => void;
   onOpenDetail: (origin: HTMLButtonElement) => void;
-  onDragStart: (event: DragEvent<HTMLElement>) => void;
-  onDragEnd: () => void;
+  onDragStart?: (event: DragEvent<HTMLElement>) => void;
+  onDragEnd?: () => void;
 }) {
   const titleId = useId();
   const commercial = result.idea.source === "live-provider-inventory";
@@ -1853,7 +1870,8 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
   const actionLabel = state.state === "planned" ? `Added to Day ${state.day.dayNumber}` : `Add to Day ${preferredDay?.dayNumber ?? ""}`;
   const meta = [result.location, result.category, result.duration, commercial ? "Viator" : null].filter(Boolean).join(" · ");
   const action = commercial && result.providerUrl ? { provider: "viator", category: "activities", href: result.providerUrl, cta: "View on Viator", affiliate: true } as const : null;
-  return <article className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={allowsDayPart && !pending} onDragStart={allowsDayPart ? onDragStart : undefined} onDragEnd={allowsDayPart ? onDragEnd : undefined}>
+  const draggable = allowsDayPart && !pending && Boolean(onDragStart);
+  return <article className={`${styles.discoveryCard} ${dragging ? styles.discoveryCardDragging : ""}`} data-itinerary-suggestion-id={result.sourceId} data-provider-product-id={result.providerProductId} aria-labelledby={titleId} aria-busy={pending || undefined} draggable={draggable} onDragStart={draggable ? onDragStart : undefined} onDragEnd={draggable ? onDragEnd : undefined}>
     <div className={styles.discoveryMedia}>
       <ResilientImage src={result.image} alt="" fallback={<span className={styles.discoveryFallback}><MapPin aria-hidden="true" /></span>} />
       {!commercial && result.providerUrl ? <a href={result.providerUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open source for ${result.title}`}><ExternalLink aria-hidden="true" /></a> : null}
@@ -1861,7 +1879,7 @@ function ItineraryRankedSuggestionCard({ result, tripId, language, options, pref
     <div className={styles.discoveryCopy}><div id={titleId}><ItineraryActivityIdentity title={result.title} category={result.kind === "restaurant" ? "restaurant" : "activity"} meta={meta} compact /></div></div>
     <div className={styles.discoveryActions}>
       <EasyTButton size="small" variant="quiet" aria-label={`Open details for ${result.title}`} onClick={(event) => onOpenDetail(event.currentTarget)}>Details</EasyTButton>
-      {allowsDayPart ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span> : null}
+      {draggable ? <span className={styles.dragHint}><GripVertical aria-hidden="true" />Drag into the day</span> : null}
       {state.state === "planned" ? <span className={styles.plannedState}><CheckCircle2 aria-hidden="true" />Added to Day {state.day.dayNumber}</span> : null}
       {preferredDay ? <ItineraryDayPicker placeTitle={result.title} language={language} options={options} preferredDayId={preferredDayId} preferredDayPart={preferredDayPart} allowsDayPart={allowsDayPart} currentDayId={currentDayId} currentDayPart={state.state === "planned" ? state.idea.dayPart ?? null : null} label={actionLabel} open={pickerOpen} pending={pending} onOpenChange={onPickerOpenChange} onDefault={() => state.state === "planned" ? false : onSchedule(preferredDay.id)} onChoose={(dayId, dayPart) => onSchedule(dayId, dayPart)} /> : null}
       {state.state === "available" ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onSave}>{pending ? "Saving…" : "Save"}</EasyTButton> : state.state === "saved" ? <span className={styles.savedIdeaState}>Saved for later</span> : onRemove ? <EasyTButton size="small" variant="quiet" disabled={pending} onClick={onRemove}>Remove</EasyTButton> : null}
@@ -1891,6 +1909,7 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<CSSProperties>({});
 
   const close = (restoreFocus: boolean) => {
     onOpenChange(false);
@@ -1910,6 +1929,33 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
     return () => document.removeEventListener("mousedown", dismiss);
   }, [currentDayId, currentDayPart, open, preferredDayId]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const positionMenu = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.min(310, Math.max(220, window.innerWidth - 24));
+      const availableBelow = Math.max(0, window.innerHeight - rect.bottom - 12);
+      const availableAbove = Math.max(0, rect.top - 12);
+      const placeAbove = availableBelow < 240 && availableAbove > availableBelow;
+      const availableHeight = placeAbove ? availableAbove : availableBelow;
+      const maxHeight = Math.min(360, Math.max(140, availableHeight));
+      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+      const top = placeAbove
+        ? Math.max(12, rect.top - maxHeight - 6)
+        : Math.min(window.innerHeight - maxHeight - 12, rect.bottom + 6);
+      setMenuPosition({ top, left, width, maxHeight });
+    };
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
+  }, [open]);
+
   const moveFocus = (event: ReactKeyboardEvent<HTMLDivElement>, direction: 1 | -1) => {
     const items = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>("[role='menuitem']") ?? [])];
     const index = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
@@ -1917,40 +1963,13 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
     event.preventDefault();
   };
 
-  return <div className={styles.dayPicker}>
-    <span className={styles.dayPickerSplit}>
-      <EasyTButton
-        size="small"
-        variant="secondary"
-        icon={currentDayId ? CheckCircle2 : CirclePlus}
-        disabled={pending || Boolean(currentDayId)}
-        onClick={onDefault}
-      >{label}</EasyTButton>
-      <EasyTButton
-      ref={triggerRef}
-      className={styles.dayPickerToggle}
-      icon={ChevronDown}
-      iconOnly
-      size="small"
-      variant="secondary"
-      disabled={pending}
-      aria-expanded={open}
-      aria-haspopup="menu"
-      aria-controls={open ? menuId : undefined}
-      aria-label={allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
-      onClick={() => onOpenChange(!open)}
-      onKeyDown={(event) => {
-        if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange(true); }
-        if (event.key === "Escape" && open) { event.preventDefault(); close(true); }
-      }}
-    >Choose placement for {placeTitle}</EasyTButton>
-    </span>
-    {open ? <div
-      className={`${styles.rowMenuPanel} ${styles.dayPickerPanel}`}
+  const menu = open ? <div
+      className={`${styles.rowMenuPanel} ${styles.dayPickerPanel} ${styles.dayPickerPortal}`}
       id={menuId}
       ref={menuRef}
       role="menu"
       aria-label={`Choose a day for ${placeTitle}`}
+      style={menuPosition}
       onKeyDown={(event) => {
         if (event.key === "Escape") { event.preventDefault(); close(true); }
         else if (event.key === "ArrowDown") moveFocus(event, 1);
@@ -1983,7 +2002,37 @@ function ItineraryDayPicker({ placeTitle, language, options, preferredDayId, pre
         </EasyTButton>;
         });
       })}
-    </div> : null}
+    </div> : null;
+
+  return <div className={styles.dayPicker}>
+    <span className={styles.dayPickerSplit}>
+      <EasyTButton
+        size="small"
+        variant="secondary"
+        icon={currentDayId ? CheckCircle2 : CirclePlus}
+        disabled={pending || Boolean(currentDayId)}
+        onClick={onDefault}
+      >{label}</EasyTButton>
+      <EasyTButton
+      ref={triggerRef}
+      className={styles.dayPickerToggle}
+      icon={ChevronDown}
+      iconOnly
+      size="small"
+      variant="secondary"
+      disabled={pending}
+      aria-expanded={open}
+      aria-haspopup="menu"
+      aria-controls={open ? menuId : undefined}
+      aria-label={allowsDayPart ? `Choose day and part of day for ${placeTitle}` : `Choose day for ${placeTitle}`}
+      onClick={() => onOpenChange(!open)}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowDown") { event.preventDefault(); onOpenChange(true); }
+        if (event.key === "Escape" && open) { event.preventDefault(); close(true); }
+      }}
+    >Choose placement for {placeTitle}</EasyTButton>
+    </span>
+    {menu && typeof document !== "undefined" ? createPortal(menu, document.body) : null}
   </div>;
 }
 
@@ -2097,8 +2146,8 @@ function TimelineRow({
   onRemove: () => void;
   onMoveEarlier: () => void;
   onMoveLater: () => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }) {
   const Icon = iconForPlanItem(day.type);
   const status = booking
@@ -2129,7 +2178,7 @@ function TimelineRow({
       </EasyTButton>
       <div className={styles.itemActions}>
         {status ? <span className={booking?.confirmation ? styles.confirmedStatus : styles.savedStatus}>{status}</span> : null}
-        {editable ? <EasyTButton className={styles.dragHandle} icon={GripVertical} iconOnly size="small" variant="quiet" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>{copy.dragActivity}: {note}</EasyTButton> : null}
+        {editable && onDragStart ? <EasyTButton className={styles.dragHandle} icon={GripVertical} iconOnly size="small" variant="quiet" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>{copy.dragActivity}: {note}</EasyTButton> : null}
         {externalHref ? <a className={styles.rowExternal} href={externalHref} target="_blank" rel="noopener noreferrer" aria-label={`${copy.bookingLink}: ${note}`}><ExternalLink aria-hidden="true" /></a> : null}
         {editable ? <div className={styles.rowMenu}>
           <EasyTButton aria-expanded={menuOpen} aria-haspopup="menu" className={styles.rowEdit} icon={MoreHorizontal} iconOnly size="small" variant="quiet" onClick={onToggleMenu}>{copy.edit}: {note}</EasyTButton>

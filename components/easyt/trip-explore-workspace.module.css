@@ -16,6 +16,15 @@
   background: color-mix(in srgb, var(--morrovia-paper) 98%, var(--morrovia-lilac));
 }
 
+.feedbackRow {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px 14px 0;
+  display: grid;
+  gap: 10px;
+  background: color-mix(in srgb, var(--morrovia-paper) 98%, var(--morrovia-lilac));
+}
+
 .resultsHeader {
   display: flex;
   align-items: center;
@@ -24,7 +33,6 @@
 }
 
 .notice {
-  margin-top: 12px;
   min-height: 44px;
   padding: 6px 8px 6px 12px;
   display: flex;
@@ -39,7 +47,7 @@
 .notice > svg { width: 16px; height: 16px; flex: none; }
 .notice button { margin-left: auto; }
 
-.stopNavigation { min-width: 0; margin: calc(clamp(18px, 2vw, 26px) * -1) calc(clamp(18px, 2vw, 26px) * -1) 0; overflow: hidden; border-bottom: 1px solid var(--morrovia-line); }
+.stopNavigation { grid-column: 1 / -1; min-width: 0; overflow: hidden; border-bottom: 1px solid var(--morrovia-line); }
 
 .categories {
   margin: 14px 0 0;
@@ -226,7 +234,7 @@
 
 @media (max-width: 390px) {
   .main { padding-inline: 10px; }
-  .stopNavigation { margin-inline: -10px; }
+  .feedbackRow { padding: 10px 10px 0; }
   .categories { margin-inline: -10px; padding-inline: 10px; scroll-padding-inline: 10px; }
   .cardBody { padding: 12px; }
   .cardImage { height: 190px; }

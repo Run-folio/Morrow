@@ -1552,6 +1552,11 @@
   box-shadow: var(--morrovia-shadow-overlay);
 }
 
+.dayPickerPortal {
+  position: fixed;
+  z-index: 80;
+}
+
 .rowMenuPanel > .dayPickerOption {
   min-width: 0;
   padding: 9px;

@@ -114,14 +114,16 @@ function StayFinderSurface({
   const inventoryLoading = finder.accommodationInventoryStatus === "loading" && finder.candidates.length > 0;
 
   return <div className={`${styles.layout} ${showRail ? "" : styles.layoutNoRail}`}>
-    <div className={styles.main}>
+    {notice || mutation.error ? <div className={styles.feedbackRow}>
       {notice ? <MorroviaBriefNotice title={notice} onDismiss={() => setNotice(null)} action={<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton>} /> : null}
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
+    </div> : null}
 
-      <div className={styles.stopNavigation}>
-        <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
-      </div>
+    <div className={styles.stopNavigation}>
+      <JourneyRouteStopTrack stops={navigationStops} ariaLabel="Choose an overnight trip stop" presentation="integrated" surface="standalone" onSelectStop={onSelectStop} />
+    </div>
 
+    <div className={styles.main}>
       <header className={styles.intro}>
         <h2>Where to stay in {context.stop.name}</h2>
       </header>

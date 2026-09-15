@@ -152,3 +152,23 @@ export function placeItineraryActivity(
   if (moved.changed) return moved;
   return assigned.changed ? assigned : moved;
 }
+
+/**
+ * Schedule a saved or recommended idea, then place it at the same canonical
+ * insertion point used by activity drag/reorder. This keeps provider evidence
+ * on the ItineraryIdea while preventing an occupied period from behaving like
+ * a replacement slot.
+ */
+export function scheduleItineraryIdeaAtPosition(
+  trip: EasyTTrip,
+  idea: ItineraryIdea,
+  dayId: string,
+  dayPart: ItineraryDayPart,
+  insertionIndex: number,
+): ItineraryMutationResult {
+  const scheduled = scheduleItineraryIdea(trip, idea, dayId, dayPart);
+  const placed = placeItineraryActivity(scheduled, dayId, idea.id, dayPart, insertionIndex);
+  if (placed.changed) return placed;
+  if (scheduled !== trip) return { trip: scheduled, changed: true, reason: placed.reason };
+  return placed;
+}

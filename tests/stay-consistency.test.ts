@@ -6,6 +6,7 @@ import {
   decodeGooglePhotoAttributions,
   encodeGooglePhotoAttributions,
   exactGooglePhotoResource,
+  exactGooglePropertyMatch,
   safeGooglePhotoAttributions,
   validGooglePlaceId,
 } from "../lib/easyt/google-place-photo.ts";
@@ -88,6 +89,16 @@ test("Map, Explore, and Stay share JourneyRouteStopTrack while keeping workspace
   assert.doesNotMatch(stay, /routeTimelineScopeId|scopeId: "all"/);
 });
 
+test("Stay feedback and route context span both workspace columns before main content and rail", () => {
+  const feedbackIndex = stay.indexOf("className={styles.feedbackRow}");
+  const timelineIndex = stay.indexOf("className={styles.stopNavigation}");
+  const mainIndex = stay.indexOf("className={styles.main}", timelineIndex);
+  const railIndex = stay.indexOf("className={styles.rail}", mainIndex);
+  assert.equal(feedbackIndex < timelineIndex && timelineIndex < mainIndex && mainIndex < railIndex, true);
+  assert.match(stayStyles, /\.feedbackRow \{[\s\S]*grid-column: 1 \/ -1;/);
+  assert.match(stayStyles, /\.stopNavigation \{[\s\S]*grid-column: 1 \/ -1;/);
+});
+
 test("Google photo helpers bind a photo resource to the exact provider place", () => {
   const placeId = "ChIJexactPlace_123";
   assert.equal(validGooglePlaceId(placeId), true);
@@ -95,6 +106,13 @@ test("Google photo helpers bind a photo resource to the exact provider place", (
   assert.equal(exactGooglePhotoResource(placeId, "places/ChIJdifferent/photos/photo_456"), null);
   assert.equal(exactGooglePhotoResource(placeId, "https://attacker.example/photo"), null);
   assert.equal(validGooglePlaceId("../../secret"), false);
+});
+
+test("fallback property photos require exact normalized identity within 100 metres", () => {
+  const input = { name: "Tokyo Station Hotel", coordinates: [139.7671, 35.6812] as [number, number] };
+  assert.equal(exactGooglePropertyMatch(input, { name: " Tokyo   Station Hotel ", coordinates: [139.7674, 35.6814] }), true);
+  assert.equal(exactGooglePropertyMatch(input, { name: "Tokyo Station Hotel Annex", coordinates: [139.7671, 35.6812] }), false);
+  assert.equal(exactGooglePropertyMatch(input, { name: "Tokyo Station Hotel", coordinates: [139.77, 35.69] }), false);
 });
 
 test("Google photo attribution is bounded, sanitized, and round-trips through an HTTP-safe header", () => {
@@ -120,10 +138,15 @@ test("Google photo retrieval is server-side, no-store, bounded, and outside firs
   assert.match(photoRoute, /cache: "no-store"/);
   assert.match(photoRoute, /AbortSignal\.timeout\(5000\)/);
   assert.match(photoRoute, /maxWidthPx=960&maxHeightPx=640/);
+  assert.match(photoRoute, /places:searchText/);
+  assert.match(photoRoute, /exactGooglePropertyMatch/);
+  assert.match(photoRoute, /radius: 150/);
+  assert.match(photoRoute, /pageSize: 5/);
   assert.match(photoRoute, /Cache-Control": "private, no-store"/);
   assert.doesNotMatch(photoRoute, /\?key=|NEXT_PUBLIC_GOOGLE|photoUri/);
   assert.match(photoClient, /\.slice\(0, 6\)/);
   assert.match(photoClient, /place\.provider === "google-places"/);
+  assert.match(photoClient, /place\.provider === "openstreetmap"/);
   assert.match(photoClient, /URL\.createObjectURL/);
   assert.match(photoClient, /URL\.revokeObjectURL/);
   assert.doesNotMatch(finder, /journey-place-photo/);
@@ -132,8 +155,12 @@ test("Google photo retrieval is server-side, no-store, bounded, and outside firs
 test("image fallbacks and provider boundaries never borrow unrelated hotel media", () => {
   assert.match(stay, /No sourced property image/);
   assert.match(photoClient, /place\.provider === "google-places"/);
-  assert.match(photoClient, /placeId: place\.providerProductId/);
-  assert.doesNotMatch(photoClient, /URLSearchParams\(\{[^}]*place\.name|URLSearchParams\(\{[^}]*city/);
+  assert.match(photoClient, /query\.set\("placeId", place\.providerProductId\)/);
+  assert.match(photoClient, /query\.set\("name", place\.name\)/);
+  assert.match(photoClient, /query\.set\("address", place\.address\)/);
+  assert.match(photoClient, /query\.set\("lon", String\(place\.coordinates\[0\]\)\)/);
+  assert.match(photoClient, /query\.set\("lat", String\(place\.coordinates\[1\]\)\)/);
+  assert.doesNotMatch(photoClient, /query\.set\("city"/);
   assert.doesNotMatch(bookingSearch, /image\??:|images\??:|photo/);
   assert.match(stories, /BookingOnlyNoImageProperty/);
   assert.match(stories, /MultipleSameNameProperties/);

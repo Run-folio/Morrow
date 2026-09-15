@@ -335,25 +335,27 @@ export default function TripExploreWorkspace({
   const resultsPresentation = exploreResultsPresentation(visibleResults.length, relevantStatuses);
 
   return <section className={styles.workspace} aria-label="Explore recommendations">
-    <div className={styles.main}>
+    {notice || mutation.error ? <div className={styles.feedbackRow}>
       {notice ? <div className={styles.notice} role="status"><Check aria-hidden="true" />{notice}<EasyTButton size="small" variant="quiet" onClick={() => setNotice(null)}>Dismiss</EasyTButton></div> : null}
       {mutation.error ? <MorroviaStatusBanner tone="warning" title="This change is safe on this device" detail={mutation.error} /> : null}
+    </div> : null}
 
-      <div className={styles.stopNavigation}>
-          <JourneyRouteStopTrack
-            stops={navigationStops}
-            ariaLabel="Explore by trip stop"
-            presentation="integrated"
-            surface="standalone"
-            onSelectStop={(next) => {
-              const nextScopeId = routeTimelineScopeId(workingTrip.id, next);
-              setDestinationId(nextScopeId);
-              setSelectedResultId(null);
-              trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: nextScopeId === "all" ? "all" : "stop" });
-            }}
-          />
-      </div>
+    <div className={styles.stopNavigation}>
+      <JourneyRouteStopTrack
+        stops={navigationStops}
+        ariaLabel="Explore by trip stop"
+        presentation="integrated"
+        surface="standalone"
+        onSelectStop={(next) => {
+          const nextScopeId = routeTimelineScopeId(workingTrip.id, next);
+          setDestinationId(nextScopeId);
+          setSelectedResultId(null);
+          trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: nextScopeId === "all" ? "all" : "stop" });
+        }}
+      />
+    </div>
 
+    <div className={styles.main}>
       <div className={styles.categories} role="group" aria-label="Explore categories">
         {exploreCategories.map((item) => {
           const Icon = categoryIcons[item];

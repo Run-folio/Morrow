@@ -276,9 +276,18 @@ test("planner drag ownership survives native pointer timing and is cleared at wo
   assert.match(itinerary, /const beginPlannerDrag = \(dragged: PlannerDragItem\) => \{\s*plannerDragRef\.current = dragged;\s*setPlannerDrag\(dragged\);\s*\}/);
   assert.match(itinerary, /const clearPlannerDrag = \(\) => \{\s*plannerDragRef\.current = null;\s*setPlannerDrag\(null\);\s*\}/);
   assert.match(itinerary, /\}, \[activeDayId\]\);/);
-  assert.match(itinerary, /onDragStart=\{\(idea, event\) => \{[\s\S]{0,220}beginPlannerDrag\(\{ kind: "suggestion", idea \}\);/);
-  assert.match(itinerary, /onDragEnd=\{clearPlannerDrag\}/);
+  assert.match(itinerary, /onDragStart=\{nativePlannerDrag \? \(idea, event\) => \{[\s\S]{0,220}beginPlannerDrag\(\{ kind: "suggestion", idea \}\);/);
+  assert.match(itinerary, /onDragEnd=\{nativePlannerDrag \? clearPlannerDrag : undefined\}/);
   assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
+  assert.match(itinerary, /scheduleItineraryIdeaAtPosition\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
+  assert.match(itinerary, /window\.matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)/);
+});
+
+test("day placement menus escape the scroll owner through a viewport-positioned portal", () => {
+  assert.match(itinerary, /createPortal\(menu, document\.body\)/);
+  assert.match(itinerary, /trigger\.getBoundingClientRect\(\)/);
+  assert.match(itinerary, /window\.addEventListener\("scroll", positionMenu, true\)/);
+  assert.match(styles, /\.dayPickerPortal \{[\s\S]*position: fixed;[\s\S]*z-index: 80;/);
 });
 
 test("an unavailable Suggestions lane is compact, resets active drag, and retries without overlap", () => {
