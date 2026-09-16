@@ -3,7 +3,7 @@ import { useState } from "react";
 import HomeTripStarter from "./home-trip-starter";
 import { HomeDestinationEditor } from "./home-destination-editor";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
-import { EasyTField } from "@/components/easyt/easyt-controls";
+import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
 import type { HomepageDestinationEntry } from "@/lib/easyt/home-trip-handoff";
 import { canonicalPlaceSuggestionFor } from "@/lib/easyt/place-intelligence";
 
@@ -69,7 +69,7 @@ function DestinationEditorStory({ language = "en", initialEntries = [storyEntry(
       }}
       onChange={setEntries}
     />
-    <button type="submit">Submit story form</button>
+    <EasyTButton type="submit" size="small" variant="quiet">Submit story form</EasyTButton>
     <output aria-label="Story form submissions">{submits}</output>
   </form>;
 }
