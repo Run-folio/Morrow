@@ -42,6 +42,7 @@ type VoiceTripBriefProps = {
 
 export function VoiceTripBrief({ language, onTranscript, className, compact = false }: VoiceTripBriefProps) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
+  const mountedRef = useRef(true);
   const onTranscriptRef = useRef(onTranscript);
   const disclosureId = useId();
   const [supported, setSupported] = useState<boolean | null>(null);
@@ -55,9 +56,20 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
   }, [onTranscript]);
 
   useEffect(() => {
+    mountedRef.current = true;
     setSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
     setDisclosureAcknowledged(speechDisclosureAcknowledged(window.localStorage));
-    return () => recognitionRef.current?.abort();
+    return () => {
+      mountedRef.current = false;
+      const recognition = recognitionRef.current;
+      recognitionRef.current = null;
+      if (!recognition) return;
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    };
   }, []);
 
   const text = language === "es"
@@ -106,8 +118,11 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
     recognition.lang = language === "es" ? "es-ES" : "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.onstart = () => setListening(true);
+    recognition.onstart = () => {
+      if (mountedRef.current && recognitionRef.current === recognition) setListening(true);
+    };
     recognition.onresult = (event) => {
+      if (!mountedRef.current || recognitionRef.current !== recognition) return;
       const transcript = finalSpeechTranscript(event);
       if (transcript) {
         heardSpeech = true;
@@ -116,10 +131,12 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
       }
     };
     recognition.onerror = ({ error }) => {
+      if (!mountedRef.current || recognitionRef.current !== recognition) return;
       hadError = true;
       setMessage(text[speechFailureKind(error)]);
     };
     recognition.onend = () => {
+      if (!mountedRef.current || recognitionRef.current !== recognition) return;
       setListening(false);
       recognitionRef.current = null;
       if (!heardSpeech && !hadError) setMessage(text.noSpeech);

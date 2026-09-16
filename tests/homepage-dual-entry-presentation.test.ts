@@ -4,11 +4,20 @@ import test from "node:test";
 
 const captureSource = readFileSync(new URL("../components/easyt/morrovia-trip-capture.tsx", import.meta.url), "utf8");
 const captureStories = readFileSync(new URL("../components/easyt/morrovia-trip-capture.stories.tsx", import.meta.url), "utf8");
+const voiceSource = readFileSync(new URL("../components/easyt/voice-trip-brief.tsx", import.meta.url), "utf8");
 
 test("wide capture is opt-in without removing the canonical capture owner", () => {
   assert.match(captureSource, /homepageEntry\?/);
   assert.match(captureSource, /VoiceTripBrief/);
   assert.match(captureSource, /MorroviaDatePicker/);
+});
+
+test("voice recognition cannot deliver a delayed transcript after Describe unmounts", () => {
+  assert.match(voiceSource, /recognition\.onresult = null/);
+  assert.match(voiceSource, /recognition\.onend = null/);
+  assert.match(voiceSource, /!mountedRef\.current \|\| recognitionRef\.current !== recognition/);
+  assert.match(captureStories, /WideHomepageDelayedVoiceAfterUnmount/);
+  assert.match(captureStories, /Delayed voice result changed the unmounted Describe prompt/);
 });
 
 test("wide capture keeps one form and one primary submit", () => {

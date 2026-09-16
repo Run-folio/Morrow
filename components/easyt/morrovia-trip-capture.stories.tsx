@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TOUR_TRIP_PROMPT, tourTripFixture } from "./storybook/tour-trip.fixture";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaTripCapture, type MorroviaTripCaptureProps } from "./morrovia-trip-capture";
@@ -195,13 +195,21 @@ export const WideHomepageInteraction: Story = {
     personalize.click();
     await settle();
     const culture = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
-    culture?.click();
+    if (!culture) throw new globalThis.Error("Culture interest is missing from Personalize");
+    culture.click();
     await settle();
     const hide = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Hide personalization");
-    hide?.click();
+    if (!hide) throw new globalThis.Error("Hide personalization control is missing");
+    const personalizePanelId = hide.getAttribute("aria-controls");
+    if (!personalizePanelId || !canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not open");
+    hide.click();
     await settle();
-    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize")?.click();
+    if (canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not close");
+    const reopen = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize");
+    if (!reopen) throw new globalThis.Error("Personalize reopen control is missing");
+    reopen.click();
     await settle();
+    if (!canvasElement.querySelector(`#${CSS.escape(personalizePanelId)}`)) throw new globalThis.Error("Personalize panel did not reopen");
     const retainedInterest = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
     if (retainedInterest?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained interest after closing Personalize");
     const retainedDates = canvasElement.textContent?.includes("8 Apr 2027") && canvasElement.textContent?.includes("22 Apr 2027");
@@ -224,6 +232,69 @@ export const WideHomepageDescribeSpanish: Story = {
       datesChosen: false,
       onDatesClear: () => undefined,
     },
+  },
+};
+
+type StoryRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onresult: ((event: { resultIndex: number; results: ArrayLike<{ 0?: { transcript?: string }; isFinal: boolean }> }) => void) | null;
+};
+
+let delayedRecognition: StoryRecognition | null = null;
+
+class DelayedStoryRecognition implements StoryRecognition {
+  lang = "";
+  continuous = false;
+  interimResults = false;
+  onstart: (() => void) | null = null;
+  onend: (() => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
+  onresult: StoryRecognition["onresult"] = null;
+  constructor() { delayedRecognition = this; }
+  start() { this.onstart?.(); }
+  stop() { this.onend?.(); }
+  abort() { /* Keep the instance available to simulate a provider's delayed event. */ }
+}
+
+function VoiceUnmountCapture() {
+  const originalRecognition = useRef(typeof window !== "undefined" ? window.SpeechRecognition : undefined);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("morrovia-speech-disclosure-acknowledged-v1", "1");
+    window.SpeechRecognition = DelayedStoryRecognition;
+  }
+  useEffect(() => () => {
+    window.SpeechRecognition = originalRecognition.current;
+    delayedRecognition = null;
+  }, []);
+  return <ControlledCapture {...wideHomepageArgs} homepageEntry={{ ...wideHomepageArgs.homepageEntry, mode: "describe" }} />;
+}
+
+export const WideHomepageDelayedVoiceAfterUnmount: Story = {
+  render: () => <VoiceUnmountCapture />,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise((resolve) => window.setTimeout(resolve, 0));
+    await settle();
+    const voice = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Use voice to add a trip idea"]');
+    if (!voice) throw new globalThis.Error("Voice control is missing in Describe mode");
+    voice.click();
+    await settle();
+    const delayedResult = delayedRecognition?.onresult;
+    canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[0]?.click();
+    await settle();
+    delayedResult?.({ resultIndex: 0, results: [{ 0: { transcript: "late provider transcript" }, isFinal: true }] });
+    await settle();
+    canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1]?.click();
+    await settle();
+    const prompt = canvasElement.querySelector<HTMLTextAreaElement>("textarea");
+    if (prompt?.value) throw new globalThis.Error("Delayed voice result changed the unmounted Describe prompt");
   },
 };
 
