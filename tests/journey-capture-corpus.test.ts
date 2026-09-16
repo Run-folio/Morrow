@@ -6,8 +6,10 @@ import {
 } from "../lib/easyt/journey-capture.ts";
 import {
   createHomeTripDraft,
+  handoffRouteStops,
   HOME_TRIP_DRAFT_KEY,
   homeTripDraftTimingFlexibility,
+  mergeHandoffLocationChoice,
   removeHomeTripDraftIfDurable,
   resolveHandoffBatch,
   routableHandoffMentions,
@@ -21,6 +23,97 @@ const CALENDAR_AND_PREFERENCE_WORDS = [
   "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",
   "Spring", "Summer", "Autumn", "Fall", "Winter", "Food", "Keep the", "Culture", "Nature", "Hiking",
 ];
+
+const PRIVATE_BETA_JAPAN_KOREA_PROMPT = "Plan a 19-day trip from Tokyo to Busan, visiting Tokyo, Takayama, Kanazawa, Kyoto, Osaka, Seoul and Busan. Two travellers, interested in food, culture and nature.";
+
+test("explicit place intent is conserved across long, reordered, fuzzy, ambiguous and regional captures", () => {
+  const cases = [
+    {
+      id: "exact-hosted-failure",
+      prompt: PRIVATE_BETA_JAPAN_KOREA_PROMPT,
+      // Tokyo appears once as the departure and once as an explicit stay. The
+      // deterministic endpoint mention for Busan precedes the visit list; the
+      // hosted semantic capture supplies the intended route ordering.
+      expected: ["Tokyo", "Busan", "Tokyo", "Takayama", "Kanazawa", "Kyoto", "Osaka", "Seoul"],
+    },
+    {
+      id: "coordinate-less-places-first",
+      prompt: "A 19-day trip visiting Takayama, Kanazawa, Tokyo, Kyoto, Osaka, Seoul and Busan, starting from Tokyo.",
+      expected: ["Takayama", "Kanazawa", "Tokyo", "Kyoto", "Osaka", "Seoul", "Busan", "Tokyo"],
+    },
+    {
+      id: "coordinate-less-places-last",
+      prompt: "A 19-day trip from Tokyo visiting Tokyo, Kyoto, Osaka, Seoul, Busan, Takayama and Kanazawa.",
+      expected: ["Tokyo", "Tokyo", "Kyoto", "Osaka", "Seoul", "Busan", "Takayama", "Kanazawa"],
+    },
+    { id: "coordinate-less-subset", prompt: "A trip visiting Takayama and Kanazawa.", expected: ["Takayama", "Kanazawa"] },
+    {
+      id: "ordinary-seven",
+      prompt: "Travel from Lisbon to Porto, Madrid, Barcelona, Lyon, Paris and Brussels.",
+      expected: ["Lisbon", "Porto", "Madrid", "Barcelona", "Lyon", "Paris", "Brussels"],
+    },
+    {
+      id: "more-than-ten",
+      prompt: "Travel from Lisbon to Porto, Madrid, Barcelona, Lyon, Paris, Brussels, Amsterdam, Berlin, Prague and Vienna.",
+      expected: ["Lisbon", "Porto", "Madrid", "Barcelona", "Lyon", "Paris", "Brussels", "Amsterdam", "Berlin", "Prague", "Vienna"],
+    },
+    { id: "safe-typo", prompt: "Travel from London to Barcelon, Madrid and Lisbon.", expected: ["London", "Barcelon", "Madrid", "Lisbon"] },
+    { id: "reviewable-ambiguity", prompt: "Travel from London to Paris, Georgia and Rome.", expected: ["London", "Paris", "Georgia", "Rome"] },
+    { id: "region-and-cities", prompt: "Travel through Japan, with Tokyo, Kyoto and Osaka.", expected: ["Japan", "Tokyo", "Kyoto", "Osaka"] },
+  ] as const;
+
+  for (const fixture of cases) {
+    const capture = captureJourneyBrief(fixture.prompt);
+    const represented = capture.mentions.filter((mention) => fixture.expected.some((place) =>
+      mention.sourceText.replace(/[.]+$/, "").toLocaleLowerCase() === place.toLocaleLowerCase(),
+    ));
+    assert.deepEqual(
+      represented.map((mention) => mention.sourceText.replace(/[.]+$/, "")),
+      fixture.expected,
+      `${fixture.id} changed explicit mention order`,
+    );
+    assert.equal(new Set(represented.map((mention) => mention.mentionId)).size, fixture.expected.length, `${fixture.id} duplicated explicit mention identity`);
+    assert.equal(represented.every((mention) =>
+      routableHandoffMentions([mention]).length === 1
+      || mention.status === "ambiguous"
+      || mention.status === "unresolved"
+      || mention.routability !== "direct_destination"), true, `${fixture.id} silently lost an explicit mention`);
+    assert.equal(represented.every((mention) => mention.provenance.length > 0), true, `${fixture.id} lost place provenance`);
+  }
+});
+
+test("canonical homepage stops survive failed or timed-out geocoding enrichment", async () => {
+  const capture = captureJourneyBrief(PRIVATE_BETA_JAPAN_KOREA_PROMPT);
+  const routeMentions = routableHandoffMentions(capture.mentions).filter((mention) => !["origin", "fixed_start"].includes(mention.role));
+  const seeds = handoffRouteStops(capture.mentions);
+
+  assert.deepEqual(seeds.map((stop) => stop.name), routeMentions.map((mention) => mention.canonicalName));
+  assert.equal(seeds.find((stop) => stop.name === "Takayama")?.coordinates, undefined);
+  assert.equal(seeds.find((stop) => stop.name === "Kanazawa")?.coordinates, undefined);
+
+  const outcomes = await resolveHandoffBatch(routeMentions, async (mention, signal) => {
+    if (mention.canonicalName === "Takayama") throw new Error("provider unavailable");
+    if (mention.canonicalName === "Kanazawa") {
+      return new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+    }
+    return {
+      name: mention.canonicalName,
+      country: mention.parentCountries[0] ?? "",
+      coordinates: [mention.order, mention.order + 0.5] as [number, number],
+      providerId: `provider-${mention.order}`,
+    };
+  }, 20);
+
+  const enriched = outcomes.reduce((stops, outcome) => mergeHandoffLocationChoice(stops, outcome.item, outcome.value), seeds);
+  assert.deepEqual(enriched.map((stop) => stop.name), seeds.map((stop) => stop.name));
+  assert.deepEqual(enriched.map((stop) => stop.id), seeds.map((stop) => stop.id));
+  assert.equal(enriched.find((stop) => stop.name === "Takayama")?.coordinates, undefined);
+  assert.equal(enriched.find((stop) => stop.name === "Kanazawa")?.coordinates, undefined);
+  assert.equal(enriched.filter((stop) => stop.name === "Takayama").length, 1);
+  assert.equal(enriched.filter((stop) => stop.name === "Kanazawa").length, 1);
+  assert.equal(capture.mentions.find((mention) => mention.canonicalName === "Takayama")?.provenance[0]?.kind, "canonical");
+  assert.equal(capture.mentions.find((mention) => mention.canonicalName === "Kanazawa")?.provenance[0]?.kind, "canonical");
+});
 
 test("private-beta prompt regression cards keep deterministic capture facts and unknowns honest", () => {
   assert.ok(PROMPT_CAPTURE_REGRESSION_CASES.length >= 15);

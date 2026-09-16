@@ -35,7 +35,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { applySelectedOriginToJourneyCapture, composeJourneyCaptureBrief, createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
 import { canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -846,7 +846,6 @@ function TripBuilderDocument() {
           // `destination` is retained for drafts created before prompt-first
           // routing. New homepage drafts carry the complete verified route.
           const draftStops = homeDraft.destinations?.length ? homeDraft.destinations : homeDraft.destination ? [homeDraft.destination] : [];
-          if (draftStops.length) setStops(draftStops);
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.nightAllocations) setDayAllocations(homeDraft.nightAllocations);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
@@ -896,6 +895,8 @@ function TripBuilderDocument() {
           setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
           setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
           const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
+          const initialStops = initialHandoffRouteStops(locationMentions, draftStops);
+          if (initialStops.length) setStops(initialStops);
           if (locationMentions.length) {
             setIntakeMentions(locationMentions);
             const routableMentions = routableHandoffMentions(locationMentions);
@@ -929,19 +930,7 @@ function TripBuilderDocument() {
                     providerId: chosen.providerId,
                   });
                 }
-                else setStops((current) => current.some((stop) => stop.canonicalPlaceId === mention.canonicalPlaceId
-                  || (stop.name.toLocaleLowerCase() === mention.canonicalName.toLocaleLowerCase() && stop.country === chosen.country)) ? current : [...current, {
-                    id: `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`,
-                    name: mention.canonicalName,
-                    country: chosen.country,
-                    canonicalPlaceId: mention.canonicalPlaceId,
-                    countryCode: chosen.countryCode,
-                    region: chosen.region,
-                    providerId: chosen.providerId,
-                    coordinates: chosen.coordinates,
-                    intent: mention.routability === "anchor_or_poi" ? "landmark" : "place",
-                    locality: chosen.locality,
-                  }]);
+                else setStops((current) => mergeHandoffLocationChoice(current, mention, chosen));
               }
               setLocationChoices(uncertain);
               setResolvingLocations(false);

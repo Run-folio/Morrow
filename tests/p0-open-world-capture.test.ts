@@ -8,7 +8,7 @@ import {
   type SemanticTripIntent,
 } from "../lib/easyt/semantic-trip-intent.ts";
 import { SEMANTIC_INTENT_EXTRACTION_POLICY } from "../lib/easyt/openai-semantic-intent-request.ts";
-import { preferredHandoffLocationChoice } from "../lib/easyt/home-trip-handoff.ts";
+import { handoffRouteStops, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice } from "../lib/easyt/home-trip-handoff.ts";
 
 const promptA = "Denver, Dallas, Puerto Vallarta and Oaxaca, starting from Paris.";
 const promptB = "Cusco, Rio, Buenos Aires, Calafate and Santiago from Madrid.";
@@ -157,6 +157,48 @@ test("deterministic coverage restores destinations omitted by a valid Luna respo
     country: "United States",
     coordinates: [-76.1371684, 40.2331483],
   }])?.coordinates, [-104.984862, 39.7392364]);
+});
+
+test("handoff projection preserves repeated canonical stop occurrences while excluding endpoints and review-only mentions", () => {
+  const capture = captureJourneyBrief("Tokyo, Kyoto, Tokyo and Georgia, ending in Osaka");
+  const firstTokyo = capture.mentions.find((mention) => mention.canonicalName === "Tokyo" && mention.role !== "fixed_end");
+  assert.ok(firstTokyo);
+  const repeatedTokyo = {
+    ...firstTokyo,
+    mentionId: `${firstTokyo.mentionId}-return`,
+    sourceTexts: ["Tokyo return"],
+    sourceText: "Tokyo return",
+    order: 50,
+  };
+  const mentions = [...capture.mentions, repeatedTokyo];
+  const stops = handoffRouteStops(mentions);
+  const tokyoStops = stops.filter((stop) => stop.canonicalPlaceId === firstTokyo.canonicalPlaceId);
+
+  assert.equal(tokyoStops.length, 2);
+  assert.notEqual(tokyoStops[0]?.id, tokyoStops[1]?.id);
+  assert.equal(stops.some((stop) => stop.name === "Georgia"), false);
+  assert.equal(stops.some((stop) => stop.name === "Osaka"), false);
+
+  const enriched = mergeHandoffLocationChoice(stops, repeatedTokyo, {
+    name: "Tokyo",
+    country: "Japan",
+    coordinates: [139.6917, 35.6895],
+    providerId: "tokyo-return",
+  });
+  assert.equal(enriched.filter((stop) => stop.coordinates).length, 1);
+  assert.deepEqual(enriched.find((stop) => stop.id === tokyoStops[0]?.id)?.coordinates, tokyoStops[0]?.coordinates);
+  assert.deepEqual(enriched.find((stop) => stop.id === tokyoStops[1]?.id)?.coordinates, [139.6917, 35.6895]);
+});
+
+test("authoritative prebuilt route destinations outrank canonical capture seeds", () => {
+  const capture = captureJourneyBrief("Tokyo, Takayama and Busan");
+  const prebuilt = [
+    { id: "curated-tokyo", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895] as [number, number] },
+    { id: "curated-takayama", name: "Takayama", country: "Japan", canonicalPlaceId: "takayama", coordinates: [137.2522, 36.1461] as [number, number] },
+    { id: "curated-busan", name: "Busan", country: "South Korea", canonicalPlaceId: "busan", coordinates: [129.0756, 35.1796] as [number, number] },
+  ];
+
+  assert.deepEqual(initialHandoffRouteStops(capture.mentions, prebuilt), prebuilt);
 });
 
 test("semantic lookup interpretations resolve colloquial names without replacing source evidence", async () => {

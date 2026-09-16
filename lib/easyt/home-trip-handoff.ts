@@ -58,6 +58,67 @@ export type HandoffLocationChoice = {
   locality?: string;
 };
 
+export type HandoffRouteStop = {
+  id: string;
+  name: string;
+  country: string;
+  canonicalPlaceId?: string;
+  countryCode?: string;
+  region?: string;
+  providerId?: string;
+  coordinates?: [number, number];
+  intent?: "place" | "landmark";
+  locality?: string;
+};
+
+function handoffRouteStopId(mention: ResolvedPlaceMention) {
+  return `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`;
+}
+
+/** Canonical capture owns route-stop existence. Provider geocoding may enrich
+ * these seeds later, but an unavailable coordinate must never delete one. */
+export function handoffRouteStops(mentions: ResolvedPlaceMention[]): HandoffRouteStop[] {
+  return routableHandoffMentions(mentions)
+    .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
+    .map((mention) => ({
+      id: handoffRouteStopId(mention),
+      name: mention.canonicalName,
+      country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : "",
+      canonicalPlaceId: mention.canonicalPlaceId,
+      coordinates: mention.coordinates,
+      intent: "place" as const,
+    }));
+}
+
+/** Curated and legacy handoffs may already own a complete route with stable
+ * IDs and allocation keys. Seed from capture only when no such route exists. */
+export function initialHandoffRouteStops(
+  mentions: ResolvedPlaceMention[],
+  draftStops: HandoffRouteStop[],
+): HandoffRouteStop[] {
+  return draftStops.length ? draftStops : handoffRouteStops(mentions);
+}
+
+/** Merge optional provider metadata into one canonical occurrence. The stable
+ * capture identity, name and ordering remain authoritative. */
+export function mergeHandoffLocationChoice(
+  stops: HandoffRouteStop[],
+  mention: ResolvedPlaceMention,
+  choice?: HandoffLocationChoice,
+): HandoffRouteStop[] {
+  if (!choice) return stops;
+  const stopId = handoffRouteStopId(mention);
+  return stops.map((stop) => stop.id !== stopId ? stop : {
+    ...stop,
+    country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : choice.country,
+    countryCode: choice.countryCode,
+    region: choice.region,
+    providerId: choice.providerId,
+    coordinates: choice.coordinates,
+    locality: choice.locality,
+  });
+}
+
 /** Keep an already resolved capture identity authoritative during Builder
  * enrichment. A second provider lookup may return a lower-ranked namesake. */
 export function preferredHandoffLocationChoice(
