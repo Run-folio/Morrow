@@ -190,6 +190,21 @@ test("handoff projection preserves repeated canonical stop occurrences while exc
   assert.deepEqual(enriched.find((stop) => stop.id === tokyoStops[1]?.id)?.coordinates, [139.6917, 35.6895]);
 });
 
+test("handoff projection lets a fixed journey end own the matching final visit occurrence", () => {
+  const capture = captureJourneyBrief(
+    "Plan a 19-day trip from Tokyo to Busan, visiting Tokyo, Takayama, Kanazawa, Kyoto, Osaka, Seoul and Busan.",
+  );
+
+  assert.equal(capture.mentions.some((mention) => mention.role !== "fixed_end" && mention.canonicalPlaceId === "busan"), true);
+  assert.deepEqual(
+    handoffRouteStops(capture.mentions, {
+      mode: "explicit",
+      place: { name: "Busan", country: "South Korea", canonicalPlaceId: "busan" },
+    }).map((stop) => stop.canonicalPlaceId),
+    ["tokyo", "takayama", "kanazawa", "kyoto", "osaka", "seoul"],
+  );
+});
+
 test("authoritative prebuilt route destinations outrank canonical capture seeds", () => {
   const capture = captureJourneyBrief("Tokyo, Takayama and Busan");
   const prebuilt = [

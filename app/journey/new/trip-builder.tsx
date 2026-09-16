@@ -895,7 +895,7 @@ function TripBuilderDocument() {
           setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
           setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
           const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
-          const initialStops = initialHandoffRouteStops(locationMentions, draftStops);
+          const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
           if (initialStops.length) setStops(initialStops);
           if (locationMentions.length) {
             setIntakeMentions(locationMentions);
