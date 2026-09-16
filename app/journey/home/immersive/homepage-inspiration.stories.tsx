@@ -42,10 +42,23 @@ export const InteractionBoundary: Story = {
     const cards = Array.from(canvasElement.querySelectorAll<HTMLAnchorElement>(`.${styles.inspirationCard} > a`));
     if (cards.length !== routes.length) throw new Error("Every eligible route must render one card link");
     cards.forEach((card, index) => {
-      if (card.getAttribute("href") !== routes[index]?.href) throw new Error("Card must target canonical Route Detail");
+      const route = routes[index];
+      if (!route || card.getAttribute("href") !== route.href) throw new Error("Card must target canonical Route Detail");
+      const days = route.dayRange.min === route.dayRange.max ? String(route.dayRange.min) : `${route.dayRange.min}–${route.dayRange.max}`;
+      if (!card.textContent?.includes(route.title)) throw new Error("Card must render the canonical route title");
+      if (!card.textContent?.includes(`${days} days`)) throw new Error("Card must render the canonical day range");
+      if (!card.textContent?.includes(`${route.stops.length} stops`)) throw new Error("Card must render the complete canonical stop count");
       card.focus();
       card.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
       if (root?.dataset.selectedStoryKey !== before) throw new Error("Card focus or hover changed the selected Route Story");
+      let ordinaryClickWasUnprevented = false;
+      card.addEventListener("click", (event) => {
+        ordinaryClickWasUnprevented = !event.defaultPrevented;
+        event.preventDefault();
+      }, { once: true });
+      card.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
+      if (!ordinaryClickWasUnprevented) throw new Error("Card click must begin as ordinary link navigation");
+      if (root?.dataset.selectedStoryKey !== before) throw new Error("Card click changed the selected Route Story");
     });
   },
 };
