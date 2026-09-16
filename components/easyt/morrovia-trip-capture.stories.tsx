@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useEffect, useRef, useState } from "react";
 import { TOUR_TRIP_PROMPT, tourTripFixture } from "./storybook/tour-trip.fixture";
-import { EasyTField } from "./easyt-controls";
+import { EasyTButton, EasyTField } from "./easyt-controls";
 import { MorroviaTripCapture, type MorroviaTripCaptureProps } from "./morrovia-trip-capture";
 import { JourneyEndpointsEditor } from "./journey-endpoints-editor";
 
@@ -277,6 +277,20 @@ function VoiceUnmountCapture() {
   return <ControlledCapture {...wideHomepageArgs} homepageEntry={{ ...wideHomepageArgs.homepageEntry, mode: "describe" }} />;
 }
 
+function VoiceLoadingCapture() {
+  const [loading, setLoading] = useState(false);
+  const originalRecognition = useRef(typeof window !== "undefined" ? window.SpeechRecognition : undefined);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("morrovia-speech-disclosure-acknowledged-v1", "1");
+    window.SpeechRecognition = DelayedStoryRecognition;
+  }
+  useEffect(() => () => {
+    window.SpeechRecognition = originalRecognition.current;
+    delayedRecognition = null;
+  }, []);
+  return <div><ControlledCapture {...wideHomepageArgs} loading={loading} disabled={loading} homepageEntry={{ ...wideHomepageArgs.homepageEntry, mode: "describe" }} /><EasyTButton data-start-loading onClick={() => setLoading(true)}>Start loading</EasyTButton></div>;
+}
+
 export const WideHomepageDelayedVoiceAfterUnmount: Story = {
   render: () => <VoiceUnmountCapture />,
   play: async ({ canvasElement }) => {
@@ -295,6 +309,25 @@ export const WideHomepageDelayedVoiceAfterUnmount: Story = {
     await settle();
     const prompt = canvasElement.querySelector<HTMLTextAreaElement>("textarea");
     if (prompt?.value) throw new globalThis.Error("Delayed voice result changed the unmounted Describe prompt");
+  },
+};
+
+export const WideHomepageDelayedVoiceAfterLoading: Story = {
+  render: () => <VoiceLoadingCapture />,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise((resolve) => window.setTimeout(resolve, 0));
+    await settle();
+    const voice = canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Use voice to add a trip idea"]');
+    if (!voice) throw new globalThis.Error("Voice control is missing in Describe mode");
+    voice.click();
+    await settle();
+    const delayedResult = delayedRecognition?.onresult;
+    canvasElement.querySelector<HTMLButtonElement>("[data-start-loading]")?.click();
+    await settle();
+    if (!voice.disabled) throw new globalThis.Error("Voice control remained enabled while loading");
+    delayedResult?.({ resultIndex: 0, results: [{ 0: { transcript: "late loading transcript" }, isFinal: true }] });
+    await settle();
+    if (canvasElement.querySelector<HTMLTextAreaElement>("textarea")?.value) throw new globalThis.Error("Delayed voice result changed the loading Describe prompt");
   },
 };
 

@@ -220,6 +220,7 @@ export function MorroviaTripCapture({
         className={styles.voiceInput}
         compact={progressiveDetails || Boolean(homepageEntry)}
         language={language}
+        disabled={disabled || loading}
         onTranscript={(transcript) => updateValue(appendVoiceTranscript(value, transcript), "voice")}
       />
     </div>

@@ -19,9 +19,19 @@ test("wide capture is opt-in without removing the canonical capture owner", () =
 test("voice recognition cannot deliver a delayed transcript after Describe unmounts", () => {
   assert.match(voiceSource, /recognition\.onresult = null/);
   assert.match(voiceSource, /recognition\.onend = null/);
-  assert.match(voiceSource, /!mountedRef\.current \|\| recognitionRef\.current !== recognition/);
+  assert.match(voiceSource, /!mountedRef\.current \|\| disabledRef\.current \|\| recognitionRef\.current !== recognition/);
   assert.match(captureStories, /WideHomepageDelayedVoiceAfterUnmount/);
   assert.match(captureStories, /Delayed voice result changed the unmounted Describe prompt/);
+});
+
+test("voice recognition is disabled and detached when loading starts", () => {
+  assert.match(voiceSource, /disabled\?: boolean/);
+  assert.match(voiceSource, /disabledRef\.current/);
+  assert.match(voiceSource, /recognition\.onresult = null/);
+  assert.match(captureSource, /disabled=\{disabled \|\| loading\}/);
+  assert.match(captureStories, /WideHomepageDelayedVoiceAfterLoading/);
+  assert.match(captureStories, /Delayed voice result changed the loading Describe prompt/);
+  assert.match(immersiveStories, /DescribeLoading/);
 });
 
 test("wide capture keeps one form and one primary submit", () => {

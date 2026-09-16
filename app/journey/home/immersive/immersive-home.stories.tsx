@@ -175,14 +175,14 @@ export const FullComposition: Story = {
       link.click();
       if (story.textContent !== original) throw new Error('Card click changed Route Story');
     }
-    const describeTab = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Describe it");
+    const describeTab = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Describe my trip");
     if (!describeTab) throw new Error("Describe mode trigger is missing");
     describeTab.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const brief = canvasElement.querySelector<HTMLTextAreaElement>('textarea[name="trip-brief"]');
+    const brief = canvasElement.querySelector<HTMLTextAreaElement>("textarea");
     if (!brief) throw new Error("Describe mode did not open");
     const retainedBrief = brief.value;
-    const stopsTab = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Add stops");
+    const stopsTab = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Plan with stops");
     if (!stopsTab) throw new Error("Stops mode trigger is missing");
     stopsTab.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -199,7 +199,7 @@ export const FullComposition: Story = {
     if (!restoredEdit || document.activeElement !== restoredEdit) throw new Error("Closing the editor did not restore focus to its remounted trigger");
     describeTab.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    if (canvasElement.querySelector<HTMLTextAreaElement>('textarea[name="trip-brief"]')?.value !== retainedBrief) throw new Error("Mode changes did not retain the trip description");
+    if (canvasElement.querySelector<HTMLTextAreaElement>("textarea")?.value !== retainedBrief) throw new Error("Mode changes did not retain the trip description");
   },
 };
 
@@ -224,6 +224,11 @@ export const Loading: Story = { render: () => <Preview loading />, play: async (
   const interactive = Array.from(canvasElement.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>("#start-building input, #start-building textarea, #start-building button"));
   const enabled = interactive.filter((element) => !element.disabled);
   if (enabled.length) throw new Error(`Loading state left ${enabled.length} planner control(s) enabled`);
+} };
+export const DescribeLoading: Story = { render: () => <Composition planner={<PreviewPlanner initialMode="describe" loading />} />, play: async ({ canvasElement }) => {
+  const interactive = Array.from(canvasElement.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>("#start-building input, #start-building textarea, #start-building button"));
+  const enabled = interactive.filter((element) => !element.disabled);
+  if (enabled.length) throw new Error(`Describe loading state left ${enabled.length} planner control(s) enabled`);
 } };
 export const ErrorState: Story = { render: () => <Preview error="We couldn't check this trip right now. Your details are still here." /> };
 export const Guest: Story = { render: () => <Preview /> };
