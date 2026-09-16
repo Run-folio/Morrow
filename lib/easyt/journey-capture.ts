@@ -1,4 +1,5 @@
 import {
+  isLeadingPlanningImperativeSourceSpan,
   normalizePlacePhrase,
   resolvePlaceMentions,
   resolveExplicitPlaceMentions,
@@ -176,6 +177,8 @@ function geographySourceSpan(
     .replace(/^[\p{P}\p{S}\s]+|[\p{P}\p{S}\s]+$/gu, "")
     .trim();
   if (!boundaryCleaned || !lexicalWords(boundaryCleaned).length) return null;
+
+  if (isLeadingPlanningImperativeSourceSpan(boundaryCleaned, rawBrief)) return null;
 
   const canonicalEvidence = deterministicMentions.some((mention) => sameRawPlaceSpan(mention.sourceText, boundaryCleaned)
     && Boolean(mention.canonicalPlaceId)
