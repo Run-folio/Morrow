@@ -9,8 +9,6 @@ import { moveHomepageEntry, type HomepageDestinationEntry } from "@/lib/easyt/ho
 import { isOvernightBaseEligible, type CanonicalPlaceSuggestion, type PlaceRoutability } from "@/lib/easyt/place-intelligence";
 import styles from "./home-destination-editor.module.css";
 
-const MAX_ENTRIES = 5;
-
 const copy = {
   en: {
     first: "First stop", next: "Next stop", placeholder: "City, country or region", add: "Add another stop", clear: "Clear", remove: "Remove", earlier: "Move earlier", later: "Move later",
@@ -106,10 +104,10 @@ export function HomeDestinationEditor({
     </ol>
     <div className={styles.footer}>
       <p aria-live="polite">{statusParts.join(" · ")}</p>
-      {entries.length < MAX_ENTRIES ? <EasyTButton icon={Plus} size="small" variant="secondary" disabled={disabled} aria-label={text.add} onClick={() => {
+      <EasyTButton icon={Plus} size="small" variant="secondary" disabled={disabled} aria-label={text.add} onClick={() => {
         const entry = createEntry();
         commitWithFocus([...entries, entry], entry.id);
-      }}>{text.add}</EasyTButton> : null}
+      }}>{text.add}</EasyTButton>
     </div>
   </section>;
 }

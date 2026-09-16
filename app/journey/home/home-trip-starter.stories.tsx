@@ -105,7 +105,7 @@ export const DestinationOccurrences: Story = {
   },
 };
 
-export const DestinationFiveEntryLimit: Story = {
+export const DestinationSixthOccurrence: Story = {
   render: () => <DestinationEditorStory initialEntries={[storyEntry("entry-1", "Tokyo"), storyEntry("entry-2", "Kyoto"), storyEntry("entry-3", "Tokyo"), storyEntry("entry-4", "Nikko")]} />,
   play: async ({ canvasElement }) => {
     canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add another stop"]')?.click();
@@ -122,7 +122,12 @@ export const DestinationFiveEntryLimit: Story = {
     addedInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     if (entries[4]?.getAttribute("data-home-destination-entry") !== "entry-5" || addedInput.value !== "Tokyo, Japan") throw new Error("Adding the same place must retain its fresh occurrence ID");
-    if (canvasElement.querySelector('button[aria-label="Add another stop"]')) throw new Error("Add must be unavailable at five total entries");
+    const firstFiveIds = Array.from(entries).map((entry) => entry.getAttribute("data-home-destination-entry"));
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Add another stop"]')?.click();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    const sixEntries = canvasElement.querySelectorAll("[data-home-destination-entry]");
+    if (sixEntries.length !== 6 || sixEntries[5]?.getAttribute("data-home-destination-entry") !== "entry-6") throw new Error("Adding a sixth destination must use a fresh caller ID");
+    if (Array.from(sixEntries).slice(0, 5).some((entry, index) => entry.getAttribute("data-home-destination-entry") !== firstFiveIds[index])) throw new Error("Adding a sixth destination must not overwrite the first five occurrences");
   },
 };
 
