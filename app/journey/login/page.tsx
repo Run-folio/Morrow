@@ -8,8 +8,8 @@ import { isCanonicalTripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 
 export const metadata = { title: "Sign in" };
 
-export default async function EasyTLoginPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string; mode?: string; email?: string; sent?: string; oauth?: string; error?: string }> }) {
-  const { next, setup, mode, email, sent, oauth, error } = await searchParams;
+export default async function EasyTLoginPage({ searchParams }: { searchParams: Promise<{ next?: string; setup?: string; mode?: string; email?: string; sent?: string; oauth?: string; error?: string; verification?: string }> }) {
+  const { next, setup, mode, email, sent, oauth, error, verification } = await searchParams;
   const callbackURL = safeJourneyReturnTarget(next);
   const backToTripHref = isCanonicalTripWorkspaceHref(callbackURL) ? callbackURL : undefined;
   const googleEnabled = isMorroviaGoogleAuthConfigured();
@@ -20,7 +20,7 @@ export default async function EasyTLoginPage({ searchParams }: { searchParams: P
     <EasyTNavigation current="login" />
     <div className={styles.authWrap}>
       <div className={styles.authGrid}>
-        <LoginForm callbackURL={callbackURL} googleEnabled={googleEnabled} configured={configured} emailVerificationRequired={emailVerificationRequired} showSetupNotice={setup === "required"} initialMode={sent === "1" ? "sign-in" : initialMode} initialEmail={email} verificationSent={sent === "1" && emailVerificationRequired} backToTripHref={backToTripHref} initialError={oauth === "google" && error ? googleAuthCallbackErrorMessage(error) : undefined} />
+        <LoginForm callbackURL={callbackURL} googleEnabled={googleEnabled} configured={configured} emailVerificationRequired={emailVerificationRequired} showSetupNotice={setup === "required"} initialMode={sent === "1" ? "sign-in" : initialMode} initialEmail={email} verificationSent={sent === "1" && emailVerificationRequired && Boolean(email)} backToTripHref={backToTripHref} initialError={verification === "already-used" ? "This verification link has already been used. Sign in to continue." : oauth === "google" && error ? googleAuthCallbackErrorMessage(error) : undefined} />
       </div>
     </div>
   </main>;

@@ -139,7 +139,7 @@ test("partial provider failures stay silent whenever useful recommendations rema
 
 test("blocking provider failure and genuine empty remain distinct", () => {
   assert.equal(exploreResultsPresentation(0, ["degraded"]), "unavailable");
-  assert.equal(exploreResultsPresentation(0, ["empty", "degraded"]), "unavailable");
+  assert.equal(exploreResultsPresentation(0, ["empty", "degraded"]), "empty");
   assert.equal(exploreResultsPresentation(0, ["empty", "ready"]), "empty");
   assert.equal(exploreResultsPresentation(0, ["empty"]), "empty");
   assert.equal(exploreResultsPresentation(0, ["loading", "degraded"]), "loading");
@@ -231,11 +231,21 @@ test("rapid context switching never mixes old category results into the new lane
 
 test("provider fetching remains intentional by category", () => {
   const base = trip();
-  assert.deepEqual(exploreSourcePlan("food", base), { mapped: true, dayTrips: false, restaurants: true, tours: false });
-  assert.deepEqual(exploreSourcePlan("outdoors", base), { mapped: true, dayTrips: false, restaurants: false, tours: false });
-  assert.deepEqual(exploreSourcePlan("tours", base), { mapped: false, dayTrips: false, restaurants: false, tours: true });
-  assert.deepEqual(exploreSourcePlan("day-trips", base), { mapped: false, dayTrips: true, restaurants: false, tours: true });
-  assert.equal(exploreSourcePlan("for-you", base).dayTrips, true);
+  assert.deepEqual(exploreSourcePlan("food", base), { mapped: true, dayTrips: false, restaurants: true, outdoors: false, tours: false });
+  assert.deepEqual(exploreSourcePlan("outdoors", base), { mapped: true, dayTrips: false, restaurants: false, outdoors: true, tours: false });
+  assert.deepEqual(exploreSourcePlan("tours", base), { mapped: false, dayTrips: false, restaurants: false, outdoors: false, tours: true });
+  assert.deepEqual(exploreSourcePlan("day-trips", base), { mapped: false, dayTrips: true, restaurants: false, outdoors: false, tours: true });
+  assert.deepEqual(exploreSourcePlan("for-you", base), { mapped: true, dayTrips: false, restaurants: false, outdoors: false, tours: true });
+});
+
+test("one successful empty source keeps a partially failed lane genuinely empty", async () => {
+  const snapshots: ExploreDiscoveryLaneSnapshot[] = [];
+  await streamExploreDiscoveryLane([
+    () => Promise.reject(new Error("one provider failed")),
+    () => Promise.resolve([]),
+  ], (snapshot) => snapshots.push(snapshot));
+  assert.equal(snapshots.at(-1)?.status, "empty");
+  assert.equal(snapshots.at(-1)?.failedCount, 1);
 });
 
 test("obvious entry-ticket duplicates enrich the organic card without replacing its canonical idea", () => {

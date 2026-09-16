@@ -1,6 +1,10 @@
 import type { PublicRouteConnection } from "../../../../lib/easyt/public-route.ts";
 
-export function transferStatus(connection: PublicRouteConnection) {
+type RouteConnectionLabel = Pick<PublicRouteConnection, "modeLabel" | "planningMinutes" | "confidence"> & {
+  mode: string | null;
+};
+
+export function transferStatus(connection: RouteConnectionLabel) {
   if (connection.mode === null) return "Unknown transfer";
   if (connection.planningMinutes === null || connection.confidence === "needs-review" || connection.confidence === "unknown") return `${connection.modeLabel} · details to confirm`;
   return `${connection.modeLabel} · planning estimate`;

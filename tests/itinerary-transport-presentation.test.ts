@@ -44,11 +44,28 @@ test("transport rows expose route, mode, duration, uncertainty, details and trut
 
 test("Omio uses the existing affiliate handoff and cannot mutate canonical state", () => {
   assert.match(transport, /function OmioAction/);
-  assert.match(transport, /<MorroviaAffiliateLink action=\{action\}/);
+  assert.match(transport, /<MorroviaAffiliateLink action=\{\{ \.\.\.action, cta: label \}\}/);
   assert.match(transport, /placement: "itinerary_transfer"/);
-  assert.match(transport, /<MorroviaPartnerPromotion action=\{action\}/);
+  assert.match(transport, /action=\{\{ \.\.\.action, cta: label \}\}/);
+  assert.match(transport, /findTickets: "Find tickets"/);
+  assert.match(transport, /cta: label \}\}[\s\S]*variant="secondary"/);
+  assert.match(transport, /<MorroviaPartnerPromotion action=\{action\} presentation="compact"/);
+  assert.match(transport, /<small>\{affiliateDisclosure\}<\/small>/);
   const action = transport.slice(transport.indexOf("function OmioAction"));
   assert.doesNotMatch(action, /mutate|booked\s*=|status\s*=|fetch\(/);
+});
+
+test("Transport keeps planning information above a subordinate compact partner handoff", () => {
+  assert.ok(transport.indexOf("displayDate(group.date, language)") < transport.indexOf("<TransportRow"));
+  assert.ok(transport.indexOf("item.from.name") < transport.indexOf("transferJourneyModeLabel(leg)"));
+  assert.ok(transport.indexOf("transferJourneyModeLabel(leg)") < transport.indexOf("segmentSummary ?"));
+  assert.ok(transport.indexOf("segmentSummary ?") < transport.indexOf("data-status={item.status}"));
+  assert.ok(transport.indexOf("data-status={item.status}") < transport.indexOf("<div className={styles.actions}>"));
+  assert.match(transportStyles, /\.workspace \{[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.match(transportStyles, /\.card \{[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.match(transportStyles, /\.details \{[\s\S]*background: var\(--morrovia-paper\)/);
+  assert.doesNotMatch(transportStyles, /background: var\(--morrovia-lilac(?:-strong)?\)/);
+  assert.match(transportStyles, /\.omioAction > small \{[\s\S]*font: var\(--morrovia-type-fine-print\)/);
 });
 
 test("the first-class workspace has responsive Storybook coverage and narrow-screen containment", () => {

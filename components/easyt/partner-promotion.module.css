@@ -30,3 +30,40 @@
   outline: 2px solid var(--morrovia-focus-ring);
   outline-offset: 2px;
 }
+
+.compact {
+  display: block;
+  max-width: 100%;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.compactDisclosure { max-width: 100%; }
+
+.compactDisclosure > button {
+  min-height: 32px;
+  padding: 0;
+  flex-direction: row-reverse;
+  color: var(--morrovia-action);
+  font: 700 11px/1.35 var(--morrovia-ui);
+  text-align: left;
+  white-space: normal;
+}
+
+.compactDisclosure > button:hover {
+  background: transparent;
+  color: var(--morrovia-action-hover);
+  transform: none;
+}
+
+.compactDisclosure > button svg { width: 14px; height: 14px; }
+
+.termsLink {
+  color: var(--morrovia-action);
+  font: var(--morrovia-type-control);
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .compactDisclosure > button { min-height: 44px; }
+}

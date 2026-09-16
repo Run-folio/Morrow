@@ -10,7 +10,7 @@ export default function TripExploreWorkspacePage() {
   const requestedStopId = searchParams.get("stop");
   const initialDestinationId = requestedStopId && trip.stops.some((stop) => stop.id === requestedStopId)
     ? requestedStopId
-    : "all";
+    : undefined;
   const rawDay = searchParams.get("day") ?? "";
   const requestedDayNumber = /^\d+$/.test(rawDay) ? Number.parseInt(rawDay, 10) : null;
 

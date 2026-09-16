@@ -29,7 +29,7 @@ and types still use `easyt`; they do not render into email output.
 
 | Email | Trigger | Recipient authority | Privacy-safe subject | CTA | Classification | Idempotency |
 | --- | --- | --- | --- | --- | --- | --- |
-| Verify email | Better Auth sign-up or verification-required sign-in | Better Auth user record | Verify your email for Morrovia | Verify email (unchanged one-time URL supplied by Better Auth) | Essential transactional | SHA-256 identity of the exact secure URL; unique email event plus Resend key |
+| Verify email | Better Auth account creation followed by its explicit send-verification endpoint; a password-valid unverified sign-in uses the same explicit endpoint | Better Auth user record | Verify your email for Morrovia | Verify email (unchanged one-time URL supplied by Better Auth) | Essential transactional | SHA-256 identity of the exact secure URL; unique email event plus Resend key |
 | Reset password | Better Auth reset request | Better Auth user record | Reset your Morrovia password | Reset password (Morrovia reset route with Better Auth token) | Essential transactional | SHA-256 identity of the exact secure URL; unique email event plus Resend key |
 | Trip invitation | Authenticated owner submits the dashboard share form; send uses the normalized recipient stored on the gift | You’ve been invited to a trip | View trip (private claim route) | Explicit invitation, transactional | Client request UUID deduplicates gift creation; HMAC-derived claim token makes the same request deterministic; gift ID identifies the unique email event and Resend request |
 | Contact support notification | Accepted public contact submission | Fixed server-only `CONTACT_TO_EMAIL` | Morrovia contact · _topic_ | None; reply-to is the validated submitted address | Internal operational | Stable content-derived Resend key for provider retries; no database event, preserving the existing no-intentional-storage contract |
@@ -112,6 +112,15 @@ logged. User-facing routes receive bounded Morrovia errors. Email-event failure
 details contain only a category or HTTP status. Email delivery failure does not
 invalidate a created gift; its private claim link remains available.
 
+Verification deliberately does not use Better Auth's automatic `sendOnSignUp`
+or `sendOnSignIn` hooks. Better Auth contains errors from those hooks, which can
+make account creation appear successful even when delivery policy or the email
+provider rejected the message. Morrovia creates the unverified account first,
+then calls Better Auth's explicit send-verification endpoint and shows the
+check-email state only after that endpoint acknowledges the provider. Failure
+leaves the one account recoverable through the same rate-limited endpoint; it
+does not create a parallel token or delivery path.
+
 ## Local review
 
 Run:
@@ -134,8 +143,9 @@ npm run test:email
 
 ## External provider ownership and manual acceptance
 
-Better Auth owns account tokens and trigger timing, but both auth templates and
-the Resend call are repository-owned callbacks in `auth.config.ts`; there is no
+Better Auth owns account tokens and the explicit verification endpoint, while
+Morrovia owns the acknowledged signup/sign-in handoff. Auth templates and the
+Resend call are repository-owned callbacks in `auth.config.ts`; there is no
 Better Auth dashboard template used by this implementation. Google sign-in does
 not send a Morrovia email.
 

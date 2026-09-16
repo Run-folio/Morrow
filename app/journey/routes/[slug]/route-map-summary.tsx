@@ -4,16 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MoonStar, Route } from "lucide-react";
 import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
-import type { PublicRouteStop } from "@/lib/easyt/public-route";
+import type { PublicRouteConnection, PublicRouteStop } from "@/lib/easyt/public-route";
 import type { RouteNightGuide } from "./route-detail-presentation";
 import { transferStatus, nightLabel } from "./route-detail-labels";
 import { routeMapSelectionFromHash, validRouteSelection, type RouteMapSelection } from "./route-map-selection";
 import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
 
-export default function RouteMapSummary({ title, stops, countries, nights, durationDays, totalNights, character, rationale, warning, initialSelection = null }: {
-  title: string; stops: PublicRouteStop[]; countries: string[]; nights: RouteNightGuide[]; durationDays: number; totalNights: number;
-  character: string; rationale?: string; warning?: string; initialSelection?: RouteMapSelection;
+export type RouteMapSummaryConnection = Omit<PublicRouteConnection, "mode"> & { mode: string | null };
+
+export type RouteMapSummaryStop = Omit<PublicRouteStop, "coordinates" | "nights" | "onward"> & {
+  coordinates: [number, number] | null;
+  nights: number | null;
+  onward: RouteMapSummaryConnection | null;
+};
+
+export default function RouteMapSummary({ title, stops, countries, nights, durationDays, totalNights, character, rationale, warning, initialSelection = null, tripFacts = false }: {
+  title: string; stops: RouteMapSummaryStop[]; countries: string[]; nights: RouteNightGuide[]; durationDays: number | null; totalNights: number | null;
+  character: string; rationale?: string; warning?: string; initialSelection?: RouteMapSelection; tripFacts?: boolean;
 }) {
   const [selected, setSelected] = useState<RouteMapSelection>(() => validRouteSelection(initialSelection, stops.length));
   const [reset, setReset] = useState(0);
@@ -61,7 +69,7 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
           {stop && <><p>{stop.reason}</p>{guide?.minimum != null && <p className={styles.minimum}><MoonStar aria-hidden="true" />Minimum {nightLabel(guide.minimum)}</p>}{guide?.recommended != null && <p>Reviewed guidance: {nightLabel(guide.recommended)}</p>}</>}
           {connection && <><p>{connection.note}</p><MorroviaStatusBanner tone={connection.planningMinutes === null || connection.confidence === "needs-review" ? "warning" : "info"} title={transferStatus(connection)} detail={connection.planningMinutes === null ? "No reviewed duration. Confirm the connection before booking." : `${connection.durationLabel}. A planning allowance, not a verified schedule.`} /></>}
           {!stop && !connection && <><p>{rationale ?? `${stops.length} bases connect ${stops[0]?.name} with ${stops.at(-1)?.name}.`}</p><dl className={styles.mapFacts}>
-            <div><dt>Shape</dt><dd>{stops.length} bases</dd></div><div><dt>Example</dt><dd>{durationDays} days · {totalNights} nights</dd></div><div><dt>Character</dt><dd>{character}</dd></div>
+            <div><dt>Shape</dt><dd>{stops.length} bases</dd></div><div><dt>{tripFacts ? "Trip" : "Example"}</dt><dd>{durationDays === null ? "Dates to confirm" : `${durationDays} days`}{totalNights === null ? " · nights to confirm" : ` · ${totalNights} nights`}</dd></div><div><dt>Character</dt><dd>{character}</dd></div>
           </dl>{warning && <MorroviaStatusBanner tone="warning" title="Check before booking" detail={warning} />}</>}
         </div>
         {stop?.onward && <EasyTButton variant="quiet" icon={ArrowRight} onClick={() => setSelected({ type: "connection", index: selected!.index })}>Next: {stop.onward.to}</EasyTButton>}

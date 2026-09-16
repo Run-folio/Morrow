@@ -8,7 +8,7 @@ import {
   type SemanticTripIntent,
 } from "../lib/easyt/semantic-trip-intent.ts";
 import { SEMANTIC_INTENT_EXTRACTION_POLICY } from "../lib/easyt/openai-semantic-intent-request.ts";
-import { preferredHandoffLocationChoice } from "../lib/easyt/home-trip-handoff.ts";
+import { handoffRouteStops, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice } from "../lib/easyt/home-trip-handoff.ts";
 
 const promptA = "Denver, Dallas, Puerto Vallarta and Oaxaca, starting from Paris.";
 const promptB = "Cusco, Rio, Buenos Aires, Calafate and Santiago from Madrid.";
@@ -157,6 +157,148 @@ test("deterministic coverage restores destinations omitted by a valid Luna respo
     country: "United States",
     coordinates: [-76.1371684, 40.2331483],
   }])?.coordinates, [-104.984862, 39.7392364]);
+});
+
+test("semantic capture rejects a provider-emitted leading planning imperative as geography", async () => {
+  const rawPrompt = "Plan a 7-day trip from Tokyo to Kyoto, stopping in Takayama.";
+  const semantic = intent("Tokyo", ["Plan", "Kyoto", "Takayama"]);
+
+  const capture = await captureJourneyBriefFromSemanticIntent(rawPrompt, semantic);
+
+  assert.equal(capture.mentions.some((mention) => mention.normalizedPhrase === "plan"), false);
+  assert.deepEqual(
+    capture.mentions.map((mention) => mention.sourceText),
+    ["Tokyo", "Kyoto", "Takayama"],
+  );
+  assert.equal(capture.mentionCoverage.complete, true);
+  assert.deepEqual(capture.mentionCoverage.missingFromResolution, []);
+  assert.deepEqual(capture.mentionCoverage.missingFromStructuredBrief, []);
+  assert.equal(capture.mentions.every((mention) => mention.status === "resolved"), true);
+  assert.equal(capture.structuredBrief.placeIssues?.some((issue) => issue.blocksRoute), false);
+});
+
+test("semantic capture contextually rejects Plan commands without losing requested places", async () => {
+  const cases = [
+    { prompt: "Plan a trip to Japan", command: "Plan", places: ["Japan"] },
+    { prompt: "plan my trip to Italy", command: "plan", places: ["Italy"] },
+    { prompt: "PLAN an itinerary through Spain and Portugal", command: "PLAN", places: ["Spain", "Portugal"] },
+    { prompt: "pLaN 10 days in Thailand", command: "pLaN", places: ["Thailand"] },
+    {
+      prompt: "Plan a 3-week trip from London through Japan and South Korea",
+      command: "Plan",
+      places: ["London", "Japan", "South Korea"],
+    },
+  ];
+
+  for (const { prompt, command, places } of cases) {
+    const semantic = intent(
+      prompt.includes("London") ? "London" : null,
+      [command, ...places.filter((place) => place !== "London")],
+    );
+    const capture = await captureJourneyBriefFromSemanticIntent(prompt, semantic);
+    const retained = capture.mentions.map((mention) => mention.sourceText);
+
+    assert.equal(retained.some((sourceText) => sourceText.toLocaleLowerCase() === "plan"), false, prompt);
+    assert.deepEqual(
+      places.filter((place) => !retained.includes(place)),
+      [],
+      prompt,
+    );
+    assert.equal(capture.mentionCoverage.complete, true, prompt);
+  }
+});
+
+test("semantic capture preserves explicit Plan place wording", async () => {
+  const cases = [
+    { prompt: "Visit Plan during the trip", origin: null, places: ["Plan"] },
+    { prompt: "Start in Plan and continue to Paris", origin: "Plan", places: ["Paris"] },
+    { prompt: "I want to stay in Plan", origin: null, places: ["Plan"] },
+    { prompt: 'Visit "Plan" and continue to Paris', origin: null, places: ["Plan", "Paris"] },
+    { prompt: 'Plan a trip to "Plan"', origin: null, places: ["Plan"] },
+  ];
+
+  for (const { prompt, origin, places } of cases) {
+    const capture = await captureJourneyBriefFromSemanticIntent(prompt, intent(origin, places));
+    const plan = capture.mentions.find((mention) => mention.normalizedPhrase === "plan");
+
+    assert.ok(plan, prompt);
+    assert.equal(plan.sourceText, "Plan", prompt);
+    assert.equal(capture.mentionCoverage.complete, true, prompt);
+  }
+});
+
+test("semantic source guard rejects established command grammar and ungrounded geography only", async () => {
+  const visitPrompt = "Visit Paris and Rome";
+  const visitCapture = await captureJourneyBriefFromSemanticIntent(
+    visitPrompt,
+    intent(null, ["Visit", "Paris", "Rome"]),
+  );
+  assert.deepEqual(visitCapture.mentions.map((mention) => mention.sourceText), ["Paris", "Rome"]);
+
+  const ordinaryPrompt = "Osaka and Kyoto";
+  const ordinaryCapture = await captureJourneyBriefFromSemanticIntent(
+    ordinaryPrompt,
+    intent(null, ["Osaka", "Atlantis", "Kyoto"]),
+  );
+  assert.deepEqual(ordinaryCapture.mentions.map((mention) => mention.sourceText), ["Osaka", "Kyoto"]);
+  assert.equal(ordinaryCapture.mentionCoverage.complete, true);
+});
+
+test("handoff projection preserves repeated canonical stop occurrences while excluding endpoints and review-only mentions", () => {
+  const capture = captureJourneyBrief("Tokyo, Kyoto, Tokyo and Georgia, ending in Osaka");
+  const firstTokyo = capture.mentions.find((mention) => mention.canonicalName === "Tokyo" && mention.role !== "fixed_end");
+  assert.ok(firstTokyo);
+  const repeatedTokyo = {
+    ...firstTokyo,
+    mentionId: `${firstTokyo.mentionId}-return`,
+    sourceTexts: ["Tokyo return"],
+    sourceText: "Tokyo return",
+    order: 50,
+  };
+  const mentions = [...capture.mentions, repeatedTokyo];
+  const stops = handoffRouteStops(mentions);
+  const tokyoStops = stops.filter((stop) => stop.canonicalPlaceId === firstTokyo.canonicalPlaceId);
+
+  assert.equal(tokyoStops.length, 2);
+  assert.notEqual(tokyoStops[0]?.id, tokyoStops[1]?.id);
+  assert.equal(stops.some((stop) => stop.name === "Georgia"), false);
+  assert.equal(stops.some((stop) => stop.name === "Osaka"), false);
+
+  const enriched = mergeHandoffLocationChoice(stops, repeatedTokyo, {
+    name: "Tokyo",
+    country: "Japan",
+    coordinates: [139.6917, 35.6895],
+    providerId: "tokyo-return",
+  });
+  assert.equal(enriched.filter((stop) => stop.coordinates).length, 1);
+  assert.deepEqual(enriched.find((stop) => stop.id === tokyoStops[0]?.id)?.coordinates, tokyoStops[0]?.coordinates);
+  assert.deepEqual(enriched.find((stop) => stop.id === tokyoStops[1]?.id)?.coordinates, [139.6917, 35.6895]);
+});
+
+test("handoff projection lets a fixed journey end own the matching final visit occurrence", () => {
+  const capture = captureJourneyBrief(
+    "Plan a 19-day trip from Tokyo to Busan, visiting Tokyo, Takayama, Kanazawa, Kyoto, Osaka, Seoul and Busan.",
+  );
+
+  assert.equal(capture.mentions.some((mention) => mention.role !== "fixed_end" && mention.canonicalPlaceId === "busan"), true);
+  assert.deepEqual(
+    handoffRouteStops(capture.mentions, {
+      mode: "explicit",
+      place: { name: "Busan", country: "South Korea", canonicalPlaceId: "busan" },
+    }).map((stop) => stop.canonicalPlaceId),
+    ["tokyo", "takayama", "kanazawa", "kyoto", "osaka", "seoul"],
+  );
+});
+
+test("authoritative prebuilt route destinations outrank canonical capture seeds", () => {
+  const capture = captureJourneyBrief("Tokyo, Takayama and Busan");
+  const prebuilt = [
+    { id: "curated-tokyo", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895] as [number, number] },
+    { id: "curated-takayama", name: "Takayama", country: "Japan", canonicalPlaceId: "takayama", coordinates: [137.2522, 36.1461] as [number, number] },
+    { id: "curated-busan", name: "Busan", country: "South Korea", canonicalPlaceId: "busan", coordinates: [129.0756, 35.1796] as [number, number] },
+  ];
+
+  assert.deepEqual(initialHandoffRouteStops(capture.mentions, prebuilt), prebuilt);
 });
 
 test("semantic lookup interpretations resolve colloquial names without replacing source evidence", async () => {

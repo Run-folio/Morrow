@@ -16,6 +16,7 @@ import {
   exploreScheduleTarget,
   filterExploreResults,
   projectExploreResults,
+  resolveExploreDestinationId,
   trustedExploreImage,
 } from "../lib/easyt/explore.ts";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "../lib/easyt/itinerary-ideas.ts";
@@ -93,6 +94,27 @@ test("Explore keeps repeated cities as separate stopIds and excludes stops witho
     { id: "naxos", dayLabel: "Day 3" },
     { id: "athens-return", dayLabel: "Day 4" },
   ]);
+});
+
+test("Explore selects only real canonical stops and preserves explicit repeated-stop selection across reload", () => {
+  const base = trip();
+  base.stops.push({
+    ...base.stops[0]!,
+    id: "athens-return",
+    canonicalPlaceId: "athens-gr",
+    order: 2,
+    arrivalDate: "2026-09-13",
+    departureDate: "2026-09-14",
+  });
+  base.planItems.push({ ...base.planItems[1]!, id: "day-4", stopId: "athens-return", dayNumber: 4, date: "2026-09-13" });
+  const reloaded = JSON.parse(JSON.stringify(base)) as EasyTTrip;
+  const destinations = exploreDestinationOptions(reloaded);
+
+  assert.equal(resolveExploreDestinationId(destinations), "athens", "initial entry selects the first canonical stop");
+  assert.equal(resolveExploreDestinationId(destinations, "naxos"), "naxos", "a later stop remains selectable");
+  assert.equal(resolveExploreDestinationId(destinations, "athens-return"), "athens-return", "a repeated place keeps its occurrence ID after reload");
+  assert.equal(resolveExploreDestinationId(destinations, "all"), "athens", "legacy aggregate input cannot become Explore state");
+  assert.equal(resolveExploreDestinationId([], "all"), null, "a trip without valid stops has no fabricated destination");
 });
 
 test("destination and category filtering never leaks unrelated trip locations", () => {
@@ -283,7 +305,8 @@ test("eligibility rejects the destination and administrative records but keeps u
   assert.equal(exploreResultEligible(base, city), false);
   assert.equal(exploreResultEligible(base, region), false);
   for (const result of [neighbourhood, attraction, restaurant, tour]) assert.equal(exploreResultEligible(base, result), true);
-  assert.deepEqual(filterExploreResults(base, [city, region, neighbourhood, attraction, restaurant, tour], "all", "for-you").map((result) => result.title).sort(), ["Ancient Agora", "Athens walking tour", "Plaka", "Taverna"]);
+  assert.deepEqual(filterExploreResults(base, [city, region, neighbourhood, attraction, restaurant, tour], "all", "for-you").map((result) => result.title).sort(), ["Ancient Agora", "Athens walking tour", "Plaka"]);
+  assert.deepEqual(filterExploreResults(base, [restaurant], "all", "food").map((result) => result.title), ["Taverna"]);
 });
 
 test("For you filters non-visitable entities and ranks traveller-useful places ahead of weak generic records", () => {
@@ -305,10 +328,10 @@ test("For you filters non-visitable entities and ranks traveller-useful places a
     exploreResultForPlace(stop, { ...place, id: "unusual", title: "Underground olive press", type: "Attraction", tags: ["Culture"], description: "An unusual but genuine visitor attraction with guided tours.", qualityScore: 12 }),
   ];
   const ranked = filterExploreResults(base, candidates, "all", "for-you");
-  for (const rejected of ["Athens Technical University", "Tokyo subway sarin attack", "Attica Regional Authority", "Central Star", "Municipal reference record", "Regional trade council"]) {
+  for (const rejected of ["Athens Technical University", "Tokyo subway sarin attack", "Attica Regional Authority", "Central Star", "Municipal reference record", "Regional trade council", "Central produce market"]) {
     assert.equal(ranked.some((result) => result.title === rejected), false, rejected);
   }
-  for (const preserved of ["Subway attack memorial", "Small hillside church", "City Museum", "Old artisan quarter", "Central produce market", "Hilltop park", "Underground olive press"]) {
+  for (const preserved of ["Subway attack memorial", "Small hillside church", "City Museum", "Old artisan quarter", "Hilltop park", "Underground olive press"]) {
     assert.equal(ranked.some((result) => result.title === preserved), true, preserved);
   }
 });
@@ -337,6 +360,7 @@ test("raw city entities do not become attractions, while quality score changes f
 });
 
 test("category classification favors truthful place anatomy over incidental prose", () => {
+  assert.equal(exploreDiscoveryCategory("Kamakura", "Day trip", "A provider-identified nearby city."), "Day trip");
   assert.equal(exploreDiscoveryCategory("Piazza del Campidoglio", "", "A square on Capitoline Hill."), "Landmark");
   assert.equal(exploreDiscoveryCategory("Unknown stop", "", "Limited source detail."), "Place");
   assert.equal(exploreDiscoveryCategory("Acropolis Museum", "attraction", ""), "Museum");
@@ -362,7 +386,7 @@ test("For you keeps organic results and mixes commercial inventory without repla
   assert.equal(mixed.slice(0, 3).some((result) => result.providerProductId), true);
 });
 
-test("For you deterministically interleaves categories and repeated name families", () => {
+test("For you excludes newly discovered restaurants while retaining deterministic attraction diversity", () => {
   const base = trip();
   const stop = base.stops[0]!;
   const restaurants = Array.from({ length: 15 }, (_, index) => exploreResultForLocalPlace(stop, {
@@ -389,13 +413,9 @@ test("For you deterministically interleaves categories and repeated name familie
   const second = filterExploreResults(base, input, "all", "for-you");
   const leading = first.slice(0, 12);
   assert.deepEqual(second.map((result) => result.identity), first.map((result) => result.identity));
-  assert.equal(leading.filter((result) => result.category.toLocaleLowerCase() === "restaurant").length <= 4, true);
-  assert.equal(new Set(leading.filter((result) => result.kind !== "restaurant").map((result) => result.category)).size, 4);
-  assert.equal(leading.filter((result) => result.title === "Athens Fish Restaurant").length <= 2, true);
-  const remainingFamilyIndexes = first.slice(12)
-    .filter((result) => result.title === "Athens Fish Restaurant")
-    .map((result) => input.indexOf(result));
-  assert.deepEqual(remainingFamilyIndexes, [...remainingFamilyIndexes].sort((left, right) => left - right), "the unselected family remainder keeps base rank order");
+  assert.equal(leading.every((result) => result.kind !== "restaurant"), true);
+  assert.equal(new Set(leading.map((result) => result.category)).size >= 4, true);
+  assert.equal(first.length, alternatives.length - 2);
 });
 
 test("Food retains distinct restaurants and provider quality ordering without mixed-feed diversification", () => {
@@ -415,10 +435,10 @@ test("Food retains distinct restaurants and provider quality ordering without mi
   assert.equal(food.length, 15);
   assert.equal(food[0]?.title, "Distinctive provider favourite");
   assert.deepEqual(food.slice(1).map((result) => result.sourceId), restaurants.slice(0, 14).map((result) => result.sourceId));
-  assert.equal(filterExploreResults(base, restaurants, "all", "for-you")[0]?.title, "Distinctive provider favourite");
+  assert.deepEqual(filterExploreResults(base, restaurants, "all", "for-you"), []);
 });
 
-test("legitimate Seoul, Kyoto and Amsterdam visitor places survive the shared quality boundary", () => {
+test("legitimate non-food visitor places survive For you while food places stay Food-only", () => {
   const base = trip();
   const stop = base.stops[0]!;
   const controls = [
@@ -426,7 +446,8 @@ test("legitimate Seoul, Kyoto and Amsterdam visitor places survive the shared qu
     exploreResultForPlace(stop, { ...place, id: "kyoto-market", title: "Nishiki Market", type: "Market", tags: ["Food"], qualityScore: 17 }),
     exploreResultForPlace(stop, { ...place, id: "amsterdam-museum", title: "Rijksmuseum", type: "Museum", tags: ["Culture"], qualityScore: 19 }),
   ];
-  assert.equal(filterExploreResults(base, controls, "all", "for-you").length, controls.length);
+  assert.deepEqual(filterExploreResults(base, controls, "all", "for-you").map((result) => result.title), ["Rijksmuseum", "Gyeongbokgung Palace"]);
+  assert.deepEqual(filterExploreResults(base, controls, "all", "food").map((result) => result.title), ["Nishiki Market"]);
 });
 
 test("commercial metadata remains absent when the provider does not source it", () => {

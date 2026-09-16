@@ -1,6 +1,7 @@
 import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity, type ComposedItineraryTransfer } from "./itinerary-day-composition.ts";
 import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "./itinerary-transport-agenda.ts";
 import type { EasyTTrip, ItineraryDayPart, PlanItem, TripBooking, TripStop } from "./trip.ts";
+import { isFullDayActivity } from "./itinerary-schedule-awareness.ts";
 
 export type ItineraryCalendarSchedule =
   | { kind: "day-part"; dayPart: ItineraryDayPart }
@@ -19,6 +20,8 @@ export type ItineraryCalendarDay = {
   day: PlanItem;
   stop: TripStop | null;
   items: ItineraryCalendarItem[];
+  /** Unscheduled legacy context is retained for review, never promoted to an event. */
+  contextNotes: ComposedItineraryActivity[];
   arrival: boolean;
   departure: boolean;
 };
@@ -52,11 +55,23 @@ function weekStart(value: string) {
 function activitySchedule(activity: ComposedItineraryActivity): ItineraryCalendarSchedule {
   if (activity.startsAt) return { kind: "time", startsAt: activity.startsAt };
   if (activity.dayPart) return { kind: "day-part", dayPart: activity.dayPart };
-  const duration = activity.providerMetadata?.duration;
-  const minimumMinutes = duration?.fixedMinutes ?? duration?.fromMinutes ?? null;
-  return minimumMinutes !== null && minimumMinutes >= 8 * 60
+  return isFullDayActivity(activity.providerMetadata?.duration)
     ? { kind: "full-day" }
     : { kind: "time-not-set" };
+}
+
+/** Night bands use occurrence IDs and the half-open stay interval, never labels. */
+export function itineraryCalendarNightBands(week: ItineraryCalendarWeek) {
+  const bands: Array<{ stop: TripStop; start: number; span: number; continued: boolean }> = [];
+  week.days.forEach((entry, index) => {
+    const stop = entry?.stop;
+    if (!entry || !stop?.arrivalDate || !stop.departureDate || !utcDate(entry.day.date)
+      || entry.day.date < stop.arrivalDate || entry.day.date >= stop.departureDate) return;
+    const previous = bands.at(-1);
+    if (previous?.stop.id === stop.id && previous.start + previous.span === index) previous.span += 1;
+    else bands.push({ stop, start: index, span: 1, continued: entry.day.date > stop.arrivalDate });
+  });
+  return bands;
 }
 
 /**
@@ -90,7 +105,7 @@ export function itineraryCalendarDays(trip: EasyTTrip): ItineraryCalendarDay[] {
           transfer: composition.transfers.find((transfer) => transfer.id === agenda.leg.id) ?? null,
           agenda,
         }));
-      const activityItems = activities.map((activity): ItineraryCalendarItem => ({
+      const activityItems = activities.filter((activity) => activity.source !== "day-note").map((activity): ItineraryCalendarItem => ({
         kind: "activity",
         id: `activity:${activity.id}`,
         activity,
@@ -118,6 +133,7 @@ export function itineraryCalendarDays(trip: EasyTTrip): ItineraryCalendarDay[] {
         day,
         stop: composition.stop,
         items: [...transfers, ...activityItems, ...accommodation, ...datedBookings],
+        contextNotes: activities.filter((activity) => activity.source === "day-note"),
         arrival: day.type === "arrival" || composition.transfers.some((transfer) => transfer.direction === "arriving"),
         departure: composition.transfers.some((transfer) => transfer.direction === "departing"),
       }];

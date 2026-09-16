@@ -8,6 +8,7 @@ import {
   EasyTSelect,
   EasyTSegmentedControl,
 } from "./easyt-controls";
+import { EasyTPasswordField } from "./easyt-password-field";
 
 const meta = {
   title: "Morrovia/02 Controls/Buttons, fields and segments",
@@ -66,10 +67,20 @@ export const Fields: Story = {
       <EasyTField label="Trip name" placeholder="Japan in spring" />
       <EasyTField label="Email" value="traveller@example.com" disabled readOnly />
       <EasyTField label="Destination" defaultValue="Atlantis" error="Choose a real mapped place." />
-      <EasyTSelect label="Language" defaultValue="en" hint="Used across your EasyT account.">
+      <EasyTPasswordField label="Password" defaultValue="private-example" autoComplete="current-password" />
+      <EasyTSelect label="Language" defaultValue="en" hint="Used across your Morrovia account.">
         <option value="en">English</option>
         <option value="es">Español</option>
       </EasyTSelect>
+    </div>
+  ),
+};
+
+export const PasswordVisibility: Story = {
+  render: () => (
+    <div style={{ display: "grid", gap: 20, maxWidth: 520 }}>
+      <EasyTPasswordField label="Password" defaultValue="private-example" autoComplete="current-password" />
+      <EasyTPasswordField label="New password" defaultValue="another-private-example" autoComplete="new-password" />
     </div>
   ),
 };
@@ -116,6 +127,7 @@ export const NarrowScreen: Story = {
     <div style={{ display: "grid", gap: 12, maxWidth: 320 }}>
       <EasyTButton fullWidth>Continue</EasyTButton>
       <EasyTField label="A very long field label" placeholder="Controls stay usable on narrow screens" />
+      <EasyTPasswordField label="Password" defaultValue="private-example" autoComplete="current-password" />
     </div>
   ),
 };

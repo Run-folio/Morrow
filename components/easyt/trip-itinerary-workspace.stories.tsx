@@ -208,6 +208,47 @@ const longTrip: EasyTTrip = {
   }),
 };
 
+const longTrip65: EasyTTrip = {
+  ...trip,
+  id: "storybook-itinerary-65-day-trip",
+  title: "A 65-day journey through Peru",
+  endDate: "2026-10-24",
+  brief: {
+    ...trip.brief,
+    bookings: [],
+    itineraryIdeas: [],
+  },
+  stops: [{
+    ...trip.stops[0]!,
+    departureDate: "2026-10-25",
+    nights: 65,
+  }],
+  legs: [],
+  planItems: Array.from({ length: 65 }, (_, index) => {
+    const dayNumber = index + 1;
+    const date = new Date(Date.UTC(2026, 7, 20 + dayNumber)).toISOString().slice(0, 10);
+    return day(
+      dayNumber,
+      "cusco",
+      date,
+      dayNumber === 1 ? "Arrive in Cusco" : `Explore Cusco · day ${dayNumber}`,
+      dayNumber === 1 ? "Arrival context remains canonical." : "A long trip day remains directly reachable.",
+      [],
+      dayNumber === 1 ? "arrival" : "activity",
+      null,
+    );
+  }),
+};
+
+const longTrip19: EasyTTrip = {
+  ...longTrip65,
+  id: "storybook-itinerary-19-day-trip",
+  title: "A 19-day journey through Peru",
+  endDate: "2026-09-08",
+  stops: [{ ...longTrip65.stops[0]!, departureDate: "2026-09-09", nights: 19 }],
+  planItems: longTrip65.planItems.slice(0, 19),
+};
+
 const longTimelineActivity =
   "Taipei 101 (Chinese: 台北101; pinyin: Táiběi Yīlíngyī; stylized in all caps), formerly known as the Taipei World Financial Center, is intentionally long canonical/provider-derived activity text.";
 
@@ -270,6 +311,26 @@ const transportAgendaTrip: EasyTTrip = {
     scheduleNeedsChecking: true,
     warnings: ["This cross-border connection needs live service confirmation."],
   } : leg),
+};
+
+const bookingDetailTrip: EasyTTrip = {
+  ...trip,
+  id: "storybook-itinerary-booking-detail",
+  brief: {
+    ...trip.brief,
+    bookings: [
+      ...(trip.brief.bookings ?? []),
+      {
+        id: "cusco-workshop-booking",
+        type: "other",
+        title: "Cusco workshop booking",
+        date: "2026-08-22",
+        confirmation: "WORKSHOP-22",
+        url: "https://www.example.com/workshop-booking",
+        notes: ["Traveller-confirmed booking note."],
+      },
+    ],
+  },
 };
 
 const longContentSuggestions: Record<number, ItineraryDiscoveryPlace[]> = {
@@ -420,6 +481,14 @@ export const RichDayPlannerIntegrated: Story = {
     },
     selectedDayNumber: 2,
   },
+};
+export const RichDayPlannerIntegratedMobile390: Story = {
+  ...RichDayPlannerIntegrated,
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: { ...RichDayPlannerIntegrated.args!.trip!, id: "storybook-itinerary-rich-day-mobile-390" },
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
 export const NativeDragAfterSuggestionsFailure: Story = {
@@ -694,6 +763,14 @@ export const Calendar: Story = {
     [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
   },
 };
+export const CalendarActivityDrag: Story = {
+  ...RichDayPlannerIntegrated,
+  args: {
+    ...RichDayPlannerIntegrated.args,
+    trip: { ...RichDayPlannerIntegrated.args!.trip!, id: "storybook-itinerary-calendar-activity-drag" },
+  },
+  play: Calendar.play,
+};
 export const CalendarMobile320: Story = { ...Calendar, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const CalendarMobile390: Story = { ...Calendar, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const CalendarMobile430: Story = { ...Calendar, globals: { viewport: { value: "morrovia430", isRotated: false } } };
@@ -701,7 +778,31 @@ export const CalendarTablet768: Story = { ...Calendar, globals: { viewport: { va
 export const CalendarDesktop1024: Story = { ...Calendar, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const CalendarDesktop1440: Story = { ...Calendar, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const CalendarLongMonthCrossing: Story = { ...Calendar, args: { trip: longTrip } };
+export const CalendarLongTrip19Days: Story = { ...Calendar, args: { trip: longTrip19 } };
+export const CalendarLongTrip65Days: Story = { ...Calendar, args: { trip: longTrip65 } };
 export const CalendarRepeatedStopTransferHeavy: Story = { ...Calendar, args: { trip: transportAgendaTrip } };
+export const CalendarBookingDetail: Story = { ...Calendar, args: { trip: bookingDetailTrip, selectedDayNumber: 2 } };
+
+/** Production UI state only: changing orientation must not invoke trip mutations. */
+export const SharedDayCalendarOrientation: Story = {
+  ...RichDayPlannerIntegrated,
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const select = canvasElement.querySelector<HTMLSelectElement>('select');
+    if (!select) throw new Error("Missing canonical day selector");
+    select.value = "day-3";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    await settle();
+    const switchView = (label: string) => [...canvasElement.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.trim() === label)?.click();
+    switchView("Calendar");
+    await settle();
+    if (select.value !== "day-3" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost selected canonical day");
+    switchView("Open full day");
+    await settle();
+    if (select.value !== "day-3") throw new Error("Full day lost Calendar context");
+    if (canvasElement.querySelectorAll('[aria-label="Day 3 planner"]').length !== 1) throw new Error("Expected one canonical planner");
+  },
+};
 
 export const DeepLinkedTravelDay: Story = { args: { selectedDayNumber: 4 } };
 export const RoadResolvedTravelDay: Story = { args: { trip: roadResolvedTrip, selectedDayNumber: 4 } };
@@ -742,6 +843,7 @@ export const DenseDay: Story = { args: { trip: edgeCaseTrip, selectedDayNumber: 
 export const PartialDayWithoutCoordinates: Story = { args: { trip: edgeCaseTrip, selectedDayNumber: 7 } };
 
 export const LongTripLateDay: Story = { args: { trip: longTrip, selectedDayNumber: 30 } };
+export const LongTrip65LateDay: Story = { args: { trip: longTrip65, selectedDayNumber: 64 } };
 
 export const LongContentContainment: Story = {
   args: { trip: longContentTrip, selectedDayNumber: 4, initialSuggestions: longContentSuggestions },

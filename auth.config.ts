@@ -11,6 +11,11 @@ import {
   isMorroviaGoogleAuthConfigured,
 } from "@/lib/easyt/auth-environment";
 import { passwordResetEmail, sendMorroviaEmail, verificationEmail } from "@/lib/easyt/email";
+import { ACKNOWLEDGED_EMAIL_VERIFICATION_TRIGGERS } from "@/lib/easyt/auth-email-flow";
+import {
+  MORROVIA_EMAIL_VERIFICATION_STORAGE,
+  morroviaEmailVerificationSingleUse,
+} from "@/lib/easyt/email-verification-single-use";
 
 function createAuth(databaseUrl: string, secret: string) {
   const baseURL = getMorroviaAuthBaseURL();
@@ -21,6 +26,8 @@ function createAuth(databaseUrl: string, secret: string) {
     baseURL,
     secret,
     database: new Pool({ connectionString: databaseUrl }),
+    verification: MORROVIA_EMAIL_VERIFICATION_STORAGE,
+    plugins: [morroviaEmailVerificationSingleUse()],
     account: {
       // Better Auth remains the sole account/linking owner. New and refreshed
       // OAuth token fields are encrypted with the Better Auth secret.
@@ -47,11 +54,11 @@ function createAuth(databaseUrl: string, secret: string) {
       sendVerificationEmail: async ({ user, url }) => {
         await sendMorroviaEmail({ to: user.email, ...verificationEmail(url, supportUrl) });
       },
-      sendOnSignUp: isEasyTEmailVerificationRequired(),
-      // Existing accounts created before email delivery was configured need a
-      // way to recover without a separate support flow. A blocked sign-in
-      // sends a fresh one-time verification link.
-      sendOnSignIn: isEasyTEmailVerificationRequired(),
+      // Better Auth contains errors from automatic background-style email
+      // hooks, so the client follows account creation or an unverified sign-in
+      // with the explicit send-verification endpoint. That endpoint returns a
+      // provider-acknowledged result without replacing Better Auth's tokens.
+      ...ACKNOWLEDGED_EMAIL_VERIFICATION_TRIGGERS,
       autoSignInAfterVerification: true,
     },
     socialProviders: googleEnabled ? {

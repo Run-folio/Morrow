@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactEventHandler, type ReactNode } from "react";
 import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { decodeGooglePhotoAttributions, type GooglePlacePhotoAttribution } from "@/lib/easyt/google-place-photo";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
@@ -11,12 +11,17 @@ export type JourneyLocalPlacePhoto = {
   attributions: GooglePlacePhotoAttribution[];
 };
 
-export function useJourneyLocalPlacePhotos(places: readonly JourneyLocalPlace[]) {
+export function useJourneyLocalPlacePhotos(
+  places: readonly JourneyLocalPlace[],
+  options: { limit?: number; kind?: "lodging" | "restaurant" } = {},
+) {
+  const limit = Math.max(1, Math.min(options.limit ?? 6, 18));
+  const kind = options.kind ?? "lodging";
   const exactPhotoPlaces = useMemo(() => places.filter((place) => (
     !place.image
     && ((place.provider === "google-places" && Boolean(place.providerProductId))
       || place.provider === "openstreetmap")
-  )).slice(0, 6), [places]);
+  )).slice(0, limit), [limit, places]);
   const requestKey = exactPhotoPlaces.map((place) => `${place.id}:${place.providerProductId ?? `${place.name}:${place.coordinates.join(":")}`}`).join("|");
   const [photos, setPhotos] = useState<Record<string, JourneyLocalPlacePhoto>>({});
 
@@ -34,6 +39,7 @@ export function useJourneyLocalPlacePhotos(places: readonly JourneyLocalPlace[])
           query.set("address", place.address);
           query.set("lon", String(place.coordinates[0]));
           query.set("lat", String(place.coordinates[1]));
+          query.set("kind", kind);
         }
         const response = await fetch(`/api/journey-place-photo?${query}`, {
           cache: "no-store",
@@ -56,7 +62,7 @@ export function useJourneyLocalPlacePhotos(places: readonly JourneyLocalPlace[])
     };
     // Candidate identity, not late commercial facts, owns photo requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestKey]);
+  }, [kind, requestKey]);
 
   return photos;
 }
@@ -65,16 +71,20 @@ export function JourneyLocalPlacePhotoMedia({
   place,
   photo,
   fallback,
+  subject = "property",
+  onError,
 }: {
   place: JourneyLocalPlace;
   photo?: JourneyLocalPlacePhoto;
   fallback: ReactNode;
+  subject?: "property" | "restaurant";
+  onError?: ReactEventHandler<HTMLImageElement>;
 }) {
   const src = place.image ?? photo?.src;
   const credit = photo?.attributions.map((item) => item.displayName).join(" · ") ?? "";
   const sourceHref = photo?.attributions.find((item) => item.uri)?.uri ?? place.mapsUrl;
   return <>
-    <ResilientImage src={src} alt={src ? `${place.name} property` : ""} fallback={fallback} loading="lazy" decoding="async" />
+    <ResilientImage src={src} alt={src ? `${place.name} ${subject}` : ""} fallback={fallback} loading="lazy" decoding="async" onError={onError} />
     {src && credit ? <MorroviaPhotoCredit credit={credit} photoLabel={place.name} sourceHref={sourceHref} /> : null}
   </>;
 }

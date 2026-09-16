@@ -15,6 +15,7 @@ type GooglePhoto = {
 type GoogleProperty = {
   id?: string;
   displayName?: { text?: string };
+  formattedAddress?: string;
   location?: { latitude?: number; longitude?: number };
   photos?: GooglePhoto[];
 };
@@ -35,6 +36,7 @@ async function resolveExactFallbackProperty(input: {
   name: string;
   address: string;
   coordinates: [number, number];
+  kind: "lodging" | "restaurant";
 }) {
   const [longitude, latitude] = input.coordinates;
   const response = await fetch(`${googlePlacesBase}/places:searchText`, {
@@ -42,11 +44,11 @@ async function resolveExactFallbackProperty(input: {
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": input.apiKey,
-      "X-Goog-FieldMask": "places.id,places.displayName,places.location,places.photos",
+      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.photos",
     },
     body: JSON.stringify({
       textQuery: [input.name, input.address].filter(Boolean).join(", "),
-      includedType: "lodging",
+      includedType: input.kind,
       locationBias: { circle: { center: { latitude, longitude }, radius: 150 } },
       pageSize: 5,
     }),
@@ -62,8 +64,8 @@ async function resolveExactFallbackProperty(input: {
       && validCoordinate(candidateLatitude ?? Number.NaN, 90)
       && validCoordinate(candidateLongitude ?? Number.NaN, 180)
       && exactGooglePropertyMatch(
-        { name: input.name, coordinates: input.coordinates },
-        { name: candidate.displayName?.text, coordinates: [candidateLongitude!, candidateLatitude!] },
+        { name: input.name, address: input.address, coordinates: input.coordinates },
+        { name: candidate.displayName?.text, address: candidate.formattedAddress, coordinates: [candidateLongitude!, candidateLatitude!] },
       );
   }) ?? null;
 }
@@ -75,6 +77,7 @@ export async function GET(request: NextRequest) {
   const fallbackAddress = request.nextUrl.searchParams.get("address")?.trim().slice(0, 240) ?? "";
   const fallbackLatitude = Number(request.nextUrl.searchParams.get("lat"));
   const fallbackLongitude = Number(request.nextUrl.searchParams.get("lon"));
+  const fallbackKind = request.nextUrl.searchParams.get("kind") === "restaurant" ? "restaurant" : "lodging";
   const fallbackRequested = !placeId
     && fallbackName.length >= 2
     && fallbackName.length <= 160
@@ -105,6 +108,7 @@ export async function GET(request: NextRequest) {
         name: fallbackName,
         address: fallbackAddress,
         coordinates: [fallbackLongitude, fallbackLatitude],
+        kind: fallbackKind,
       });
     if (!property?.id) return unavailable(404, "photo_unavailable");
     const photo = property.photos?.[0];

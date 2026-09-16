@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(280px, 320px);
   min-height: 650px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: #fff;
@@ -128,6 +128,15 @@
 .calendarDay[data-selected="true"] {
   border-color: var(--morrovia-signal);
   background: var(--morrovia-paper);
+}
+
+.calendarDay[data-drop-eligible="true"] {
+  outline: 2px dashed var(--morrovia-action);
+  outline-offset: 2px;
+}
+
+.calendarItemDragging {
+  opacity: .52;
 }
 
 .calendarBlank {
@@ -1253,6 +1262,120 @@
   height: 14px;
 }
 
+.bookingCardSelected {
+  border-color: var(--morrovia-action);
+}
+
+.bookingCardSelect {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  justify-content: stretch;
+  text-align: left;
+  white-space: normal;
+}
+
+.bookingCardSelect > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.bookingCardSelect small {
+  color: var(--morrovia-muted);
+  font: 650 8px/1.4 var(--morrovia-meta);
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetailScrim {
+  display: none;
+}
+
+.logisticsDetail {
+  position: relative;
+  min-width: 0;
+  padding: 22px;
+  display: grid;
+  gap: 18px;
+  background: var(--morrovia-paper);
+}
+
+.logisticsDetailClose {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.logisticsDetail header {
+  min-width: 0;
+  padding-right: 42px;
+}
+
+.logisticsDetail header > span {
+  color: var(--morrovia-signal);
+  font: 800 9px/1.2 var(--morrovia-meta);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.logisticsDetail h2 {
+  margin: 8px 0 0;
+  color: var(--morrovia-ink);
+  font: 650 28px/1.04 var(--morrovia-display);
+  letter-spacing: -.035em;
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetail header p,
+.logisticsDetailSummary {
+  margin: 8px 0 0;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+
+.logisticsDetail > dl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.logisticsDetail > dl > div {
+  padding: 10px 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+
+.logisticsDetail dt {
+  color: var(--morrovia-muted);
+  font: 750 9px/1.35 var(--morrovia-meta);
+  text-transform: uppercase;
+}
+
+.logisticsDetail dd {
+  margin: 0;
+  color: var(--morrovia-ink);
+  font: var(--morrovia-type-supporting-body);
+  overflow-wrap: anywhere;
+}
+
+.logisticsDetail > ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+}
+
+.logisticsDetailActions {
+  display: grid;
+  gap: 8px;
+}
+
+.logisticsDetailActions .omioAction {
+  margin: 0;
+}
+
 .suggestionCard {
   align-items: start;
 }
@@ -1817,4 +1940,96 @@
 @media (hover: none), (pointer: coarse) {
   .dragHint { display: none; }
   .discoveryCard { cursor: default; }
+}
+
+/* Ticket 311: one orientation toolbar and a plan-first compact composition. */
+.workspaceToolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px;
+  border-bottom: 1px solid var(--morrovia-line);
+}
+.workspaceToolbar > div:first-child { flex: 1; min-width: 180px; }
+.workspaceToolbar h2 { margin: 0; font: 700 28px/1.1 var(--morrovia-display); }
+.workspaceToolbar p { margin: 6px 0 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.workspaceToolbar .subviewBar { padding: 0; border: 0; }
+.dateNavigation { display: flex; align-items: end; gap: 6px; min-width: 0; }
+.dateNavigation > label { width: 260px; min-width: 0; }
+.dayPanel { min-width: 0; padding: 20px; container-type: inline-size; }
+.dayHeader h2 { font-size: clamp(30px, 3vw, 44px); }
+.dayList { max-height: 70svh; }
+.calendarWorkspace { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.calendarWorkspace .rail { display: none; }
+.calendarWorkspace .calendarView { grid-column: 1; padding: 16px; min-width: 0; }
+.calendarWorkspace .dayPanel { grid-column: 2; border-left: 1px solid var(--morrovia-line); }
+.calendarWorkspace .contextRail { grid-column: 1 / -1; grid-row: auto; border-top: 1px solid var(--morrovia-line); }
+.calendarDaySelect { min-height: 100px; padding: 10px; }
+.calendarDaySelect time, .calendarDaySelect small, .calendarDaySelect em { font: var(--morrovia-type-fine-print); }
+.calendarItem strong { font: 700 13px/1.35 var(--morrovia-ui); }
+.calendarItem small { font: var(--morrovia-type-fine-print); }
+.calendarItem strong, .calendarItem small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.calendarBlank { border: 0; }
+.calendarWeek { margin-top: 12px; }
+.calendarBands { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.calendarBands > div { display: flex; align-items: center; min-width: 0; gap: 6px; padding: 8px; border-bottom: 2px solid var(--morrovia-signal); font: var(--morrovia-type-fine-print); }
+.calendarBands svg { width: 16px; height: 16px; flex: none; }
+.calendarBands span { overflow-wrap: anywhere; }
+.calendarThumbnail { width: 100%; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); margin-bottom: 4px; }
+.mobileSavedIdeas { order: 6; }
+@media (max-width: 1399px) {
+  .calendarWorkspace { grid-template-columns: minmax(0, 1fr); }
+  .calendarWorkspace .dayPanel { grid-column: 1; border-left: 0; border-top: 1px solid var(--morrovia-line); }
+}
+@media (max-width: 900px) {
+  .workspaceToolbar { gap: 12px; }
+  .workspaceToolbar .subviewBar { order: -1; width: 100%; }
+  .workspaceToolbar .subviewBar > div { width: 100%; }
+  .dateNavigation { width: 100%; }
+  .dateNavigation > label { flex: 1; width: auto; }
+  .rail { display: none; }
+  .calendarWorkspace .calendarGrid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .calendarWorkspace .calendarBlank { display: block; min-height: 0; }
+  .calendarWorkspace .calendarDay { min-height: 0; }
+  .calendarWorkspace .calendarDaySelect { padding: 8px 2px; min-height: 44px; }
+  .calendarWorkspace .calendarDaySelect > span { display: block; }
+  .calendarWorkspace .calendarDaySelect time { font-size: 11px; }
+  .calendarWorkspace .calendarDaySelect i,
+  .calendarWorkspace .calendarDaySelect strong,
+  .calendarWorkspace .calendarDaySelect small,
+  .calendarWorkspace .calendarDaySelect em,
+  .calendarWorkspace .calendarItems,
+  .calendarWorkspace .calendarEmptyDay { display: none; }
+  .calendarWorkspace .calendarView { padding: 12px; }
+  .calendarBands { display: none; }
+  .dayPanel { padding: 16px; }
+  .mobileSavedIdeas { order: 6; display: block; }
+  .workspaceToolbar h2 { font-size: 24px; }
+  .logisticsDetailScrim {
+    position: fixed;
+    z-index: 89;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: var(--morrovia-overlay);
+  }
+  .logisticsDetail {
+    position: fixed;
+    z-index: 90;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(760px, calc(100svh - 24px));
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    border: 1px solid var(--morrovia-line);
+    border-bottom: 0;
+    border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
+    box-shadow: var(--morrovia-shadow-overlay);
+  }
 }

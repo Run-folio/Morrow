@@ -1,7 +1,7 @@
 .workspace {
   width: 100%;
   min-height: 650px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: var(--morrovia-paper);
@@ -62,7 +62,7 @@
   align-items: center;
   gap: 8px;
   color: var(--morrovia-ink-soft);
-  font: 800 10px/1.2 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -88,7 +88,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-lilac);
+  border: 1px solid var(--morrovia-line);
+  background: var(--morrovia-paper);
   color: var(--morrovia-signal);
 }
 
@@ -97,13 +98,8 @@
 
 .route {
   min-width: 0;
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 18px;
+  display: grid;
 }
-
-.route > div { min-width: 0; }
 
 .route h4 {
   margin: 0;
@@ -134,13 +130,14 @@
 .route p i { color: var(--morrovia-line); font-style: normal; }
 
 .status {
+  width: fit-content;
   flex: none;
   padding: 6px 8px;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-lilac);
+  background: var(--morrovia-paper);
   color: var(--morrovia-ink-soft);
-  font: 800 8px/1 var(--morrovia-meta);
+  font: var(--morrovia-type-metadata);
   letter-spacing: .03em;
   text-transform: uppercase;
 }
@@ -157,8 +154,18 @@
   color: var(--morrovia-ink-soft);
 }
 
-.segments { margin: 0; color: var(--morrovia-ink-soft); }
-.details { min-width: 0; border-top: 1px solid var(--morrovia-line); }
+.segments {
+  margin: 0;
+  color: var(--morrovia-ink-soft);
+  font: var(--morrovia-type-supporting-body);
+  font-weight: 600;
+}
+
+.details {
+  min-width: 0;
+  border-top: 1px solid var(--morrovia-line);
+  background: var(--morrovia-paper);
+}
 
 .details > summary {
   width: fit-content;
@@ -176,6 +183,22 @@
 .details dd { margin: 0; overflow-wrap: anywhere; }
 .details ul { margin: 0 0 8px; padding-left: 18px; color: var(--morrovia-ink-soft); font-size: 11px; line-height: 1.5; }
 .actions { display: flex; align-items: start; flex-wrap: wrap; gap: 10px; }
+
+.omioAction {
+  display: grid;
+  width: min(100%, 560px);
+  min-width: 0;
+  justify-items: start;
+  gap: 4px;
+}
+
+.omioAction > a { justify-self: start; }
+
+.omioAction > small {
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-fine-print);
+  overflow-wrap: anywhere;
+}
 
 .empty {
   min-height: 260px;
@@ -199,13 +222,11 @@
   .group { margin-top: 24px; }
   .card { padding: 14px 12px; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
   .modeIcon { width: 34px; height: 34px; }
-  .route { display: grid; gap: 10px; }
-  .status { justify-self: start; }
   .details > summary { min-height: 44px; }
   .details dl { grid-template-columns: 1fr; gap: 3px; }
   .details dd { margin-bottom: 5px; }
   .actions { display: grid; }
   .actions > a,
-  .actions > .omioAction,
-  .actions > .omioAction > a { width: 100%; }
+  .actions > .omioAction { width: 100%; }
+  .actions > .omioAction > a { width: 100%; justify-content: center; }
 }

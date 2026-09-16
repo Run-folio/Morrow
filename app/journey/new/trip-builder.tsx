@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
@@ -35,7 +35,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { applySelectedOriginToJourneyCapture, composeJourneyCaptureBrief, createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
 import { canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -846,7 +846,6 @@ function TripBuilderDocument() {
           // `destination` is retained for drafts created before prompt-first
           // routing. New homepage drafts carry the complete verified route.
           const draftStops = homeDraft.destinations?.length ? homeDraft.destinations : homeDraft.destination ? [homeDraft.destination] : [];
-          if (draftStops.length) setStops(draftStops);
           if (homeDraft.routeHints) setRouteHints(homeDraft.routeHints);
           if (homeDraft.nightAllocations) setDayAllocations(homeDraft.nightAllocations);
           if (homeDraft.startDate) setStartDate(homeDraft.startDate);
@@ -896,6 +895,8 @@ function TripBuilderDocument() {
           setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
           setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
           const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
+          const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
+          if (initialStops.length) setStops(initialStops);
           if (locationMentions.length) {
             setIntakeMentions(locationMentions);
             const routableMentions = routableHandoffMentions(locationMentions);
@@ -929,19 +930,7 @@ function TripBuilderDocument() {
                     providerId: chosen.providerId,
                   });
                 }
-                else setStops((current) => current.some((stop) => stop.canonicalPlaceId === mention.canonicalPlaceId
-                  || (stop.name.toLocaleLowerCase() === mention.canonicalName.toLocaleLowerCase() && stop.country === chosen.country)) ? current : [...current, {
-                    id: `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`,
-                    name: mention.canonicalName,
-                    country: chosen.country,
-                    canonicalPlaceId: mention.canonicalPlaceId,
-                    countryCode: chosen.countryCode,
-                    region: chosen.region,
-                    providerId: chosen.providerId,
-                    coordinates: chosen.coordinates,
-                    intent: mention.routability === "anchor_or_poi" ? "landmark" : "place",
-                    locality: chosen.locality,
-                  }]);
+                else setStops((current) => mergeHandoffLocationChoice(current, mention, chosen));
               }
               setLocationChoices(uncertain);
               setResolvingLocations(false);
@@ -3053,13 +3042,9 @@ function TripBuilderDocument() {
       setCloudSaveError("");
       setCloudAuthInterrupted(false);
       const saved = await saveTripRecoveryToEasyT(requestTrip, recovery.handle);
-      const currentHandle = recoveryHandleRef.current;
-      const responseIsCurrent = currentHandle?.ownerId === recovery.handle.ownerId
-        && currentHandle.tripId === recovery.handle.tripId
-        && currentHandle.writeId === recovery.handle.writeId
-        && hydratedOwnerScopeRef.current === requestOwnerId
+      const responseScopeIsCurrent = hydratedOwnerScopeRef.current === requestOwnerId
         && activeBrowserOwnerIdRef.current === requestOwnerId;
-      if (!responseIsCurrent) return null;
+      if (!responseScopeIsCurrent) return null;
       if (saved.id !== recovery.handle.tripId || saved.ownerId !== requestOwnerId) {
         setCloudSaveError("The cloud returned a different trip document. This device copy remains preserved and was not acknowledged.");
         setSaveState("error");
@@ -3073,13 +3058,12 @@ function TripBuilderDocument() {
           operation: requestTrip.ownerId ? "update" : "promotion",
         });
       }
-      const cached = cacheCanonicalTrip(saved, recovery.handle);
-      const remainingRecovery = loadTripRecovery(saved.id, recovery.handle.ownerId);
-      if (!cached.stored || remainingRecovery) {
+      const acknowledgement = acknowledgeTripBuildSave(requestTrip, saved, recovery.handle);
+      if (acknowledgement.outcome !== "acknowledged") {
         recoveryHandleRef.current = null;
-        setDeviceRecoveryBlocked(Boolean(remainingRecovery));
-        setDeviceStorageBlocked(!cached.stored);
-        setCloudSaveError(remainingRecovery
+        setDeviceRecoveryBlocked(Boolean(acknowledgement.remainingRecovery));
+        setDeviceStorageBlocked(acknowledgement.outcome === "storage-failed");
+        setCloudSaveError(acknowledgement.remainingRecovery
           ? "A newer device edit was preserved while this version finished syncing. Open the device copy before continuing."
           : "The cloud save completed, but this browser could not keep its offline copy. Keep this tab open and try again.");
         setSaveState("error");

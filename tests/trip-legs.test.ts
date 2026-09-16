@@ -89,10 +89,11 @@ test("local movement is local only at genuinely local distance", () => {
 });
 
 test("missing geography invalidates timing and usable-day loss", () => {
+  const unmapped = stop("unknown", 0, "Unknown base", "Unknown");
   const legs = buildCanonicalTripLegs({
     tripId: "missing",
     origin: { name: "London", country: "United Kingdom", coordinates: [-0.1276, 51.5072] },
-    stops: [stop("unknown", 0, "Unknown base", "Unknown")],
+    stops: [unmapped],
   });
   assert.equal(legs[0]?.mode, "unknown");
   assert.equal(legs[0]?.durationMinutes, null);
@@ -100,6 +101,14 @@ test("missing geography invalidates timing and usable-day loss", () => {
   assert.equal(legs[0]?.usableDayLoss, null);
   assert.equal(legs[0]?.confidence, "unknown");
   assert.match(legs[0]?.warnings?.[0] ?? "", /validated coordinates/i);
+  const trip = {
+    id: "missing",
+    brief: { origin: "London", originCountry: "United Kingdom", originCoordinates: [-0.1276, 51.5072] },
+    stops: [unmapped],
+    legs,
+  } as Pick<EasyTTrip, "id" | "brief" | "stops" | "legs">;
+  assert.deepEqual(canonicalRouteEndpoints(trip).map((endpoint) => endpoint.name), ["London", "Unknown base"], "the canonical stop remains in the route");
+  assert.deepEqual(mapRouteLegsFromTrip(trip), [], "Map omits an unmapped leg instead of fabricating a pin or line");
 });
 
 test("saved impossible timing and stale route order are detected without replacement estimates", () => {

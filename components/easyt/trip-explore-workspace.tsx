@@ -29,6 +29,7 @@ import {
   exploreResultForPlace,
   exploreResultsPresentation,
   exploreResultState,
+  resolveExploreDestinationId,
   exploreScheduleTarget,
   exploreSourcePlan,
   filterExploreResults,
@@ -43,16 +44,18 @@ import {
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { recommendationDurationMs } from "@/lib/easyt/recommendation-performance";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
+import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
 import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
-import { routeTimelineScopeId, routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
+import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { tripIntentForTrip } from "@/lib/easyt/trip";
 import { affiliateDisclosure, compactAffiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTLinkButton, EasyTSelect } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
+import { JourneyLocalPlacePhotoMedia, useJourneyLocalPlacePhotos } from "./journey-local-place-photo";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus, MorroviaSkeleton } from "./morrovia-loading-states";
 import ResilientImage from "./resilient-image";
@@ -130,7 +133,6 @@ async function loadDayTrips(trip: EasyTTrip, stop: TripStop, signal: AbortSignal
     destination: stop.name,
     country: stop.country,
     canonicalPlaceId: stop.canonicalPlaceId ?? stop.id,
-    region: stop.region ?? "",
     lat: String(stop.latitude),
     lon: String(stop.longitude),
   });
@@ -143,6 +145,23 @@ async function loadDayTrips(trip: EasyTTrip, stop: TripStop, signal: AbortSignal
   return (payload.places ?? [])
     .filter((place) => !routeStops.has(`${place.title.trim().toLocaleLowerCase()}|${stop.country.trim().toLocaleLowerCase()}`))
     .map((place) => exploreResultForPlace(stop, place, interests));
+}
+
+async function loadOutdoors(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
+  if (stop.latitude === null || stop.longitude === null) return [];
+  const query = new URLSearchParams({
+    destination: stop.name,
+    country: stop.country,
+    countryCode: stop.countryCode ?? "",
+    lat: String(stop.latitude),
+    lon: String(stop.longitude),
+  });
+  const response = await fetch(`/api/journey-outdoors?${query}`, { signal });
+  if (!response.ok) throw new Error("Outdoors discovery unavailable");
+  const payload = await response.json() as DiscoveryPayload;
+  if (payload.unavailable) throw new Error("Outdoors discovery unavailable");
+  const interests = tripIntentForTrip(trip).preferences.interests;
+  return (payload.places ?? []).map((place) => exploreResultForPlace(stop, place, interests));
 }
 
 async function loadRestaurants(stop: TripStop, signal: AbortSignal) {
@@ -179,7 +198,7 @@ async function loadTours(trip: EasyTTrip, stop: TripStop, signal: AbortSignal) {
 export default function TripExploreWorkspace({
   trip,
   initialResults,
-  initialDestinationId = "all",
+  initialDestinationId,
   initialCategory = "for-you",
   initialSelectedResultId,
   initialOrganicState,
@@ -192,10 +211,7 @@ export default function TripExploreWorkspace({
   const discoveryTripRef = useRef(workingTrip);
   if (exploreDiscoveryRequestKey(discoveryTripRef.current) !== discoveryRequestKey) discoveryTripRef.current = workingTrip;
   const destinations = useMemo(() => exploreDestinationOptions(discoveryTripRef.current), [discoveryRequestKey]);
-  const validInitialDestination = initialDestinationId === "all" || destinations.some((item) => item.id === initialDestinationId)
-    ? initialDestinationId
-    : "all";
-  const [destinationId, setDestinationId] = useState(validInitialDestination);
+  const [destinationId, setDestinationId] = useState<string | null>(() => resolveExploreDestinationId(destinations, initialDestinationId));
   const [category, setCategory] = useState<ExploreCategory>(initialCategory);
   const initialPlan = exploreSourcePlan(initialCategory, trip);
   const initialOrganicResults = (initialResults ?? []).filter((result) => result.idea.source !== "live-provider-inventory");
@@ -203,8 +219,8 @@ export default function TripExploreWorkspace({
   const [organicResults, setOrganicResults] = useState<ExploreResult[]>(initialOrganicResults);
   const [commercialResults, setCommercialResults] = useState<ExploreResult[]>(initialCommercialResults);
   const [organicStatus, setOrganicStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
-    ? initialOrganicState ?? (initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? initialOrganicResults.length ? "ready" : "empty" : "idle")
-    : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants ? "loading" : "idle");
+    ? initialOrganicState ?? (initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? initialOrganicResults.length ? "ready" : "empty" : "idle")
+    : initialPlan.mapped || initialPlan.dayTrips || initialPlan.restaurants || initialPlan.outdoors ? "loading" : "idle");
   const [commercialStatus, setCommercialStatus] = useState<ExploreDiscoveryLaneStatus>(initialResults
     ? initialProviderState
     : initialPlan.tours ? "loading" : "idle");
@@ -222,15 +238,49 @@ export default function TripExploreWorkspace({
     () => projectExploreResults(organicResults, commercialResults, persistedResults),
     [commercialResults, organicResults, persistedResults],
   );
-  const visibleResults = useMemo(() => filterExploreResults(workingTrip, results, destinationId, category), [category, destinationId, results, workingTrip]);
+  const visibleResults = useMemo(
+    () => destinationId ? filterExploreResults(workingTrip, results, destinationId, category) : [],
+    [category, destinationId, results, workingTrip],
+  );
+  const restaurantPhotoPlaces = useMemo<JourneyLocalPlace[]>(() => visibleResults.flatMap((result) => {
+    if (result.kind !== "restaurant" || !result.coordinates || !result.providerUrl
+      || (result.provider !== "google-places" && result.provider !== "openstreetmap")) return [];
+    return [{
+      id: result.identity,
+      name: result.title,
+      address: result.location,
+      category: result.category,
+      coordinates: result.coordinates,
+      mapsUrl: result.providerUrl,
+      provider: result.provider,
+      providerProductId: result.providerProductId,
+      image: result.image,
+    }];
+  }), [visibleResults]);
+  const restaurantPhotoPlaceById = useMemo(
+    () => new Map(restaurantPhotoPlaces.map((place) => [place.id, place])),
+    [restaurantPhotoPlaces],
+  );
+  const restaurantPhotos = useJourneyLocalPlacePhotos(restaurantPhotoPlaces, { limit: 12, kind: "restaurant" });
+  const [failedRestaurantImages, setFailedRestaurantImages] = useState<Set<string>>(() => new Set());
   const selectedResult = results.find((result) => result.identity === selectedResultId) ?? null;
-  const opportunity = useMemo(() => exploreOpportunityForTrip(workingTrip, destinationId), [destinationId, workingTrip]);
-  const activeDestination = destinationId === "all" ? null : destinations.find((item) => item.id === destinationId) ?? null;
+  const activeDestination = destinations.find((item) => item.id === destinationId) ?? null;
+  const opportunity = useMemo(
+    () => activeDestination ? exploreOpportunityForTrip(workingTrip, activeDestination.id) : null,
+    [activeDestination, workingTrip],
+  );
   const activeSourcePlan = exploreSourcePlan(category, workingTrip);
   const navigationStops = useMemo(
-    () => routeTimelineStopsForTrip(workingTrip, { scopeId: destinationId }),
-    [destinationId, workingTrip],
+    () => destinationId
+      ? routeTimelineStopsForTrip(workingTrip, { scopeId: destinationId })
+        .filter((item) => item.kind === "stop" && destinations.some((destination) => destination.id === item.id))
+      : [],
+    [destinationId, destinations, workingTrip],
   );
+
+  useEffect(() => {
+    setDestinationId((current) => resolveExploreDestinationId(destinations, current));
+  }, [destinations]);
 
   const closeDetail = useCallback(() => {
     setSelectedResultId(null);
@@ -244,9 +294,9 @@ export default function TripExploreWorkspace({
     const scope = createAbortableEffectScope("Explore organic and commercial discovery");
     const discoveryTrip = discoveryTripRef.current;
     const discoveryDestinations = exploreDestinationOptions(discoveryTrip);
-    const scopedStops = destinationId === "all"
-      ? discoveryDestinations.map((item) => item.stop)
-      : discoveryDestinations.filter((item) => item.id === destinationId).map((item) => item.stop);
+    const scopedStops = destinationId
+      ? discoveryDestinations.filter((item) => item.id === destinationId).map((item) => item.stop)
+      : [];
     const plan = exploreSourcePlan(category, discoveryTrip);
     const startedAt = performance.now();
     let firstUsefulReported = false;
@@ -274,6 +324,7 @@ export default function TripExploreWorkspace({
       ...(plan.mapped ? [() => loadMappedPlaces(discoveryTrip, stop, scope.signal)] : []),
       ...(plan.dayTrips ? [() => loadDayTrips(discoveryTrip, stop, scope.signal)] : []),
       ...(plan.restaurants ? [() => loadRestaurants(stop, scope.signal)] : []),
+      ...(plan.outdoors ? [() => loadOutdoors(discoveryTrip, stop, scope.signal)] : []),
     ]);
     const commercialRequests = scopedStops.flatMap((stop) => plan.tours
       ? [() => loadTours(discoveryTrip, stop, scope.signal)]
@@ -329,7 +380,7 @@ export default function TripExploreWorkspace({
 
   const destinationLabel = activeDestination?.label ?? "your trip";
   const relevantStatuses = [
-    ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants ? [organicStatus] : []),
+    ...(activeSourcePlan.mapped || activeSourcePlan.dayTrips || activeSourcePlan.restaurants || activeSourcePlan.outdoors ? [organicStatus] : []),
     ...(activeSourcePlan.tours ? [commercialStatus] : []),
   ];
   const resultsPresentation = exploreResultsPresentation(visibleResults.length, relevantStatuses);
@@ -347,10 +398,9 @@ export default function TripExploreWorkspace({
         presentation="integrated"
         surface="standalone"
         onSelectStop={(next) => {
-          const nextScopeId = routeTimelineScopeId(workingTrip.id, next);
-          setDestinationId(nextScopeId);
+          setDestinationId(next);
           setSelectedResultId(null);
-          trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: nextScopeId === "all" ? "all" : "stop" });
+          trackEvent("explore_destination_changed", { trip_id: workingTrip.id, destination_scope: "stop" });
         }}
       />
     </div>
@@ -398,11 +448,23 @@ export default function TripExploreWorkspace({
           const target = exploreScheduleTarget(workingTrip, result, chosenDay);
           const dayChoices = validIdeaDays(workingTrip, result.stopId);
           const pending = mutation.isPending(`explore-save-${result.identity}`) || mutation.isPending(`explore-schedule-${result.identity}`);
-          return <article className={`${styles.card} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state} data-explore-card>
-            <div className={styles.cardImage}>
-              <ResilientImage src={result.image} alt="" fallback={<span><MapPin aria-hidden="true" /><small>Image unavailable</small></span>} />
+          const photoPlace = restaurantPhotoPlaceById.get(result.identity);
+          const photo = restaurantPhotos[result.identity];
+          const restaurantMedia = result.image ?? photo?.src;
+          const compactNoImage = result.kind === "restaurant" && (!restaurantMedia || failedRestaurantImages.has(result.identity));
+          const markRestaurantImageFailed = () => setFailedRestaurantImages((current) => {
+            if (current.has(result.identity)) return current;
+            const next = new Set(current);
+            next.add(result.identity);
+            return next;
+          });
+          return <article className={`${styles.card} ${compactNoImage ? styles.cardCompact : ""} ${selectedResultId === result.identity ? styles.cardSelected : ""}`} key={result.identity} data-result-state={state.state} data-image-state={compactNoImage ? "compact-none" : "media"} data-explore-card>
+            {!compactNoImage ? <div className={styles.cardImage}>
+              {result.kind === "restaurant" && photoPlace
+                ? <JourneyLocalPlacePhotoMedia place={photoPlace} photo={photo} subject="restaurant" onError={markRestaurantImageFailed} fallback={null} />
+                : <ResilientImage src={result.image} alt="" onError={result.kind === "restaurant" ? markRestaurantImageFailed : undefined} fallback={<span><MapPin aria-hidden="true" /><small>Image unavailable</small></span>} />}
               {state.state === "saved" ? <span className={styles.savedBadge}><Bookmark aria-hidden="true" />Saved for later</span> : null}
-            </div>
+            </div> : null}
             <div className={styles.cardBody}>
               <EasyTButton type="button" className={styles.cardOpen} iconOnly variant="quiet" aria-label={`Open details for ${result.title}`} aria-pressed={selectedResultId === result.identity} onClick={(event) => openDetail(result, event.currentTarget)}>Open details</EasyTButton>
               <div className={styles.cardCopy}>

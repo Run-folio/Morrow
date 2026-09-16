@@ -17,6 +17,6 @@ test("auth failures remain inline and recoverable", () => {
   );
   assert.equal(
     authFormErrorMessage({ mode: "sign-in", message: "email not verified" }),
-    "Email not verified. We sent a fresh verification link. Check your inbox, including spam, then sign in again.",
+    "Email not verified. Request a new verification link to continue.",
   );
 });

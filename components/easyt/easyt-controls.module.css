@@ -197,6 +197,54 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--morrovia-danger) 16%, transparent);
 }
 
+.passwordWrap {
+  position: relative;
+  display: block;
+}
+
+.passwordInput {
+  padding-right: 56px;
+}
+
+.passwordToggle {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  display: inline-grid;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: var(--morrovia-control-radius);
+  background: transparent;
+  color: var(--morrovia-ink-soft);
+  cursor: pointer;
+}
+
+.passwordToggle:hover:not(:disabled) {
+  background: var(--morrovia-lilac);
+  color: var(--morrovia-ink);
+  transform: translateY(-50%);
+}
+
+.passwordToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--morrovia-focus-shadow);
+}
+
+.passwordToggle:disabled {
+  color: var(--morrovia-muted);
+  cursor: not-allowed;
+  transform: translateY(-50%);
+}
+
+.passwordToggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .selectWrap {
   position: relative;
 }

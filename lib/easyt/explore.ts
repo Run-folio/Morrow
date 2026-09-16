@@ -38,6 +38,7 @@ export type ExploreLocalPlace = {
   coordinates: [number, number];
   mapsUrl: string;
   provider: "google-places" | "openstreetmap";
+  providerProductId?: string;
   rating?: number;
   reviewCount?: number;
   priceLevel?: string;
@@ -85,11 +86,15 @@ function normal(value: string) {
 }
 
 export function exploreSourcePlan(category: ExploreCategory, trip: EasyTTrip) {
-  const interests = tripIntentForTrip(trip).preferences.interests;
+  // The mixed shortlist is deliberately attraction-led. Food interest does
+  // not opt the traveller into venue discovery; only Food starts restaurant
+  // discovery or surfaces canonical restaurant/food-place results.
+  void trip;
   return {
     mapped: category !== "tours" && category !== "day-trips",
-    dayTrips: category === "for-you" || category === "day-trips",
-    restaurants: category === "food" || (category === "for-you" && interests.includes("food")),
+    dayTrips: category === "day-trips",
+    restaurants: category === "food",
+    outdoors: category === "outdoors",
     tours: category === "for-you" || category === "must-see" || category === "tours" || category === "day-trips",
   };
 }
@@ -106,6 +111,15 @@ export function exploreDestinationOptions(trip: Pick<EasyTTrip, "stops" | "planI
       const image = trustedExploreImage(days.find((day) => day.image)?.image, "reviewed");
       return [{ id: stop.id, label: stop.name, country: stop.country, dayLabel, ...(image ? { image } : {}), stop }];
     });
+}
+
+export function resolveExploreDestinationId(
+  destinations: readonly ExploreDestination[],
+  requestedDestinationId?: string | null,
+) {
+  return requestedDestinationId && destinations.some((destination) => destination.id === requestedDestinationId)
+    ? requestedDestinationId
+    : destinations[0]?.id ?? null;
 }
 
 /**
@@ -169,6 +183,7 @@ export function conciseExploreDescription(value: string | null | undefined) {
 export function exploreDiscoveryCategory(title: string, sourceType: string, description = "") {
   const explicit = normal(sourceType);
   const text = `${title} ${sourceType} ${description}`.toLocaleLowerCase();
+  if (/\bday trips?\b/.test(explicit)) return "Day trip";
   if (/museum/.test(explicit) || /\bmuseum\b/.test(title.toLocaleLowerCase())) return "Museum";
   if (/archaeological|ruins/.test(explicit) || /archaeological|\bruins?\b/.test(text)) return "Historic site";
   if (/historic/.test(explicit)) return "Historic site";
@@ -242,6 +257,7 @@ export function exploreResultForLocalPlace(stop: TripStop, place: ExploreLocalPl
     tags: ["Food"],
     coordinates: place.coordinates,
     provider: place.provider,
+    providerProductId: place.providerProductId,
     providerUrl: place.mapsUrl,
     rating: place.rating,
     reviewCount: place.reviewCount,
@@ -455,7 +471,7 @@ export async function streamExploreDiscoveryLane(
       results: [...results],
       status: pendingCount
         ? "loading"
-        : failedCount
+        : failedCount === requests.length && requests.length > 0
           ? "degraded"
           : results.length
             ? "ready"
@@ -486,7 +502,8 @@ export function exploreResultsPresentation(
 ): "results" | "loading" | "unavailable" | "empty" {
   if (resultCount > 0) return "results";
   if (statuses.some((status) => status === "loading")) return "loading";
-  if (statuses.some((status) => status === "degraded")) return "unavailable";
+  const attempted = statuses.filter((status) => status !== "idle");
+  if (attempted.length > 0 && attempted.every((status) => status === "degraded")) return "unavailable";
   return "empty";
 }
 
@@ -502,6 +519,7 @@ export function filterExploreResults(
 ) {
   const scoped = dedupeExploreResults(results).filter((result) => exploreResultEligible(trip, result)
     && (destinationId === "all" || result.stopId === destinationId)
+    && !(category === "for-you" && result.kind === "restaurant")
     // Nearby settlements remain useful in the dedicated Day trips view, but
     // a bare city/town record is not a visitor attraction for the first-page
     // For you shortlist.

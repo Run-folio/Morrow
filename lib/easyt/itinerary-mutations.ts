@@ -265,6 +265,9 @@ export function moveItineraryActivityToDay(
   if (!protection.editable || protection.note === null || !source || !target) {
     return unchanged(trip, "This item cannot be safely moved.");
   }
+  if (source.stopId !== target.stopId) {
+    return unchanged(trip, "This activity belongs to a different stop in the route.");
+  }
   if (target.notes.some((note) => normalized(note) === normalized(protection.note!))) {
     return unchanged(trip, "This activity is already on the target day.");
   }

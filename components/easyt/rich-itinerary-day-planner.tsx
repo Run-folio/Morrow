@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   BedDouble,
   CalendarDays,
+  CalendarRange,
   CirclePlus,
   Clock3,
   GripVertical,
@@ -42,6 +43,7 @@ type RichItineraryDayPlannerProps = {
   onAddSubmit?: () => void;
   onDayPartChange?: (activity: ComposedItineraryActivity, dayPart: ItineraryDayPart | null) => void;
   onMoveActivity?: (activity: ComposedItineraryActivity, direction: "earlier" | "later") => void;
+  onMoveToDay?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   dragActive?: boolean;
   draggedActivityId?: string | null;
   onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLSpanElement>) => void;
@@ -49,9 +51,13 @@ type RichItineraryDayPlannerProps = {
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
   selectedActivityId?: string | null;
   onActivitySelect?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
+  onTransferSelect?: (transferId: string, trigger: HTMLButtonElement) => void;
+  selectedTransferId?: string | null;
   onTonightSelect?: (trigger: HTMLButtonElement) => void;
   selectedTonight?: boolean;
   showHeader?: boolean;
+  /** The workspace context rail owns stay presentation. Standalone planners retain it. */
+  showTonight?: boolean;
 };
 
 const dayPartLabels: Record<"en" | "es", Record<ItineraryDayPart, string>> = {
@@ -74,6 +80,7 @@ function copyFor(language: "en" | "es") {
     cancel: "Cancelar",
     moveEarlier: "Mover antes en",
     moveLater: "Mover después en",
+    moveToDay: "Mover a otro día",
     bookedActivity: "Reservado",
     timeNotSet: "PLANIFICADO · HORA SIN FIJAR",
     choosePeriod: "Momento del día",
@@ -98,8 +105,9 @@ function copyFor(language: "en" | "es") {
     cancel: "Cancel",
     moveEarlier: "Move earlier in",
     moveLater: "Move later in",
+    moveToDay: "Move to another day",
     bookedActivity: "Booked",
-    timeNotSet: "PLANNED · TIME NOT SET",
+    timeNotSet: "Planned",
     choosePeriod: "Part of day",
     unsetPeriod: "Time not set",
     tonight: "Tonight",
@@ -131,6 +139,7 @@ function ActivityRow({
   onBeforeDayPartChange,
   onDayPartChange,
   onMoveActivity,
+  onMoveToDay,
   draggable,
   dragging,
   onDragStart,
@@ -148,6 +157,7 @@ function ActivityRow({
   onBeforeDayPartChange: (activityId: string) => void;
   onDayPartChange?: RichItineraryDayPlannerProps["onDayPartChange"];
   onMoveActivity?: RichItineraryDayPlannerProps["onMoveActivity"];
+  onMoveToDay?: RichItineraryDayPlannerProps["onMoveToDay"];
   draggable: boolean;
   dragging: boolean;
   onDragStart?: (event: DragEvent<HTMLSpanElement>) => void;
@@ -226,6 +236,13 @@ function ActivityRow({
           onClick={() => { onBeforeDayPartChange(activity.id); onMoveActivity(activity, "later"); }}
         >{copy.moveLater} {dayPartLabels[language][activity.dayPart]}: {activity.title}</EasyTButton>
           </div> : null}
+          {onMoveToDay ? <EasyTButton
+            icon={CalendarRange}
+            size="small"
+            variant="quiet"
+            disabled={pending}
+            onClick={(event) => onMoveToDay(activity, event.currentTarget)}
+          >{copy.moveToDay}</EasyTButton> : null}
         </div>
       </details> : null}
     </article>
@@ -246,6 +263,7 @@ export default function RichItineraryDayPlanner({
   onAddSubmit,
   onDayPartChange,
   onMoveActivity,
+  onMoveToDay,
   dragActive = false,
   draggedActivityId = null,
   onActivityDragStart,
@@ -253,13 +271,18 @@ export default function RichItineraryDayPlanner({
   onActivityDrop,
   selectedActivityId = null,
   onActivitySelect,
+  onTransferSelect,
+  selectedTransferId = null,
   onTonightSelect,
   selectedTonight = false,
   showHeader = true,
+  showTonight = true,
 }: RichItineraryDayPlannerProps) {
   const copy = copyFor(language);
   const titleId = `rich-day-${composition.day.id}`;
   const tonight = composition.tonight;
+  const contextNotes = [...itineraryDayParts.flatMap((part) => composition.planned[part]), ...composition.unslotted].filter((activity) => activity.source === "day-note");
+  const unslotted = composition.unslotted.filter((activity) => activity.source !== "day-note");
   const controlPrefix = useId().replaceAll(":", "");
   const focusAfterMoveRef = useRef<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -294,15 +317,17 @@ export default function RichItineraryDayPlanner({
             {composition.transfers.map((transfer) => {
               const duration = transfer.durationMinutes === null ? null : formatTripDuration(transfer.durationMinutes);
               return (
-                <article className={styles.transfer} key={`${transfer.direction}-${transfer.id}`}>
-                  <span>{transfer.direction === "arriving" ? copy.arriving : copy.departing}</span>
-                  <strong>{transfer.origin && transfer.destination ? `${transfer.origin} → ${transfer.destination}` : tripLegClassificationLabel(transfer.classification)}</strong>
-                  <p>
-                    {transfer.mode !== "unknown" ? transfer.mode : tripLegClassificationLabel(transfer.classification)}
-                    {duration ? ` · ${transfer.durationIsEstimate ? "~" : ""}${duration}` : ` · ${copy.timingUnknown}`}
-                    {duration && transfer.durationIsEstimate ? ` · ${copy.estimate}` : ""}
-                  </p>
-                  {transfer.scheduleNeedsChecking ? <small>{copy.scheduleCheck}</small> : null}
+                <article className={`${styles.transfer} ${selectedTransferId === transfer.id ? styles.transferSelected : ""}`} key={`${transfer.direction}-${transfer.id}`}>
+                  <EasyTButton className={styles.transferSelect} variant="quiet" aria-pressed={selectedTransferId === transfer.id} onClick={(event) => onTransferSelect?.(transfer.id, event.currentTarget)}>
+                    <span>{transfer.direction === "arriving" ? copy.arriving : copy.departing}</span>
+                    <strong>{transfer.origin && transfer.destination ? `${transfer.origin} → ${transfer.destination}` : tripLegClassificationLabel(transfer.classification)}</strong>
+                    <p>
+                      {transfer.mode !== "unknown" ? transfer.mode : tripLegClassificationLabel(transfer.classification)}
+                      {duration ? ` · ${transfer.durationIsEstimate ? "~" : ""}${duration}` : ` · ${copy.timingUnknown}`}
+                      {duration && transfer.durationIsEstimate ? ` · ${copy.estimate}` : ""}
+                    </p>
+                    {transfer.scheduleNeedsChecking ? <small>{copy.scheduleCheck}</small> : null}
+                  </EasyTButton>
                 </article>
               );
             })}
@@ -312,7 +337,7 @@ export default function RichItineraryDayPlanner({
 
       <div className={styles.periodGrid}>
         {itineraryDayParts.map((part) => {
-          const activities = composition.planned[part];
+          const activities = composition.planned[part].filter((activity) => activity.source !== "day-note");
           const headingId = `${titleId}-${part}`;
           return (
             <section
@@ -355,6 +380,7 @@ export default function RichItineraryDayPlanner({
                       onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                       onDayPartChange={onDayPartChange}
                       onMoveActivity={onMoveActivity}
+                      onMoveToDay={onMoveToDay}
                       draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                       dragging={draggedActivityId === activity.id}
                       onDragStart={(event) => onActivityDragStart?.(activity, event)}
@@ -411,17 +437,17 @@ export default function RichItineraryDayPlanner({
         })}
       </div>
 
-      {composition.unslotted.length ? (
+      {unslotted.length ? (
         <section className={styles.unslotted} aria-labelledby={`${titleId}-unslotted`}>
           <div className={styles.unslottedHeading}>
             <div>
               <Clock3 aria-hidden="true" />
               <h3 id={`${titleId}-unslotted`}>{copy.timeNotSet}</h3>
             </div>
-            <span>{composition.unslotted.length}</span>
+            <span>{unslotted.length}</span>
           </div>
           <div className={styles.unslottedList}>
-            {composition.unslotted.map((activity) => (
+            {unslotted.map((activity) => (
               <ActivityRow
                 activity={activity}
                 language={language}
@@ -432,6 +458,7 @@ export default function RichItineraryDayPlanner({
                 onBeforeDayPartChange={(activityId) => { focusAfterMoveRef.current = activityId; }}
                 onDayPartChange={onDayPartChange}
                 onMoveActivity={onMoveActivity}
+                onMoveToDay={onMoveToDay}
                 draggable={activity.dayPartEditable && Boolean(onActivityDragStart)}
                 dragging={draggedActivityId === activity.id}
                 onDragStart={(event) => onActivityDragStart?.(activity, event)}
@@ -446,7 +473,13 @@ export default function RichItineraryDayPlanner({
         </section>
       ) : null}
 
-      <section className={`${styles.tonight} ${selectedTonight ? styles.tonightSelected : ""}`} aria-labelledby={`${titleId}-tonight`}>
+      {contextNotes.length ? <details className={styles.contextNotes}>
+        <summary>{language === "es" ? "Contexto y notas del día" : "Day context and notes"} ({contextNotes.length})</summary>
+        <p>{language === "es" ? "Contexto conservado, no actividades programadas." : "Retained day context, not separately scheduled activities."}</p>
+        <ul>{contextNotes.map((note) => <li key={note.id}>{note.title}</li>)}</ul>
+      </details> : null}
+
+      {showTonight ? <section className={`${styles.tonight} ${selectedTonight ? styles.tonightSelected : ""}`} aria-labelledby={`${titleId}-tonight`}>
         <BedDouble aria-hidden="true" />
         <EasyTButton variant="quiet" className={styles.tonightSelect} disabled={tonight.state !== "booked"} onClick={(event) => onTonightSelect?.(event.currentTarget)}>
           <h3 id={`${titleId}-tonight`}>{copy.tonight}</h3>
@@ -459,7 +492,7 @@ export default function RichItineraryDayPlanner({
           ) : <p>{copy.noOvernight}</p>}
         </EasyTButton>
         {composition.ideas.unscheduledCount ? <small>{composition.ideas.unscheduledCount} {copy.ideasAvailable}</small> : null}
-      </section>
+      </section> : null}
     </section>
   );
 }

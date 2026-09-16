@@ -28,6 +28,7 @@ const copyFor = (language: Language) => language === "es" ? {
   confidence: "Confianza",
   source: "Fuente de planificación",
   openBooking: "Abrir reserva",
+  findTickets: "Buscar billetes",
 } : {
   eyebrow: "Transport",
   heading: "Your transport, in journey order",
@@ -42,6 +43,7 @@ const copyFor = (language: Language) => language === "es" ? {
   confidence: "Confidence",
   source: "Planning source",
   openBooking: "Open booking",
+  findTickets: "Find tickets",
 };
 
 function displayDate(value: string, language: Language) {
@@ -112,13 +114,11 @@ function TransportRow({ trip, item, copy, language }: {
     <span className={styles.modeIcon}><Icon aria-hidden="true" /></span>
     <div className={styles.summary}>
       <div className={styles.route}>
-        <div>
-          <h4>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" /> {item.to.name}</h4>
-          <p>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
-        </div>
-        <span className={styles.status} data-status={item.status}>{statusLabel}</span>
+        <h4>{item.from.name}<span className="sr-only"> {language === "es" ? "a" : "to"} </span><ArrowRight aria-hidden="true" /> {item.to.name}</h4>
+        <p>{transferJourneyModeLabel(leg)}{durationMinutes === null ? null : <><i aria-hidden="true">·</i>~{formatTripDuration(durationMinutes)}</>}</p>
       </div>
       {segmentSummary ? <p className={styles.segments}>{segmentSummary}</p> : null}
+      <span className={styles.status} data-status={item.status}>{statusLabel}</span>
       <details className={styles.details}>
         <summary>{copy.details}</summary>
         <dl>
@@ -132,16 +132,16 @@ function TransportRow({ trip, item, copy, language }: {
       </details>
       <div className={styles.actions}>
         {item.booking?.url ? <EasyTLinkButton href={item.booking.url} target="_blank" rel="noopener noreferrer" aria-label={`${copy.openBooking}: ${item.booking.title}`} icon={ExternalLink} size="small" variant="secondary">{copy.openBooking}</EasyTLinkButton> : null}
-        {omioAction ? <OmioAction action={omioAction} trip={trip} leg={leg} /> : null}
+        {omioAction ? <OmioAction action={omioAction} trip={trip} leg={leg} label={copy.findTickets} /> : null}
       </div>
     </div>
   </article>;
 }
 
-function OmioAction({ action, trip, leg }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg }) {
+function OmioAction({ action, trip, leg, label }: { action: ResolvedAffiliateAction; trip: EasyTTrip; leg: TripLeg; label: string }) {
   return <div className={styles.omioAction}>
-    <MorroviaAffiliateLink action={action} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} />
+    <MorroviaAffiliateLink action={{ ...action, cta: label }} context={{ placement: "itinerary_transfer", tripId: trip.id, transferId: leg.id, originStopId: leg.fromStopId, destinationStopId: leg.toStopId }} variant="secondary" />
     <small>{affiliateDisclosure}</small>
-    <MorroviaPartnerPromotion action={action} />
+    <MorroviaPartnerPromotion action={action} presentation="compact" />
   </div>;
 }

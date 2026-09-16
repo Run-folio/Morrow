@@ -58,6 +58,88 @@ export type HandoffLocationChoice = {
   locality?: string;
 };
 
+export type HandoffRouteStop = {
+  id: string;
+  name: string;
+  country: string;
+  canonicalPlaceId?: string;
+  countryCode?: string;
+  region?: string;
+  providerId?: string;
+  coordinates?: [number, number];
+  intent?: "place" | "landmark";
+  locality?: string;
+};
+
+function handoffRouteStopId(mention: ResolvedPlaceMention) {
+  return `${mention.canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${mention.order}`;
+}
+
+function endpointOwnedRouteMentionId(
+  mentions: ResolvedPlaceMention[],
+  journeyEnd?: JourneyEndSelection,
+) {
+  if (journeyEnd?.mode !== "explicit") return undefined;
+  return routableHandoffMentions(mentions)
+    .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
+    .filter((mention) => sameJourneyPlace({
+      name: mention.canonicalName,
+      canonicalPlaceId: mention.canonicalPlaceId,
+      country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined,
+    }, journeyEnd.place))
+    .at(-1)?.mentionId;
+}
+
+/** Canonical capture owns route-stop existence. Provider geocoding may enrich
+ * these seeds later, but an unavailable coordinate must never delete one. */
+export function handoffRouteStops(
+  mentions: ResolvedPlaceMention[],
+  journeyEnd?: JourneyEndSelection,
+): HandoffRouteStop[] {
+  const endpointOwnedMentionId = endpointOwnedRouteMentionId(mentions, journeyEnd);
+  return routableHandoffMentions(mentions)
+    .filter((mention) => mention.role !== "origin" && mention.role !== "fixed_start")
+    .filter((mention) => mention.mentionId !== endpointOwnedMentionId)
+    .map((mention) => ({
+      id: handoffRouteStopId(mention),
+      name: mention.canonicalName,
+      country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : "",
+      canonicalPlaceId: mention.canonicalPlaceId,
+      coordinates: mention.coordinates,
+      intent: "place" as const,
+    }));
+}
+
+/** Curated and legacy handoffs may already own a complete route with stable
+ * IDs and allocation keys. Seed from capture only when no such route exists. */
+export function initialHandoffRouteStops(
+  mentions: ResolvedPlaceMention[],
+  draftStops: HandoffRouteStop[],
+  journeyEnd?: JourneyEndSelection,
+): HandoffRouteStop[] {
+  return draftStops.length ? draftStops : handoffRouteStops(mentions, journeyEnd);
+}
+
+/** Merge optional provider metadata into one canonical occurrence. The stable
+ * capture identity, name and ordering remain authoritative. */
+export function mergeHandoffLocationChoice(
+  stops: HandoffRouteStop[],
+  mention: ResolvedPlaceMention,
+  choice?: HandoffLocationChoice,
+): HandoffRouteStop[] {
+  if (!choice) return stops;
+  const stopId = handoffRouteStopId(mention);
+  return stops.map((stop) => stop.id !== stopId ? stop : {
+    ...stop,
+    country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : choice.country,
+    countryCode: choice.countryCode,
+    region: choice.region,
+    providerId: choice.providerId,
+    coordinates: choice.coordinates,
+    locality: choice.locality,
+  });
+}
+
 /** Keep an already resolved capture identity authoritative during Builder
  * enrichment. A second provider lookup may return a lower-ranked namesake. */
 export function preferredHandoffLocationChoice(
@@ -186,15 +268,22 @@ export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, re
   if (resolutionPending || !draft.brief || trip.brief.capturedIntent?.originalBrief !== draft.brief) return false;
   const routeMentions = routableHandoffMentions(draft.structuredBrief?.placeMentions ?? draft.locationMentions ?? []);
   const stopNames = new Set(trip.stops.map((stop) => normalizePlacePhrase(stop.name)));
+  const expectedEnd = normalizeJourneyEnd(draft.journeyEnd ?? { mode: "unknown" });
+  const actualEnd = normalizeJourneyEnd(trip.brief.journeyEnd);
+  const endpointOwnedMentionId = endpointOwnedRouteMentionId(routeMentions, expectedEnd);
   const routeDurable = routeMentions.every((mention) => {
     const expected = normalizePlacePhrase(mention.canonicalName);
     return mention.role === "origin" || mention.role === "fixed_start"
       ? normalizePlacePhrase(trip.brief.origin) === expected
+      : mention.mentionId === endpointOwnedMentionId
+        ? actualEnd.mode === "explicit" && sameJourneyPlace({
+          name: mention.canonicalName,
+          canonicalPlaceId: mention.canonicalPlaceId,
+          country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : undefined,
+        }, actualEnd.place)
       : stopNames.has(expected);
   });
   if (!routeDurable) return false;
-  const expectedEnd = normalizeJourneyEnd(draft.journeyEnd ?? { mode: "unknown" });
-  const actualEnd = normalizeJourneyEnd(trip.brief.journeyEnd);
   if (expectedEnd.mode !== actualEnd.mode) return false;
   if (expectedEnd.mode !== "explicit" || actualEnd.mode !== "explicit") return true;
   return sameJourneyPlace(

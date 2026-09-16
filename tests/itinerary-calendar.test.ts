@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { itineraryCalendarDays, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
+import { itineraryCalendarDays, itineraryCalendarNightBands, itineraryCalendarWeeks } from "../lib/easyt/itinerary-calendar.ts";
 import type { EasyTTrip, PlanItem, TripLeg } from "../lib/easyt/trip.ts";
 
 const day = (id: string, stopId: string, dayNumber: number, date: string, title: string, type: PlanItem["type"] = "activity"): PlanItem => ({
@@ -100,6 +100,35 @@ test("projects canonical days and repeated destinations by stable IDs without mu
   assert.equal(JSON.stringify(trip), before);
 });
 
+test("night bands preserve repeated occurrence IDs and exclude departure nights", () => {
+  const trip = representativeTrip();
+  const bands = itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands);
+  assert.deepEqual(bands.map((band) => [band.stop.id, band.span]), [["tokyo-first", 2], ["kyoto", 2], ["tokyo-return", 1]]);
+  trip.stops[2]!.departureDate = "2026-09-02";
+  assert.equal(itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands).some((band) => band.stop.id === "tokyo-return"), false);
+});
+
+test("legacy day context is retained outside events while identical authored text remains planned", () => {
+  const trip = representativeTrip();
+  const text = "Choose one walkable neighbourhood";
+  trip.planItems[0]!.notes = [text];
+  trip.planItems[1]!.notes = [text];
+  trip.brief.customActivities = { 2: [text] };
+  const days = itineraryCalendarDays(trip);
+  assert.equal(days[0]!.contextNotes[0]!.title, text);
+  assert.equal(days[0]!.items.some((item) => item.kind === "activity" && item.activity.title === text), false);
+  assert.equal(days[1]!.items.some((item) => item.kind === "activity" && item.activity.title === text), true);
+  assert.equal(trip.planItems[0]!.notes[0], text);
+});
+
+test("night bands mark continuation over a Monday boundary without adding nights", () => {
+  const trip = representativeTrip();
+  trip.stops[0]!.departureDate = "2026-09-02";
+  trip.planItems[2]!.stopId = "tokyo-first";
+  const bands = itineraryCalendarWeeks(trip).flatMap(itineraryCalendarNightBands).filter((band) => band.stop.id === "tokyo-first");
+  assert.deepEqual(bands.map((band) => [band.span, band.continued]), [[2, false], [1, true]]);
+});
+
 test("projects each canonical transfer once with truthful booked and unknown state", () => {
   const transfers = itineraryCalendarDays(representativeTrip()).flatMap((day) => day.items.filter((item) => item.kind === "transfer"));
   assert.deepEqual(transfers.map((item) => item.agenda.leg.id), ["arrival-tokyo-first", "tokyo-kyoto", "kyoto-tokyo-return"]);
@@ -164,4 +193,26 @@ test("represents every canonical day in a five-week month-crossing trip without 
   assert.equal(projectedDates.length, 35);
   assert.equal(projectedDates[0], "2026-08-20");
   assert.equal(projectedDates.at(-1), "2026-09-23");
+});
+
+test("keeps every day reachable in a 65-day trip across month boundaries", () => {
+  const trip = representativeTrip();
+  trip.legs = [];
+  trip.brief.bookings = [];
+  trip.brief.itineraryIdeas = [];
+  trip.startDate = "2026-08-21";
+  trip.endDate = "2026-10-24";
+  trip.stops = [{ ...trip.stops[0]!, arrivalDate: trip.startDate, departureDate: "2026-10-25", nights: 65 }];
+  trip.planItems = Array.from({ length: 65 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 7, 21 + index)).toISOString().slice(0, 10);
+    return day(`extended-day-${index + 1}`, trip.stops[0]!.id, index + 1, date, index === 0 ? "Arrive in Tokyo" : "Explore Tokyo", index === 0 ? "arrival" : "activity");
+  });
+
+  const weeks = itineraryCalendarWeeks(trip);
+  const projectedDays = weeks.flatMap((week) => week.days).filter(Boolean).map((item) => item!.day);
+  assert.equal(weeks.length, 10);
+  assert.equal(projectedDays.length, 65);
+  assert.equal(projectedDays[0]?.id, "extended-day-1");
+  assert.equal(projectedDays.at(-1)?.id, "extended-day-65");
+  assert.equal(projectedDays.at(-1)?.date, "2026-10-24");
 });

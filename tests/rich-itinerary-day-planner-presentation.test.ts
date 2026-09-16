@@ -43,7 +43,8 @@ test("native drag uses a dedicated pointer source while preserving every canonic
   assert.doesNotMatch(component, /<EasyTButton[\s\S]{0,180}className=\{styles\.dragHandle\}/);
   assert.match(component, /onDragStart=\{\(event\) => onActivityDragStart\?\.\(activity, event\)\}/);
   assert.match(workspace, /event\.dataTransfer\.setData\("text\/plain", activity\.id\)/);
-  assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity \}\)/);
+  assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity, sourceDayId: active\.id, sourceStopId: active\.stopId \}\)/);
+  assert.match(component, /onMoveToDay/);
   assert.match(workspace, /plannerDragRef\.current = dragged/);
   assert.match(workspace, /const dropPlannerItem = \(dayPart: ItineraryDayPart, insertionIndex: number\)/);
   assert.match(workspace, /const dragged = plannerDragRef\.current \?\? plannerDrag/);
@@ -124,7 +125,7 @@ test("the scheduled card is the primary selection target and editing chrome is s
 test("the rendered planner follows Travel, chronological day parts, unslotted context, then Tonight", () => {
   const travelIndex = component.indexOf("composition.transfers.length");
   const periodsIndex = component.indexOf("className={styles.periodGrid}");
-  const unslottedIndex = component.indexOf("composition.unslotted.length");
+  const unslottedIndex = component.indexOf("unslotted.length ? (");
   const tonightIndex = component.indexOf("className={`${styles.tonight}");
   assert.ok(travelIndex < periodsIndex && periodsIndex < unslottedIndex && unslottedIndex < tonightIndex);
   assert.match(composition, /itineraryDayParts = \["morning", "midday", "afternoon", "evening"\]/);
