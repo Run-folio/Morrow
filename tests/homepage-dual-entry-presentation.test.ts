@@ -72,5 +72,34 @@ test("full composition story protects one nav, planner, anchors, and route-story
   for (const anchor of ["#route-story", "#product", "#booking-support", "#closing"]) assert.match(immersiveStories, new RegExp(anchor.replace("#", "#")));
   assert.match(immersiveStories, /Card focus\/hover changed Route Story/);
   assert.match(immersiveStories, /Card click changed Route Story/);
-  assert.match(immersiveStories, /entries\.length[\s\S]*stops · Edit/);
+  assert.match(immersiveStories, /destinationSummary\(entries, language\)/);
+});
+
+test("preview fixtures cover empty entry allocation and semantic destination summaries", () => {
+  assert.match(immersiveStories, /EmptyPlanner/);
+  assert.match(immersiveStories, /entries=\{\[\]\}/);
+  assert.match(immersiveStories, /startDate=""/);
+  assert.match(immersiveStories, /initialInterests=\{\[\]\}/);
+  assert.match(immersiveStories, /firstEntryId/);
+  assert.match(immersiveStories, /MixedDestinationSummary/);
+  assert.match(immersiveStories, /isOvernightBaseEligible/);
+  assert.match(immersiveStories, /planning area/);
+  assert.match(immersiveStories, /unconfirmed/);
+});
+
+test("preview stories use canonical hierarchy and deterministic controlled context", () => {
+  assert.match(immersiveStories, /title: "Morrovia\/05 Product Patterns\/Homepage dual entry"/);
+  assert.doesNotMatch(immersiveStories, /initialImmersiveRouteIndex/);
+  assert.match(immersiveStories, /const previewRouteIndex =/);
+  assert.match(immersiveStories, /useEffect\(\(\) => \{[\s\S]*easyt-language-change/);
+  assert.doesNotMatch(immersiveStories, /if \(typeof window !== "undefined"\) window\.localStorage/);
+  assert.match(immersiveStories, /disabled=\{loading\}/);
+});
+
+test("wide capture disables every opt-in control while loading", () => {
+  assert.match(captureSource, /className=\{styles\.modeTab\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  assert.match(captureSource, /className=\{styles\.wideDatePicker\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  assert.match(captureSource, /className=\{styles\.personalizeToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  assert.match(captureSource, /className=\{styles\.detailsToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  assert.match(captureSource, /aria-pressed=\{homepageEntry\.budget === budget\}[\s\S]*disabled=\{disabled \|\| loading\}/);
 });
