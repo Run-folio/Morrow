@@ -1,11 +1,31 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
-import { normalizePlacePhrase, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { normalizePlacePhrase, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
+
+export type HomepageDestinationEntry = {
+  id: string;
+  text: string;
+  selection: CanonicalPlaceSuggestion | null;
+};
+
+export function moveHomepageEntry(
+  entries: readonly HomepageDestinationEntry[],
+  id: string,
+  offset: -1 | 1,
+): HomepageDestinationEntry[] {
+  const from = entries.findIndex((entry) => entry.id === id);
+  const to = from + offset;
+  if (from < 0 || to < 0 || to >= entries.length) return [...entries];
+  const next = [...entries];
+  const [entry] = next.splice(from, 1);
+  next.splice(to, 0, entry);
+  return next;
+}
 
 export type HomeTripDraft = {
   handoffId?: string;
