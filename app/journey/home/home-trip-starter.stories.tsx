@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import HomeTripStarter from "./home-trip-starter";
+import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
+import { EasyTField } from "@/components/easyt/easyt-controls";
 
 const meta = {
   title: "Morrovia/05 Product Patterns/Homepage trip starter",
@@ -16,3 +18,28 @@ type Story = StoryObj<typeof meta>;
 
 export const FirstVisit: Story = {};
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
+
+export const WideCompositionContract: Story = {
+  render: () => <MorroviaTripCapture
+    language="en"
+    value=""
+    onValueChange={() => undefined}
+    startDate=""
+    endDate=""
+    onDatesChange={() => undefined}
+    travellers={2}
+    onTravellersChange={() => undefined}
+    interests={[]}
+    onInterestsChange={() => undefined}
+    onSubmit={() => undefined}
+    homepageEntry={{
+      mode: "stops",
+      onModeChange: () => undefined,
+      destinationEntry: <EasyTField label="First stop" placeholder="City, country or region" />,
+      budget: null,
+      onBudgetChange: () => undefined,
+      datesChosen: false,
+      onDatesClear: () => undefined,
+    }}
+  />,
+};

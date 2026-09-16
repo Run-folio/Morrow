@@ -24,6 +24,8 @@ function ControlledCapture(props: Partial<MorroviaTripCaptureProps>) {
   const [endDate, setEndDate] = useState(props.endDate ?? "2026-09-26");
   const [travellers, setTravellers] = useState(props.travellers ?? 2);
   const [interests, setInterests] = useState(props.interests ?? []);
+  const [mode, setMode] = useState<"stops" | "describe">(props.homepageEntry?.mode ?? "stops");
+  const [budget, setBudget] = useState<"value" | "mid" | "high" | null>(props.homepageEntry?.budget ?? null);
 
   return <MorroviaTripCapture
     language={props.language ?? "en"}
@@ -44,6 +46,15 @@ function ControlledCapture(props: Partial<MorroviaTripCaptureProps>) {
     disabled={props.disabled}
     error={props.error}
     progressiveDetails={props.progressiveDetails}
+    homepageEntry={props.homepageEntry ? {
+      ...props.homepageEntry,
+      mode,
+      onModeChange: setMode,
+      budget,
+      onBudgetChange: setBudget,
+      datesChosen: Boolean(startDate || endDate),
+      onDatesClear: () => { setStartDate(""); setEndDate(""); },
+    } : undefined}
   />;
 }
 
@@ -51,7 +62,7 @@ const meta = {
   title: "Morrovia/05 Product Patterns/Trip capture",
   component: MorroviaTripCapture,
   parameters: { layout: "fullscreen" },
-  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "48px 24px" }}><div style={{ maxWidth: 720, margin: "0 auto" }}><Story /></div></main>],
+  decorators: [(Story) => <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: "48px 24px" }}><div style={{ maxWidth: 1160, margin: "0 auto" }}><Story /></div></main>],
   render: (args) => <ControlledCapture {...args} />,
   args: {
     language: "en",
@@ -136,3 +147,84 @@ export const Error: Story = { args: { value: "Two weeks through Japan.", error: 
 export const Mobile390: Story = { args: { progressiveDetails: true }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
+
+const wideDestinationEntry = <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+  <EasyTField label="First stop" placeholder="City, country or region" defaultValue="Lisbon" />
+  <EasyTField label="Next stop" placeholder="Add another stop" defaultValue="Seville" />
+</div>;
+
+const wideHomepageArgs = {
+  startDate: "2027-04-08",
+  endDate: "2027-04-22",
+  interests: [],
+  homepageEntry: {
+    mode: "stops",
+    onModeChange: () => undefined,
+    destinationEntry: wideDestinationEntry,
+    budget: null,
+    onBudgetChange: () => undefined,
+    datesChosen: true,
+    onDatesClear: () => undefined,
+  },
+} satisfies NonNullable<Story["args"]>;
+
+export const WideHomepageCapture: Story = { args: wideHomepageArgs };
+
+export const WideHomepageInteraction: Story = {
+  args: {
+    ...wideHomepageArgs,
+  },
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise((resolve) => window.setTimeout(resolve, 0));
+    if (canvasElement.querySelectorAll("form").length !== 1) throw new globalThis.Error("Wide capture must render one form");
+    if (canvasElement.querySelectorAll('button[type="submit"]').length !== 1) throw new globalThis.Error("Wide capture must render one primary submit");
+
+    const tabs = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    if (tabs.length !== 2 || tabs[0].getAttribute("aria-selected") !== "true") throw new globalThis.Error("Stops must be the selected tab initially");
+    tabs[0].focus();
+    tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+    await settle();
+    const describeTab = canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1];
+    if (describeTab.getAttribute("aria-selected") !== "true" || document.activeElement !== describeTab) throw new globalThis.Error("ArrowRight must select and focus Describe");
+    canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[0].click();
+    await settle();
+    if (canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')[0].getAttribute("aria-selected") !== "true") throw new globalThis.Error("Click must restore Stops mode");
+
+    const personalize = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize");
+    if (!personalize) throw new globalThis.Error("Personalize control is missing");
+    personalize.click();
+    await settle();
+    const culture = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
+    culture?.click();
+    await settle();
+    const hide = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Hide personalization");
+    hide?.click();
+    await settle();
+    Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Personalize")?.click();
+    await settle();
+    const retainedInterest = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.trim() === "Culture");
+    if (retainedInterest?.getAttribute("aria-pressed") !== "true") throw new globalThis.Error("Expected retained interest after closing Personalize");
+    const retainedDates = canvasElement.textContent?.includes("8 Apr 2027") && canvasElement.textContent?.includes("22 Apr 2027");
+    if (!retainedDates) throw new globalThis.Error("Expected retained dates after closing Personalize");
+  },
+};
+
+export const WideHomepageDescribeSpanish: Story = {
+  args: {
+    language: "es",
+    value: "Dos semanas por Japón en tren, con comida y naturaleza.",
+    startDate: "",
+    endDate: "",
+    homepageEntry: {
+      mode: "describe",
+      onModeChange: () => undefined,
+      destinationEntry: wideDestinationEntry,
+      budget: null,
+      onBudgetChange: () => undefined,
+      datesChosen: false,
+      onDatesClear: () => undefined,
+    },
+  },
+};
+
+export const WideHomepageMobile390: Story = { ...WideHomepageCapture, globals: { viewport: { value: "morrovia390", isRotated: false } } };
