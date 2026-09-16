@@ -38,7 +38,7 @@ export type CanBuildTripInput = {
   origin: string;
   originCoordinates?: [number, number];
   journeyEnd?: JourneyEndSelection;
-  stops: Array<{ id: string; name: string; country?: string; coordinates?: [number, number] }>;
+  stops: Array<{ id: string; name: string; country?: string; canonicalPlaceId?: string; coordinates?: [number, number] }>;
   placeReviewPending?: boolean;
   placeIssues?: Array<Pick<PlaceIssue, "message" | "blocksRoute" | "mentionId">>;
   routeConstraintIssues?: RouteConstraintIssue[];
@@ -88,7 +88,7 @@ export function canBuildTrip(input: CanBuildTripInput) {
   }
   if (!input.stops.length) conflicts.push(conflict({ code: "route-empty", stage: "places", message: "Add at least one destination before building the trip.", source: "builder" }));
   if (uniqueStopIds.size !== stopIds.length || input.stops.some((stop) => !stop.id.trim() || !stop.name.trim() || !stop.country?.trim()
-    || !stop.coordinates || stop.coordinates.some((value) => !Number.isFinite(value)))) {
+    || (stop.coordinates ? stop.coordinates.some((value) => !Number.isFinite(value)) : !stop.canonicalPlaceId?.trim()))) {
     conflicts.push(conflict({ code: "route-input-invalid", stage: "places", message: "Confirm every route destination before continuing.", stopIds, source: "builder" }));
   }
 

@@ -61,6 +61,29 @@ test("valid builder document passes the authoritative invariant", () => {
   assert.equal(result.qualityClassification, "reasonable");
 });
 
+test("a canonical coordinate-less stop can advance while enrichment remains unknown", () => {
+  const input = validInput();
+  input.stops[1] = {
+    id: "kyoto",
+    name: "Kyoto",
+    country: "Japan",
+    canonicalPlaceId: "kyoto",
+  };
+
+  const result = canBuildTrip(input);
+  assert.equal(result.canAdvanceToTime, true);
+  assert.equal(result.conflicts.some((conflict) => conflict.code === "route-input-invalid"), false);
+});
+
+test("a coordinate-less stop without canonical identity still requires review", () => {
+  const input = validInput();
+  input.stops[1] = { id: "kyoto", name: "Kyoto", country: "Japan" };
+
+  const result = canBuildTrip(input);
+  assert.equal(result.canAdvanceToTime, false);
+  assert.equal(result.conflicts.some((conflict) => conflict.code === "route-input-invalid"), true);
+});
+
 test("the exact Cancún endpoint and opening-stay trip can advance to dates and nights", () => {
   const prompt = "Start in Cancún, stay overnight in Cancún, Tulum, Antigua Guatemala, Caye Caulker, Belize City and Flores, then return to Cancún for 22 days";
   const stops = [
