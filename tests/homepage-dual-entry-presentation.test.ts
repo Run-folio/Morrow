@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const captureSource = readFileSync(new URL("../components/easyt/morrovia-trip-capture.tsx", import.meta.url), "utf8");
+const captureStyles = readFileSync(new URL("../components/easyt/morrovia-trip-capture.module.css", import.meta.url), "utf8");
 const captureStories = readFileSync(new URL("../components/easyt/morrovia-trip-capture.stories.tsx", import.meta.url), "utf8");
 const voiceSource = readFileSync(new URL("../components/easyt/voice-trip-brief.tsx", import.meta.url), "utf8");
 const immersiveSource = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
@@ -112,4 +113,9 @@ test("wide capture disables every opt-in control while loading", () => {
   assert.match(captureSource, /className=\{styles\.personalizeToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
   assert.match(captureSource, /className=\{styles\.detailsToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
   assert.match(captureSource, /aria-pressed=\{homepageEntry\.budget === budget\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+});
+
+test("wide capture stacks before its four-column minimum tracks overflow", () => {
+  assert.match(captureStyles, /@media \(max-width: 1100px\) and \(min-width: 721px\)/);
+  assert.match(captureStyles, /\.wideMainRow \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/);
 });
