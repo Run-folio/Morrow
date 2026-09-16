@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
-import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
+import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
@@ -3053,13 +3053,9 @@ function TripBuilderDocument() {
       setCloudSaveError("");
       setCloudAuthInterrupted(false);
       const saved = await saveTripRecoveryToEasyT(requestTrip, recovery.handle);
-      const currentHandle = recoveryHandleRef.current;
-      const responseIsCurrent = currentHandle?.ownerId === recovery.handle.ownerId
-        && currentHandle.tripId === recovery.handle.tripId
-        && currentHandle.writeId === recovery.handle.writeId
-        && hydratedOwnerScopeRef.current === requestOwnerId
+      const responseScopeIsCurrent = hydratedOwnerScopeRef.current === requestOwnerId
         && activeBrowserOwnerIdRef.current === requestOwnerId;
-      if (!responseIsCurrent) return null;
+      if (!responseScopeIsCurrent) return null;
       if (saved.id !== recovery.handle.tripId || saved.ownerId !== requestOwnerId) {
         setCloudSaveError("The cloud returned a different trip document. This device copy remains preserved and was not acknowledged.");
         setSaveState("error");
@@ -3073,13 +3069,12 @@ function TripBuilderDocument() {
           operation: requestTrip.ownerId ? "update" : "promotion",
         });
       }
-      const cached = cacheCanonicalTrip(saved, recovery.handle);
-      const remainingRecovery = loadTripRecovery(saved.id, recovery.handle.ownerId);
-      if (!cached.stored || remainingRecovery) {
+      const acknowledgement = acknowledgeTripBuildSave(requestTrip, saved, recovery.handle);
+      if (acknowledgement.outcome !== "acknowledged") {
         recoveryHandleRef.current = null;
-        setDeviceRecoveryBlocked(Boolean(remainingRecovery));
-        setDeviceStorageBlocked(!cached.stored);
-        setCloudSaveError(remainingRecovery
+        setDeviceRecoveryBlocked(Boolean(acknowledgement.remainingRecovery));
+        setDeviceStorageBlocked(acknowledgement.outcome === "storage-failed");
+        setCloudSaveError(acknowledgement.remainingRecovery
           ? "A newer device edit was preserved while this version finished syncing. Open the device copy before continuing."
           : "The cloud save completed, but this browser could not keep its offline copy. Keep this tab open and try again.");
         setSaveState("error");

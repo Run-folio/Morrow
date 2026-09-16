@@ -816,6 +816,57 @@ export function cacheCanonicalTripWithRecoveryToStorage(
   return { stored, recoveryResolved };
 }
 
+export type TripBuildSaveAcknowledgement = {
+  outcome: "acknowledged" | "device-newer" | "invalid-canonical" | "storage-failed";
+  remainingRecovery: TripRecoveryRecord | null;
+};
+
+/**
+ * Accept an authoritative Builder save without confusing a later provider-only
+ * reconstruction with a second traveller edit. The cache boundary already
+ * retires a recovery only when its traveller-authored state is canonical-
+ * equivalent; a genuinely newer device edit therefore remains recoverable.
+ */
+export function acknowledgeTripBuildSaveInStorage(
+  storage: EasyTBrowserStorage,
+  reviewedTrip: EasyTTrip,
+  canonicalTrip: EasyTTrip,
+  submittedRecovery: TripRecoveryHandle,
+): TripBuildSaveAcknowledgement {
+  if (canonicalTrip.id !== submittedRecovery.tripId
+    || canonicalTrip.ownerId !== submittedRecovery.ownerId
+    || !tripBuildDocumentsCanonicalEquivalent(
+      reviewedTrip,
+      canonicalTrip,
+      submittedRecovery.ownerId,
+    )) {
+    return {
+      outcome: "invalid-canonical",
+      remainingRecovery: loadTripRecoveryFromStorage(
+        storage,
+        submittedRecovery.tripId,
+        submittedRecovery.ownerId,
+      ),
+    };
+  }
+
+  const cached = cacheCanonicalTripWithRecoveryToStorage(
+    storage,
+    canonicalTrip,
+    submittedRecovery,
+  );
+  const remainingRecovery = loadTripRecoveryFromStorage(
+    storage,
+    canonicalTrip.id,
+    canonicalTrip.ownerId,
+  );
+  if (!cached.stored) return { outcome: "storage-failed", remainingRecovery };
+  return {
+    outcome: remainingRecovery ? "device-newer" : "acknowledged",
+    remainingRecovery,
+  };
+}
+
 export function cacheCanonicalTripToStorage(
   storage: EasyTBrowserStorage,
   trip: EasyTTrip,
@@ -1192,6 +1243,36 @@ export function cacheCanonicalTrip(trip: EasyTTrip, resolvedRecovery?: TripRecov
     dispatchTripStorageChange({ kind: "resolved", ownerId: recoveryBeforeCache.ownerId, tripId: recoveryBeforeCache.tripId });
   }
   return { stored, recoveryResolved };
+}
+
+export function acknowledgeTripBuildSave(
+  reviewedTrip: EasyTTrip,
+  canonicalTrip: EasyTTrip,
+  submittedRecovery: TripRecoveryHandle,
+): TripBuildSaveAcknowledgement {
+  if (canonicalTrip.id !== submittedRecovery.tripId
+    || canonicalTrip.ownerId !== submittedRecovery.ownerId
+    || !tripBuildDocumentsCanonicalEquivalent(
+      reviewedTrip,
+      canonicalTrip,
+      submittedRecovery.ownerId,
+    )) {
+    return {
+      outcome: "invalid-canonical",
+      remainingRecovery: loadTripRecovery(
+        submittedRecovery.tripId,
+        submittedRecovery.ownerId,
+      ),
+    };
+  }
+
+  const cached = cacheCanonicalTrip(canonicalTrip, submittedRecovery);
+  const remainingRecovery = loadTripRecovery(canonicalTrip.id, canonicalTrip.ownerId);
+  if (!cached.stored) return { outcome: "storage-failed", remainingRecovery };
+  return {
+    outcome: remainingRecovery ? "device-newer" : "acknowledged",
+    remainingRecovery,
+  };
 }
 
 export function resolveCanonicalEquivalentTripRecovery(

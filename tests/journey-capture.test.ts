@@ -10,6 +10,43 @@ import { EXPECTED_MIXED_GEOGRAPHY, MIXED_CENTRAL_AMERICA_PROMPT } from "./fixtur
 
 const CENTRAL_PROMPT = "3 weeks through Patagonia, Tierra del Fuego and Easter Island. We like nature, prefer a relaxed pace and do not want to drive.";
 
+test("leading planning imperatives frame intent instead of becoming a destination", () => {
+  const cases = [
+    {
+      prompt: "Plan a 10 day trip to Japan",
+      places: ["Japan"],
+      origin: undefined,
+    },
+    {
+      prompt: "Plan a trip from London to Tokyo",
+      places: ["London", "Tokyo"],
+      origin: "London",
+    },
+    {
+      prompt: "Plan my trip to Hanoi, Hue and Hoi An",
+      places: ["Hanoi", "Hue", "Hoi An"],
+      origin: undefined,
+    },
+    {
+      prompt: "Plan an itinerary through Spain and Portugal",
+      places: ["Spain", "Portugal"],
+      origin: undefined,
+    },
+  ] as const;
+
+  for (const fixture of cases) {
+    const capture = captureJourneyBrief(fixture.prompt);
+    assert.equal(capture.mentions.some((mention) => mention.normalizedPhrase === "plan"), false, fixture.prompt);
+    assert.deepEqual(capture.mentions.map((mention) => mention.canonicalName), fixture.places, fixture.prompt);
+    assert.equal(capture.mentions.find((mention) => mention.role === "origin")?.canonicalName, fixture.origin, fixture.prompt);
+  }
+});
+
+test("Plan remains reviewable when it is used as explicit place wording", () => {
+  const capture = captureJourneyBrief("France, Plan");
+  assert.equal(capture.mentions.some((mention) => mention.sourceText === "Plan"), true);
+});
+
 test("homepage capture preserves mixed direct, planning-area, anchor and base-selection geography", () => {
   const capture = captureJourneyBrief(MIXED_CENTRAL_AMERICA_PROMPT);
   const draft = createHomeTripDraft({

@@ -1174,6 +1174,11 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     });
     return fuzzyEntries.length === 1 ? fuzzyEntries[0] : undefined;
   };
+  const isLeadingPlanningImperative = (sourceText: string, start: number) => (
+    start === 0
+    && normalizePlacePhrase(sourceText) === "plan"
+    && /^plan\s+(?:a|an|my|our|the|this)\b/iu.test(prompt.trimStart())
+  );
   // Lower-case collective geography is easy for capitalisation-led extraction
   // to miss. Retain only this small class of known broad intent phrases; they
   // still require provider-backed clarification or a traveller-selected base.
@@ -1245,6 +1250,7 @@ function unresolvedCandidates(prompt: string, occupied: Array<{ start: number; e
     const start = match.index ?? 0;
     const end = start + sourceText.length;
     if (intersectsKnownRange(start, end)) continue;
+    if (isLeadingPlanningImperative(sourceText, start)) continue;
     const normalized = normalizePlacePhrase(sourceText).replace(/^the /, "");
     if (!normalized || NON_PLACE_PHRASES.has(normalized) || ["begin", "by", "drive", "take", "travel"].includes(normalized.split(" ")[0] ?? "")
       || [...NON_PLACE_PHRASES].some((word) => normalized === `${word} trip`)) continue;

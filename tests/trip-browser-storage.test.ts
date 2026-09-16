@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 
 import {
   EASYT_ACTIVE_TRIP_KEY,
+  acknowledgeTripBuildSaveInStorage,
   beginNewTripNavigationInStorage,
   canUseHydratedTripScope,
   cacheCanonicalTripWithRecoveryToStorage,
@@ -131,6 +132,72 @@ class MemoryBrowserStorage implements EasyTBrowserStorage {
     return this.values.get(key) ?? null;
   }
 }
+
+test("a committed first Builder save accepts a later provider-only recovery without manufacturing divergence", () => {
+  const storage = new MemoryBrowserStorage();
+  const reviewed = browserTrip({
+    id: "trip-first-authenticated-build",
+    ownerId: null,
+    status: "planned",
+    updatedAt: "2026-09-15T18:40:00.000Z",
+  });
+  const submitted = saveTripRecoveryToStorage(storage, reviewed, {
+    ownerId: "owner-a",
+    writeId: "builder-submit",
+    now: "2026-09-15T18:40:01.000Z",
+  });
+  const providerEnriched = {
+    ...reviewed,
+    brief: { ...reviewed.brief, originProviderId: "provider:resolved-after-submit" },
+    updatedAt: "2026-09-15T18:40:02.000Z",
+  };
+  const laterRecovery = saveTripRecoveryToStorage(storage, providerEnriched, {
+    ownerId: "owner-a",
+    replace: submitted.handle,
+    writeId: "provider-enrichment",
+    now: "2026-09-15T18:40:02.000Z",
+  });
+  assert.equal(laterRecovery.stored, true);
+  assert.notEqual(laterRecovery.handle.writeId, submitted.handle.writeId);
+
+  const canonical = canonicalTripForOwner(
+    "owner-a",
+    reviewed,
+    "2026-09-15T18:40:03.000Z",
+  );
+  const result = acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, submitted.handle);
+  assert.equal(result.outcome, "acknowledged");
+  assert.equal(result.remainingRecovery, null);
+  assert.equal(loadTripRecoveryFromStorage(storage, reviewed.id, "owner-a"), null);
+  assert.equal(loadCachedTripFromStorage(storage, reviewed.id, "owner-a")?.updatedAt, canonical.updatedAt);
+});
+
+test("Builder acknowledgement preserves a genuinely newer traveller recovery", () => {
+  const storage = new MemoryBrowserStorage();
+  const reviewed = browserTrip({
+    id: "trip-first-authenticated-build-user-edit",
+    ownerId: null,
+    status: "planned",
+  });
+  const submitted = saveTripRecoveryToStorage(storage, reviewed, {
+    ownerId: "owner-a",
+    writeId: "builder-submit",
+  });
+  const travellerEdit = {
+    ...reviewed,
+    brief: { ...reviewed.brief, mustDo: "Keep my new edit while the save is in flight" },
+  };
+  saveTripRecoveryToStorage(storage, travellerEdit, {
+    ownerId: "owner-a",
+    replace: submitted.handle,
+    writeId: "traveller-edit",
+  });
+  const canonical = canonicalTripForOwner("owner-a", reviewed, "2026-09-15T18:41:00.000Z");
+  const result = acknowledgeTripBuildSaveInStorage(storage, reviewed, canonical, submitted.handle);
+  assert.equal(result.outcome, "device-newer");
+  assert.equal(result.remainingRecovery?.trip.brief.mustDo, travellerEdit.brief.mustDo);
+  assert.equal(loadCachedTripFromStorage(storage, reviewed.id, "owner-a")?.updatedAt, canonical.updatedAt);
+});
 
 test("Open cloud copy and canonical TripShell caching preserve the sole dirty recovery", () => {
   const storage = new MemoryBrowserStorage();
