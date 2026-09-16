@@ -8,10 +8,11 @@
 .eyebrow { display: block; font: var(--morrovia-type-metadata); letter-spacing: .12em; text-transform: uppercase; }
 .skip { position: fixed; z-index: 300; top: 12px; left: 16px; padding: 14px; background: var(--morrovia-paper); color: var(--morrovia-ink)!important; transform: translateY(-180%); }
 .skip:focus { transform: none; }
-.hero { position: relative; isolation: isolate; min-height: max(900px,100svh); display: flex; flex-direction: column; color: var(--morrovia-paper); overflow: clip; background: var(--morrovia-ink); }
-.landscape,.heroShade { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; object-fit: cover; }
+.hero { position: relative; isolation: isolate; min-height: max(900px,100svh); display: flex; flex-direction: column; color: var(--morrovia-paper); background: var(--morrovia-ink); }
+.heroDecorative { position: absolute; inset: 0; z-index: 0; overflow: clip; }
+.landscape,.heroShade { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .landscape { transform: translateX(var(--depth-x,0px)) scale(1.03); transition: transform 600ms ease, filter 350ms ease; filter: brightness(.65) saturate(.8); }
-.heroShade { z-index: -1; background: color-mix(in srgb,var(--morrovia-ink) 25%,transparent); transition: background 350ms ease; }
+.heroShade { z-index: 1; background: color-mix(in srgb,var(--morrovia-ink) 25%,transparent); transition: background 350ms ease; }
 .hero:has(.planner:focus-within) .heroShade { background: color-mix(in srgb,var(--morrovia-ink) 45%,transparent); }
 .hero:has(.planner:focus-within) .landscape { transform: scale(1.03); }
 .navigation { position: relative; z-index: var(--morrovia-layer-header); }
@@ -19,7 +20,7 @@
 .navigation :global(header[data-easyt-app]) > a,.navigation :global(header[data-easyt-app]) > nav > a,.navigation :global(header[data-easyt-app]) > nav > button { color: var(--morrovia-paper); }
 .navigation :global(header[data-easyt-app]) > a > span { color: inherit; }
 .navigation :global([class*="landingTour"]) button { color: var(--morrovia-paper); }
-.heroBody { width: 92%; margin: auto; display: grid; grid-template-columns: minmax(0,1.12fr) minmax(440px,.88fr); gap: 4vw; align-items: center; padding: 64px 0; }
+.heroBody { position: relative; z-index: 2; width: 92%; margin: auto; display: grid; grid-template-columns: minmax(0,1.12fr) minmax(440px,.88fr); gap: 4vw; align-items: center; padding: 64px 0; }
 .heroCopy h1 { font-size: clamp(86px,8.4vw,162px); margin: 32px 0; line-height: .97; }
 .heroCopy h1 em { max-width: 7ch; line-height: .97; }
 .heroCopy p { max-width: 350px; font-size: 17px; }
@@ -30,10 +31,17 @@
 .planner [role="dialog"] { top: auto; bottom: calc(100% + 9px); }
 .planner [data-disclosure-close] { width: 44px; height: 44px; }
 .planner form { margin: 0; max-width: none; }
-.planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
+.hero:not(.heroDualEntry) .planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
 .planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
-.heroBottom { width: 92%; margin: 0 auto 28px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
+.heroBottom { position: relative; z-index: 2; width: 92%; margin: 0 auto 28px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
 .heroPhotoCredit { --photo-credit-inline:4%; --photo-credit-block:76px; }
+.heroDualEntry { min-height: 100svh; }
+.heroBodyDualEntry { grid-template-columns: 1fr; align-content: center; gap: 18px; padding-block: 28px; }
+.heroBodyDualEntry .heroCopy { max-width: 1060px; }
+.heroBodyDualEntry .heroCopy h1 { margin: 10px 0; font-size: clamp(64px,6vw,96px); }
+.heroBodyDualEntry .heroCopy h1 em { display: block; max-width: none; }
+.heroBodyDualEntry .heroCopy p { max-width: 560px; }
+.heroBodyDualEntry .planner { max-width: none; justify-self: stretch; padding: 0; background: transparent; }
 .heroBottom a { display: flex; align-items: center; gap: 10px; }
 .heroBottom svg { width: 18px; height: 18px; }
 @media(max-width:840px) {

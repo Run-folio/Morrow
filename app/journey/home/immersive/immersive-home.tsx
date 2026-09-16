@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ArrowDown } from "lucide-react";
 import EasyTNavigation from "../../easyt-navigation";
@@ -16,20 +16,26 @@ import { trackEvent } from "@/lib/analytics";
 import { homepageRouteView } from "@/lib/easyt/homepage-navigation";
 import ClosingChapter from "./closing-chapter";
 import { homepageCloudinaryImageLoader } from "@/lib/easyt/homepage-cloudinary-image";
+import HomepageRouteInspiration from "./homepage-route-inspiration";
+import HomepageHowItWorks from "./homepage-how-it-works";
 
-export default function ImmersiveHome({ routes, initialIndex }: { routes: ImmersiveRoute[]; initialIndex: number }) {
+const FallbackImage = Image;
+
+export default function ImmersiveHome({ routes, initialIndex, presentation = "current", plannerSlot }: { routes: ImmersiveRoute[]; initialIndex: number; presentation?: "current" | "dual-entry"; plannerSlot?: ReactNode }) {
   const [index, setIndex] = useState(initialIndex);
-  const route = routes[index];
-  const heroPhoto = route.heroPhoto;
+  const route = routes[index] ?? routes[0];
+  const dualEntry = presentation === "dual-entry";
+  const heroPhoto = route ? (() => { const heroPhoto = route.heroPhoto; return heroPhoto; })() : undefined;
   const [failedFirstPartyHeroes, setFailedFirstPartyHeroes] = useState<string[]>([]);
-  const visibleHeroPhoto = heroPhoto?.firstParty && failedFirstPartyHeroes.includes(route.key) ? heroPhoto.fallback ?? null : heroPhoto;
+  const visibleHeroPhoto = heroPhoto?.firstParty && route && failedFirstPartyHeroes.includes(route.key) ? heroPhoto.fallback ?? null : heroPhoto;
   const lastViewedRoute = useRef<string | null>(null);
   useEffect(() => {
+    if (!route) return;
     const selection = homepageRouteView(lastViewedRoute.current, route.key);
     if (!selection) return;
     lastViewedRoute.current = route.key;
     trackEvent("homepage_route_viewed", { route_id: route.key, selection, stop_count: route.stops.length });
-  }, [route.key, route.stops.length]);
+  }, [route]);
   const language = useHomepageLanguage();
   const es = language === "es";
   const [systemQuiet, setSystemQuiet] = useState(false);
@@ -41,24 +47,27 @@ export default function ImmersiveHome({ routes, initialIndex }: { routes: Immers
   }, []);
   return <main className={styles.page} data-quiet={systemQuiet}>
     <a className={styles.skip} href="#start-building">{es ? "Ir al formulario" : "Skip to trip prompt"}</a>
-    <section id="hero" className={styles.hero} onPointerMove={(event) => {
+    <section id="hero" className={`${styles.hero}${dualEntry ? ` ${styles.heroDualEntry}` : ""}`} onPointerMove={(event) => {
       if (systemQuiet || event.pointerType !== "mouse" || event.currentTarget.matches(":focus-within")) return;
       const rect = event.currentTarget.getBoundingClientRect();
       event.currentTarget.style.setProperty("--depth-x", `${((event.clientX - rect.left) / rect.width - .5) * 10}px`);
     }} onPointerLeave={(event) => event.currentTarget.style.setProperty("--depth-x", "0px")}>
-      <Image className={styles.landscape} src={visibleHeroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} loader={visibleHeroPhoto?.firstParty ? homepageCloudinaryImageLoader : undefined} sizes="100vw" fill priority={route.key === routes[initialIndex]?.key} alt="" style={{ objectPosition: visibleHeroPhoto?.focalPosition ?? "center" }} onError={() => {
-        if (visibleHeroPhoto?.firstParty) setFailedFirstPartyHeroes(current => current.includes(route.key) ? current : [...current, route.key]);
-      }} />
-      <div className={styles.heroShade} />
+      <div className={styles.heroDecorative}>
+        {route ? <Image className={styles.landscape} src={visibleHeroPhoto?.variants.at(-1)?.src ?? "/journey/immersive/hero-1536.webp"} loader={visibleHeroPhoto?.firstParty ? homepageCloudinaryImageLoader : undefined} sizes="100vw" fill priority={route.key === routes[initialIndex]?.key} alt="" style={{ objectPosition: visibleHeroPhoto?.focalPosition ?? "center" }} onError={() => {
+          if (visibleHeroPhoto?.firstParty) setFailedFirstPartyHeroes(current => current.includes(route.key) ? current : [...current, route.key]);
+        }} /> : <FallbackImage className={styles.landscape} src="/journey/immersive/hero-1536.webp" sizes="100vw" fill alt="" />}
+        <div className={styles.heroShade} />
+      </div>
       <MorroviaPhotoCredit className={styles.heroPhotoCredit} placement="bottom-left" photoLabel={visibleHeroPhoto?.country ?? "Homepage hero"} credit={visibleHeroPhoto ? (es ? visibleHeroPhoto.creditEs : visibleHeroPhoto.credit) : (es ? "Paisaje imaginado · inspirado en los Andes" : "Imagined landscape · inspired by the Andes")} sourceHref={!visibleHeroPhoto?.firstParty && visibleHeroPhoto?.source.startsWith("http") ? visibleHeroPhoto.source : null} fullCreditHref={visibleHeroPhoto?.firstParty ? undefined : "/journey/immersive/credits.html"} />
       <div className={styles.navigation}><EasyTNavigation current="home" landing logoTone="light" deferPrefetch /></div>
-      <div className={styles.heroBody}>
-        <div className={styles.heroCopy}><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><h1>{es ? "Ve más lejos." : "Go further."}<em>{es ? "Hazlo tuyo." : "Make it yours."}</em></h1><p>{es ? "Convierte tus ideas en una primera ruta pensada. Después, hazla tuya." : "Turn your multi-stop ideas into a thoughtful first route. Then make it your own."}</p></div>
-        <div className={styles.planner}><HomeTripStarter /></div>
+      <div className={`${styles.heroBody}${dualEntry ? ` ${styles.heroBodyDualEntry}` : ""}`}>
+        <div className={styles.heroCopy}><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos." : "Complex trips, made simple."}</span><h1>{es ? "Ve más lejos." : "Go further."}<em>{es ? "Hazlo tuyo." : "Make it yours."}</em></h1><p>{dualEntry ? (es ? "Planifica viajes con varias paradas, rutas sugeridas, lugares donde alojarte y cosas que hacer. Después, haz tuyo el plan." : "Plan multi-stop trips with suggested routes, places to stay and things to do. Then make the plan your own.") : (es ? "Convierte tus ideas en una primera ruta pensada. Después, hazla tuya." : "Turn your multi-stop ideas into a thoughtful first route. Then make it your own.")}</p></div>
+        <div className={styles.planner}>{plannerSlot ?? <HomeTripStarter />}</div>
       </div>
       <div className={styles.heroBottom}><a href="#routes">{es ? "De una idea a un viaje" : "From an idea to a journey"} <ArrowDown aria-hidden="true" /></a></div>
     </section>
-    <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
+    {dualEntry ? <><HomepageRouteInspiration routes={routes} /><HomepageHowItWorks /></> : null}
+    <RouteChapters quiet={systemQuiet} routes={routes} index={index} onChange={setIndex} showIntroduction={!dualEntry}>{(route, change) => <><ProductDemo route={route} routes={routes} change={change} /><AffiliateChapter routeKey={route.key} /></>}</RouteChapters>
     <ClosingChapter />
   </main>;
 }

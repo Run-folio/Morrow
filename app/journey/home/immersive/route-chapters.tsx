@@ -29,11 +29,12 @@ export function DestinationPhoto({ route, index, photoOverride, landscape = fals
   return <div className={styles.destinationPhoto}>{photo ? <><ResilientImage key={photo.key} src={photo.variants[1].src} srcSet={photo.variants.map((item) => `${item.src} ${item.width}w`).join(", ")} sizes={sizes ?? (landscape ? "100vw" : "(max-width:840px) 45vw, 23vw")} width={768} height={1024} alt={landscape ? "" : photo.alt} loading="lazy" decoding="async" fallback={<div className={styles.photoFallback}>{stop.name}</div>} /><MorroviaPhotoCredit photoLabel={photo.alt} credit={`${photo.author} · ${photo.license}`} sourceHref={photo.sourceUrl} licenseHref={photo.licenseUrl} fullCreditHref={`/journey/immersive/credits.html#${photo.key}`} /></> : <div className={styles.photoFallback}>{stop.name}</div>}</div>;
 }
 
-export default function RouteChapters({ routes, index, onChange, children, quiet }: {
+export default function RouteChapters({ routes, index, onChange, children, quiet, showIntroduction = true }: {
   quiet: boolean;
   routes: ImmersiveRoute[];
   index: number;
   onChange: (index: number) => void;
+  showIntroduction?: boolean;
   children?: (route: ImmersiveRoute, change: (index: number, chapter?: string) => void, index: number) => React.ReactNode;
 }) {
 
@@ -42,6 +43,7 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
   const route = routes[index];
   useEffect(() => {
     if (quiet) return;
+    if (!showIntroduction) return;
     const desktop = matchMedia("(min-width:841px)");
     let frame = 0;
     const update = () => {
@@ -62,7 +64,7 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
     };
     desktop.addEventListener("change", listen); listen();
     return () => { desktop.removeEventListener("change", listen); window.removeEventListener("scroll", tick); window.removeEventListener("resize", tick); cancelAnimationFrame(frame); };
-  }, [quiet]);
+  }, [quiet, showIntroduction]);
   if (!route) return null;
   const change = (next: number, chapter = "routes") => {
     const anchor = document.getElementById(chapter);
@@ -80,7 +82,7 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
   const editorialPhotoIndex = route.photos.findIndex(photo => photo?.key === routeEditorialImagery[route.key]?.hero);
   const storyPhotoIndex = editorialPhotoIndex >= 0 ? editorialPhotoIndex : route.stops.length - 1;
   return <>
-    <section id="routes" ref={places} className={styles.places} aria-label={es ? "Rutas para empezar" : "Featured route starting points"}>
+    {showIntroduction ? <section id="routes" ref={places} className={styles.places} aria-label={es ? "Rutas para empezar" : "Featured route starting points"}>
       <div className={styles.placesStage}>
         <header className={styles.routeCollectionIntro}><div><span className={styles.eyebrow}>{es ? "Viajes complejos, hechos sencillos" : "Complex trips, made simple"}</span><h2>{es ? "Rutas para empezar" : "Routes to get you started"}</h2></div><p>{es ? "Siete ideas para viajes complejos. Usa una como punto de partida, cambia lo que quieras o planea un lugar completamente distinto." : "Seven ideas for complex trips. Use one as a starting point, change anything, or plan somewhere completely different."}</p></header>
         <div className={styles.routeHeading}><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h3>{title[0]}<em>{title[1]}</em></h3><p>{route.stops.length} {es ? "lugares" : "places"} · {route.countries.length} {es ? (route.countries.length === 1 ? "país" : "países") : (route.countries.length === 1 ? "country" : "countries")}</p>
@@ -102,7 +104,7 @@ export default function RouteChapters({ routes, index, onChange, children, quiet
         </div>
         <div className={styles.routeFoot}><span>{es ? "Punto de partida" : "Starting point"} · {route.dayRange.min}–{route.dayRange.max} {es ? "días" : "days"}{omittedStops > 0 ? ` · +${omittedStops} ${es ? (omittedStops === 1 ? "parada más" : "paradas más") : (omittedStops === 1 ? "more stop" : "more stops")}` : ""}</span><a href="#route-story">{es ? "El viaje que los conecta" : "The journey between them"} <ArrowDown aria-hidden="true" /></a></div>
       </div>
-    </section>
+    </section> : null}
     <section id="route-story" className={styles.story}>
       <div className={styles.storyPhoto}><DestinationPhoto route={route} index={storyPhotoIndex} landscape /></div>
       <div className={styles.storyShade} />
