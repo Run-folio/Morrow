@@ -238,6 +238,22 @@ browserTest("first-place selection creates route timing without requiring endpoi
   } finally { await view.close(); }
 });
 
+browserTest("passive validation preserves Starting from focus while typing after the first place", async () => {
+  const view = await renderBuilder();
+  try {
+    await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).fill("Tokyo");
+    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
+    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    const origin = view.page.getByRole("combobox", { name: "Starting from", exact: true });
+    await origin.focus();
+    await origin.pressSequentially("London", { delay: 100 });
+    assert.equal(await origin.inputValue(), "London");
+    assert.equal(await origin.evaluate((input: HTMLInputElement) => input === document.activeElement), true);
+    assert.equal(await view.page.getByRole("button", { name: /Build trip/ }).isDisabled(), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 browserTest("first-place resolution keeps the pending selection visible and prevents competing capture", async () => {
   const view = await renderBuilder();
   let release!: () => void;

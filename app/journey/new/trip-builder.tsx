@@ -2789,7 +2789,6 @@ function TripBuilderDocument() {
   useEffect(() => {
     if (!hasRouteSkeleton || !gateConflict) return;
     setTimingWarningOpen(true);
-    window.requestAnimationFrame(() => timingWarningRef.current?.focus());
   }, [gateConflict, hasRouteSkeleton]);
 
   const routeRecommendationReason = backtrackingPenaltyCount !== null
@@ -2827,6 +2826,10 @@ function TripBuilderDocument() {
     const conflict = buildInvariant.firstConflict;
     if (!conflict) return;
     setOpeningTrip(false);
+    setTimingWarningOpen(true);
+    // Passive validation must not interrupt editing; explicit build attempts
+    // retain the focused conflict announcement.
+    window.requestAnimationFrame(() => timingWarningRef.current?.focus());
     openSummaryEditor(conflict.code.startsWith("origin") ? "origin" : conflict.stage === "places" ? "stops" : "dates");
     if (conflict.stage === "places") setHasPromptContext(true);
   };
