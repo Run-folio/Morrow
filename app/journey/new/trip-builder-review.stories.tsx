@@ -1,4 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useEffect, useState } from "react";
+import TripBuilder from "./trip-builder";
+import { HOME_TRIP_DRAFT_KEY } from "@/lib/easyt/home-trip-handoff";
+import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
+import { publicRouteDetailFor } from "@/lib/easyt/public-route";
+import { extractStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
 import { AlertTriangle, CarFront, Check, CheckCircle2, ChevronRight, MapPin, Route, TrainFront, X } from "lucide-react";
 import { EasyTButton, EasyTField } from "@/components/easyt/easyt-controls";
 import { TOUR_TRIP_ROUTE, tourTripFixture } from "@/components/easyt/storybook/tour-trip.fixture";
@@ -201,6 +207,61 @@ export const ContinentWithStrongSpecificAnchor: Story = { args: { state: "anchor
 export const RouteReorderSuggestion: Story = { args: { state: "reorder" } };
 export const AcceptedRouteOrder: Story = { args: { state: "accepted" } };
 export const TourCapture: Story = { args: { state: "tour" } };
+
+// Mount the production document: fixtures seed only its existing handoff
+// boundary, never a parallel route, capture, or persistence implementation.
+function BuilderEntryFixture({ entry }: { entry: "empty" | "populated" | "clarification" }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const previousUrl = window.location.href;
+    const previousDraft = window.localStorage.getItem(HOME_TRIP_DRAFT_KEY);
+    const originalFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, window.location.href);
+      if (url.pathname.startsWith("/api/journey-")) return Promise.resolve(Response.json({ candidates: [], places: [], result: null }));
+      return originalFetch(input, init);
+    };
+    const url = new URL(previousUrl);
+    url.searchParams.delete("step");
+    url.searchParams.delete("trip");
+    url.searchParams.delete("inspire");
+    if (entry === "empty") {
+      url.searchParams.delete("homeDraft");
+      window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
+    } else {
+      url.searchParams.set("homeDraft", "1");
+      const brief = "Two weeks in Thailand";
+      window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(entry === "populated"
+        ? routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft, new Date(2027, 3, 2, 12))
+        : { brief, structuredBrief: extractStructuredTripBrief(brief) }));
+    }
+    window.history.replaceState(window.history.state, "", url);
+    setReady(true);
+    return () => {
+      window.fetch = originalFetch;
+      window.history.replaceState(window.history.state, "", previousUrl);
+      if (previousDraft === null) window.localStorage.removeItem(HOME_TRIP_DRAFT_KEY);
+      else window.localStorage.setItem(HOME_TRIP_DRAFT_KEY, previousDraft);
+    };
+  }, [entry]);
+  return ready ? <main className="morrovia-editorial-page"><TripBuilder /></main> : null;
+}
+
+export const DirectEmptyEntry: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="empty" /> };
+export const PopulatedHandoff: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="populated" /> };
+export const BuilderClarification: Story = { tags: ["!autodocs"], parameters: { nextjs: { appDirectory: true } }, render: () => <BuilderEntryFixture entry="clarification" /> };
+export const DirectEmptyEntryAt1440: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const DirectEmptyEntryAtLaptop: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
+export const DirectEmptyEntryAt768: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const DirectEmptyEntryAt390: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const PopulatedHandoffAt1440: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const PopulatedHandoffAtLaptop: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
+export const PopulatedHandoffAt768: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const PopulatedHandoffAt390: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const BuilderClarificationAt1440: Story = { ...BuilderClarification, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const BuilderClarificationAtLaptop: Story = { ...BuilderClarification, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
+export const BuilderClarificationAt768: Story = { ...BuilderClarification, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const BuilderClarificationAt390: Story = { ...BuilderClarification, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const NormalPacedTrip: Story = { args: { state: "normal" } };
 export const HighlyCompressedTrip: Story = { args: { state: "compressed" } };
 export const UnknownMajorTransfer: Story = { args: { state: "unknown" } };

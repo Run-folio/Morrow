@@ -55,6 +55,12 @@
 .pane { min-height: 0; padding: 28px 5% 42px; }
 .stack { display: grid; gap: 12px; position: relative; }
 .initialCapture{display:grid;width:100%;max-width:800px;margin:12px auto 0;gap:14px}.initialCapture>form{max-width:none;margin-top:0}
+.wizardBody.emptyWorkspace { grid-template-columns: minmax(0, 1fr); }
+.emptyWorkspace .pane { width: 100%; max-width: 980px; margin-inline: auto; }
+.initialCapture h2 { margin: 0; font: var(--morrovia-type-body); font-weight: 700; color: var(--morrovia-ink); }
+.firstPlaceEntry { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--morrovia-line); }
+.stack + .timeStep { margin-top: 32px; }
+.wizardFoot > .footRight { margin-left: auto; }
 .importTripEntry{display:flex;align-items:center;justify-content:center;gap:10px;padding:4px 0 2px;color:var(--muted);font-size:12px}.importTripEntry a{flex:none}
 @media(max-width:520px){.importTripEntry{align-items:stretch;flex-direction:column;text-align:center}.importTripEntry a{width:100%}}
 

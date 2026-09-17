@@ -5300,7 +5300,7 @@
       },
       {
         "value": "12px",
-        "count": 436,
+        "count": 437,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5360,7 +5360,7 @@
       },
       {
         "value": "20px",
-        "count": 235,
+        "count": 236,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5510,7 +5510,7 @@
       },
       {
         "value": "32px",
-        "count": 47,
+        "count": 48,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -8060,7 +8060,7 @@
   },
   "audit": {
     "totals": {
-      "native-control": 228,
+      "native-control": 215,
       "native-date-input": 0,
       "native-number-input": 0,
       "native-dialog": 0,
@@ -8082,12 +8082,12 @@
     "leaders": {
       "native-control": [
         {
-          "path": "app/journey/new/trip-builder.tsx",
-          "count": 47
-        },
-        {
           "path": "components/journey-map-planner-workspace.tsx",
           "count": 46
+        },
+        {
+          "path": "app/journey/new/trip-builder.tsx",
+          "count": 34
         },
         {
           "path": "app/journey/stamped/stamped-client.tsx",

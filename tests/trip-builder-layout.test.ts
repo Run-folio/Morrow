@@ -1,53 +1,80 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
+import { hasUsefulRouteSkeleton } from "../app/journey/new/trip-builder-entry.ts";
+import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
+import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
+import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 
-test("the shared Step 1 intro stays ahead of the canonical fresh-trip capture", () => {
-  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
-  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
-  const intro = builder.indexOf('<header className={styles.stepHero}>');
-  const freshPrompt = builder.indexOf("{!hasPromptContext && hydrated && <div className={styles.initialCapture}><MorroviaTripCapture");
+const browserTest = (name: string, run: () => Promise<void>) => test(name, { skip: !builderBrowserTestsEnabled }, run);
 
-  assert.notEqual(intro, -1, "Step 1 intro should remain in the shared builder stack");
-  assert.notEqual(freshPrompt, -1, "fresh trips should render the canonical trip capture");
-  assert.ok(intro < freshPrompt, "Step 1 intro should precede the trip capture in the shared render order");
-  assert.doesNotMatch(styles, /tripBriefCard|tripBriefTextarea|tripBriefInput|voiceInput/,
-    "Builder CSS must not retain a parallel trip-capture presentation");
-  assert.doesNotMatch(builder, /YOUR TRIP BRIEF|You can adjust anything we extract\.|>Continue<\/button>/,
-    "the redundant Builder-specific prompt presentation should be removed");
-
-  assert.equal(builder.match(/STEP 1 OF 2/g)?.length, 1,
-    "the English Step 1 lockup should render from one shared source");
-  assert.equal(builder.match(/Tell us the shape/g)?.length, 1,
-    "the Step 1 title should not be duplicated for fresh and contextual entry states");
-
-  const homepageHandoffHydration = builder.slice(
-    builder.indexOf('if (params.get("homeDraft") === "1")'),
-    builder.indexOf("} else {\n          const seed ="),
-  );
-  assert.match(homepageHandoffHydration, /setHasPromptContext\(true\)/,
-    "homepage handoff should reuse the shared prompt-context Step 1 layout");
-
-  const returningDraftHydration = builder.slice(
-    builder.indexOf("const applySaved ="),
-    builder.indexOf("const hydrate ="),
-  );
-  assert.match(returningDraftHydration, /setHasPromptContext\(true\)/,
-    "returning drafts should reuse the prompt-context Step 1 layout");
-
-  const stepTwo = builder.indexOf("{step === 1 && (");
-  assert.ok(stepTwo > freshPrompt, "Step 2 should remain a separate builder branch after Step 1");
-  assert.equal(builder.match(/STEP 2 OF 2/g)?.length, 1,
-    "the Step 2 title should remain unchanged and unique");
+test("a useful route requires a valid stop occurrence, independently of endpoint context", () => {
+  assert.equal(hasUsefulRouteSkeleton([]), false);
+  const stop = { id: "tokyo-first", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo" };
+  assert.equal(hasUsefulRouteSkeleton([stop]), true);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, canonicalPlaceId: undefined }]), false);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, id: "" }]), false);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, name: "" }]), false);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, country: "" }]), false);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, coordinates: [NaN, 35.6] }]), false);
+  assert.equal(hasUsefulRouteSkeleton([{ ...stop, canonicalPlaceId: undefined, coordinates: [139.6917, 35.6895] }]), true);
+  assert.equal(hasUsefulRouteSkeleton([stop, { ...stop, id: "tokyo-return" }]), true);
 });
 
-test("Builder workspace height, capture width and step divider remain content-driven", () => {
+browserTest("direct Builder entry offers capture, first place and import without mandatory steps or empty route", async () => {
+  const view = await renderBuilder();
+  try {
+    const text = await view.page.locator("body").innerText();
+    assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Set dates & nights/);
+    assert.match(text, /Describe your trip/);
+    assert.equal(await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).count(), 1);
+    assert.equal(await view.page.getByRole("link", { name: "Import existing trip" }).getAttribute("href"), "/journey/new/import");
+    assert.doesNotMatch(text, /Nights per stop|Trip at a glance/);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+browserTest("useful homepage and template handoffs show route timing immediately", async () => {
+  const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
+  for (const entry of [{ query: "?homeDraft=1", draft }, { query: "?inspire=morocco-rail" }]) {
+    const view = await renderBuilder(entry);
+    try {
+      const text = await view.page.locator("body").innerText();
+      assert.match(text, /Nights per stop/);
+      assert.match(text, /Marrakech/);
+      assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Describe your trip|Set dates & nights/);
+    } finally { await view.close(); }
+  }
+});
+
+browserTest("area-only handoff stays in clarification without an empty route or retired intake", async () => {
+  const brief = "Two weeks in Thailand";
+  const view = await renderBuilder({ query: "?homeDraft=1", draft: { brief, structuredBrief: extractStructuredTripBrief(brief) } });
+  try {
+    const text = await view.page.locator("body").innerText();
+    assert.match(text, /Thailand/);
+    assert.doesNotMatch(text, /STEP 1 OF 2|Nights per stop|Describe your trip/);
+  } finally { await view.close(); }
+});
+
+browserTest("legacy step query cannot switch an empty Builder into timing and preserves other parameters", async () => {
+  const view = await renderBuilder({ query: "?step=1&recover=1&view=brief&campaign=test" });
+  try {
+    assert.match(await view.page.locator("body").innerText(), /Describe your trip/);
+    const url = new URL(view.page.url());
+    assert.equal(url.searchParams.has("step"), false);
+    assert.equal(url.searchParams.get("recover"), "1");
+    assert.equal(url.searchParams.get("view"), "brief");
+    assert.equal(url.searchParams.get("campaign"), "test");
+  } finally { await view.close(); }
+});
+
+test("Builder workspace height and capture width remain content-driven", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
   const handoffShell = styles.slice(styles.indexOf(".homepageHandoff {"), styles.indexOf(".homepageHandoff .steps"));
 
-  assert.match(builder, /<div className=\{styles\.initialCapture\}><MorroviaTripCapture/,
-    "direct entry should give the canonical capture a Builder-owned wide layout wrapper");
   assert.match(styles, /@media \(min-width: 1025px\)[\s\S]*\.initialCapture \{[\s\S]*max-width: none;[\s\S]*margin: 0;/,
     "the fresh capture should use the full elevated desktop task column");
   assert.match(styles, /\.initialCapture>form\{[^}]*max-width:none/,
@@ -60,8 +87,6 @@ test("Builder workspace height, capture width and step divider remain content-dr
   assert.doesNotMatch(styles, /\.pane\s*\{[^}]*min-height:\s*520px/,
     "the content pane must not retain the previous fixed minimum workspace height");
 
-  assert.match(styles, /\.steps\{[^}]*border-bottom:1px solid var\(--line\)/,
-    "the step header should own the single physical separator");
   assert.match(styles, /\.wizardBody \{[^}]*border-top:\s*0/,
     "the adjacent workspace must not stack a second border against the step header");
   assert.match(styles, /\.wizardBody:has\(\.placesSummaryRail\) \{[^}]*grid-template-columns:minmax\(0,1fr\) var\(--builder-rail-width\)/,
@@ -88,66 +113,6 @@ test("desktop Builder uses the approved wide workspace without changing tablet a
     "the nights table should allocate useful width to transfer and usable-time details");
   assert.doesNotMatch(desktop, /@media\s*\(max-width:/,
     "the visual elevation must not rewrite the existing tablet or mobile rules");
-});
-
-test("homepage handoff presents a concise interpreted review without changing direct entry", () => {
-  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
-  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
-
-  assert.match(builder, /const isHomepagePromptHandoff = arrivedFromHomepage && !sourceRouteKey/,
-    "the approved layout should follow shared handoff state rather than a route-only CSS selector");
-  assert.match(builder, /Here’s what/);
-  assert.match(builder, /we understood\./);
-  assert.match(builder, /Starting point/);
-  assert.match(builder, /Stops \(\$\{stops\.length\}\)/);
-  for (const removedCopy of [
-    /Check it, adjust anything that's wrong/,
-    /Check what we understood and fill any gaps/,
-    /Start and end guide the route/,
-    /Reorder or remove stops/,
-    /TRIP UNDERSTOOD/,
-    /ALREADY BOOKED/,
-    /Keep what cannot move visible/,
-  ]) assert.doesNotMatch(builder, removedCopy, "redundant Builder guidance should stay removed");
-
-  assert.match(builder, /const \[showTripDetails, setShowTripDetails\] = useState\(false\)/,
-    "Advanced should remain collapsed on first render");
-  assert.match(builder, /aria-expanded=\{showTripDetails\}/,
-    "Advanced should expose its disclosure state");
-  assert.match(builder, /effectiveIntent\.hardConstraints\.fixedCommitments\.map/,
-    "fixed commitments must stay in the canonical editor rather than being reset");
-
-  assert.match(builder, /Your route flows well\./,
-    "the valid-route state should use the approved compact status");
-  assert.equal(builder.match(/function BuilderSummaryRail/g)?.length, 1,
-    "both steps should render one shared summary rail component");
-  assert.match(builder, /<BuilderSummaryRail step=\{step\}/,
-    "the builder shell should keep the summary rail mounted from shared step state");
-  assert.match(builder, /step === 0 \? \(language === "es" \? "Fechas después" : "Dates next"\)/,
-    "the Places rail should announce that dates come next");
-  assert.match(builder, /!\(isHomepagePromptHandoff && step === 0\)/,
-    "the global footer containing Back should stay out of homepage Step 1");
-  assert.doesNotMatch(builder, /builder-route-watercolor\.png/,
-    "Step 1 should not render a decorative route illustration after the action area");
-  assert.doesNotMatch(styles, /handoffIllustration/,
-    "Step 1 should not reserve CSS space for the removed route illustration");
-  const page = readFileSync(new URL("../app/journey/new/page.tsx", import.meta.url), "utf8");
-  const layout = readFileSync(new URL("../app/journey/layout.tsx", import.meta.url), "utf8");
-  assert.doesNotMatch(page, /MorroviaFooter/,
-    "the Builder page should not mount a duplicate page-local footer");
-  assert.match(layout, /<MorroviaFooter omitOnImmersiveHome \/>/,
-    "the shared Journey shell should provide the normal footer outside the canonical homepage");
-  assert.match(builder, /className=\{styles\.handoffContext\}><AlertTriangle/,
-    "blocking context should have a visible icon rather than relying on red text");
-
-  assert.match(styles, /\.homepageHandoff \.handoffOrigin/);
-  assert.match(styles, /\.homepageHandoff \.routeCheck/);
-  assert.match(styles, /\.homepageHandoff \.stepTabDone > b \{ border-color: var\(--signal\); background: var\(--signal\); color: #fff; \}/,
-    "the completed Places step should retain a visible completion marker on Step 2");
-  assert.match(styles, /\.timeStep \.timingWarning \{ margin-bottom: 16px; \}/,
-    "a timing warning should sit clear of the persistent Builder footer");
-  assert.match(styles, /@media\(max-width:520px\)[\s\S]*\.homepageHandoff \.handoffCta/,
-    "the primary action should remain reachable at the narrowest supported width");
 });
 
 test("Builder spacing and healthy route copy use the focused production treatment", () => {
@@ -200,120 +165,6 @@ test("the Journey shell and immersive closing share one production footer owner"
   assert.match(story, /import MorroviaFooter from "\.\/morrovia-footer"/);
   assert.match(story, /component: MorroviaFooter/,
     "Storybook should render the exact production footer component");
-});
-
-test("the Time step uses the approved hierarchy without bypassing builder truth", () => {
-  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
-  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
-  const timeStart = builder.indexOf('{step === 1 && (');
-  const timeEnd = builder.indexOf('{step === 0 && isHomepagePromptHandoff', timeStart);
-  const timeStep = builder.slice(timeStart, timeEnd);
-
-  assert.match(builder, /\["Places", "Dates and nights"\]/,
-    "the active step label should match the approved Dates and nights copy");
-  assert.match(timeStep, /<h2 className=\{styles\.stepHeroTitle\}><span className=\{styles\.stepHeroTitlePrimary\}>Make the time<\/span>\{" "\}<em className=\{styles\.stepHeroTitleFinish\}>feel right\.<\/em><\/h2>/);
-  assert.doesNotMatch(timeStep, /Set your dates, then adjust nights around the route\./,
-    "the controls should carry the Step 2 instruction without repeating it below the heading");
-  assert.match(styles, /\.stepHeroTitlePrimary[\s\S]*font-family: var\(--morrovia-ui\)/,
-    "the primary Builder heading line should use the Morrovia sans family");
-  assert.match(styles, /\.stepHeroTitleFinish[\s\S]*font-family: var\(--morrovia-display\)[\s\S]*font-style: italic/,
-    "the expressive Builder heading finish should use the Morrovia serif family");
-
-  assert.match(builder, /const \[routeInsightsOpen, setRouteInsightsOpen\] = useState\(true\)/,
-    "route insights should be expanded on first render");
-  assert.match(builder, /const \[timingWarningOpen, setTimingWarningOpen\] = useState\(false\)/,
-    "non-blocking warnings should be collapsed on first render");
-  assert.match(builder, /if \(step !== 1 \|\| !gateConflict\) return;[\s\S]*setTimingWarningOpen\(true\)[\s\S]*timingWarningRef\.current\?\.focus\(\)/,
-    "blocking conflicts should expand and focus the warning");
-  assert.match(timeStep, /aria-expanded=\{routeInsightsOpen\}/);
-  assert.match(timeStep, /aria-expanded=\{timingWarningOpen\}/);
-
-  for (const heading of ["Nights per stop", "STOP", "TRANSFER", "NIGHTS", "USABLE TIME"]) {
-    assert.match(timeStep, new RegExp(heading));
-  }
-  assert.match(timeStep, /activeTripDocument\.legs\.find\(\(candidate\) => candidate\.toStopId === stop\.id\)/,
-    "transfer values should use the canonical persisted leg");
-  assert.match(timeStep, /leg\.doorToDoorMinutes \?\? leg\.durationMinutes/,
-    "the canonical door-to-door value should remain the display source");
-  assert.match(timeStep, /includesFlight && transferMinutes !== null \? " total" : ""/,
-    "known direct and multimodal flight transfers should be labelled as the total journey time");
-  assert.match(timeStep, /The estimated door-to-door total includes airport access, check-in and security, departure buffer, flight time/,
-    "flight totals should expose their calculation basis to assistive technology");
-  assert.match(timeStep, /Remove one night from \$\{stop\.name\}; \$\{days\} nights currently/);
-  assert.match(timeStep, /Add one night to \$\{stop\.name\}; \$\{days\} nights currently/);
-  assert.match(builder, /function StopReorderControl/,
-    "the single reorder handle should own the compact move menu");
-  assert.match(builder, /aria-haspopup="menu"/);
-  assert.match(builder, /role="menuitem"[\s\S]*Move up/);
-  assert.match(builder, /role="menuitem"[\s\S]*Move down/);
-  assert.match(builder, /requestAnimationFrame\(\(\) => triggerRef\.current\?\.focus\(\)\)/,
-    "reorder menu actions should restore focus to their destination handle");
-  assert.doesNotMatch(timeStep, /routeMoveButtons/,
-    "persistent mobile move-button pairs should stay removed");
-
-  assert.match(builder, /candidate\?\.constraintsSatisfied \|\| score\?\.state !== "scored"/,
-    "warning alternatives must come from scored, constraint-safe route candidates");
-  assert.match(builder, /scheduleLocks\.stopIds\.length \|\| Object\.keys\(scheduleLocks\.arrivalDates\)\.length/,
-    "route alternatives must not cross schedule locks");
-  assert.doesNotMatch(timeStep, /Possible alternatives/,
-    "the warning should not promise alternatives that do not exist");
-  assert.match(timeStep, /setStep\(0\); setHasPromptContext\(true\); setSummaryFocus\("stops"\)/,
-    "the Review route fallback should return to the shared Places step with state intact");
-
-  assert.match(builder, /Your trip at a glance/);
-  assert.match(timeStep, /All allocated/,
-    "allocation completeness should not be described as overall trip readiness");
-  assert.match(timeStep, /NIGHTS/);
-  assert.match(builder, /const highlyCompressedTrip = stops\.length >= 4/,
-    "very short multi-stop trips should receive a deterministic strong caution");
-  assert.match(builder, /\$\{stops\.length\} stops in \$\{totalDays\} days is very fast-paced\./);
-  assert.match(timeStep, /Unknown transport/,
-    "unknown canonical transfers should remain calm and explicit");
-  assert.match(timeStep, /transferIsUnknown[\s\S]*Transfer to confirm · Unknown transport[\s\S]*leg && !transferIsUnknown/,
-    "an unknown canonical leg should use one concise confirmation line without duplicating its missing duration");
-  assert.doesNotMatch(timeStep, /<Image/,
-    "the Time step should not include decorative illustration");
-  const summaryRail = builder.slice(builder.indexOf("function BuilderSummaryRail"), builder.indexOf("/* ------------------------------------------------------------- main */"));
-  assert.doesNotMatch(summaryRail, /specificTimingWarning/,
-    "the warning should not be duplicated in the right rail");
-  assert.doesNotMatch(summaryRail, /nights allocated|All allocated/,
-    "allocation completion should have one owner above the nights table");
-
-  assert.match(styles, /@media\(max-width:700px\)[\s\S]*\.nightsControl button \{ width: 44px; height: 44px;/,
-    "night controls should keep 44px mobile targets");
-  const mobileRepair = styles.slice(styles.lastIndexOf("@media (max-width: 700px)"));
-  assert.match(mobileRepair, /\.timeControls \.builderDatePicker > div:first-child \{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
-    "mobile dates should remain side by side instead of doubling the control slab height");
-  assert.match(mobileRepair, /grid-template-areas:\s*"identity identity"\s*"transfer transfer"\s*"nights usable"/,
-    "mobile cards should keep destination, transfer and stay in three clear information bands");
-  assert.match(timeStep, /routeDestinationPhoto\(stop\.name, stop\.country\)/,
-    "every overnight stop should use the canonical reviewed destination image pipeline");
-  assert.match(timeStep, /className=\{styles\.routeStopImageFallback\} role="img" aria-label=\{`Image unavailable for \$\{stop\.name\}`\}/,
-    "missing destination imagery should retain a labelled, fixed-geometry fallback");
-  assert.match(mobileRepair, /\.routeStopIdentity \{ grid-area: identity; display: grid; grid-template-columns: 92px minmax\(0, 1fr\)/,
-    "the spacious mobile identity band should reserve a consistent large thumbnail and the remaining width for the name");
-  assert.match(mobileRepair, /\.routeStopName strong \{[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/,
-    "long destination names should wrap instead of truncating or widening the card");
-  assert.match(mobileRepair, /\.routeTimeRows \{ gap: 12px; padding-top: 12px; \}/,
-    "overnight stops should read as separate, calm cards rather than one fragmented table slab");
-  assert.doesNotMatch(timeStep, /First overnight stop/,
-    "the first overnight stop should not introduce a different identity-row structure");
-  assert.match(mobileRepair, /\.mobileFieldLabel \{ display: block/,
-    "mobile night and usable-time values should retain visible field labels");
-  assert.match(mobileRepair, /\.wizardFoot > \.ghost \{ display: none; \}/,
-    "the mobile action bar should not repeat Back when the Places step is already the back affordance");
-  assert.match(styles, /--morrovia-builder-action-height: 82px/,
-    "the fixed Builder action should expose one measured mobile height");
-  assert.match(styles, /padding-bottom: calc\(var\(--morrovia-builder-action-height\) \+ 16px\)/,
-    "Builder content must reserve enough space to scroll above its action bar");
-  assert.match(styles, /bottom: calc\(var\(--morrovia-mobile-dock-offset\) \+ 8px\)/,
-    "the Builder action should stack above the canonical mobile dock offset");
-  assert.match(mobileRepair, /\.steps:before,[\s\S]*display: none/,
-    "the mobile stepper should not retain the legacy connector line");
-  assert.match(mobileRepair, /\.stepHeroTitle,[\s\S]*font-size: clamp\(30px, 8\.6vw, 36px\)/,
-    "mobile primary headings should stay at product scale");
-  assert.match(builder, /if \(step === 0\)[\s\S]*await advanceToTime\(\)[\s\S]*buildTrip\(\);/,
-    "the existing Continue and Build trip handoff should remain authoritative");
 });
 
 test("clarification presentation separates action-required geography from confirmed stay bases", () => {
@@ -373,4 +224,72 @@ test("manual night edits use canonical rebalance, durable stop intent and shared
     "manual stop identities must be part of the durable trip document");
   assert.match(storage, /manualNightStopIds: brief\.manualNightStopIds/,
     "device/cloud equivalence must compare manual night intent");
+});
+
+browserTest("first-place selection creates route timing without requiring endpoint context", async () => {
+  const view = await renderBuilder();
+  try {
+    await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).fill("Tokyo");
+    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
+    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    assert.equal(await view.page.getByRole("heading", { name: "Describe your trip" }).count(), 0);
+    assert.match(await view.page.locator("body").innerText(), /Tokyo/);
+    assert.equal(await view.page.getByRole("button", { name: /Build trip/ }).isDisabled(), true);
+  } finally { await view.close(); }
+});
+
+browserTest("first-place resolution keeps the pending selection visible and prevents competing capture", async () => {
+  const view = await renderBuilder();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  let started!: () => void;
+  const requestStarted = new Promise<void>((resolve) => { started = resolve; });
+  try {
+    await view.page.route("**/api/journey-geocode?place=Tokyo&country=Japan", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
+      started();
+      await pending;
+      await route.fulfill({ contentType: "application/json", body: JSON.stringify({ result: { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" } }) });
+    });
+    const input = view.page.getByRole("combobox", { name: "Add your first place", exact: true });
+    await input.fill("Tokyo");
+    await view.page.getByRole("option").filter({ hasText: "Tokyo" }).first().click();
+    await requestStarted;
+    assert.equal(await input.isDisabled(), true);
+    assert.equal(await view.page.getByRole("button", { name: "Plan my trip" }).isDisabled(), true);
+    release();
+    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+  } finally { release(); await view.close(); }
+});
+
+browserTest("endpoint-only handoff does not create an overnight route or timing table", async () => {
+  const view = await renderBuilder({ query: "?homeDraft=1", draft: { origin: "London", originCoordinates: [-0.1276, 51.5072], originCountry: "United Kingdom", journeyEnd: { mode: "same-as-start" } } });
+  try {
+    assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 0);
+    assert.equal(await view.page.getByRole("complementary", { name: "Trip at a glance" }).count(), 0);
+  } finally { await view.close(); }
+});
+
+browserTest("direct text capture uses the existing parser then replaces capture with the populated route", async () => {
+  const view = await renderBuilder();
+  try {
+    await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).fill("Tokyo for one week");
+    await view.page.getByRole("button", { name: "Plan my trip" }).click();
+    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    assert.match(await view.page.locator("body").innerText(), /Tokyo/);
+    assert.equal(await view.page.getByRole("heading", { name: "Describe your trip" }).count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+browserTest("legacy populated links focus summary or timing once while the whole route stays mounted", async () => {
+  for (const [legacy, target] of [["0", "builder-summary"], ["1", "builder-timing"], ["2", "builder-timing"]]) {
+    const view = await renderBuilder({ query: `?inspire=morocco-rail&step=${legacy}` });
+    try {
+      await view.page.waitForFunction((id: string) => document.activeElement?.id === id, target);
+      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
+      assert.equal(new URL(view.page.url()).searchParams.has("step"), false);
+      await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
+    } finally { await view.close(); }
+  }
 });

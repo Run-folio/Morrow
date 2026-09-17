@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 
 import {
   buildSpreadsheetImportProposal,
@@ -215,12 +216,18 @@ test("privacy boundary keeps raw files client-side and sends no spreadsheet rows
   assert.match(parser, /cellFormula: false/);
 });
 
-test("import is an additional Builder entry and leaves natural-language capture intact", () => {
-  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
-  assert.match(builder, /<MorroviaTripCapture/);
-  assert.match(builder, /Import existing trip/);
-  assert.match(builder, /href="\/journey\/new\/import"/);
-  assert.match(builder, /submitInitialTripBrief/);
+test("import navigation returns to the unified Builder empty state", { skip: !builderBrowserTestsEnabled }, async () => {
+  const view = await renderBuilder();
+  try {
+    await view.page.getByRole("link", { name: "Import existing trip" }).click();
+    await view.page.getByRole("heading", { name: "Bring your trip into Morrovia." }).waitFor();
+    assert.equal(new URL(view.page.url()).pathname, "/journey/new/import");
+    const back = view.page.getByRole("link", { name: "Back to trip creation" });
+    assert.equal(await back.getAttribute("href"), "/journey/new");
+    await back.click();
+    await view.page.getByRole("heading", { name: "Describe your trip" }).waitFor();
+    assert.equal(await view.page.getByRole("combobox", { name: "Add your first place", exact: true }).count(), 1);
+  } finally { await view.close(); }
 });
 
 test("review presentation keeps diagnostics progressive and uses traveller-facing status language", () => {
