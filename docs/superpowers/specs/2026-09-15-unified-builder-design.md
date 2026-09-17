@@ -84,11 +84,28 @@ If MapLibre or a map resource fails, the map panel shows a contained fallback wi
 
 ## Trip summary and structured editing
 
-### Direct New Trip empty state
+### Builder entry and empty state
 
-When Direct New Trip has no useful canonical route skeleton, the Builder keeps the current natural-language Trip Capture as the focused empty state. Capture may resolve places, request clarification and construct the first canonical route skeleton through the existing capture path.
+`/journey/new` is the unified Builder for every creation entry. It does not retain the old mandatory “Tell us the shape of your trip” / Step 1–2 intake page.
 
-Once that useful route skeleton exists, intake collapses into the compact trip summary and unified route workspace. The empty capture and populated route workspace are states of the same `TripBuilderDocument`; they are not wizard steps. An empty route table, empty map or placeholder route workspace must not appear before the route skeleton exists.
+The entry contract is source-aware without creating different Builder owners:
+
+- **Homepage handoff:** a useful supplied route skeleton opens the populated unified Builder directly. A generic intake step is not shown again.
+- **Navigation New trip:** with no handoff or current draft, the same route renders the unified Builder empty state.
+- **Route-template handoff:** a useful supplied template route opens the populated unified Builder directly and never passes through empty capture.
+- **Ambiguous or area-only handoff:** remains inside Builder clarification. It never falls back to the retired intake page.
+
+The unified empty state lets a traveller begin without leaving the Builder through two primary paths and one subordinate path:
+
+1. **Describe your trip** reuses the existing canonical `MorroviaTripCapture` text/voice behavior, parsing, clarification and recovery ownership.
+2. **Add your first place** starts the canonical route directly through existing canonical place selection.
+3. **Import existing trip** is a secondary link to `/journey/new/import`.
+
+Journey origin and end remain available through Builder details; neither is required before the first route occurrence can make the workspace useful. The old full intake form is not reproduced inside the empty state.
+
+Once either primary path has produced a useful canonical route skeleton, the empty intake collapses into the compact trip summary and unified route workspace. The empty capture and populated route workspace are states of the same `TripBuilderDocument`; they are not wizard steps. An empty route table, empty map or placeholder route workspace must not appear before the route skeleton exists.
+
+`/journey/new/import` remains the existing protected spreadsheet/file workflow. CSV/XLSX parsing, pasted tables, worksheet selection, column mapping, origin and place resolution, ambiguity review, reviewed proposal construction, local recovery, canonical equivalence, account saving and retry/error behavior remain owned there. The Builder link does not create a modal or second importer. Successful import keeps its current confirmed-trip destination in this phase, and Back returns to the unified Builder empty state.
 
 ### Populated trip summary
 
@@ -155,7 +172,8 @@ Reuse the existing Morrovia system:
 
 - `EasyTButton`, `EasyTField`, `EasyTSelect`, `MorroviaDatePicker` and `MorroviaQuantitySelector`;
 - `MorroviaStatusBanner`, `MorroviaSaveStatus` and existing recovery feedback;
-- `MorroviaTripCapture` for the Direct New Trip no-route state only;
+- `MorroviaTripCapture` for the **Describe your trip** path in the Builder no-route state;
+- the existing canonical place autocomplete for **Add your first place**;
 - `JourneyEndpointsEditor` and its canonical `JourneyEndSelection`, including **Same as start**;
 - `JourneyPlannerMap` and the canonical Morrovia map presentation;
 - current Builder clarification, place search, night allocation and trip-detail controls;
@@ -276,8 +294,11 @@ Preserve existing privacy-safe events and consent checks. A successful recommend
 
 - no `step` variable controls rendering after migration;
 - legacy `?step=` focuses the correct section once and is removed without dropping other parameters;
-- Direct New Trip retains natural-language capture until a useful canonical route skeleton exists, then collapses into the unified workspace;
-- homepage handoff and direct Builder entry converge on the same unified state;
+- direct `/journey/new` renders the unified three-path empty state and never the retired mandatory Step 1–2 intake page;
+- **Describe your trip** and **Add your first place** create the first route skeleton through existing canonical owners;
+- **Import existing trip** links to `/journey/new/import`, whose parsing, review, recovery and confirmed-trip destination remain unchanged;
+- homepage and route-template handoffs with useful routes bypass empty capture; ambiguous/area-only handoffs remain in Builder clarification;
+- homepage handoff and direct Builder entry converge on the same unified document owner;
 - `JourneyEndSelection`, including **Same as start**, remains editable endpoint context without automatically creating a night-bearing row;
 - structured trip-detail commit is atomic, including asynchronous resolution failure and source-snapshot mismatch;
 - Cancel leaves canonical state unchanged;
@@ -295,8 +316,9 @@ Preserve existing privacy-safe events and consent checks. A successful recommend
 
 Add representative Storybook coverage for:
 
-- fresh direct entry;
-- Direct New Trip natural-language empty capture before route creation;
+- fresh direct entry with **Describe your trip**, **Add your first place** and subordinate **Import existing trip**;
+- Direct New Trip text/voice capture before route creation;
+- direct first-place selection before route creation;
 - homepage handoff with compact summary;
 - desktop route/map workspace;
 - exact 390-pixel map-first composition;
@@ -319,7 +341,9 @@ Run focused Builder, route-intelligence, route-candidate, transfer-impact, night
 - Old step URLs focus the relevant unified section once and canonicalize the URL.
 - Desktop and mobile match the approved route/map compositions.
 - The free-form homepage prompt does not appear inside Builder editing.
-- Direct New Trip shows the existing natural-language capture only until a useful canonical route skeleton exists; it never shows an empty route table or map first.
+- Direct New Trip shows the unified empty state until a useful canonical route skeleton exists; it never shows the retired wizard or an empty route table/map.
+- Homepage and route-template handoffs with a useful route open the populated Builder, while ambiguous handoffs stay in Builder clarification.
+- **Import existing trip** links to the unchanged protected `/journey/new/import` workflow, and returning from import reaches the Builder empty state.
 - Journey End and **Same as start** remain first-class structured controls, while origin/end remain endpoint context rather than automatic night-bearing rows.
 - Repeated stops remain distinct across rows, map markers, drag, Route Check and persistence.
 - Drag is insertion-based, previews list and map together, and commits exactly once only after validation.

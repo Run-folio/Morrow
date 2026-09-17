@@ -13,7 +13,9 @@
 ## Global Constraints
 
 - `TripBuilderDocument` remains the single canonical state owner. Do not add another orchestration hook, reducer, persistence path or section-level dirty state.
-- Direct New Trip continues to render the existing natural-language `MorroviaTripCapture` until a useful canonical route skeleton exists. Never show an empty route table or map.
+- Direct `/journey/new` renders one unified empty state with **Describe your trip**, **Add your first place**, and subordinate **Import existing trip** paths until a useful canonical route skeleton exists. Never show the retired mandatory Step 1–2 intake page or an empty route table/map.
+- Homepage and route-template handoffs with a useful route bypass empty capture. Ambiguous handoffs remain inside Builder clarification.
+- `/journey/new/import` remains a protected external workflow; the Builder only links to it and does not replace its parsing, review, recovery, save or confirmed-trip navigation owners.
 - `JourneyEndSelection`, including `Same as start`, remains first-class. Origin and journey end are endpoint context and must not automatically become night-bearing route rows.
 - Stop identity is always the stable stop-occurrence `id`; never key selection, movement or persistence by destination name.
 - Construct and validate a complete next Builder document before committing it through one logical canonical mutation boundary. React batching is not the atomicity guarantee.
@@ -166,7 +168,7 @@ git commit -m "feat: validate builder stop order by occurrence"
 
 ---
 
-## Task 2: Replace workflow steps with one-time URL focus and the correct empty state
+## Task 2: Replace workflow steps with one-time URL focus and the source-aware empty state
 
 **Files:**
 
@@ -205,9 +207,12 @@ test("removes only the legacy step parameter from the canonical URL", () => {
 Update `tests/trip-builder-layout.test.ts` so it asserts source-level contracts rather than `Step 1`/`Step 2` rendering:
 
 - `MorroviaTripCapture` remains the no-route rendering path.
+- direct entry exposes **Describe your trip**, **Add your first place**, and a subordinate `/journey/new/import` link without reproducing the old full intake form.
+- homepage/template handoffs with a useful route skip the empty state; area-only/ambiguous handoffs stay in clarification.
 - populated Builder markup contains both `data-builder-section="trip-details"` and `data-builder-section="route-workspace"` without `step ===` branches.
 - the route workspace is not rendered from the no-route capture branch.
 - legacy `step` is read only by `initialBuilderFocus` and then removed with `history.replaceState`.
+- the existing import page continues to expose CSV/XLSX/pasted-table review and its Back link resolves to `/journey/new`.
 
 - [ ] **Step 2: Run the two focused test files and confirm failure**
 
@@ -243,8 +248,10 @@ In `TripBuilderDocument`:
 - remove `step` as a persistent React state and remove step navigation controls;
 - read the initial focus once after hydration, scroll/focus the matching section once, then call `window.history.replaceState` with `canonicalBuilderUrl`;
 - preserve homepage handoff hydration exactly as today;
-- define the route-skeleton boundary as at least one valid canonical stop occurrence (`stops.some(stop => stop.id && stop.place.trim())`), not origin/end alone;
-- while there is no useful route skeleton, render the current `MorroviaTripCapture` and do not mount route rows or `JourneyPlannerMap`;
+- define the route-skeleton boundary as at least one valid canonical stop occurrence (`stops.some(stop => stop.id && stop.name.trim())`), not origin/end alone;
+- while there is no useful route skeleton, render the unified empty state: compose the current `MorroviaTripCapture`, a canonical first-place selector and a visually subordinate `EasyTLinkButton` to `/journey/new/import`; do not mount route rows or `JourneyPlannerMap`;
+- keep import as navigation to the existing page, not a modal, embedded parser or duplicated persistence owner;
+- bypass the empty state when homepage or route-template hydration already supplies a useful route skeleton; keep unresolved area-only handoffs in the existing clarification path;
 - once the skeleton exists, render the details summary/editor and route workspace in one document.
 
 - [ ] **Step 4: Run compatibility, layout and baseline Builder gates**
