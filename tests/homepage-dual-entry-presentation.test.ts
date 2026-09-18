@@ -104,3 +104,16 @@ test("wide capture stacks its compact segment group before it overflows", () => 
   assert.match(captureStyles, /\.wideMainRow \{ grid-template-columns: 1fr; \}/);
   assert.match(captureStyles, /\.wideSegmentGroup \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/);
 });
+
+test("expanded Homepage personalization keeps labels and controls on one desktop grid", () => {
+  assert.match(captureStyles, /\.personalizePanel \{[^}]*align-items:start/);
+  assert.match(captureStyles, /--homepage-personalize-control-height:50px/);
+  assert.match(captureStyles, /\.personalizeEndpoints :global\(\[class\*="journey-endpoints-editor_fields"\]\) \{ align-items:start; \}/);
+  assert.match(captureStyles, /\.budgetChoices button \{ min-height:var\(--homepage-personalize-control-height\);/);
+});
+
+test("Homepage inspiration and How it works retain the wide page-local container", () => {
+  assert.match(immersiveStyles, /\.inspiration,\.howItWorks \{ width:min\(1400px,calc\(100% - 80px\)\);/);
+  assert.match(immersiveStyles, /\.inspirationGrid \{ display:grid; grid-template-columns:repeat\(7,minmax\(0,1fr\)\);/);
+  assert.match(immersiveStyles, /\.howSteps \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\);/);
+});
