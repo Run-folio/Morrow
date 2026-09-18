@@ -7,6 +7,7 @@ import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrie
 import { createPlanningConfidence } from "./planning-confidence.ts";
 import { structuredTripBriefFromSavedSelections, validateStructuredTripBrief, type StructuredTripBrief, type TripBriefProvenance } from "./structured-trip-brief.ts";
 import type { TravelProfile } from "./travel-profile.ts";
+import { homepageInputStorageKey } from "./private-browser-context.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -319,6 +320,96 @@ export function reusableHomepageReceipt(
     && receipt.inputFingerprint === homepageSubmissionFingerprint(draft)
     ? receipt
     : null;
+}
+
+function restoreHomepageStorageValue(
+  storage: Pick<Storage, "setItem" | "removeItem">,
+  key: string,
+  value: string | null,
+) {
+  if (value === null) storage.removeItem(key);
+  else storage.setItem(key, value);
+}
+
+/** Atomically prepares the versioned Homepage-to-Builder boundary around the
+ * existing current-trip preservation owner. The caller remains responsible
+ * for navigation and for displaying existing recovery feedback. */
+export async function commitHomepageHandoff(input: {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  stored: StoredHomepageInput;
+  draft: HomeTripDraft;
+  isCurrent: () => boolean;
+  preserveAndBegin: () => boolean;
+}): Promise<{ ok: true; href: string } | { ok: false; reason: "stale" | "storage" | "preservation" }> {
+  if (!input.isCurrent()) return { ok: false, reason: "stale" };
+  const ownerId = input.stored.snapshot.ownerId;
+  const decoded = readHomepageInput(input.stored, ownerId);
+  const receipt = decoded ? reusableHomepageReceipt(decoded, input.draft) : null;
+  const draftReceipt = input.draft.homepage?.receipt;
+  if (!receipt || !draftReceipt
+    || draftReceipt.version !== receipt.version
+    || draftReceipt.ownerId !== receipt.ownerId
+    || draftReceipt.handoffId !== receipt.handoffId
+    || draftReceipt.inputFingerprint !== receipt.inputFingerprint
+    || draftReceipt.tripId !== receipt.tripId) {
+    return { ok: false, reason: "storage" };
+  }
+
+  const inputKey = homepageInputStorageKey(ownerId);
+  let previousInput: string | null = null;
+  let previousDraft: string | null = null;
+  try {
+    previousInput = input.storage.getItem(inputKey);
+    previousDraft = input.storage.getItem(HOME_TRIP_DRAFT_KEY);
+    input.storage.setItem(inputKey, JSON.stringify(input.stored));
+    if (!input.isCurrent()) {
+      restoreHomepageStorageValue(input.storage, inputKey, previousInput);
+      return { ok: false, reason: "stale" };
+    }
+    input.storage.setItem(HOME_TRIP_DRAFT_KEY, JSON.stringify(input.draft));
+    if (!input.isCurrent()) {
+      restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
+      restoreHomepageStorageValue(input.storage, inputKey, previousInput);
+      return { ok: false, reason: "stale" };
+    }
+  } catch {
+    try {
+      restoreHomepageStorageValue(input.storage, inputKey, previousInput);
+      restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
+    } catch {
+      // The caller keeps the current page visible and uses its existing
+      // recovery feedback when browser storage cannot be repaired.
+    }
+    return { ok: false, reason: "storage" };
+  }
+
+  if (!input.isCurrent()) {
+    try {
+      restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
+      restoreHomepageStorageValue(input.storage, inputKey, previousInput);
+    } catch {
+      return { ok: false, reason: "storage" };
+    }
+    return { ok: false, reason: "stale" };
+  }
+  let preserved = false;
+  try {
+    preserved = input.preserveAndBegin();
+  } catch {
+    preserved = false;
+  }
+  if (!preserved) {
+    try {
+      restoreHomepageStorageValue(input.storage, HOME_TRIP_DRAFT_KEY, previousDraft);
+    } catch {
+      return { ok: false, reason: "storage" };
+    }
+    return { ok: false, reason: "preservation" };
+  }
+  return {
+    ok: true,
+    href: `/journey/new?homeDraft=1&handoff=${encodeURIComponent(receipt.handoffId)}`,
+  };
 }
 
 export type HandoffLocationChoice = {

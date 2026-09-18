@@ -76,7 +76,12 @@ test("Homepage and direct Builder use the same canonical capture request contrac
   const homepage = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
-  assert.match(homepage, /requestJourneyCapture\(tripBrief,/);
+  assert.match(homepage, /submitted\.mode === "describe"[\s\S]*requestJourneyCapture\(submitted\.prompt,/);
+  assert.match(homepage, /if \(submitInFlightRef\.current\) return;/);
+  assert.match(homepage, /snapshotRef\.current\.revision === submittedRevision/);
+  assert.match(homepage, /snapshotRef\.current\.ownerId === submittedOwner/);
+  assert.match(homepage, /commitHomepageHandoff/);
+  assert.match(homepage, /beginNewTripNavigation/);
   assert.match(builder, /requestJourneyCapture\(brief,/);
   assert.doesNotMatch(builder, /captureJourneyBrief\(tripBrief\)/,
     "direct Builder capture must not bypass provider-enriched interpretation");

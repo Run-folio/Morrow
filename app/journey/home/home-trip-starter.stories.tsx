@@ -20,7 +20,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const FirstVisit: Story = {};
+export const FirstVisit: Story = {
+  play: async ({ canvasElement }) => {
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    const tabs = canvasElement.querySelectorAll('[role="tab"]');
+    if (tabs.length !== 2) throw new Error("The connected Homepage must retain both approved entry modes");
+    if (!canvasElement.querySelector("[data-home-destination-entry]")) throw new Error("Stops mode must retain its first stable destination occurrence");
+  },
+};
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
 
 export const WideCompositionContract: Story = {

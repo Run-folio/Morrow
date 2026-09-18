@@ -4,8 +4,8 @@ import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { trackEvent } from "@/lib/analytics";
-import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
-import { clearActiveTrip } from "@/lib/easyt/storage";
+import { beginNewTripNavigation, loadRememberedOwner } from "@/lib/easyt/storage";
+import { authClient } from "@/lib/auth-client";
 import type { PublicRoutePlanDraft } from "@/lib/easyt/public-route";
 
 export default function RoutePlanLink({
@@ -19,26 +19,26 @@ export default function RoutePlanLink({
   className?: string;
   children?: string;
 }) {
-  const href = useMemo(() => `/journey/new?homeDraft=1&inspire=${encodeURIComponent(draft.routeKey)}`, [draft.routeKey]);
+  const { data: session } = authClient.useSession();
+  const href = useMemo(() => `/journey/new?inspire=${encodeURIComponent(draft.routeKey)}`, [draft.routeKey]);
   return <EasyTLinkButton
     className={className}
     href={href}
     prefetch={false}
     icon={ArrowRight}
     size="large"
-    onClick={() => {
-      try {
-        clearActiveTrip();
-        window.localStorage.setItem("easyt-home-trip-draft", JSON.stringify(routePlannerPayload(draft)));
-      } catch {
-        // The inspire query remains a safe, less detailed fallback when device storage is unavailable.
-      }
+    onClick={(event) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+      event.preventDefault();
+      const ownerId = session?.user?.id ?? loadRememberedOwner();
+      if (!beginNewTripNavigation(ownerId, window)) return;
       trackEvent("route_started", {
         route_id: draft.routeKey,
         stop_count: draft.destinations.length,
         duration_days: draft.durationDays,
         placement,
       });
+      window.location.assign(href);
     }}
   >{children}</EasyTLinkButton>;
 }

@@ -127,10 +127,9 @@ test("the map library remains behind intersection and selection never recreates 
 test("actions reuse canonical handoff and analytics while mobile and motion keep equivalent content", () => {
   const view = read(owner + "route-detail-view.tsx");
   const action = read(owner + "route-plan-link.tsx");
-  assert.match(action, /routePlannerPayload\(draft\)/);
   assert.match(action, /prefetch=\{false\}/);
   assert.equal((action.match(/trackEvent\("route_started"/g) ?? []).length, 1);
-  assert.match(action, /\/journey\/new\?homeDraft=1&inspire=/);
+  assert.match(action, /\/journey\/new\?inspire=/);
   assert.doesNotMatch(view, /trackEvent|useEffect|localStorage|routePlannerPayload/);
   assert.equal((view.match(/>Start with this route<\/RoutePlanLink>/g) ?? []).length, 2);
   assert.match(view, /href="#route-map"/);
