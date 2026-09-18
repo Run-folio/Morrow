@@ -3080,7 +3080,18 @@ function TripBuilderDocument() {
       ownerId,
       replace: replacement ?? undefined,
     });
-    if (recovery.stored) recoveryHandleRef.current = recovery.handle;
+    if (recovery.stored) {
+      recoveryHandleRef.current = recovery.handle;
+      const canonicalTrip = hydratedCanonicalTripRef.current;
+      const currentUrl = new URL(window.location.href);
+      if (trip.ownerId
+        && canonicalTrip
+        && currentUrl.searchParams.get("trip") === trip.id
+        && !tripDocumentsCanonicalEquivalent(trip, canonicalTrip)) {
+        currentUrl.searchParams.set("recover", "1");
+        window.history.replaceState(window.history.state, "", currentUrl);
+      }
+    }
     return recovery;
   }, [activeBrowserOwnerId]);
 

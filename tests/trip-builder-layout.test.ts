@@ -345,6 +345,8 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "the obsolete top Route Check must not compete with the canonical check below the route workspace");
   assert.equal(builder.match(/<TripBuilderRouteWorkspace/g)?.length, 1,
     "the route workspace should remain the single owner of the primary Route Check surface");
+  assert.match(builder, /searchParams\.set\("recover", "1"\)/,
+    "a cloud-backed Builder with newer device edits must keep its recovery scope across refresh");
 });
 
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
