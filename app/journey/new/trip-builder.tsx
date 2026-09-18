@@ -564,6 +564,7 @@ function TripBuilderDocument() {
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
+  const [routeCheckProposalStopIds, setRouteCheckProposalStopIds] = useState<readonly string[] | null>(null);
   const [selectedRouteStopId, setSelectedRouteStopId] = useState<string | null>(null);
   const [keptRouteKey, setKeptRouteKey] = useState<string | null>(null);
   useEffect(() => {
@@ -2395,10 +2396,15 @@ function TripBuilderDocument() {
     if (!result.ok) return false;
     rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
     setStops(result.stops);
-    setDecisionSelections((current) => ({ ...current, routeOrder: source === "route-check" ? current.routeOrder : "entered" }));
+    const appliedRecommendedOrder = source === "route-check"
+      && proposedIds.join("\u001f") === routeIntelligence.route.recommendedStopIds.join("\u001f");
+    setDecisionSelections((current) => ({ ...current, routeOrder: appliedRecommendedOrder ? "recommended" : "entered" }));
+    if (source === "route-check") {
+      setKeptRouteKey(null);
+    }
     setRoutePreviewStopIds(null);
     return true;
-  }, [scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
+  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
 
   const moveStop = (from: number, to: number) => {
     if (!canMoveStop(from, to)) return;
@@ -3264,14 +3270,6 @@ function TripBuilderDocument() {
         is_authenticated: Boolean(session?.user),
       });
     }
-    // The traveller has supplied the facts; apply a materially cleaner route
-    // before opening the editable trip, unless they already protected an order.
-    if (routeRecommendationVisible && decisionSelections.routeOrder !== "entered" && !scheduleLocks.stopIds.length && !Object.keys(scheduleLocks.arrivalDates).length) {
-      applyRecommendedOrder();
-      setTripStatus("planned");
-      setBuildRequested(true);
-      return;
-    }
     openBuiltTrip();
   };
 
@@ -3936,7 +3934,7 @@ function TripBuilderDocument() {
               </section>
               </section>}
 
-              {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section className={styles.routeCheck} aria-live="polite">
+              {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section hidden className={styles.routeCheck} aria-live="polite">
                 {isHomepagePromptHandoff ? <>
                   <div className={styles.handoffRouteStatus}>
                     <div>
@@ -4036,15 +4034,22 @@ function TripBuilderDocument() {
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={scheduleLocks.stopIds}
                 fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
+                routeCheckProposalStopIds={routeCheckProposalStopIds}
                 onSelectStop={setSelectedRouteStopId}
                 onPreviewOrder={setRoutePreviewStopIds}
                 onCommitOrder={commitStopOrder}
                 onEditNights={updateAllocatedDays}
                 onAddStop={() => openSummaryEditor("stops")}
                 onOpenRouteCheck={() => {
+                  if (routeRecommendationVisible) {
+                    setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds);
+                    return;
+                  }
                   setRouteInsightsOpen(true);
                   window.requestAnimationFrame(() => document.getElementById("route-insights-title")?.scrollIntoView({ behavior: "smooth", block: "center" }));
                 }}
+                onDismissRouteCheck={() => setRouteCheckProposalStopIds(null)}
+                onRouteCheckApplied={() => trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays })}
               />
               {false && <section className={styles.routeTimePlanner} aria-labelledby="day-allocation-title" role="table">
                 <header><h3 id="day-allocation-title">{language === "es" ? "Noches por parada" : "Nights per stop"}</h3></header>
@@ -4111,7 +4116,7 @@ function TripBuilderDocument() {
                   <article><Sparkles aria-hidden="true" /><div><strong>{language === "es" ? "Flujo geográfico" : "Geographic flow"}</strong><small>{averageTransferMinutes === null ? (language === "es" ? "Traslados por confirmar" : "Transfers to confirm") : `${durationLabel(averageTransferMinutes)} ${language === "es" ? "por traslado de media" : "average transfer"}`}</small></div></article>
                   <article><Clock aria-hidden="true" /><div><strong>{language === "es" ? "Tiempo en cada lugar" : "Time in each place"}</strong><small>{totalUsableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${totalUsableDays} ${language === "es" ? "días aprovechables" : "usable days"}`}</small></div></article>
                   {backtrackingPenaltyCount !== null && <article><ArrowRight aria-hidden="true" /><div><strong>{language === "es" ? "Retrocesos" : "Backtracking"}</strong><small>{backtrackingPenaltyCount === 0 ? (language === "es" ? "Sin regresos innecesarios" : "No unnecessary returns") : (language === "es" ? `${backtrackingPenaltyCount} regreso por revisar` : `${backtrackingPenaltyCount} return to review`)}</small></div></article>}
-                  {restoreRecommendedOrderVisible && <button type="button" className={styles.routeInsightAction} onClick={applyRecommendedOrder}>{language === "es" ? "Restaurar el orden recomendado" : "Restore recommended order"}<ArrowRight aria-hidden="true" /></button>}
+                  {restoreRecommendedOrderVisible && <button type="button" className={styles.routeInsightAction} onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Revisar el orden recomendado" : "Review recommended order"}<ArrowRight aria-hidden="true" /></button>}
                 </div>}
               </section> : null}
               {showTimingWarning && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">

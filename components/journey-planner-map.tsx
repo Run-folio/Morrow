@@ -28,6 +28,8 @@ export type JourneyMapDestinationCard = {
 type JourneyPlannerMapProps = {
   stops: JourneyStop[];
   legs: MapRouteLeg[] | JourneyLeg[];
+  comparisonLegs?: readonly MapRouteLeg[];
+  comparisonLabel?: string;
   selectedId: string;
   featuredStopId?: string;
   destinationCards?: JourneyMapDestinationCard[];
@@ -93,11 +95,14 @@ function effectiveOverviewPadding(
 
 const overviewFitOffset = (): [number, number] => window.innerWidth <= 980 ? [0, -32] : [0, -72];
 const overviewMaxZoom = 5.2;
+const emptyComparisonLegs: readonly MapRouteLeg[] = [];
 
 
 export function JourneyPlannerMap({
   stops,
   legs,
+  comparisonLegs = emptyComparisonLegs,
+  comparisonLabel,
   selectedId,
   featuredStopId,
   destinationCards = [],
@@ -188,6 +193,7 @@ export function JourneyPlannerMap({
       }];
     });
   }, [legs, stops]);
+  const comparisonRouteKey = comparisonLegs.map((leg) => `${leg.id}:${leg.fromCoordinates.join(",")}:${leg.toCoordinates.join(",")}`).join("|");
   const overviewRouteKey = stops.map((stop) => `${stop.id}:${stop.coordinates?.join(",") ?? "unmapped"}`).join("|");
   const previewResultKey = mapResults.map((result) => `${result.selectionId}:${result.coordinates.join(",")}`).join("|");
   const overviewPaddingKey = overviewPadding
@@ -303,6 +309,10 @@ export function JourneyPlannerMap({
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === "undefined") return;
     const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
+    const overviewCoordinates = [
+      ...mappedStops.map((stop) => stop.coordinates),
+      ...comparisonLegs.flatMap((leg) => [leg.fromCoordinates, leg.toCoordinates]),
+    ];
     let frame = 0;
     const observer = new ResizeObserver(() => {
       window.cancelAnimationFrame(frame);
@@ -310,10 +320,10 @@ export function JourneyPlannerMap({
         const map = mapRef.current;
         if (!map) return;
         map.resize();
-        if (!overviewMode || mappedStops.length < 2) return;
-        const bounds = mappedStops.slice(1).reduce(
-          (result, stop) => result.extend(stop.coordinates),
-          new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+        if (!overviewMode || overviewCoordinates.length < 2) return;
+        const bounds = overviewCoordinates.slice(1).reduce(
+          (result, coordinates) => result.extend(coordinates),
+          new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
         );
         fitMapCamera(map as unknown as MapCamera, bounds, {
           padding: effectiveOverviewPadding(map, overviewPadding),
@@ -327,12 +337,16 @@ export function JourneyPlannerMap({
       window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [overviewMode, overviewPaddingKey, overviewRouteKey, previewMode]);
+  }, [comparisonLegs, comparisonRouteKey, overviewMode, overviewPaddingKey, overviewRouteKey, previewMode]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
+    const overviewCoordinates = [
+      ...mappedStops.map((stop) => stop.coordinates),
+      ...comparisonLegs.flatMap((leg) => [leg.fromCoordinates, leg.toCoordinates]),
+    ];
     const routeLegs = {
       type: "FeatureCollection" as const,
       features: spatialLegs.flatMap((leg) => {
@@ -356,6 +370,21 @@ export function JourneyPlannerMap({
         properties: { id: "whole-route", mode: "unknown" },
         geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
       }],
+    };
+    const comparisonRoute = {
+      type: "FeatureCollection" as const,
+      features: comparisonLegs.flatMap((leg) => {
+        const segments = leg.routeSegments?.length ? leg.routeSegments : [{
+          fromCoordinates: leg.fromCoordinates,
+          toCoordinates: leg.toCoordinates,
+          routeGeometry: leg.routeGeometry,
+        }];
+        return segments.map((segment) => ({
+          type: "Feature" as const,
+          properties: { id: leg.id },
+          geometry: { type: "LineString" as const, coordinates: segment.routeGeometry?.length ? segment.routeGeometry : [segment.fromCoordinates, segment.toCoordinates] },
+        }));
+      }),
     };
 
     const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
@@ -447,6 +476,30 @@ export function JourneyPlannerMap({
           paint: { "line-color": "rgba(0,0,0,0)", "line-width": 22 },
         });
       }
+      const comparisonSource = map.getSource("trip-route-comparison") as GeoJSONSource | undefined;
+      if (comparisonSource) comparisonSource.setData(comparisonRoute);
+      else map.addSource("trip-route-comparison", { type: "geojson", data: comparisonRoute });
+      if (!map.getLayer("trip-route-comparison")) {
+        map.addLayer({
+          id: "trip-route-comparison",
+          type: "line",
+          source: "trip-route-comparison",
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: { "line-color": "#e91e73", "line-width": 4, "line-opacity": 0.82, "line-dasharray": [2, 2] },
+        });
+      }
+      map.setLayoutProperty("trip-route-comparison", "visibility", comparisonRoute.features.length ? "visible" : "none");
+      if (comparisonRoute.features.length && overviewMode && overviewCoordinates.length > 1) {
+        const bounds = overviewCoordinates.slice(1).reduce(
+          (result, coordinates) => result.extend(coordinates),
+          new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
+        );
+        fitMapCamera(map as unknown as MapCamera, bounds, {
+          padding: effectiveOverviewPadding(map, overviewPadding),
+          offset: previewMode ? [0, 0] : overviewFitOffset(),
+          maxZoom: overviewMaxZoom,
+        }, true);
+      }
       if (map.getLayer("trip-route-selected")) {
         map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegIdRef.current ?? ""]);
       }
@@ -464,10 +517,10 @@ export function JourneyPlannerMap({
         // On first mount the focus effect can run before the map is ready.
         // Start at the pin itself so opening/adding a pin never leaves it
         // outside the visible map.
-        if (overviewMode && !focusCoordinates && mappedStops.length > 1) {
-          const bounds = mappedStops.slice(1).reduce(
-            (result, stop) => result.extend(stop.coordinates),
-            new maplibregl.LngLatBounds(mappedStops[0].coordinates, mappedStops[0].coordinates),
+        if (overviewMode && !focusCoordinates && overviewCoordinates.length > 1) {
+          const bounds = overviewCoordinates.slice(1).reduce(
+            (result, coordinates) => result.extend(coordinates),
+            new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
           );
           fitMapCamera(map as unknown as MapCamera, bounds, {
             padding: effectiveOverviewPadding(map, overviewPadding),
@@ -507,7 +560,7 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [basemapStyleRevision, focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, previewMode, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
+  }, [basemapStyleRevision, comparisonLegs, comparisonRouteKey, focusOffset, focusZoom, overviewMode, overviewPadding, pinPlacementMode, previewMode, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -808,6 +861,7 @@ export function JourneyPlannerMap({
 
   return <div className={`planner-map ${mapPresentation.surface}`} data-basemap-status={basemapStatus} aria-busy={basemapStatus === "loading" || undefined} aria-label={previewMode ? previewLabel ?? "Whole-trip route map preview" : "Interactive trip map"}>
     <div ref={containerRef} className={mapPresentation.canvas} />
+    {comparisonLegs.length && comparisonLabel ? <span className="sr-only">{comparisonLabel}</span> : null}
     {!previewMode && basemapStatus !== "detailed" ? <div className={mapPresentation.basemapStatus} role={basemapStatus === "fallback" ? "alert" : "status"}>
       <strong>{basemapStatus === "fallback" ? "Detailed map unavailable" : "Opening detailed map"}</strong>
       <span>{basemapStatus === "fallback" ? "Showing local route geography instead." : "Loading roads, places and labels."}</span>

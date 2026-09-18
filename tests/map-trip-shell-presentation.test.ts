@@ -89,6 +89,16 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   }
 });
 
+test("Builder route comparison remains a noninteractive layer over the canonical route", () => {
+  assert.match(mapSource, /comparisonLegs\?: readonly MapRouteLeg\[\]/);
+  assert.match(mapSource, /id: "trip-route-comparison"/);
+  assert.match(mapSource, /source: "trip-route-comparison"/);
+  assert.match(mapSource, /"line-dasharray": \[2, 2\]/);
+  assert.doesNotMatch(mapSource, /comparisonMarkers/);
+  assert.match(mapSource, /comparisonRoute\.features\.length && overviewMode/,
+    "a visible proposal should fit alongside the canonical route without taking camera ownership otherwise");
+});
+
 test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapWorkspaceSource, /destinationCards=\{canonicalDestinationCards\}/);
   assert.match(mapSource, /const cards = new Map\(destinationCards\.map\(\(card\) => \[card\.stopId, card\]\)\)/);

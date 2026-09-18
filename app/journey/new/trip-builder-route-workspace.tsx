@@ -20,12 +20,15 @@ export type TripBuilderRouteWorkspaceProps = {
   selectedStopId: string | null;
   lockedStopIds: readonly string[];
   fixedOrder: boolean;
+  routeCheckProposalStopIds: readonly string[] | null;
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
   onAddStop: () => void;
   onOpenRouteCheck: () => void;
+  onDismissRouteCheck: () => void;
+  onRouteCheckApplied: () => void;
 };
 
 function mapStop(stop: EasyTTrip["stops"][number]): JourneyStop {
@@ -55,18 +58,23 @@ export function TripBuilderRouteWorkspace({
   selectedStopId,
   lockedStopIds,
   fixedOrder,
+  routeCheckProposalStopIds,
   onSelectStop,
   onPreviewOrder,
   onCommitOrder,
   onEditNights,
   onAddStop,
   onOpenRouteCheck,
+  onDismissRouteCheck,
+  onRouteCheckApplied,
 }: TripBuilderRouteWorkspaceProps) {
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const preview = previewStopIds ? buildBuilderRoutePreview(canonicalTrip, previewStopIds) : null;
   const presentedTrip = preview?.ok ? preview.trip : canonicalTrip;
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
+  const routeCheckProposal = useMemo(() => routeCheckProposalStopIds ? buildBuilderRoutePreview(canonicalTrip, routeCheckProposalStopIds) : null, [canonicalTrip, routeCheckProposalStopIds]);
+  const comparisonLegs = useMemo(() => routeCheckProposal?.ok ? mapRouteLegsFromTrip(routeCheckProposal.trip) : [], [routeCheckProposal]);
   const locked = useMemo(() => new Set(lockedStopIds), [lockedStopIds]);
   const stopIds = useMemo(() => canonicalTrip.stops.map((stop) => stop.id), [canonicalTrip.stops]);
   const reorder = useBuilderStopReorder({
@@ -148,6 +156,8 @@ export function TripBuilderRouteWorkspace({
         <JourneyPlannerMap
           stops={mapStops}
           legs={mapLegs}
+          comparisonLegs={comparisonLegs}
+          comparisonLabel={routeCheckProposal?.ok ? "Morrovia's proposed route order" : undefined}
           selectedId={selectedStopId ?? presentedTrip.stops[0]?.id ?? ""}
           plannerPins={[]}
           focusCoordinates={null}
@@ -165,8 +175,11 @@ export function TripBuilderRouteWorkspace({
     </div>
 
     <section className={styles.builderRouteCheck} aria-label="Route Check">
-      <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>Review the sequence before Morrovia builds the detailed trip.</small></span></div>
-      <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton>
+      <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>{routeCheckProposal?.ok ? routeCheckProposal.trip.stops.map((stop) => stop.name).join(" → ") : "Review the sequence before Morrovia builds the detailed trip."}</small></span></div>
+      {routeCheckProposal?.ok ? <div className={styles.builderRouteCheckActions}>
+        <EasyTButton size="small" onClick={() => { if (routeCheckProposalStopIds && onCommitOrder(routeCheckProposalStopIds, "route-check")) { onRouteCheckApplied(); onDismissRouteCheck(); } }}>Apply order</EasyTButton>
+        <EasyTButton size="small" variant="secondary" onClick={onDismissRouteCheck}>Dismiss</EasyTButton>
+      </div> : <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton>}
     </section>
     <p className="sr-only" aria-live="polite">{reorder.draggingId ? `Moving stop ${reorder.draggingId}` : ""}</p>
   </section>;
