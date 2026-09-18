@@ -19,7 +19,7 @@ import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, 
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
-import { defaultTripIntent, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
+import { defaultTripIntent, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
@@ -46,7 +46,7 @@ import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
-import { TripBuilderDetailsEditor } from "./trip-builder-details-editor";
+import { TripBuilderDetailsEditor, type TripBuilderDetailsDraft } from "./trip-builder-details-editor";
 import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderClarificationChoice, type BuilderClarificationRouteShape, type BuilderClarificationSelectedPlace, type BuilderClarificationSuggestion } from "@/components/easyt/builder-clarification-dialog";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -61,6 +61,7 @@ import { buildCanonicalTripLegs } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
+import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
@@ -504,6 +505,8 @@ function TripBuilderDocument() {
   const legacyFocusScheduledRef = useRef(false);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [showOriginEditor, setShowOriginEditor] = useState(false);
+  const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
+  const [detailsCommitError, setDetailsCommitError] = useState("");
   const [showStopEditor, setShowStopEditor] = useState(false);
   const [summaryFocus, setSummaryFocus] = useState<"origin" | "stops" | "dates" | "constraints" | null>(null);
   const [generated, setGenerated] = useState(false);
@@ -2713,6 +2716,140 @@ function TripBuilderDocument() {
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
   }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
 
+  const resolveEndpointDraftPlace = async (place: JourneyEndpointPlace, role: "start" | "end") => {
+    if (journeyEndpointIdentityIsCoherent(place)) return place;
+    const name = place.name.trim();
+    if (!name) return null;
+    try {
+      const response = await fetch(`/api/journey-geocode?place=${encodeURIComponent(name)}&candidates=1`);
+      const payload = await response.json() as { candidates?: LocationChoice[] };
+      const resolution = resolveTypedJourneyEndpoint(name, payload.candidates ?? []);
+      if (resolution.status === "resolved") return resolution.place;
+      setDetailsCommitError(resolution.status === "ambiguous"
+        ? (language === "es" ? `Elige qué ${role === "start" ? "punto de partida" : "lugar de llegada"} quieres decir.` : `Choose which ${role === "start" ? "starting place" : "ending place"} you mean.`)
+        : (language === "es" ? "Elige un lugar de las sugerencias." : "Choose a place from the suggestions."));
+      return null;
+    } catch {
+      setDetailsCommitError(language === "es" ? "No pudimos comprobar ese lugar ahora." : "We couldn't check that place just now.");
+      return null;
+    }
+  };
+
+  const commitTripDetailsDocument = (document: EasyTTrip) => {
+    const nextEnd = normalizeJourneyEnd(document.brief.journeyEnd);
+    replaceJourneyOrigin({
+      name: document.brief.origin,
+      canonicalPlaceId: document.brief.originCanonicalPlaceId,
+      country: document.brief.originCountry,
+      providerId: document.brief.originProviderId,
+      coordinates: document.brief.originCoordinates,
+    });
+    setOriginTouched(true);
+    setOriginError("");
+    setJourneyEnd(nextEnd);
+    setJourneyEndInput(nextEnd.mode === "explicit" ? nextEnd.place.name : "");
+    setJourneyEndTouched(true);
+    setJourneyEndError("");
+    setJourneyEndResolutionAttempted(true);
+    setStartDate(document.startDate);
+    setEndDate(document.endDate);
+    setDatesManuallyEdited(true);
+    setBudget(document.brief.budgetBand);
+    setTravellersManuallyEdited(true);
+    setTripIntent((current) => ({
+      ...current,
+      journeyEnd: nextEnd,
+      travellers: document.travellers,
+      timing: { ...current.timing, durationDays: Math.max(1, Math.round((+new Date(`${document.endDate}T00:00:00`) - +new Date(`${document.startDate}T00:00:00`)) / 86400000) + 1) },
+      preferences: { ...current.preferences, budgetSensitivity: document.brief.budgetBand },
+    }));
+  };
+
+  const commitTripDetailsDraft = async (detailsDraft: TripBuilderDetailsDraft, sourceFingerprint: string) => {
+    setDetailsCommitBusy(true);
+    setDetailsCommitError("");
+    try {
+      const nextOrigin = await resolveEndpointDraftPlace(detailsDraft.journeyOrigin, "start");
+      if (!nextOrigin) return false;
+      const normalizedDraftEnd = normalizeJourneyEnd(detailsDraft.journeyEnd);
+      const nextEnd = normalizedDraftEnd.mode === "explicit"
+        ? await resolveEndpointDraftPlace(normalizedDraftEnd.place, "end")
+        : null;
+      if (normalizedDraftEnd.mode === "explicit" && !nextEnd) return false;
+      const resolvedEnd: JourneyEndSelection = normalizedDraftEnd.mode === "explicit"
+        ? { mode: "explicit", place: nextEnd! }
+        : normalizedDraftEnd;
+      const nextIntent = activeTripDocument.brief.intent
+        ? {
+          ...activeTripDocument.brief.intent,
+          journeyEnd: resolvedEnd,
+          travellers: detailsDraft.travellers,
+          timing: {
+            ...activeTripDocument.brief.intent.timing,
+            durationDays: Math.max(1, Math.round((+new Date(`${detailsDraft.endDate}T00:00:00`) - +new Date(`${detailsDraft.startDate}T00:00:00`)) / 86400000) + 1),
+          },
+          preferences: { ...activeTripDocument.brief.intent.preferences, budgetSensitivity: detailsDraft.budget },
+        }
+        : undefined;
+      const proposedBrief = {
+        ...activeTripDocument.brief,
+        origin: nextOrigin.name,
+        originCoordinates: nextOrigin.coordinates,
+        originCanonicalPlaceId: nextOrigin.canonicalPlaceId,
+        originCountry: nextOrigin.country,
+        originProviderId: nextOrigin.providerId,
+        journeyEnd: resolvedEnd,
+        budgetBand: detailsDraft.budget,
+        ...(nextIntent ? { intent: nextIntent } : {}),
+      };
+      const proposed: EasyTTrip = {
+        ...activeTripDocument,
+        startDate: detailsDraft.startDate,
+        endDate: detailsDraft.endDate,
+        travellers: detailsDraft.travellers,
+        brief: proposedBrief,
+        legs: buildCanonicalTripLegs({
+          tripId: activeTripDocument.id,
+          origin: {
+            name: nextOrigin.name,
+            country: nextOrigin.country,
+            canonicalPlaceId: nextOrigin.canonicalPlaceId,
+            providerId: nextOrigin.providerId,
+            coordinates: nextOrigin.coordinates ?? null,
+          },
+          journeyEnd: resolvedEnd,
+          stops: activeTripDocument.stops,
+          constraints: structuredRouteConstraints,
+          curatedRoute: currentCuratedRoute,
+        }),
+      };
+      const result = prepareBuilderDocumentCommit({
+        current: activeTripDocument,
+        proposed,
+        expectedFingerprint: sourceFingerprint,
+        validate: (candidate) => isEasyTTrip(candidate)
+          && /^\d{4}-\d{2}-\d{2}$/.test(candidate.startDate)
+          && /^\d{4}-\d{2}-\d{2}$/.test(candidate.endDate)
+          && candidate.startDate <= candidate.endDate
+          && Number.isInteger(candidate.travellers)
+          && candidate.travellers >= 1
+          && candidate.travellers <= 12
+          && journeyEndpointIdentityIsCoherent(nextOrigin)
+          && (resolvedEnd.mode !== "explicit" || journeyEndpointIdentityIsCoherent(resolvedEnd.place)),
+      });
+      if (!result.ok) {
+        setDetailsCommitError(result.reason === "stale-source"
+          ? (language === "es" ? "El viaje cambió mientras editabas. Revisa los datos más recientes e inténtalo de nuevo." : "The trip changed while you were editing. Review the latest details and try again.")
+          : (language === "es" ? "Revisa los datos del viaje antes de guardarlos." : "Review the trip details before saving."));
+        return false;
+      }
+      commitTripDetailsDocument(result.document);
+      return true;
+    } finally {
+      setDetailsCommitBusy(false);
+    }
+  };
+
   const canonicalTransferReviewCount = activeTripDocument.legs.filter((leg) => (leg.classification === "arrival" || leg.classification === "international" || (leg.distanceKm ?? 0) >= 150)
     && (leg.scheduleNeedsChecking || leg.mode === "unknown" || leg.durationMinutes === null || Boolean(leg.warnings?.length))).length;
 
@@ -3491,33 +3628,40 @@ function TripBuilderDocument() {
               {(hasRouteSkeleton || hasPromptContext || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
                 <TripBuilderDetailsEditor
                   language={language}
-                  startValue={origin}
+                  startPlace={journeyOrigin}
                   endSelection={journeyEnd}
+                  startDate={startDate}
+                  endDate={endDate}
+                  travellers={effectiveIntent.travellers}
+                  budget={budget}
                   expanded={!hasRouteSkeleton || showOriginEditor || Boolean(inlineOriginPlanningMention)}
-                  onExpandedChange={setShowOriginEditor}
+                  sourceFingerprint={builderDocumentFingerprint(activeTripDocument)}
+                  busy={detailsCommitBusy}
+                  error={detailsCommitError}
+                  onExpandedChange={(expanded) => { setDetailsCommitError(""); setShowOriginEditor(expanded); }}
+                  onCommit={commitTripDetailsDraft}
                   className={`${styles.placesSection} ${isHomepagePromptHandoff ? styles.handoffOrigin : ""} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}
                 >
+                  {({ draft: detailsDraft, setDraft: setDetailsDraft }) => <>
                   <JourneyEndpointsEditor
                     language={language}
-                    startValue={origin}
-                    endValue={journeyEndInput}
-                    endSelection={journeyEnd}
-                    startInvalid={Boolean(originError || originMissing)}
-                    startDescribedBy={(originError || originMissing) ? originErrorId : undefined}
-                    endInvalid={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
-                    hint={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates
-                      ? journeyEndError || (language === "es" ? "Elige el lugar de llegada de las sugerencias o selecciona Aún no lo sé." : "Choose the ending place from the suggestions, or select Not sure yet.")
-                      : undefined}
-                    showHint={journeyEndResolutionAttempted && journeyEnd.mode === "explicit" && !journeyEnd.place.coordinates}
-                    onStartChange={(value) => { replaceJourneyOrigin({ name: value }); setOriginTouched(true); setOriginError(""); }}
-                    onStartSelect={(suggestion) => { void selectOriginSuggestion(suggestion); }}
-                    onStartCommit={() => { void validateOrigin(); }}
-                    startRevealSuggestionsKey={startRevealSuggestionsKey}
-                    onEndChange={changeJourneyEndInput}
-                    onEndSelect={selectJourneyEndSuggestion}
-                    onEndModeChange={chooseJourneyEndMode}
-                    onEndCommit={() => { void validateJourneyEnd(); }}
-                    endRevealSuggestionsKey={endRevealSuggestionsKey}
+                    startValue={detailsDraft.journeyOrigin.name}
+                    endValue={detailsDraft.journeyEndInput}
+                    endSelection={detailsDraft.journeyEnd}
+                    showHint={false}
+                    onStartChange={(value) => setDetailsDraft((current) => ({ ...current, journeyOrigin: { name: value } }))}
+                    onStartSelect={(suggestion) => setDetailsDraft((current) => ({ ...current, journeyOrigin: journeyEndpointPlaceFromSuggestion(suggestion) }))}
+                    onEndChange={(value) => setDetailsDraft((current) => ({
+                      ...current,
+                      journeyEndInput: value,
+                      journeyEnd: value.trim() ? { mode: "explicit", place: { name: value.trim() } } : { mode: "unknown" },
+                    }))}
+                    onEndSelect={(suggestion) => setDetailsDraft((current) => ({
+                      ...current,
+                      journeyEndInput: suggestion.name,
+                      journeyEnd: { mode: "explicit", place: journeyEndpointPlaceFromSuggestion(suggestion) },
+                    }))}
+                    onEndModeChange={(mode) => setDetailsDraft((current) => ({ ...current, journeyEndInput: "", journeyEnd: { mode } }))}
                   />
                   {inlineOriginPlanningMention ? <div className={styles.inlinePlanningClarification}>
                     <div className={styles.inlinePlanningIdentity} role="status">
@@ -3556,6 +3700,7 @@ function TripBuilderDocument() {
                     {baseSearchErrors[inlineOriginPlanningMention.mentionId] ? <p id={`${originErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineOriginPlanningMention.mentionId]}</p> : null}
                   </div> : null}
                   {(originError || originMissing) && !inlineOriginPlanningMention && <small id={originErrorId} className={styles.hintError} role="alert">{originError || ui.addOrigin}</small>}
+                  </>}
                 </TripBuilderDetailsEditor>
 
                 <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>

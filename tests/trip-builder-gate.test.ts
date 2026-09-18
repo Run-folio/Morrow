@@ -33,14 +33,14 @@ test("populated Builder exposes explicit, Same as start and unknown journey ends
       assert.equal(await details.getByRole("combobox", { name: "Ending at" }).inputValue(), journeyEnd.mode === "explicit" ? "Busan" : journeyEnd.mode === "same_as_start" ? "London" : "");
       assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
       assert.equal(await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).count(), 0);
-      await details.getByRole("button", { name: "Close details", exact: true }).click();
+      await details.getByRole("button", { name: "Cancel", exact: true }).click();
       assert.equal(await details.getByRole("button", { name: "Edit trip", exact: true }).getAttribute("aria-expanded"), "false");
       assert.deepEqual(view.errors, []);
     } finally { await view.close(); }
   }
 });
 
-test("editing Builder end modes preserves Busan stop occurrence and canonical endpoint identity", { skip: !builderBrowserTestsEnabled }, async () => {
+test("editing Builder end modes commits atomically and Cancel leaves canonical recovery unchanged", { skip: !builderBrowserTestsEnabled }, async () => {
   const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd: { mode: "unknown" } } });
   const storedTrip = async (mode: string) => {
     await view.page.waitForFunction((expected: string) => Object.keys(localStorage)
@@ -51,6 +51,15 @@ test("editing Builder end modes preserves Busan stop occurrence and canonical en
       .map((key) => JSON.parse(localStorage.getItem(key)!)).find((record) => record.trip)?.trip) as EasyTTrip;
   };
   try {
+    await view.page.route("**/api/journey-geocode?place=Busan&candidates=1", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ candidates: [{
+          name: "Busan", country: "South Korea", canonicalPlaceId: "busan", providerId: "fixture:busan",
+          coordinates: [129.0756, 35.1796], placeType: "city", routability: "direct_destination", matchQuality: "exact",
+        }] }),
+      });
+    });
     const details = view.page.getByRole("region", { name: "Journey details", exact: true });
     await details.waitFor({ timeout: 3000 });
     await details.getByRole("button", { name: "Edit trip", exact: true }).click();
@@ -58,20 +67,41 @@ test("editing Builder end modes preserves Busan stop occurrence and canonical en
     const stopIds = before.stops.map((stop) => stop.id);
     await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
     await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
+    await details.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.equal((await storedTrip("unknown")).brief.journeyEnd?.mode, "unknown");
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
+    await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
+    await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
+    await details.getByRole("button", { name: "Save changes", exact: true }).click();
     const explicit = await storedTrip("explicit");
     assert.equal(explicit.brief.journeyEnd?.mode === "explicit" && explicit.brief.journeyEnd.place.canonicalPlaceId, "busan");
     assert.deepEqual(explicit.stops.map((stop) => stop.id), stopIds);
     assert.equal(explicit.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights, before.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights);
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: "Same as start", exact: true }).click();
+    await details.getByRole("button", { name: "Save changes", exact: true }).click();
     const roundTrip = await storedTrip("same_as_start");
     assert.deepEqual(roundTrip.stops.map((stop) => stop.id), stopIds);
     assert.equal(roundTrip.legs.at(-1)?.classification, "departure");
     assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId, "london");
     assert.equal(roundTrip.stops.some((stop) => stop.canonicalPlaceId === "london"), false);
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: "Clear journey end", exact: true }).click();
+    await details.getByRole("button", { name: "Save changes", exact: true }).click();
     const unknown = await storedTrip("unknown");
     assert.deepEqual(unknown.stops.map((stop) => stop.id), stopIds);
     assert.equal(unknown.legs.some((leg) => leg.classification === "departure"), false);
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
+    await details.getByRole("button", { name: /Increase travellers/ }).click();
+    await details.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.equal((await storedTrip("unknown")).travellers, 2);
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
+    await details.getByRole("button", { name: /Increase travellers/ }).click();
+    await details.getByRole("button", { name: "Save changes", exact: true }).click();
+    await view.page.waitForFunction(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .some((key) => JSON.parse(localStorage.getItem(key)!).trip?.travellers === 3));
+    assert.equal((await storedTrip("unknown")).travellers, 3);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
