@@ -30,6 +30,7 @@ type JourneyPlannerMapProps = {
   legs: MapRouteLeg[] | JourneyLeg[];
   comparisonLegs?: readonly MapRouteLeg[];
   comparisonLabel?: string;
+  onLifecycleChange?: (state: "ready" | "unavailable") => void;
   selectedId: string;
   featuredStopId?: string;
   destinationCards?: JourneyMapDestinationCard[];
@@ -103,6 +104,7 @@ export function JourneyPlannerMap({
   legs,
   comparisonLegs = emptyComparisonLegs,
   comparisonLabel,
+  onLifecycleChange,
   selectedId,
   featuredStopId,
   destinationCards = [],
@@ -148,10 +150,12 @@ export function JourneyPlannerMap({
   const onSelectRef = useRef(onSelect);
   const onPlannerPinSelectRef = useRef(onPlannerPinSelect);
   const onMapResultSelectRef = useRef(onMapResultSelect);
+  const onLifecycleChangeRef = useRef(onLifecycleChange);
   onLegSelectRef.current = onLegSelect;
   onSelectRef.current = onSelect;
   onPlannerPinSelectRef.current = onPlannerPinSelect;
   onMapResultSelectRef.current = onMapResultSelect;
+  onLifecycleChangeRef.current = onLifecycleChange;
   selectedLegIdRef.current = selectedLegId;
   selectedPlannerPinIdRef.current = selectedPlannerPinId;
   const routeFocusKey = previewMode ? null : focusCoordinates;
@@ -223,13 +227,20 @@ export function JourneyPlannerMap({
         ?? stops.find((stop) => stop.coordinates)?.coordinates
         ?? focusCoordinates
         ?? [-90.5069, 14.6349];
-      const map = new maplibregl.Map({
-        container: containerRef.current,
-        style: morroviaMapStyle,
-        center: firstStop,
-        zoom: previewMode && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
-        interactive: !previewMode,
-      });
+      let map: maplibregl.Map;
+      try {
+        map = new maplibregl.Map({
+          container: containerRef.current,
+          style: morroviaMapStyle,
+          center: firstStop,
+          zoom: previewMode && (selectedResult || mapResults.length || focusCoordinates) ? focusZoom ?? 13 : 9,
+          interactive: !previewMode,
+        });
+      } catch (error) {
+        onLifecycleChangeRef.current?.("unavailable");
+        console.error("Morrovia could not initialise the route map.", error);
+        return;
+      }
       // North-up is fixed in this workspace, so a compass beside the route-fit
       // control duplicated intent and looked like an unexplained third zoom
       // button. Keep the familiar MapLibre zoom controls only.
@@ -241,12 +252,27 @@ export function JourneyPlannerMap({
     if (!map) return;
     let ownerActive = true;
     let removing = false;
+    let lifecycleState: "starting" | "ready" | "unavailable" = "starting";
+    const reportReady = () => {
+      if (!ownerActive || lifecycleState !== "starting") return;
+      lifecycleState = "ready";
+      onLifecycleChangeRef.current?.("ready");
+    };
+    const reportUnavailable = () => {
+      if (!ownerActive || lifecycleState === "unavailable") return;
+      if (lifecycleState === "ready") return;
+      lifecycleState = "unavailable";
+      onLifecycleChangeRef.current?.("unavailable");
+    };
     const basemapLifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
       onChange: (snapshot) => {
         if (ownerActive && mapRef.current === map) setBasemapStatus(snapshot.status);
       },
       onStyleReady: () => {
-        if (ownerActive && mapRef.current === map) setBasemapStyleRevision((revision) => revision + 1);
+        if (ownerActive && mapRef.current === map) {
+          reportReady();
+          setBasemapStyleRevision((revision) => revision + 1);
+        }
       },
     });
     basemapLifecycleRef.current = basemapLifecycle;
@@ -266,6 +292,7 @@ export function JourneyPlannerMap({
         console.warn("Morrovia MapLibre could not load a non-basemap resource.", error);
         return;
       }
+      reportUnavailable();
       console.error(error);
     };
     map.on("error", handleMapError);
@@ -485,6 +512,7 @@ export function JourneyPlannerMap({
           type: "line",
           source: "trip-route-comparison",
           layout: { "line-cap": "round", "line-join": "round" },
+          /* morrovia-ui-audit-allow-next-line inline-color -- The MapLibre proposal layer requires the canonical signal colour as a literal paint value. */
           paint: { "line-color": "#e91e73", "line-width": 4, "line-opacity": 0.82, "line-dasharray": [2, 2] },
         });
       }

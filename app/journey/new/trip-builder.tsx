@@ -3982,50 +3982,6 @@ function TripBuilderDocument() {
 
           {hasRouteSkeleton && (
             <div id="builder-timing" tabIndex={-1} className={`${styles.stack} ${styles.timeStep}`}>
-              <header className={styles.stepHero}><h2 className={styles.stepHeroTitle}><span className={styles.stepHeroTitlePrimary}>Make the time</span>{" "}<em className={styles.stepHeroTitleFinish}>feel right.</em></h2></header>
-              <div className={styles.timeControls}>
-                <section id="builder-dates" className={`${styles.dateConfirmSection} ${summaryFocus === "dates" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Fechas de viaje" : "Travel dates"}>
-                  <MorroviaDatePicker
-                    className={styles.builderDatePicker}
-                    mode="range"
-                    locale={language}
-                    startLabel={ui.startDate}
-                    endLabel={ui.endDate}
-                    startValue={startDate}
-                    endValue={endDate}
-                    onChange={(range) => updateTravelRange(range.start, range.end)}
-                  />
-                </section>
-                <MorroviaQuantitySelector
-                  className={styles.timeTraveller}
-                  compact
-                  label={language === "es" ? "Viajeros" : "Travellers"}
-                  locale={language}
-                  noun={language === "es" ? "viajero" : "traveller"}
-                  nounPlural={language === "es" ? "viajeros" : "travellers"}
-                  value={effectiveIntent.travellers}
-                  min={1}
-                  max={12}
-                  onChange={updateTravellers}
-                />
-                <section className={`${styles.timeControl} ${styles.budgetControl}`} aria-label={language === "es" ? "Presupuesto" : "Budget"}><span>{language === "es" ? "Presupuesto (opcional)" : "Budget (optional)"}</span><div className={styles.budgetValue}><p>{language === "es" ? "Usando tu preferencia habitual" : "Using your usual preference"}</p><button type="button" onClick={() => setShowBudgetOverride((current) => !current)}>{showBudgetOverride ? (language === "es" ? "Listo" : "Done") : (language === "es" ? "Cambiar" : "Change")}</button></div>{showBudgetOverride && <div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div>}</section>
-              </div>
-              {projectedFixedCommitments.length > 0 && <section className={styles.timeCommitments} aria-labelledby="fixed-commitments-title">
-                <header><span>{language === "es" ? "PLANES FIJOS" : "FIXED COMMITMENTS"}</span><strong id="fixed-commitments-title">{language === "es" ? "Se mantienen durante toda la planificación." : "Protected throughout planning."}</strong></header>
-                <div>{projectedFixedCommitments.map((commitment) => {
-                  const suggestion = commitment.place ? canonicalPlaceSuggestionFor(commitment.place.name) : null;
-                  const represented = Boolean(commitment.stopId);
-                  return <article key={commitment.id}>
-                    <CalendarDays aria-hidden="true" />
-                    <span><strong>{fixedCommitmentDisplayLabel(commitment)}</strong><small>{represented ? (language === "es" ? "Condición fija representada en la ruta" : "Fixed commitment represented in the route") : (language === "es" ? "Todavía no está representado en la ruta" : "Not yet represented in the route")}</small></span>
-                    {represented
-                      ? <span className={styles.commitmentProtected}><Lock aria-hidden="true" />{language === "es" ? "Protegido" : "Protected"}</span>
-                      : suggestion
-                        ? <EasyTButton size="small" variant="secondary" onClick={() => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}>{language === "es" ? `Añadir ${suggestion.name} a la ruta` : `Add ${suggestion.name} to route`}</EasyTButton>
-                        : <EasyTButton size="small" variant="secondary" onClick={() => openSummaryEditor("constraints")}>{language === "es" ? "Cambiar o quitar" : "Change or remove"}</EasyTButton>}
-                  </article>;
-                })}</div>
-              </section>}
               <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>{language === "es" ? "NOCHES" : "NIGHTS"}</span><p><CheckCircle2 aria-hidden="true" /> <strong>{totalNights} {language === "es" ? "en total" : "total"}</strong><span aria-hidden="true">•</span><b>{allNightsAllocated ? (language === "es" ? "Todas asignadas" : "All allocated") : (language === "es" ? `${allocatedNights} de ${totalNights} asignadas` : `${allocatedNights} of ${totalNights} allocated`)}</b></p></div>
               {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
               <TripBuilderRouteWorkspace

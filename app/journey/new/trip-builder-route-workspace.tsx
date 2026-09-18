@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertTriangle, GripVertical, MoreHorizontal, Plus, Route, Sparkles } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Plus, Route, Sparkles } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import type { JourneyStop } from "@/lib/journey";
@@ -69,6 +69,8 @@ export function TripBuilderRouteWorkspace({
   onRouteCheckApplied,
 }: TripBuilderRouteWorkspaceProps) {
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const [mapCollapsed, setMapCollapsed] = useState(false);
+  const [mapLifecycle, setMapLifecycle] = useState<"loading" | "ready" | "unavailable">("loading");
   const preview = previewStopIds ? buildBuilderRoutePreview(canonicalTrip, previewStopIds) : null;
   const presentedTrip = preview?.ok ? preview.trip : canonicalTrip;
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
@@ -93,8 +95,8 @@ export function TripBuilderRouteWorkspace({
   return <section data-builder-route-workspace className={styles.builderRouteWorkspace} aria-labelledby="builder-route-title">
     <header className={styles.builderRouteHeader}>
       <div>
-        <p>YOUR ROUTE</p>
-        <h2 id="builder-route-title">Shape the route<span className="sr-only"> — Nights per stop</span></h2>
+        <p>ROUTE PLAN</p>
+        <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
         <span>Reorder stops, adjust the nights, and check how travel affects your time.</span>
       </div>
       <EasyTButton size="small" variant="secondary" icon={Plus} onClick={onAddStop}>Add stop</EasyTButton>
@@ -124,6 +126,7 @@ export function TripBuilderRouteWorkspace({
               onDragOver={(event) => { event.preventDefault(); reorder.previewAt(reorder.draggingId ?? "", index); }}
               onDrop={(event) => { event.preventDefault(); reorder.drop(); }}
             >
+              {/* morrovia-ui-audit-allow-next-line native-control -- The drag grip owns native draggable pointer and keyboard semantics rather than a standard push-button action. */}
               <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
                 <GripVertical aria-hidden="true" />
               </button>
@@ -134,8 +137,10 @@ export function TripBuilderRouteWorkspace({
               </div>
               <div className={styles.builderRouteNights} role="cell">
                 <span className={styles.mobileFieldLabel}>Nights</span>
+                {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
                 <button type="button" aria-label={`Remove one night from ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={isLocked || (stop.nights ?? 0) <= 0} onClick={(event) => { event.stopPropagation(); onEditNights(stop.id, (stop.nights ?? 0) - 1); }}>−</button>
                 <strong>{stop.nights ?? 0}</strong>
+                {/* morrovia-ui-audit-allow-next-line native-control -- This compact stepper button is part of a labelled nights field and cannot use the shared action-button dimensions. */}
                 <button type="button" aria-label={`Add one night to ${stop.name}; ${stop.nights ?? 0} nights currently`} disabled={isLocked} onClick={(event) => { event.stopPropagation(); onEditNights(stop.id, (stop.nights ?? 0) + 1); }}>+</button>
               </div>
               <div className={styles.builderRouteUsable} role="cell">
@@ -145,32 +150,51 @@ export function TripBuilderRouteWorkspace({
               </div>
               <details className={styles.builderRouteActions} onClick={(event) => event.stopPropagation()}>
                 <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
-                <div><strong>Move stop</strong><button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button><button type="button" disabled={isLocked || index === presentedTrip.stops.length - 1} onClick={() => reorder.moveFromMenu(stop.id, index + 1)}>Later</button></div>
+                <div>
+                  <strong>Move stop</strong>
+                  {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
+                  <button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button>
+                  {/* morrovia-ui-audit-allow-next-line native-control -- The accessible reorder fallback is a menu item whose compact row semantics differ from a standard action button. */}
+                  <button type="button" disabled={isLocked || index === presentedTrip.stops.length - 1} onClick={() => reorder.moveFromMenu(stop.id, index + 1)}>Later</button>
+                </div>
               </details>
             </div>;
           })}
         </div>
       </section>
 
-      <section className={styles.builderRouteMap} aria-label="Route map">
-        <JourneyPlannerMap
-          stops={mapStops}
-          legs={mapLegs}
-          comparisonLegs={comparisonLegs}
-          comparisonLabel={routeCheckProposal?.ok ? "Morrovia's proposed route order" : undefined}
-          selectedId={selectedStopId ?? presentedTrip.stops[0]?.id ?? ""}
-          plannerPins={[]}
-          focusCoordinates={null}
-          draftPinCoordinates={null}
-          pinPlacementMode={false}
-          overviewMode
-          previewMode
-          previewLabel="Builder route map"
-          overviewPadding={{ top: 54, right: 54, bottom: 54, left: 54 }}
-          onMapPinDrop={() => undefined}
-          onPlannerPinSelect={() => undefined}
-          onSelect={(stopId) => selectStop(stopId, true)}
-        />
+      <section className={styles.builderRouteMap} aria-label="Route map" data-map-lifecycle={mapLifecycle}>
+        {/* morrovia-ui-audit-allow-next-line native-control -- This mobile disclosure owns aria-expanded and the embedded map region rather than a standard push-button action. */}
+        <button type="button" className={styles.builderRouteMapToggle} aria-expanded={!mapCollapsed} onClick={() => setMapCollapsed((current) => !current)}>
+          <MapIcon aria-hidden="true" />
+          {mapCollapsed ? "Show map" : "Collapse map"}
+          {mapCollapsed ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
+        </button>
+        <div className={styles.builderRouteMapBody} hidden={mapCollapsed}>
+          {mapLifecycle === "unavailable" ? <div className={styles.builderRouteMapFallback} role="status">
+            <MapIcon aria-hidden="true" />
+            <strong>Route map unavailable</strong>
+            <span>The route list still works, and you can continue building your trip.</span>
+          </div> : <JourneyPlannerMap
+            stops={mapStops}
+            legs={mapLegs}
+            comparisonLegs={comparisonLegs}
+            comparisonLabel={routeCheckProposal?.ok ? "Morrovia's proposed route order" : undefined}
+            onLifecycleChange={setMapLifecycle}
+            selectedId={selectedStopId ?? presentedTrip.stops[0]?.id ?? ""}
+            plannerPins={[]}
+            focusCoordinates={null}
+            draftPinCoordinates={null}
+            pinPlacementMode={false}
+            overviewMode
+            previewMode
+            previewLabel="Builder route map"
+            overviewPadding={{ top: 54, right: 54, bottom: 54, left: 54 }}
+            onMapPinDrop={() => undefined}
+            onPlannerPinSelect={() => undefined}
+            onSelect={(stopId) => selectStop(stopId, true)}
+          />}
+        </div>
       </section>
     </div>
 

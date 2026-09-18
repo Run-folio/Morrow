@@ -43,6 +43,9 @@ browserTest("useful homepage and template handoffs show route timing immediately
       const text = await view.page.locator("body").innerText();
       assert.match(text, /Nights per stop/);
       assert.match(text, /Marrakech/);
+      assert.doesNotMatch(text, /Make the time|Budget \(optional\)/,
+        "the unified workspace should not retain duplicate legacy timing controls");
+      assert.equal(await view.page.getByRole("heading", { name: "Shape the route." }).count(), 1);
       assert.doesNotMatch(text, /STEP 1 OF 2|STEP 2 OF 2|Describe your trip|Set dates & nights/);
     } finally { await view.close(); }
   }
@@ -133,6 +136,33 @@ test("the unified route workspace projects canonical occurrences beside the map"
     "desktop route rows and map should have approximately equal visual weight");
   assert.match(styles, /@media\(max-width:1024px\)\{\.builderRouteGrid\{[^}]*grid-template-areas:"map" "rows"/,
     "narrow layouts must place the route projection before the rows");
+  assert.match(workspace, /mapCollapsed \? "Show map" : "Collapse map"/,
+    "mobile route editing should expose an explicit map collapse control");
+  assert.match(styles, /\.builderRouteMapToggle\{display:none/,
+    "the compact map control should not compete with the desktop workspace");
+  assert.match(styles, /@media\(max-width:700px\)[\s\S]*\.builderRouteMapToggle\{display:/,
+    "the map collapse control should appear at the established mobile breakpoint");
+  assert.match(styles, /\.builderRouteMapBody\[hidden\]\{display:none/,
+    "collapsed mobile maps should release their layout height without hiding route rows");
+  assert.doesNotMatch(styles, /\.builderRoute(?:Workspace|Header|Grid|Rows|Map|Check)[^{]*\{[^}]*(?:width|min-width):\s*[4-9]\d\dpx/,
+    "the unified workspace should not impose a fixed width that can overflow narrow fixtures");
+});
+
+test("a fatal initial map failure leaves the route workspace usable", () => {
+  const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
+  const map = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
+
+  assert.match(map, /onLifecycleChange\?: \(state: "ready" \| "unavailable"\) => void/);
+  assert.match(map, /onLifecycleChangeRef\.current\?\.\("ready"\)/,
+    "the map should report ready after its initial style is usable");
+  assert.match(map, /onLifecycleChangeRef\.current\?\.\("unavailable"\)/,
+    "fatal initial setup should be reported to the scoped owner");
+  assert.match(map, /if \(lifecycleState === "ready"\) return/,
+    "late resource and teardown errors must not replace a healthy map");
+  assert.match(workspace, /Route map unavailable/);
+  assert.match(workspace, /The route list still works, and you can continue building your trip\./);
+  assert.match(workspace, /<JourneyPlannerMap[\s\S]*onLifecycleChange=\{setMapLifecycle\}/,
+    "only this Builder map owner should decide whether to show its fallback");
 });
 
 test("Builder spacing and healthy route copy use the focused production treatment", () => {
