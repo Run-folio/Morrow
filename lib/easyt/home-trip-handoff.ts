@@ -1,6 +1,6 @@
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
 import { isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
-import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace } from "./trip.ts";
+import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, TripBudgetPreference } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, tripInterestIds, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
@@ -98,6 +98,7 @@ export type HomeTripDraft = {
   /** Distinguishes an explicit empty selection from an untouched control. */
   interestsExplicit?: boolean;
   budget?: "value" | "mid" | "high";
+  budgetPreference?: TripBudgetPreference;
   homepage?: {
     version: 1;
     ownerId: string | null;
@@ -622,6 +623,15 @@ function withHomepageChoices(
     : snapshot.budget.state === "cleared"
       ? undefined
       : capturedBudget ?? profile?.budget ?? "mid";
+  const budgetPreference: TripBudgetPreference = snapshot.budget.state === "selected"
+    ? { source: "explicit", value: snapshot.budget.value }
+    : snapshot.budget.state === "cleared"
+      ? { source: "cleared" }
+      : capturedBudget
+        ? { source: "capture", value: capturedBudget }
+        : profile?.budget
+          ? { source: "profile", value: profile.budget }
+          : { source: "fallback", value: "mid" };
   const budgetProvenance = snapshot.budget.state === "selected" ? homepageExplicit()
     : capturedBudget ? structured?.budget?.provenance
       : budget ? homepageProfileDefault() : undefined;
@@ -720,6 +730,7 @@ function withHomepageChoices(
     interests: chosenInterests,
     interestsExplicit,
     budget,
+    budgetPreference,
     structuredBrief: structured,
   };
 }

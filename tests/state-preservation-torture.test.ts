@@ -166,6 +166,7 @@ test("three consecutive supported edits plus reload preserve stop IDs, bookings,
   assert.deepEqual(trip.brief.dayNotes, protectedState.dayNotes);
   assert.equal(trip.brief.intent?.hardConstraints.avoidDriving, true);
   assert.equal(trip.brief.budgetBand, "value");
+  assert.deepEqual(trip.brief.budgetPreference, { source: "explicit", value: "value" });
   assert.equal(trip.brief.hotelChanges, "few");
 });
 

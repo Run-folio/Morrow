@@ -19,7 +19,7 @@ import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, 
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
 import { tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
-import { defaultTripIntent, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
+import { defaultTripIntent, isEasyTTrip, tripFromBuilder, tripIntentForTrip, type EasyTTrip, type FixedTripCommitment, type JourneyEndSelection, type JourneyEndpointPlace, type TripBudgetPreference, type TripDecisionSelections, type TripIntent, type TripIntentPace, type TripLeg, type TripScheduleLocks, type TripStatus, type TripStop, type TripTransportMode } from "@/lib/easyt/trip";
 import { arrivalLoadFromTransfer, assessRouteIntelligence, buildCredibleItinerary, estimateLegForConstraints, routeIntelligenceForPersistence, routeTransferSavingMinutes, travelStayConsequence, usableStopDays, type PlannedDay, type PlannerPlace } from "@/lib/easyt/planner";
 import { allocateTripNights, calendarDayAllocationsFromNights, rebalanceTripNights, tripNightsBetween, type NightAllocationStopInput } from "@/lib/easyt/night-allocation";
 import { classifyAnalyticsSaveError, hasAnalyticsConsent, trackEvent } from "@/lib/analytics";
@@ -619,6 +619,7 @@ function TripBuilderDocument() {
   const [discovering, setDiscovering] = useState<Record<string, boolean>>({});
 
   const [budget, setBudget] = useState<"value" | "mid" | "high">("value");
+  const [budgetPreference, setBudgetPreference] = useState<TripBudgetPreference | undefined>();
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(defaultTravelProfile);
   const [hasSavedTravelProfile, setHasSavedTravelProfile] = useState(false);
   const [showBudgetOverride, setShowBudgetOverride] = useState(false);
@@ -726,6 +727,7 @@ function TripBuilderDocument() {
         : saved.brief.dayAllocations ?? {}));
       setManualNightStopIds(saved.brief.manualNightStopIds ?? []);
       setBudget(saved.brief.budgetBand);
+      setBudgetPreference(saved.brief.budgetPreference);
       const savedIntent = tripIntentForTrip(saved);
       setTripIntent(savedIntent);
       const savedStructuredBrief = saved.brief.structuredBrief
@@ -883,6 +885,8 @@ function TripBuilderDocument() {
           if (homeDraft.datesExplicit) setDatesManuallyEdited(true);
           if (homeDraft.travellersExplicit) setTravellersManuallyEdited(true);
           if (homeTripDraftInterestsWereExplicit(homeDraft)) setInterestsManuallyEdited(true);
+          if (homeDraft.budget) setBudget(homeDraft.budget);
+          setBudgetPreference(homeDraft.budgetPreference);
           const regions = homeDraft.regions?.filter(Boolean) ?? [];
           setTripBrief(homeDraft.brief ?? (regions.length ? regions.join(", ") : ""));
           const homeStructuredBrief = homeDraft.structuredBrief ?? extractStructuredTripBrief(homeDraft.brief ?? "");
@@ -1145,13 +1149,14 @@ function TripBuilderDocument() {
     ...(paceManuallyEdited ? { pace: effectiveIntent.preferences.pace } : {}),
     ...(interestsManuallyEdited ? { interests: effectiveIntent.preferences.interests } : {}),
     ...(transportManuallyEdited ? { transportPreferences: effectiveIntent.preferences.transportModes } : {}),
-    ...(hasSavedTravelProfile || showBudgetOverride ? { budget } : {}),
+    ...((budgetPreference?.source !== "cleared" && budgetPreference?.source !== "fallback")
+      && (hasSavedTravelProfile || showBudgetOverride) ? { budget } : {}),
     fixedCommitments: projectedFixedCommitments.map(({ id: _id, ...commitment }) => commitment),
     avoidDriving: effectiveIntent.hardConstraints.avoidDriving,
     placeSelections: effectivePlaceSelections,
     completedPlanningAreaMentionIds,
     removedPlaceMentionIds,
-  }), [capturedStructuredBrief, totalDays, origin, originCanonicalPlaceId, originCountry, originCoordinates, routeJourneyEnd, stops, effectiveIntent, projectedFixedCommitments, startDate, endDate, budget, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride, effectivePlaceSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds]);
+  }), [capturedStructuredBrief, totalDays, origin, originCanonicalPlaceId, originCountry, originCoordinates, routeJourneyEnd, stops, effectiveIntent, projectedFixedCommitments, startDate, endDate, budget, budgetPreference, datesManuallyEdited, travellersManuallyEdited, paceManuallyEdited, transportManuallyEdited, interestsManuallyEdited, hasSavedTravelProfile, showBudgetOverride, effectivePlaceSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds]);
   const structuredRouteConstraints = useMemo(() => routeConstraintsFromStructuredTripBrief(effectiveStructuredBrief, stops.map((stop) => stop.id)), [effectiveStructuredBrief, stops]);
   const structuredScoringPreferences = useMemo(() => routeScoringPreferencesFromStructuredBrief(effectiveStructuredBrief), [effectiveStructuredBrief]);
   const intentReady = Boolean(originCoordinates && stops.length && effectiveIntent.travellers >= 1);
@@ -2730,6 +2735,7 @@ function TripBuilderDocument() {
       pace: effectiveIntent.preferences.pace === "packed" ? "full" : "slow",
       hotels: "few",
       budget,
+      budgetPreference,
       dayAllocations: calendarDayAllocations,
       nightAllocations: allocation,
       manualNightStopIds,
@@ -2771,7 +2777,7 @@ function TripBuilderDocument() {
     const hydratedCanonical = hydratedCanonicalTripRef.current?.id === built.id ? hydratedCanonicalTripRef.current : null;
     const reconciled = preserveBuilderCanonicalState(hydratedCanonical, { ...built, ownerId: tripOwnerId, legs: builderCanonicalLegs });
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
-  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
+  }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, budgetPreference, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
 
   const resolveEndpointDraftPlace = async (place: JourneyEndpointPlace, role: "start" | "end") => {
     if (journeyEndpointIdentityIsCoherent(place)) return place;
@@ -2812,6 +2818,7 @@ function TripBuilderDocument() {
     setEndDate(document.endDate);
     setDatesManuallyEdited(true);
     setBudget(document.brief.budgetBand);
+    setBudgetPreference(document.brief.budgetPreference);
     setTravellersManuallyEdited(true);
     setTripIntent((current) => ({
       ...current,
@@ -2848,7 +2855,7 @@ function TripBuilderDocument() {
           preferences: { ...activeTripDocument.brief.intent.preferences, budgetSensitivity: detailsDraft.budget },
         }
         : undefined;
-      const proposedBrief = {
+      const proposedBrief: EasyTTrip["brief"] = {
         ...activeTripDocument.brief,
         origin: nextOrigin.name,
         originCoordinates: nextOrigin.coordinates,
@@ -2857,6 +2864,10 @@ function TripBuilderDocument() {
         originProviderId: nextOrigin.providerId,
         journeyEnd: resolvedEnd,
         budgetBand: detailsDraft.budget,
+        budgetPreference: { source: "explicit", value: detailsDraft.budget },
+        ...(activeTripDocument.brief.structuredBrief ? {
+          structuredBrief: mergeStructuredTripBrief(activeTripDocument.brief.structuredBrief, { budget: detailsDraft.budget }),
+        } : {}),
         ...(nextIntent ? { intent: nextIntent } : {}),
       };
       const proposed: EasyTTrip = {
@@ -3958,7 +3969,7 @@ function TripBuilderDocument() {
                     </div>
                     <div className={styles.intentFieldRow}>
                       <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Volar", train: "Tren", drive: "Coche" }[mode]) : ({ flight: "Fly", train: "Train", drive: "Drive" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }))}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
-                      <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
+                      <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{tripInterestIds.map((interest) => <button type="button" key={interest} className={effectiveIntent.preferences.interests.includes(interest) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</button>)}</div></div>
                     <label className={styles.dislikesField}><span>{language === "es" ? "EVITAR (OPCIONAL)" : "AVOID (OPTIONAL)"}</span><input value={effectiveIntent.preferences.dislikes.join(", ")} onChange={(event) => updateIntentPreferences({ dislikes: event.target.value.split(",").map((item) => item.trim()).filter(Boolean).slice(0, 6) })} placeholder={language === "es" ? "Ej. traslados nocturnos, calor extremo" : "e.g. overnight transfers, extreme heat"} /></label>

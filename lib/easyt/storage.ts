@@ -584,6 +584,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       pace: brief.pace,
       hotelChanges: brief.hotelChanges,
       budgetBand: brief.budgetBand,
+      budgetPreference: brief.budgetPreference,
       selectedPlaces: nonEmptyRecord(brief.selectedPlaces) ?? {},
       dayAllocations: nonEmptyRecord(brief.dayAllocations),
       nightAllocations: nonEmptyRecord(brief.nightAllocations),
