@@ -61,6 +61,18 @@ export function formatLocalDate(value: string, locale = "en", options?: Intl.Dat
   return new Intl.DateTimeFormat(locale, options ?? { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
+export function formatLocalDateRange(startValue: string, endValue: string, locale = "en", placeholder = ""): string {
+  const start = localDateFromIso(startValue);
+  const end = localDateFromIso(endValue);
+  if (!start || !end) return placeholder;
+  const day = new Intl.DateTimeFormat(locale, { day: "numeric" });
+  const month = new Intl.DateTimeFormat(locale, { month: "short" });
+  const dayMonth = (value: Date) => `${day.format(value)} ${month.format(value)}`;
+  if (start.getFullYear() !== end.getFullYear()) return `${dayMonth(start)} ${start.getFullYear()}–${dayMonth(end)} ${end.getFullYear()}`;
+  if (start.getMonth() !== end.getMonth()) return `${dayMonth(start)}–${dayMonth(end)} ${end.getFullYear()}`;
+  return `${day.format(start)}–${day.format(end)} ${month.format(end)} ${end.getFullYear()}`;
+}
+
 export function parseTypedLocalDate(value: string): string | null {
   const trimmed = value.trim();
   return localDateParts(trimmed) ? trimmed : null;

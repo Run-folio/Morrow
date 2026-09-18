@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowRight, CalendarDays, ChevronDown, Heart, UsersRound } from "lucide-react";
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { journeyCaptureValidationMessage, validateJourneyCaptureSubmission, type JourneyCaptureValidationIssue } from "@/lib/easyt/journey-capture-client";
 import { tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
@@ -36,6 +36,19 @@ const copy = {
     aiTitle: "AI-assisted planning",
     aiDisclosure: "Morrovia may use Luna, our AI travel assistant, to help interpret your trip brief. AI can make mistakes, so review your resulting plan before relying on important travel details.",
     privacy: "Privacy details",
+    planWithStops: "Plan with stops",
+    describeTrip: "Describe my trip",
+    editPlaces: "Edit places",
+    travelDates: "Travel dates",
+    clearDates: "Clear dates",
+    datesHeading: "When are you travelling?",
+    clear: "Clear",
+    personalize: "Personalize",
+    hidePersonalize: "Hide personalization",
+    budget: "Budget",
+    budgetValue: "Budget",
+    budgetMid: "Mid-range",
+    budgetHigh: "Luxury",
   },
   es: {
     briefLabel: "CUÉNTANOS SOBRE TU VIAJE",
@@ -58,8 +71,32 @@ const copy = {
     aiTitle: "Planificación asistida por IA",
     aiDisclosure: "Morrovia puede usar Luna, nuestro asistente de viaje con IA, para ayudar a interpretar tu viaje. La IA puede equivocarse; revisa el plan resultante antes de confiar en detalles importantes del viaje.",
     privacy: "Detalles de privacidad",
+    planWithStops: "Planificar con paradas",
+    describeTrip: "Describir mi viaje",
+    editPlaces: "Editar lugares",
+    travelDates: "Fechas del viaje",
+    clearDates: "Borrar fechas",
+    datesHeading: "¿Cuándo viajas?",
+    clear: "Borrar",
+    personalize: "Personalizar",
+    hidePersonalize: "Ocultar personalización",
+    budget: "Presupuesto",
+    budgetValue: "Económico",
+    budgetMid: "Gama media",
+    budgetHigh: "Lujo",
   },
 } as const;
+
+export type HomepageCaptureEntry = {
+  mode: "stops" | "describe";
+  onModeChange: (mode: "stops" | "describe") => void;
+  destinationEntry: ReactNode;
+  destinationEditor?: ReactNode;
+  budget: "value" | "mid" | "high" | null;
+  onBudgetChange: (value: "value" | "mid" | "high" | null) => void;
+  datesChosen: boolean;
+  onDatesClear: () => void;
+};
 
 function travelStyleLabels(profile: TravelProfile, language: EasyTLanguage) {
   const labels = language === "es"
@@ -91,6 +128,7 @@ export type MorroviaTripCaptureProps = {
   language: EasyTLanguage;
   loading?: boolean;
   progressiveDetails?: boolean;
+  homepageEntry?: HomepageCaptureEntry;
   onDatesChange: (range: { end: string; start: string }) => void;
   onInterestsChange: (interests: TripInterest[]) => void;
   onPromptStarted?: (inputMethod: "text" | "voice", value: string) => void;
@@ -115,6 +153,7 @@ export function MorroviaTripCapture({
   language,
   loading = false,
   progressiveDetails = false,
+  homepageEntry,
   onDatesChange,
   onInterestsChange,
   onPromptStarted,
@@ -130,12 +169,23 @@ export function MorroviaTripCapture({
 }: MorroviaTripCaptureProps) {
   const [attributePanel, setAttributePanel] = useState<"dates" | "travellers" | "interests" | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [personalizeOpen, setPersonalizeOpen] = useState(false);
+  const [destinationEditorOpen, setDestinationEditorOpen] = useState(false);
   const [aiDisclosureOpen, setAiDisclosureOpen] = useState(false);
   const [validationIssue, setValidationIssue] = useState<JourneyCaptureValidationIssue | null>(null);
   const promptErrorId = useId();
   const detailsId = useId();
+  const personalizeId = useId();
+  const stopsPanelId = useId();
+  const describePanelId = useId();
+  const stopsTabRef = useRef<HTMLButtonElement>(null);
+  const describeTabRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const text = copy[language];
+  const personalizationSummary = [
+    interests.length ? `${interests.length} ${interests.length === 1 ? (language === "es" ? "interés" : "interest") : text.interests.toLowerCase()}` : "",
+    homepageEntry?.budget ? text[`budget${homepageEntry.budget === "value" ? "Value" : homepageEntry.budget === "mid" ? "Mid" : "High"}`] : "",
+  ].filter(Boolean).join(" · ");
   const promptError = validationIssue ? journeyCaptureValidationMessage(validationIssue, language) : "";
   useEffect(() => {
     if (validationIssue && !validateJourneyCaptureSubmission({ prompt: value, allowEmptyPrompt })) setValidationIssue(null);
@@ -148,7 +198,7 @@ export function MorroviaTripCapture({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (disabled || loading) return;
-    const issue = validateJourneyCaptureSubmission({ prompt: value, allowEmptyPrompt });
+    const issue = homepageEntry ? null : validateJourneyCaptureSubmission({ prompt: value, allowEmptyPrompt });
     if (issue) {
       setValidationIssue(issue);
       textareaRef.current?.focus();
@@ -171,26 +221,85 @@ export function MorroviaTripCapture({
       disabled={disabled || loading}
     />
   );
+  const promptField = <div className={`${styles.promptField}${promptError ? ` ${styles.promptFieldError}` : ""}`} onMouseDown={(event) => {
+    if (event.target === event.currentTarget) textareaRef.current?.focus();
+  }}>
+    <div className={styles.textareaField} onMouseDown={(event) => {
+      if (!(event.target instanceof HTMLElement) || !event.target.closest("button, a")) textareaRef.current?.focus();
+    }}>
+      {promptTextarea}
+      <VoiceTripBrief
+        className={styles.voiceInput}
+        compact={progressiveDetails || Boolean(homepageEntry)}
+        language={language}
+        disabled={disabled || loading}
+        onTranscript={(transcript) => updateValue(appendVoiceTranscript(value, transcript), "voice")}
+      />
+    </div>
+    {promptError ? <p id={promptErrorId} className={styles.promptError} role="alert">{promptError}</p> : null}
+  </div>;
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const order = ["stops", "describe"] as const;
+    const current = order.indexOf(homepageEntry?.mode ?? "stops");
+    let next = current;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (current + 1) % order.length;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (current - 1 + order.length) % order.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = order.length - 1;
+    else return;
+    event.preventDefault();
+    homepageEntry?.onModeChange(order[next]);
+    (order[next] === "stops" ? stopsTabRef : describeTabRef).current?.focus();
+  };
+  const submitAction = <EasyTButton type="submit" size="large" loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
+  const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.wideDatePicker} mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
+  const homepagePersonalize = homepageEntry ? <div className={styles.personalizeRow}>
+    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span>{text.personalize}</span>{personalizationSummary ? <small>{personalizationSummary}</small> : null}</span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
+  </div> : null;
+  const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
 
-  return <form id={formId} className={styles.root} onSubmit={submit}>
-    <div className={`${styles.card}${progressiveDetails && !detailsOpen ? ` ${styles.detailsCollapsed}` : ""}`}>
-      <span className={`${styles.label}${progressiveDetails ? ` ${styles.homepageLabel}` : ""}`}>{progressiveDetails ? text.homepageLabel : text.briefLabel}</span>
-      <div className={`${styles.promptField}${promptError ? ` ${styles.promptFieldError}` : ""}`} onMouseDown={(event) => {
-        if (event.target === event.currentTarget) textareaRef.current?.focus();
-      }}>
-        <div className={styles.textareaField} onMouseDown={(event) => {
-          if (!(event.target instanceof HTMLElement) || !event.target.closest("button, a")) textareaRef.current?.focus();
-        }}>
-          {promptTextarea}
-          <VoiceTripBrief
-            className={styles.voiceInput}
-            compact={progressiveDetails}
-            language={language}
-            onTranscript={(transcript) => updateValue(appendVoiceTranscript(value, transcript), "voice")}
-          />
-        </div>
-        {promptError ? <p id={promptErrorId} className={styles.promptError} role="alert">{promptError}</p> : null}
+  return <form id={formId} className={`${styles.root}${homepageEntry ? ` ${styles.wideRoot}` : ""}`} onSubmit={submit}>
+    {homepageEntry ? <div className={`${styles.card} ${styles.wideCard}`}>
+      <div className={styles.modeTabs} role="tablist" aria-label={language === "es" ? "Cómo empezar el viaje" : "How to start your trip"}>
+        <EasyTButton ref={stopsTabRef} className={styles.modeTab} variant="quiet" icon={MapPin} role="tab" id={`${stopsPanelId}-tab`} aria-selected={homepageEntry.mode === "stops"} aria-controls={stopsPanelId} tabIndex={homepageEntry.mode === "stops" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("stops")}>{text.planWithStops}</EasyTButton>
+        <EasyTButton ref={describeTabRef} className={styles.modeTab} variant="quiet" icon={Sparkles} role="tab" id={`${describePanelId}-tab`} aria-selected={homepageEntry.mode === "describe"} aria-controls={describePanelId} tabIndex={homepageEntry.mode === "describe" ? 0 : -1} disabled={disabled || loading} onKeyDown={onTabKeyDown} onClick={() => homepageEntry.onModeChange("describe")}>{text.describeTrip}</EasyTButton>
       </div>
+      {homepageEntry.mode === "stops" ? <>
+        <div className={`${styles.wideMainRow} ${styles.wideStopsRow}`}>
+          <div className={styles.wideSegmentGroup}>
+            <div className={styles.wideEntryPanel} role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>
+              <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
+                <MapPin aria-hidden="true" />
+                <span>{homepageEntry.destinationEntry}</span>
+                <small>{text.editPlaces}</small>
+                <ChevronDown aria-hidden="true" />
+              </EasyTButton>
+            </div>
+            {homepageDates}
+            {homepagePersonalize}
+          </div>
+          {homepageAction}
+        </div>
+        {homepageEntry.destinationEditor && destinationEditorOpen ? <div className={styles.wideDestinationEditor} id={`${stopsPanelId}-editor`}>{homepageEntry.destinationEditor}</div> : null}
+      </> : <>
+        <div className={styles.wideDescribePanel} role="tabpanel" id={describePanelId} aria-labelledby={`${describePanelId}-tab`}>
+          {promptField}
+          <div className={styles.wideDisclosure}><MorroviaContextualDisclosure open={aiDisclosureOpen} onOpenChange={setAiDisclosureOpen} title={text.aiTitle} detail={text.aiDisclosure} linkHref="/journey/privacy#ai-and-speech" linkLabel={text.privacy} triggerLabel={text.aiLabel} /></div>
+        </div>
+        <div className={`${styles.wideMainRow} ${styles.wideUtilityRow}`}>
+          <div className={`${styles.wideSegmentGroup} ${styles.wideUtilitySegments}`}>{homepageDates}{homepagePersonalize}</div>
+          {homepageAction}
+        </div>
+      </>}
+      {personalizeOpen ? <div className={styles.personalizePanel} id={personalizeId}>
+        {endpointEntry ? <div className={styles.personalizeEndpoints}>{endpointEntry}</div> : null}
+        <MorroviaQuantitySelector className={styles.personalizeTravellers} compact label={text.travellers} locale={language} noun={language === "es" ? "viajero" : "traveller"} nounPlural={language === "es" ? "viajeros" : "travellers"} value={travellers} min={1} max={12} disabled={disabled || loading} onChange={onTravellersChange} />
+        <div className={styles.budgetPanel} aria-label={text.budget}><span>{text.budget}</span><div><div className={styles.budgetChoices}>{(["value", "mid", "high"] as const).map((budget) => <EasyTButton variant="secondary" size="small" key={budget} aria-pressed={homepageEntry.budget === budget} disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(budget)}>{text[`budget${budget === "value" ? "Value" : budget === "mid" ? "Mid" : "High"}`]}</EasyTButton>)}</div>{homepageEntry.budget ? <EasyTButton className={styles.budgetClear} variant="quiet" size="small" disabled={disabled || loading} onClick={() => homepageEntry.onBudgetChange(null)}>{text.clear}</EasyTButton> : null}</div></div>
+        <div className={styles.interestPanel} aria-label={text.interestLabel}><span>{text.interestLabel}</span><div>{tripInterestIds.map((interest) => <EasyTButton variant="secondary" size="small" key={interest} aria-pressed={interests.includes(interest)} disabled={disabled || loading} onClick={() => onInterestsChange(interests.includes(interest) ? interests.filter((item) => item !== interest) : [...interests, interest])}>{tripInterestLabels[language][interest]}</EasyTButton>)}</div></div>
+      </div> : null}
+    </div> : <div className={`${styles.card}${progressiveDetails && !detailsOpen ? ` ${styles.detailsCollapsed}` : ""}`}>
+      <span className={`${styles.label}${progressiveDetails ? ` ${styles.homepageLabel}` : ""}`}>{progressiveDetails ? text.homepageLabel : text.briefLabel}</span>
+      {promptField}
       {progressiveDetails ? <EasyTButton
         className={styles.detailsToggle}
         variant="quiet"
@@ -265,10 +374,10 @@ export function MorroviaTripCapture({
             linkLabel={text.privacy}
             triggerLabel={text.aiLabel}
           /> : null}
-          <div className={styles.action}><EasyTButton type="submit" size="large" loading={loading} disabled={disabled}>{loading ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton></div>
+          <div className={styles.action}>{submitAction}</div>
         </div>
       </div>
-    </div>
+    </div>}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
   </form>;
 }

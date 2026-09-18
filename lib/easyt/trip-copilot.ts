@@ -155,9 +155,17 @@ function hardConstraintLabels(trip: EasyTTrip) {
 function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["preferences"] {
   const structured = trip.brief.structuredBrief;
   const canonicalInterests = tripIntentForTrip(trip).preferences.interests;
+  const preference = trip.brief.budgetPreference;
+  const projectedBudget = preference
+    ? preference.source === "cleared" || preference.source === "fallback"
+      ? null
+      : preference.value ?? null
+    : structured
+      ? structured.budget?.value ?? null
+      : trip.brief.intent?.preferences.budgetSensitivity ?? trip.brief.budgetBand;
   if (structured) return {
     pace: structured.pace?.value ?? null,
-    budget: structured.budget?.value ?? null,
+    budget: projectedBudget,
     interests: canonicalInterests,
     transport: structured.transportPreferences.map((item) => item.value).slice(0, 10),
     accommodation: structured.accommodationPreferences.map((item) => cleanText(item.value)).slice(0, 10),
@@ -165,7 +173,7 @@ function preferenceProjection(trip: EasyTTrip): TripCopilotProjection["trip"]["p
   };
   return {
     pace: trip.brief.intent?.preferences.pace ?? (trip.brief.pace === "slow" ? "relaxed" : "packed"),
-    budget: trip.brief.intent?.preferences.budgetSensitivity ?? trip.brief.budgetBand,
+    budget: projectedBudget,
     interests: canonicalInterests,
     transport: (trip.brief.intent?.preferences.transportModes ?? []).slice(0, 10),
     accommodation: trip.brief.hotelChanges === "few" ? ["fewer hotel changes"] : [],

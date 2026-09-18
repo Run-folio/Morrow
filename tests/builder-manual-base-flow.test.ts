@@ -175,12 +175,8 @@ test("Builder manual and inline-base interactions reuse canonical owners", () =>
   const styles = read("app/journey/new/trip-builder.module.css");
   const capture = read("components/easyt/morrovia-trip-capture.module.css");
 
-  assert.match(builder, /composeJourneyCaptureBrief\(/);
-  assert.match(builder, /applySelectedOriginToJourneyCapture\(/);
   assert.match(builder, /requestJourneyCapture\(brief,/,
-    "manual and prompt entry must use the existing capture request");
-  assert.equal(builder.match(/type ManualPlaceEntry/g)?.length, 1,
-    "manual controls may retain input values but must not create another trip document");
+    "prompt entry must use the existing capture request");
   assert.match(builder, /parentConstraint=\{planningParentForMention\(mention\)\}/);
   assert.match(builder, /placeCandidateWithinPlanningParent\(/,
     "selection must be checked again before mutating Builder state");

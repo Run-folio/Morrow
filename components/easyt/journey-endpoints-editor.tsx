@@ -77,6 +77,7 @@ export function JourneyEndpointsEditor({
           value={startValue}
           placeholder={text.startPlaceholder}
           allowedPlaceTypes={ROUTABLE_ENDPOINT_TYPES}
+          requireCoordinates
           showPlaceType={false}
           invalid={startInvalid}
           describedBy={startDescribedBy}
@@ -96,6 +97,7 @@ export function JourneyEndpointsEditor({
             value={visibleEndValue}
             placeholder={text.endPlaceholder}
             allowedPlaceTypes={ROUTABLE_ENDPOINT_TYPES}
+            requireCoordinates
             showPlaceType={false}
             invalid={endInvalid}
             describedBy={endDescribedBy ?? (showHint ? hintId : undefined)}

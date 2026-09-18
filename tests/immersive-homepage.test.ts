@@ -58,7 +58,7 @@ test("hero composes real capture and current handoff owners", () => {
   assert.match(capture, /<MorroviaTripCapture/);
   assert.match(capture, /progressiveDetails/);
   assert.match(capture, /<JourneyEndpointsEditor/);
-  assert.match(capture, /router\.push\("\/journey\/new\?homeDraft=1"\)/);
+  assert.match(capture, /router\.push\(committed\.href\)/);
   assert.doesNotMatch(hero, /capture-receipt|setSubmitted|Math\.random|Voice\.jsx/);
 });
 
@@ -72,7 +72,8 @@ test("homepage trip capture progressively discloses canonical details without ch
   assert.match(capture, /showDetails: "Add trip details"/);
   assert.match(capture, /aria-expanded=\{detailsOpen\}/);
   assert.match(capture, /\(!progressiveDetails \|\| detailsOpen\)/);
-  assert.match(capture, /compact=\{progressiveDetails\}/);
+  assert.match(capture, /compact=\{progressiveDetails \|\| Boolean\(homepageEntry\)\}/,
+    "voice control should stay compact for the old progressive default and the opt-in wide Homepage entry");
   assert.match(capture, /!progressiveDetails \? <MorroviaContextualDisclosure/);
   assert.match(homepage, /progressiveDetails/);
   assert.doesNotMatch(builder, /progressiveDetails/);
@@ -156,8 +157,8 @@ test("reduced-motion handling stops scroll work and the final action focuses the
   const route = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
   const closing = readFileSync(new URL("../app/journey/home/immersive/closing-chapter.tsx", import.meta.url), "utf8");
-  assert.match(route, /if \(quiet\) return/);
-  assert.match(route, /desktop.addEventListener\("change", listen\)/);
+  assert.doesNotMatch(route, /placesStage/);
+  assert.doesNotMatch(route, /desktop.addEventListener\("change", listen\)/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(closing, /#start-building textarea/);
   assert.match(closing, /focus\(\{ preventScroll: true \}\)/);
@@ -244,11 +245,11 @@ test("only the full-screen homepage LCP image uses the Next responsive priority 
   assert.doesNotMatch(source, /<img className=\{styles\.landscape\}/);
 });
 
-test("featured collection states that seven routes are editable, open-world starting points", () => {
-  const source = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
-  assert.match(source, /Routes to get you started/);
-  assert.match(source, /Seven ideas for complex trips\. Use one as a starting point, change anything, or plan somewhere completely different\./);
-  assert.match(source, /Starting point/);
+test("compact route inspiration remains an open-world starting point", () => {
+  const source = readFileSync(new URL("../app/journey/home/immersive/homepage-route-inspiration.tsx", import.meta.url), "utf8");
+  assert.match(source, /Not sure where to go\?/);
+  assert.match(source, /Start with one of these routes, then make it yours\./);
+  assert.match(source, /href="\/journey\/discover"/);
 });
 
 test("featured panels project five to seven representative cards without changing canonical routes", () => {

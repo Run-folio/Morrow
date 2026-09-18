@@ -1204,6 +1204,18 @@ test("New trip synchronously preserves the latest edit, cancels when storage is 
   assert.equal(loadCachedTripFromStorage(storage, dirty.id, "owner-a")?.id, dirty.id);
 });
 
+test("New trip refuses to clear an orphan current pointer when no Builder listener has made it recoverable", () => {
+  const storage = new MemoryBrowserStorage();
+  storage.seed(currentTripStorageKey("owner-a"), JSON.stringify({
+    version: 2,
+    ownerId: "owner-a",
+    tripId: "trip-not-durable",
+  }));
+
+  assert.equal(beginNewTripNavigationInStorage(storage, "owner-a", new EventTarget()), false);
+  assert.equal(loadCurrentTripIdFromStorage(storage, "owner-a"), "trip-not-durable");
+});
+
 test("confirmed discard removes only the version shown in the prompt and preserves an interleaved newer edit", () => {
   const storage = new MemoryBrowserStorage();
   const first = browserTrip({ id: "trip-discard-cas", title: "Version shown in discard prompt" });

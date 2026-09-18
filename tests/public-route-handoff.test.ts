@@ -1,8 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
+
+test("Route Detail starts templates through the recovery boundary and leaves modified navigation to the destination tab", () => {
+  const source = readFileSync(new URL("../app/journey/routes/[slug]/route-plan-link.tsx", import.meta.url), "utf8");
+  assert.match(source, /beginNewTripNavigation/);
+  assert.doesNotMatch(source, /clearActiveTrip/);
+  assert.match(source, /event\.metaKey/);
+  assert.match(source, /event\.ctrlKey/);
+  assert.match(source, /event\.button !== 0/);
+  assert.match(source, /inspire=/, "the destination must retain canonical template identity for new tabs");
+  assert.doesNotMatch(source, /homeDraft=1&inspire=/, "inspire identity must not consume an older shared homepage handoff");
+  assert.doesNotMatch(source, /localStorage\.setItem/, "Route Detail must leave shared handoff state untouched");
+});
 
 test("Plan this route carries identity, order, duration, nights and structured intent", () => {
   const detail = publicRouteDetailFor("andean-highlands");

@@ -79,6 +79,20 @@ test("the Responses API request uses Luna low reasoning, three strict tools and 
   assert.equal(JSON.stringify(request).includes("OPENAI_API_KEY"), false);
 });
 
+test("budget preference provenance prevents fallback and cleared bands from reaching AI context", () => {
+  const legacy = tripCopilotFixture();
+  assert.equal(buildTripCopilotProjection(legacy).trip.preferences.budget, "mid");
+
+  for (const source of ["fallback", "cleared"] as const) {
+    const trip = tripCopilotFixture();
+    trip.brief.budgetPreference = source === "cleared" ? { source } : { source, value: "mid" };
+    const projection = buildTripCopilotProjection(trip);
+    assert.equal(projection.trip.preferences.budget, null);
+    const request = buildTripCopilotOpenAIRequest(projection, "Suggest a change");
+    assert.match(request.input[0]!.content, /"budget":null/);
+  }
+});
+
 test("the response parser accepts only the read-only answer contract", () => {
   assert.deepEqual(parseTripCopilotAnswer(JSON.stringify({ answer: "The route is coherent.", scope: "trip", proposedChange: null })), {
     answer: "The route is coherent.", scope: "trip", proposedChange: null,

@@ -306,6 +306,8 @@ export type TripBrief = {
   pace: TripPace;
   hotelChanges: HotelChanges;
   budgetBand: BudgetBand;
+  /** How the traveller-facing budget was chosen. Missing on legacy trips. */
+  budgetPreference?: TripBudgetPreference;
   selectedPlaces: Record<string, string[]>;
   dayAllocations?: Record<string, number>;
   /** Traveller-facing stay nights, stored separately from legacy calendar-day allocations. */
@@ -340,6 +342,11 @@ export type TripBrief = {
   cascadeStatus?: TripCascadeStatus;
   /** The traveller's explicit choice where Morrovia presented meaningful alternatives. */
   decisionSelections?: TripDecisionSelections;
+};
+
+export type TripBudgetPreference = {
+  source: "explicit" | "capture" | "profile" | "fallback" | "cleared";
+  value?: BudgetBand;
 };
 
 export type TripScheduleLocks = {
@@ -475,6 +482,7 @@ export type BuilderTripInput = {
   pace: TripPace;
   hotels: HotelChanges;
   budget: BudgetBand;
+  budgetPreference?: TripBudgetPreference;
   dayAllocations?: Record<string, number>;
   nightAllocations?: Record<string, number>;
   manualNightStopIds?: string[];
@@ -604,6 +612,7 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
       pace: input.pace,
       hotelChanges: input.hotels,
       budgetBand: input.budget,
+      budgetPreference: input.budgetPreference,
       selectedPlaces: input.picks,
       dayAllocations: input.dayAllocations,
       nightAllocations: input.nightAllocations,

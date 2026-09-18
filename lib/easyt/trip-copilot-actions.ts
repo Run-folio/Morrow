@@ -350,6 +350,7 @@ export function applyResolvedTripCopilotAction(trip: EasyTTrip, action: Resolved
       brief = {
         ...brief,
         budgetBand: budget,
+        budgetPreference: { source: "explicit", value: budget },
         ...(structured ? { structuredBrief: mergeStructuredTripBrief(structured, { budget }) } : {}),
       };
     }

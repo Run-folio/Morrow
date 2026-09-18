@@ -13,17 +13,24 @@ import {
 } from "@/lib/easyt/place-intelligence";
 import { placeAutocompleteKeyAction } from "@/lib/easyt/place-autocomplete";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
+import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { EasyTButton } from "./easyt-controls";
 import styles from "./canonical-place-autocomplete.module.css";
 
-const placeTypeLabel = (type: PlaceType) => ({
+const placeTypeLabel = (type: PlaceType, language: EasyTLanguage) => (language === "es" ? {
+  continent: "Continente", country: "País", macro_region: "Macrorregión", region: "Región", sub_region: "Subregión", island: "Isla",
+  archipelago: "Archipiélago", city: "Ciudad", town: "Población", natural_area: "Área natural", coast: "Costa",
+  mountain_range: "Cordillera", valley: "Valle", travel_corridor: "Corredor de viaje", landmark: "Lugar de interés",
+  transport_gateway: "Centro de transporte", unknown: "Lugar por confirmar",
+} : {
   continent: "Continent", country: "Country", macro_region: "Macro-region", region: "Region", sub_region: "Sub-region", island: "Island",
   archipelago: "Archipelago", city: "City", town: "Town", natural_area: "Natural area", coast: "Coast",
   mountain_range: "Mountain range", valley: "Valley", travel_corridor: "Travel corridor", landmark: "Landmark",
   transport_gateway: "Transport gateway", unknown: "Place to confirm",
-}[type]);
+})[type];
 
 export function CanonicalPlaceAutocomplete({
+  language = "en",
   label,
   value,
   placeholder,
@@ -31,10 +38,11 @@ export function CanonicalPlaceAutocomplete({
   parentConstraint,
   nearbyAnchor,
   allowedPlaceTypes,
+  requireCoordinates = false,
   searchIntent = "route-stop",
   excludeCanonicalIds = [],
-  emptyMessage = "No matching places found. Try the place with its country.",
-  failureMessage = "Place search is temporarily unavailable.",
+  emptyMessage,
+  failureMessage,
   showPlaceType = true,
   autoFocus = false,
   disabled = false,
@@ -48,6 +56,7 @@ export function CanonicalPlaceAutocomplete({
   submitFreeTextOnBlur = false,
   revealSuggestionsKey,
 }: {
+  language?: EasyTLanguage;
   label: string;
   value: string;
   placeholder: string;
@@ -55,6 +64,7 @@ export function CanonicalPlaceAutocomplete({
   parentConstraint?: PlanningParentConstraint;
   nearbyAnchor?: NearbyBaseAnchor;
   allowedPlaceTypes?: PlaceType[];
+  requireCoordinates?: boolean;
   searchIntent?: "route-stop" | "planning-area" | "anchor" | "unknown";
   excludeCanonicalIds?: string[];
   emptyMessage?: string;
@@ -72,6 +82,8 @@ export function CanonicalPlaceAutocomplete({
   submitFreeTextOnBlur?: boolean;
   revealSuggestionsKey?: number;
 }) {
+  const resolvedEmptyMessage = emptyMessage ?? (language === "es" ? "No encontramos lugares coincidentes. Prueba el lugar con su país." : "No matching places found. Try the place with its country.");
+  const resolvedFailureMessage = failureMessage ?? (language === "es" ? "La búsqueda de lugares no está disponible temporalmente." : "Place search is temporarily unavailable.");
   const listId = useId();
   const deferredValue = useDeferredValue(value);
   const [open, setOpen] = useState(false);
@@ -209,8 +221,9 @@ export function CanonicalPlaceAutocomplete({
 
   const suggestions = useMemo(() => [...catalogSuggestions, ...providerSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
+    .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
-    .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions]);
+    .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
     onSelect(suggestion);
@@ -266,7 +279,7 @@ export function CanonicalPlaceAutocomplete({
       onClick={() => { onClear(); setOpen(false); setActiveIndex(-1); }}
     >{clearLabel ?? `Clear ${label}`}</EasyTButton> : null}
     {open && value.trim().length >= 2 ? <div id={listId} role="listbox" className={styles.menu}>
-      {searching && !suggestions.length ? <p role="status">Searching places…</p> : suggestions.length ? suggestions.map((suggestion, index) => (
+      {searching && !suggestions.length ? <p role="status">{language === "es" ? "Buscando lugares…" : "Searching places…"}</p> : suggestions.length ? suggestions.map((suggestion, index) => (
         /* morrovia-ui-audit-allow-next-line native-control -- Listbox options require role=option and aria-selected semantics rather than the standard action-button contract. */
         <button
         type="button"
@@ -277,7 +290,7 @@ export function CanonicalPlaceAutocomplete({
         className={index === activeIndex ? styles.optionOn : undefined}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => choose(suggestion)}
-      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.region ? `${suggestion.region} · ` : ""}{suggestion.country}{showPlaceType ? ` · ${placeTypeLabel(suggestion.placeType)}` : ""}</small></span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{failureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>Retry</EasyTButton></div> : <p role="status">{emptyMessage}</p>}
+      ><MapPin aria-hidden="true" /><span><b>{suggestion.name}</b><small>{suggestion.region ? `${suggestion.region} · ` : ""}{suggestion.country}{showPlaceType ? ` · ${placeTypeLabel(suggestion.placeType, language)}` : ""}</small></span></button>)) : providerFailed ? <div className={styles.failure} role="alert"><p>{resolvedFailureMessage}</p><EasyTButton variant="secondary" size="small" onMouseDown={(event) => event.preventDefault()} onClick={() => setRetryNonce((current) => current + 1)}>{language === "es" ? "Reintentar" : "Retry"}</EasyTButton></div> : <p role="status">{resolvedEmptyMessage}</p>}
     </div> : null}
   </div>;
 }

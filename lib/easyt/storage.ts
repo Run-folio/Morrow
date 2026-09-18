@@ -111,6 +111,8 @@ export function beginNewTripNavigationInStorage(
   target: Pick<EventTarget, "dispatchEvent">,
 ) {
   if (!requestNewTripNavigation(target)) return false;
+  const currentTripId = loadCurrentTripIdFromStorage(storage, ownerId);
+  if (currentTripId && !loadLocalTripFromStorage(storage, currentTripId, ownerId)) return false;
   return clearCurrentTripInStorage(storage, ownerId);
 }
 
@@ -119,12 +121,14 @@ export function beginNewTripNavigation(
   target?: Pick<EventTarget, "dispatchEvent">,
 ) {
   const eventTarget = target ?? (typeof window !== "undefined" ? window : null);
-  if (!eventTarget || !requestNewTripNavigation(eventTarget)) return false;
+  if (!eventTarget) return false;
   const storage = browserStorage();
   if (storage) {
-    const cleared = clearCurrentTripInStorage(storage, ownerId);
+    const cleared = beginNewTripNavigationInStorage(storage, ownerId, eventTarget);
     if (!cleared) return false;
     dispatchTripStorageChange({ kind: "current-cleared", ownerId, tripId: null });
+  } else if (!requestNewTripNavigation(eventTarget)) {
+    return false;
   }
   return true;
 }
@@ -584,6 +588,7 @@ function travellerAuthoredTripDocument(trip: EasyTTrip) {
       pace: brief.pace,
       hotelChanges: brief.hotelChanges,
       budgetBand: brief.budgetBand,
+      budgetPreference: brief.budgetPreference,
       selectedPlaces: nonEmptyRecord(brief.selectedPlaces) ?? {},
       dayAllocations: nonEmptyRecord(brief.dayAllocations),
       nightAllocations: nonEmptyRecord(brief.nightAllocations),
