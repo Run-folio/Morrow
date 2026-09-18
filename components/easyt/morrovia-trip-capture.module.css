@@ -19,6 +19,38 @@
   box-shadow: 0 16px 36px color-mix(in srgb, var(--morrovia-ink) 7%, transparent);
 }
 
+.wideRoot { max-width: 1160px; margin-top: 28px; }
+.wideCard { gap: 16px; padding: 22px; }
+.modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--morrovia-line); }
+.modeTab { position: relative; min-height: 44px; border-radius: 0; color: var(--morrovia-muted); }
+.modeTab:hover:not(:disabled) { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
+.modeTab[aria-selected="true"] { color: var(--morrovia-ink); }
+.modeTab[aria-selected="true"]::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 3px; background: var(--morrovia-signal); content: ""; }
+.modeTab:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
+.wideEntryPanel { min-width: 0; }
+.wideEntryPanel > .promptField { height: 100%; min-height: 76px; }
+.wideEntryPanel .textareaField textarea { min-height: 64px; resize: vertical; }
+.wideMainRow { display: grid; grid-template-columns: minmax(330px, 1.35fr) minmax(300px, 1fr) minmax(112px, auto) auto; align-items: end; gap: 12px; }
+.wideDates { display: grid; gap: 8px; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sectionHeading > span,
+.budgetPanel > span { color: var(--morrovia-ink-soft); font: 700 10px/1.2 var(--morrovia-meta); letter-spacing: .08em; text-transform: uppercase; }
+.sectionHeading button { min-height: 30px; padding-inline: 4px; color: var(--morrovia-muted); text-decoration: underline; text-underline-offset: 3px; }
+.wideDatePicker { max-width: none; }
+.personalizeRow { display: grid; align-content: end; gap: 5px; }
+.personalizeRow > span { color: var(--morrovia-muted); font: 600 11px/1.3 var(--morrovia-ui); text-align: right; }
+.personalizeToggle { width: 100%; min-height: 50px; justify-content: center; }
+.personalizeToggle svg { order: 2; width: 14px; height: 14px; transition: transform 180ms ease; }
+.personalizeToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.personalizePanel { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .8fr); gap: 20px; padding: 4px 0 2px; animation: revealDetails 180ms ease-out; }
+.budgetPanel { display: grid; align-content: start; gap: 7px; }
+.budgetPanel > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.budgetPanel button { border-radius: var(--morrovia-control-radius); }
+.budgetPanel button[aria-pressed="true"] { border-color: var(--morrovia-action); background: var(--morrovia-lilac); }
+.personalizePanel .interestPanel button { min-height: 32px; padding: 6px 11px; }
+.wideAction button { min-height: 50px; white-space: nowrap; }
+.wideDisclosure { display: flex; justify-content: flex-end; }
+
 .detailsCollapsed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .detailsCollapsed > .label,
 .detailsCollapsed > .promptField { grid-column: 1 / -1; }
@@ -161,6 +193,14 @@
 .actionCluster > div:first-child:not(.action) > button { padding-inline: 8px; color: var(--morrovia-muted); }
 .error { margin: 8px 0 0; color: var(--morrovia-danger); font-size: 12px; }
 
+@media (max-width: 1100px) and (min-width: 721px) {
+  .wideMainRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .personalizeRow { align-self: stretch; }
+  .personalizeToggle { align-self: end; }
+  .wideAction { align-self: end; }
+  .wideAction button { width: 100%; }
+}
+
 @media (max-width: 720px) {
   .root { max-width: none; }
   .card { padding: 18px; }
@@ -175,12 +215,21 @@
   .detailsCollapsed > .promptField,
   .detailsCollapsed > .detailsToggle,
   .detailsCollapsed > .footer { grid-column: 1; grid-row: auto; }
+  .wideRoot { margin-top: 20px; }
+  .wideCard { padding: 18px; }
+  .personalizePanel { grid-template-columns: 1fr; gap: 14px; }
+  .wideMainRow { grid-template-columns: 1fr; align-items: stretch; }
+  .wideAction button { width: 100%; }
 }
 
 @media (max-width: 430px) {
   .card { padding: 14px; }
   .promptField { gap: 8px; padding: 12px; }
   .textareaField textarea { min-height: 102px; }
+  .wideCard { gap: 13px; padding: 14px; }
+  .modeTab { min-height: 48px; padding-inline: 8px; font-size: 12px; }
+  .personalizeRow { gap: 4px; }
+  .personalizeRow > span { text-align: left; }
 }
 
 @media (max-width: 340px) {
@@ -189,6 +238,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .detailsPanel { animation: none; }
+  .personalizePanel { animation: none; }
   .detailsToggle svg { transition: none; }
   .attributeActions button,
   .interestPanel button { transition: none; }

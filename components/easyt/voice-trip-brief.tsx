@@ -38,10 +38,13 @@ type VoiceTripBriefProps = {
   onTranscript: (transcript: string) => void;
   className?: string;
   compact?: boolean;
+  disabled?: boolean;
 };
 
-export function VoiceTripBrief({ language, onTranscript, className, compact = false }: VoiceTripBriefProps) {
+export function VoiceTripBrief({ language, onTranscript, className, compact = false, disabled = false }: VoiceTripBriefProps) {
   const recognitionRef = useRef<RecognitionLike | null>(null);
+  const mountedRef = useRef(true);
+  const disabledRef = useRef(disabled);
   const onTranscriptRef = useRef(onTranscript);
   const disclosureId = useId();
   const [supported, setSupported] = useState<boolean | null>(null);
@@ -55,9 +58,35 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
   }, [onTranscript]);
 
   useEffect(() => {
+    disabledRef.current = disabled;
+    if (!disabled) return;
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    setListening(false);
+    setDisclosureOpen(false);
+    if (!recognition) return;
+    recognition.onstart = null;
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    recognition.abort();
+  }, [disabled]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     setSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
     setDisclosureAcknowledged(speechDisclosureAcknowledged(window.localStorage));
-    return () => recognitionRef.current?.abort();
+    return () => {
+      mountedRef.current = false;
+      const recognition = recognitionRef.current;
+      recognitionRef.current = null;
+      if (!recognition) return;
+      recognition.onstart = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    };
   }, []);
 
   const text = language === "es"
@@ -106,8 +135,11 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
     recognition.lang = language === "es" ? "es-ES" : "en-US";
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.onstart = () => setListening(true);
+    recognition.onstart = () => {
+      if (mountedRef.current && !disabledRef.current && recognitionRef.current === recognition) setListening(true);
+    };
     recognition.onresult = (event) => {
+      if (!mountedRef.current || disabledRef.current || recognitionRef.current !== recognition) return;
       const transcript = finalSpeechTranscript(event);
       if (transcript) {
         heardSpeech = true;
@@ -116,10 +148,12 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
       }
     };
     recognition.onerror = ({ error }) => {
+      if (!mountedRef.current || disabledRef.current || recognitionRef.current !== recognition) return;
       hadError = true;
       setMessage(text[speechFailureKind(error)]);
     };
     recognition.onend = () => {
+      if (!mountedRef.current || disabledRef.current || recognitionRef.current !== recognition) return;
       setListening(false);
       recognitionRef.current = null;
       if (!heardSpeech && !hadError) setMessage(text.noSpeech);
@@ -133,6 +167,7 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
   };
 
   const requestStart = () => {
+    if (disabledRef.current) return;
     if (listening) {
       stop();
       return;
@@ -145,6 +180,7 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
   };
 
   const confirmStart = () => {
+    if (disabledRef.current) return;
     acknowledgeSpeechDisclosure(window.localStorage);
     setDisclosureAcknowledged(true);
     setDisclosureOpen(false);
@@ -153,7 +189,7 @@ export function VoiceTripBrief({ language, onTranscript, className, compact = fa
 
   return <div className={`${styles.voice} ${compact ? styles.compact : ""} ${className ?? ""}`}>
     <div className={styles.voiceActions}>
-      <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null} onClick={requestStart}>
+      <button type="button" className={listening ? styles.listening : ""} aria-pressed={listening} aria-label={listening ? text.stop : text.start} aria-expanded={disclosureOpen} aria-controls={disclosureId} aria-haspopup="dialog" disabled={supported === null || disabled} onClick={requestStart}>
         {listening ? <Square aria-hidden="true" /> : <Mic aria-hidden="true" />}
         <span className={compact ? "sr-only" : undefined}>{listening ? text.listening : language === "es" ? "Hablar" : "Speak"}</span>
       </button>

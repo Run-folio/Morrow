@@ -72,7 +72,8 @@ test("homepage trip capture progressively discloses canonical details without ch
   assert.match(capture, /showDetails: "Add trip details"/);
   assert.match(capture, /aria-expanded=\{detailsOpen\}/);
   assert.match(capture, /\(!progressiveDetails \|\| detailsOpen\)/);
-  assert.match(capture, /compact=\{progressiveDetails\}/);
+  assert.match(capture, /compact=\{progressiveDetails \|\| Boolean\(homepageEntry\)\}/,
+    "voice control should stay compact for the old progressive default and the opt-in wide Homepage entry");
   assert.match(capture, /!progressiveDetails \? <MorroviaContextualDisclosure/);
   assert.match(homepage, /progressiveDetails/);
   assert.doesNotMatch(builder, /progressiveDetails/);
