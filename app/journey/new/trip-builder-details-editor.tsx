@@ -74,7 +74,6 @@ export function TripBuilderDetailsEditor({
     : endSelection.mode === "same_as_start"
       ? `${language === "es" ? "Igual que el inicio" : "Same as start"} · ${startPlace.name || unknown}`
       : unknown;
-
   useEffect(() => {
     if (expanded && !wasExpanded.current) {
       setDraft(canonicalDraft());
@@ -101,12 +100,12 @@ export function TripBuilderDetailsEditor({
         {language === "es" ? "Editar viaje" : "Edit trip"}
       </EasyTButton> : null}
     </div>
-    <dl className={styles.detailsSummary}>
+    {!expanded ? <dl className={styles.detailsSummary}>
       <div><dt>{language === "es" ? "Desde" : "Starting from"}</dt><dd>{startPlace.name || unknown}</dd></div>
       <div><dt>{language === "es" ? "Final del viaje" : "Journey end"}</dt><dd>{endLabel}</dd></div>
       <div><dt>{language === "es" ? "Fechas" : "Dates"}</dt><dd>{startDate} – {endDate}</dd></div>
       <div><dt>{language === "es" ? "Viajeros" : "Travellers"}</dt><dd>{travellers}</dd></div>
-    </dl>
+    </dl> : null}
     {expanded ? <div id={contentId} className={styles.detailsFields}>
       {children({ draft, setDraft })}
       <div className={styles.detailsCompactGrid}>

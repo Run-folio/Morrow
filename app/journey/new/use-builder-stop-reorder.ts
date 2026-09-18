@@ -69,6 +69,11 @@ export function useBuilderStopReorder(options: {
     if (result.ok) publishPreview(result.ids);
   }, [fixedOrder, lockedStopIds, publishPreview]);
 
+  const previewActiveAt = useCallback((targetIndex: number) => {
+    const movedId = gestureRef.current?.movedId;
+    if (movedId) previewAt(movedId, targetIndex);
+  }, [previewAt]);
+
   const commit = useCallback((ids: readonly string[], source: ReorderSource) => onCommit(ids, source), [onCommit]);
 
   const drop = useCallback(() => {
@@ -134,5 +139,5 @@ export function useBuilderStopReorder(options: {
     onPointerCancel: () => cancel(),
   } as HTMLAttributes<HTMLElement>), [begin, cancel, draggingId, drop, fixedOrder, lockedStopIds, previewAt]);
 
-  return { draggingId, previewIds, gripProps, previewAt, drop, cancel, moveFromMenu };
+  return { draggingId, previewIds, gripProps, previewAt, previewActiveAt, drop, cancel, moveFromMenu };
 }

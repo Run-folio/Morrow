@@ -51,13 +51,33 @@ export function builderDocumentFingerprint(trip: EasyTTrip): string {
   });
 }
 
+/** Fingerprint only the canonical fields owned by the compact trip-details editor. */
+export function builderDetailsFingerprint(trip: EasyTTrip): string {
+  return JSON.stringify({
+    id: trip.id,
+    origin: {
+      name: trip.brief.origin,
+      coordinates: trip.brief.originCoordinates,
+      canonicalPlaceId: trip.brief.originCanonicalPlaceId,
+      country: trip.brief.originCountry,
+      providerId: trip.brief.originProviderId,
+    },
+    journeyEnd: trip.brief.journeyEnd ?? { mode: "unknown" },
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    travellers: trip.travellers,
+    budget: trip.brief.budgetBand,
+  });
+}
+
 export function prepareBuilderDocumentCommit(input: {
   current: EasyTTrip;
   proposed: EasyTTrip;
   expectedFingerprint: string;
   validate: (trip: EasyTTrip) => boolean;
+  fingerprint?: (trip: EasyTTrip) => string;
 }): BuilderDocumentCommitResult {
-  if (builderDocumentFingerprint(input.current) !== input.expectedFingerprint) {
+  if ((input.fingerprint ?? builderDocumentFingerprint)(input.current) !== input.expectedFingerprint) {
     return { ok: false, reason: "stale-source" };
   }
   if (!input.validate(input.proposed)) return { ok: false, reason: "invalid-document" };

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  builderDetailsFingerprint,
   builderDocumentFingerprint,
   prepareBuilderDocumentCommit,
 } from "../lib/easyt/trip-builder-document-commit.ts";
@@ -75,6 +76,20 @@ test("fingerprint covers editable fields but ignores timestamps and derived legs
     ...current,
     stops: [...current.stops].reverse().map((stop, order) => ({ ...stop, order })),
   }), builderDocumentFingerprint(current));
+});
+
+test("details CAS ignores background route enrichment but rejects newer details", () => {
+  const current = fixtureTrip();
+  const backgroundEnriched = {
+    ...current,
+    stops: current.stops.map((stop) => ({ ...stop, providerId: `provider:${stop.id}`, latitude: 1, longitude: 2 })),
+  };
+  assert.equal(builderDetailsFingerprint(backgroundEnriched), builderDetailsFingerprint(current));
+  assert.notEqual(builderDetailsFingerprint({ ...current, travellers: 3 }), builderDetailsFingerprint(current));
+  assert.notEqual(builderDetailsFingerprint({
+    ...current,
+    brief: { ...current.brief, journeyEnd: { mode: "same_as_start" } },
+  }), builderDetailsFingerprint(current));
 });
 
 test("keeps endpoints out of night-bearing stops", () => {

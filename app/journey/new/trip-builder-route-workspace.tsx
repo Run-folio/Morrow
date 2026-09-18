@@ -27,6 +27,7 @@ export type TripBuilderRouteWorkspaceProps = {
   onEditNights: (stopId: string, nights: number) => void;
   onAddStop: () => void;
   onOpenRouteCheck: () => void;
+  routeCheckSummary: string;
   onDismissRouteCheck: () => void;
   onRouteCheckApplied: () => void;
 };
@@ -65,6 +66,7 @@ export function TripBuilderRouteWorkspace({
   onEditNights,
   onAddStop,
   onOpenRouteCheck,
+  routeCheckSummary,
   onDismissRouteCheck,
   onRouteCheckApplied,
 }: TripBuilderRouteWorkspaceProps) {
@@ -123,7 +125,8 @@ export function TripBuilderRouteWorkspace({
               aria-selected={isSelected}
               className={`${styles.builderRouteRow} ${isSelected ? styles.builderRouteRowSelected : ""}`}
               onClick={() => selectStop(stop.id)}
-              onDragOver={(event) => { event.preventDefault(); reorder.previewAt(reorder.draggingId ?? "", index); }}
+              onDragEnter={(event) => { event.preventDefault(); reorder.previewActiveAt(index); }}
+              onDragOver={(event) => { event.preventDefault(); reorder.previewActiveAt(index); }}
               onDrop={(event) => { event.preventDefault(); reorder.drop(); }}
             >
               {/* morrovia-ui-audit-allow-next-line native-control -- The drag grip owns native draggable pointer and keyboard semantics rather than a standard push-button action. */}
@@ -199,7 +202,7 @@ export function TripBuilderRouteWorkspace({
     </div>
 
     <section className={styles.builderRouteCheck} aria-label="Route Check">
-      <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>{routeCheckProposal?.ok ? routeCheckProposal.trip.stops.map((stop) => stop.name).join(" → ") : "Review the sequence before Morrovia builds the detailed trip."}</small></span></div>
+      <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>{routeCheckProposal?.ok ? routeCheckProposal.trip.stops.map((stop) => stop.name).join(" → ") : routeCheckSummary}</small></span></div>
       {routeCheckProposal?.ok ? <div className={styles.builderRouteCheckActions}>
         <EasyTButton size="small" onClick={() => { if (routeCheckProposalStopIds && onCommitOrder(routeCheckProposalStopIds, "route-check")) { onRouteCheckApplied(); onDismissRouteCheck(); } }}>Apply order</EasyTButton>
         <EasyTButton size="small" variant="secondary" onClick={onDismissRouteCheck}>Dismiss</EasyTButton>

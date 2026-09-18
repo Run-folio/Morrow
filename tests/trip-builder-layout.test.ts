@@ -331,6 +331,22 @@ test("clarification presentation separates action-required geography from confir
     "confirmed base cards should stack at narrow widths");
 });
 
+test("the activated Builder keeps one compact details and validation hierarchy", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const details = readFileSync(new URL("../app/journey/new/trip-builder-details-editor.tsx", import.meta.url), "utf8");
+
+  assert.match(details, /\{!expanded \? <dl className=\{styles\.detailsSummary\}>/,
+    "the compact read-only summary must disappear whenever editable journey controls are open");
+  assert.match(builder, /contextualResolvedPlaceMentions/,
+    "ordinary self-referential stay-base relationships should be filtered from presentation");
+  assert.match(builder, /\{\(effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 \|\| showTripDetails\) && <section id="builder-constraints"/,
+    "an empty Fixed plans disclosure must not consume space until explicitly opened");
+  assert.doesNotMatch(builder, /<section hidden className=\{styles\.routeCheck\}/,
+    "the obsolete top Route Check must not compete with the canonical check below the route workspace");
+  assert.equal(builder.match(/<TripBuilderRouteWorkspace/g)?.length, 1,
+    "the route workspace should remain the single owner of the primary Route Check surface");
+});
+
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 

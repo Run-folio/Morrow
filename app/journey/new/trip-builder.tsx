@@ -62,7 +62,7 @@ import { buildCanonicalTripLegs } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
-import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
+import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
@@ -1398,6 +1398,13 @@ function TripBuilderDocument() {
   const allResolvedPlaceMentions = useMemo(() => activePlaceMentions.filter((mention) => selectedMentionIds.has(mention.mentionId)), [activePlaceMentions, selectedMentionIds]);
   const resolvedPlanningAreaMentions = useMemo(() => allResolvedPlaceMentions.filter(placeMentionSupportsMultipleSelections), [allResolvedPlaceMentions]);
   const resolvedPlaceMentions = useMemo(() => allResolvedPlaceMentions.filter((mention) => !placeMentionSupportsMultipleSelections(mention)), [allResolvedPlaceMentions]);
+  const contextualResolvedPlaceMentions = useMemo(() => resolvedPlaceMentions.filter((mention) => {
+    const selections = effectiveStructuredBrief.placeSelections?.filter((item) => item.mentionId === mention.mentionId) ?? [];
+    if (selections.length !== 1) return selections.length > 1;
+    const requested = placeDisplayName(mention).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase();
+    const selected = selections[0].selectedName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase();
+    return requested !== selected;
+  }), [effectiveStructuredBrief.placeSelections, resolvedPlaceMentions]);
   const blockingPlaceIssue = placeIssues.find((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId));
   const pendingPlaceCount = new Set(placeIssues.filter((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId)).map((issue) => issue.mentionId)).size;
   const areasToShapeCount = pendingReviewPlaceMentions.filter((mention) => mention.status !== "ambiguous" && mention.status !== "unresolved"
@@ -2895,6 +2902,7 @@ function TripBuilderDocument() {
         current: activeTripDocument,
         proposed,
         expectedFingerprint: sourceFingerprint,
+        fingerprint: builderDetailsFingerprint,
         validate: (candidate) => isEasyTTrip(candidate)
           && /^\d{4}-\d{2}-\d{2}$/.test(candidate.startDate)
           && /^\d{4}-\d{2}-\d{2}$/.test(candidate.endDate)
@@ -3030,6 +3038,17 @@ function TripBuilderDocument() {
         : `${durationLabel(longJourneyIssue.duration.arrivalMinutes)} total travel leaves about ${longJourneyIssue.usableDays} usable days.`)
       : tripTimingNotice)
     ?? "";
+  const primaryRouteCheckSummary = currentCuratedRoute && currentCuratedRoute.coverage.state !== "fully-supported"
+    ? `ROUTE COVERAGE CHANGED · ${currentCuratedRoute.coverage.reason}`
+    : blockingPlaceIssue
+      ? (language === "es" ? "Confirma los lugares pendientes antes de evaluar la ruta completa." : "Confirm the remaining places before checking the complete route.")
+      : routeRecommendationVisible
+        ? (language === "es" ? "Hay disponible un orden más directo." : "A cleaner order is available.")
+        : routeIntelligence.route.tradeoffs[0] && effectiveIntent.hardConstraints.avoidDriving
+          ? (language === "es" ? "Evitar coche está activo: compara tren o vuelo para los traslados locales antes de reservar." : "Avoid driving is active: compare rail or flight for local transfers before booking.")
+        : canonicalTransferReviewCount > 0
+          ? (language === "es" ? `${canonicalTransferReviewCount} traslados importantes necesitan revisión.` : `${canonicalTransferReviewCount} major ${canonicalTransferReviewCount === 1 ? "transfer needs" : "transfers need"} checking.`)
+          : (language === "es" ? "Revisa la secuencia antes de crear el viaje detallado." : "Review the sequence before Morrovia builds the detailed trip.");
 
   const surfaceBuildConflict = () => {
     const conflict = buildInvariant.firstConflict;
@@ -3695,7 +3714,7 @@ function TripBuilderDocument() {
                   travellers={effectiveIntent.travellers}
                   budget={budget}
                   expanded={!hasRouteSkeleton || showOriginEditor || Boolean(inlineOriginPlanningMention)}
-                  sourceFingerprint={builderDocumentFingerprint(activeTripDocument)}
+                  sourceFingerprint={builderDetailsFingerprint(activeTripDocument)}
                   busy={detailsCommitBusy}
                   error={detailsCommitError}
                   onExpandedChange={(expanded) => { setDetailsCommitError(""); setShowOriginEditor(expanded); }}
@@ -3870,9 +3889,9 @@ function TripBuilderDocument() {
                   onContinue={() => openClarificationSession()}
                 />}
 
-                {resolvedPlaceMentions.length > 0 && <section className={styles.resolvedPlaces} aria-label={language === "es" ? "Bases de estancia confirmadas" : "Confirmed stay bases"}>
+                {contextualResolvedPlaceMentions.length > 0 && <section className={styles.resolvedPlaces} aria-label={language === "es" ? "Bases de estancia confirmadas" : "Confirmed stay bases"}>
                   <header><CheckCircle2 aria-hidden="true" /><span><strong>{language === "es" ? "BASES CONFIRMADAS" : "STAY BASES CONFIRMED"}</strong><small>{language === "es" ? "Tus destinos y visitas permanecen vinculados a sus bases nocturnas." : "Your requested destinations and visits remain linked to their overnight bases."}</small></span></header>
-                  <div>{resolvedPlaceMentions.map((mention) => {
+                  <div>{contextualResolvedPlaceMentions.map((mention) => {
                     const selections = effectiveStructuredBrief.placeSelections?.filter((item) => item.mentionId === mention.mentionId) ?? [];
                     const selection = selections[0];
                     if (!selection) return null;
@@ -3917,7 +3936,7 @@ function TripBuilderDocument() {
 
                 {pickedUpPreferences.length > 0 && <section className={styles.pickedPreferences} aria-label={language === "es" ? "Preferencias" : "Preferences"}><strong>{language === "es" ? "PREFERENCIAS" : "PREFERENCES"}</strong><div>{pickedUpPreferences.map((preference) => <span key={preference}>{preference}</span>)}</div></section>}
 
-              <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
+              {(effectiveIntent.hardConstraints.fixedCommitments.length > 0 || showTripDetails) && <section id="builder-constraints" className={`${styles.intentPanel} ${summaryFocus === "constraints" ? styles.summaryEditorOn : ""}`} aria-label={language === "es" ? "Intención y condiciones del viaje" : "Trip intent and constraints"}>
                 <button type="button" className={styles.detailsToggle} aria-expanded={showTripDetails} aria-controls={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} onClick={() => setShowTripDetails((current) => !current)}><span><b>{language === "es" ? "Planes fijos" : "Fixed plans"}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? <small>{language === "es" ? `${effectiveIntent.hardConstraints.fixedCommitments.length} guardado${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : `${effectiveIntent.hardConstraints.fixedCommitments.length} saved`}</small> : null}</span>{showTripDetails ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</button>
                 {showTripDetails && <div id={isHomepagePromptHandoff ? "builder-advanced-content" : undefined} className={isHomepagePromptHandoff ? styles.advancedContent : undefined}>
                 <div className={styles.intentGrid}>
@@ -3978,51 +3997,7 @@ function TripBuilderDocument() {
                 <footer className={styles.intentSummary}><span>{language === "es" ? "RESUMEN ANTES DE PLANIFICAR" : "PLAN SUMMARY"}</span><p><b>{effectiveIntent.travellers} {language === "es" ? "viajeros" : "travellers"}</b> · {effectiveIntent.timing.flexibility === "fixed" ? (language === "es" ? "fechas fijas" : "fixed dates") : (language === "es" ? `${totalDays} días flexibles` : `${totalDays} flexible days`)} · <b>{stops.map((stop) => stop.name).join(" · ") || (language === "es" ? "sin paradas aún" : "no stops yet")}</b>{effectiveIntent.hardConstraints.fixedCommitments.length ? ` · ${effectiveIntent.hardConstraints.fixedCommitments.length} ${language === "es" ? "condición fija" : "fixed commitment"}${effectiveIntent.hardConstraints.fixedCommitments.length === 1 ? "" : "s"}` : ""}</p></footer>
                 </div>}
                 {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && (!isHomepagePromptHandoff || showTripDetails) && <div className={styles.commitmentChips}>{effectiveIntent.hardConstraints.fixedCommitments.map((item) => <span key={item.id}>{item.date ? `${item.date} · ` : ""}{item.label}<button type="button" aria-label={`${language === "es" ? "Quitar" : "Remove"} ${item.label}`} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, fixedCommitments: current.hardConstraints.fixedCommitments.filter((commitment) => commitment.id !== item.id) } }))}><X /></button></span>)}</div>}
-              </section>
               </section>}
-
-              {routeIntelligence.route.state !== "insufficient-data" && stops.length > 1 && <section hidden className={styles.routeCheck} aria-live="polite">
-                {isHomepagePromptHandoff ? <>
-                  <div className={styles.handoffRouteStatus}>
-                    <div>
-                      <p>{routeCopy.eyebrow}</p>
-                      {blockingPlaceIssue
-                        ? <><h3>{language === "es" ? `Confirma ${pendingPlaceCount} ${pendingPlaceCount === 1 ? "lugar" : "lugares"} antes de evaluar la ruta completa.` : `Confirm ${pendingPlaceCount} ${pendingPlaceCount === 1 ? "place" : "places"} before Morrovia evaluates the complete route.`}</h3><span>{language === "es" ? "Conservamos todos los destinos solicitados mientras eliges las bases que faltan." : "Every requested destination remains in the brief while you choose the missing bases."}</span></>
-                        : routeRecommendationVisible
-                        ? <><h3>{language === "es" ? "Hay disponible un orden más directo." : "A cleaner order is available."}</h3><span>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</span><small className={styles.routeCheckReason}>{routeRecommendationReason}</small></>
-                        : canonicalTransferReviewCount > 0
-                        ? <><h3>{language === "es" ? `${canonicalTransferReviewCount} traslados importantes necesitan revisión.` : `${canonicalTransferReviewCount} major ${canonicalTransferReviewCount === 1 ? "transfer needs" : "transfers need"} checking.`}</h3><span>{language === "es" ? "La ruta está completa, pero los horarios y servicios siguen sin confirmar." : "The route is complete, but timing and live services are not yet confirmed."}</span></>
-                        : <h3>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Tus planes fijos están protegidos." : "Your fixed plans are protected.") : (language === "es" ? "Tu ruta fluye bien." : "Your route flows well.")}</h3>}
-                    </div>
-                    {!routeRecommendationVisible && !blockingPlaceIssue && canonicalTransferReviewCount === 0 && <span className={styles.routeSuccessIcon}><Check aria-hidden="true" /><span className="sr-only">{language === "es" ? "Ruta válida" : "Route valid"}</span></span>}
-                  </div>
-                  {routeRecommendationVisible && !blockingPlaceIssue && <div className={styles.routeCheckActions}>
-                    <EasyTButton size="small" onClick={applyRecommendedOrder}>{routeCopy.useOrder}</EasyTButton>
-                    <EasyTButton size="small" variant="secondary" onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>{routeCopy.keepOrder}</EasyTButton>
-                  </div>}
-                </> : <>
-                <div>
-                  {currentCuratedRoute && currentCuratedRoute.coverage.state !== "fully-supported" && <p>ROUTE COVERAGE CHANGED</p>}
-                  {currentCuratedRoute && currentCuratedRoute.coverage.state !== "fully-supported" && <span>{currentCuratedRoute.coverage.reason}</span>}
-                  <p>{routeCopy.eyebrow}</p>
-                  {routeRecommendationVisible ? <>
-                    <h3>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")} {routeCopy.cleanerOrder}</h3>
-                    <span>{routeTransferSaving === null ? routeCopy.direction : `${routeCopy.removesTravel(routeTransferSaving)} ${routeCopy.direction}`}</span>
-                  </> : <>
-                    <h3>{effectiveIntent.hardConstraints.fixedCommitments.length ? (language === "es" ? "Tus condiciones fijas están protegidas." : "Your fixed commitments are protected.") : routeCopy.currentOrder}</h3>
-                    {effectiveIntent.hardConstraints.fixedCommitments.length > 0 && <span>{language === "es" ? "Confirma dónde encaja cada condición antes de cambiar el orden." : "Confirm where each commitment sits before changing the order."}</span>}
-                  </>}
-                  {routeIntelligence.route.tradeoffs[0] && !effectiveIntent.hardConstraints.fixedCommitments.length && effectiveIntent.hardConstraints.avoidDriving && <span className={styles.routeTradeoff}>{language === "es" ? "Evitar coche está activo: compara tren o vuelo para los traslados locales antes de reservar." : "Avoid driving is active: compare rail or flight for local transfers before booking."}</span>}
-                  {routeRecommendationVisible && <div className={styles.decisionAlternatives}>
-                    <article className={decisionSelections.routeOrder === "recommended" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "RECOMENDADO" : "MORROVIA RECOMMENDS"}</b><strong>{language === "es" ? "Ruta más directa" : "More direct route"}</strong></div><span>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</span><small>{routeTransferSaving === null ? routeCopy.direction : routeCopy.removesTravel(routeTransferSaving)} {language === "es" ? "Es una estimación de planificación, no un horario en vivo." : "This is a planning estimate, not a live timetable."}</small></article>
-                    <article className={decisionSelections.routeOrder === "entered" ? styles.decisionSelected : ""}><div><b>{language === "es" ? "TU ORDEN" : "YOUR ORDER"}</b><strong>{language === "es" ? "Mantener la intención" : "Keep your intended sequence"}</strong></div><span>{stops.map((stop) => stop.name).join(" → ")}</span><small>{language === "es" ? "Conserva el orden que elegiste, con más tiempo de traslado estimado." : "Preserves the order you chose, with more estimated transfer time."}</small></article>
-                  </div>}
-                </div>
-                {routeRecommendationVisible && <div className={styles.routeCheckActions}>
-                  <EasyTButton size="small" onClick={applyRecommendedOrder}>{routeCopy.useOrder}</EasyTButton>
-                  <EasyTButton size="small" variant="secondary" onClick={() => { setKeptRouteKey(routeKey); acceptCurrentRoute("keep_order"); }}>{routeCopy.keepOrder}</EasyTButton>
-                </div>}
-                </>}
               </section>}
 
             </div>
@@ -4051,6 +4026,7 @@ function TripBuilderDocument() {
                   setRouteInsightsOpen(true);
                   window.requestAnimationFrame(() => document.getElementById("route-insights-title")?.scrollIntoView({ behavior: "smooth", block: "center" }));
                 }}
+                routeCheckSummary={primaryRouteCheckSummary}
                 onDismissRouteCheck={() => setRouteCheckProposalStopIds(null)}
                 onRouteCheckApplied={() => trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays })}
               />
