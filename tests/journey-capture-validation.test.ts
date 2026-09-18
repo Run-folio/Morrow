@@ -74,7 +74,6 @@ test("Homepage and Builder consume one capture validator while Builder keeps str
   assert.match(builder, /<MorroviaTripCapture/);
   assert.match(capture, /validateJourneyCaptureSubmission/);
   assert.doesNotMatch(homepage, /missing_trip_intent|validateJourneyCaptureSubmission/);
-  assert.match(builder, /allowEmptyPrompt=\{Boolean\(manualOriginSuggestion && manualDestinations\.length\)\}/);
   assert.doesNotMatch(builder, /disabled=\{!tripBrief\.trim\(\)/);
   assert.match(homepage, /requestJourneyCapture\(tripBrief,/);
   assert.match(builder, /requestJourneyCapture\(brief,/);

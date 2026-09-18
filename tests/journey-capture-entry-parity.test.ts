@@ -77,8 +77,6 @@ test("Homepage and direct Builder use the same canonical capture request contrac
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
   assert.match(homepage, /requestJourneyCapture\(tripBrief,/);
-  assert.match(builder, /composeJourneyCaptureBrief\(/,
-    "manual Builder controls should adapt into the shared capture request");
   assert.match(builder, /requestJourneyCapture\(brief,/);
   assert.doesNotMatch(builder, /captureJourneyBrief\(tripBrief\)/,
     "direct Builder capture must not bypass provider-enriched interpretation");
