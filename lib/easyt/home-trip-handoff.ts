@@ -1,9 +1,12 @@
-import type { JourneyCaptureResult } from "./journey-capture.ts";
-import { normalizePlacePhrase, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
+import { isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
+import { createPlanningConfidence } from "./planning-confidence.ts";
+import { structuredTripBriefFromSavedSelections, validateStructuredTripBrief, type StructuredTripBrief, type TripBriefProvenance } from "./structured-trip-brief.ts";
+import type { TravelProfile } from "./travel-profile.ts";
 
 export const HOME_TRIP_DRAFT_KEY = "easyt-home-trip-draft";
 
@@ -11,6 +14,32 @@ export type HomepageDestinationEntry = {
   id: string;
   text: string;
   selection: CanonicalPlaceSuggestion | null;
+};
+
+export type HomepageChoice<T> =
+  | { state: "untouched" }
+  | { state: "selected"; value: T }
+  | { state: "cleared" };
+
+export type HomepageInputSnapshot = {
+  version: 1;
+  ownerId: string | null;
+  revision: number;
+  mode: "stops" | "describe";
+  entries: HomepageDestinationEntry[];
+  prompt: string;
+  dates: HomepageChoice<{ start: string; end: string }>;
+  budget: HomepageChoice<"value" | "mid" | "high">;
+  interests: HomepageChoice<TripInterest[]>;
+  travellers: HomepageChoice<number>;
+  origin: HomepageChoice<JourneyEndpointPlace>;
+  journeyEnd: HomepageChoice<JourneyEndSelection>;
+};
+
+export type HomepageInputIssue = {
+  field: "destinations" | "prompt" | "dates" | "travellers";
+  code: "required" | "unresolved" | "invalid";
+  entryId?: string;
 };
 
 export function moveHomepageEntry(
@@ -55,6 +84,15 @@ export type HomeTripDraft = {
   interests?: TripInterest[];
   /** Distinguishes an explicit empty selection from an untouched control. */
   interestsExplicit?: boolean;
+  budget?: "value" | "mid" | "high";
+  homepage?: {
+    version: 1;
+    ownerId: string | null;
+    revision: number;
+    mode: HomepageInputSnapshot["mode"];
+    occurrenceMentionIds: Record<string, string>;
+    choices: Pick<HomepageInputSnapshot, "dates" | "budget" | "interests" | "travellers" | "origin" | "journeyEnd">;
+  };
   brief?: string;
   nightAllocations?: Record<string, number>;
   decisionSelections?: EasyTTrip["brief"]["decisionSelections"];
@@ -215,6 +253,350 @@ export function createHomeTripDraft(input: {
     interests: normalizeTripInterests(input.interests),
     interestsExplicit: input.interestsExplicit ?? input.interests.length > 0,
     brief: input.capture.rawBrief,
+  };
+}
+
+const homepageExplicit = (): TripBriefProvenance => ({ source: "builder", kind: "explicit", confidence: "high" });
+const homepageProfileDefault = (): TripBriefProvenance => ({ source: "morrovia-default", kind: "default", confidence: "low" });
+
+function validHomepageDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function homepageEntryRoutability(selection: CanonicalPlaceSuggestion): PlaceRoutability {
+  if (selection.routability) return selection.routability;
+  if (isOvernightBaseEligible({ placeType: selection.placeType, routability: "direct_destination" })) return "direct_destination";
+  return selection.placeType === "landmark" ? "anchor_or_poi" : "planning_area";
+}
+
+function homepageEntryMention(entry: HomepageDestinationEntry, order: number): ResolvedPlaceMention {
+  const selection = entry.selection!;
+  const routability = homepageEntryRoutability(selection);
+  const provenance = [...selection.provenance, {
+    id: `homepage-entry:${entry.id}`,
+    label: "Homepage destination selection",
+    kind: "builder" as const,
+    supports: "The traveller explicitly selected this canonical destination occurrence on the homepage.",
+  }];
+  const confidence = createPlanningConfidence({
+    state: "structured",
+    level: "high",
+    freshness: "current",
+    scope: "traveller-intent",
+    sources: [{ id: `homepage-entry:${entry.id}`, label: "Homepage destination selection", kind: "traveller", supports: "The traveller explicitly selected this canonical destination occurrence on the homepage." }],
+    reason: "The traveller explicitly selected this canonical destination occurrence.",
+  });
+  const direct = isOvernightBaseEligible({ placeType: selection.placeType, routability });
+  return {
+    mentionId: `homepage-entry:${entry.id}`,
+    sourceText: selection.name,
+    sourceTexts: [selection.name],
+    normalizedPhrase: normalizePlacePhrase(selection.name),
+    canonicalName: selection.name,
+    canonicalPlaceId: selection.canonicalPlaceId,
+    aliases: [],
+    placeType: selection.placeType,
+    status: "resolved",
+    confidence,
+    provenance,
+    parentCountries: selection.country ? [selection.country] : [],
+    parentRegionId: selection.region,
+    bounds: selection.bounds,
+    coordinates: selection.coordinates ? [...selection.coordinates] : undefined,
+    routability,
+    directlyRoutable: direct,
+    requiresBaseSelection: !direct,
+    isAnchor: routability === "anchor_or_poi",
+    role: "preferred",
+    order,
+    candidates: [{
+      canonicalPlaceId: selection.canonicalPlaceId,
+      canonicalName: selection.name,
+      aliases: [],
+      placeType: selection.placeType,
+      parentCountries: selection.country ? [selection.country] : [],
+      parentRegionId: selection.region,
+      bounds: selection.bounds,
+      coordinates: selection.coordinates ? [...selection.coordinates] : undefined,
+      routability,
+      confidence,
+      provenance,
+    }],
+  };
+}
+
+function homepageStructuredBrief(mentions: ResolvedPlaceMention[]): StructuredTripBrief {
+  const destinations = mentions.map((mention) => ({
+    ...(mention.directlyRoutable ? { id: mention.mentionId.replace("homepage-entry:", "") } : {}),
+    name: mention.canonicalName,
+    canonicalPlaceId: mention.canonicalPlaceId,
+    placeMentionId: mention.mentionId,
+    placeType: mention.placeType,
+    resolutionStatus: mention.status,
+    routability: mention.routability,
+    sourceLabel: mention.sourceText,
+    parentCountries: [...mention.parentCountries],
+    parentCanonicalPlaceId: mention.parentRegionId,
+    role: mention.isAnchor ? "trip-anchor" as const : "preferred" as const,
+    priority: mention.isAnchor ? "high" as const : "normal" as const,
+    provenance: homepageExplicit(),
+  }));
+  const savedSelectionBrief = structuredTripBriefFromSavedSelections({
+    destinations: destinations.filter((destination) => Boolean(destination.id)),
+  });
+  const brief: StructuredTripBrief = {
+    ...savedSelectionBrief,
+    destinations,
+    countries: mentions.filter((mention) => mention.placeType === "country").map((mention) => ({ value: mention.canonicalName, provenance: homepageExplicit() })),
+    preferredRegions: mentions.filter((mention) => !mention.directlyRoutable && mention.placeType !== "country").map((mention) => ({ value: mention.canonicalName, provenance: homepageExplicit() })),
+    dates: {},
+    interests: [],
+    transportPreferences: [],
+    accommodationPreferences: [],
+    hardConstraints: [],
+    softPreferences: [],
+    source: { parserVersion: "homepage-input-v1", inputs: ["builder"] },
+    confidence: mentions.length ? "high" : "low",
+    placeMentions: mentions,
+    placeIssues: placeResolutionIssuesForMentions(mentions),
+    placeSelections: mentions.filter((mention) => mention.directlyRoutable && mention.canonicalPlaceId).map((mention) => ({
+      mentionId: mention.mentionId,
+      kind: "visit" as const,
+      selectedCanonicalPlaceId: mention.canonicalPlaceId!,
+      selectedName: mention.canonicalName,
+      selectedPlaceType: mention.placeType,
+      selectedParentCountries: [...mention.parentCountries],
+      routeStopId: mention.mentionId.replace("homepage-entry:", ""),
+      provenance: mention.provenance.at(-1)!,
+      confidence: mention.confidence,
+    })),
+    completedPlanningAreaMentionIds: [],
+    removedPlaceMentionIds: [],
+    issues: [],
+  };
+  return { ...brief, issues: validateStructuredTripBrief(brief) };
+}
+
+function withHomepageChoices(
+  draft: HomeTripDraft,
+  snapshot: HomepageInputSnapshot,
+  profile: TravelProfile | null,
+  capture: JourneyCaptureResult | undefined,
+) {
+  let structured = draft.structuredBrief;
+  const capturedInterests = normalizeTripInterests(structured?.interests.map((item) => item.value) ?? []);
+  const chosenInterests = snapshot.interests.state === "selected"
+    ? normalizeTripInterests(snapshot.interests.value)
+    : snapshot.interests.state === "cleared"
+      ? []
+      : capturedInterests.length ? capturedInterests : normalizeTripInterests(profile?.usualInterests ?? []);
+  const interestsExplicit = snapshot.interests.state !== "untouched";
+  const capturedBudget = structured?.budget?.value;
+  const budget = snapshot.budget.state === "selected"
+    ? snapshot.budget.value
+    : snapshot.budget.state === "cleared"
+      ? undefined
+      : capturedBudget ?? profile?.budget ?? "mid";
+  const budgetProvenance = snapshot.budget.state === "selected" ? homepageExplicit()
+    : capturedBudget ? structured?.budget?.provenance
+      : budget ? homepageProfileDefault() : undefined;
+  const capturedTravellers = structured?.travellers?.value ?? capture?.structuredBrief.travellers?.value;
+  const travellers = snapshot.travellers.state === "selected"
+    ? snapshot.travellers.value
+    : snapshot.travellers.state === "cleared" ? undefined : capturedTravellers ?? draft.travellers;
+  const travellersExplicit = snapshot.travellers.state !== "untouched";
+
+  const selectedDates = snapshot.dates.state === "selected" ? snapshot.dates.value : undefined;
+  const datesExplicit = Boolean(selectedDates);
+  const origin = snapshot.origin.state === "selected" ? canonicalJourneyEndpointPlace(snapshot.origin.value)
+    : snapshot.origin.state === "cleared" ? undefined
+      : draft.origin ? canonicalJourneyEndpointPlace({
+        name: draft.origin,
+        coordinates: draft.originCoordinates,
+        canonicalPlaceId: draft.originCanonicalPlaceId,
+        country: draft.originCountry,
+        providerId: draft.originProviderId,
+      }) : undefined;
+  const journeyEnd = snapshot.journeyEnd.state === "selected" ? normalizeJourneyEnd(snapshot.journeyEnd.value)
+    : snapshot.journeyEnd.state === "cleared" ? { mode: "unknown" } as const
+      : normalizeJourneyEnd(draft.journeyEnd);
+
+  if (structured) {
+    const softPreferences = structured.softPreferences.filter((preference) => preference.type !== "interest" && preference.type !== "budget");
+    if (snapshot.interests.state !== "cleared") softPreferences.push(...chosenInterests.map((value) => ({ type: "interest" as const, value, provenance: interestsExplicit ? homepageExplicit() : structured!.interests.find((item) => item.value === value)?.provenance ?? homepageProfileDefault() })));
+    if (budget && snapshot.budget.state !== "cleared") softPreferences.push({ type: "budget", value: budget, provenance: budgetProvenance! });
+    const hardConstraints = structured.hardConstraints.filter((constraint) => {
+      if (snapshot.origin.state !== "untouched" && constraint.type === "start-at") return false;
+      if (snapshot.journeyEnd.state !== "untouched" && constraint.type === "end-at") return false;
+      return true;
+    });
+    const destinations = structured.destinations.filter((destination) => {
+      if (snapshot.origin.state !== "untouched" && destination.role === "arrival-gateway") return false;
+      if (snapshot.journeyEnd.state !== "untouched" && destination.role === "departure-gateway") return false;
+      return true;
+    });
+    const placeMentions = structured.placeMentions?.filter((mention) => {
+      if (snapshot.origin.state !== "untouched" && (mention.role === "origin" || mention.role === "fixed_start")) return false;
+      if (snapshot.journeyEnd.state !== "untouched" && mention.role === "fixed_end") return false;
+      return true;
+    });
+    if (snapshot.origin.state === "selected") {
+      destinations.push({
+        name: origin!.name,
+        canonicalPlaceId: origin!.canonicalPlaceId,
+        role: "arrival-gateway",
+        priority: "required",
+        provenance: homepageExplicit(),
+      });
+      hardConstraints.push({ type: "start-at", value: origin!.name, provenance: homepageExplicit() });
+    }
+    if (snapshot.journeyEnd.state === "selected" && journeyEnd.mode === "explicit") {
+      destinations.push({
+        name: journeyEnd.place.name,
+        canonicalPlaceId: journeyEnd.place.canonicalPlaceId,
+        role: "departure-gateway",
+        priority: "required",
+        provenance: homepageExplicit(),
+      });
+      hardConstraints.push({ type: "end-at", value: journeyEnd.place.name, provenance: homepageExplicit() });
+    }
+    structured = {
+      ...structured,
+      ...(snapshot.dates.state === "cleared" ? { dates: {} } : selectedDates ? { dates: {
+        start: { value: selectedDates.start, provenance: homepageExplicit() },
+        end: { value: selectedDates.end, provenance: homepageExplicit() },
+        fixed: { value: true, provenance: homepageExplicit() },
+      } } : {}),
+      ...(snapshot.travellers.state === "cleared" ? { travellers: undefined } : travellers ? { travellers: { value: travellers, provenance: travellersExplicit ? homepageExplicit() : structured.travellers?.provenance ?? homepageProfileDefault() } } : {}),
+      interests: snapshot.interests.state === "cleared" ? [] : chosenInterests.map((value) => ({ value, provenance: interestsExplicit ? homepageExplicit() : structured!.interests.find((item) => item.value === value)?.provenance ?? homepageProfileDefault() })),
+      budget: snapshot.budget.state === "cleared" ? undefined : budget ? { value: budget, provenance: budgetProvenance! } : undefined,
+      softPreferences,
+      hardConstraints,
+      destinations,
+      placeMentions,
+    };
+    structured = { ...structured, issues: validateStructuredTripBrief(structured) };
+  }
+
+  return {
+    ...draft,
+    ...(origin ? {
+      origin: origin.name,
+      originCoordinates: origin.coordinates,
+      originCanonicalPlaceId: origin.canonicalPlaceId,
+      originCountry: origin.country,
+      originProviderId: origin.providerId,
+    } : { origin: undefined, originCoordinates: undefined, originCanonicalPlaceId: undefined, originCountry: undefined, originProviderId: undefined }),
+    journeyEnd,
+    ...(selectedDates ? { startDate: selectedDates.start, endDate: selectedDates.end } : { startDate: undefined, endDate: undefined }),
+    datesExplicit,
+    travellers,
+    travellersExplicit,
+    interests: chosenInterests,
+    interestsExplicit,
+    budget,
+    structuredBrief: structured,
+  };
+}
+
+export function projectHomepageInput(input: {
+  snapshot: HomepageInputSnapshot;
+  capture?: JourneyCaptureResult;
+  profile: TravelProfile | null;
+  handoffId: string;
+}): { ok: true; draft: HomeTripDraft } | { ok: false; issues: HomepageInputIssue[] } {
+  const { snapshot } = input;
+  const issues: HomepageInputIssue[] = [];
+  if (snapshot.dates.state === "selected") {
+    const { start, end } = snapshot.dates.value;
+    if (!validHomepageDate(start) || !validHomepageDate(end) || end < start) issues.push({ field: "dates", code: "invalid" });
+  }
+  if (snapshot.travellers.state === "selected" && (!Number.isInteger(snapshot.travellers.value) || snapshot.travellers.value < 1 || snapshot.travellers.value > 12)) {
+    issues.push({ field: "travellers", code: "invalid" });
+  }
+  if (snapshot.mode === "describe" && !snapshot.prompt.trim()) issues.push({ field: "prompt", code: "required" });
+  if (snapshot.mode === "stops") {
+    if (!snapshot.entries.length) issues.push({ field: "destinations", code: "required" });
+    snapshot.entries.forEach((entry) => {
+      if (!entry.selection) issues.push({ field: "destinations", code: "unresolved", entryId: entry.id });
+    });
+  }
+  if (issues.length) return { ok: false, issues };
+
+  const capture = snapshot.mode === "describe" ? input.capture ?? captureJourneyBrief(snapshot.prompt) : undefined;
+  const draft = snapshot.mode === "describe"
+    ? createHomeTripDraft({
+      capture: capture!,
+      handoffId: input.handoffId,
+      datesExplicit: false,
+      startDate: "",
+      endDate: "",
+      travellers: capture!.structuredBrief.travellers?.value ?? 2,
+      travellersExplicit: false,
+      interests: normalizeTripInterests(capture!.structuredBrief.interests.map((interest) => interest.value)),
+      interestsExplicit: false,
+    })
+    : (() => {
+      const mentions = snapshot.entries.map(homepageEntryMention);
+      const occurrenceMentionIds = Object.fromEntries(snapshot.entries.map((entry, index) => [entry.id, mentions[index]!.mentionId]));
+      const structuredBrief = homepageStructuredBrief(mentions);
+      return {
+        handoffId: input.handoffId,
+        destinations: mentions.filter((mention) => mention.directlyRoutable).map((mention) => ({
+          id: mention.mentionId.replace("homepage-entry:", ""),
+          name: mention.canonicalName,
+          country: mention.parentCountries[0] ?? "",
+          canonicalPlaceId: mention.canonicalPlaceId,
+          coordinates: mention.coordinates,
+        })),
+        locationMentions: mentions,
+        structuredBrief,
+        interests: [],
+        interestsExplicit: false,
+        datesExplicit: false,
+        travellersExplicit: false,
+        decisionSelections: { routeOrder: "entered", transportByLeg: {} },
+        homepage: {
+          version: 1 as const,
+          ownerId: snapshot.ownerId,
+          revision: snapshot.revision,
+          mode: snapshot.mode,
+          occurrenceMentionIds,
+          choices: {
+            dates: snapshot.dates,
+            budget: snapshot.budget,
+            interests: snapshot.interests,
+            travellers: snapshot.travellers,
+            origin: snapshot.origin,
+            journeyEnd: snapshot.journeyEnd,
+          },
+        },
+      } satisfies HomeTripDraft;
+    })();
+
+  const projected = withHomepageChoices(draft, snapshot, input.profile, capture);
+  return {
+    ok: true,
+    draft: {
+      ...projected,
+      homepage: projected.homepage ?? {
+        version: 1,
+        ownerId: snapshot.ownerId,
+        revision: snapshot.revision,
+        mode: snapshot.mode,
+        occurrenceMentionIds: {},
+        choices: {
+          dates: snapshot.dates,
+          budget: snapshot.budget,
+          interests: snapshot.interests,
+          travellers: snapshot.travellers,
+          origin: snapshot.origin,
+          journeyEnd: snapshot.journeyEnd,
+        },
+      },
+    },
   };
 }
 
