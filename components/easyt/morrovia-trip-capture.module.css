@@ -19,37 +19,71 @@
   box-shadow: 0 16px 36px color-mix(in srgb, var(--morrovia-ink) 7%, transparent);
 }
 
-.wideRoot { max-width: 1160px; margin-top: 28px; }
-.wideCard { gap: 16px; padding: 22px; }
-.modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--morrovia-line); }
-.modeTab { position: relative; min-height: 44px; border-radius: 0; color: var(--morrovia-muted); }
+.wideRoot { max-width: none; margin-top: 28px; }
+.wideCard { gap: 10px; padding: 18px 16px; }
+.modeTabs { display: flex; align-items: end; gap: 8px; border-bottom: 1px solid var(--morrovia-line); }
+.modeTab { position: relative; min-height: 40px; padding-inline: 12px; border-radius: 0; color: var(--morrovia-muted); }
+.modeTab svg { width: 17px; height: 17px; color: var(--morrovia-action); }
 .modeTab:hover:not(:disabled) { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
 .modeTab[aria-selected="true"] { color: var(--morrovia-ink); }
-.modeTab[aria-selected="true"]::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 3px; background: var(--morrovia-signal); content: ""; }
+.modeTab[aria-selected="true"]::after { position: absolute; right: 10px; bottom: -1px; left: 10px; height: 2px; background: var(--morrovia-signal); content: ""; }
 .modeTab:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
-.wideEntryPanel { min-width: 0; }
-.wideEntryPanel > .promptField { height: 100%; min-height: 76px; }
-.wideEntryPanel .textareaField textarea { min-height: 64px; resize: vertical; }
-.wideMainRow { display: grid; grid-template-columns: minmax(330px, 1.35fr) minmax(300px, 1fr) minmax(112px, auto) auto; align-items: end; gap: 12px; }
-.wideDates { display: grid; gap: 8px; }
+.wideMainRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(168px, max-content); align-items: center; gap: 12px; }
+.wideSegmentGroup { display: grid; grid-template-columns: minmax(0, 1fr) 230px 200px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
+.wideEntryPanel { min-width: 0; min-height: 68px; }
+.destinationToggle { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:100%; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
+.destinationToggle:hover:not(:disabled) { background:color-mix(in srgb,var(--morrovia-paper) 55%,transparent); }
+.destinationToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:-3px; }
+.destinationToggle > svg:first-child { width:20px; height:20px; color:var(--morrovia-action); }
+.destinationToggle > span { min-width:0; overflow:hidden; font:650 14px/1.25 var(--morrovia-ui); text-overflow:ellipsis; white-space:nowrap; }
+.destinationToggle > small { color:var(--morrovia-muted); font:600 11px/1.2 var(--morrovia-ui); white-space:nowrap; }
+.destinationToggle > svg:last-child { width:14px; height:14px; transition:transform 180ms ease; }
+.destinationToggle[aria-expanded="true"] > svg:last-child { transform:rotate(180deg); }
 .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sectionHeading > span,
-.budgetPanel > span { color: var(--morrovia-ink-soft); font: 700 10px/1.2 var(--morrovia-meta); letter-spacing: .08em; text-transform: uppercase; }
+.budgetPanel > span { color: var(--morrovia-ink-soft); font: 650 12px/1.2 var(--morrovia-ui); }
 .sectionHeading button { min-height: 30px; padding-inline: 4px; color: var(--morrovia-muted); text-decoration: underline; text-underline-offset: 3px; }
-.wideDatePicker { max-width: none; }
-.personalizeRow { display: grid; align-content: end; gap: 5px; }
-.personalizeRow > span { color: var(--morrovia-muted); font: 600 11px/1.3 var(--morrovia-ui); text-align: right; }
-.personalizeToggle { width: 100%; min-height: 50px; justify-content: center; }
-.personalizeToggle svg { order: 2; width: 14px; height: 14px; transition: transform 180ms ease; }
-.personalizeToggle[aria-expanded="true"] svg { transform: rotate(180deg); }
-.personalizePanel { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .8fr); gap: 20px; padding: 4px 0 2px; animation: revealDetails 180ms ease-out; }
+.wideDatePicker { min-width: 0; height: 68px; max-width: none; border-left: 1px solid var(--morrovia-line); }
+.wideDatePicker > div { height: 100%; }
+.wideDatePicker button[aria-haspopup="dialog"] { height: 68px; min-height: 68px; padding: 9px 14px; border: 0; border-radius: 0; background: transparent; }
+.wideDatePicker button[aria-haspopup="dialog"]:hover:not(:disabled) { background: color-mix(in srgb, var(--morrovia-paper) 55%, transparent); }
+.wideDatePicker button[aria-haspopup="dialog"] > span { font-size: 12px; }
+.wideDatePicker button[aria-haspopup="dialog"] strong { font-size: 14px; }
+.wideDatePicker button[aria-haspopup="dialog"] svg { width: 20px; height: 20px; }
+.personalizeRow { display: grid; min-width: 0; height: 68px; border-left: 1px solid var(--morrovia-line); }
+.personalizeToggle { width: 100%; height: 68px; min-height: 68px; justify-content: flex-start; padding-inline: 14px; border: 0; border-radius: 0 var(--morrovia-control-radius) var(--morrovia-control-radius) 0; background: transparent; }
+.personalizeToggle:hover:not(:disabled) { background: color-mix(in srgb, var(--morrovia-paper) 55%, transparent); }
+.personalizeToggle > svg:first-child { order: 0; width: 20px; height: 20px; color: var(--morrovia-action); }
+.personalizeLabel { display: grid; order: 1; min-width: 0; gap: 2px; text-align: left; }
+.personalizeLabel > span { font: 650 12px/1.2 var(--morrovia-ui); }
+.personalizeLabel small { overflow: hidden; color: var(--morrovia-ink); font: 600 14px/1.2 var(--morrovia-ui); text-overflow: ellipsis; white-space: nowrap; }
+.personalizeChevron { order: 2; flex: none; width: 14px; height: 14px; margin-left: auto; transition: transform 180ms ease; }
+.personalizeToggle[aria-expanded="true"] .personalizeChevron { transform: rotate(180deg); }
+.personalizePanel { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(180px,.55fr) minmax(250px,.8fr) minmax(0,1.2fr); gap:16px; align-items:end; padding:12px 0 0; border-top:1px solid var(--morrovia-line); animation:revealDetails 180ms ease-out; }
+.personalizeEndpoints { min-width:0; }
+.personalizeEndpoints > div { margin:0; }
+.personalizeTravellers { max-width:none; }
 .budgetPanel { display: grid; align-content: start; gap: 7px; }
 .budgetPanel > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .budgetPanel button { border-radius: var(--morrovia-control-radius); }
 .budgetPanel button[aria-pressed="true"] { border-color: var(--morrovia-action); background: var(--morrovia-lilac); }
+.budgetChoices { gap: 0 !important; }
+.budgetChoices button { border-radius: 0; }
+.budgetChoices button:first-child { border-radius: var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); }
+.budgetChoices button:last-child { border-radius: 0 var(--morrovia-control-radius) var(--morrovia-control-radius) 0; }
+.budgetChoices button + button { margin-left: -1px; }
+.budgetClear { padding-inline: 6px; }
 .personalizePanel .interestPanel button { min-height: 32px; padding: 6px 11px; }
-.wideAction button { min-height: 50px; white-space: nowrap; }
-.wideDisclosure { display: flex; justify-content: flex-end; }
+.wideAction { display: grid; align-self: center; }
+.wideAction button { position: relative; width: 100%; height: 56px; min-height: 56px; white-space: nowrap; }
+.wideAction button[aria-busy="true"] > span:first-child { position: absolute; left: 14px; }
+.wideDestinationEditor { min-width: 0; padding-top: 2px; animation: revealDetails 180ms ease-out; }
+.wideDescribePanel { position: relative; min-width: 0; }
+.wideDescribePanel > .promptField { min-height: 130px; }
+.wideDescribePanel .textareaField textarea { min-height: 100px; resize: vertical; }
+.wideDisclosure { position: absolute; bottom: 9px; left: 14px; z-index: 2; display: flex; }
+.wideUtilityRow { justify-content: end; }
+.wideUtilitySegments { grid-template-columns: minmax(240px, 300px) minmax(190px, 220px); justify-self: end; width: min(100%, 520px); }
 
 .detailsCollapsed { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .detailsCollapsed > .label,
@@ -166,7 +200,7 @@
 .datePicker { max-width: 560px; }
 .travellerField { max-width: 260px; }
 .interestPanel { display: grid; gap: 7px; }
-.interestPanel > span { color: var(--morrovia-ink-soft); font: 700 9px/1.2 var(--morrovia-meta); letter-spacing: .08em; text-transform: uppercase; }
+.interestPanel > span { color: var(--morrovia-ink-soft); font: 650 12px/1.2 var(--morrovia-ui); }
 .interestPanel > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .interestPanel button { padding-inline: 12px; }
 
@@ -194,11 +228,14 @@
 .error { margin: 8px 0 0; color: var(--morrovia-danger); font-size: 12px; }
 
 @media (max-width: 1100px) and (min-width: 721px) {
-  .wideMainRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .personalizeRow { align-self: stretch; }
-  .personalizeToggle { align-self: end; }
-  .wideAction { align-self: end; }
+  .wideMainRow { grid-template-columns: 1fr; }
+  .wideSegmentGroup { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .wideEntryPanel { grid-column: 1 / -1; }
+  .wideDatePicker { border-top: 1px solid var(--morrovia-line); border-left: 0; }
+  .wideUtilitySegments { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-self: stretch; width: 100%; }
   .wideAction button { width: 100%; }
+  .personalizePanel { grid-template-columns:1fr 1fr; }
+  .personalizeEndpoints { grid-column:1 / -1; }
 }
 
 @media (max-width: 720px) {
@@ -216,9 +253,16 @@
   .detailsCollapsed > .detailsToggle,
   .detailsCollapsed > .footer { grid-column: 1; grid-row: auto; }
   .wideRoot { margin-top: 20px; }
-  .wideCard { padding: 18px; }
+  .wideCard { padding: 16px; }
   .personalizePanel { grid-template-columns: 1fr; gap: 14px; }
+  .destinationToggle { border-radius:var(--morrovia-control-radius) var(--morrovia-control-radius) 0 0; }
   .wideMainRow { grid-template-columns: 1fr; align-items: stretch; }
+  .wideSegmentGroup,
+  .wideUtilitySegments { grid-template-columns: 1fr; width: 100%; }
+  .wideEntryPanel { grid-column: auto; }
+  .wideDatePicker,
+  .personalizeRow { border-top: 1px solid var(--morrovia-line); border-left: 0; }
+  .personalizeToggle { border-radius: 0 0 var(--morrovia-control-radius) var(--morrovia-control-radius); }
   .wideAction button { width: 100%; }
 }
 
@@ -226,8 +270,9 @@
   .card { padding: 14px; }
   .promptField { gap: 8px; padding: 12px; }
   .textareaField textarea { min-height: 102px; }
-  .wideCard { gap: 13px; padding: 14px; }
-  .modeTab { min-height: 48px; padding-inline: 8px; font-size: 12px; }
+  .wideCard { gap: 12px; padding: 14px; }
+  .modeTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+  .modeTab { min-height: 48px; padding-inline: 6px; font-size: 12px; }
   .personalizeRow { gap: 4px; }
   .personalizeRow > span { text-align: left; }
 }

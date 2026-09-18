@@ -46,9 +46,10 @@ test("homepage how it works uses the approved three steps and opens the existing
   assert.doesNotMatch(source, /<video|PlayCircle|CirclePlay/);
 });
 
-test("homepage inspiration grid preserves readable cards and responsive wrapping", () => {
+test("homepage inspiration grid keeps seven readable cards on desktop and wraps responsively", () => {
   const styles = read("app/journey/home/immersive/immersive.module.css");
-  assert.match(styles, /repeat\(auto-fit,minmax\(min\(100%,180px\),1fr\)\)/);
+  assert.match(styles, /grid-template-columns:repeat\(7,minmax\(0,1fr\)\)/);
+  assert.match(styles, /@media\(max-width:700px\)[\s\S]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(styles, /\.inspirationGrid/);
   assert.match(styles, /\.howSteps/);
 });

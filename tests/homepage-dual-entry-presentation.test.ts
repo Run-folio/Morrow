@@ -37,7 +37,9 @@ test("voice recognition is disabled and detached when loading starts", () => {
 test("wide capture keeps one form and one primary submit", () => {
   assert.equal((captureSource.match(/<form\b/g) ?? []).length, 1);
   assert.match(captureSource, /homepageEntry\s*\?\s*<div/);
-  assert.match(captureSource, /homepageEntry\.mode === "stops"\s*\?\s*homepageEntry\.destinationEntry\s*:\s*promptField/);
+  assert.match(captureSource, /homepageEntry\.mode === "stops"\s*\?\s*<>/);
+  assert.match(captureSource, /homepageEntry\.destinationEntry/);
+  assert.match(captureSource, /destinationEditorOpen/);
 });
 
 test("wide capture stories exercise keyboard and click tabs plus retained personalization", () => {
@@ -93,11 +95,12 @@ test("wide capture disables every opt-in control while loading", () => {
   assert.match(captureSource, /className=\{styles\.modeTab\}[\s\S]*disabled=\{disabled \|\| loading\}/);
   assert.match(captureSource, /className=\{styles\.wideDatePicker\}[\s\S]*disabled=\{disabled \|\| loading\}/);
   assert.match(captureSource, /className=\{styles\.personalizeToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
-  assert.match(captureSource, /className=\{styles\.detailsToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
+  assert.match(captureSource, /className=\{styles\.destinationToggle\}[\s\S]*disabled=\{disabled \|\| loading\}/);
   assert.match(captureSource, /aria-pressed=\{homepageEntry\.budget === budget\}[\s\S]*disabled=\{disabled \|\| loading\}/);
 });
 
-test("wide capture stacks before its four-column minimum tracks overflow", () => {
+test("wide capture stacks its compact segment group before it overflows", () => {
   assert.match(captureStyles, /@media \(max-width: 1100px\) and \(min-width: 721px\)/);
-  assert.match(captureStyles, /\.wideMainRow \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/);
+  assert.match(captureStyles, /\.wideMainRow \{ grid-template-columns: 1fr; \}/);
+  assert.match(captureStyles, /\.wideSegmentGroup \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\); \}/);
 });

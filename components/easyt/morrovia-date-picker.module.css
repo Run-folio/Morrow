@@ -161,7 +161,9 @@
   border-top: 1px solid var(--morrovia-line);
 }
 
-.calendarFooter > button {
+.calendarFooterActions { display: flex; align-items: center; gap: 7px; }
+
+.calendarFooterActions > button {
   min-height: 42px;
   padding: 0 13px;
   border: 1px solid var(--morrovia-line);
@@ -172,8 +174,8 @@
   cursor: pointer;
 }
 
-.calendarFooter > button:hover:not(:disabled) { border-color: var(--morrovia-signal); color: var(--morrovia-signal); }
-.calendarFooter > button:disabled { opacity: .5; cursor: not-allowed; }
+.calendarFooterActions > button:hover:not(:disabled) { border-color: var(--morrovia-signal); color: var(--morrovia-signal); }
+.calendarFooterActions > button:disabled { opacity: .5; cursor: not-allowed; }
 .calendarFooter label { display: grid; gap: 5px; min-width: 0; }
 .calendarFooter label span { color: var(--morrovia-muted); font: 750 9px var(--morrovia-meta, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; }
 .calendarFooter input { min-width: 0; min-height: 42px; padding: 0 11px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius, 10px); color: var(--morrovia-ink); font: 650 13px var(--morrovia-ui, Arial, sans-serif); }
@@ -182,6 +184,9 @@
 .compact .trigger > span { font-size: 9px; }
 .compact .trigger strong { font-size: 12px; }
 .compact .popover { width: min(338px, calc(100vw - 24px)); }
+.combinedRange .trigger { min-height: 54px; padding: 8px 12px; }
+.combinedRange .trigger > span { font-size: 11px; }
+.combinedRange .trigger strong { font-size: 13px; }
 
 .mobileBackdrop { display: none; }
 
@@ -194,7 +199,7 @@
   .calendarGrid button,
   .calendarGrid > span { height: 32px; }
   .calendarFooter { gap: 8px; margin-top: 8px; padding-top: 8px; }
-  .calendarFooter > button,
+  .calendarFooterActions > button,
   .calendarFooter input { min-height: 38px; }
 }
 
@@ -218,7 +223,7 @@
   .calendarGrid button,
   .calendarGrid > span { height: 42px; }
   .calendarHead button,
-  .calendarFooter > button { min-width: 44px; min-height: 44px; }
+  .calendarFooterActions > button { min-width: 44px; min-height: 44px; }
 }
 
 @media (max-width: 340px) {

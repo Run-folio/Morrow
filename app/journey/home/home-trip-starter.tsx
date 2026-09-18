@@ -44,6 +44,13 @@ function nextDestinationNumber(entries: readonly HomepageDestinationEntry[]) {
   return Math.max(1, ...entries.map((entry) => Number(entry.id.match(/^destination-(\d+)$/)?.[1] ?? 0))) + 1;
 }
 
+function destinationSummary(entries: readonly HomepageDestinationEntry[], language: EasyTLanguage) {
+  const labels = entries.map((entry) => entry.selection?.name ?? entry.text.trim()).filter(Boolean);
+  if (!labels.length) return language === "es" ? "¿Adónde quieres ir?" : "Where do you want to go?";
+  if (labels.length === 1) return labels[0];
+  return `${labels[0]} · +${labels.length - 1} ${language === "es" ? "más" : "more"}`;
+}
+
 export default function HomeTripStarter() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -217,7 +224,8 @@ export default function HomeTripStarter() {
     homepageEntry={{
       mode: snapshot.mode,
       onModeChange: (mode) => updateSnapshot((current) => ({ ...current, mode })),
-      destinationEntry: <HomeDestinationEditor
+      destinationEntry: destinationSummary(snapshot.entries, language),
+      destinationEditor: <HomeDestinationEditor
         entries={snapshot.entries} language={language} disabled={loading}
         createEntry={() => ({ id: `destination-${destinationIdRef.current++}`, text: "", selection: null })}
         onChange={(entries: HomepageDestinationEntry[]) => updateSnapshot((current) => ({ ...current, entries }))}

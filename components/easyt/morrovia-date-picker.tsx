@@ -7,6 +7,7 @@ import {
   addLocalDays,
   addLocalMonths,
   formatLocalDate,
+  formatLocalDateRange,
   localDateFromIso,
   localMonthDays,
   parseTypedLocalDate,
@@ -39,10 +40,13 @@ type SingleDatePickerProps = SharedDatePickerProps & {
 };
 
 type RangeDatePickerProps = SharedDatePickerProps & {
+  clearLabel?: string;
+  combinedLabel?: string;
   endLabel: string;
   endName?: string;
   endValue: string;
   mode: "range";
+  onClear?: () => void;
   onChange: (range: { end: string; start: string }) => void;
   placeholder?: string;
   startLabel: string;
@@ -211,9 +215,10 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const dialogId = useId();
   const helpId = useId();
 
+  const combinedRange = isRange && Boolean(props.combinedLabel);
   const close = (restoreFocus = false) => {
     setOpen(false);
-    if (restoreFocus) window.requestAnimationFrame(() => (activeBoundary === "end" ? endTriggerRef.current : startTriggerRef.current)?.focus({ preventScroll: true }));
+    if (restoreFocus) window.requestAnimationFrame(() => (activeBoundary === "end" ? endTriggerRef.current ?? startTriggerRef.current : startTriggerRef.current)?.focus({ preventScroll: true }));
   };
   const openFor = (boundary: DateBoundary) => {
     if (props.disabled) return;
@@ -329,13 +334,15 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
   const calendarMin = isRange && activeBoundary === "end"
     ? [props.min, props.startValue].filter(Boolean).sort().at(-1)
     : props.min;
-  const panelLabel = isRange
+  const panelLabel = isRange && combinedRange
+    ? `${props.combinedLabel}: ${copy[locale].chooseDate}`
+    : isRange
     ? `${activeBoundary === "start" ? props.startLabel : props.endLabel}: ${copy[locale].chooseDate}`
     : `${props.label}: ${copy[locale].chooseDate}`;
   const placeholder = props.placeholder ?? copy[locale].chooseDate;
   const rootClass = [styles.root, props.size === "compact" ? styles.compact : "", props.className ?? ""].filter(Boolean).join(" ");
 
-  const trigger = (boundary: DateBoundary, label: string, value: string, triggerRef: typeof startTriggerRef) => <button
+  const trigger = (boundary: DateBoundary, label: string, value: string, triggerRef: typeof startTriggerRef, displayValue?: string) => <button
     type="button"
     className={`${styles.trigger} ${open && activeBoundary === boundary ? styles.triggerOpen : ""}`}
     ref={triggerRef}
@@ -346,7 +353,7 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
     onClick={() => open && activeBoundary === boundary ? close(false) : openFor(boundary)}
   >
     <span>{label}</span>
-    <b><CalendarDays aria-hidden="true" /><strong>{formatLocalDate(value, locale) || placeholder}</strong><ChevronDown aria-hidden="true" /></b>
+    <b><CalendarDays aria-hidden="true" /><strong>{displayValue ?? (formatLocalDate(value, locale) || placeholder)}</strong><ChevronDown aria-hidden="true" /></b>
   </button>;
 
   const calendarOverlay = open ? <>
@@ -369,15 +376,22 @@ export function MorroviaDatePicker(props: MorroviaDatePickerProps) {
         onPick={pick}
       />
       <div className={styles.calendarFooter}>
-        <button type="button" onClick={() => pick(todayLocalIso())} disabled={!isWithin(todayLocalIso(), calendarMin, props.max)}>{copy[locale].today}</button>
+        <div className={styles.calendarFooterActions}>
+          <button type="button" onClick={() => pick(todayLocalIso())} disabled={!isWithin(todayLocalIso(), calendarMin, props.max)}>{copy[locale].today}</button>
+          {isRange && props.onClear && (props.startValue || props.endValue) ? <button type="button" onClick={() => { props.onClear?.(); close(true); }}>{props.clearLabel ?? (locale === "es" ? "Borrar fechas" : "Clear dates")}</button> : null}
+        </div>
         <label><span>{copy[locale].typeIt}</span><input value={typedDate} inputMode="numeric" placeholder={locale === "es" ? "AAAA-MM-DD" : "YYYY-MM-DD"} aria-label={copy[locale].dateFormat} onChange={(event) => setTypedDate(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); submitTypedDate(); } }} /></label>
       </div>
     </div>
   </> : null;
 
-  return <div className={rootClass} ref={rootRef}>
-    <div className={isRange ? styles.rangeFields : styles.singleField}>
-      {isRange ? <>
+  return <div className={`${rootClass}${combinedRange ? ` ${styles.combinedRange}` : ""}`} ref={rootRef}>
+    <div className={isRange && !combinedRange ? styles.rangeFields : styles.singleField}>
+      {isRange && combinedRange ? <>
+        {trigger("start", props.combinedLabel ?? props.startLabel, props.startValue, startTriggerRef, formatLocalDateRange(props.startValue, props.endValue, locale, props.placeholder ?? (locale === "es" ? "Añadir fechas" : "Add dates")))}
+        {props.startName ? <input type="hidden" name={props.startName} value={props.startValue} /> : null}
+        {props.endName ? <input type="hidden" name={props.endName} value={props.endValue} /> : null}
+      </> : isRange ? <>
         {trigger("start", props.startLabel, props.startValue, startTriggerRef)}
         {trigger("end", props.endLabel, props.endValue, endTriggerRef)}
         {props.startName ? <input type="hidden" name={props.startName} value={props.startValue} /> : null}
