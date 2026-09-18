@@ -406,9 +406,10 @@ export function mergeHandoffLocationChoice(
   stops: HandoffRouteStop[],
   mention: ResolvedPlaceMention,
   choice?: HandoffLocationChoice,
+  occurrenceId?: string,
 ): HandoffRouteStop[] {
   if (!choice) return stops;
-  const stopId = handoffRouteStopId(mention);
+  const stopId = occurrenceId ?? handoffRouteStopId(mention);
   return stops.map((stop) => stop.id !== stopId ? stop : {
     ...stop,
     country: mention.parentCountries.length === 1 ? mention.parentCountries[0] : choice.country,
@@ -884,11 +885,112 @@ export async function resolveHandoffBatch<T, R>(
 }
 
 function draftMatchesStoredValue(draft: HomeTripDraft, stored: HomeTripDraft) {
-  if (draft.handoffId) return stored.handoffId === draft.handoffId;
+  if (draft.handoffId) {
+    if (stored.handoffId !== draft.handoffId) return false;
+    if (!draft.homepage) return true;
+    return stored.homepage?.version === draft.homepage.version
+      && stored.homepage.ownerId === draft.homepage.ownerId
+      && stored.homepage.revision === draft.homepage.revision;
+  }
   return stored.brief === draft.brief && stored.parserVersion === draft.parserVersion;
 }
 
+/** Validate the versioned Homepage discriminator before the Builder observes
+ * its reserved identity. Legacy drafts intentionally return null. */
+export function homepageHandoffReceiptForOwner(
+  draft: HomeTripDraft,
+  ownerId: string | null,
+): HomepageHandoffReceipt | null {
+  const homepage = draft.homepage;
+  const receipt = homepage?.receipt;
+  if (!homepage || homepage.version !== 1 || homepage.ownerId !== ownerId || !receipt) return null;
+  if (receipt.version !== 1
+    || receipt.ownerId !== ownerId
+    || receipt.handoffId !== draft.handoffId
+    || receipt.inputFingerprint !== homepageSubmissionFingerprint(draft)
+    || !receipt.tripId.trim()) return null;
+  return receipt;
+}
+
+function journeyEndsMatch(expected: JourneyEndSelection | undefined, actual: JourneyEndSelection | undefined) {
+  const expectedEnd = normalizeJourneyEnd(expected);
+  const actualEnd = normalizeJourneyEnd(actual);
+  if (expectedEnd.mode !== actualEnd.mode) return false;
+  if (expectedEnd.mode !== "explicit" || actualEnd.mode !== "explicit") return true;
+  return sameJourneyPlace(expectedEnd.place, actualEnd.place);
+}
+
+/** Compare the initially accepted versioned intake with its first canonical
+ * Builder document. This is used only for durable acknowledgement; it does
+ * not constrain subsequent edits to that document. */
+export function homepageHandoffMatchesTrip(draft: HomeTripDraft, trip: EasyTTrip) {
+  const handoffOwnerId = draft.homepage?.ownerId ?? null;
+  const receipt = homepageHandoffReceiptForOwner(draft, handoffOwnerId);
+  if (!receipt || receipt.tripId !== trip.id) return false;
+  // Authenticated device recovery is owner-scoped before its first cloud
+  // promotion, so the document itself may still be ownerless at this point.
+  if (trip.ownerId !== null && trip.ownerId !== handoffOwnerId) return false;
+
+  const handoffMentions = draft.structuredBrief?.placeMentions ?? draft.locationMentions ?? [];
+  const initialStops = initialHandoffRouteStops(
+    handoffMentions,
+    draft.destinations?.length ? draft.destinations : draft.destination ? [draft.destination] : [],
+    draft.journeyEnd,
+  );
+  const occurrenceByMentionId = new Map(Object.entries(draft.homepage?.occurrenceMentionIds ?? {})
+    .map(([occurrenceId, mentionId]) => [mentionId, occurrenceId]));
+  const selectedStopIdsByMention = new Map<string, string[]>();
+  for (const selection of trip.brief.structuredBrief?.placeSelections ?? []) {
+    if (!selection.routeStopId) continue;
+    selectedStopIdsByMention.set(selection.mentionId, [
+      ...(selectedStopIdsByMention.get(selection.mentionId) ?? []),
+      selection.routeStopId,
+    ]);
+  }
+  const directStopById = new Map(initialStops.map((stop) => [stop.id, stop]));
+  const expectedStops: Array<{ id: string; direct?: HandoffRouteStop }> = handoffMentions.length
+    ? [...handoffMentions].sort((left, right) => left.order - right.order).flatMap((mention) => {
+      if (mention.role === "origin" || mention.role === "fixed_start" || mention.role === "fixed_end" || mention.role === "excluded") return [];
+      const directId = occurrenceByMentionId.get(mention.mentionId) ?? handoffRouteStopId(mention);
+      const direct = directStopById.get(directId);
+      if (direct) return [{ id: direct.id, direct }];
+      return (selectedStopIdsByMention.get(mention.mentionId) ?? []).map((id) => ({ id }));
+    })
+    : initialStops.map((direct) => ({ id: direct.id, direct }));
+  if (expectedStops.length !== trip.stops.length) return false;
+  if (!expectedStops.every((expected, index) => {
+    const actual = trip.stops[index];
+    if (!actual || actual.id !== expected.id) return false;
+    if (!expected.direct) return true;
+    return normalizePlacePhrase(actual.name) === normalizePlacePhrase(expected.direct.name)
+      && (!expected.direct.canonicalPlaceId || actual.canonicalPlaceId === expected.direct.canonicalPlaceId)
+      && (!expected.direct.country || normalizePlacePhrase(actual.country) === normalizePlacePhrase(expected.direct.country));
+  })) return false;
+
+  if (draft.origin !== undefined) {
+    if (normalizePlacePhrase(trip.brief.origin) !== normalizePlacePhrase(draft.origin)) return false;
+    if (draft.originCanonicalPlaceId && trip.brief.originCanonicalPlaceId !== draft.originCanonicalPlaceId) return false;
+  } else if (draft.homepage?.choices.origin.state === "cleared" && trip.brief.origin.trim()) {
+    return false;
+  }
+  if (!journeyEndsMatch(draft.journeyEnd, trip.brief.journeyEnd)) return false;
+  if (draft.datesExplicit && (trip.startDate !== draft.startDate || trip.endDate !== draft.endDate)) return false;
+  if (draft.travellersExplicit && trip.travellers !== draft.travellers) return false;
+  if (homeTripDraftInterestsWereExplicit(draft)) {
+    const expectedInterests = normalizeTripInterests(draft.interests);
+    const actualInterests = normalizeTripInterests(trip.brief.intent?.preferences.interests);
+    if (JSON.stringify(actualInterests) !== JSON.stringify(expectedInterests)) return false;
+  }
+  if (draft.brief !== undefined
+    && trip.brief.capturedIntent?.originalBrief !== draft.brief
+    && trip.brief.mustDo !== draft.brief) return false;
+  if (draft.homepage?.mode === "stops" && draft.brief === undefined && trip.brief.mustDo !== "") return false;
+  if (draft.sourceRouteKey !== undefined && trip.brief.sourceRouteKey !== draft.sourceRouteKey) return false;
+  return true;
+}
+
 export function homeTripDraftIsDurable(draft: HomeTripDraft, trip: EasyTTrip, resolutionPending: boolean) {
+  if (draft.homepage) return !resolutionPending && homepageHandoffMatchesTrip(draft, trip);
   if (resolutionPending || !draft.brief || trip.brief.capturedIntent?.originalBrief !== draft.brief) return false;
   const routeMentions = routableHandoffMentions(draft.structuredBrief?.placeMentions ?? draft.locationMentions ?? []);
   const stopNames = new Set(trip.stops.map((stop) => normalizePlacePhrase(stop.name)));

@@ -35,7 +35,7 @@ import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
 import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfileDefaults, type TravelProfile } from "@/lib/easyt/travel-profile";
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
-import { HOME_TRIP_DRAFT_KEY, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
+import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
 import { canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
@@ -821,7 +821,36 @@ function TripBuilderDocument() {
           const routeDetail = publicRouteDetailFor(params.get("inspire") ?? "");
           if (routeDetail) homeDraft = routePlannerPayload(routeDetail.planDraft);
         }
-        if (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length) {
+        let resumedHomepageTrip = false;
+        if (homeDraft?.homepage) {
+          const homepageReceipt = homepageHandoffReceiptForOwner(homeDraft, activeOwnerId);
+          if (!homepageReceipt) {
+            // A versioned handoff is private state. Invalid owner or receipt
+            // metadata must fail closed instead of being treated as legacy.
+            homeDraft = null;
+          } else {
+            // Reserve the canonical identity before any recovery/save effect can
+            // observe the random ID created for a direct Builder visit.
+            setTripId(homepageReceipt.tripId);
+            const existingRecovery = loadTripRecovery(homepageReceipt.tripId, activeOwnerId);
+            const existingHomepageTrip = existingRecovery?.trip
+              ?? await loadRequestedTrip(homepageReceipt.tripId, activeOwnerId);
+            if (!active) return;
+            if (existingHomepageTrip) {
+              homeDraftRef.current = homeDraft;
+              setArrivedFromHomepage(true);
+              recoveryHandleRef.current = existingRecovery
+                ? { ownerId: existingRecovery.ownerId, tripId: existingRecovery.tripId, writeId: existingRecovery.writeId }
+                : null;
+              applySaved(existingHomepageTrip);
+              if (existingRecovery && homepageHandoffMatchesTrip(homeDraft, existingHomepageTrip)) {
+                removeHomeTripDraftIfDurable(window.localStorage, homeDraft, existingHomepageTrip, true, false);
+              }
+              resumedHomepageTrip = true;
+            }
+          }
+        }
+        if (!resumedHomepageTrip && (homeDraft?.brief || homeDraft?.origin || homeDraft?.destination || homeDraft?.destinations?.length || homeDraft?.locationMentions?.length)) {
           homeDraftRef.current = homeDraft;
           setHasPromptContext(true);
           setArrivedFromHomepage(true);
@@ -891,6 +920,10 @@ function TripBuilderDocument() {
           setCompletedPlanningAreaMentionIds(completedPlanningAreasForBrief(homeStructuredBrief));
           setRemovedPlaceMentionIds(homeStructuredBrief.removedPlaceMentionIds ?? []);
           const locationMentions = homeStructuredBrief.placeMentions ?? homeDraft.locationMentions ?? [];
+          const homepageOccurrenceByMentionId = new Map(
+            Object.entries(homeDraft.homepage?.occurrenceMentionIds ?? {})
+              .map(([occurrenceId, mentionId]) => [mentionId, occurrenceId]),
+          );
           const initialStops = initialHandoffRouteStops(locationMentions, draftStops, capturedJourneyEnd);
           if (initialStops.length) setStops(initialStops);
           if (locationMentions.length) {
@@ -926,7 +959,10 @@ function TripBuilderDocument() {
                     providerId: chosen.providerId,
                   });
                 }
-                else setStops((current) => mergeHandoffLocationChoice(current, mention, chosen));
+                else {
+                  const homepageOccurrenceId = homepageOccurrenceByMentionId.get(mention.mentionId);
+                  setStops((current) => mergeHandoffLocationChoice(current, mention, chosen, homepageOccurrenceId));
+                }
               }
               setLocationChoices(uncertain);
               setResolvingLocations(false);

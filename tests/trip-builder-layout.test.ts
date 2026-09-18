@@ -6,8 +6,51 @@ import { hasUsefulRouteSkeleton } from "../app/journey/new/trip-builder-entry.ts
 import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { homepageSubmissionFingerprint, projectHomepageInput } from "../lib/easyt/home-trip-handoff.ts";
+import { emptyHomepageInput, selectedEntry } from "./fixtures/homepage-dual-entry.ts";
+import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 
 const browserTest = (name: string, run: () => Promise<void>) => test(name, { skip: !builderBrowserTestsEnabled }, run);
+
+function acceptedHomepageDraft(mode: "direct" | "area" | "describe") {
+  const snapshot = emptyHomepageInput();
+  if (mode === "describe") {
+    snapshot.mode = "describe";
+    snapshot.prompt = "Two weeks in Japan, starting in London, with food and culture";
+  } else {
+    if (mode === "area") {
+      const japan = findCatalogPlaceById("japan");
+      assert(japan);
+      snapshot.entries = [{ id: "japan", text: "Japan", selection: {
+        canonicalPlaceId: japan.canonicalPlaceId,
+        name: japan.canonicalName,
+        label: japan.canonicalName,
+        country: japan.parentCountries[0] ?? "",
+        placeType: japan.placeType,
+        coordinates: japan.coordinates ? [...japan.coordinates] : undefined,
+        routability: japan.routability,
+        provenance: [{ ...japan.provenance, kind: japan.provenance.kind === "curated" ? "curated_alias" as const : "canonical" as const }],
+      } }];
+    } else snapshot.entries = [selectedEntry("a", "Tokyo"), selectedEntry("b", "Kyoto"), selectedEntry("c", "Tokyo")];
+    snapshot.origin = { state: "selected", value: { name: "London", canonicalPlaceId: "london", country: "United Kingdom", coordinates: [-0.1276, 51.5072] } };
+  }
+  const result = projectHomepageInput({ snapshot, profile: null, handoffId: `handoff-${mode}` });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error("Expected accepted Homepage draft");
+  return {
+    ...result.draft,
+    homepage: {
+      ...result.draft.homepage!,
+      receipt: {
+        version: 1 as const,
+        ownerId: null,
+        handoffId: result.draft.handoffId!,
+        inputFingerprint: homepageSubmissionFingerprint(result.draft),
+        tripId: `trip-reserved-${mode}`,
+      },
+    },
+  };
+}
 
 test("a useful route requires a valid stop occurrence, independently of endpoint context", () => {
   assert.equal(hasUsefulRouteSkeleton([]), false);
@@ -59,6 +102,29 @@ browserTest("area-only handoff stays in clarification without an empty route or 
     assert.match(text, /Thailand/);
     assert.doesNotMatch(text, /STEP 1 OF 2|Nights per stop|Describe your trip/);
   } finally { await view.close(); }
+});
+
+browserTest("versioned direct, area and Describe handoffs hydrate the unified Builder under their reserved identity", async () => {
+  for (const mode of ["direct", "area", "describe"] as const) {
+    const draft = acceptedHomepageDraft(mode);
+    const view = await renderBuilder({ query: "?homeDraft=1", draft });
+    try {
+      if (mode === "direct") {
+        await view.page.waitForFunction(() => Object.keys(localStorage).some((key) => key.includes("trip-reserved-direct")), undefined, { timeout: 10_000 });
+        const saved = await view.page.evaluate(() => Object.entries(localStorage)
+          .map(([, value]) => { try { return JSON.parse(value); } catch { return null; } })
+          .find((value) => value?.trip?.id === "trip-reserved-direct")?.trip);
+        assert.equal(saved?.id, "trip-reserved-direct");
+        assert.deepEqual(saved?.stops.map((stop: { id: string }) => stop.id), ["a", "b", "c"]);
+        assert.equal(saved?.brief.originCanonicalPlaceId, "london");
+      } else if (mode === "area") {
+        assert.match(await view.page.locator("body").innerText(), /Japan/);
+      } else {
+        assert.match(await view.page.locator("body").innerText(), /Japan|London/);
+      }
+      assert.deepEqual(view.errors, []);
+    } finally { await view.close(); }
+  }
 });
 
 browserTest("legacy step query cannot switch an empty Builder into timing and preserves other parameters", async () => {
@@ -146,6 +212,15 @@ test("the unified route workspace projects canonical occurrences beside the map"
     "collapsed mobile maps should release their layout height without hiding route rows");
   assert.doesNotMatch(styles, /\.builderRoute(?:Workspace|Header|Grid|Rows|Map|Check)[^{]*\{[^}]*(?:width|min-width):\s*[4-9]\d\dpx/,
     "the unified workspace should not impose a fixed width that can overflow narrow fixtures");
+});
+
+test("versioned homepage hydration reserves identity before replay and keeps one Builder document owner", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  assert.match(builder, /homepageHandoffReceiptForOwner\(homeDraft, activeOwnerId\)/);
+  assert.match(builder, /setTripId\(homepageReceipt\.tripId\)/);
+  assert.match(builder, /loadTripRecovery\(homepageReceipt\.tripId, activeOwnerId\)/);
+  assert.match(builder, /mergeHandoffLocationChoice\(current, mention, chosen, homepageOccurrenceId\)/);
+  assert.equal((builder.match(/function TripBuilderDocument\(/g) ?? []).length, 1);
 });
 
 test("a fatal initial map failure leaves the route workspace usable", () => {
