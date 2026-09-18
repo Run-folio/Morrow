@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, GripVertical, MapPin, Plus, Route, Sparkles } from "lucide-react";
+import { AlertTriangle, GripVertical, MoreHorizontal, Plus, Route, Sparkles } from "lucide-react";
 import { useMemo, useRef } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
@@ -10,6 +10,7 @@ import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import styles from "./trip-builder.module.css";
+import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -55,6 +56,8 @@ export function TripBuilderRouteWorkspace({
   lockedStopIds,
   fixedOrder,
   onSelectStop,
+  onPreviewOrder,
+  onCommitOrder,
   onEditNights,
   onAddStop,
   onOpenRouteCheck,
@@ -65,6 +68,14 @@ export function TripBuilderRouteWorkspace({
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
   const locked = useMemo(() => new Set(lockedStopIds), [lockedStopIds]);
+  const stopIds = useMemo(() => canonicalTrip.stops.map((stop) => stop.id), [canonicalTrip.stops]);
+  const reorder = useBuilderStopReorder({
+    stopIds,
+    lockedStopIds,
+    fixedOrder,
+    onPreview: onPreviewOrder,
+    onCommit: onCommitOrder,
+  });
 
   const selectStop = (stopId: string, reveal = false) => {
     onSelectStop(stopId);
@@ -95,14 +106,17 @@ export function TripBuilderRouteWorkspace({
             const isSelected = selectedStopId === stop.id;
             return <div
               key={stop.id}
+              data-builder-stop-index={index}
               ref={(node) => { if (node) rowRefs.current.set(stop.id, node); else rowRefs.current.delete(stop.id); }}
               role="row"
               tabIndex={isSelected ? 0 : -1}
               aria-selected={isSelected}
               className={`${styles.builderRouteRow} ${isSelected ? styles.builderRouteRowSelected : ""}`}
               onClick={() => selectStop(stop.id)}
+              onDragOver={(event) => { event.preventDefault(); reorder.previewAt(reorder.draggingId ?? "", index); }}
+              onDrop={(event) => { event.preventDefault(); reorder.drop(); }}
             >
-              <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked}>
+              <button type="button" className={styles.builderRouteGrip} aria-label={`Reorder ${stop.name}, stop ${index + 1}`} disabled={isLocked} {...reorder.gripProps(stop.id)}>
                 <GripVertical aria-hidden="true" />
               </button>
               <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small></span></div>
@@ -121,6 +135,10 @@ export function TripBuilderRouteWorkspace({
                 <strong>{usableDays === null ? "To confirm" : `~${usableDays} ${usableDays === 1 ? "day" : "days"}`}</strong>
                 {usableDays !== null && usableDays < 1 ? <AlertTriangle aria-label="Compressed stop" /> : null}
               </div>
+              <details className={styles.builderRouteActions} onClick={(event) => event.stopPropagation()}>
+                <summary aria-label={`Actions for ${stop.name}`}><MoreHorizontal aria-hidden="true" /></summary>
+                <div><strong>Move stop</strong><button type="button" disabled={isLocked || index === 0} onClick={() => reorder.moveFromMenu(stop.id, index - 1)}>Earlier</button><button type="button" disabled={isLocked || index === presentedTrip.stops.length - 1} onClick={() => reorder.moveFromMenu(stop.id, index + 1)}>Later</button></div>
+              </details>
             </div>;
           })}
         </div>
@@ -150,5 +168,6 @@ export function TripBuilderRouteWorkspace({
       <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>Review the sequence before Morrovia builds the detailed trip.</small></span></div>
       <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton>
     </section>
+    <p className="sr-only" aria-live="polite">{reorder.draggingId ? `Moving stop ${reorder.draggingId}` : ""}</p>
   </section>;
 }

@@ -2387,24 +2387,32 @@ function TripBuilderDocument() {
       && !stops.slice(Math.min(from, to), Math.max(from, to) + 1).some((stop) => scheduleLocks.stopIds.includes(stop.id));
   };
 
+  const commitStopOrder = useCallback((proposedIds: readonly string[], source: BuilderOrderSource) => {
+    const result = validateBuilderStopOrder(stops, proposedIds, {
+      lockedStopIds: scheduleLocks.stopIds,
+      fixedOrder: Boolean(structuredRouteConstraints.fixedCommitments?.length),
+    });
+    if (!result.ok) return false;
+    rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
+    setStops(result.stops);
+    setDecisionSelections((current) => ({ ...current, routeOrder: source === "route-check" ? current.routeOrder : "entered" }));
+    setRoutePreviewStopIds(null);
+    return true;
+  }, [scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
+
   const moveStop = (from: number, to: number) => {
     if (!canMoveStop(from, to)) return;
-    rememberStructuralChange("reorder_stop", Math.abs(from - to) + 1);
-    setStops((current) => {
-      const next = [...current];
-      const [moving] = next.splice(from, 1);
-      next.splice(to, 0, moving);
-      return next;
-    });
-    setDecisionSelections((current) => ({ ...current, routeOrder: "entered" }));
+    const ids = stops.map((stop) => stop.id);
+    const [moving] = ids.splice(from, 1);
+    ids.splice(to, 0, moving);
+    commitStopOrder(ids, "move-menu");
   };
 
   const applyRecommendedOrder = () => {
     if (routeIntelligence.route.state !== "recommendation") return;
     if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length) return;
     const order = routeIntelligence.route.recommendedStopIds;
-    rememberStructuralChange("apply_route_order", stops.length);
-    setStops((current) => order.map((id) => current.find((stop) => stop.id === id)).filter((stop): stop is Stop => Boolean(stop)));
+    if (!commitStopOrder(order, "route-check")) return;
     setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
     setKeptRouteKey(null);
     trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays });
@@ -2417,8 +2425,7 @@ function TripBuilderDocument() {
     if (!candidate?.constraintsSatisfied || score?.state !== "scored") return;
     const nextStops = stopIds.map((id) => stops.find((stop) => stop.id === id)).filter((stop): stop is Stop => Boolean(stop));
     if (nextStops.length !== stops.length || new Set(nextStops.map((stop) => stop.id)).size !== stops.length) return;
-    rememberStructuralChange("apply_scored_route_candidate", stops.length);
-    setStops(nextStops);
+    if (!commitStopOrder(nextStops.map((stop) => stop.id), "route-check")) return;
     setDecisionSelections((current) => ({
       ...current,
       routeOrder: stopIds.join("\u001f") === routeIntelligence.route.recommendedStopIds.join("\u001f") ? "recommended" : "entered",
@@ -2723,24 +2730,6 @@ function TripBuilderDocument() {
     const reconciled = preserveBuilderCanonicalState(hydratedCanonical, { ...built, ownerId: tripOwnerId, legs: builderCanonicalLegs });
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
   }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
-
-  const commitStopOrder = useCallback((proposedIds: readonly string[], source: BuilderOrderSource) => {
-    const result = validateBuilderStopOrder(stops, proposedIds, {
-      lockedStopIds: scheduleLocks.stopIds,
-      fixedOrder: Boolean(structuredRouteConstraints.fixedCommitments?.length),
-    });
-    if (!result.ok) return false;
-    rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
-    setStops(result.stops);
-    setDecisionSelections((current) => ({
-      ...current,
-      routeOrder: source === "route-check" && proposedIds.join("\u001f") === routeIntelligence.route.recommendedStopIds.join("\u001f")
-        ? "recommended"
-        : "entered",
-    }));
-    setRoutePreviewStopIds(null);
-    return true;
-  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
 
   const resolveEndpointDraftPlace = async (place: JourneyEndpointPlace, role: "start" | "end") => {
     if (journeyEndpointIdentityIsCoherent(place)) return place;
