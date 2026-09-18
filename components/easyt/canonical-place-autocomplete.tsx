@@ -38,6 +38,7 @@ export function CanonicalPlaceAutocomplete({
   parentConstraint,
   nearbyAnchor,
   allowedPlaceTypes,
+  requireCoordinates = false,
   searchIntent = "route-stop",
   excludeCanonicalIds = [],
   emptyMessage,
@@ -63,6 +64,7 @@ export function CanonicalPlaceAutocomplete({
   parentConstraint?: PlanningParentConstraint;
   nearbyAnchor?: NearbyBaseAnchor;
   allowedPlaceTypes?: PlaceType[];
+  requireCoordinates?: boolean;
   searchIntent?: "route-stop" | "planning-area" | "anchor" | "unknown";
   excludeCanonicalIds?: string[];
   emptyMessage?: string;
@@ -219,8 +221,9 @@ export function CanonicalPlaceAutocomplete({
 
   const suggestions = useMemo(() => [...catalogSuggestions, ...providerSuggestions]
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
+    .filter((suggestion) => !requireCoordinates || Boolean(suggestion.coordinates))
     .filter((suggestion, index, all) => all.findIndex((candidate) => candidate.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
-    .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions]);
+    .slice(0, 8), [catalogSuggestions, excludeCanonicalIds, providerSuggestions, requireCoordinates]);
   const searching = value !== deferredValue || providerSearching;
   const choose = (suggestion: CanonicalPlaceSuggestion) => {
     onSelect(suggestion);

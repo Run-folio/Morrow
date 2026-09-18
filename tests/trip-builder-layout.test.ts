@@ -94,6 +94,18 @@ browserTest("useful homepage and template handoffs show route timing immediately
   }
 });
 
+browserTest("mobile route map disclosure releases the map height", async () => {
+  const draft = routePlannerPayload(publicRouteDetailFor("morocco-rail")!.planDraft);
+  const view = await renderBuilder({ query: "?homeDraft=1", draft });
+  try {
+    await view.page.setViewportSize({ width: 390, height: 844 });
+    const collapse = view.page.getByRole("button", { name: "Collapse map", exact: true });
+    await collapse.click();
+    assert.equal(await view.page.getByRole("button", { name: "Show map", exact: true }).count(), 1);
+    assert.equal(await view.page.locator('[aria-label="Route map"] > div[hidden]').count(), 1);
+  } finally { await view.close(); }
+});
+
 browserTest("area-only handoff stays in clarification without an empty route or retired intake", async () => {
   const brief = "Two weeks in Thailand";
   const view = await renderBuilder({ query: "?homeDraft=1", draft: { brief, structuredBrief: extractStructuredTripBrief(brief) } });

@@ -553,9 +553,14 @@ test("31 direct Builder entry writes End to brief, intent and canonical legs", (
 test("32 the production endpoint editor has a 390px stack state without horizontal layout", () => {
   const styles = readFileSync(new URL("../components/easyt/journey-endpoints-editor.module.css", import.meta.url), "utf8");
   const stories = readFileSync(new URL("../components/easyt/journey-endpoints-editor.stories.tsx", import.meta.url), "utf8");
+  const editor = readFileSync(new URL("../components/easyt/journey-endpoints-editor.tsx", import.meta.url), "utf8");
+  const autocomplete = readFileSync(new URL("../components/easyt/canonical-place-autocomplete.tsx", import.meta.url), "utf8");
   assert.match(styles, /@media \(max-width: 620px\)[\s\S]*\.fields \{ grid-template-columns: 1fr;/);
   assert.match(styles, /\.root \{[^}]*min-width: 0;/);
   assert.match(stories, /BuilderAt390[\s\S]*morrovia390/);
+  assert.match(editor, /requireCoordinates/);
+  assert.match(autocomplete, /requireCoordinates\?: boolean/);
+  assert.match(autocomplete, /!requireCoordinates \|\| Boolean\(suggestion\.coordinates\)/);
 });
 
 test("33 shared canonical autocomplete retains keyboard navigation and selection", () => {
