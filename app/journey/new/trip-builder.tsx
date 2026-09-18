@@ -47,6 +47,7 @@ import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
 import { TripBuilderDetailsEditor, type TripBuilderDetailsDraft } from "./trip-builder-details-editor";
+import { TripBuilderRouteWorkspace, type BuilderOrderSource } from "./trip-builder-route-workspace";
 import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderClarificationChoice, type BuilderClarificationRouteShape, type BuilderClarificationSelectedPlace, type BuilderClarificationSuggestion } from "@/components/easyt/builder-clarification-dialog";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -62,6 +63,7 @@ import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
 import { builderDocumentFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
+import { validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
@@ -561,7 +563,13 @@ function TripBuilderDocument() {
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
+  const [selectedRouteStopId, setSelectedRouteStopId] = useState<string | null>(null);
   const [keptRouteKey, setKeptRouteKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (selectedRouteStopId && stops.some((stop) => stop.id === selectedRouteStopId)) return;
+    setSelectedRouteStopId(stops[0]?.id ?? null);
+  }, [selectedRouteStopId, stops]);
   const [locationChoices, setLocationChoices] = useState<Array<{ mention: CapturedLocation; choices: LocationChoice[] }>>([]);
   const [resolvingLocations, setResolvingLocations] = useState(false);
   const [intakeMentions, setIntakeMentions] = useState<CapturedLocation[]>([]);
@@ -2716,6 +2724,24 @@ function TripBuilderDocument() {
     return tripOwnerId && tripUpdatedAt ? { ...reconciled, updatedAt: tripUpdatedAt } : reconciled;
   }, [tripId, tripOwnerId, tripStatus, tripUpdatedAt, sourceRouteKey, currentCuratedRoute, origin, originCanonicalPlaceId, originCountry, originProviderId, journeyEnd, stops, startDate, endDate, effectivePicks, tripBrief, budget, calendarDayAllocations, allocation, manualNightStopIds, nightAllocation, draft, discoveredPlaces, originCoordinates, createdAt, intakeMentions, activePlaceMentions, routeHints, routeIntelligence, effectiveIntent, projectedFixedCommitments, effectiveStructuredBrief, scheduleLocks, decisionSelections, builderCanonicalLegs]);
 
+  const commitStopOrder = useCallback((proposedIds: readonly string[], source: BuilderOrderSource) => {
+    const result = validateBuilderStopOrder(stops, proposedIds, {
+      lockedStopIds: scheduleLocks.stopIds,
+      fixedOrder: Boolean(structuredRouteConstraints.fixedCommitments?.length),
+    });
+    if (!result.ok) return false;
+    rememberStructuralChange(source === "route-check" ? "apply_route_order" : "reorder_stop", stops.length);
+    setStops(result.stops);
+    setDecisionSelections((current) => ({
+      ...current,
+      routeOrder: source === "route-check" && proposedIds.join("\u001f") === routeIntelligence.route.recommendedStopIds.join("\u001f")
+        ? "recommended"
+        : "entered",
+    }));
+    setRoutePreviewStopIds(null);
+    return true;
+  }, [routeIntelligence.route.recommendedStopIds, scheduleLocks.stopIds, stops, structuredRouteConstraints.fixedCommitments]);
+
   const resolveEndpointDraftPlace = async (place: JourneyEndpointPlace, role: "start" | "end") => {
     if (journeyEndpointIdentityIsCoherent(place)) return place;
     const name = place.name.trim();
@@ -3577,7 +3603,7 @@ function TripBuilderDocument() {
               <header className={styles.stepHero}>
                 <p>{language === "es" ? "TU VIAJE" : "YOUR TRIP"}</p>
                 <h1 className={styles.stepHeroTitle}>{hasRouteSkeleton
-                  ? (language === "es" ? "Dale forma a tu viaje." : "Shape your trip.")
+                  ? (language === "es" ? "Dale forma a la ruta." : "Shape the route.")
                   : hasPromptContext || pendingClarificationIds.length || inlineStopBaseMention
                     ? (language === "es" ? "Demos forma a tu ruta." : "Let’s shape your route.")
                     : (language === "es" ? "Empieza tu viaje." : "Start your trip.")}</h1>
@@ -3703,7 +3729,7 @@ function TripBuilderDocument() {
                   </>}
                 </TripBuilderDetailsEditor>
 
-                <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
+                {(showStopEditor || Boolean(inlineStopBaseMention) || pendingPlaceCount > 0) && <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                   <div className={styles.placesSectionHead}>
                     {isHomepagePromptHandoff
                       ? <div><strong>{pendingPlaceCount
@@ -3799,7 +3825,7 @@ function TripBuilderDocument() {
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}
                   </>}</div>}
-                </section>
+                </section>}
 
                 {!clarificationOpen && pendingClarificationIds.length > 0 && <BuilderClarificationResume
                   ref={clarificationResumeRef}
@@ -4015,7 +4041,23 @@ function TripBuilderDocument() {
               </section>}
               <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>{language === "es" ? "NOCHES" : "NIGHTS"}</span><p><CheckCircle2 aria-hidden="true" /> <strong>{totalNights} {language === "es" ? "en total" : "total"}</strong><span aria-hidden="true">•</span><b>{allNightsAllocated ? (language === "es" ? "Todas asignadas" : "All allocated") : (language === "es" ? `${allocatedNights} de ${totalNights} asignadas` : `${allocatedNights} of ${totalNights} allocated`)}</b></p></div>
               {nightEditFeedback ? <MorroviaStatusBanner className={styles.nightBalanceNotice} tone={nightEditFeedback.tone} title={nightEditFeedback.title} detail={nightEditFeedback.detail} /> : null}
-              <section className={styles.routeTimePlanner} aria-labelledby="day-allocation-title" role="table">
+              <TripBuilderRouteWorkspace
+                canonicalTrip={activeTripDocument}
+                previewStopIds={routePreviewStopIds}
+                selectedStopId={selectedRouteStopId}
+                lockedStopIds={scheduleLocks.stopIds}
+                fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
+                onSelectStop={setSelectedRouteStopId}
+                onPreviewOrder={setRoutePreviewStopIds}
+                onCommitOrder={commitStopOrder}
+                onEditNights={updateAllocatedDays}
+                onAddStop={() => openSummaryEditor("stops")}
+                onOpenRouteCheck={() => {
+                  setRouteInsightsOpen(true);
+                  window.requestAnimationFrame(() => document.getElementById("route-insights-title")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+                }}
+              />
+              {false && <section className={styles.routeTimePlanner} aria-labelledby="day-allocation-title" role="table">
                 <header><h3 id="day-allocation-title">{language === "es" ? "Noches por parada" : "Nights per stop"}</h3></header>
                 <div className={styles.routeTimeColumns} role="row"><span role="columnheader">STOP</span><span role="columnheader">TRANSFER</span><span role="columnheader">NIGHTS</span><span role="columnheader">USABLE TIME</span></div>
                 <div className={styles.routeTimeRows} role="rowgroup">
@@ -4058,20 +4100,20 @@ function TripBuilderDocument() {
                     </div>;
                   })}
                   {routeJourneyEnd ? (() => {
-                    const leg = activeTripDocument.legs.find((candidate) => candidate.classification === "departure" && candidate.toStopId === routeJourneyEnd.id);
+                    const leg = activeTripDocument.legs.find((candidate) => candidate.classification === "departure" && candidate.toStopId === routeJourneyEnd!.id);
                     if (!leg) return null;
-                    const transferMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
-                    const ReturnIcon = leg.mode === "flight" ? Plane : leg.mode === "train" ? Train : leg.mode === "ferry" ? Ship : leg.mode === "road" ? CarFront : Route;
-                    return <div className={styles.routeTimeRow} role="row" key={routeJourneyEnd.id}>
+                    const transferMinutes = leg!.doorToDoorMinutes ?? leg!.durationMinutes;
+                    const ReturnIcon = leg!.mode === "flight" ? Plane : leg!.mode === "train" ? Train : leg!.mode === "ferry" ? Ship : leg!.mode === "road" ? CarFront : Route;
+                    return <div className={styles.routeTimeRow} role="row" key={routeJourneyEnd!.id}>
                       <span className={styles.reorderControl} aria-hidden="true" />
-                      <div className={styles.routeStopIdentity} role="cell"><span className={styles.routeStopImage}><span className={styles.routeStopImageFallback} aria-hidden="true"><MapPin /></span></span><div className={styles.routeStopName}><b>↩</b><span><strong>{routeJourneyEnd.name}</strong><small>{language === "es" ? "Final del viaje" : "Journey return"}</small></span></div></div>
-                      <div className={styles.routeTransferSummary} role="cell"><ReturnIcon aria-hidden="true" /><span><strong className={styles.transferContext}>{transferJourneyModeLabel(leg)}</strong><span className={`${styles.transferDurationLine} ${styles.transferTiming}`}><small>{durationLabel(transferMinutes)}</small></span></span></div>
+                      <div className={styles.routeStopIdentity} role="cell"><span className={styles.routeStopImage}><span className={styles.routeStopImageFallback} aria-hidden="true"><MapPin /></span></span><div className={styles.routeStopName}><b>↩</b><span><strong>{routeJourneyEnd!.name}</strong><small>{language === "es" ? "Final del viaje" : "Journey return"}</small></span></div></div>
+                      <div className={styles.routeTransferSummary} role="cell"><ReturnIcon aria-hidden="true" /><span><strong className={styles.transferContext}>{transferJourneyModeLabel(leg!)}</strong><span className={`${styles.transferDurationLine} ${styles.transferTiming}`}><small>{durationLabel(transferMinutes)}</small></span></span></div>
                       <div className={styles.nightsControl} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Noches" : "Nights"}</span><strong aria-label="Zero nights">0</strong></div>
                       <div className={styles.usableTime} role="cell"><span className={styles.mobileFieldLabel}>{language === "es" ? "Tiempo útil" : "Usable time"}</span><strong>{language === "es" ? "Solo traslado" : "Travel only"}</strong></div>
                     </div>;
                   })() : null}
                 </div>
-              </section>
+              </section>}
               {routeIntelligence.route.state !== "insufficient-data" && (routeIntelligence.route.reasons.length > 0 || routeIntelligence.route.summary) ? <section className={styles.routeInsights} aria-labelledby="route-insights-title">
                 <button type="button" className={styles.disclosureHead} aria-expanded={routeInsightsOpen} aria-controls="route-insights-content" onClick={() => setRouteInsightsOpen((current) => !current)}>
                   <Sparkles aria-hidden="true" /><span><strong id="route-insights-title">{language === "es" ? "Ideas sobre la ruta" : "Route insights"}</strong></span><ChevronRight aria-hidden="true" />

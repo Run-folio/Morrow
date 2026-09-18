@@ -115,6 +115,26 @@ test("desktop Builder uses the approved wide workspace without changing tablet a
     "the visual elevation must not rewrite the existing tablet or mobile rules");
 });
 
+test("the unified route workspace projects canonical occurrences beside the map", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+
+  assert.match(builder, /<TripBuilderRouteWorkspace[\s\S]*canonicalTrip=\{activeTripDocument\}/,
+    "TripBuilderDocument must remain the canonical route-workspace owner");
+  assert.match(workspace, /buildBuilderRoutePreview\(canonicalTrip, previewStopIds\)/,
+    "drag preview must be an immutable presentation projection");
+  assert.match(workspace, /mapRouteLegsFromTrip\(presentedTrip\)/,
+    "the map and rows must consume the same presented trip");
+  assert.match(workspace, /key=\{stop\.id\}/);
+  assert.match(workspace, /<b>\{index \+ 1\}<\/b>/,
+    "row ordinals must be derived from occurrence order, matching map markers");
+  assert.match(styles, /\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(0,1\.05fr\) minmax\(320px,\.95fr\)/,
+    "desktop route rows and map should have approximately equal visual weight");
+  assert.match(styles, /@media\(max-width:1024px\)\{\.builderRouteGrid\{[^}]*grid-template-areas:"map" "rows"/,
+    "narrow layouts must place the route projection before the rows");
+});
+
 test("Builder spacing and healthy route copy use the focused production treatment", () => {
   const page = readFileSync(new URL("../app/journey/new/page.tsx", import.meta.url), "utf8");
   const pageStyles = readFileSync(new URL("../app/journey/new/new-trip.module.css", import.meta.url), "utf8");
