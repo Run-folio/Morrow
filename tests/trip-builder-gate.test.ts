@@ -51,7 +51,7 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
       .map((key) => JSON.parse(localStorage.getItem(key)!)).find((record) => record.trip)?.trip) as EasyTTrip;
   };
   try {
-    await view.page.route("**/api/journey-geocode?place=Busan&candidates=1", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
+    await view.page.route("**/api/journey-geocode?place=Busan*", async (route: { fulfill: (response: unknown) => Promise<void> }) => {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ candidates: [{
