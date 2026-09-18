@@ -5,6 +5,76 @@ import type { NightAllocationResult } from "../lib/easyt/night-allocation.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
+import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
+
+const endpointDraft = {
+  origin: "London", originCanonicalPlaceId: "london", originCountry: "United Kingdom",
+  originCoordinates: [-0.1276, 51.5072],
+  destinations: [
+    { id: "seoul-stay", name: "Seoul", country: "South Korea", canonicalPlaceId: "seoul", coordinates: [126.978, 37.5665] },
+    { id: "busan-stay", name: "Busan", country: "South Korea", canonicalPlaceId: "busan", coordinates: [129.0756, 35.1796] },
+  ],
+  startDate: "2027-04-02", endDate: "2027-04-12", datesExplicit: true,
+};
+
+test("populated Builder exposes explicit, Same as start and unknown journey ends through Edit trip", { skip: !builderBrowserTestsEnabled }, async () => {
+  for (const [journeyEnd, expectedEnd] of [
+    [{ mode: "explicit", place: endpointDraft.destinations[1] }, "Busan"],
+    [{ mode: "same_as_start" }, "Same as start · London"],
+    [{ mode: "unknown" }, "Not sure yet"],
+  ] as const) {
+    const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd } });
+    try {
+      const details = view.page.getByRole("region", { name: "Journey details", exact: true });
+      await details.waitFor({ timeout: 3000 });
+      assert.match(await details.innerText(), new RegExp(expectedEnd));
+      assert.equal(await details.getByRole("combobox").count(), 0);
+      await details.getByRole("button", { name: "Edit trip", exact: true }).click();
+      assert.equal(await details.getByRole("combobox", { name: "Ending at" }).inputValue(), journeyEnd.mode === "explicit" ? "Busan" : journeyEnd.mode === "same_as_start" ? "London" : "");
+      assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
+      assert.equal(await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).count(), 0);
+      await details.getByRole("button", { name: "Close details", exact: true }).click();
+      assert.equal(await details.getByRole("button", { name: "Edit trip", exact: true }).getAttribute("aria-expanded"), "false");
+      assert.deepEqual(view.errors, []);
+    } finally { await view.close(); }
+  }
+});
+
+test("editing Builder end modes preserves Busan stop occurrence and canonical endpoint identity", { skip: !builderBrowserTestsEnabled }, async () => {
+  const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd: { mode: "unknown" } } });
+  const storedTrip = async (mode: string) => {
+    await view.page.waitForFunction((expected: string) => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .some((key) => JSON.parse(localStorage.getItem(key)!).trip?.brief.journeyEnd?.mode === expected), mode);
+    return await view.page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .map((key) => JSON.parse(localStorage.getItem(key)!)).find((record) => record.trip)?.trip) as EasyTTrip;
+  };
+  try {
+    const details = view.page.getByRole("region", { name: "Journey details", exact: true });
+    await details.waitFor({ timeout: 3000 });
+    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
+    const before = await storedTrip("unknown");
+    const stopIds = before.stops.map((stop) => stop.id);
+    await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
+    await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
+    const explicit = await storedTrip("explicit");
+    assert.equal(explicit.brief.journeyEnd?.mode === "explicit" && explicit.brief.journeyEnd.place.canonicalPlaceId, "busan");
+    assert.deepEqual(explicit.stops.map((stop) => stop.id), stopIds);
+    assert.equal(explicit.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights, before.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights);
+    await details.getByRole("button", { name: "Same as start", exact: true }).click();
+    const roundTrip = await storedTrip("same_as_start");
+    assert.deepEqual(roundTrip.stops.map((stop) => stop.id), stopIds);
+    assert.equal(roundTrip.legs.at(-1)?.classification, "departure");
+    assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId, "london");
+    assert.equal(roundTrip.stops.some((stop) => stop.canonicalPlaceId === "london"), false);
+    await details.getByRole("button", { name: "Clear journey end", exact: true }).click();
+    const unknown = await storedTrip("unknown");
+    assert.deepEqual(unknown.stops.map((stop) => stop.id), stopIds);
+    assert.equal(unknown.legs.some((leg) => leg.classification === "departure"), false);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
 
 function allocatedNightResult(allocations: Record<string, number>, state: "allocated" | "compromised" = "allocated"): NightAllocationResult {
   const total = Object.values(allocations).reduce((sum, nights) => sum + nights, 0);

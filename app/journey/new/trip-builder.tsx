@@ -46,6 +46,7 @@ import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
 import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-editor";
+import { TripBuilderDetailsEditor } from "./trip-builder-details-editor";
 import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderClarificationChoice, type BuilderClarificationRouteShape, type BuilderClarificationSelectedPlace, type BuilderClarificationSuggestion } from "@/components/easyt/builder-clarification-dialog";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -547,6 +548,9 @@ function TripBuilderDocument() {
   } | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
   const hasRouteSkeleton = hasUsefulRouteSkeleton(stops);
+  useEffect(() => {
+    if (hasRouteSkeleton && !origin.trim()) setShowOriginEditor(true);
+  }, [hasRouteSkeleton, origin]);
   const [routeHints, setRouteHints] = useState<string[]>([]);
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
   const [curatedRoute, setCuratedRoute] = useState<CuratedRouteKnowledge | undefined>();
@@ -3485,7 +3489,14 @@ function TripBuilderDocument() {
                 <div className={styles.travelStyleChips}>{travelStyleLabels(travelProfile, language).map((label) => <span key={label}>{label}</span>)}</div>
               </section>}
               {(hasRouteSkeleton || hasPromptContext || pendingClarificationIds.length > 0 || inlineStopBaseMention) && <section className={styles.tripUnderstood} aria-label={language === "es" ? "Viaje entendido" : "Trip understood"}>
-                <section id="builder-origin" className={`${styles.placesSection} ${isHomepagePromptHandoff ? styles.handoffOrigin : ""} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}>
+                <TripBuilderDetailsEditor
+                  language={language}
+                  startValue={origin}
+                  endSelection={journeyEnd}
+                  expanded={!hasRouteSkeleton || showOriginEditor || Boolean(inlineOriginPlanningMention)}
+                  onExpandedChange={setShowOriginEditor}
+                  className={`${styles.placesSection} ${isHomepagePromptHandoff ? styles.handoffOrigin : ""} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}
+                >
                   <JourneyEndpointsEditor
                     language={language}
                     startValue={origin}
@@ -3545,7 +3556,7 @@ function TripBuilderDocument() {
                     {baseSearchErrors[inlineOriginPlanningMention.mentionId] ? <p id={`${originErrorId}-base`} className={styles.baseSelectorError} role="alert">{baseSearchErrors[inlineOriginPlanningMention.mentionId]}</p> : null}
                   </div> : null}
                   {(originError || originMissing) && !inlineOriginPlanningMention && <small id={originErrorId} className={styles.hintError} role="alert">{originError || ui.addOrigin}</small>}
-                </section>
+                </TripBuilderDetailsEditor>
 
                 <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                   <div className={styles.placesSectionHead}>

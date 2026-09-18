@@ -1688,3 +1688,9 @@
   .wizardFoot .primary { padding-inline: 10px; font-size: 12px; }
   .wizardFoot .saveState { font-size: 9px; }
 }
+.detailsSummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+.detailsSummary>div{min-width:0}
+.detailsSummary dt{color:var(--morrovia-muted);font:var(--morrovia-type-metadata)}
+.detailsSummary dd{margin:4px 0 0;overflow-wrap:anywhere;color:var(--morrovia-ink);font:var(--morrovia-type-supporting-body)}
+.detailsFields{display:grid;gap:12px;min-width:0}
+@media(max-width:520px){.detailsSummary{grid-template-columns:1fr}}
