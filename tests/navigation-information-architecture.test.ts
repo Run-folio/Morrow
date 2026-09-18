@@ -46,11 +46,14 @@ test("desktop navigation protects the founder-approved hierarchy and one-dropdow
 });
 
 test("the canonical homepage route story and global home links remain intact", () => {
-  const routes = read("app/journey/home/immersive/route-chapters.tsx");
+  const inspiration = read("app/journey/home/immersive/homepage-route-inspiration.tsx");
+  const routeStory = read("app/journey/home/immersive/route-chapters.tsx");
   const navigation = read("app/journey/easyt-navigation.tsx");
 
-  assert.match(routes, /id="routes"/);
-  assert.match(routes, /href="\/journey\/discover"/);
+  assert.match(inspiration, /id="routes"/);
+  assert.match(inspiration, /href="\/journey\/discover"/);
+  assert.match(routeStory, /id="route-story"/);
+  assert.match(routeStory, /href="\/journey\/discover"/);
   assert.equal((navigation.match(/href="\/"/g) ?? []).length, 1, "the shared brand remains the single canonical Home link");
   assert.doesNotMatch(navigation, /href="\/journey\/home/);
 });

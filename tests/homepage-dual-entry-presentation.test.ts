@@ -32,7 +32,6 @@ test("voice recognition is disabled and detached when loading starts", () => {
   assert.match(captureSource, /disabled=\{disabled \|\| loading\}/);
   assert.match(captureStories, /WideHomepageDelayedVoiceAfterLoading/);
   assert.match(captureStories, /Delayed voice result changed the loading Describe prompt/);
-  assert.match(immersiveStories, /DescribeLoading/);
 });
 
 test("wide capture keeps one form and one primary submit", () => {
@@ -49,12 +48,11 @@ test("wide capture stories exercise keyboard and click tabs plus retained person
   assert.match(captureStories, /retained dates/);
 });
 
-test("dual-entry preview keeps the current connected homepage as the default", () => {
-  assert.match(immersiveSource, /presentation\s*=\s*"current"/);
-  assert.match(immersiveSource, /plannerSlot\s*\?\?\s*<HomeTripStarter\s*\/>/);
+test("the connected dual-entry homepage is the only production composition", () => {
+  assert.doesNotMatch(immersiveSource, /presentation\?:|plannerSlot\?:|dualEntry/);
+  assert.match(immersiveSource, /<HomeTripStarter\s*\/>/);
   assert.match(immersiveSource, /<EasyTNavigation current="home" landing logoTone="light" deferPrefetch\s*\/>/);
-  assert.match(immersiveSource, /dualEntry\s*\?\s*<>[\s\S]*<HomepageRouteInspiration routes=\{routes\}\s*\/>[\s\S]*<HomepageHowItWorks\s*\/>/);
-  assert.match(immersiveSource, /showIntroduction=\{!dualEntry\}/);
+  assert.match(immersiveSource, /<HomepageRouteInspiration routes=\{routes\}\s*\/>[\s\S]*<HomepageHowItWorks\s*\/>[\s\S]*<RouteChapters/);
 });
 
 test("dual-entry hero is full-height, wide, and may grow with open planner panels", () => {
@@ -62,17 +60,15 @@ test("dual-entry hero is full-height, wide, and may grow with open planner panel
   assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /overflow:\s*(?:hidden|clip)/);
   assert.match(immersiveStyles, /\.heroDecorative\s*\{[^}]*overflow:\s*clip/);
   assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*grid-template-columns:\s*1fr/);
-  assert.match(immersiveStyles, /\.hero:not\(\.heroDualEntry\) \.planner form > div:first-child/);
   assert.match(immersiveSource, /Plan multi-stop trips with suggested routes, places to stay and things to do\. Then make the plan your own\./);
-  assert.match(immersiveStories, /Where do you want to go\?/);
+  assert.match(immersiveStories, /FullComposition/);
 });
 
-test("Route Chapters can omit only its duplicated introduction", () => {
-  assert.match(routeChaptersSource, /showIntroduction\s*=\s*true/);
-  assert.match(routeChaptersSource, /showIntroduction\s*\?\s*<section id="routes"/);
+test("Route Chapters always retains the independent lower story without recreating the route selector", () => {
+  assert.doesNotMatch(routeChaptersSource, /showIntroduction|<section id="routes"/);
   assert.match(routeChaptersSource, /<section id="route-story"/);
   assert.match(routeChaptersSource, /\{children\?\.\(route, change, index\)\}/);
-  assert.match(routeChaptersSource, /if \(!showIntroduction\) return/);
+  assert.match(routeChaptersSource, /chapter = "route-story"/);
 });
 
 test("full composition story protects one nav, planner, anchors, and route-story independence", () => {
@@ -83,28 +79,14 @@ test("full composition story protects one nav, planner, anchors, and route-story
   for (const anchor of ["#route-story", "#product", "#booking-support", "#closing"]) assert.match(immersiveStories, new RegExp(anchor.replace("#", "#")));
   assert.match(immersiveStories, /Card focus\/hover changed Route Story/);
   assert.match(immersiveStories, /Card click changed Route Story/);
-  assert.match(immersiveStories, /destinationSummary\(entries, language\)/);
 });
 
-test("preview fixtures cover empty entry allocation and semantic destination summaries", () => {
-  assert.match(immersiveStories, /EmptyPlanner/);
-  assert.match(immersiveStories, /entries=\{\[\]\}/);
-  assert.match(immersiveStories, /startDate=""/);
-  assert.match(immersiveStories, /initialInterests=\{\[\]\}/);
-  assert.match(immersiveStories, /firstEntryId/);
-  assert.match(immersiveStories, /MixedDestinationSummary/);
-  assert.match(immersiveStories, /isOvernightBaseEligible/);
-  assert.match(immersiveStories, /planning area/);
-  assert.match(immersiveStories, /unconfirmed/);
-});
-
-test("preview stories use canonical hierarchy and deterministic controlled context", () => {
+test("homepage stories use the real connected owner and canonical hierarchy", () => {
   assert.match(immersiveStories, /title: "Morrovia\/05 Product Patterns\/Homepage dual entry"/);
   assert.doesNotMatch(immersiveStories, /initialImmersiveRouteIndex/);
   assert.match(immersiveStories, /const previewRouteIndex =/);
-  assert.match(immersiveStories, /useEffect\(\(\) => \{[\s\S]*easyt-language-change/);
-  assert.doesNotMatch(immersiveStories, /if \(typeof window !== "undefined"\) window\.localStorage/);
-  assert.match(immersiveStories, /disabled=\{loading\}/);
+  assert.match(immersiveStories, /<ImmersiveHome routes=\{routes\} initialIndex=\{previewRouteIndex\}\s*\/>/);
+  assert.doesNotMatch(immersiveStories, /PreviewPlanner|plannerSlot|presentation="dual-entry"/);
 });
 
 test("wide capture disables every opt-in control while loading", () => {

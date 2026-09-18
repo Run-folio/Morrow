@@ -31,7 +31,6 @@
 .planner [role="dialog"] { top: auto; bottom: calc(100% + 9px); }
 .planner [data-disclosure-close] { width: 44px; height: 44px; }
 .planner form { margin: 0; max-width: none; }
-.hero:not(.heroDualEntry) .planner form > div:first-child { padding: 0; border: 0; box-shadow: none; }
 .planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
 .heroBottom { position: relative; z-index: 2; width: 92%; margin: 0 auto 28px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
 .heroPhotoCredit { --photo-credit-inline:4%; --photo-credit-block:76px; }
@@ -213,8 +212,6 @@
  .itineraryDay dl { gap: 15px; }
  .productExamples button { max-width: 220px; white-space: normal; line-height: 1.4; }
 }
-.places { --progress: 0; height: calc(max(100svh,860px) + 45svh); position: relative; }
-.placesStage { min-height: 860px; height: 100svh; position: sticky; top: 0; padding: 64px 5vw 36px; display: flex; flex-direction: column; overflow: clip; }
 .routeCollectionIntro { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,520px); align-items:end; gap:5vw; padding-bottom:24px; border-bottom:1px solid var(--morrovia-line); margin-bottom:24px; }
 .routeCollectionIntro .eyebrow { color:var(--morrovia-signal); }
 .routeCollectionIntro h2 { font-size:clamp(30px,2.7vw,46px); margin-top:12px; }
@@ -278,8 +275,6 @@
 .alternativesAll { width: 100%; min-height: 60px; justify-content: space-between; padding: 18px 0 0; color: var(--morrovia-paper)!important; border-top: 1px solid color-mix(in srgb,var(--morrovia-paper) 38%,transparent); border-radius: 0; font-size: 17px; }
 .alternativesAll:hover { color: var(--morrovia-paper)!important; background: transparent; transform: none; border-top-color: color-mix(in srgb,var(--morrovia-paper) 72%,transparent); }
 @media(max-width:840px) {
- .places { height: auto; --progress: 1!important; }
- .placesStage { position: relative; height: auto; min-height: 0; padding: 55px 20px 30px; }
  .routeCollectionIntro { grid-template-columns:1fr; gap:14px; padding-bottom:20px; margin-bottom:24px; }
  .routeCollectionIntro h2 { font-size:34px; }
  .routeCollectionIntro > p { font-size:14px; }
@@ -300,10 +295,8 @@
  .alternativeRoute { min-height: 60px; padding-block: 15px; font-size: clamp(21px,5.5vw,24px); }
  .alternativesAll { min-height: 52px; padding-top: 14px; }
 }
-.page[data-quiet="true"] .places { height: auto; --progress: 1!important; }
-.page[data-quiet="true"] .placesStage { position: relative; }
 .page[data-quiet="true"] .photos figure,.page[data-quiet="true"] .destinationPhoto { transform: none; }
-@media(prefers-reduced-motion:reduce) { .places { height: auto; --progress: 1!important; } .placesStage { position: relative; } .photos figure,.destinationPhoto { transform: none!important; } }
+@media(prefers-reduced-motion:reduce) { .photos figure,.destinationPhoto { transform: none!important; } }
 @media(prefers-reduced-motion:reduce) { .page *, .page *::before { animation: none!important; transition: none!important; scroll-behavior: auto!important; } .landscape { transform: none!important; } }
 
 /* Product sample: production controls inside an editorial, read-only journey. */
