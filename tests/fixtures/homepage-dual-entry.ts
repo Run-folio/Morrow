@@ -24,3 +24,13 @@ export function emptyHomepageInput(ownerId: string | null = null): HomepageInput
     journeyEnd: { state: "untouched" },
   };
 }
+
+export function selectedStopsHomepageInput(
+  ownerId: string | null = null,
+  destinations: Array<[id: string, canonicalName: string]> = [["tokyo", "Tokyo"], ["kyoto", "Kyoto"]],
+): HomepageInputSnapshot {
+  return {
+    ...emptyHomepageInput(ownerId),
+    entries: destinations.map(([id, canonicalName]) => selectedEntry(id, canonicalName)),
+  };
+}

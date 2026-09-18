@@ -2,7 +2,7 @@ import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-captur
 import { isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
 import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
-import { normalizeTripInterests, type TripInterest } from "./trip-interest.ts";
+import { normalizeTripInterests, tripInterestIds, type TripInterest } from "./trip-interest.ts";
 import { canonicalJourneyEndpointPlace, normalizeJourneyEnd, originPlaceFromBrief, resolvedJourneyEndPlace, sameJourneyPlace } from "./journey-endpoints.ts";
 import { createPlanningConfidence } from "./planning-confidence.ts";
 import { structuredTripBriefFromSavedSelections, validateStructuredTripBrief, type StructuredTripBrief, type TripBriefProvenance } from "./structured-trip-brief.ts";
@@ -40,6 +40,19 @@ export type HomepageInputIssue = {
   field: "destinations" | "prompt" | "dates" | "travellers";
   code: "required" | "unresolved" | "invalid";
   entryId?: string;
+};
+
+export type HomepageHandoffReceipt = {
+  version: 1;
+  ownerId: string | null;
+  handoffId: string;
+  inputFingerprint: string;
+  tripId: string;
+};
+
+export type StoredHomepageInput = {
+  snapshot: HomepageInputSnapshot;
+  receipt?: HomepageHandoffReceipt;
 };
 
 export function moveHomepageEntry(
@@ -92,11 +105,220 @@ export type HomeTripDraft = {
     mode: HomepageInputSnapshot["mode"];
     occurrenceMentionIds: Record<string, string>;
     choices: Pick<HomepageInputSnapshot, "dates" | "budget" | "interests" | "travellers" | "origin" | "journeyEnd">;
+    receipt?: HomepageHandoffReceipt;
   };
   brief?: string;
   nightAllocations?: Record<string, number>;
   decisionSelections?: EasyTTrip["brief"]["decisionSelections"];
 };
+
+const HOMEPAGE_PROMPT_LIMIT = 4_000;
+const HOMEPAGE_SHORT_TEXT_LIMIT = 256;
+const HOMEPAGE_ENTRY_LIMIT = 12;
+const homepagePlaceTypes = new Set([
+  "continent", "country", "macro_region", "region", "sub_region", "island", "archipelago",
+  "city", "town", "natural_area", "coast", "mountain_range", "valley", "travel_corridor",
+  "landmark", "transport_gateway", "unknown",
+]);
+const homepageRoutabilities = new Set([
+  "direct_destination", "planning_area", "anchor_or_poi", "needs_base_selection", "non_routable_reference",
+]);
+const homepageInterestIds = new Set<TripInterest>(tripInterestIds);
+
+function homepageRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function boundedHomepageString(value: unknown, maximum = HOMEPAGE_SHORT_TEXT_LIMIT, allowEmpty = false): value is string {
+  return typeof value === "string" && value.length <= maximum && (allowEmpty || value.trim().length > 0);
+}
+
+function homepageCoordinates(value: unknown): value is [number, number] {
+  return Array.isArray(value) && value.length === 2
+    && typeof value[0] === "number" && Number.isFinite(value[0]) && value[0] >= -180 && value[0] <= 180
+    && typeof value[1] === "number" && Number.isFinite(value[1]) && value[1] >= -90 && value[1] <= 90;
+}
+
+function homepageBounds(value: unknown) {
+  if (!homepageRecord(value)) return false;
+  const { south, west, north, east } = value;
+  return typeof south === "number" && Number.isFinite(south) && south >= -90 && south <= 90
+    && typeof north === "number" && Number.isFinite(north) && north >= -90 && north <= 90 && south <= north
+    && typeof west === "number" && Number.isFinite(west) && west >= -180 && west <= 180
+    && typeof east === "number" && Number.isFinite(east) && east >= -180 && east <= 180 && west <= east;
+}
+
+function homepageProvenance(value: unknown) {
+  if (!Array.isArray(value) || !value.length || value.length > 32) return false;
+  return value.every((candidate) => homepageRecord(candidate)
+    && boundedHomepageString(candidate.id)
+    && boundedHomepageString(candidate.label)
+    && ["canonical", "curated_alias", "context", "provider", "unresolved", "builder"].includes(String(candidate.kind))
+    && boundedHomepageString(candidate.supports, 1_000)
+    && (candidate.reviewedAt === undefined || boundedHomepageString(candidate.reviewedAt)));
+}
+
+function homepageSelection(value: unknown): value is CanonicalPlaceSuggestion {
+  if (!homepageRecord(value)) return false;
+  return boundedHomepageString(value.canonicalPlaceId)
+    && boundedHomepageString(value.name)
+    && boundedHomepageString(value.label, 512)
+    && boundedHomepageString(value.country, HOMEPAGE_SHORT_TEXT_LIMIT, true)
+    && (value.region === undefined || boundedHomepageString(value.region))
+    && typeof value.placeType === "string" && homepagePlaceTypes.has(value.placeType)
+    && (value.coordinates === undefined || homepageCoordinates(value.coordinates))
+    && (value.bounds === undefined || homepageBounds(value.bounds))
+    && (value.routability === undefined || typeof value.routability === "string" && homepageRoutabilities.has(value.routability))
+    && homepageProvenance(value.provenance);
+}
+
+function homepageEndpoint(value: unknown): value is JourneyEndpointPlace {
+  if (!homepageRecord(value) || !boundedHomepageString(value.name)) return false;
+  return (value.canonicalPlaceId === undefined || boundedHomepageString(value.canonicalPlaceId))
+    && (value.country === undefined || boundedHomepageString(value.country))
+    && (value.providerId === undefined || boundedHomepageString(value.providerId))
+    && (value.coordinates === undefined || homepageCoordinates(value.coordinates));
+}
+
+function homepageEnd(value: unknown): value is JourneyEndSelection {
+  if (!homepageRecord(value)) return false;
+  if (value.mode === "unknown" || value.mode === "same_as_start") return true;
+  return value.mode === "explicit" && homepageEndpoint(value.place);
+}
+
+function homepageChoice(value: unknown, selected: (candidate: unknown) => boolean) {
+  if (!homepageRecord(value)) return false;
+  if (value.state === "untouched" || value.state === "cleared") return value.value === undefined;
+  return value.state === "selected" && selected(value.value);
+}
+
+function homepageDate(value: unknown) {
+  return typeof value === "string" && validHomepageDate(value);
+}
+
+function homepageSnapshot(value: unknown, ownerId: string | null): value is HomepageInputSnapshot {
+  if (!homepageRecord(value)
+    || value.version !== 1
+    || value.ownerId !== ownerId
+    || !(value.ownerId === null || boundedHomepageString(value.ownerId))
+    || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0
+    || (value.mode !== "stops" && value.mode !== "describe")
+    || !boundedHomepageString(value.prompt, HOMEPAGE_PROMPT_LIMIT, true)
+    || !Array.isArray(value.entries) || value.entries.length > HOMEPAGE_ENTRY_LIMIT) return false;
+
+  const occurrenceIds = new Set<string>();
+  for (const candidate of value.entries) {
+    if (!homepageRecord(candidate)
+      || !boundedHomepageString(candidate.id)
+      || occurrenceIds.has(candidate.id)
+      || !boundedHomepageString(candidate.text, 512, true)
+      || !(candidate.selection === null || homepageSelection(candidate.selection))) return false;
+    occurrenceIds.add(candidate.id);
+  }
+
+  return homepageChoice(value.dates, (candidate) => homepageRecord(candidate)
+      && homepageDate(candidate.start) && homepageDate(candidate.end) && String(candidate.end) >= String(candidate.start))
+    && homepageChoice(value.budget, (candidate) => ["value", "mid", "high"].includes(String(candidate)))
+    && homepageChoice(value.interests, (candidate) => Array.isArray(candidate)
+      && candidate.length <= homepageInterestIds.size
+      && candidate.every((interest) => typeof interest === "string" && homepageInterestIds.has(interest as TripInterest))
+      && new Set(candidate).size === candidate.length)
+    && homepageChoice(value.travellers, (candidate) => Number.isInteger(candidate) && Number(candidate) >= 1 && Number(candidate) <= 12)
+    && homepageChoice(value.origin, homepageEndpoint)
+    && homepageChoice(value.journeyEnd, homepageEnd);
+}
+
+function homepageReceipt(value: unknown, snapshot: HomepageInputSnapshot): value is HomepageHandoffReceipt {
+  return homepageRecord(value)
+    && value.version === 1
+    && value.ownerId === snapshot.ownerId
+    && boundedHomepageString(value.handoffId)
+    && boundedHomepageString(value.inputFingerprint, 512)
+    && boundedHomepageString(value.tripId);
+}
+
+/** Decode owner-private intake without repairing or adopting malformed state. */
+export function readHomepageInput(value: unknown, ownerId: string | null): StoredHomepageInput | null {
+  if (!homepageRecord(value) || !homepageSnapshot(value.snapshot, ownerId)) return null;
+  if (value.receipt !== undefined && !homepageReceipt(value.receipt, value.snapshot)) return null;
+  return value.receipt === undefined
+    ? { snapshot: value.snapshot }
+    : { snapshot: value.snapshot, receipt: value.receipt };
+}
+
+function canonicalFingerprintValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalFingerprintValue);
+  if (!homepageRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key, candidate]) => candidate !== undefined
+      && !["receipt", "revision", "requestId", "createdAt", "updatedAt", "checkedAt"].includes(key))
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, candidate]) => [key, canonicalFingerprintValue(candidate)]));
+}
+
+function homepageFingerprintHash(value: string) {
+  let left = 0x811c9dc5;
+  let right = 0x9e3779b9;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    left = Math.imul(left ^ code, 0x01000193) >>> 0;
+    right = Math.imul(right ^ code, 0x85ebca6b) >>> 0;
+  }
+  return `${left.toString(16).padStart(8, "0")}${right.toString(16).padStart(8, "0")}`;
+}
+
+/** Fingerprint only projected planning meaning. UI state, revisions and handoff
+ * bookkeeping cannot create another canonical trip. */
+export function homepageSubmissionFingerprint(draft: HomeTripDraft) {
+  const semantic = canonicalFingerprintValue({
+    version: 1,
+    ownerId: draft.homepage?.ownerId ?? null,
+    mode: draft.homepage?.mode ?? "legacy",
+    sourceRouteKey: draft.sourceRouteKey,
+    curatedRoute: draft.curatedRoute,
+    origin: draft.origin,
+    originCoordinates: draft.originCoordinates,
+    originCanonicalPlaceId: draft.originCanonicalPlaceId,
+    originCountry: draft.originCountry,
+    originProviderId: draft.originProviderId,
+    journeyEnd: draft.journeyEnd,
+    destinations: draft.destinations,
+    locationMentions: draft.locationMentions,
+    routeHints: draft.routeHints,
+    regions: draft.regions,
+    parserVersion: draft.parserVersion,
+    structuredBrief: draft.structuredBrief,
+    startDate: draft.startDate,
+    endDate: draft.endDate,
+    durationDays: draft.durationDays,
+    datesExplicit: draft.datesExplicit,
+    travellers: draft.travellers,
+    travellersExplicit: draft.travellersExplicit,
+    interests: draft.interests,
+    interestsExplicit: draft.interestsExplicit,
+    budget: draft.budget,
+    brief: draft.brief,
+    nightAllocations: draft.nightAllocations,
+    decisionSelections: draft.decisionSelections,
+    occurrenceMentionIds: draft.homepage?.occurrenceMentionIds,
+    choices: draft.homepage?.choices,
+  });
+  return `homepage-v1-${homepageFingerprintHash(JSON.stringify(semantic))}`;
+}
+
+export function reusableHomepageReceipt(
+  stored: StoredHomepageInput,
+  draft: HomeTripDraft,
+): HomepageHandoffReceipt | null {
+  const receipt = stored.receipt;
+  if (!receipt || !draft.homepage || !draft.handoffId) return null;
+  return receipt.ownerId === stored.snapshot.ownerId
+    && receipt.ownerId === draft.homepage.ownerId
+    && receipt.handoffId === draft.handoffId
+    && receipt.inputFingerprint === homepageSubmissionFingerprint(draft)
+    ? receipt
+    : null;
+}
 
 export type HandoffLocationChoice = {
   canonicalPlaceId?: string;

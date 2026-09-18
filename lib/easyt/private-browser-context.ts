@@ -12,6 +12,10 @@ export function travelReadinessStorageKey(ownerId: string | null | undefined) {
   return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:travel-readiness-profile`;
 }
 
+export function homepageInputStorageKey(ownerId: string | null) {
+  return `${PRIVATE_CONTEXT_PREFIX}:${privateContextScope(ownerId)}:homepage-input`;
+}
+
 export type OwnerBoundaryState = "pending" | "current" | "expired" | "mismatch" | "signed-out";
 
 export function ownerBoundaryState({

@@ -4,6 +4,7 @@ import test from "node:test";
 import { isEasyTEmailVerificationRequired } from "../lib/easyt/auth-environment.ts";
 import { runClientMutation } from "../lib/easyt/client-mutation.ts";
 import {
+  homepageInputStorageKey,
   ownerBoundaryState,
   travelProfileStorageKey,
   travelReadinessStorageKey,
@@ -15,6 +16,8 @@ test("private profile and passport context is namespaced by exact owner", () => 
   assert.notEqual(travelReadinessStorageKey("owner-a"), travelReadinessStorageKey("owner-b"));
   assert.notEqual(travelProfileStorageKey("owner-a"), travelProfileStorageKey(null));
   assert.match(travelReadinessStorageKey("owner-a"), /owner-owner-a/);
+  assert.notEqual(homepageInputStorageKey("owner-a"), homepageInputStorageKey("owner-b"));
+  assert.notEqual(homepageInputStorageKey("owner-a"), homepageInputStorageKey(null));
 });
 
 test("an A to B switch fails closed before stale private props can render", () => {
