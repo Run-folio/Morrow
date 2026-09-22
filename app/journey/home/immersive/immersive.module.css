@@ -32,12 +32,12 @@
 .planner [data-disclosure-close] { width: 44px; height: 44px; }
 .planner form { margin: 0; max-width: none; }
 .planner textarea { min-height: 112px; max-height: 320px; field-sizing: content; font-size: 16px; }
-.heroBottom { position: relative; z-index: 2; width: 92%; margin: 0 auto 28px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
+.heroBottom { position: relative; z-index: 2; width: min(1400px,calc(100% - 80px)); margin: 0 auto 18px; display: flex; justify-content: flex-end; align-items: center; gap: 20px; font: var(--morrovia-type-fine-print); }
 .heroPhotoCredit { --photo-credit-inline:4%; --photo-credit-block:76px; }
-.heroDualEntry { min-height: 100svh; }
-.heroBodyDualEntry { grid-template-columns: 1fr; align-content: center; gap: 18px; padding-block: 28px; }
+.heroDualEntry { min-height: clamp(650px,74svh,760px); }
+.heroBodyDualEntry { width:min(1400px,calc(100% - 80px)); grid-template-columns: 1fr; align-content: center; gap: 22px; padding-block: 24px 16px; }
 .heroBodyDualEntry .heroCopy { max-width: 1060px; }
-.heroBodyDualEntry .heroCopy h1 { margin: 10px 0; font-size: clamp(64px,6vw,96px); }
+.heroBodyDualEntry .heroCopy h1 { margin: 8px 0; font-size: clamp(60px,5.4vw,86px); }
 .heroBodyDualEntry .heroCopy h1 em { display: block; max-width: none; }
 .heroBodyDualEntry .heroCopy p { max-width: 560px; }
 .heroBodyDualEntry .planner { max-width: none; justify-self: stretch; padding: 0; background: transparent; }
@@ -68,12 +68,12 @@
 }
 .page[data-quiet="true"] *, .page[data-quiet="true"] *::before { animation: none!important; transition: none!important; }
 .page[data-quiet="true"] .landscape { transform: none!important; }
-.inspiration,.howItWorks { width:min(1400px,calc(100% - 80px)); margin:0 auto; padding:58px 0; }
-.inspirationHeading,.howHeading { display:flex; align-items:end; justify-content:space-between; gap:48px; margin-bottom:36px; }
-.inspirationHeading > div:last-child { display:grid; justify-items:start; gap:16px; max-width:460px; }
-.inspirationHeading .eyebrow,.howHeading .eyebrow { color:var(--morrovia-signal); margin-bottom:14px; }
-.inspirationHeading h2,.howHeading h2 { font-size:clamp(42px,4.2vw,68px); }
-.inspirationHeading p { font:var(--morrovia-type-supporting-body); }
+.inspiration,.howItWorks { width:min(1400px,calc(100% - 48px)); margin:0 auto; padding:38px 0; }
+.inspirationHeading,.howHeading { display:flex; align-items:end; justify-content:space-between; gap:32px; margin-bottom:22px; }
+.inspirationHeading > div { display:grid; justify-items:start; gap:7px; max-width:760px; }
+.inspirationHeading .eyebrow,.howHeading .eyebrow { color:var(--morrovia-signal); margin-bottom:6px; }
+.inspirationHeading h2,.howHeading h2 { font-size:clamp(38px,3.4vw,54px); }
+.inspirationHeading p { color:var(--morrovia-ink-soft); font:var(--morrovia-type-supporting-body); }
 .inspirationCatalogue { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--morrovia-action); font:var(--morrovia-type-control); }
 .inspirationCatalogue svg { width:16px; height:16px; }
 .inspirationGrid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:12px; }
@@ -86,7 +86,7 @@
 .inspirationMeta { color:var(--morrovia-ink-soft); font:var(--morrovia-type-metadata); }
 .inspirationCredit { --photo-credit-inline:8px; --photo-credit-block:8px; }
 .inspirationCard > a:hover .inspirationPhoto img,.inspirationCard > a:focus-visible .inspirationPhoto img { transform:scale(1.035); }
-.howItWorks { border-top:1px solid var(--morrovia-line); padding-top:48px; }
+.howItWorks { border-top:1px solid var(--morrovia-line); padding-top:34px; }
 .howHeading > div { max-width:660px; }
 .howHeading button { flex:0 0 auto; }
 .howSteps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; padding:0; margin:0; list-style:none; }
@@ -97,7 +97,7 @@
 .howSteps h3 { font:600 24px/1.15 var(--morrovia-display); }
 .howSteps p { margin-top:8px; color:var(--morrovia-ink-soft); font:var(--morrovia-type-supporting-body); }
 @media(max-width:700px) {
-  .inspiration,.howItWorks { width:calc(100% - 32px); padding:58px 0; }
+  .inspiration,.howItWorks { width:calc(100% - 32px); padding:42px 0; }
   .inspirationHeading,.howHeading { display:grid; gap:22px; align-items:start; }
   .howHeading button { justify-self:start; }
   .howSteps { grid-template-columns:1fr; gap:20px; }

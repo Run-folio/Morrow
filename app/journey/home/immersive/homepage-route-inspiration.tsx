@@ -62,11 +62,9 @@ export default function HomepageRouteInspiration({ routes }: { routes: Immersive
       <div>
         <span className={styles.eyebrow}>{es ? "Inspiración para tu viaje" : "Trip inspiration"}</span>
         <h2 id="homepage-inspiration-heading">{es ? "¿No sabes adónde ir?" : "Not sure where to go?"}</h2>
-      </div>
-      <div>
         <p>{es ? "Empieza con una de estas rutas y luego hazla tuya." : "Start with one of these routes, then make it yours."}</p>
-        <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver todas las rutas" : "View all routes"}<ArrowRight aria-hidden="true" /></Link>
       </div>
+      <Link className={styles.inspirationCatalogue} href="/journey/discover">{es ? "Ver todas las rutas" : "View all routes"}<ArrowRight aria-hidden="true" /></Link>
     </header>
     {routes.length > 0 ? <div className={styles.inspirationGrid}>
       {routes.map((route) => <HomepageRouteCard key={route.key} route={route} es={es} />)}

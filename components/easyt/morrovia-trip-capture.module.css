@@ -19,23 +19,25 @@
   box-shadow: 0 16px 36px color-mix(in srgb, var(--morrovia-ink) 7%, transparent);
 }
 
-.wideRoot { max-width: none; margin-top: 28px; }
-.wideCard { gap: 10px; padding: 18px 16px; }
+.wideRoot { max-width: none; margin-top: 22px; }
+.wideCard { gap: 12px; padding: 16px; }
 .modeTabs { display: flex; align-items: end; gap: 8px; border-bottom: 1px solid var(--morrovia-line); }
-.modeTab { position: relative; min-height: 40px; padding-inline: 12px; border-radius: 0; color: var(--morrovia-muted); }
-.modeTab svg { width: 17px; height: 17px; color: var(--morrovia-action); }
+.modeTab { position: relative; min-height: 48px; padding-inline: 14px; border-radius: 0; color: var(--morrovia-muted); font: 700 14px/1.2 var(--morrovia-ui); }
+.modeTab svg { width: 20px; height: 20px; color: var(--morrovia-action); }
 .modeTab:hover:not(:disabled) { background: var(--morrovia-lilac); color: var(--morrovia-ink); }
 .modeTab[aria-selected="true"] { color: var(--morrovia-ink); }
-.modeTab[aria-selected="true"]::after { position: absolute; right: 10px; bottom: -1px; left: 10px; height: 2px; background: var(--morrovia-signal); content: ""; }
+.modeTab[aria-selected="true"]::after { position: absolute; right: 10px; bottom: -1px; left: 10px; height: 3px; background: var(--morrovia-action); content: ""; }
 .modeTab:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: -3px; }
 .wideMainRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(168px, max-content); align-items: center; gap: 12px; }
-.wideSegmentGroup { display: grid; grid-template-columns: minmax(0, 1fr) 230px 200px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
+.wideSegmentGroup { display: grid; grid-template-columns: minmax(280px, 1fr) 250px 220px; min-width: 0; min-height: 68px; border-radius: var(--morrovia-control-radius); background: var(--morrovia-lilac); }
 .wideEntryPanel { min-width: 0; min-height: 68px; }
 .destinationToggle { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:center; gap:10px; width:100%; min-height:68px; padding:9px 14px; border:0; border-radius:var(--morrovia-control-radius) 0 0 var(--morrovia-control-radius); background:transparent; color:var(--morrovia-ink); text-align:left; cursor:pointer; }
 .destinationToggle:hover:not(:disabled) { background:color-mix(in srgb,var(--morrovia-paper) 55%,transparent); }
 .destinationToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring); outline-offset:-3px; }
 .destinationToggle > svg:first-child { width:20px; height:20px; color:var(--morrovia-action); }
-.destinationToggle > span { min-width:0; overflow:hidden; font:650 14px/1.25 var(--morrovia-ui); text-overflow:ellipsis; white-space:nowrap; }
+.destinationLabel { display:grid; min-width:0; gap:3px; }
+.destinationLabel > small { overflow:hidden; color:var(--morrovia-ink); font:650 12px/1.2 var(--morrovia-ui); text-overflow:ellipsis; white-space:nowrap; }
+.destinationLabel > strong { overflow:hidden; font:650 14px/1.25 var(--morrovia-ui); text-overflow:ellipsis; white-space:nowrap; }
 .destinationToggle > small { color:var(--morrovia-muted); font:600 11px/1.2 var(--morrovia-ui); white-space:nowrap; }
 .destinationToggle > svg:last-child { width:14px; height:14px; transition:transform 180ms ease; }
 .destinationToggle[aria-expanded="true"] > svg:last-child { transform:rotate(180deg); }
@@ -78,7 +80,8 @@
 .personalizePanel .interestPanel > div { align-items:stretch; }
 .personalizePanel .interestPanel button { min-height:var(--homepage-personalize-control-height); padding: 6px 11px; }
 .wideAction { display: grid; align-self: center; }
-.wideAction button { position: relative; width: 100%; height: 56px; min-height: 56px; white-space: nowrap; }
+.wideAction button { position: relative; width: 100%; height: 58px; min-height: 58px; padding-inline: 20px; white-space: nowrap; }
+.wideAction button > svg { width: 18px; height: 18px; }
 .wideAction button[aria-busy="true"] > span:first-child { position: absolute; left: 14px; }
 .wideStopsRow > .wideAction { align-self: start; margin-top: 6px; }
 .wideDestinationEditor { grid-column: 1 / -1; min-width: 0; padding-top: 12px; background: var(--morrovia-paper); animation: revealDetails 180ms ease-out; }
