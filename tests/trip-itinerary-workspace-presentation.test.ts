@@ -283,6 +283,13 @@ test("planner drag ownership survives native pointer timing and is cleared at wo
   assert.match(itinerary, /onInteractionReset=\{clearPlannerDrag\}/);
   assert.match(itinerary, /scheduleItineraryIdeaAtPositionWithUndo\(current, dragged\.idea, active\.id, dayPart, insertionIndex\)/);
   assert.match(itinerary, /window\.matchMedia\("\(hover: hover\) and \(pointer: fine\)"\)/);
+  assert.match(itinerary, /onActivityDragStart=\{nativePlannerDrag && workspaceView === "days" \? \(activity, event\) => \{/,
+    "Day by day keeps native drag only for fine pointers");
+  assert.match(itinerary, /onActivityDragEnd=\{nativePlannerDrag && workspaceView === "days" \? clearPlannerDrag : undefined\}/,
+    "Calendar's narrow side panel must not expose a misleading pointer-drag handle");
+  assert.match(itinerary, /dragActive=\{workspaceView === "days" && Boolean\(plannerDrag\)\}/);
+  assert.match(itinerary, /onActivityDrop=\{workspaceView === "days" \? dropPlannerItem : undefined\}/,
+    "Calendar's narrow side panel must not expose a second drop target");
 });
 
 test("day placement menus escape the scroll owner through a viewport-positioned portal", () => {

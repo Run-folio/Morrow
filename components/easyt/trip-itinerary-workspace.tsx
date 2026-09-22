@@ -1345,15 +1345,15 @@ export default function TripItineraryWorkspace({
             onDayPartChange={changeActivityDayPart}
             onMoveActivity={moveComposedActivity}
             onMoveToDay={(activity, trigger) => openMoveFlow(activity, active.id, trigger)}
-            dragActive={Boolean(plannerDrag)}
+            dragActive={workspaceView === "days" && Boolean(plannerDrag)}
             draggedActivityId={plannerDrag?.kind === "activity" ? plannerDrag.activity.id : null}
-            onActivityDragStart={nativePlannerDrag ? (activity, event) => {
+            onActivityDragStart={nativePlannerDrag && workspaceView === "days" ? (activity, event) => {
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", activity.id);
               beginPlannerDrag({ kind: "activity", activity, sourceDayId: active.id, sourceStopId: active.stopId });
             } : undefined}
-            onActivityDragEnd={nativePlannerDrag ? clearPlannerDrag : undefined}
-            onActivityDrop={dropPlannerItem}
+            onActivityDragEnd={nativePlannerDrag && workspaceView === "days" ? clearPlannerDrag : undefined}
+            onActivityDrop={workspaceView === "days" ? dropPlannerItem : undefined}
             selectedActivityId={selectedActivity?.id ?? null}
             onActivitySelect={(activity, trigger) => {
               selectedItemOriginRef.current = trigger;
