@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
-import { itineraryTransportAgenda, itineraryTransportAgendaStatus } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { itineraryTransportAgenda, itineraryTransportAgendaStatus, transportJourneyKnowledge } from "../lib/easyt/itinerary-transport-agenda.ts";
 import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "../lib/easyt/transport-mode-choice.ts";
 import type { EasyTTrip, TripLeg } from "../lib/easyt/trip.ts";
 
@@ -114,6 +114,15 @@ test("uses canonical transport bookings as the only booked truth", () => {
   assert.equal(itineraryTransportAgendaStatus({ ...leg, scheduleNeedsChecking: true }, null), "confirm");
   assert.equal(itineraryTransportAgendaStatus({ ...leg, mode: "unknown", durationMinutes: null }, null), "confirm");
   assert.equal(itineraryTransportAgendaStatus(leg, { id: leg.id, type: "reservation", title: "Dinner", date: null, confirmation: null, url: null }), "available");
+});
+
+test("classifies known, partial and unknown journey truth without inventing missing evidence", () => {
+  const source = trip();
+  const known = source.legs[1]!;
+  assert.equal(transportJourneyKnowledge(known), "known");
+  assert.equal(transportJourneyKnowledge({ ...known, scheduleNeedsChecking: true }), "partial");
+  assert.equal(transportJourneyKnowledge({ ...known, durationMinutes: null, doorToDoorMinutes: null }), "partial");
+  assert.equal(transportJourneyKnowledge({ ...known, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null }), "unknown");
 });
 
 test("does not reuse a free-text booking for the reverse repeated-city leg", () => {

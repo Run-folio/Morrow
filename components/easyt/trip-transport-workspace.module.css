@@ -1,232 +1,142 @@
 .workspace {
   width: 100%;
   min-height: 650px;
-  overflow: visible;
+  overflow-x: clip;
   border: 1px solid var(--morrovia-line);
   border-radius: var(--morrovia-radius);
   background: var(--morrovia-paper);
   color: var(--morrovia-ink);
   font-family: var(--morrovia-ui);
-}
-
-.agenda {
-  width: min(100%, 980px);
-  margin: 0 auto;
-  padding: clamp(28px, 4vw, 54px) clamp(20px, 4vw, 48px) 56px;
+  padding: clamp(22px, 3vw, 34px);
 }
 
 .header {
-  padding-bottom: 24px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  justify-content: space-between;
   gap: 24px;
-  border-bottom: 1px solid var(--morrovia-line);
+  margin-bottom: 22px;
 }
 
-.header > div { min-width: 0; }
+.heading { min-width: 0; }
+.heading > span,
+.detailEyebrow { color: var(--morrovia-signal); font: var(--morrovia-type-eyebrow); letter-spacing: .1em; text-transform: uppercase; }
+.heading h2 { margin: 7px 0 6px; color: var(--morrovia-ink); font: 500 clamp(30px, 3.5vw, 44px)/1 var(--morrovia-display); letter-spacing: -.035em; }
+.heading p { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 
-.header span {
-  color: var(--morrovia-signal);
-  font: 800 10px/1.2 var(--morrovia-meta);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.header h2 {
-  margin: 7px 0 6px;
-  color: var(--morrovia-ink);
-  font: 500 clamp(30px, 4vw, 46px)/.98 var(--morrovia-display);
-  letter-spacing: -.035em;
-}
-
-.header p {
-  margin: 0;
-  color: var(--morrovia-ink-soft);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.header > strong {
-  flex: none;
-  color: var(--morrovia-muted);
-  font: 750 10px/1.2 var(--morrovia-meta);
-  text-transform: uppercase;
-}
-
-.group { margin-top: 30px; }
-
-.group > h3 {
-  margin: 0 0 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--morrovia-ink-soft);
-  font: var(--morrovia-type-metadata);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-}
-
-.group > h3 svg { width: 15px; height: 15px; color: var(--morrovia-signal); }
-.list { display: grid; gap: 10px; }
-
-.card {
-  min-width: 0;
-  padding: 18px;
+.summaryCounts { display: flex; align-items: stretch; gap: 8px; }
+.summaryCounts > span {
+  min-width: 92px;
+  padding: 10px 12px;
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  align-items: start;
-  gap: 14px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-radius);
-  background: var(--morrovia-paper);
-}
-
-.modeIcon {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--morrovia-control-radius);
-  border: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
-  color: var(--morrovia-signal);
-}
-
-.modeIcon svg { width: 18px; height: 18px; }
-.summary { min-width: 0; display: grid; gap: 10px; }
-
-.route {
-  min-width: 0;
-  display: grid;
-}
-
-.route h4 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  color: var(--morrovia-ink);
-  font-size: 17px;
-  font-weight: 760;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-
-.route h4 svg { width: 15px; height: 15px; flex: none; color: var(--morrovia-signal); }
-
-.route p,
-.segments {
-  margin: 4px 0 0;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  color: var(--morrovia-muted);
-  font: 650 11px/1.4 var(--morrovia-meta);
-}
-
-.route p i { color: var(--morrovia-line); font-style: normal; }
-
-.status {
-  width: fit-content;
-  flex: none;
-  padding: 6px 8px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-paper);
-  color: var(--morrovia-ink-soft);
-  font: var(--morrovia-type-metadata);
-  letter-spacing: .03em;
-  text-transform: uppercase;
-}
-
-.status[data-status="booked"] {
-  border-color: color-mix(in srgb, var(--morrovia-success) 28%, var(--morrovia-line));
-  background: color-mix(in srgb, var(--morrovia-success) 8%, var(--morrovia-paper));
-  color: var(--morrovia-success);
-}
-
-.status[data-status="confirm"] {
-  border-color: color-mix(in srgb, var(--morrovia-warning) 34%, var(--morrovia-line));
-  background: var(--morrovia-warning-soft);
-  color: var(--morrovia-ink-soft);
-}
-
-.segments {
-  margin: 0;
-  color: var(--morrovia-ink-soft);
-  font: var(--morrovia-type-supporting-body);
-  font-weight: 600;
-}
-
-.details {
-  min-width: 0;
-  border-top: 1px solid var(--morrovia-line);
-  background: var(--morrovia-paper);
-}
-
-.details > summary {
-  width: fit-content;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  color: var(--morrovia-ink-soft);
-  font: 750 10px/1.2 var(--morrovia-ui);
-  cursor: pointer;
-}
-
-.details > summary:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
-.details dl { margin: 0 0 8px; display: grid; grid-template-columns: minmax(110px, auto) minmax(0, 1fr); gap: 6px 14px; color: var(--morrovia-ink-soft); font: 650 10px/1.45 var(--morrovia-meta); }
-.details dt { color: var(--morrovia-muted); }
-.details dd { margin: 0; overflow-wrap: anywhere; }
-.details ul { margin: 0 0 8px; padding-left: 18px; color: var(--morrovia-ink-soft); font-size: 11px; line-height: 1.5; }
-.actions { display: flex; align-items: start; flex-wrap: wrap; gap: 10px; }
-
-.omioAction {
-  display: grid;
-  width: min(100%, 560px);
-  min-width: 0;
-  justify-items: start;
-  gap: 4px;
-}
-
-.omioAction > a { justify-self: start; }
-
-.omioAction > small {
-  color: var(--morrovia-muted);
-  font: var(--morrovia-type-fine-print);
-  overflow-wrap: anywhere;
-}
-
-.empty {
-  min-height: 260px;
-  display: grid;
-  place-content: center;
   justify-items: center;
-  gap: 12px;
-  color: var(--morrovia-ink-soft);
+  gap: 3px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-muted);
+  font: var(--morrovia-type-metadata);
   text-align: center;
 }
+.summaryCounts strong { color: var(--morrovia-ink); font: 800 18px/1 var(--morrovia-ui); }
+.summaryCounts [data-tone="attention"] strong { color: var(--morrovia-warning); }
+.summaryCounts [data-tone="ready"] strong { color: var(--morrovia-success); }
+.mobileMapToggle { display: none !important; }
 
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.list { min-width: 0; display: grid; gap: 10px; }
+.card {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 28px 92px 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+/* morrovia-ui-audit-allow-next-line raw-radius -- Ordered journey numbers use the canonical circular sequence-marker silhouette. */
+.sequence { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 999px; background: var(--morrovia-ink); color: var(--morrovia-paper); font: var(--morrovia-type-metadata); }
+.card[data-selected="true"] { border-color: var(--morrovia-action); }
+.card:not([data-selected="true"]) .sequence { background: var(--morrovia-muted); }
+.date { color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); text-transform: uppercase; }
+.modeIcon { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-signal); }
+.modeIcon svg { width: 18px; height: 18px; }
+.cardBody { min-width: 0; }
+.cardBody h3,
+.detailHeading h3 { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--morrovia-ink); font-size: 15px; font-weight: 760; line-height: 1.3; overflow-wrap: anywhere; }
+.cardBody h3 svg { width: 14px; height: 14px; flex: none; color: var(--morrovia-signal); }
+.mode { margin: 3px 0 0; display: flex; gap: 7px; color: var(--morrovia-ink-soft); font: 700 11px/1.4 var(--morrovia-meta); }
+.mode i { color: var(--morrovia-line); font-style: normal; }
+.note { margin: 4px 0 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.cardEnd { display: grid; justify-items: end; gap: 8px; }
+/* morrovia-ui-audit-allow-next-line raw-radius -- A compact semantic status chip remains pill-shaped rather than reading as another button. */
+.status { width: fit-content; padding: 5px 7px; border-radius: 999px; color: var(--morrovia-ink-soft); background: var(--morrovia-warning-soft); font: var(--morrovia-type-metadata); }
+.status[data-tone="booked"] { color: var(--morrovia-success); background: color-mix(in srgb, var(--morrovia-success) 8%, var(--morrovia-paper)); }
+
+.mapPanel { min-width: 0; position: sticky; top: var(--morrovia-sticky-content-offset); display: grid; gap: 10px; }
+.mapFrame { height: clamp(300px, 35vw, 430px); overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
+.mapFrame > :global(.planner-map) { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; min-height: 100%; }
+.mapFrame :global(.planner-map__leg-card),
+.mapFrame :global(.planner-map__destination-card) { display: none !important; }
+.mapUnavailable { height: 100%; min-height: 260px; padding: 32px; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--morrovia-ink-soft); text-align: center; }
+.mapUnavailable svg { width: 24px; height: 24px; color: var(--morrovia-warning); }
+.mapUnavailable p { max-width: 320px; margin: 0; font: var(--morrovia-type-supporting-body); }
+
+.selectedDetail { min-width: 0; padding: 16px; display: grid; gap: 12px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); background: var(--morrovia-paper); }
+.detailHeading { display: flex; align-items: center; gap: 12px; }
+.detailHeading > div { min-width: 0; }
+.detailHeading p { margin: 3px 0 0; color: var(--morrovia-muted); font: var(--morrovia-type-metadata); text-transform: uppercase; }
+.detailNote { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.omioAction { min-width: 0; display: grid; justify-items: start; gap: 4px; }
+.omioAction > small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); overflow-wrap: anywhere; }
+
+.empty { min-height: 320px; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--morrovia-ink-soft); text-align: center; }
 .empty svg { width: 28px; height: 28px; color: var(--morrovia-signal); }
-.empty p { max-width: 390px; margin: 0; font-size: 13px; line-height: 1.5; }
+.empty p { max-width: 390px; margin: 0; font: var(--morrovia-type-supporting-body); }
+
+@media (max-width: 1080px) {
+  .header { align-items: start; }
+  .summaryCounts { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .summaryCounts > span { min-width: 0; }
+  .card { grid-template-columns: 28px 40px minmax(0, 1fr) auto; }
+  .date { grid-column: 2 / 4; grid-row: 1; }
+  .sequence { grid-column: 1; grid-row: 1 / 3; }
+  .modeIcon { grid-column: 2; grid-row: 2; }
+  .cardBody { grid-column: 3; grid-row: 2; }
+  .cardEnd { grid-column: 4; grid-row: 1 / 3; }
+}
+
+@media (max-width: 820px) {
+  .workspace { padding: 24px 18px calc(24px + var(--morrovia-mobile-dock-offset)); }
+  .header { grid-template-columns: minmax(0, 1fr); }
+  .summaryCounts { order: 2; }
+  .mobileMapToggle { display: inline-flex !important; justify-self: start; order: 3; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .mapPanel { position: static; grid-row: 2; }
+  .mapPanel[data-mobile-open="false"] { display: none; }
+  .mapFrame { height: min(64vh, 430px); }
+}
 
 @media (max-width: 540px) {
-  .workspace { border-right: 0; border-left: 0; border-radius: 0; }
-  .agenda { padding: 26px 16px var(--morrovia-mobile-dock-offset, calc(94px + env(safe-area-inset-bottom))); }
-  .header { display: block; }
-  .header > strong { display: inline-block; margin-top: 12px; }
-  .header h2 { font-size: clamp(30px, 9vw, 38px); }
-  .group { margin-top: 24px; }
-  .card { padding: 14px 12px; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
-  .modeIcon { width: 34px; height: 34px; }
-  .details > summary { min-height: 44px; }
-  .details dl { grid-template-columns: 1fr; gap: 3px; }
-  .details dd { margin-bottom: 5px; }
-  .actions { display: grid; }
-  .actions > a,
-  .actions > .omioAction { width: 100%; }
-  .actions > .omioAction > a { width: 100%; justify-content: center; }
+  .workspace { border-right: 0; border-left: 0; border-radius: 0; padding-inline: 16px; }
+  .heading h2 { font-size: clamp(30px, 9vw, 38px); }
+  .summaryCounts { gap: 6px; }
+  .summaryCounts > span { padding: 9px 5px; }
+  .card { padding: 12px; grid-template-columns: 26px 36px minmax(0, 1fr); gap: 9px; }
+  .sequence { width: 24px; height: 24px; grid-column: 1; grid-row: 1; }
+  .date { grid-column: 2 / 4; grid-row: 1; }
+  .modeIcon { width: 34px; height: 34px; grid-column: 2; grid-row: 2; }
+  .cardBody { grid-column: 3; grid-row: 2; }
+  .cardEnd { grid-column: 2 / 4; grid-row: 3; display: flex; align-items: center; justify-content: space-between; justify-items: initial; }
+  .selectedDetail { padding: 14px; }
+  .omioAction { width: 100%; }
+  .omioAction > a { width: 100%; justify-content: center; }
 }

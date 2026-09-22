@@ -1,3 +1,47 @@
+# #330 Transport workspace QA — 2026-09-22
+
+Final result: passed
+
+## Evidence
+
+- Source visual truth: `/Users/shaun/Downloads/Morrovia Japan–Korea Transport Planner.png` (1672×941 px). This is the approved composition reference; its illustrative journey facts were not copied.
+- Final desktop implementation: `/tmp/morrovia-330-desktop-final.png` (1440×1149 px), production Storybook `CanonicalAgendaDesktop1440`, 1440×1000 CSS viewport, device scale factor 1, full-page capture.
+- Final mobile implementation: `/tmp/morrovia-330-mobile-revised.png` (390×1928 px), production Storybook `CanonicalAgendaMobile390`, 390×844 CSS viewport, device scale factor 1, full-page capture.
+- Mobile map-open interaction: `/tmp/morrovia-330-mobile-map-open.png` (390px CSS viewport, device scale factor 1); the second journey remains selected before and after disclosure and the map refits when revealed.
+- State: six chronological canonical journeys, first journey selected, one booked journey, one unknown journey, current Morrovia recommendation visible. The reference and final desktop capture were opened together for full-view comparison.
+- Browser smoke reported no page errors and `documentElement.scrollWidth === innerWidth` at both 1440 and 390. The focused interaction smoke also covered map-leg selection, mobile map disclosure, selected-state preservation, and unavailable-map fallback.
+
+## Findings
+
+- No actionable P0, P1 or P2 mismatch remains. The workspace now has the reference's route-first hierarchy: restrained heading and summary, compact chronological list on the left, contextual map and selected-journey detail on the right.
+- Typography uses Morrovia's existing display, UI and metadata families. Heading scale, card density and status restraint are materially aligned with the reference without importing its illustrative copy.
+- Layout rhythm uses the existing TripShell width, neutral paper surfaces, canonical borders/radii and compact controls. The right rail remains subordinate to the journey list and becomes an explicit `Show route map` disclosure at 390px.
+- Colours stay within current Morrovia action, signal, warning and success tokens. No confidence score, completion percentage, accent-washed workspace or new palette was introduced.
+- Image/asset fidelity: the only visual asset is the existing shared MapLibre route map. No placeholder, generated imagery, custom SVG or CSS-drawn icon was introduced; transport and action icons remain Lucide through existing component patterns.
+- Copy/content stays evidence-led: supported durations are marked as planning estimates, missing mode/time remains explicit, and affiliate handoff says `Find options` without implying booking or confirmation.
+
+## Focused comparison
+
+- Full view was sufficient to judge the primary composition, typography, card proportions, map/list relationship, status density and selected detail. A separate focused region was not needed because the 1440 capture kept all card and detail copy legible at 1× density.
+- Intentional differences from the reference: canonical Mexico/Central America story data replaces Japan/Korea sample data; the existing real basemap styling replaces the illustrative map; the desktop Map/List toggle is omitted because #330 requires one stable desktop split view; the mockup's support panel and recommendation-explanation filler are deliberately absent.
+
+## Comparison history
+
+1. Initial 1440 capture: P1 map containment failure let the shared absolute map surface and marker cards escape below the workspace. Fix: the Transport owner now establishes a bounded relative map surface and suppresses shared marker detail cards inside the compact contextual map.
+2. Initial cards: P2 known legs could render an empty note when the transfer summary returned an empty string. Fix: known legs now fall back to the truthful planning-estimate reminder.
+3. Revised desktop and mobile captures: the map is contained, contextual selection remains visible, the list has no horizontal overflow, and no actionable P0/P1/P2 issue remains.
+
+## Implementation checklist
+
+- [x] Desktop chronological list + contextual map hierarchy.
+- [x] One canonical-leg-ID selection synchronizes card, map highlight and detail.
+- [x] Known, partial and unknown states remain truthful.
+- [x] Shared #320 mode control remains the only mode mutation path.
+- [x] Mobile list-first layout with explicit map disclosure.
+- [x] Map failure leaves the full list usable.
+
+---
+
 # #292 route-first Overview QA — 2026-09-22
 
 Final result: passed

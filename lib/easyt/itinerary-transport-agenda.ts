@@ -4,6 +4,7 @@ import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./
 import { effectiveTripLeg } from "./transport-mode-choice.ts";
 
 export type ItineraryTransportAgendaStatus = "booked" | "available" | "confirm";
+export type TransportJourneyKnowledge = "known" | "partial" | "unknown";
 
 export type ItineraryTransportAgendaLeg = {
   leg: TripLeg;
@@ -37,6 +38,17 @@ export function itineraryTransportAgendaStatus(leg: TripLeg, booking: TripBookin
   const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
   if (leg.mode === "unknown" || typeof duration !== "number" || leg.scheduleNeedsChecking || leg.confidence === "low" || leg.confidence === "unknown") return "confirm";
   return "available";
+}
+
+export function transportJourneyKnowledge(leg: TripLeg): TransportJourneyKnowledge {
+  const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  if (leg.mode === "unknown" && typeof duration !== "number") return "unknown";
+  if (leg.mode === "unknown"
+    || typeof duration !== "number"
+    || leg.scheduleNeedsChecking
+    || leg.confidence === "low"
+    || leg.confidence === "unknown") return "partial";
+  return "known";
 }
 
 /**
