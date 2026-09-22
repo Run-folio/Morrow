@@ -52,10 +52,10 @@ import { formatTripDuration, incomingLegForPlanItem } from "@/lib/easyt/trip-fac
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { trackEvent } from "@/lib/analytics";
 import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
-import { removeStayBooking, stayBookingForStop, upsertStayBooking } from "@/lib/easyt/accommodation";
+import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, mapWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -69,7 +69,8 @@ import {
 } from "@/lib/easyt/itinerary-day-context";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { assignItineraryIdeaDayPart, ideaStateForPlace, itineraryIdeaDayOptions, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, type ItineraryIdeaDayOption } from "@/lib/easyt/itinerary-ideas";
-import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity } from "@/lib/easyt/itinerary-day-composition";
+import { composeItineraryDay, itineraryDayParts, type ComposedItineraryActivity, type ItineraryDayComposition } from "@/lib/easyt/itinerary-day-composition";
+import { itineraryStayPresentation } from "@/lib/easyt/itinerary-stay-presentation";
 import {
   addItineraryActivityWithUndo,
   moveItineraryActivityAcrossDays,
@@ -85,7 +86,6 @@ import { EasyTButton, EasyTField, EasyTLinkButton, EasyTSelect, EasyTSegmentedCo
 import { MorroviaBriefNotice, MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaRecoveryFeedback } from "@/components/easyt/morrovia-feedback";
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import ResilientImage from "@/components/easyt/resilient-image";
-import DestinationAccommodationModule from "@/components/easyt/destination-accommodation-module";
 import { useTripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
 import { useOptionalTripShellMutation } from "@/components/easyt/trip-shell-client";
 import RichItineraryDayPlanner from "@/components/easyt/rich-itinerary-day-planner";
@@ -767,7 +767,6 @@ export default function TripItineraryWorkspace({
     : null;
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
   const unscheduledSavedIdeas = (workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
-  const hasContextRail = true;
   const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber);
   const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber);
   const selectedItemMapHref = selectedActivity
@@ -872,6 +871,9 @@ export default function TripItineraryWorkspace({
     }
     return null;
   })();
+  const hasSelectedDetail = Boolean(selectedDetail || selectedTransportAgenda || selectedBooking);
+  const hasContextRail = workspaceView === "days" || hasSelectedDetail;
+  const selectedCalendarDay = calendarWeeks.flatMap((week) => week.days).find((day) => day?.id === active.id) ?? null;
 
   const openAddFlow = (noteIndex: number, kind: AddFlow["kind"] = "activity", dayPart?: ItineraryDayPart) => {
     setAddFlow({ dayNumber: active.dayNumber, noteIndex, kind, dayPart });
@@ -1217,7 +1219,7 @@ export default function TripItineraryWorkspace({
 
   return (
     <section className={`${styles.workspace} ${workspaceView === "calendar" ? styles.calendarWorkspace : ""} ${hasContextRail ? "" : styles.workspaceWithoutContext}`} aria-label="Trip itinerary">
-      <header className={styles.workspaceToolbar}>
+      <header ref={itineraryDaysOrientationTarget} className={styles.workspaceToolbar}>
         <div><h2>{workspaceView === "calendar" ? copy.calendar : copy.dayByDay}</h2><p>{displayDate(days[0]!.date, language, true)} – {displayDate(days[days.length - 1]!.date, language)} · {days.length} days</p></div>
         <div className={styles.dateNavigation}>
           {todayIndex >= 0 ? <EasyTButton size="small" variant="quiet" onClick={() => setSelectedIndex(todayIndex)}>Today</EasyTButton> : null}
@@ -1250,56 +1252,11 @@ export default function TripItineraryWorkspace({
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
       }} /> : null}
-      <div ref={itineraryDaysOrientationTarget} className={`${styles.rail} ${unscheduledSavedIdeas.length ? styles.railWithSavedIdeas : ""}`} hidden={workspaceView === "calendar"}>
-        <div className={styles.railHeader}>
-          <h2>{copy.dayByDay}</h2>
-          <span>{days.length} {copy.days}</span>
-        </div>
-        <div className={styles.dayList} role="tablist" aria-label={copy.dayByDay}>
-          {days.map((day, dayIndex) => {
-            const dayStop = stopForDay(workingTrip, day);
-            const DayIcon = iconForPlanItem(day.type);
-            return (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={dayIndex === index}
-                aria-controls={`${tabIdPrefix}-days-panel`}
-                id={`${tabIdPrefix}-tab-${dayIndex}`}
-                tabIndex={dayIndex === index ? 0 : -1}
-                className={dayIndex === index ? styles.dayButtonActive : styles.dayButton}
-                key={day.id}
-                onClick={() => setSelectedIndex(dayIndex)}
-                onKeyDown={(event) => {
-                  const nextIndex = event.key === "ArrowRight" || event.key === "ArrowDown"
-                    ? Math.min(days.length - 1, dayIndex + 1)
-                    : event.key === "ArrowLeft" || event.key === "ArrowUp"
-                      ? Math.max(0, dayIndex - 1)
-                      : event.key === "Home"
-                        ? 0
-                        : event.key === "End"
-                          ? days.length - 1
-                          : null;
-                  if (nextIndex === null) return;
-                  event.preventDefault();
-                  setSelectedIndex(nextIndex);
-                  window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-tab-${nextIndex}`)?.focus());
-                }}
-              >
-                <b>{pad(day.dayNumber)}</b>
-                <span><strong>{dayStop?.name ?? day.title}</strong><small>{day.title}</small></span>
-                <span className={styles.dayMeta}><time dateTime={day.date}>{displayDate(day.date, language, true)}</time><DayIcon aria-hidden="true" /></span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div
         className={styles.dayPanel}
         role="tabpanel"
         id={`${tabIdPrefix}-days-panel`}
-        aria-labelledby={`${tabIdPrefix}-tab-${index}`}
+        aria-label={`${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}`}
       >
         <header className={styles.dayHeader}>
           <div>
@@ -1308,9 +1265,6 @@ export default function TripItineraryWorkspace({
             <span className={styles.dayRole}>{active.title}</span>
           </div>
         </header>
-
-        {workspaceView === "calendar" ? <EasyTButton variant="quiet" size="small" onClick={() => setWorkspaceView("days")}>Open full day</EasyTButton> : null}
-
 
         {mutation.saveState === "error" ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
           title={mutation.failure === "conflict" ? "This trip changed on another device" : mutation.failure === "auth" ? "Sign in to finish saving" : mutation.failure === "recovery" ? "You have newer changes on this device" : "Couldn’t save to your account"}
@@ -1330,7 +1284,30 @@ export default function TripItineraryWorkspace({
           onDismiss={() => { setNotice(null); setUndoReceipt(null); }}
         /></div> : null}
 
-        {dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
+        {workspaceView === "days" && dayComposition ? <SelectedDayStayContext
+          composition={dayComposition}
+          tripId={workingTrip.id}
+          onSelect={stayBooking ? (trigger) => {
+            selectedItemOriginRef.current = trigger;
+            setSelectedItemId(`stay:${stayBooking.id}`);
+          } : undefined}
+        /> : null}
+
+        {workspaceView === "calendar" && selectedCalendarDay && dayComposition ? <CalendarSelectedDaySummary
+          day={selectedCalendarDay}
+          composition={dayComposition}
+          tripId={workingTrip.id}
+          copy={copy}
+          language={language}
+          onOpenDay={() => setWorkspaceView("days")}
+          onSelect={(item, origin) => {
+            selectedItemOriginRef.current = origin;
+            setSelectedRecommendation(null);
+            setSelectedItemId(item.kind === "activity" ? item.activity.id : item.kind === "transfer" ? `leg-${item.agenda.leg.id}` : item.kind === "booking" ? `booking:${item.booking.id}` : `stay:${item.booking.id}`);
+          }}
+        /> : null}
+
+        {workspaceView === "days" && dayComposition ? <div ref={itineraryPlannerOrientationTarget} className={styles.details} aria-busy={dayPending || undefined}>
           <RichItineraryDayPlanner
             composition={dayComposition}
             addComposerDayPart={addFlow?.dayNumber === active.dayNumber && addFlow.kind === "activity" ? addFlow.dayPart ?? null : null}
@@ -1375,7 +1352,7 @@ export default function TripItineraryWorkspace({
           />
         </div> : null}
 
-        <details className={styles.sequenceEditor}>
+        {workspaceView === "days" ? <details className={styles.sequenceEditor}>
           <summary>{copy.editActivityOrder}</summary>
         <div className={styles.details} aria-label={`${stop?.name ?? active.title} activity editing controls`} aria-busy={dayPending || undefined} data-selected-item={selectedItemId ?? undefined}>
           {!incomingLeg ? <InsertionControl
@@ -1463,7 +1440,7 @@ export default function TripItineraryWorkspace({
           })}
           {!displayNotes.length && !incomingLeg ? <div className={styles.timelineEmpty}><CirclePlus aria-hidden="true" /><p>{copy.noDetails}</p><EasyTButton icon={CirclePlus} size="small" variant="secondary" onClick={() => openAddFlow(active.notes.length)}>{copy.addActivity}</EasyTButton></div> : null}
         </div>
-        </details>
+        </details> : null}
       </div>
 
       {hasContextRail ? <aside className={`${styles.contextRail} ${selectedDetail || selectedTransportAgenda || selectedBooking ? styles.contextRailDetail : ""}`} aria-label={selectedDetail || selectedTransportAgenda || selectedBooking ? "Selected itinerary item details" : "Selected day planning context"}>
@@ -1511,11 +1488,7 @@ export default function TripItineraryWorkspace({
             : undefined}
           onManage={!selectedActivity && stayBooking && stop ? () => {
             closeSelectedDetail();
-            window.requestAnimationFrame(() => {
-              const module = document.getElementById(`stay-${stop.id}-title`)?.closest("section");
-              module?.scrollIntoView({ block: "nearest" });
-              module?.querySelector<HTMLButtonElement>("button")?.focus();
-            });
+            window.location.assign(stayWorkspaceHref(workingTrip.id, stop.id));
           } : undefined}
           manageLabel="Manage stay"
           onRemove={selectedRecommendation && selectedRecommendationState?.state !== "available" ? () => {
@@ -1536,7 +1509,7 @@ export default function TripItineraryWorkspace({
             if (changed) { closeSelectedDetail(); setNotice("Stay removed"); }
           } : undefined}
         /> : null}
-        <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
+        {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
         {mapContext.stops.length || mapContext.pins.length ? <details className={styles.contextSection} open>
           <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
           <div
@@ -1569,27 +1542,10 @@ export default function TripItineraryWorkspace({
           <EasyTLinkButton className={styles.contextAction} href={mapPlanHref} icon={MapIcon} size="small" variant="quiet" fullWidth>{copy.openFullMap}</EasyTLinkButton>
         </details> : null}
 
-        {logisticsLegs.length || dayBookings.length || (stop?.nights ?? 0) > 0 ? <details className={styles.contextSection} open>
-          <summary><span>{copy.logistics}</span><span className={styles.sectionCount}>{otherDayBookings.length + logisticsLegs.length + ((stop?.nights ?? 0) > 0 ? 1 : 0)}</span></summary>
+        {logisticsLegs.length || otherDayBookings.length ? <details className={styles.contextSection} open>
+          <summary><span>{copy.logistics}</span><span className={styles.sectionCount}>{otherDayBookings.length + logisticsLegs.length}</span></summary>
           <div className={styles.contextList}>
             {logisticsLegs.map((leg) => <LogisticsLeg leg={leg} trip={workingTrip} copy={copy} key={leg.id} selected={selectedItemId === `leg-${leg.id}`} onSelect={(origin) => { selectedItemOriginRef.current = origin; setSelectedItemId(`leg-${leg.id}`); }} />)}
-            {stop && (stop.nights ?? 0) > 0 ? <DestinationAccommodationModule
-              trip={workingTrip}
-              stop={stop}
-              showImportStatus={false}
-              pending={mutation.isPending(`itinerary-stay-${stop.id}`)}
-              onCanonicalTrip={mutation.acceptCanonicalTrip}
-              onSave={(draft) => {
-                const changed = mutation.mutateTrip((current) => upsertStayBooking(current, stop.id, draft), `itinerary-stay-${stop.id}`);
-                if (changed) setNotice(stayBookingForStop(workingTrip, stop) ? "Stay updated" : "Stay added");
-                return changed;
-              }}
-              onRemove={() => {
-                const changed = mutation.mutateTrip((current) => removeStayBooking(current, stop.id), `itinerary-stay-${stop.id}`);
-                if (changed) setNotice("Stay removed");
-                return changed;
-              }}
-            /> : null}
             {otherDayBookings.map((booking) => <BookingCard booking={booking} copy={copy} key={booking.id} selected={selectedItemId === `booking:${booking.id}`} onSelect={(origin) => { selectedItemOriginRef.current = origin; setSelectedItemId(`booking:${booking.id}`); }} />)}
           </div>
         </details> : null}
@@ -1691,8 +1647,6 @@ export default function TripItineraryWorkspace({
           >See more ideas in Explore</EasyTLinkButton>
         </details>
 
-        </div>
-
         <details className={styles.contextSection} open>
           <summary><span>{copy.notes}</span><span className={styles.sectionCount}>{dayNotes.length}</span></summary>
           <div className={styles.contextList}>{dayNotes.map((note, noteIndex) => <article className={styles.noteCard} key={`${active.id}-saved-note-${noteIndex}`}><BookOpenText aria-hidden="true" /><p>{note}</p></article>)}</div>
@@ -1701,6 +1655,7 @@ export default function TripItineraryWorkspace({
             <EasyTButton type="submit" icon={CirclePlus} size="small" variant="secondary" loading={dayPending}>{copy.addNote}</EasyTButton>
           </form>
         </details>
+        </div> : null}
       </aside> : null}
 
       <MorroviaFormDialog
@@ -1847,6 +1802,54 @@ function ItinerarySubviewSwitch({ value, onChange, copy }: {
 function calendarWeekdayLabels(language: "en" | "es") {
   const formatter = new Intl.DateTimeFormat(language === "es" ? "es" : "en", { weekday: "short", timeZone: "UTC" });
   return Array.from({ length: 7 }, (_, index) => formatter.format(new Date(Date.UTC(2024, 0, index + 1))));
+}
+
+function SelectedDayStayContext({ composition, tripId, onSelect }: {
+  composition: ItineraryDayComposition;
+  tripId: string;
+  onSelect?: (origin: HTMLButtonElement) => void;
+}) {
+  const stay = itineraryStayPresentation(composition.tonight);
+  if (!stay || !composition.tonight.stopId) return null;
+  const content = <><strong>{stay.title}</strong><span>{stay.detail}</span></>;
+  return <section className={styles.stayContext} data-state={stay.state} aria-label={`Stay: ${stay.title}, ${stay.detail}`}>
+    <BedDouble aria-hidden="true" />
+    {onSelect ? <EasyTButton className={styles.stayContextSelect} variant="quiet" onClick={(event) => onSelect(event.currentTarget)}>{content}</EasyTButton> : <div className={styles.stayContextCopy}>{content}</div>}
+    <EasyTLinkButton href={stayWorkspaceHref(tripId, composition.tonight.stopId)} size="small" variant="quiet">
+      {stay.state === "missing" ? "Plan stay" : "Open Stay"}
+    </EasyTLinkButton>
+  </section>;
+}
+
+function CalendarSelectedDaySummary({ day, composition, tripId, copy, language, onOpenDay, onSelect }: {
+  day: ItineraryCalendarDay;
+  composition: ItineraryDayComposition;
+  tripId: string;
+  copy: ReturnType<typeof itineraryCopy>;
+  language: "en" | "es";
+  onOpenDay: () => void;
+  onSelect: (item: ItineraryCalendarItem, origin: HTMLButtonElement) => void;
+}) {
+  const items = day.items.filter((item) => item.kind !== "accommodation");
+  return <section className={styles.calendarDaySummary} aria-label={`Selected day summary for Day ${day.day.dayNumber}`}>
+    <div className={styles.calendarDaySummaryAction}>
+      <EasyTButton variant="secondary" size="small" onClick={onOpenDay}>Open full day</EasyTButton>
+    </div>
+    {items.length ? <ul className={styles.calendarSummaryItems}>
+      {items.map((item) => <li key={item.id}><CalendarItemButton
+        item={item}
+        day={day}
+        copy={copy}
+        language={language}
+        draggable={false}
+        dragging={false}
+        onDragStart={() => undefined}
+        onDragEnd={() => undefined}
+        onSelect={(_day, selected, origin) => { if (selected && origin) onSelect(selected, origin); }}
+      /></li>)}
+    </ul> : <p className={styles.calendarSummaryEmpty}>{copy.noCalendarPlans}</p>}
+    <SelectedDayStayContext composition={composition} tripId={tripId} />
+  </section>;
 }
 
 function calendarScheduleLabel(item: Extract<ItineraryCalendarItem, { kind: "activity" }>, copy: ReturnType<typeof itineraryCopy>, language: "en" | "es") {
@@ -2674,15 +2677,4 @@ function ItineraryLogisticsDetail({ trip, agenda = null, booking = null, languag
       </div>
     </section>
   </>;
-}
-
-function DayNavigation({ index, count, setSelectedIndex, copy }: {
-  index: number; count: number; setSelectedIndex: (index: number) => void; copy: ReturnType<typeof itineraryCopy>;
-}) {
-  return (
-    <nav className={styles.dayNavigation} aria-label="Day navigation">
-      <button type="button" disabled={index === 0} onClick={() => setSelectedIndex(index - 1)}><ChevronLeft aria-hidden="true" />{copy.previousDay}</button>
-      <button type="button" disabled={index === count - 1} onClick={() => setSelectedIndex(index + 1)}>{copy.nextDay}<ChevronRight aria-hidden="true" /></button>
-    </nav>
-  );
 }
