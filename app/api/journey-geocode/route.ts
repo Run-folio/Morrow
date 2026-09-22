@@ -40,6 +40,7 @@ function responseCandidate(candidate: PlaceProviderCandidate) {
     country,
     countryCode: "countryCode" in candidate && typeof candidate.countryCode === "string" ? candidate.countryCode : undefined,
     region: candidate.parentRegionId,
+    accessPlaceName: candidate.accessPlaceName,
     providerId: candidate.providerId,
     providerSourceLabel: candidate.providerSourceLabel,
     coordinates: candidate.coordinates,
@@ -102,6 +103,7 @@ function nearbyAnchorFromRequest(request: NextRequest): NearbyBaseAnchor | undef
     placeType,
     parentCountries,
     parentRegionId: request.nextUrl.searchParams.get("anchorRegion")?.trim() || undefined,
+    accessPlaceName: request.nextUrl.searchParams.get("anchorAccessPlace")?.trim().slice(0, 140) || undefined,
     coordinates: [longitude, latitude],
   };
 }

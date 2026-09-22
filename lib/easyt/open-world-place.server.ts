@@ -381,8 +381,25 @@ export async function searchOpenWorldNearbyBaseSuggestions(
   options: { limit?: number; maximumDistanceKm?: number } = {},
   provider: PlaceIntelligenceProvider = createOpenWorldPlaceProvider(),
 ): Promise<NearbyBaseSuggestion[]> {
-  if (!provider.nearby || !anchor.coordinates) return [];
+  if (!anchor.coordinates) return [];
   const maximumDistanceKm = options.maximumDistanceKm ?? 140;
-  const candidates = await provider.nearby(anchor, maximumDistanceKm);
-  return rankNearbyBaseCandidates(anchor, candidates, { ...options, maximumDistanceKm });
+  // A provider's containing locality is a search hint, never an accepted base.
+  // Resolve it through the existing provider and apply the same geographic
+  // contract as spatial discovery and manual base selection. Run both within
+  // the existing bounded discovery window so an unavailable spatial provider
+  // cannot prevent a verified containing settlement from being offered.
+  const attempts: Promise<PlaceProviderCandidate[]>[] = [];
+  if (provider.nearby) attempts.push(provider.nearby(anchor, maximumDistanceKm));
+  if (anchor.accessPlaceName?.trim()) attempts.push(provider.lookup(anchor.accessPlaceName.trim(), {
+    travelIntent: "route-stop",
+    countryNames: anchor.parentCountries,
+    explicitCountryNames: anchor.parentCountries,
+  }));
+  const results = await Promise.allSettled(attempts);
+  const candidates = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  const suggestions = rankNearbyBaseCandidates(anchor, candidates, { ...options, maximumDistanceKm });
+  if (!suggestions.length && results.some((result) => result.status === "rejected")) {
+    throw new Error("Nearby place providers unavailable");
+  }
+  return suggestions;
 }

@@ -322,6 +322,7 @@ export type NearbyBaseAnchor = {
   placeType: PlaceType;
   parentCountries: string[];
   parentRegionId?: string;
+  accessPlaceName?: string;
   coordinates?: [number, number];
 };
 
@@ -483,6 +484,7 @@ export type CanonicalPlaceSuggestion = {
   label: string;
   country: string;
   region?: string;
+  accessPlaceName?: string;
   placeType: PlaceType;
   coordinates?: [number, number];
   bounds?: GeographicBounds;
@@ -746,7 +748,7 @@ export function nearbyBaseSearchPreposition(anchor: Pick<NearbyBaseAnchor, "plac
 }
 
 export function nearbyBaseAnchorForMention(
-  mention: Pick<ResolvedPlaceMention, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "coordinates" | "routability">,
+  mention: Pick<ResolvedPlaceMention, "canonicalPlaceId" | "canonicalName" | "placeType" | "parentCountries" | "parentRegionId" | "accessPlaceName" | "coordinates" | "routability">,
 ): NearbyBaseAnchor | undefined {
   if (mention.routability === "direct_destination" || !mention.coordinates || !validPlaceCoordinates(mention.coordinates)) return undefined;
   if (!["landmark", "natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(mention.placeType)) return undefined;
@@ -756,6 +758,7 @@ export function nearbyBaseAnchorForMention(
     placeType: mention.placeType,
     parentCountries: [...mention.parentCountries],
     parentRegionId: mention.parentRegionId,
+    accessPlaceName: mention.accessPlaceName,
     coordinates: [...mention.coordinates] as [number, number],
   };
 }
@@ -1781,6 +1784,7 @@ export function appendSelectedPlanningAreaMention(
     placeType: suggestion.placeType,
     parentCountries: suggestion.country ? [suggestion.country] : [],
     parentRegionId: suggestion.region,
+    accessPlaceName: suggestion.accessPlaceName,
     bounds: suggestion.bounds,
     coordinates: suggestion.coordinates,
     routability,
