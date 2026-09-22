@@ -369,9 +369,9 @@
 }
 
 .dragHandle {
-  width: 34px;
-  height: 34px;
-  min-height: 34px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0;
   border-radius: var(--morrovia-control-radius);
   display: inline-flex;
@@ -380,7 +380,6 @@
   color: var(--morrovia-ink-soft);
   cursor: grab;
   user-select: none;
-  touch-action: none;
 }
 
 .dragHandle:hover {

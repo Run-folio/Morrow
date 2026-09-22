@@ -46,7 +46,7 @@ type RichItineraryDayPlannerProps = {
   onMoveToDay?: (activity: ComposedItineraryActivity, trigger: HTMLButtonElement) => void;
   dragActive?: boolean;
   draggedActivityId?: string | null;
-  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLSpanElement>) => void;
+  onActivityDragStart?: (activity: ComposedItineraryActivity, event: DragEvent<HTMLButtonElement>) => void;
   onActivityDragEnd?: () => void;
   onActivityDrop?: (dayPart: ItineraryDayPart, insertionIndex: number) => void;
   selectedActivityId?: string | null;
@@ -81,6 +81,7 @@ function copyFor(language: "en" | "es") {
     moveEarlier: "Mover antes en",
     moveLater: "Mover después en",
     moveToDay: "Mover a otro día",
+    dragActivity: "Arrastrar para organizar",
     bookedActivity: "Reservado",
     timeNotSet: "PLANIFICADO · HORA SIN FIJAR",
     choosePeriod: "Momento del día",
@@ -106,6 +107,7 @@ function copyFor(language: "en" | "es") {
     moveEarlier: "Move earlier in",
     moveLater: "Move later in",
     moveToDay: "Move to another day",
+    dragActivity: "Drag to organise",
     bookedActivity: "Booked",
     timeNotSet: "Planned",
     choosePeriod: "Part of day",
@@ -160,7 +162,7 @@ function ActivityRow({
   onMoveToDay?: RichItineraryDayPlannerProps["onMoveToDay"];
   draggable: boolean;
   dragging: boolean;
-  onDragStart?: (event: DragEvent<HTMLSpanElement>) => void;
+  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
   onDragEnd?: () => void;
   selected: boolean;
   onSelect?: (trigger: HTMLButtonElement) => void;
@@ -191,14 +193,19 @@ function ActivityRow({
         {activity.booking ? <span className={styles.bookedState}>{copy.bookedActivity}</span> : null}
         {warnings.map((warning) => <span className={styles.activityWarning} role="status" key={warning}><AlertTriangle aria-hidden="true" />{warning}</span>)}
       </EasyTButton>
-      {draggable && allowsDayPart ? <span
+      {draggable && allowsDayPart ? <EasyTButton
         className={styles.dragHandle}
+        icon={GripVertical}
+        iconOnly
+        size="small"
+        variant="quiet"
         data-itinerary-drag-handle={activity.id}
         draggable
+        tabIndex={-1}
         aria-hidden="true"
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-      ><GripVertical /></span> : null}
+      >{copy.dragActivity}: {activity.title}</EasyTButton> : null}
       {activity.dayPartEditable && allowsDayPart ? <details className={styles.activityMenu}>
         <summary aria-label={`Organise ${activity.title}`}><MoreHorizontal aria-hidden="true" /></summary>
         <div>

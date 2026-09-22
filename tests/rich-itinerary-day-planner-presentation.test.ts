@@ -38,9 +38,13 @@ test("broad periods use semantic headings, canonical controls, and a keyboard-ac
   assert.match(component, /draggable=\{activity\.dayPartEditable && Boolean\(onActivityDragStart\)\}/);
 });
 
-test("native drag uses a dedicated pointer source while preserving every canonical placement path", () => {
-  assert.match(component, /<span[\s\S]{0,180}data-itinerary-drag-handle=\{activity\.id\}[\s\S]{0,180}draggable[\s\S]{0,180}onDragStart=\{onDragStart\}/);
-  assert.doesNotMatch(component, /<EasyTButton[\s\S]{0,180}className=\{styles\.dragHandle\}/);
+test("native drag uses a canonical pointer source while preserving every canonical placement path", () => {
+  assert.match(component, /<EasyTButton[\s\S]{0,240}className=\{styles\.dragHandle\}[\s\S]{0,240}data-itinerary-drag-handle=\{activity\.id\}[\s\S]{0,240}draggable[\s\S]{0,240}onDragStart=\{onDragStart\}/);
+  assert.match(component, /tabIndex=\{-1\}[\s\S]{0,120}aria-hidden="true"/,
+    "the pointer-only source must not masquerade as a keyboard action");
+  assert.match(component, />\{copy\.dragActivity\}: \{activity\.title\}<\/EasyTButton>/);
+  assert.match(styles, /\.dragHandle \{[\s\S]*width: 44px;[\s\S]*height: 44px;[\s\S]*min-height: 44px;/);
+  assert.doesNotMatch(styles, /\.dragHandle \{[^}]*touch-action: none/);
   assert.match(component, /onDragStart=\{\(event\) => onActivityDragStart\?\.\(activity, event\)\}/);
   assert.match(workspace, /event\.dataTransfer\.setData\("text\/plain", activity\.id\)/);
   assert.match(workspace, /beginPlannerDrag\(\{ kind: "activity", activity, sourceDayId: active\.id, sourceStopId: active\.stopId \}\)/);

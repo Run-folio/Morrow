@@ -2,7 +2,7 @@
   width: 100%;
   max-width: 100%;
   display: grid;
-  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   min-height: 650px;
   overflow: visible;
   border: 1px solid var(--morrovia-line);
@@ -11,7 +11,7 @@
 }
 
 .workspaceWithoutContext {
-  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .subviewBar {
@@ -1802,19 +1802,12 @@
 }
 
 @media (max-width: 1200px) {
-  .workspace { grid-template-columns: minmax(240px, 270px) minmax(0, 1fr); }
-  .workspaceWithoutContext { grid-template-columns: minmax(240px, 270px) minmax(0, 1fr); }
-  .rail { grid-row: 2 / span 2; }
+  .workspace { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); }
+  .workspaceWithoutContext { grid-template-columns: minmax(0, 1fr); }
   .contextRail {
     grid-column: 2;
-    grid-row: 3;
-    border-top: 1px solid var(--morrovia-line);
-    border-left: 0;
-  }
-  .contextRail {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    grid-row: auto;
+    display: block;
   }
   .contextRail.contextRailDetail { display: block; }
   .contextSection {
@@ -1978,8 +1971,49 @@
 .calendarBands svg { width: 16px; height: 16px; flex: none; }
 .calendarBands span { overflow-wrap: anywhere; }
 .calendarThumbnail { width: 100%; height: 64px; object-fit: cover; border-radius: var(--morrovia-control-radius); margin-bottom: 4px; }
+.stayContext {
+  min-width: 0;
+  margin-top: 16px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+.stayContext > svg { width: 18px; height: 18px; color: var(--morrovia-signal); }
+.stayContext[data-state="missing"] > svg,
+.stayContext[data-state="unknown"] > svg { color: var(--morrovia-muted); }
+.stayContextSelect { width: 100%; padding: 0; justify-content: flex-start; text-align: left; }
+.stayContextSelect:hover:not(:disabled) { transform: none; }
+.stayContextSelect > span,
+.stayContextCopy { min-width: 0; display: grid; gap: 2px; }
+.stayContext strong { color: var(--morrovia-ink); font: 750 13px/1.3 var(--morrovia-ui); overflow-wrap: anywhere; }
+.stayContext span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.calendarDaySummary { display: grid; gap: 12px; }
+.calendarDaySummaryAction { padding-bottom: 12px; border-bottom: 1px solid var(--morrovia-line); }
+.calendarSummaryItems { margin: 0; padding: 0; display: grid; gap: 4px; list-style: none; }
+.calendarSummaryItems .calendarItem {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 14px;
+  align-items: center;
+  justify-content: stretch;
+  gap: 8px;
+  text-align: left;
+  white-space: normal;
+}
+.calendarSummaryItems .calendarItem:hover:not(:disabled) { transform: none; }
+.calendarSummaryItems .calendarThumbnail { display: none; }
+.calendarSummaryItems .calendarItem strong { font-size: 12px; }
+.calendarSummaryItems .calendarItem small { font-size: 9px; }
+.calendarSummaryEmpty { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
 .mobileSavedIdeas { order: 6; }
-@media (max-width: 1399px) {
+@media (max-width: 1099px) {
   .calendarWorkspace { grid-template-columns: minmax(0, 1fr); }
   .calendarWorkspace .dayPanel { grid-column: 1; border-left: 0; border-top: 1px solid var(--morrovia-line); }
 }
@@ -2005,6 +2039,7 @@
   .calendarWorkspace .calendarView { padding: 12px; }
   .calendarBands { display: none; }
   .dayPanel { padding: 16px; }
+  .calendarWorkspace .dayPanel { padding: 16px; }
   .mobileSavedIdeas { order: 6; display: block; }
   .workspaceToolbar h2 { font-size: 24px; }
   .logisticsDetailScrim {
@@ -2032,4 +2067,12 @@
     border-radius: var(--morrovia-radius) var(--morrovia-radius) 0 0;
     box-shadow: var(--morrovia-shadow-overlay);
   }
+}
+
+@media (max-width: 540px) {
+  .workspaceToolbar { padding: 14px 12px; }
+  .dateNavigation { align-items: end; gap: 4px; }
+  .dateNavigation > label { min-width: 0; }
+  .stayContext { grid-template-columns: 20px minmax(0, 1fr); }
+  .stayContext > a { grid-column: 2; justify-self: start; }
 }

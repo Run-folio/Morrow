@@ -264,6 +264,26 @@ test("canonical cross-day Move preserves an idea's provider, image and map ident
   assert.match(invalid.reason ?? "", /same route stop/);
 });
 
+test("cross-day placement moves the exact canonical activity when a similar activity shares its source day", () => {
+  const source = tripFixture();
+  const original = exploreResultForPlace(source.stops[0]!, lycabettusPlace).idea;
+  const similar = {
+    ...original,
+    id: `${original.id}-sunset`,
+    placeId: `${original.placeId}-sunset`,
+    title: `${original.title} sunset`,
+  };
+  const withOriginal = scheduleItineraryIdea(source, original, "day-6", "morning");
+  const withBoth = scheduleItineraryIdea(withOriginal, similar, "day-6", "afternoon");
+
+  const moved = moveItineraryActivityAcrossDays(withBoth, "day-6", original.id, "day-7", "midday");
+
+  assert.equal(moved.changed, true);
+  const ideas = moved.trip.brief.itineraryIdeas ?? [];
+  assert.deepEqual(ideas.find(({ id }) => id === original.id), { ...original, dayId: "day-7", dayPart: "midday" });
+  assert.deepEqual(ideas.find(({ id }) => id === similar.id), { ...similar, dayId: "day-6", dayPart: "afternoon" });
+});
+
 test("item-scoped Undo restores Activity A after an unrelated Activity B edit", () => {
   const source = tripFixture();
   const withA = addItineraryActivityWithUndo(source, 6, 0, "Activity A", "morning").trip;
