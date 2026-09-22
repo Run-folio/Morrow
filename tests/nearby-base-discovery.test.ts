@@ -96,6 +96,25 @@ test("national park discovery keeps settlements and rejects a nearby attraction"
   assert.deepEqual(suggestions.map((item) => item.name).sort(), ["Gardiner", "West Yellowstone"]);
 });
 
+test("Kruger discovery ranks provider-backed nearby bases without turning the park into a stop", () => {
+  const kruger = anchor({
+    canonicalPlaceId: "kruger-national-park",
+    canonicalName: "Kruger National Park",
+    placeType: "natural_area",
+    parentCountries: ["South Africa"],
+    parentRegionId: undefined,
+    coordinates: [31.485, -24.994],
+  });
+  const suggestions = rankNearbyBaseCandidates(kruger, [
+    settlement("node:kruger:1", "Skukuza", "South Africa", [31.5913, -24.9948], { settlementKind: "village", settlementPopulation: 1_599, parentRegionId: "Mpumalanga", providerSourceLabel: "Controlled global place provider" }),
+    settlement("node:kruger:2", "Hazyview", "South Africa", [31.131, -25.043], { settlementKind: "town", parentRegionId: "Mpumalanga", providerSourceLabel: "Controlled global place provider" }),
+    settlement("node:kruger:3", "Hoedspruit", "South Africa", [30.9547, -24.351], { settlementKind: "town", parentRegionId: "Limpopo", providerSourceLabel: "Controlled global place provider" }),
+  ]);
+  assert.deepEqual(new Set(suggestions.map((item) => item.name)), new Set(["Skukuza", "Hazyview", "Hoedspruit"]));
+  assert.equal(suggestions.every((item) => item.provenance[0]?.kind === "provider"), true);
+  assert.equal(suggestions.some((item) => item.name === "Kruger National Park"), false);
+});
+
 test("mountain and island anchors discover usable settlements without making the anchor a stop", () => {
   const kinabalu = rankNearbyBaseCandidates(anchor({ canonicalName: "Mount Kinabalu", placeType: "mountain_range", parentCountries: ["Malaysia"], parentRegionId: "Sabah", coordinates: [116.56, 6.075] }), [
     settlement("node:31", "Kundasang", "Malaysia", [116.575, 5.987], { parentRegionId: "Sabah" }),

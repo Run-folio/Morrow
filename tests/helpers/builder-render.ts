@@ -40,12 +40,14 @@ export async function renderBuilder({
   path = "/journey/new",
   browserName = "chromium",
   geocodeDelayMs = 0,
+  nearbyCandidates = [],
 }: {
   query?: string;
   draft?: unknown;
   path?: string;
   browserName?: "chromium" | "webkit";
   geocodeDelayMs?: number;
+  nearbyCandidates?: unknown[];
 } = {}) {
   const script = await builderBundle();
   const server = createServer(async (request, response) => {
@@ -57,6 +59,11 @@ export async function renderBuilder({
         const { brief } = JSON.parse(Buffer.concat(chunks).toString());
         response.setHeader("Content-Type", "application/json");
         response.end(JSON.stringify(captureJourneyBrief(brief)));
+        return;
+      }
+      if (url.pathname === "/api/journey-geocode" && url.searchParams.get("nearbyBases") === "1") {
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ candidates: nearbyCandidates, status: nearbyCandidates.length ? "ready" : "empty" }));
         return;
       }
       const result = url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo"

@@ -34,13 +34,21 @@ export type BuildTripConflict = {
   source: "builder" | "place-intelligence" | "route-intelligence" | "structured-brief" | "night-allocation" | "validator" | "itinerary";
 };
 
+export type BuildTripAttention = {
+  code: "unresolved-place-intent";
+  mentionId: string;
+  sourceText: string;
+  message: string;
+  source: "place-intelligence";
+};
+
 export type CanBuildTripInput = {
   origin: string;
   originCoordinates?: [number, number];
   journeyEnd?: JourneyEndSelection;
   stops: Array<{ id: string; name: string; country?: string; canonicalPlaceId?: string; coordinates?: [number, number] }>;
   placeReviewPending?: boolean;
-  placeIssues?: Array<Pick<PlaceIssue, "message" | "blocksRoute" | "mentionId">>;
+  placeIssues?: Array<Pick<PlaceIssue, "message" | "blocksRoute" | "mentionId"> & Partial<Pick<PlaceIssue, "code" | "sourceText">>>;
   routeConstraintIssues?: RouteConstraintIssue[];
   requiredStopIds?: string[];
   maximumStops?: number;
@@ -78,6 +86,18 @@ function conflict(input: Omit<BuildTripConflict, "stopIds"> & { stopIds?: string
   return { ...input, stopIds: input.stopIds ?? [] };
 }
 
+const nonCriticalPlaceIssueCodes = new Set<PlaceIssue["code"]>([
+  "unresolved_place",
+  "ambiguous_place",
+  "region_requires_base",
+]);
+
+export function placeIssueNeedsAttention(
+  issue: Pick<PlaceIssue, "blocksRoute"> & Partial<Pick<PlaceIssue, "code">>,
+) {
+  return Boolean(issue.blocksRoute && issue.code && nonCriticalPlaceIssueCodes.has(issue.code));
+}
+
 /**
  * The single release invariant for advancing into Time and for treating a
  * generated TripDocument as saveable/navigable. Callers may inspect `stage`
@@ -85,6 +105,7 @@ function conflict(input: Omit<BuildTripConflict, "stopIds"> & { stopIds?: string
  */
 export function canBuildTrip(input: CanBuildTripInput) {
   const conflicts: BuildTripConflict[] = [];
+  const needsAttention: BuildTripAttention[] = [];
   const stopIds = input.stops.map((stop) => stop.id);
   const uniqueStopIds = new Set(stopIds);
 
@@ -102,11 +123,20 @@ export function canBuildTrip(input: CanBuildTripInput) {
   }
 
   const blockingPlaceIssues = input.placeIssues?.filter((issue) => issue.blocksRoute) ?? [];
-  if (input.placeReviewPending || blockingPlaceIssues.length) {
+  const nonCriticalPlaceIssues = blockingPlaceIssues.filter(placeIssueNeedsAttention);
+  needsAttention.push(...nonCriticalPlaceIssues.map((issue) => ({
+    code: "unresolved-place-intent" as const,
+    mentionId: issue.mentionId,
+    sourceText: issue.sourceText?.trim() || "this place",
+    message: issue.message,
+    source: "place-intelligence" as const,
+  })));
+  const hardBlockingPlaceIssues = blockingPlaceIssues.filter((issue) => !placeIssueNeedsAttention(issue));
+  if (input.placeReviewPending || hardBlockingPlaceIssues.length) {
     conflicts.push(conflict({
       code: "place-review-required",
       stage: "places",
-      message: input.placeReviewPending ? "Finish checking your places before continuing." : blockingPlaceIssues[0].message,
+      message: input.placeReviewPending ? "Finish checking your places before continuing." : hardBlockingPlaceIssues[0].message,
       source: "place-intelligence",
     }));
   }
@@ -193,20 +223,22 @@ export function canBuildTrip(input: CanBuildTripInput) {
     ? "impossible" as const
     : input.nightAllocation.state === "compromised"
       ? "constrained-compromise" as const
-      : validationWarnings.length
+      : validationWarnings.length || needsAttention.length
         ? "valid-but-poor" as const
         : "valid" as const;
   return {
     canBuildTrip: conflicts.length === 0,
     canAdvanceToTime: !conflicts.some((item) => item.stage === "places"),
     conflicts,
+    needsAttention,
     firstConflict: conflicts[0],
-    qualityClassification: conflicts.length ? "impossible" as const : realism?.classification ?? (validationWarnings.length ? "reasonable with trade-offs" as const : "reasonable" as const),
+    qualityClassification: conflicts.length ? "impossible" as const : realism?.classification ?? (validationWarnings.length || needsAttention.length ? "reasonable with trade-offs" as const : "reasonable" as const),
     realismReasons: realism?.reasons ?? [],
     outcome,
     compromises: [
       ...(input.nightAllocation.state === "compromised" ? input.nightAllocation.conflicts.map((item) => item.message) : []),
       ...validationWarnings.map((item) => item.message),
+      ...needsAttention.map((item) => item.message),
     ],
   };
 }

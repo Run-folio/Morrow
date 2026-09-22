@@ -36,7 +36,7 @@ import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfil
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
-import { builderRouteInputIsReady, canBuildTrip } from "@/lib/easyt/can-build-trip";
+import { builderRouteInputIsReady, canBuildTrip, placeIssueNeedsAttention } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
@@ -550,6 +550,7 @@ function TripBuilderDocument() {
   const [clarificationIndex, setClarificationIndex] = useState(0);
   const [clarificationAutoOpened, setClarificationAutoOpened] = useState(false);
   const [clarificationDismissed, setClarificationDismissed] = useState(false);
+  const [buildAttentionReviewOpen, setBuildAttentionReviewOpen] = useState(false);
   const [nearbyBaseDiscovery, setNearbyBaseDiscovery] = useState<NearbyBaseDiscoveryState | null>(null);
   const [nearbyBaseRetryNonce, setNearbyBaseRetryNonce] = useState(0);
   const [expandedNearbyBaseMentionIds, setExpandedNearbyBaseMentionIds] = useState<string[]>([]);
@@ -1373,11 +1374,14 @@ function TripBuilderDocument() {
     return requested !== selected;
   }), [effectiveStructuredBrief.placeSelections, resolvedPlaceMentions]);
   const blockingPlaceIssue = placeIssues.find((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId));
+  const hardBlockingPlaceIssue = placeIssues.find((issue) => issue.blocksRoute
+    && !selectedMentionIds.has(issue.mentionId)
+    && !placeIssueNeedsAttention(issue));
   const pendingPlaceCount = new Set(placeIssues.filter((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId)).map((issue) => issue.mentionId)).size;
   const areasToShapeCount = pendingReviewPlaceMentions.filter((mention) => mention.status !== "ambiguous" && mention.status !== "unresolved"
     && (mention.requiresBaseSelection || mention.routability === "planning_area" || mention.routability === "anchor_or_poi")).length;
   const identitiesToConfirmCount = pendingReviewPlaceMentions.filter((mention) => mention.status === "ambiguous" || mention.status === "unresolved").length;
-  const placeReviewReady = !resolvingLocations && locationChoices.length === 0 && !blockingPlaceIssue;
+  const placeReviewReady = !resolvingLocations && !hardBlockingPlaceIssue;
   const pickedUpPreferences = useMemo(() => {
     const labels: string[] = [];
     if (effectiveStructuredBrief.duration) labels.push(`${effectiveStructuredBrief.duration.value} ${effectiveStructuredBrief.duration.unit}`);
@@ -2927,13 +2931,33 @@ function TripBuilderDocument() {
     });
   }, [activeTripDocument.stops, nightAllocationStops, structuredRouteConstraints, effectiveIntent, origin, originCoordinates, stops, allocation, totalNights, startDate, endDate, scheduleLocks, effectiveStructuredBrief, nightAllocation]);
 
+  const buildPlaceIssues = useMemo(() => {
+    const issues = [...placeIssues];
+    for (const { mention } of locationChoices) {
+      if (issues.some((issue) => issue.mentionId === mention.mentionId && issue.blocksRoute)) continue;
+      issues.push({
+        code: "ambiguous_place",
+        mentionId: mention.mentionId,
+        canonicalPlaceId: mention.canonicalPlaceId,
+        sourceText: mention.sourceText,
+        reason: "Provider results require the traveller to confirm which place they meant.",
+        message: `Confirm ${mention.sourceText} before Morrovia adds it to the route.`,
+        severity: "error",
+        blocksRoute: true,
+        options: [],
+        provenance: mention.provenance,
+        confidence: mention.confidence,
+      });
+    }
+    return issues;
+  }, [locationChoices, placeIssues]);
   const buildInvariant = useMemo(() => canBuildTrip({
     origin,
     originCoordinates,
     journeyEnd,
     stops,
-    placeReviewPending: resolvingLocations || locationChoices.length > 0,
-    placeIssues,
+    placeReviewPending: resolvingLocations,
+    placeIssues: buildPlaceIssues,
     routeConstraintIssues: routeIntelligence.route.constraintIssues,
     requiredStopIds: [...new Set([
       ...(structuredRouteConstraints.requiredStopIds ?? []),
@@ -2953,9 +2977,13 @@ function TripBuilderDocument() {
     transferImpacts: activeTripDocument.legs.map((leg) => transferImpactFromMetadata(leg.routeMetadata.transferImpact)),
     routeOrderFixed: Boolean(structuredRouteConstraints.fixedCommitments?.length),
     document: activeTripDocument,
-  }), [origin, originCoordinates, journeyEnd, stops, resolvingLocations, locationChoices.length, placeIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
+  }), [origin, originCoordinates, journeyEnd, stops, resolvingLocations, buildPlaceIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
   const gateConflict = buildInvariant.firstConflict;
   const gate = gateConflict?.message ?? "";
+  const buildAttention = buildInvariant.needsAttention;
+  const firstBuildAttention = buildAttention[0];
+  const buildAttentionNames = [...new Set(buildAttention.map((item) => item.sourceText))];
+  const buildAttentionLabel = buildAttentionNames.length === 1 ? buildAttentionNames[0] : language === "es" ? "estos lugares" : "these places";
 
   useEffect(() => {
     if (!hasRouteSkeleton || !gateConflict) return;
@@ -3288,7 +3316,7 @@ function TripBuilderDocument() {
     setBuildRequested(true);
   };
 
-  const buildTrip = () => {
+  const continueBuildTrip = () => {
     if (!buildInvariant.canBuildTrip) {
       surfaceBuildConflict();
       return;
@@ -3304,6 +3332,18 @@ function TripBuilderDocument() {
       });
     }
     openBuiltTrip();
+  };
+
+  const buildTrip = () => {
+    if (!buildInvariant.canBuildTrip) {
+      surfaceBuildConflict();
+      return;
+    }
+    if (buildAttention.length) {
+      setBuildAttentionReviewOpen(true);
+      return;
+    }
+    continueBuildTrip();
   };
 
   useEffect(() => {
@@ -4260,6 +4300,29 @@ function TripBuilderDocument() {
         </div>
       </div>
       }
+      <MorroviaConfirmationDialog
+        open={buildAttentionReviewOpen && buildAttention.length > 0}
+        eyebrow={language === "es" ? "NECESITA ATENCIÓN" : "NEEDS ATTENTION"}
+        title={language === "es" ? `¿Crear este viaje antes de añadir ${buildAttentionLabel}?` : `Build this trip before adding ${buildAttentionLabel}?`}
+        detail={language === "es"
+          ? `${buildAttentionLabel} sigue guardado en tus preferencias, pero todavía no forma parte de la ruta confirmada.`
+          : `${buildAttentionLabel} remains saved in your trip brief, but is not part of the confirmed route yet.`}
+        consequences={[
+          language === "es" ? "Morrovia creará el viaje solo con las paradas confirmadas actuales." : "Morrovia will build using only the currently confirmed stops.",
+          language === "es" ? "Puedes volver al Builder y resolver este lugar más tarde." : "You can return to the Builder and resolve this place later.",
+        ]}
+        cancelLabel={language === "es" ? "Volver y corregirlo" : "Go back and fix it"}
+        confirmLabel={language === "es" ? `Continuar sin añadir ${buildAttentionLabel}` : `Continue without adding ${buildAttentionLabel}`}
+        onCancel={() => {
+          setBuildAttentionReviewOpen(false);
+          openClarificationSession(firstBuildAttention?.mentionId);
+          openSummaryEditor("stops");
+        }}
+        onConfirm={() => {
+          setBuildAttentionReviewOpen(false);
+          continueBuildTrip();
+        }}
+      />
       <MorroviaConfirmationDialog
         open={Boolean(pendingStopRemoval)}
         title={pendingStopRemoval ? `${language === "es" ? "¿Quitar" : "Remove"} ${pendingStopRemoval.name} ${language === "es" ? "y su plan" : "and its plan"}?` : "Remove this stop?"}
