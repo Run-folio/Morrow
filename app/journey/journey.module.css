@@ -1098,19 +1098,66 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
 .journey :global(.planner-map:has(.planner-map__leg.is-active) .planner-map__leg:not(.is-active) .planner-map__leg-card){display:none}
 
 @media(min-width:981px){
-  .shellPlanner .mapTransferContext{display:none!important}
-  .shellPlanner .mapDestinationContext{top:auto!important;right:auto!important;bottom:18px!important;left:calc(clamp(360px,23vw,390px) + 32px)!important;width:min(610px,calc(100% - clamp(360px,23vw,390px) - 64px))!important;max-width:610px!important;max-height:calc(100% - 116px)!important;padding:18px!important;overflow:auto;border-radius:3px!important}
-  .shellPlanner .mapDestinationContext .mapContextPanel{grid-template-columns:180px minmax(0,1fr);column-gap:18px;row-gap:8px}
-  .shellPlanner .mapDestinationContext .mapContextEyebrow,.shellPlanner .mapDestinationContext .mapContextHeading,.shellPlanner .mapDestinationContext .mapContextCopy,.shellPlanner .mapDestinationContext .mapDestinationDescription,.shellPlanner .mapDestinationContext .mapContextFacts,.shellPlanner .mapDestinationContext .mapExternalActions,.shellPlanner .mapDestinationContext .mapSourceLabel,.shellPlanner .mapDestinationContext .mapContextActions,.shellPlanner .mapDestinationContext .mapScheduleCheck{grid-column:2}
-  .shellPlanner .mapDestinationContext .mapContextEyebrow{align-self:end}
-  .shellPlanner .mapDestinationContext .mapDestinationImage{grid-row:1/span 9;grid-column:1;width:180px;height:100%;min-height:190px;border-radius:0}
-  .shellPlanner .mapDestinationContext .mapContextHeading h2{font-size:30px}
-  .shellPlanner .mapDestinationContext .mapDestinationDescription{font-size:12px;line-height:1.52}
-  .shellPlanner .mapDestinationContext .mapContextFacts div{padding-block:8px}
-  .shellPlanner .mapDestinationContext .mapContextActions{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .shellPlanner .mapDestinationContext .mapContextActions button{justify-content:center;min-height:40px}
-  .shellPlanner .mapPlaceContext{top:auto!important;right:18px!important;bottom:18px!important;left:auto!important;width:330px!important;max-width:330px!important;padding:17px!important;border-radius:3px!important}
-  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){right:18px!important}
+  .shellPlanner .finderDock{
+    position:absolute!important;
+    top:var(--map-workspace-strip-height)!important;
+    right:auto!important;
+    bottom:0!important;
+    left:0!important;
+    display:flex!important;
+    width:var(--map-workspace-rail-width)!important;
+    height:auto!important;
+    max-height:none!important;
+    padding:0 17px 16px!important;
+    overflow:hidden!important;
+    border-width:0 1px 0 0!important;
+    border-radius:0!important;
+    transform:none!important;
+  }
+  .shellPlanner .finderDock .shapeDayPlan,
+  .shellPlanner .finderDockStay .restaurantFinder,
+  .shellPlanner .finderDockEat .restaurantFinder,
+  .shellPlanner .finderDockSee .shapeDaySee{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+  .shellPlanner .mobileTripStatus{display:block;margin-top:6px}
+  .shellPlanner .mobileTripStatus summary{display:flex;min-height:36px;align-items:center;justify-content:space-between;gap:8px;color:var(--accent);cursor:pointer;list-style:none;font:700 8px var(--morrovia-meta)}
+  .shellPlanner .mobileTripStatus summary::-webkit-details-marker{display:none}
+  .shellPlanner .mobileTripStatus summary b{padding:4px 7px;border:1px solid var(--hairline);border-radius:6px;background:var(--mist);font-size:7px}
+  .shellPlanner .mapDefaultContext{display:none!important}
+  .shellPlanner .canonicalPlannerStatus.tripStatusExpanded{
+    top:var(--map-workspace-strip-height)!important;
+    right:auto!important;
+    bottom:0!important;
+    left:0!important;
+    display:block!important;
+    width:var(--map-workspace-rail-width)!important;
+    max-width:none!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    border-radius:0!important;
+  }
+  .shellPlanner .mapPlaceContext,
+  .shellPlanner .mapTransferContext{
+    position:absolute!important;
+    top:auto!important;
+    right:18px!important;
+    bottom:18px!important;
+    left:auto!important;
+    display:block!important;
+    width:min(330px,calc(100% - var(--map-workspace-rail-width) - 54px))!important;
+    max-width:330px!important;
+    max-height:calc(100% - var(--map-workspace-strip-height) - 36px)!important;
+    padding:17px!important;
+    overflow-y:auto!important;
+    border-radius:3px!important;
+  }
+  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:18px!important}
+  .shellPlanner .pinDock{right:18px!important}
   .shellPlanner .mapAssistant{right:18px!important;bottom:18px!important}
 }
 
@@ -1139,82 +1186,6 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
   .journey :global(.planner-map__destination-card img){width:62px;height:54px}
   .journey :global(.planner-map__destination-card strong){font-size:10px}
   .mapDayControl{bottom:10px;left:8px;max-width:calc(100% - 88px)}
-}
-
-/* Map composition refinement: on wide desktop, spatial intelligence belongs
-   on the left and the existing day-planning workspace belongs on the right.
-   Tablet/mobile sheets and the richer fullscreen composition remain unchanged. */
-@media(min-width:1180px){
-  .shellPlanner .finderDock{
-    top:78px!important;
-    right:18px!important;
-    bottom:auto!important;
-    left:auto!important;
-    display:flex!important;
-    width:clamp(350px,24vw,400px)!important;
-    height:fit-content!important;
-    max-height:calc(100% - 96px)!important;
-    padding:0 17px 16px!important;
-    overflow:hidden!important;
-    transform:none!important;
-  }
-  .shellPlanner .finderDock .shapeDayPlan,
-  .shellPlanner .finderDockStay .restaurantFinder,
-  .shellPlanner .finderDockEat .restaurantFinder,
-  .shellPlanner .finderDockSee .shapeDaySee{
-    flex:0 1 auto!important;
-    max-height:calc(100svh - 288px)!important;
-    overflow-y:auto!important;
-    overscroll-behavior:contain;
-    scrollbar-width:thin;
-  }
-  .shellPlanner .canonicalPlannerStatus{
-    top:78px!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:18px!important;
-    width:clamp(320px,22vw,370px)!important;
-    max-width:370px!important;
-    max-height:calc(100% - 96px)!important;
-    padding:18px!important;
-    overflow-y:auto!important;
-    border-radius:16px!important;
-  }
-  .shellPlanner .mapDestinationContext,
-  .shellPlanner .mapPlaceContext{
-    top:78px!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:18px!important;
-    width:clamp(330px,23vw,380px)!important;
-    max-width:380px!important;
-    max-height:calc(100% - 96px)!important;
-    padding:18px!important;
-    overflow-y:auto!important;
-    border-radius:16px!important;
-    box-shadow:0 18px 42px rgba(23,16,111,.15)!important;
-  }
-  .shellPlanner .mapDestinationContext .mapContextPanel{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-  }
-  .shellPlanner .mapDestinationContext .mapDestinationImage{
-    order:-3;
-    width:100%;
-    height:168px;
-    min-height:0;
-    border-radius:12px;
-  }
-  .shellPlanner .mapDestinationContext .mapContextEyebrow{order:-2;align-self:auto;margin-top:2px}
-  .shellPlanner .mapDestinationContext .mapContextHeading{order:-1}
-  .shellPlanner .mapDestinationContext .mapContextHeading h2{font-size:31px}
-  .shellPlanner .mapDestinationContext .mapDestinationDescription{font-size:11px;line-height:1.52}
-  .shellPlanner .mapDestinationContext .mapContextActions{grid-template-columns:1fr}
-  .shellPlanner .mapDestinationContext .mapContextActions button{justify-content:flex-start;min-height:42px}
-  .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){right:calc(clamp(350px,24vw,400px) + 34px)!important}
-  .shellPlanner .pinDock{right:calc(clamp(350px,24vw,400px) + 34px)!important}
-  .shellPlanner .mapAssistant{right:calc(clamp(350px,24vw,400px) + 34px)!important;bottom:18px!important}
 }
 
 /* The footer remains contextual, but its action now reads and behaves like a

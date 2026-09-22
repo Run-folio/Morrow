@@ -174,8 +174,6 @@
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="status"]) :global([class*="canonicalPlannerStatus"]) { display:block!important; }
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"][class*="mapContextHidden"]) { display:block!important; }
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="pin"]) :global([class*="pinDock"]) { flex-direction:column; }
-  .plan :global([class*="fullscreenDestination"]) { display:none!important; }
-
   .plan :global([class*="finderDock"]) > header { position:relative;flex:0 0 auto;padding-top:12px; }
   .plan :global([class*="finderDock"]) > header::before { content:none; }
   .plan :global([class*="shapeDayPlan"]),

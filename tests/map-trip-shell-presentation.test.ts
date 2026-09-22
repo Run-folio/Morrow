@@ -59,6 +59,18 @@ test("the normal Map workspace is viewport-dominant without a separate fullscree
   assert.doesNotMatch(mapStylesSource, /shellPlannerExpanded/);
 });
 
+test("desktop Map has one persistent left rail and only contextual secondary detail", () => {
+  assert.match(mapWorkspaceSource, /const showFinderDock = Boolean\(hasCanonicalPlanner && selected\.coordinates\)/);
+  assert.match(mapWorkspaceSource, /\{showFinderDock \? <aside id="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /styles\.mapDefaultContext/);
+  assert.match(mapWorkspaceSource, /!tripStatusExpanded\s*&&\s*!copilotOpen/);
+  assert.match(mapWorkspaceSource, /tripIssueCount > 0/);
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock\{[^}]*left:0!important[^}]*width:var\(--map-workspace-rail-width\)!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
+  assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
+});
+
 test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /initialMapCameraMode\(customTrip, searchParams\)/);
   assert.match(mapWorkspaceSource, /overviewMode=\{mapMode === "overview"\}/);
@@ -125,7 +137,7 @@ test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapWorkspaceSource, /selectedDestinationMedia\?\.learnMoreUrl/);
   assert.match(mapWorkspaceSource, /scope=\{copilotScope\}/);
   assert.match(mapWorkspaceSource, /setSelectedRouteLegId\(null\);[\s\S]*setMapMode\("overview"\)/);
-  assert.match(mapWorkspaceSource, /showShellContext = Boolean\(!copilotOpen/);
+  assert.match(mapWorkspaceSource, /showShellContext = Boolean\([\s\S]*!tripStatusExpanded[\s\S]*!copilotOpen/);
   assert.match(mapWorkspaceSource, /setSelectedMapResult\(null\);[\s\S]*setSelectedPlannerPin\(null\);[\s\S]*setSelectedRouteLegId\(null\)/);
 });
 
@@ -149,7 +161,7 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /selectedDestinationDescription = conciseMapDescription\(selectedDestinationMedia\?\.description\)/);
   assert.match(mapWorkspaceSource, /selectedDestinationImage = selectedDestinationMedia\?\.image \?\? selectedMapStopFirstItem\?\.image/);
   assert.match(mapWorkspaceSource, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail"/);
-  assert.match(mapWorkspaceSource, /showDayPlanner \? <aside id="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /showFinderDock \? <aside id="shape-day-workspace"/);
   assert.match(mapWorkspaceSource, /context=\{\{[\s\S]*selectedDay,[\s\S]*selectedStop: selected,[\s\S]*planItem: selectedPlanItem,[\s\S]*days: selectedStopPlanDays,[\s\S]*items: selectedPlanAgenda\?\.items/);
   assert.match(mapWorkspaceSource, /onSelectDay: selectMapPlanDay/);
   assert.match(mapWorkspaceSource, /onSelectItem: selectMapPlanItem/);
@@ -159,9 +171,8 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapStylesSource, /\.finderDock\.mobileShapeDayOpen\{display:flex!important\}/);
   assert.match(mapStylesSource, /\.mobileShapeDayClosed/);
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock/);
-  assert.match(mapStylesSource, /right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
-  assert.match(mapStylesSource, /\.shellPlanner \.mapDestinationContext/);
-  assert.match(mapStylesSource, /left:18px!important;[\s\S]*width:clamp\(330px,23vw,380px\)!important/);
+  assert.match(mapWorkspaceSource, /defaultMapContext/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
 });
 
 test("Map Plan is a compact canonical projection with truthful spatial actions", () => {

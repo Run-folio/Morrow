@@ -829,10 +829,21 @@ export function JourneyMapPlannerWorkspace({
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedDestinationCoordinates[1]},${selectedDestinationCoordinates[0]}`)}`
     : null;
   const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg;
-  const showShellContext = Boolean(!copilotOpen && (wholeRouteMapContext || selectedLocalPlace || selectedPlannerPin || selectedRouteLeg || mapMode === "detail"));
+  const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg);
+  const showShellContext = Boolean(
+    !tripStatusExpanded
+    && !copilotOpen
+    && (wholeRouteMapContext || hasExplicitMapContext || mapMode === "detail"),
+  );
+  const defaultMapContext = Boolean(
+    isShellPresentation
+    && !tripStatusExpanded
+    && !hasExplicitMapContext,
+  );
   // Local result selection is presentation state inside the active finder
   // result set. Keep the finder mounted so selecting a marker or row cannot
   // tear down its provider request and results.
+  const showFinderDock = Boolean(hasCanonicalPlanner && selected.coordinates);
   const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg);
   const mobileMapSheetView = tripStatusExpanded
     ? "status"
@@ -2564,7 +2575,7 @@ export function JourneyMapPlannerWorkspace({
           </div>
         </header>
         <div className={styles.mobileMapSheetBody}>
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${defaultMapContext ? styles.mapDefaultContext : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
         {isShellPresentation && customTrip ? showShellContext ? <section className={styles.mapContextPanel} aria-labelledby="map-context-title">
           <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
@@ -2728,10 +2739,10 @@ export function JourneyMapPlannerWorkspace({
         {selectedPlannerPin ? <div className={styles.selectedPinDetail}><small>{planCopy.selectedPin}</small><form onSubmit={(event) => { event.preventDefault(); savePinEdit(); }}><input value={pinEditDraft} onChange={(event) => setPinEditDraft(event.target.value)} aria-label={planCopy.renamePin} /><button type="submit" disabled={!pinEditDraft.trim()}>{planCopy.saveName}</button></form><span>{pinCategoryLabel(selectedPlannerPin.category)} · {language === "es" ? "Día" : "Day"} {selectedPlannerPin.dayNumber}</span><button type="button" onClick={() => { updatePlannerTrip((trip) => ({ ...trip, brief: { ...trip.brief, mapPins: (trip.brief.mapPins ?? []).filter((item) => item.id !== selectedPlannerPin.id) } }), "Map pin removed"); setSelectedPlannerPin(null); }}>{planCopy.removeSelectedPin}</button></div> : null}
       </aside> : null}
 
-      {showDayPlanner ? <aside id="shape-day-workspace" className={`${styles.finderDock} ${mobileShapeDayOpen ? styles.mobileShapeDayOpen : styles.mobileShapeDayClosed} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
+      {showFinderDock ? <aside id="shape-day-workspace" className={`${styles.finderDock} ${mobileShapeDayOpen ? styles.mobileShapeDayOpen : styles.mobileShapeDayClosed} ${shapeDayTab === "stay" ? styles.finderDockStay : shapeDayTab === "eat" ? styles.finderDockEat : shapeDayTab === "see" ? styles.finderDockSee : ""}`} aria-label={planCopy.findPlaces}>
         <header className={styles.shapeDayHeader}><small>{language === "es" ? `EN ${selected.city.toLocaleUpperCase()}` : `AT ${selected.city.toLocaleUpperCase()}`}</small><span><strong>Shape the day</strong>{selectedTripStop?.nights ? <em>{selectedTripStop.nights} {selectedTripStop.nights === 1 ? "night" : "nights"}</em> : null}</span><button type="button" className={styles.mobileShapeDayClose} onClick={() => { setMobileShapeDayOpen(false); setMobileMapSheetCollapsed(true); }} aria-label="Close Shape the day"><X aria-hidden="true" /></button><div className={styles.finderTabs} role="tablist" aria-label="Shape the day">
           {shapeDayTabs.map((tab) => <button key={tab} type="button" role="tab" aria-selected={shapeDayTab === tab} aria-pressed={shapeDayTab === tab} tabIndex={shapeDayTab === tab ? 0 : -1} className={shapeDayTab === tab ? styles.finderTabActive : ""} onClick={() => selectShapeDayTab(tab)} onKeyDown={(event) => onShapeDayTabKeyDown(event, tab)}>{tab === "plan" ? "Plan" : tab === "stay" ? "Stay" : tab === "eat" ? "Eat" : "See"}</button>)}
-        </div>{customTrip ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
+        </div>{customTrip && tripIssueCount > 0 ? <details className={styles.mobileTripStatus} open={tripStatusExpanded} onToggle={(event) => setTripStatusExpanded(event.currentTarget.open)}><summary><span>{language === "es" ? "Estado del viaje" : "Trip status"}</span><b>{tripIssueCount} {language === "es" ? "problemas" : tripIssueCount === 1 ? "issue" : "issues"}</b></summary></details> : null}</header>
         {shapeDayTab === "plan" ? <PlanWorkspace
           context={{
             selectedDay,
