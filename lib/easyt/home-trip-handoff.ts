@@ -167,6 +167,7 @@ function homepageSelection(value: unknown): value is CanonicalPlaceSuggestion {
     && boundedHomepageString(value.label, 512)
     && boundedHomepageString(value.country, HOMEPAGE_SHORT_TEXT_LIMIT, true)
     && (value.region === undefined || boundedHomepageString(value.region))
+    && (value.accessPlaceName === undefined || boundedHomepageString(value.accessPlaceName))
     && typeof value.placeType === "string" && homepagePlaceTypes.has(value.placeType)
     && (value.coordinates === undefined || homepageCoordinates(value.coordinates))
     && (value.bounds === undefined || homepageBounds(value.bounds))
@@ -618,6 +619,7 @@ function homepageEntryMention(entry: HomepageDestinationEntry, order: number): R
     provenance,
     parentCountries: selection.country ? [selection.country] : [],
     parentRegionId: selection.region,
+    accessPlaceName: selection.accessPlaceName,
     bounds: selection.bounds,
     coordinates: selection.coordinates ? [...selection.coordinates] : undefined,
     routability,
@@ -633,6 +635,7 @@ function homepageEntryMention(entry: HomepageDestinationEntry, order: number): R
       placeType: selection.placeType,
       parentCountries: selection.country ? [selection.country] : [],
       parentRegionId: selection.region,
+      accessPlaceName: selection.accessPlaceName,
       bounds: selection.bounds,
       coordinates: selection.coordinates ? [...selection.coordinates] : undefined,
       routability,
