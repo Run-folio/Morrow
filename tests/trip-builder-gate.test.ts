@@ -569,6 +569,7 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
     { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
     { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
     { canonicalPlaceId: "open-world:fixture:tokyo", providerId: "fixture:tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], placeType: "city", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:fixture:osaka", providerId: "fixture:osaka", name: "Osaka", country: "Japan", coordinates: [135.5023, 34.6937], placeType: "city", routability: "direct_destination" },
   ];
   const desktopPlace = { canonicalPlaceId: "open-world:fixture:seoul", providerId: "fixture:seoul", name: "Seoul", country: "South Korea", coordinates: [126.978, 37.5665], placeType: "city", routability: "direct_destination" };
   const geocodeCandidates = Object.fromEntries([...places, desktopPlace].map((place) => [place.name, [{
@@ -590,7 +591,7 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
     }
 
     const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > div > button').allTextContents();
-    assert.deepEqual(stopOrder.map((label: string) => label.replace(/\s+/g, " ").trim()), ["1. Almaty", "2. Samarkand", "3. Tokyo"]);
+    assert.deepEqual(stopOrder.map((label: string) => label.replace(/\s+/g, " ").trim()), ["1. Almaty", "2. Samarkand", "3. Tokyo", "4. Osaka"]);
 
     const search = view.page.getByRole("combobox", { name: "Add a destination" });
     await search.fill("Almaty");

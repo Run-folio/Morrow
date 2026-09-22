@@ -3895,7 +3895,6 @@ function TripBuilderDocument() {
                       label={copy.addDestination}
                       value={stopInput}
                       placeholder={copy.destinationPlaceholder}
-                      contextCountries={stops.map((stop) => stop.country)}
                       excludeCanonicalIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
                       invalid={Boolean(stopError)}
                       describedBy={stopError ? stopErrorId : undefined}
