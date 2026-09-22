@@ -5,6 +5,7 @@ import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-r
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
 import TripOverviewWorkspace from "./trip-overview-workspace";
 import TripShell from "./trip-shell";
+import { createPlanningConfidence } from "@/lib/easyt/planning-confidence";
 
 const image = "/journey/peru-sacred-valley-route.jpg";
 
@@ -224,6 +225,87 @@ export const HealthIssue: Story = {
       ...baseTrip,
       stops: baseTrip.stops.map((stop) => stop.id === "arequipa" ? { ...stop, nights: 1 } : stop),
       legs: baseTrip.legs.map((leg) => leg.id === "valley-arequipa" ? { ...leg, mode: "road", durationMinutes: 480, distanceKm: 615 } : leg),
+    },
+  },
+};
+
+const unresolvedConfidence = createPlanningConfidence({
+  state: "inferred",
+  level: "high",
+  freshness: "current",
+  scope: "general-route",
+  sources: [],
+  reason: "Provider-confirmed protected area.",
+});
+const unresolvedProvenance = [{
+  id: "provider:kruger-national-park",
+  label: "Global place provider",
+  kind: "provider" as const,
+  supports: "Provider-confirmed protected area identity and coordinates.",
+}];
+
+export const UnresolvedPlaceIntent: Story = {
+  args: {
+    trip: {
+      ...baseTrip,
+      brief: {
+        ...baseTrip.brief,
+        structuredBrief: {
+          version: 1,
+          destinations: [],
+          mustVisit: [],
+          countries: [],
+          preferredRegions: [],
+          dates: {},
+          interests: [],
+          transportPreferences: [],
+          accommodationPreferences: [],
+          hardConstraints: [],
+          softPreferences: [],
+          source: { rawPrompt: "Kruger National Park", parserVersion: "storybook", inputs: ["prompt"] },
+          confidence: "high",
+          issues: [],
+          placeMentions: [{
+            mentionId: "place-kruger-national-park",
+            sourceText: "Kruger National Park",
+            sourceTexts: ["Kruger National Park"],
+            normalizedPhrase: "kruger national park",
+            canonicalName: "Kruger National Park",
+            canonicalPlaceId: "provider:kruger-national-park",
+            aliases: [],
+            placeType: "natural_area",
+            status: "resolved",
+            confidence: unresolvedConfidence,
+            provenance: unresolvedProvenance,
+            parentCountries: ["South Africa"],
+            parentRegionId: "Mpumalanga",
+            coordinates: [31.485, -24.994],
+            routability: "needs_base_selection",
+            directlyRoutable: false,
+            requiresBaseSelection: true,
+            isAnchor: true,
+            role: "preferred",
+            order: 3,
+            candidates: [],
+          }],
+          placeIssues: [{
+            code: "region_requires_base",
+            mentionId: "place-kruger-national-park",
+            canonicalPlaceId: "provider:kruger-national-park",
+            sourceText: "Kruger National Park",
+            reason: "The protected area needs a verified overnight base.",
+            message: "Choose where to stay for Kruger National Park before Morrovia adds it to the route.",
+            severity: "error",
+            blocksRoute: true,
+            options: [],
+            provenance: unresolvedProvenance,
+            confidence: unresolvedConfidence,
+          }],
+          placeSelections: [],
+          completedPlanningAreaMentionIds: [],
+          removedPlaceMentionIds: [],
+        },
+      },
     },
   },
 };

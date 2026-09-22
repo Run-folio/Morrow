@@ -411,6 +411,7 @@ export default function TripBuilder() {
 }
 
 function TripBuilderDocument() {
+  const builderSearchParams = useSearchParams();
   const { data: session, isPending: sessionPending, error: sessionError } = authClient.useSession();
   const authenticatedOwnerId = session?.user?.id ?? null;
   const lastAuthenticatedOwnerIdRef = useRef<string | null>(authenticatedOwnerId);
@@ -470,6 +471,7 @@ function TripBuilderDocument() {
   const [deviceRecoveryBlocked, setDeviceRecoveryBlocked] = useState(false);
   const legacyFocusRef = useRef<"summary" | "timing" | null>(null);
   const legacyFocusScheduledRef = useRef(false);
+  const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [showOriginEditor, setShowOriginEditor] = useState(false);
   const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
@@ -1282,13 +1284,16 @@ function TripBuilderDocument() {
 
   useEffect(() => {
     if (!hydrated || typeof document === "undefined") return;
+    const requestedPlaceIntentId = requestedPlaceIntentRef.current;
+    const hasRequestedPlaceIntent = Boolean(requestedPlaceIntentId
+      && pendingClarificationIds.includes(requestedPlaceIntentId));
     const competingModal = Boolean(document.querySelector(
       '[role="dialog"]:not([data-builder-clarification-ui="true"]), [data-product-tour-prompt="true"]',
     ));
     if (!shouldAutoOpenBuilderClarification({
       hydrated,
       placesStep: true,
-      arrivedFromHomepage,
+      arrivedFromHomepage: arrivedFromHomepage || hasRequestedPlaceIntent,
       resolving: resolvingLocations,
       itemCount: pendingClarificationIds.length,
       alreadyOpened: clarificationAutoOpened,
@@ -1296,8 +1301,12 @@ function TripBuilderDocument() {
       competingModal: competingModal || productTourOpen,
       recoveryBlocked: Boolean(cloudSaveError || cloudConflictTrip || deviceRecoveryBlocked || deviceStorageBlocked || pendingStopRemoval),
     })) return;
+    const requestedIndex = requestedPlaceIntentId
+      ? pendingClarificationIds.indexOf(requestedPlaceIntentId)
+      : -1;
     setClarificationSessionIds(pendingClarificationIds);
-    setClarificationIndex(0);
+    setClarificationIndex(Math.max(0, requestedIndex));
+    requestedPlaceIntentRef.current = null;
     setClarificationAutoOpened(true);
     setClarificationOpen(true);
   }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, productTourOpen, resolvingLocations]);

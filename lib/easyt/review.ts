@@ -8,6 +8,7 @@ import { transferDoorToDoorMinutes, transferImpactFromMetadata } from "./transfe
 import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, orderedTripPlanItems, transferSeverity } from "./trip-facts.ts";
 import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
 import { canonicalLegIntegrityIssues, routeEndpointForLeg } from "./trip-legs.ts";
+import { placeIssueRepresentsUnresolvedIntent } from "./unresolved-place-intent.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -586,7 +587,9 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
         evidence: placeIssueEvidence(issue),
         affectedDays: trip.planItems.filter((item) => affectedStopIds.has(item.stopId)).map((item) => item.dayNumber),
         confidence: issue.confidence.level === "high" ? "high" : "medium",
-        proposedChange: null,
+        proposedChange: placeIssueRepresentsUnresolvedIntent(issue)
+          ? { action: "resolve-place-intent", mentionId: issue.mentionId }
+          : null,
       }, results.length));
     });
   return results;

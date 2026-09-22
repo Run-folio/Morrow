@@ -264,6 +264,40 @@ function krugerAttentionDraftWithUnverifiedModelBase() {
   };
 }
 
+function multipleAttentionDraft() {
+  const draft = krugerAttentionDraft();
+  const kruger = draft.structuredBrief.placeMentions!.find((mention) => mention.mentionId === "place-kruger-national-park")!;
+  const krugerIssue = draft.structuredBrief.placeIssues!.find((issue) => issue.mentionId === kruger.mentionId)!;
+  const serengeti = {
+    ...kruger,
+    mentionId: "place-serengeti-national-park",
+    sourceText: "Serengeti National Park",
+    sourceTexts: ["Serengeti National Park"],
+    normalizedPhrase: "serengeti national park",
+    canonicalName: "Serengeti National Park",
+    canonicalPlaceId: "fixture:serengeti-national-park",
+    parentCountries: ["Tanzania"],
+    parentRegionId: "Mara",
+    coordinates: [34.8333, -2.3333] as [number, number],
+    order: kruger.order + 1,
+  };
+  const serengetiIssue = {
+    ...krugerIssue,
+    mentionId: serengeti.mentionId,
+    canonicalPlaceId: serengeti.canonicalPlaceId,
+    sourceText: serengeti.sourceText,
+    message: "Choose where to stay for Serengeti National Park before Morrovia adds it to the route.",
+  };
+  return {
+    ...draft,
+    structuredBrief: {
+      ...draft.structuredBrief,
+      placeMentions: [...draft.structuredBrief.placeMentions!, serengeti],
+      placeIssues: [...draft.structuredBrief.placeIssues!, serengetiIssue],
+    },
+  };
+}
+
 test("valid builder document passes the authoritative invariant", () => {
   const result = canBuildTrip(validInput());
   assert.equal(result.canAdvanceToTime, true);
@@ -438,9 +472,86 @@ test("Build requires explicit continuation without adding unresolved intent and 
     await build.click();
     await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).click();
     await view.page.waitForFunction(() => location.pathname !== "/journey/new", undefined, { timeout: 10_000 });
+    const unresolvedRow = view.page.getByLabel("Places not included in this route");
+    await unresolvedRow.getByText("Not included yet", { exact: true }).waitFor();
+    assert.equal(await unresolvedRow.getByText("Kruger National Park", { exact: true }).count(), 1);
+    assert.equal(await unresolvedRow.getByRole("link", { name: "Choose a nearby base", exact: true }).count(), 1);
+    assert.equal(await view.page.getByText("Choose where to stay for Kruger National Park before Morrovia adds it to the route.", { exact: true }).count(), 0);
     const saved = await recoveryTrip();
     assert.equal(saved.brief.structuredBrief?.placeIssues?.some((issue) => issue.mentionId === "place-kruger-national-park"), true);
     assert.equal(saved.stops.some((stop) => stop.canonicalPlaceId === "fixture:kruger-national-park"), false);
+    await view.page.reload();
+    const reloadedRow = view.page.getByLabel("Places not included in this route");
+    await reloadedRow.getByText("Kruger National Park", { exact: true }).waitFor();
+    await reloadedRow.getByRole("button", { name: "Dismiss", exact: true }).click();
+    await reloadedRow.waitFor({ state: "detached" });
+    await view.page.waitForFunction(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .some((key) => JSON.parse(localStorage.getItem(key)!).trip?.brief?.structuredBrief?.removedPlaceMentionIds
+        ?.includes("place-kruger-national-park")));
+    await view.page.reload();
+    assert.equal(await view.page.getByLabel("Places not included in this route").count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("Overview recovery deep-link opens the exact retained Builder mention", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const view = await renderBuilder({
+    query: "?homeDraft=1&placeIntent=place-serengeti-national-park",
+    draft: multipleAttentionDraft(),
+  });
+  try {
+    const dialog = view.page.getByRole("dialog");
+    await dialog.getByText("Serengeti National Park", { exact: true }).first().waitFor({ timeout: 5_000 });
+    assert.equal(await dialog.getByText("Kruger National Park", { exact: true }).count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("post-Build Kruger recovery adds a canonical base before the Overview reminder disappears", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const view = await renderBuilder({
+    query: "?homeDraft=1",
+    draft: krugerAttentionDraft(),
+    nearbyCandidates: [{
+      canonicalPlaceId: "open-world:fixture:hazyview",
+      name: "Hazyview",
+      label: "Hazyview · Mpumalanga, South Africa",
+      country: "South Africa",
+      region: "Mpumalanga",
+      placeType: "town",
+      coordinates: [31.131, -25.043],
+      routability: "direct_destination",
+      provenance: [{ id: "fixture:hazyview", label: "Controlled global place provider", kind: "provider", supports: "Provider-confirmed settlement near Kruger National Park." }],
+      distanceKm: 37,
+      reason: "37 km from Kruger National Park · Verified town",
+      confidence: createPlanningConfidence({ state: "inferred", level: "high", freshness: "current", scope: "general-route", sources: [], reason: "Provider-confirmed nearby settlement." }),
+    }],
+  });
+  try {
+    await view.page.getByRole("button", { name: "Finish later", exact: true }).click();
+    await view.page.getByRole("button", { name: /Build trip/ }).click();
+    await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).click();
+    const recoveryLink = view.page.getByRole("link", { name: "Choose a nearby base", exact: true });
+    await recoveryLink.waitFor({ timeout: 10_000 });
+    await recoveryLink.click();
+    const suggestion = view.page.getByRole("dialog").getByRole("button", { name: /Hazyview/ }).first();
+    try { await suggestion.waitFor({ timeout: 5_000 }); } catch (error) {
+      throw new Error(`Post-Build recovery did not render the retained mention's nearby base:\n${await view.page.locator("body").innerText()}`, { cause: error });
+    }
+    await suggestion.click();
+    await view.page.getByRole("button", { name: /Finish shaping route|Done with Kruger National Park/ }).click();
+    await view.page.waitForFunction(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .map((key) => JSON.parse(localStorage.getItem(key)!))
+      .some((record) => record.trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === "open-world:fixture:hazyview")));
+    const savedTripId = await view.page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .map((key) => JSON.parse(localStorage.getItem(key)!))
+      .find((record) => record.trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === "open-world:fixture:hazyview"))?.trip?.id) as string;
+    assert.ok(savedTripId);
+    await view.page.goto(new URL(`/journey/${encodeURIComponent(savedTripId)}`, view.page.url()).href);
+    await view.page.getByLabel("Trip overview").waitFor();
+    assert.equal(await view.page.getByLabel("Places not included in this route").count(), 0);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

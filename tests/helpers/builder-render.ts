@@ -16,7 +16,10 @@ let bundle: Promise<string> | undefined;
 async function builderBundle() {
   bundle ??= build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; createRoot(document.getElementById('root')).render(React.createElement(location.pathname.endsWith('/import') ? Importer : Builder));`,
+      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function OverviewFromShell(){const trip=useTripShellTrip();return React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const trip=Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:')).map(key=>JSON.parse(localStorage.getItem(key))).find(record=>record.trip)?.trip;return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(OverviewFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
+      createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
     bundle: true, write: false, platform: "browser", format: "iife", jsx: "automatic",
@@ -24,6 +27,8 @@ async function builderBundle() {
     define: { "process.env.NODE_ENV": '"test"', "process.env": "{}" },
     plugins: [{ name: "framework-boundaries", setup(builder) {
       builder.onResolve({ filter: /^next\/(navigation|link|image)$/ }, ({ path }) => ({ path, namespace: "framework" }));
+      builder.onResolve({ filter: /^@\/components\/journey-planner-map$/ }, () => ({ path: "map", namespace: "fixture" }));
+      builder.onLoad({ filter: /^map$/, namespace: "fixture" }, () => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: `import React from 'react'; export function JourneyPlannerMap(){return React.createElement('div',{'aria-label':'Whole-trip route map preview'});}` }));
       builder.onResolve({ filter: /^@\/lib\/auth-client$/ }, () => ({ path: fileURLToPath(new URL("../../.storybook/auth-client.mock.ts", import.meta.url)) }));
       builder.onLoad({ filter: /.*/, namespace: "framework" }, ({ path }) => ({ resolveDir: fileURLToPath(new URL("../../", import.meta.url)), contents: path.endsWith("navigation")
         ? `export const useSearchParams=()=>new URLSearchParams(location.search); export const usePathname=()=>location.pathname; export const useRouter=()=>({push:href=>location.assign(href),replace:href=>location.replace(href)});`
@@ -107,7 +112,11 @@ export async function renderBuilder({
   const address = server.address() as { port: number };
   await page.goto(`http://127.0.0.1:${address.port}${path}${query}`);
   try {
-    await page.waitForFunction(() => location.pathname.endsWith("/import") ? Boolean(document.querySelector('a[href="/journey/new"]')) : Boolean(document.querySelector('[data-builder-root="true"]:not([aria-busy="true"])')), undefined, { timeout: 10000 });
+    await page.waitForFunction(() => location.pathname.endsWith("/import")
+      ? Boolean(document.querySelector('a[href="/journey/new"]'))
+      : location.pathname === "/journey/new"
+        ? Boolean(document.querySelector('[data-builder-root="true"]:not([aria-busy="true"])'))
+        : Boolean(document.querySelector('[aria-label="Trip overview"]')), undefined, { timeout: 10000 });
   } catch (error) {
     await browser.close(); server.close();
     throw new Error(`Builder failed to render: ${errors.join("; ")}`, { cause: error });
