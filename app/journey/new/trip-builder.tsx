@@ -529,6 +529,7 @@ function TripBuilderDocument() {
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
   const [routeCheckProposalStopIds, setRouteCheckProposalStopIds] = useState<readonly string[] | null>(null);
   const [selectedRouteStopId, setSelectedRouteStopId] = useState<string | null>(null);
@@ -3832,11 +3833,12 @@ function TripBuilderDocument() {
                           key={stop.id}
                           role="listitem"
                           draggable={!locked}
-                          className={`${styles.handoffStop} ${dragId === stop.id ? styles.handoffStopDragging : ""}`}
-                          onDragStart={(event) => { setDragId(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }}
-                          onDragOver={(event) => { if (!locked) event.preventDefault(); }}
-                          onDrop={(event) => { event.preventDefault(); const sourceId = dragId ?? event.dataTransfer.getData("text/plain"); moveStop(stops.findIndex((item) => item.id === sourceId), index); setDragId(null); }}
-                          onDragEnd={() => setDragId(null)}
+                          className={`${styles.handoffStop} ${dragId === stop.id ? styles.handoffStopDragging : ""} ${dragTargetId === stop.id ? styles.handoffStopDropTarget : ""} ${dragTargetId === stop.id && stops.findIndex((item) => item.id === dragId) < index ? styles.handoffStopDropTargetAfter : ""}`}
+                          onDragStart={(event) => { setDragId(stop.id); setDragTargetId(null); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }}
+                          onDragEnter={(event) => { if (locked || dragId === stop.id) { setDragTargetId(null); return; } event.preventDefault(); setDragTargetId(stop.id); }}
+                          onDragOver={(event) => { if (locked || dragId === stop.id) { setDragTargetId(null); return; } event.preventDefault(); setDragTargetId(stop.id); }}
+                          onDrop={(event) => { event.preventDefault(); const sourceId = dragId ?? event.dataTransfer.getData("text/plain"); moveStop(stops.findIndex((item) => item.id === sourceId), index); setDragId(null); setDragTargetId(null); }}
+                          onDragEnd={() => { setDragId(null); setDragTargetId(null); }}
                         >
                           <GripVertical aria-hidden="true" />
                           <b aria-hidden="true">{index + 1}</b>

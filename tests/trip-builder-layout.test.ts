@@ -227,10 +227,18 @@ test("the unified route workspace projects canonical occurrences beside the map"
   assert.match(workspace, /key=\{stop\.id\}/);
   assert.match(workspace, /<b>\{index \+ 1\}<\/b>/,
     "row ordinals must be derived from occurrence order, matching map markers");
-  assert.match(styles, /\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(0,1\.05fr\) minmax\(320px,\.95fr\)/,
-    "desktop route rows and map should have approximately equal visual weight");
-  assert.match(styles, /@media\(max-width:1024px\)\{\.builderRouteGrid\{[^}]*grid-template-areas:"map" "rows"/,
-    "narrow layouts must place the route projection before the rows");
+  assert.match(styles, /\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(0,1\.4fr\) minmax\(320px,1fr\)/,
+    "wide desktop should give the primary route table more space than the supporting map");
+  assert.match(styles, /@media\(min-width:1161px\) and \(max-width:1320px\)\{\.builderRouteGrid\{[^}]*grid-template-columns:minmax\(680px,1\.85fr\) minmax\(320px,1fr\)/,
+    "smaller desktop should protect a meaningful table width before shrinking the map");
+  assert.match(styles, /@media\(max-width:1160px\)\{\.builderRouteGrid\{[^}]*grid-template-areas:"rows" "map"/,
+    "the desktop workspace should stack the primary route table before the map once both no longer fit");
+  assert.match(styles, /@media\(max-width:700px\)[\s\S]*?\.builderRouteGrid\{[^}]*grid-template-areas:"map" "rows"/,
+    "the established collapsible-map-first mobile composition should remain intact");
+  assert.match(styles, /\.builderRouteRows\{[^}]*overflow:visible/,
+    "row action menus must be able to escape the table boundary without expanding it");
+  assert.match(styles, /\.builderRouteRow:has\(\.builderRouteActions\[open\]\)\{z-index:2\}/,
+    "an open row menu should paint above neighbouring rows");
   assert.match(workspace, /mapCollapsed \? "Show map" : "Collapse map"/,
     "mobile route editing should expose an explicit map collapse control");
   assert.match(styles, /\.builderRouteMapToggle\{display:none/,
