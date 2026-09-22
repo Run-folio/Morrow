@@ -830,6 +830,11 @@ export function JourneyMapPlannerWorkspace({
     : null;
   const wholeRouteMapContext = mapMode === "overview" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg;
   const hasExplicitMapContext = Boolean(selectedLocalPlace || selectedPlannerPin || selectedRouteLeg);
+  const mapFocusOffset: [number, number] = isShellPresentation
+    ? hasExplicitMapContext
+      ? [0, -80]
+      : [180, -80]
+    : [210, 0];
   const showShellContext = Boolean(
     !tripStatusExpanded
     && !copilotOpen
@@ -926,6 +931,12 @@ export function JourneyMapPlannerWorkspace({
     setSelectedMapResult(null);
     restoreMapMarkerFocus("mapResultId", id);
   }, [restoreMapMarkerFocus, selectedLocalPlaceId]);
+  const dismissSelectedMapResult = useCallback(() => {
+    clearSelectedLocalPlace();
+    setMobileShapeDayOpen(true);
+    setMobileMapSheetCollapsed(false);
+    setMobileMapSheetSize("medium");
+  }, [clearSelectedLocalPlace]);
   const selectMapResult = useCallback((result: MapResultPlace) => {
     setSelectedMapResult(result);
     setSelectedPlannerPin(null);
@@ -1012,7 +1023,7 @@ export function JourneyMapPlannerWorkspace({
       if (event.key !== "Escape" || copilotOpen) return;
       if (selectedMapResult) {
         event.preventDefault();
-        clearSelectedLocalPlace();
+        dismissSelectedMapResult();
         return;
       }
       if (selectedPlannerPin) {
@@ -1036,7 +1047,7 @@ export function JourneyMapPlannerWorkspace({
     };
     window.addEventListener("keydown", onMapEscape);
     return () => window.removeEventListener("keydown", onMapEscape);
-  }, [clearSelectedLocalPlace, clearSelectedRouteLeg, copilotOpen, mapMode, resetWholeRoute, restoreMapMarkerFocus, selectedMapResult, selectedPlannerPin, selectedRouteLegId]);
+  }, [clearSelectedRouteLeg, copilotOpen, dismissSelectedMapResult, mapMode, resetWholeRoute, restoreMapMarkerFocus, selectedMapResult, selectedPlannerPin, selectedRouteLegId]);
   const handleRestaurantSelect = useCallback((restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => {
     setSelectedRestaurant(restaurant ? { restaurant, meal } : undefined);
   }, []);
@@ -2344,7 +2355,7 @@ export function JourneyMapPlannerWorkspace({
               plannerPins={persistedMapProjection.plannerPins}
               mapResults={mapResults}
               selectedMapResult={selectedMapResult}
-              focusOffset={isShellPresentation ? [180, -80] : [210, 0]}
+              focusOffset={mapFocusOffset}
               focusZoom={isShellPresentation ? 9.5 : undefined}
               focusCoordinates={mapMode === "detail" && selectedPlannerPin ? [selectedPlannerPin.longitude, selectedPlannerPin.latitude] : null}
               draftPinCoordinates={pinCoordinates}
@@ -2557,9 +2568,7 @@ export function JourneyMapPlannerWorkspace({
                 return;
               }
               if (mobileMapSheetView === "context" && selectedLocalPlace) {
-                clearSelectedLocalPlace();
-                setMobileShapeDayOpen(true);
-                setMobileMapSheetSize("medium");
+                dismissSelectedMapResult();
                 return;
               }
               setTripStatusExpanded(false);
@@ -2580,7 +2589,7 @@ export function JourneyMapPlannerWorkspace({
           <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
             <h2 id="map-context-title" className={selectedRecommendationDetail ? "sr-only" : undefined}>{selectedLocalPlace?.name ?? selectedPlannerPin?.title ?? (selectedRouteLeg ? `${selectedRouteLeg.fromName} → ${selectedRouteLeg.toName}` : mapMode === "overview" ? `${customTrip.stops.length} ${customTrip.stops.length === 1 ? "stop" : "stops"}, one connected trip` : selectedTripStop?.name ?? selected.city)}</h2>
-            {selectedLocalPlace ? <button type="button" onClick={() => { clearSelectedLocalPlace(); setMobileMapSheetCollapsed(true); }} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapSheetCollapsed(true); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
+            {selectedLocalPlace ? <button type="button" onClick={dismissSelectedMapResult} aria-label="Close selected place details"><X aria-hidden="true" /></button> : selectedPlannerPin ? <button type="button" onClick={() => { const id = selectedPlannerPin.id; setSelectedPlannerPin(null); setMobileMapSheetCollapsed(true); restoreMapMarkerFocus("plannerPinId", id); }} aria-label="Close selected pin details"><X aria-hidden="true" /></button> : selectedRouteLeg ? <button type="button" onClick={clearSelectedRouteLeg} aria-label="Close transfer details"><X aria-hidden="true" /></button> : mapMode === "detail" ? <button type="button" onClick={resetWholeRoute} aria-label="Close destination details"><X aria-hidden="true" /></button> : null}
           </div>
 
           {selectedRecommendationDetail && selectedLocalPlace ? <div className={styles.mapPlaceDetail}>
@@ -2588,7 +2597,7 @@ export function JourneyMapPlannerWorkspace({
               embedded
               detail={selectedRecommendationDetail}
               mapHref={selectedLocalPlace.mapsUrl}
-              onClose={clearSelectedLocalPlace}
+              onClose={dismissSelectedMapResult}
               primaryActions={<>
                 {selectedLocalPlace.kind === "stay" && selectedLocalPlace.state === "result" ? <EasyTButton fullWidth onClick={saveSelectedRecommendation}>Save stay for {selectedTripStop?.name ?? "this stop"}</EasyTButton> : null}
                 {selectedLocalPlace.kind !== "stay" && selectedLocalPlace.state !== "scheduled" && selectedPlanItem ? <EasyTButton fullWidth onClick={addSelectedRecommendation}>Add to Day {selectedPlanItem.dayNumber}</EasyTButton> : null}

@@ -70,6 +70,9 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*right:92px!important;[\s\S]*bottom:48px!important/);
   assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
+  assert.match(mapWorkspaceSource, /const mapFocusOffset: \[number, number\] = isShellPresentation[\s\S]*hasExplicitMapContext[\s\S]*\? \[0, -80\][\s\S]*: \[180, -80\]/,
+    "selected-result focus should stay in the usable canvas between the rail and contextual card on narrow desktop");
+  assert.match(mapWorkspaceSource, /focusOffset=\{mapFocusOffset\}/);
 });
 
 test("Storybook covers the risk-based simplified Map workspace matrix", () => {
@@ -291,7 +294,10 @@ test("mobile Map has one contextual sheet owner with explicit reachable sizes", 
 
 test("mobile result detail replaces the list and has a visible route back", () => {
   assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace \? "Results" : "Map"/);
-  assert.match(mapWorkspaceSource, /clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetSize\("medium"\)/);
+  assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetCollapsed\(false\);[\s\S]*setMobileMapSheetSize\("medium"\);/);
+  assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
+  assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace[\s\S]*dismissSelectedMapResult\(\);/);
+  assert.match(mapWorkspaceSource, /aria-label="Close selected place details"[\s\S]*onClose=\{dismissSelectedMapResult\}/);
   assert.match(mapWorkspaceSource, /onMapResultSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectMapResult\(place\); \}\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);
