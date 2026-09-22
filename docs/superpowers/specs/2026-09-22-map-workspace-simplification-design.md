@@ -52,7 +52,7 @@ The workspace must not depend on a separate expansion state to become useful. Ex
 
 ### Route and location context
 
-`JourneyPlannerStrip` remains fixed at the top of the Map workspace. It owns:
+`JourneyPlannerStrip` remains persistently positioned at the top of the Map workspace. This describes the intended visual hierarchy and does not require a new CSS `position: fixed` layer or navigation/scroll overlap. It owns:
 
 - ordered trip stops;
 - active stop state;
@@ -210,7 +210,19 @@ Automated acceptance must cover:
 - map controls and attribution remain reachable at desktop, tablet, phone, short-phone, and landscape widths;
 - accepted basemap, camera, result projection, persistence, and public-map reliability tests remain green.
 
-Required verification includes focused Map tests, responsive/Storybook coverage, typecheck, strict UI audit, Storybook build when shared stories change, and `git diff --check`. Browser verification is appropriate for #312 because the ticket explicitly changes the responsive spatial composition; it supplements rather than replaces automated coverage.
+Implementation verification is risk-based. The default required evidence is:
+
+- one representative 1440px desktop Map state;
+- one representative 390px mobile Map state;
+- whole-route state;
+- selected-destination state;
+- one Stay or See results state;
+- one selected-result state;
+- one accepted Map reliability regression;
+- typecheck;
+- `git diff --check`.
+
+Expand verification to short-phone, landscape, tablet, a full Storybook build, the broader UI audit, or additional reliability suites only when the implementation touches those contracts or focused verification reveals a concrete reason. Browser verification is appropriate for the representative 1440px and 390px states because #312 changes spatial composition; it supplements rather than replaces automated coverage.
 
 ## Non-goals
 
