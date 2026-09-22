@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { StyleSpecification } from "maplibre-gl";
@@ -17,6 +18,16 @@ import {
   type MorroviaBasemapMap,
   type MorroviaBasemapSnapshot,
 } from "../lib/easyt/map-basemap-lifecycle.ts";
+
+const require = createRequire(import.meta.url);
+
+function positionDeclaration(css: string, selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const block = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1];
+  const position = block?.match(/(?:^|;)\s*position\s*:\s*([^;!]+?)\s*(!important)?(?:;|$)/);
+  assert.ok(position, `Expected ${selector} to define position`);
+  return { value: position[1]!.trim(), important: Boolean(position[2]) };
+}
 
 type Listener = (event: { sourceId?: string; error?: unknown; type?: string }) => void;
 
@@ -116,6 +127,15 @@ test("the production basemap always starts with a real keyless detailed style", 
   assert.equal(MORROVIA_DETAILED_BASEMAP_STYLE_URL, "https://tiles.openfreemap.org/styles/positron");
   const environment = readFileSync(new URL("../.env.example", import.meta.url), "utf8");
   assert.doesNotMatch(environment, /NEXT_PUBLIC_CARTO_BASEMAP_KEY/);
+});
+
+test("production CSS order keeps the MapLibre render container stretched to the planner surface", () => {
+  const presentation = readFileSync(new URL("../components/easyt/morrovia-map-presentation.module.css", import.meta.url), "utf8");
+  const maplibre = readFileSync(require.resolve("maplibre-gl/dist/maplibre-gl.css"), "utf8");
+  const localContainer = positionDeclaration(presentation, ".canvas");
+  const laterMapLibreRule = positionDeclaration(maplibre, ".maplibregl-map");
+  assert.equal(laterMapLibreRule.value, "relative");
+  assert.deepEqual(localContainer, { value: "absolute", important: true });
 });
 
 test("the provider-independent fallback can never become a transparent detailed canvas", () => {
