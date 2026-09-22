@@ -23,11 +23,11 @@ test("Stay settled states are neutral and the mapped-location blocker hands off 
   assert.doesNotMatch(stay, /<MorroviaSectionStatus title=\{overnightStops\.length/);
 });
 
-test("Builder keeps the canonical blocker at the summary and CTA without repeating it in expanded copy", () => {
+test("Builder keeps one blocker summary without repeating itinerary invariant copy at the CTA", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
 
-  assert.match(builder, /const timingWarningSummary = gateConflict\?\.message/);
-  assert.match(builder, /\{gate && <small className=\{styles\.gate\}>\{gate\}<\/small>\}/);
+  assert.match(builder, /const timingWarningSummary = gateConflict \? gate/);
+  assert.match(builder, /\{gate && gateConflict\?\.code !== "itinerary-stop-uncovered" && <small className=\{styles\.gate\}>\{gate\}<\/small>\}/);
   assert.doesNotMatch(builder, /\{gateConflict && <li>\{gateConflict\.message\}<\/li>\}/);
 });
 
