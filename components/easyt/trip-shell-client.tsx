@@ -23,7 +23,7 @@ import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
-import { shouldResetOverviewEntry, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
+import { shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -58,7 +58,7 @@ export function TripShellIdentityAndActions() {
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
   const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";
-  const editHref = `/journey/new?trip=${encodeURIComponent(trip.id)}`;
+  const editHref = tripBuilderHref(trip.id, trip.ownerId);
   const [renameOpen, setRenameOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [validationError, setValidationError] = useState("");
