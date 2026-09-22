@@ -47,16 +47,38 @@ const mapStoriesSource = readFileSync(
   "utf8",
 );
 
-test("the normal Map workspace is viewport-dominant without a separate fullscreen mode", () => {
+test("the same Map workspace can expand above page chrome without a second map", () => {
   assert.match(tripMapWorkspaceStylesSource, /width:\s*100vw/);
   assert.match(tripMapWorkspaceStylesSource, /margin-left: 50%/);
   assert.match(tripMapWorkspaceStylesSource, /transform: translateX\(-50%\)/);
   assert.match(mapStylesSource, /--map-workspace-strip-height:\s*64px/);
   assert.match(mapStylesSource, /--map-workspace-rail-width:\s*clamp\(360px,[^,]+,420px\)/);
   assert.match(mapStylesSource, /height:\s*calc\(100svh - var\(--morrovia-navigation-height\)\)/);
-  assert.doesNotMatch(mapWorkspaceSource, /isExpandedMap|toggleExpandedMap|closeExpandedMap/);
-  assert.doesNotMatch(mapWorkspaceSource, /Fullscreen map|Exit fullscreen|onFullTrip=|fullTripExpanded=/);
-  assert.doesNotMatch(mapStylesSource, /shellPlannerExpanded/);
+  assert.match(mapWorkspaceSource, /onFullTrip=\{isShellPresentation \? toggleExpandedMap : undefined\}/);
+  assert.match(mapWorkspaceSource, /fullTripExpanded=\{isExpandedMap\}/);
+  assert.match(mapWorkspaceSource, /styles\.shellPlannerExpanded/);
+  assert.match(tripMapWorkspaceStylesSource, /\.wideMap:has\(\[data-map-expanded="true"\]\)/);
+  assert.match(tripMapWorkspaceStylesSource, /\.wideMap:has\(\[data-map-expanded="true"\]\)\s*\{[^}]*height:\s*calc\(100svh - var\(--morrovia-navigation-height\)\)/);
+  assert.doesNotMatch(tripMapWorkspaceStylesSource, /\.wideMap:has\(\[data-map-expanded="true"\]\)\s*\{[^}]*position:\s*fixed/);
+  assert.match(mapStylesSource, /\.shellPlannerExpanded/);
+  assert.match(mapStylesSource, /\.canonicalPlanner\.shellPlannerExpanded\{[^}]*position:fixed/);
+  assert.match(plannerStripStylesSource, /@media\(max-width:980px\)[\s\S]*?\.integrated \.fullTrip\[data-map-expand-control\]\{display:none/);
+  assert.equal((mapWorkspaceSource.match(/<JourneyPlannerMap/g) ?? []).length, 1);
+});
+
+test("expanded Map restores scroll and focus before Escape can dismiss map state", () => {
+  assert.match(mapWorkspaceSource, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(mapWorkspaceSource, /document\.body\.style\.overflow = previousOverflow/);
+  assert.match(mapWorkspaceSource, /window\.scrollTo\(\{ top: scrollY, behavior: "instant" \}\)/);
+  assert.match(mapWorkspaceSource, /if \(restoreScrollOnExitRef\.current\) window\.scrollTo/);
+  assert.match(mapWorkspaceSource, /\[data-map-expand-control\]/);
+  assert.match(mapWorkspaceSource, /if \(isExpandedMap\) \{[\s\S]*?toggleExpandedMap\(\);[\s\S]*?return;[\s\S]*?if \(selectedMapResult\)/);
+  assert.match(mapWorkspaceSource, /if \(event\.key !== "Escape"\) return;[\s\S]*?if \(isExpandedMap\)[\s\S]*?if \(copilotOpen\) return;/);
+});
+
+test("TripShell keeps the ResizeObserver but does not re-fit a manually moved whole-route camera", () => {
+  assert.match(mapWorkspaceSource, /preserveCameraOnResize=\{isShellPresentation\}/);
+  assert.match(mapSource, /map\.resize\(\);[\s\S]*?if \(preserveCameraOnResize \|\| !overviewMode/);
 });
 
 test("desktop Map has one persistent left rail and only contextual secondary detail", () => {

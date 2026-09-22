@@ -53,6 +53,8 @@ type JourneyPlannerMapProps = {
   /** Accessible name for a scoped preview; the whole-route label remains the default. */
   previewLabel?: string;
   overviewPadding?: { top: number; right: number; bottom: number; left: number };
+  /** Keep a traveller-adjusted camera when the TripShell map changes size. */
+  preserveCameraOnResize?: boolean;
   /** Changes whenever surrounding Map UI should immediately release camera ownership. */
   cameraInteractionKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
@@ -123,6 +125,7 @@ export function JourneyPlannerMap({
   previewMode = false,
   previewLabel,
   overviewPadding,
+  preserveCameraOnResize = false,
   cameraInteractionKey,
   onMapPinDrop,
   onPlannerPinSelect,
@@ -347,7 +350,7 @@ export function JourneyPlannerMap({
         const map = mapRef.current;
         if (!map) return;
         map.resize();
-        if (!overviewMode || overviewCoordinates.length < 2) return;
+        if (preserveCameraOnResize || !overviewMode || overviewCoordinates.length < 2) return;
         const bounds = overviewCoordinates.slice(1).reduce(
           (result, coordinates) => result.extend(coordinates),
           new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
@@ -364,7 +367,7 @@ export function JourneyPlannerMap({
       window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [comparisonLegs, comparisonRouteKey, overviewMode, overviewPaddingKey, overviewRouteKey, previewMode]);
+  }, [comparisonLegs, comparisonRouteKey, overviewMode, overviewPaddingKey, overviewRouteKey, preserveCameraOnResize, previewMode]);
 
   useEffect(() => {
     const map = mapRef.current;
