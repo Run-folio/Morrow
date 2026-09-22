@@ -73,10 +73,12 @@ export async function renderBuilder({
       }
       if (url.pathname === "/api/journey-geocode" && url.searchParams.get("candidates") === "1") {
         const place = url.searchParams.get("place") ?? "";
+        const country = url.searchParams.get("country");
         const defaultCandidate = place === "Tokyo"
           ? { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" }
           : undefined;
-        const candidates = geocodeCandidates[place] ?? (defaultCandidate ? [defaultCandidate] : []);
+        const candidates = (geocodeCandidates[place] ?? (defaultCandidate ? [defaultCandidate] : []))
+          .filter((candidate) => !country || (candidate as { country?: string }).country === country);
         response.setHeader("Content-Type", "application/json");
         response.end(JSON.stringify({ candidates }));
         return;
