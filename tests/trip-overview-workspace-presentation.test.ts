@@ -102,7 +102,7 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.match(source, /className=\{styles\.stopOverlay\}/);
   assert.match(source, /href=\{`\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/map`\}/);
   assert.match(source, /<JourneyPlannerMap[\s\S]*overviewMode previewMode/);
-  assert.match(source, /View full map/);
+  assert.doesNotMatch(source, /View full map/);
   assert.doesNotMatch(source, /GEORGIA|Tbilisi|Stepantsminda|Ushguli|Mestia/);
 });
 

@@ -62,7 +62,7 @@
   gap: 9px;
 }
 
-.routeActions a svg, .routeMapAction svg, .routeRationale a svg { width: 15px; height: 15px; }
+.routeActions a svg, .routeRationale a svg { width: 15px; height: 15px; }
 .routeComposition {
   margin-top: 20px;
   display: grid;
@@ -175,7 +175,6 @@
 
 .routeMapPreview :global(.planner-map__stop.is-preview.is-origin) { background: var(--morrovia-ink); }
 .routeMapPreview :global(.planner-map__stop.is-preview::after) { display: none; }
-.routeMapAction { position: absolute; z-index: 2; top: 12px; right: 12px; box-shadow: 0 8px 18px rgba(23,16,111,.12); }
 .emptyRoute {
   min-height: 120px;
   margin-top: 18px;
@@ -329,7 +328,6 @@
   .routeList { overflow-x: auto; padding: 4px 1px 8px; }
   .routeList > li { flex-basis: 136px; min-width: 136px; }
   .routeMapPreview { min-height: 220px; }
-  .routeMapAction { --control-height: 44px; min-height: 44px; }
   .routeIssues li { grid-template-columns: auto minmax(0, 1fr); }
   .routeIssues a { grid-column: 2; justify-self: start; }
   .beforeGoDisclosure > summary { padding: 19px 18px; display: grid; }

@@ -131,7 +131,7 @@ export default function TripShellResolver({
   if (resolution.status === "missing") notFound();
 
   return <div className={styles.resolverStack}>
-    {!ownerId ? <MorroviaStatusBanner className={styles.resolverNotice} title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTLinkButton size="small" href={tripSaveSignInHref(tripId)}>Save this trip</EasyTLinkButton>} /> : null}
+    {!ownerId ? <MorroviaStatusBanner className={styles.resolverNotice} title="Saved on this device" detail="Keep this trip and continue planning on another device." actions={<EasyTLinkButton size="small" variant="secondary" href={tripSaveSignInHref(tripId)}>Save this trip</EasyTLinkButton>} /> : null}
     {syncComplete ? <MorroviaStatusBanner className={styles.resolverNotice} tone="success" title="Trip saved to your account" detail="You can continue this same trip on another device." /> : null}
     {syncIssue ? <MorroviaStatusBanner
       className={styles.resolverNotice}
