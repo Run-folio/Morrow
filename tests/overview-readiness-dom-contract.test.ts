@@ -56,7 +56,7 @@ function returnedJsxRoots(fn: ts.FunctionDeclaration) {
   return roots;
 }
 
-function assertSingleActionSurface(path: string, owner: string, expectedRoots: string[]) {
+function assertSingleActionSurface(path: string, owner: string, expectedRoots: string[], expectsAffiliate = true) {
   const { file } = sourceFile(path);
   const fn = findFunction(file, owner);
   const content = contentInitializer(fn);
@@ -70,12 +70,16 @@ function assertSingleActionSurface(path: string, owner: string, expectedRoots: s
     assert.doesNotMatch(root.getText(), /\b(?:role|tabIndex|onKeyDown)=/, `${tagName(root)} must keep native keyboard semantics`);
   }
   const affiliateRoot = roots.find((node) => tagName(node) === "MorroviaAffiliateLink");
-  assert.ok(affiliateRoot);
-  assert.match(affiliateRoot.getText(), /renderAsSurface/, "affiliate tracking must live on the same semantic surface");
+  if (expectsAffiliate) {
+    assert.ok(affiliateRoot);
+    assert.match(affiliateRoot.getText(), /renderAsSurface/, "affiliate tracking must live on the same semantic surface");
+  } else {
+    assert.equal(affiliateRoot, undefined);
+  }
 }
 
 test("the production Overview composition gives every actionable readiness tile one semantic surface", () => {
-  assertSingleActionSurface("components/easyt/trip-overview-workspace.tsx", "ProgressItem", ["article", "MorroviaAffiliateLink", "a", "a", "Link"]);
+  assertSingleActionSurface("components/easyt/trip-overview-workspace.tsx", "ArrangeItem", ["article", "Link"], false);
 });
 
 test("the production Before-you-go composition gives every single-action task row one semantic surface", () => {
@@ -88,9 +92,9 @@ test("the production Before-you-go composition gives every single-action task ro
 test("the surface itself owns padding, focus, hover and a touch target without pseudo-element hit areas", () => {
   const overviewStyles = readFileSync("components/easyt/trip-overview-workspace.module.css", "utf8");
   const preparationStyles = readFileSync("components/easyt/trip-preparation.module.css", "utf8");
-  assert.match(overviewStyles, /\.progressItem \{[\s\S]*?min-height: 44px;[\s\S]*?padding: 15px 18px 0;/);
-  assert.match(overviewStyles, /\.progressItemInteractive:hover/);
-  assert.match(overviewStyles, /\.progressItemInteractive:focus-visible/);
+  assert.match(overviewStyles, /\.arrangeItem \{[\s\S]*?min-height: 142px;[\s\S]*?padding: 17px;/);
+  assert.match(overviewStyles, /\.arrangeItemInteractive:hover/);
+  assert.match(overviewStyles, /\.arrangeItemInteractive:focus-visible/);
   assert.match(preparationStyles, /\.taskRow \{[\s\S]*?min-height: 72px;[\s\S]*?padding: 10px 12px;/);
   assert.match(preparationStyles, /\.taskRowInteractive:hover/);
   assert.match(preparationStyles, /\.taskRowInteractive:focus-visible/);

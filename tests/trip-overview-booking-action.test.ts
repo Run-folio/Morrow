@@ -2,22 +2,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { affiliatePartners } from "../lib/easyt/booking-readiness.ts";
-
-test("Overview surfaces an unresolved stay as the attributable Trip.com next action", () => {
+test("Overview keeps unresolved stays in the canonical Stay workspace instead of an affiliate hero", () => {
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /getBookingAction\(\{ category: "accommodation", trip, stop: missingStay \}\)/);
-  assert.match(source, /href: missingStayAction\.href/);
-  assert.match(source, /label: missingStayAction\.cta/);
-  assert.match(source, /provider: missingStayAction\.provider/);
-  assert.match(source, /affiliateCategory: missingStayAction\.category/);
-  assert.equal(affiliatePartners.tripCom.accommodationUrl, "https://www.trip.com/t/pdAWQqi56W2");
+  assert.match(source, /mapWorkspaceHref\(trip\.id, accommodation\.stops\.find[\s\S]*"stay"\)/);
+  assert.match(source, /label: "View stays"/);
+  assert.doesNotMatch(source, /getBookingAction|missingStayAction|journey-accommodation-search/);
 });
 
-test("Overview emits one privacy-safe generic affiliate event for Trip.com", () => {
-  const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /getBookingAction\(\{ category: "accommodation", trip, stop: missingStay \}\)/);
-  const event = source.match(/trackEvent\("affiliate_click", \{ category: action\.affiliateCategory, provider: action\.provider, trip_id: trip\.id, stop_id: action\.stopId, placement: "overview_next_action", workspace_view: "overview" \}\)/)?.[0] ?? "";
-  assert.ok(event);
-  assert.doesNotMatch(event, /raw_prompt|traveller|country|city/);
+test("Overview affiliate tracking remains owned by canonical preparation task rows", () => {
+  const overview = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
+  const preparation = readFileSync("components/easyt/trip-preparation.tsx", "utf8");
+  assert.doesNotMatch(overview, /overview_next_action|trackEvent\("affiliate_click"/);
+  assert.match(preparation, /trackEvent\("affiliate_click"/);
+  assert.match(preparation, /placement: "overview_before_you_go"/);
+  assert.doesNotMatch(preparation.match(/trackEvent\("affiliate_click"[\s\S]*?\}\);/)?.[0] ?? "", /raw_prompt|traveller|country|city/);
 });

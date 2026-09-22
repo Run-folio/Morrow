@@ -9,76 +9,68 @@ const shellSource = readFileSync("components/easyt/trip-shell.tsx", "utf8");
 const resolverSource = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
 const shellClientSource = readFileSync("components/easyt/trip-shell-client.tsx", "utf8");
 
-test("Overview prioritises route understanding before readiness and supporting tasks", () => {
+test("Overview prioritises the route, one planning action and three next-to-arrange decisions", () => {
   const tripHeader = shellSource.indexOf('<header className={styles.tripHeader}>');
   const shellContent = shellSource.indexOf('<div className={styles.content}>{children}</div>');
-  const nextAction = source.indexOf('className={`${styles.nextAction}');
-  const health = source.indexOf('<article className={styles.healthCard}>');
-  const route = source.indexOf('<section className={styles.routeCard}');
-  const progress = source.indexOf('<section ref={progressOrientationTarget} className={styles.progressCard}');
-  const readiness = source.indexOf('<p>Readiness at a glance</p>');
-  const planningProgress = source.indexOf('<h2 id="overview-progress-title">Planning progress</h2>');
+  const route = source.indexOf('<section ref={nextOrientationTarget} className={styles.routeCard}');
+  const arrange = source.indexOf('<section ref={progressOrientationTarget} className={styles.arrangeCard}');
   const plans = source.indexOf('<TripExplicitPlans trip={trip} variant="overview" />');
   const beforeGo = source.indexOf('<section className={styles.beforeGo}');
 
   assert.ok(tripHeader >= 0 && tripHeader < shellContent);
-  assert.ok(nextAction >= 0 && nextAction < route);
-  assert.ok(health >= 0 && health < route);
-  assert.ok(route < progress && progress <= readiness && readiness < planningProgress);
-  assert.ok(progress < plans);
+  assert.ok(route >= 0 && route < arrange);
+  assert.ok(arrange < plans);
   assert.ok(plans < beforeGo);
-  assert.match(styles, /grid-template-areas:\s*"next health"\s*"route route"\s*"progress progress"\s*"plans plans"\s*"before before"/);
-  assert.match(styles, /@media \(max-width: 720px\)[\s\S]*grid-template-areas:\s*"next"\s*"health"\s*"route"\s*"progress"\s*"plans"\s*"before"/);
+  assert.match(source, /Your route is ready to shape/);
+  assert.match(source, /label: firstArrival[\s\S]*\? "Plan my days"/);
+  assert.match(source, />Explore on map</);
+  assert.match(source, />Adjust route</);
+  assert.match(source, /Next to arrange/);
+  assert.match(source, /Keep building your trip/);
+  assert.doesNotMatch(source, /Your next step|Trip health|Readiness at a glance|Planning progress/);
+  assert.match(styles, /grid-template-areas:\s*"route"\s*"arrange"\s*"plans"\s*"before"/);
+  assert.match(shellClientSource, /overnightAccommodationStops\(trip\)\.length/);
+  assert.match(shellClientSource, /"overnight place" : "overnight places"/);
 });
 
-test("critical trip and persistence states stay ahead of the promoted route module", () => {
-  const health = source.indexOf('<article className={styles.healthCard}>');
-  const route = source.indexOf('<section className={styles.routeCard}');
+test("critical trip and persistence states remain truthful without a duplicate health dashboard", () => {
   const resolverBanner = resolverSource.indexOf("syncIssue ? <MorroviaStatusBanner");
   const resolverShell = resolverSource.indexOf("<TripShell trip=");
   const sessionBanner = shellClientSource.indexOf('{ownerBoundary === "expired" || ownerBoundary === "signed-out" ? (');
   const recoveryBanner = shellClientSource.indexOf("{visibleDeviceRecovery ? (");
   const tripProvider = shellClientSource.indexOf("<TripShellTripContext.Provider");
 
-  assert.ok(health >= 0 && health < route);
+  assert.match(source, /materialRouteIssues/);
   assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
+  assert.doesNotMatch(source, /className=\{styles\.healthCard\}/);
   assert.ok(resolverBanner >= 0 && resolverBanner < resolverShell);
   assert.ok(sessionBanner >= 0 && sessionBanner < tripProvider);
   assert.ok(recoveryBanner >= 0 && recoveryBanner < tripProvider);
 });
 
-test("Overview only surfaces a provider-confirmed representative stay", () => {
-  assert.match(source, /stableStopDateRange\(actionImageStop, trip\)/);
-  assert.match(source, /\/api\/journey-accommodation-search\?/);
-  assert.match(source, /property\.id\.startsWith\("booking-"\)/);
-  assert.match(source, /Available for your selected dates/);
-  assert.match(source, /Explore stays around \{actionImageStop\.name\}/);
-  assert.doesNotMatch(source, /Shota|Rustaveli|\$89|Breakfast included|Free cancellation|Recommended/);
+test("Overview removes the decorative stay hero and leaves stay discovery to its canonical workspace", () => {
+  assert.doesNotMatch(source, /journey-accommodation-search|representativeStay|Available for your selected dates/);
+  assert.match(source, /mapWorkspaceHref\(trip\.id, accommodation\.stops\.find/);
 });
 
-test("Trip Health keeps canonical issue severity and explains truncation", () => {
-  assert.match(source, /const visibleIssues = issues\.slice\(0, 2\)/);
+test("material route uncertainty is contextual and keeps canonical severity", () => {
+  assert.match(source, /const visibleIssues = materialRouteIssues\.slice\(0, 2\)/);
+  assert.match(source, /issue\.severity === "critical" \|\| materialRouteRules\.has\(issue\.rule\)/);
   assert.match(source, /issue\.severity === "critical" \? styles\.issueCritical/);
-  assert.match(source, /Showing the \{visibleIssues\.length\} highest-priority of \{issues\.length\} checks/);
-  assert.match(source, /href=\{issues\[0\]\?\.href \?\? routeIssueHref\(trip\.id\)\}/);
+  assert.match(source, /severity: issue\.severity/);
+  assert.match(source, /Review timing|Review transport/);
+  assert.doesNotMatch(source, /Showing the \{visibleIssues\.length\} highest-priority/);
 });
 
-test("Planning progress stays derived and exposes seven truthful readiness categories", () => {
+test("Next to arrange stays derived and exposes only Days, Stays and Transport", () => {
   assert.match(source, /deriveOverviewReadinessCategories\(\{/);
-  assert.match(source, /readinessCategories\.map/);
+  assert.match(source, /planningCategories\.map/);
   assert.match(source, /progressIconByCategory/);
-  assert.match(source, /role="progressbar"/);
-  assert.match(source, /percent !== null/);
   assert.match(source, /progressStatusLabel\[status\]/);
-  assert.match(source, /status !== "complete"/);
-  assert.match(source, /className=\{styles\.progressSummary\}/);
-  assert.match(source, /className=\{styles\.progressFooter\}/);
-  assert.match(styles, /grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.progressItem\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.match(styles, /\.progressSummary,[\s\S]*\.progressTrackPlaceholder\s*\{[^}]*grid-column:\s*auto;[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*max-width:\s*100%/);
-  assert.match(styles, /\.progressFooter\s*\{[^}]*flex-wrap:\s*wrap/);
-  assert.doesNotMatch(styles, /\.progressTrack\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
-  assert.doesNotMatch(styles, /\.progressAction\s*\{[^}]*position:\s*absolute/);
+  assert.match(source, /\["itinerary", "accommodation", "transport"\]/);
+  assert.match(styles, /\.arrangeGrid[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(source, /role="progressbar"/);
+  assert.match(source, /category\.id === "accommodation" && !accommodation\.stops\.length\) return null/);
 });
 
 test("Before You Go reuses canonical preparation tasks and actions without a second route", () => {
@@ -87,16 +79,21 @@ test("Before You Go reuses canonical preparation tasks and actions without a sec
   assert.match(source, /<TripPreparationTaskSection id="overview-good" title="Good to do"/);
   assert.match(source, /<TripTravellerDetailsEditor/);
   assert.doesNotMatch(source, /TripPrepDetails|Detailed preparation guidance/);
-  assert.match(source, /href: "#before-you-go"/);
+  assert.match(source, /id="before-you-go"/);
   assert.doesNotMatch(source, /\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/prep/);
   assert.match(styles, /\.beforeGoGrid/);
+  assert.match(source, /<details className=\{styles\.beforeGoDisclosure\}/);
 });
 
 test("route storytelling resolves imagery, stays image-led and links to the canonical Map", () => {
-  assert.match(source, /const imagedDay = days\.find\(\(item\) => Boolean\(item\.image\)\)/);
-  assert.match(source, /itineraryImageFor\(/);
-  assert.match(source, /\/api\/journey-place\?\$\{params\}/);
-  assert.match(source, /resolvedPlaceImages\[stop\.id\]/);
+  assert.match(source, /overviewStopImage\(trip, stop\)/);
+  assert.match(source, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(source, /const imageCacheKeysByOccurrence = useMemo/);
+  assert.match(source, /canonicalPlacePhotoCacheKey\(\{/);
+  assert.doesNotMatch(source, /\/api\/journey-place\?/);
+  assert.doesNotMatch(source, /Promise\.all\(imageResolutionCandidates/);
+  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
+  assert.match(source, /<MorroviaPhotoCredit className=\{styles\.stopCredit\}/);
   assert.match(source, /formatTripNights\(stop\.nights\)/);
   assert.match(source, /className=\{styles\.stopNumber\}>\{index \+ 1\}/);
   assert.doesNotMatch(source, /className=\{styles\.stopNumber\}>From/);
@@ -119,16 +116,17 @@ test("the Overview map is the shared MapLibre surface in non-interactive preview
 });
 
 test("Why this order is one shallow explanation with the existing itinerary action", () => {
-  assert.match(source, /routeRationale\.reasons\[0\] \?\? routeRationale\.summary/);
+  assert.match(source, /routeRationaleCopy/);
   assert.match(source, /View detailed itinerary/);
+  assert.doesNotMatch(source, /entered order ranks first under current criteria/i);
   assert.doesNotMatch(source, /Main trade-off:/);
-  assert.match(styles, /\.routeRationale\{display:grid;grid-template-columns:22px minmax\(0,1fr\) auto/);
+  assert.match(styles, /\.routeRationale \{[\s\S]*grid-template-columns: 22px minmax\(0,1fr\) auto/);
 });
 
 test("Overview responsive rules keep mobile controls usable without page overflow", () => {
   assert.match(styles, /@media \(max-width: 520px\)/);
-  assert.match(styles, /\.nextActions > a \{ --control-height: 44px;/);
-  assert.match(styles, /\.overview \.healthAction,[\s\S]*\.overview \.progressAction \{ --control-height: 44px;/);
+  assert.match(styles, /\.routeActions > a \{ --control-height: 44px;/);
+  assert.match(styles, /\.arrangeGrid \{ grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(styles, /\.routeList \{ overflow-x: auto;/);
   assert.match(styles, /\.routeMapPreview \{ min-height: 220px;/);
   assert.match(styles, /overflow-x: auto;/);

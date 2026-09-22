@@ -30,6 +30,7 @@ import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, Mor
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
 
@@ -57,6 +58,7 @@ export function TripShellIdentityAndActions() {
   const routeLabel = [trip.brief.origin, ...trip.stops.map((stop) => stop.name)].filter(Boolean).join(" → ") || "Route to confirm";
   const dateFacts = deriveTripDateFacts({ startDate: trip.startDate, endDate: trip.endDate });
   const duration = dateFacts.durationDays;
+  const overnightPlaceCount = overnightAccommodationStops(trip).length;
   const status = trip.status === "planned" ? "Planned" : trip.status === "archived" ? "Archived" : "Planning";
   const editHref = tripBuilderHref(trip.id, trip.ownerId);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -87,7 +89,7 @@ export function TripShellIdentityAndActions() {
       <dl className={styles.metadata}>
         <div><dt><CalendarDays aria-hidden="true" /><span className={styles.srOnly}>Dates</span></dt><dd>{dateFacts.rangeLabel}</dd></div>
         <div><dt><Clock3 aria-hidden="true" /><span className={styles.srOnly}>Duration</span></dt><dd>{duration ? `${duration} ${duration === 1 ? "day" : "days"}` : "Duration to confirm"}</dd></div>
-        <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Stops</span></dt><dd>{mutation.trip.stops.length} {mutation.trip.stops.length === 1 ? "stop" : "stops"}</dd></div>
+        <div><dt><MapPin aria-hidden="true" /><span className={styles.srOnly}>Overnight places</span></dt><dd>{overnightPlaceCount} {overnightPlaceCount === 1 ? "overnight place" : "overnight places"}</dd></div>
         <div><dt><Route aria-hidden="true" /><span className={styles.srOnly}>Transfers</span></dt><dd>{mutation.trip.legs.length} {mutation.trip.legs.length === 1 ? "transfer" : "transfers"}</dd></div>
       </dl>
     </div>

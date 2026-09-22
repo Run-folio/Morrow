@@ -9,16 +9,6 @@ function pendingRequest(scope: ReturnType<typeof createAbortableEffectScope>) {
   });
 }
 
-async function settleCancellation(scope: ReturnType<typeof createAbortableEffectScope>) {
-  let escaped = false;
-  const request = pendingRequest(scope).catch((error) => {
-    if (!scope.isCancellation(error)) escaped = true;
-  });
-  scope.dispose();
-  await request;
-  return escaped;
-}
-
 test("Overview image request cleanup aborts with an explicit handled reason and cannot commit", async () => {
   const scope = createAbortableEffectScope("Overview place image request");
   let committed = false;
@@ -49,16 +39,6 @@ test("a changed image dependency retires request A and only request B can update
   assert.deepEqual(committed, ["B"]);
 });
 
-test("representative-stay request cleanup and dependency replacement stay handled", async () => {
-  const first = createAbortableEffectScope("Overview representative stay request A");
-  assert.equal(await settleCancellation(first), false);
-
-  const committed: string[] = [];
-  const second = createAbortableEffectScope("Overview representative stay request B");
-  second.commit(() => committed.push("provider stay"));
-  assert.deepEqual(committed, ["provider stay"]);
-});
-
 test("a genuine provider failure is not classified as cancellation and can select fallback state", () => {
   const scope = createAbortableEffectScope("Overview provider request");
   const providerError = new Error("provider unavailable");
@@ -70,14 +50,15 @@ test("a genuine provider failure is not classified as cancellation and can selec
   assert.equal(scope.signal.aborted, false);
 });
 
-test("Overview effects use semantic dependencies, stale guards, and the shared cancellation scope", () => {
+test("Overview effects use semantic dependencies and abort stale shared-cache resolution", () => {
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /createAbortableEffectScope\("Overview place image request"\)/);
-  assert.match(source, /createAbortableEffectScope\("Overview representative stay request"\)/);
-  assert.match(source, /scope\.commit\(\(\) => setResolvedPlaceImages/);
-  assert.match(source, /scope\.commit\(\(\) => setRepresentativeStay/);
-  assert.doesNotMatch(source, /return \(\) => controller\.abort\(\)/);
-  assert.match(source, /\}, \[imageResolutionCandidates\]\);/);
+  assert.match(source, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(source, /\{ signal: controller\.signal \}/);
+  assert.match(source, /if \(!next\[candidate\.cacheKey\]\)/);
+  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
+  assert.doesNotMatch(source, /representativeStay|setRepresentativeStay/);
+  assert.match(source, /return \(\) => controller\.abort\(\)/);
+  assert.match(source, /\}, \[imageResolutionCandidates, initialPlaceImages\]\);/);
 });
 
 test("each Map owner removes only its captured instance and ignores stale lifecycle callbacks", () => {

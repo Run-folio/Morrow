@@ -32,6 +32,22 @@ function providerFallback(providerStatus: "loading" | "available" | "unavailable
   return { detail: "Review before departure", status: "to-do" as const };
 }
 
+function shapedItineraryDayNumbers(trip: EasyTTrip) {
+  const byId = new Map(trip.planItems.map((day) => [day.id, day.dayNumber]));
+  const shaped = new Set<number>();
+  for (const idea of trip.brief.itineraryIdeas ?? []) {
+    const dayNumber = idea.dayId ? byId.get(idea.dayId) : undefined;
+    if (dayNumber !== undefined) shaped.add(dayNumber);
+  }
+  for (const [dayNumber, activities] of Object.entries(trip.brief.customActivities ?? {})) {
+    if (activities.some((activity) => activity.trim())) shaped.add(Number(dayNumber));
+  }
+  for (const [dayNumber, notes] of Object.entries(trip.brief.dayNotes ?? {})) {
+    if (notes.some((note) => note.trim())) shaped.add(Number(dayNumber));
+  }
+  return new Set([...shaped].filter((dayNumber) => Number.isInteger(dayNumber) && trip.planItems.some((day) => day.dayNumber === dayNumber)));
+}
+
 /** Read-only adapter over canonical itinerary, booking and Prep selectors. */
 export function deriveOverviewReadinessCategories({
   trip,
@@ -43,6 +59,16 @@ export function deriveOverviewReadinessCategories({
   providerStatus: "loading" | "available" | "unavailable";
 }): OverviewReadinessCategory[] {
   const itinerary = deriveItineraryCoverage(trip);
+  const shapedDays = shapedItineraryDayNumbers(trip).size;
+  const itineraryTarget = itinerary.expectedDays ?? itinerary.plannedDays;
+  const itineraryComplete = itinerary.expectedDays !== null && itinerary.expectedDays > 0 && shapedDays >= itinerary.expectedDays;
+  const itineraryDetail = itinerary.plannedDays === 0
+    ? "No day outline yet"
+    : shapedDays === 0
+      ? `Outline created for ${itinerary.plannedDays} ${itinerary.plannedDays === 1 ? "day" : "days"}. Add activities or leave time free.`
+      : itineraryComplete
+        ? `${shapedDays} of ${itinerary.expectedDays} days shaped.`
+        : `${shapedDays} of ${itineraryTarget} days shaped. Keep planning or leave time free.`;
   const stays = accommodationProgress(trip);
   const transport = transportBookingProgress(trip);
   const passport = taskForKind(prepTasks, "passport");
@@ -55,16 +81,16 @@ export function deriveOverviewReadinessCategories({
   return [
     {
       id: "itinerary",
-      label: "Itinerary",
-      detail: itinerary.label,
-      status: itinerary.state === "complete" ? "complete" : itinerary.plannedDays ? "in-progress" : "to-do",
-      percent: itinerary.percent ?? 0,
+      label: "Days",
+      detail: itineraryDetail,
+      status: itineraryComplete ? "complete" : itinerary.plannedDays ? "in-progress" : "to-do",
+      percent: itineraryTarget ? Math.min(100, Math.round((shapedDays / itineraryTarget) * 100)) : 0,
     },
     {
       id: "accommodation",
-      label: "Accommodation",
-      detail: stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stop" : "stops"} sorted` : "No overnight stays to arrange",
-      status: stays.complete ? "complete" : stays.sortedCount || stays.datesReadyCount ? "in-progress" : "to-do",
+      label: "Stays",
+      detail: stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} overnight ${stays.stops.length === 1 ? "stay" : "stays"} selected` : "No overnight stays to arrange",
+      status: !stays.stops.length || stays.complete ? "complete" : stays.sortedCount || stays.datesReadyCount ? "in-progress" : "to-do",
       percent: stays.stops.length ? Math.round((stays.sortedCount / stays.stops.length) * 100) : 100,
     },
     {

@@ -91,6 +91,11 @@ const baseTrip: EasyTTrip = {
 };
 
 const prepProfile: TravelReadinessProfile = { nationalities: [], residenceCountry: "", passportExpiryMonth: "" };
+const coherentRouteTrip: EasyTTrip = {
+  ...baseTrip,
+  endDate: "2026-08-28",
+  brief: { ...baseTrip.brief, originCoordinates: [-71.967, -13.532], originCountry: "Peru" },
+};
 const prepActions: BookingReadinessAction[] = [{
   id: "trip-connectivity",
   category: "connectivity",
@@ -189,7 +194,28 @@ export const TourCapture: Story = {
 };
 
 export const FirstTripArrival: Story = {
-  args: { firstArrival: true },
+  args: { trip: coherentRouteTrip, firstArrival: true },
+};
+
+export const ReturningPartiallyPlanned: Story = {
+  args: {
+    trip: {
+      ...coherentRouteTrip,
+      brief: {
+        ...coherentRouteTrip.brief,
+        itineraryIdeas: [{
+          id: "idea-sacsayhuaman",
+          stopId: "cusco",
+          placeId: "sacsayhuaman",
+          title: "Sacsayhuamán",
+          category: "activity",
+          source: "destination-highlight",
+          reasons: ["destination-significance"],
+          dayId: "overview-day-2",
+        }],
+      },
+    },
+  },
 };
 
 export const HealthIssue: Story = {

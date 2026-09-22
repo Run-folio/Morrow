@@ -1,25 +1,12 @@
-.overview {
-  color: var(--morrovia-ink);
-  font-family: var(--morrovia-ui);
-}
+.overview { color: var(--morrovia-ink); font-family: var(--morrovia-ui); }
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(310px, 420px);
-  grid-template-areas:
-    "next health"
-    "route route"
-    "progress progress"
-    "plans plans"
-    "before before";
+  grid-template-areas: "route" "arrange" "plans" "before";
   gap: 16px;
 }
 
-.nextAction,
-.healthCard,
-.progressCard,
-.beforeGo,
-.routeCard {
+.routeCard, .arrangeCard, .beforeGo {
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--morrovia-line);
@@ -28,25 +15,19 @@
   box-shadow: 0 10px 28px rgba(23, 16, 111, .035);
 }
 
-.nextAction {
-  grid-area: next;
-  min-height: 274px;
-  padding: clamp(22px, 2.5vw, 32px);
-  display: grid;
-  grid-template-columns: minmax(0, .9fr) minmax(250px, 1.15fr);
-  align-items: center;
-  gap: clamp(20px, 2.5vw, 34px);
-  background: var(--morrovia-paper);
+.routeCard { grid-area: route; padding: 24px 26px 28px; }
+.arrangeCard { grid-area: arrange; padding: 22px 24px 24px; }
+.beforeGo { grid-area: before; padding: 0; scroll-margin-top: 20px; }
+
+.routeIntro, .sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
 }
 
-.nextActionFallback { min-height: 224px; }
-.nextActionFallback .nextVisual > img { height: 118px; }
-
-.nextCopy { min-width: 0; }
-
-.nextEyebrow p,
-.healthCard > p,
-.sectionHeading p {
+.routeIntro > div:first-child, .sectionHeading > div, .beforeGoHeading { min-width: 0; }
+.routeIntro p, .sectionHeading p, .beforeGoHeading p {
   margin: 0;
   color: var(--morrovia-signal);
   font: 800 10px/1.2 var(--morrovia-meta);
@@ -54,431 +35,43 @@
   text-transform: uppercase;
 }
 
-.nextEyebrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.actionIcon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--morrovia-tint);
-  color: var(--morrovia-signal);
-}
-
-.actionIcon svg { width: 18px; height: 18px; }
-
-.nextCopy h2 {
-  max-width: 590px;
-  margin: 18px 0 7px;
+.routeIntro h2, .sectionHeading h2, .beforeGoHeading h2 {
+  margin: 7px 0 0;
   color: var(--morrovia-ink);
-  font: 600 clamp(28px, 3vw, 40px)/1.02 var(--morrovia-display);
-  letter-spacing: -.04em;
+  font: 600 27px/1.05 var(--morrovia-display);
+  letter-spacing: -.035em;
   text-wrap: pretty;
 }
 
-.nextCopy > span:not(.actionIcon) {
+.routeIntro h2 { font-size: clamp(29px, 2.7vw, 38px); }
+.routeIntro span, .sectionDetail {
   display: block;
-  max-width: 560px;
-  color: var(--morrovia-ink-soft);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.sectionHeading a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--morrovia-ink);
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.nextActions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 9px;
-  margin-top: 20px;
-}
-
-.primaryAction {
-  min-height: 44px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--morrovia-action);
-  border-radius: var(--morrovia-control-radius);
-  background: var(--morrovia-action);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.affiliateDisclosure {
-  display: block;
-  max-width: 360px;
-  margin-top: 7px;
-  color: var(--morrovia-muted);
-  font: var(--morrovia-type-fine-print);
-}
-
-.nextActions a svg,
-.sectionHeading a svg { width: 15px; height: 15px; }
-
-.nextVisual {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--morrovia-line);
-  border-radius: 12px;
-  background: #fff;
-}
-
-.nextVisual > img {
-  width: 100%;
-  height: 156px;
-  display: block;
-  object-fit: cover;
-}
-
-.nextFallback {
-  width: 56px;
-  height: 56px;
-  margin: 34px auto;
-  display: block;
-  color: var(--morrovia-lilac-strong);
-  stroke-width: 1;
-}
-
-.stayResult,
-.stayFallback {
-  padding: 15px 16px;
-}
-
-.stayResult {
-  display: grid;
-  gap: 5px;
-}
-
-.stayResult p {
-  margin: 0;
-  color: var(--morrovia-success);
-  font: 800 9px/1.2 var(--morrovia-meta);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.stayResult h3 {
-  margin: 0;
-  color: var(--morrovia-ink);
-  font: 600 19px/1.15 var(--morrovia-display);
-}
-
-.stayResult > span {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  color: var(--morrovia-ink-soft);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.stayResult > span svg {
-  width: 13px;
-  height: 13px;
-  flex: 0 0 auto;
-}
-
-.stayResult small {
-  color: var(--morrovia-ink);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.stayFallback {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  color: var(--morrovia-ink-soft);
-}
-
-.stayFallback > svg {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  color: var(--morrovia-action);
-}
-
-.stayFallback div { display: grid; gap: 3px; }
-.stayFallback strong { color: var(--morrovia-ink); font-size: 12px; }
-.stayFallback span { font-size: 11px; line-height: 1.4; }
-
-.healthCard {
-  grid-area: health;
-  padding: 26px;
-  display: flex;
-  flex-direction: column;
-}
-
-.healthHeading {
-  margin-top: 16px;
-  display: flex;
-  align-items: flex-start;
-  gap: 13px;
-}
-
-.healthHeading > svg {
-  flex: 0 0 auto;
-  width: 31px;
-  height: 31px;
-  color: var(--morrovia-success);
-}
-
-.healthHeading > .healthCritical { color: var(--morrovia-danger); }
-
-.healthHeading h2 {
-  margin: 0;
-  color: var(--morrovia-ink);
-  font: 600 23px/1.08 var(--morrovia-display);
-}
-
-.healthHeading span {
-  display: block;
-  margin-top: 5px;
+  margin-top: 6px;
   color: var(--morrovia-ink-soft);
   font-size: 12px;
-  line-height: 1.4;
-}
-
-.healthCard ul {
-  margin: 18px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-  list-style: none;
-}
-
-.healthCard li a {
-  min-height: 44px;
-  padding: 10px 11px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid var(--morrovia-line);
-  border-radius: var(--morrovia-control-radius);
-  color: var(--morrovia-ink);
-  font-size: 11px;
-  font-weight: 750;
-  line-height: 1.35;
-  text-decoration: none;
-}
-
-.healthCard li svg {
-  width: 15px;
-  height: 15px;
-  color: var(--morrovia-warning);
-}
-
-.healthCard li svg:last-child { width: 13px; color: var(--morrovia-ink-soft); }
-.healthCard .issueCritical svg:first-child { color: var(--morrovia-danger); }
-
-.healthIssueCount {
-  display: block;
-  margin-top: 9px;
-  color: var(--morrovia-muted);
-  font-size: 10px;
-  line-height: 1.35;
-}
-
-.healthAction { margin-top: auto; }
-
-.clearHealth {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 20px 0;
-  color: var(--morrovia-ink-soft);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.clearHealth svg {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-  color: var(--morrovia-success);
-}
-
-.healthCard li a:hover { border-color: var(--morrovia-action); background: var(--morrovia-lilac); }
-.healthCard li a:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
-
-/* Kept compact so readiness supports the next decision instead of reading as a second dashboard. */
-.progressCard { grid-area: progress; padding: 20px 24px 22px; }
-.beforeGo { grid-area: before; padding: 22px 24px 24px; scroll-margin-top: 20px; }
-.routeCard { grid-area: route; padding: 24px 26px 28px; }
-
-.sectionDetail {
-  display: block;
-  margin-top: 5px;
-  color: var(--morrovia-ink-soft);
-  font-size: 11px;
   font-weight: 650;
+  line-height: 1.45;
 }
 
-.progressGrid {
-  margin-top: 15px;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-top: 1px solid var(--morrovia-line);
-}
-
-.progressItem {
-  position: relative;
-  min-width: 0;
-  min-height: 44px;
-  padding: 15px 18px 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(46px, auto) 5px auto;
-  align-content: start;
-  gap: 10px;
-  box-sizing: border-box;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  border-right: 1px solid var(--morrovia-line);
-}
-
-.progressItemInteractive {
-  cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease;
-}
-.progressItemInteractive:hover { background: color-mix(in srgb, var(--morrovia-lilac) 42%, var(--morrovia-paper)); }
-.progressItemInteractive:focus-visible { z-index: 1; outline: none; box-shadow: var(--morrovia-focus-shadow); }
-
-.progressItem:first-child { padding-left: 0; }
-.progressItem:last-child { padding-right: 0; border-right: 0; }
-
-.progressSummary {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-
-.progressSummary > svg {
-  width: 22px;
-  height: 22px;
-  color: var(--morrovia-action);
-}
-
-.progressItem h3 { margin: 0; font: 800 12px/1.2 var(--morrovia-ui); }
-.progressSummary span { display: block; margin-top: 3px; color: var(--morrovia-ink-soft); font-size: 10px; font-weight: 650; }
-
-.progressFooter {
-  min-height: 32px;
-  min-width: 0;
+.routeActions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 6px;
+  justify-content: flex-end;
+  gap: 9px;
 }
 
-.progressSummary,
-.progressFooter,
-.progressTrack,
-.progressTrackPlaceholder {
-  grid-column: auto;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.progressStatus {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: var(--morrovia-lilac);
-  color: var(--morrovia-action);
-  font-size: 9px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.progressStatus-complete { background: color-mix(in srgb, var(--morrovia-success) 11%, var(--morrovia-paper)); color: var(--morrovia-success); }
-.progressStatus-in-progress { background: var(--morrovia-warning-soft); color: var(--morrovia-warning); }
-.progressStatus-needs-review { background: var(--morrovia-danger-soft); color: var(--morrovia-danger); }
-.progressAction { min-height: 44px; height: auto; padding-inline: 6px; display: inline-flex; align-items: center; gap: 6px; color: var(--morrovia-ink-soft); font-size: 9px; font-weight: 700; white-space: normal; }
-.progressAction svg { width: 12px; height: 12px; }
-
-.progressTrack {
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--morrovia-lilac-strong);
-}
-
-.progressTrack i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--morrovia-action);
-}
-
-.progressTrackPlaceholder { height: 5px; }
-
-.progressDisclosures {
-  margin-top: 12px;
+.routeActions a svg, .routeMapAction svg, .routeRationale a svg { width: 15px; height: 15px; }
+.routeComposition {
+  margin-top: 20px;
   display: grid;
-  gap: 4px;
-  color: var(--morrovia-muted);
-  font: var(--morrovia-type-fine-print);
-}
-.progressDisclosures small { font: inherit; }
-
-.beforeGoGrid {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  align-items: stretch;
+  gap: 24px;
 }
 
-.beforeGoStatus { margin-top: 14px; }
-.beforeGoEmpty {
-  min-height: 84px;
-  margin-top: 16px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  border: 1px dashed var(--morrovia-line);
-  border-radius: var(--morrovia-control-radius);
-  color: var(--morrovia-ink-soft);
-}
-.beforeGoEmpty > svg { width: 22px; height: 22px; flex: 0 0 auto; color: var(--morrovia-success); }
-.beforeGoEmpty > div { display: grid; gap: 3px; }
-.beforeGoEmpty strong { color: var(--morrovia-ink); font-size: 12px; }
-.beforeGoEmpty span { font-size: 11px; line-height: 1.4; }
-
+.routeJourney { min-width: 0; }
 .routeList {
   margin: 0;
   padding: 4px 3px 0;
@@ -492,8 +85,7 @@
   list-style: none;
 }
 
-.routeList:focus-visible { outline: 2px solid var(--morrovia-focus-ring); outline-offset: 4px; border-radius: 8px; }
-
+.routeList:focus-visible { border-radius: 8px; outline: 2px solid var(--morrovia-focus-ring); outline-offset: 4px; }
 .routeList > li {
   position: relative;
   flex: 0 0 clamp(122px, 11.6vw, 154px);
@@ -514,62 +106,18 @@
   background: #fff;
 }
 
-.routeList article > img,
-.stopFallback {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.stopFallback {
-  display: grid;
-  justify-self: center;
-  place-items: center;
-  background: color-mix(in srgb, var(--morrovia-lilac) 45%, #fff);
-  color: var(--morrovia-ink-soft);
-}
-
-.sectionHeading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.sectionHeading h2 {
-  margin: 7px 0 0;
-  color: var(--morrovia-ink);
-  font: 600 27px/1.05 var(--morrovia-display);
-  letter-spacing: -.035em;
-}
-
-.routeStopLink {
-  min-width: 0;
-  height: 100%;
-  display: block;
-  color: inherit;
-  text-decoration: none;
-}
-
-.routeStopLink:hover article {
-  border-color: color-mix(in srgb, var(--morrovia-action) 42%, var(--morrovia-line));
-  background: color-mix(in srgb, #fff 95%, var(--morrovia-lilac));
-}
-
-.routeStopLink:focus-visible {
-  border-radius: 11px;
-  outline: none;
-  box-shadow: var(--morrovia-focus-shadow);
-}
-
+.routeList article > img, .stopFallback { width: 100%; height: 100%; object-fit: cover; }
+.routeStopLink { min-width: 0; height: 100%; display: block; color: inherit; text-decoration: none; }
+.routeStopLink:hover article { border-color: color-mix(in srgb, var(--morrovia-action) 42%, var(--morrovia-line)); background: color-mix(in srgb, #fff 95%, var(--morrovia-lilac)); }
+.routeStopLink:focus-visible { border-radius: 11px; outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.stopCredit { top: 0; right: 0; bottom: auto; }
 .stopNumber {
   position: absolute;
+  z-index: 1;
   top: 8px;
   left: 8px;
-  z-index: 1;
   width: 25px;
   height: 25px;
-  padding: 0;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -579,8 +127,8 @@
   font-weight: 850;
 }
 
+.stopFallback { display: grid; place-items: center; background: color-mix(in srgb, var(--morrovia-lilac) 45%, #fff); color: var(--morrovia-ink-soft); }
 .stopFallback svg { width: 20px; height: 20px; }
-
 .stopOverlay {
   position: absolute;
   right: 0;
@@ -591,43 +139,13 @@
   background: color-mix(in srgb, var(--morrovia-ink) 86%, transparent);
 }
 
-.routeList h3 {
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: #fff;
-  font: 600 17px/1.05 var(--morrovia-display);
-}
-
-.routeList article span {
-  display: block;
-  margin-top: 3px;
-  color: rgba(255,255,255,.84);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.transfer {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--morrovia-ink-soft);
-}
-
+.routeList h3 { margin: 0; overflow-wrap: anywhere; color: #fff; font: 600 17px/1.05 var(--morrovia-display); }
+.routeList article span { display: block; margin-top: 3px; color: rgba(255, 255, 255, .84); font-size: 10px; font-weight: 700; }
+.transfer { min-width: 0; display: flex; align-items: center; gap: 5px; color: var(--morrovia-ink-soft); }
 .transfer svg { width: 13px; height: 13px; flex: 0 0 auto; color: var(--morrovia-action); }
 .transfer span { overflow: hidden; font: 750 9px/1.2 var(--morrovia-ui); text-overflow: ellipsis; white-space: nowrap; }
 .transferSpacer { min-height: 13px; }
 .routeDirection { position: absolute; top: 80px; right: -19px; width: 15px; height: 15px; color: var(--morrovia-ink-soft); }
-
-.routeComposition {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-  align-items: stretch;
-  gap: 24px;
-}
-
-.routeJourney { min-width: 0; }
 
 .routeMapPreview {
   position: relative;
@@ -654,17 +172,10 @@
   color: #fff;
   font: 800 9px/1 var(--morrovia-ui);
 }
+
 .routeMapPreview :global(.planner-map__stop.is-preview.is-origin) { background: var(--morrovia-ink); }
 .routeMapPreview :global(.planner-map__stop.is-preview::after) { display: none; }
-
-.routeMapAction {
-  position: absolute;
-  z-index: 2;
-  top: 12px;
-  right: 12px;
-  box-shadow: 0 8px 18px rgba(23,16,111,.12);
-}
-
+.routeMapAction { position: absolute; z-index: 2; top: 12px; right: 12px; box-shadow: 0 8px 18px rgba(23,16,111,.12); }
 .emptyRoute {
   min-height: 120px;
   margin-top: 18px;
@@ -680,83 +191,148 @@
 
 .emptyRoute svg { color: var(--morrovia-signal); }
 .emptyRoute p { margin: 0; font-size: 13px; }
-
-.routeRationale{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:13px;padding:10px 12px;border:1px solid var(--morrovia-line);border-radius:11px;background:color-mix(in srgb,var(--morrovia-lilac) 48%,#fff)}
-.routeRationale>svg{width:17px;height:17px;color:var(--morrovia-action)}.routeRationale>div{display:grid;gap:2px;min-width:0}.routeRationale p{margin:0;color:var(--morrovia-action);font:800 10px/1.2 var(--morrovia-ui)}.routeRationale span{overflow:hidden;color:var(--morrovia-ink-soft);font-size:10px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}.routeRationale>a{white-space:nowrap}
-
-.nextCopy a:hover,
-.sectionHeading a:hover { transform: translateY(-1px); }
-
-.nextCopy a:focus-visible,
-.healthCard a:focus-visible,
-.sectionHeading a:focus-visible {
-  outline: none;
-  box-shadow: var(--morrovia-focus-shadow);
+.routeRationale {
+  margin-top: 13px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 22px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: color-mix(in srgb,var(--morrovia-lilac) 48%,#fff);
 }
 
-@media (max-width: 1400px) {
-  .progressGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .progressItem,
-  .progressItem:first-child,
-  .progressItem:last-child { padding: 14px; border-right: 1px solid var(--morrovia-line); border-bottom: 1px solid var(--morrovia-line); }
-  .progressItem:nth-child(4n) { border-right: 0; }
-  .progressItem:nth-child(n + 5) { border-bottom: 0; }
+.routeRationale > svg { width: 17px; height: 17px; color: var(--morrovia-action); }
+.routeRationale > div { min-width: 0; display: grid; gap: 2px; }
+.routeRationale p { margin: 0; color: var(--morrovia-action); font: 800 10px/1.2 var(--morrovia-ui); }
+.routeRationale span { overflow: hidden; color: var(--morrovia-ink-soft); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.routeRationale > a { white-space: nowrap; }
+.routeIssues {
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
 }
+
+.routeIssues li {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  color: var(--morrovia-ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.routeIssues li > svg { width: 16px; height: 16px; color: var(--morrovia-warning); }
+.routeIssues .issueCritical > svg { color: var(--morrovia-danger); }
+.routeIssues .issueInfo > svg { color: var(--morrovia-action); }
+.routeIssues a { display: inline-flex; align-items: center; gap: 4px; color: var(--morrovia-action); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.routeIssues a svg { width: 13px; height: 13px; }
+.routeIssues a:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+
+.arrangeGrid { margin-top: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.arrangeItem {
+  min-width: 0;
+  min-height: 142px;
+  padding: 17px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px;
+  box-sizing: border-box;
+  border: 1px solid var(--morrovia-line);
+  border-radius: 11px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.arrangeItemInteractive { cursor: pointer; transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease; }
+.arrangeItemInteractive:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--morrovia-action) 42%, var(--morrovia-line)); background: color-mix(in srgb, var(--morrovia-lilac) 35%, #fff); }
+.arrangeItemInteractive:focus-visible { outline: none; box-shadow: var(--morrovia-focus-shadow); }
+.arrangeIcon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%; background: var(--morrovia-lilac); color: var(--morrovia-action); }
+.arrangeIcon svg { width: 23px; height: 23px; }
+.arrangeCopy { min-width: 0; min-height: 106px; display: flex; flex-direction: column; align-items: flex-start; }
+.arrangeTitle { width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.arrangeTitle h3 { margin: 0; color: var(--morrovia-ink); font: 600 19px/1.1 var(--morrovia-display); }
+.arrangeCopy > span { display: block; margin-top: 9px; color: var(--morrovia-ink-soft); font-size: 11px; font-weight: 650; line-height: 1.42; }
+.arrangeCopy > strong { margin-top: auto; padding-top: 12px; display: inline-flex; align-items: center; gap: 6px; color: var(--morrovia-action); font-size: 11px; font-weight: 800; }
+.arrangeCopy > strong svg, .arrangeChevron { width: 14px; height: 14px; }
+.arrangeChevron { margin-top: 4px; color: var(--morrovia-action); }
+.progressStatus { display: inline-flex; align-items: center; min-height: 24px; padding: 5px 9px; border-radius: 999px; background: var(--morrovia-lilac); color: var(--morrovia-action); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.progressStatus-complete { background: color-mix(in srgb, var(--morrovia-success) 11%, var(--morrovia-paper)); color: var(--morrovia-success); }
+.progressStatus-in-progress { background: var(--morrovia-warning-soft); color: var(--morrovia-warning); }
+.progressStatus-needs-review { background: var(--morrovia-danger-soft); color: var(--morrovia-danger); }
+
+.beforeGoDisclosure > summary {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.beforeGoDisclosure > summary::-webkit-details-marker { display: none; }
+.beforeGoHeading h2 { font-size: 25px; }
+.beforeGoCounts { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+.beforeGoCounts > span { min-height: 30px; padding: 7px 11px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--morrovia-lilac); color: var(--morrovia-action); font-size: 10px; font-weight: 800; }
+.beforeGoCounts > .mustCount { background: var(--morrovia-danger-soft); color: var(--morrovia-danger); }
+.beforeGoCounts > svg { width: 18px; height: 18px; padding: 8px; box-sizing: content-box; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-action); transition: transform 160ms ease; }
+.beforeGoDisclosure[open] .beforeGoCounts > svg { transform: rotate(180deg); }
+.beforeGoContent { padding: 0 24px 24px; border-top: 1px solid var(--morrovia-line); }
+.beforeGoGrid { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 22px; }
+.beforeGoStatus { margin-top: 14px; }
+.beforeGoEmpty { min-height: 84px; margin-top: 16px; padding: 16px; display: flex; align-items: center; gap: 11px; border: 1px dashed var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-ink-soft); }
+.beforeGoEmpty > svg { width: 22px; height: 22px; flex: 0 0 auto; color: var(--morrovia-success); }
+.beforeGoEmpty > div { display: grid; gap: 3px; }
+.beforeGoEmpty strong { color: var(--morrovia-ink); font-size: 12px; }
+.beforeGoEmpty span { font-size: 11px; line-height: 1.4; }
 
 @media (max-width: 980px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
-  }
-  .nextAction { grid-template-columns: minmax(0, 1fr) minmax(210px, .8fr); }
-  .progressAction { padding-inline: 9px; }
+  .routeIntro { align-items: flex-start; }
   .routeComposition { grid-template-columns: minmax(0, 1fr); }
   .routeMapPreview { min-height: 250px; }
 }
 
-@media (max-width: 720px) {
-  .orientation ul{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "next" "health" "route" "progress" "plans" "before";
-  }
-  .nextAction { min-height: 0; }
-  .healthCard,
-  .progressCard,
-  .beforeGo,
-  .routeCard { padding: 22px 18px; }
-  .sectionHeading { align-items: flex-start; }
-  .progressGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .progressItem,
-  .progressItem:first-child,
-  .progressItem:last-child { padding: 14px; border-right: 1px solid var(--morrovia-line); border-bottom: 1px solid var(--morrovia-line); }
-  .progressItem:nth-child(2n) { border-right: 0; }
-  .progressItem:nth-child(n + 7) { border-bottom: 0; }
+@media (max-width: 800px) {
+  .routeIntro { display: grid; }
+  .routeActions { justify-content: flex-start; }
+  .arrangeGrid { grid-template-columns: minmax(0, 1fr); }
+  .routeIssues { grid-template-columns: minmax(0, 1fr); }
   .beforeGoGrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .beforeGoDisclosure > summary { align-items: flex-start; }
+  .beforeGoCounts { flex-wrap: wrap; justify-content: flex-end; }
   .routeRationale { grid-template-columns: 22px minmax(0,1fr); }
   .routeRationale > a { grid-column: 2; justify-self: start; }
 }
 
 @media (max-width: 520px) {
-  .orientation{padding:16px}.orientation h2{font-size:22px}.orientation ul{gap:12px 8px}.orientation li{padding-left:8px}.orientation li span{font-size:10px}
-  .nextAction {
-    padding: 24px 18px;
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .nextVisual > img { height: 148px; }
-  .nextActions > a { --control-height: 44px; width: 100%; min-height: 44px; }
-  .overview .healthAction,
-  .overview .progressAction { --control-height: 44px; min-height: 44px; }
-  .nextCopy h2 { font-size: 31px; }
-  .sectionHeading { display: grid; }
-  .progressGrid { grid-template-columns: minmax(0, 1fr); }
-  .progressItem,
-  .progressItem:first-child,
-  .progressItem:last-child,
-  .progressItem:nth-child(2n),
-  .progressItem:nth-child(n + 7) { padding: 14px 0; border-right: 0; border-bottom: 1px solid var(--morrovia-line); }
-  .progressItem:last-child { border-bottom: 0; }
+  .routeCard, .arrangeCard { padding: 22px 18px; }
+  .routeIntro h2 { font-size: 30px; }
+  .routeActions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .routeActions > a { --control-height: 44px; width: 100%; min-height: 44px; }
+  .arrangeGrid { grid-template-columns: minmax(0, 1fr); }
+  .arrangeItem { min-height: 132px; padding: 15px; grid-template-columns: 44px minmax(0, 1fr) auto; }
+  .arrangeIcon { width: 44px; height: 44px; }
   .routeList { overflow-x: auto; padding: 4px 1px 8px; }
   .routeList > li { flex-basis: 136px; min-width: 136px; }
   .routeMapPreview { min-height: 220px; }
   .routeMapAction { --control-height: 44px; min-height: 44px; }
+  .routeIssues li { grid-template-columns: auto minmax(0, 1fr); }
+  .routeIssues a { grid-column: 2; justify-self: start; }
+  .beforeGoDisclosure > summary { padding: 19px 18px; display: grid; }
+  .beforeGoCounts { justify-content: flex-start; }
+  .beforeGoContent { padding: 0 18px 20px; }
 }

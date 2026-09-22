@@ -62,14 +62,70 @@ test("Overview readiness is a read-only projection over canonical trip and Prep 
   const categories = deriveOverviewReadinessCategories({ trip: source, prepTasks, providerStatus: "available" });
 
   assert.deepEqual(categories.map((category) => category.id), ["itinerary", "accommodation", "transport", "passport", "insurance", "connectivity", "checklist"]);
-  assert.equal(categories.find((category) => category.id === "itinerary")?.percent, 100);
-  assert.equal(categories.find((category) => category.id === "accommodation")?.detail, "1 of 2 overnight stops sorted");
+  assert.deepEqual(categories.find((category) => category.id === "itinerary"), {
+    id: "itinerary",
+    label: "Days",
+    detail: "Outline created for 2 days. Add activities or leave time free.",
+    status: "in-progress",
+    percent: 0,
+  });
+  assert.equal(categories.find((category) => category.id === "accommodation")?.detail, "1 of 2 overnight stays selected");
   assert.equal(categories.find((category) => category.id === "transport")?.status, "complete");
   assert.equal(categories.find((category) => category.id === "passport")?.status, "complete");
   assert.equal(categories.find((category) => category.id === "insurance")?.percent, null);
   assert.equal(categories.find((category) => category.id === "connectivity")?.status, "in-progress");
   assert.equal(categories.find((category) => category.id === "checklist")?.detail, "1 of 2 practicals complete");
   assert.deepEqual(source, before);
+});
+
+test("generated day containers do not become fully planned until canonical authored choices shape them", () => {
+  const source = trip();
+  source.brief.itineraryIdeas = [{
+    id: "idea-paris-louvre",
+    stopId: "paris",
+    placeId: "louvre",
+    title: "Louvre Museum",
+    category: "activity",
+    source: "destination-highlight",
+    reasons: ["destination-significance"],
+    dayId: "day-1",
+  }];
+
+  const partial = deriveOverviewReadinessCategories({ trip: source, prepTasks, providerStatus: "available" })
+    .find((category) => category.id === "itinerary");
+  assert.deepEqual(partial, {
+    id: "itinerary",
+    label: "Days",
+    detail: "1 of 2 days shaped. Keep planning or leave time free.",
+    status: "in-progress",
+    percent: 50,
+  });
+
+  source.brief.customActivities = { 2: ["Evening walk"] };
+  const complete = deriveOverviewReadinessCategories({ trip: source, prepTasks, providerStatus: "available" })
+    .find((category) => category.id === "itinerary");
+  assert.deepEqual(complete, {
+    id: "itinerary",
+    label: "Days",
+    detail: "2 of 2 days shaped.",
+    status: "complete",
+    percent: 100,
+  });
+});
+
+test("a trip with no overnight stops does not invent stay work", () => {
+  const source = trip();
+  source.stops = source.stops.map((stop) => ({ ...stop, nights: 0 }));
+  source.brief.bookings = source.brief.bookings?.filter((booking) => booking.type !== "stay");
+  const stays = deriveOverviewReadinessCategories({ trip: source, prepTasks, providerStatus: "available" })
+    .find((category) => category.id === "accommodation");
+  assert.deepEqual(stays, {
+    id: "accommodation",
+    label: "Stays",
+    detail: "No overnight stays to arrange",
+    status: "complete",
+    percent: 100,
+  });
 });
 
 test("canonical preparation grouping preserves priority without mutating tasks", () => {
@@ -106,7 +162,7 @@ test("Overview state gauntlet remains truthful across incomplete, complete and o
 
   const partial = categoriesFor(trip()).categories;
   assert.equal(partial.find((category) => category.id === "accommodation")?.percent, 50);
-  assert.equal(partial.find((category) => category.id === "itinerary")?.percent, 100);
+  assert.equal(partial.find((category) => category.id === "itinerary")?.percent, 0);
   assert.equal(partial.find((category) => category.id === "transport")?.status, "complete");
 
   const completeStays = trip();
@@ -168,7 +224,7 @@ test("the shell omits Prep and the old trip URL redirects on the server", () => 
   assert.equal(existsSync("app/journey/prep/trip-prep-client.tsx"), false);
   assert.equal(existsSync("components/easyt/trip-prep-workspace.tsx"), false);
   assert.doesNotMatch(audit, /"MapWorkspace", "Prep", "Mobile320"/);
-  assert.match(designSystem, /Trip workspace\*\* — Overview, Itinerary and Map/);
+  assert.match(designSystem, /Trip workspace\*\* — Overview, Map, Itinerary, Explore and Stay/);
 });
 
 test("Overview preparation actions reuse one shared task UI and preserve accessible external handoffs", () => {
