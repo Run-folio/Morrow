@@ -16,6 +16,27 @@ const providerSource: KnowledgeSource = {
   reviewedAt: "2026-08-23",
 };
 
+test("provider city qualifiers match existing evidence only within an explicit country", () => {
+  assert.equal(destinationKnowledge.forTransferResolution({ name: "Tashkent City", country: "Uzbekistan" }).connectivity.status, "known");
+  for (const identity of [
+    { name: "Tashkent City" },
+    { name: "Tashkent City", country: "Kazakhstan" },
+    { name: "Tashkent Region", country: "Uzbekistan" },
+  ]) assert.equal(destinationKnowledge.forTransferResolution(identity).connectivity.status, "unknown");
+  const from = { name: "Tashkent", country: "Uzbekistan" };
+  assert.ok(destinationKnowledge.findIntercityRailConnection(from, { name: "Samarkand City", country: "Uzbekistan" }, 270));
+  for (const to of [
+    { name: "Samarkand City" },
+    { name: "Samarkand City", country: "Kazakhstan" },
+    { name: "Samarkand Region", country: "Uzbekistan" },
+  ]) assert.equal(destinationKnowledge.findIntercityRailConnection(from, to, 270), undefined);
+  const store = createDestinationKnowledgeStore({ destinationOverrides: [
+    { canonicalId: "example", name: "Example", country: knownKnowledgeFact("Japan", "static", providerSource) },
+    { canonicalId: "example-city", name: "Example City", country: knownKnowledgeFact("Japan", "static", providerSource) },
+  ] });
+  assert.equal(store.canonicalId({ name: "Example City", country: "Japan" }), "example-city");
+});
+
 test("resolves curated knowledge without changing the caller's destination identity", () => {
   const stop = { id: "seed-tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895] as [number, number] };
   const destination = destinationKnowledge.findDestination(stop);

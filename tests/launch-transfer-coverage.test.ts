@@ -19,6 +19,24 @@ const centralAsia = () => buildCanonicalTripLegs({
     stop("Samarkand", "Uzbekistan", 66.9597, 39.6542, 2), stop("Dushanbe", "Tajikistan", 68.787, 38.56, 3)],
 });
 
+test("provider city labels retain reviewed transport evidence after JSON handoff", async () => {
+  const legs = centralAsia();
+  for (const leg of legs) {
+    for (const endpoint of [leg.fromEndpoint, leg.toEndpoint]) {
+      if (endpoint?.name === "Samarkand") {
+        endpoint.name = "Samarkand City";
+        endpoint.canonicalPlaceId = "open-world:nominatim:relation:15589846";
+        endpoint.coordinates = [66.9756954, 39.6550017];
+      }
+    }
+  }
+  const resolved = await resolveCanonicalTransferJourneys(JSON.parse(JSON.stringify(legs)));
+  assert.deepEqual(resolved.map((leg) => leg.mode), ["flight", "flight", "train", "unknown", "flight"]);
+  assert.equal(resolved[2].provenance, "planning_estimate");
+  assert.match(JSON.stringify(resolved[2].routeMetadata.multimodalResolution), /adb\.org/);
+  assert.equal(resolved[2].toEndpoint?.name, "Samarkand City", "knowledge lookup must not rewrite the traveller's endpoint");
+});
+
 test("Central Asia coverage includes arrival and same-as-start return without inventing the cross-border gap", async () => {
   const legs = await resolveCanonicalTransferJourneys(centralAsia());
   assert.deepEqual(legs.map((leg) => [leg.fromEndpoint?.name, leg.toEndpoint?.name, leg.mode]), [
