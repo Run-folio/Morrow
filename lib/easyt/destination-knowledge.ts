@@ -690,6 +690,17 @@ const normalise = (value: string) => value
   .replace(/(^-|-$)/g, "");
 
 const identityCountryKey = (name: string, country: string) => `${normalise(name)}|${normalise(country)}`;
+// Providers may append an administrative city qualifier to a settlement name.
+// Keep exact names first, and only bridge the qualifier with explicit country scope.
+function countryScopedIdentity<T>(index: ReadonlyMap<string, T>, input: DestinationIdentityInput): T | undefined {
+  if (!input.country) return undefined;
+  const exact = index.get(identityCountryKey(input.name, input.country));
+  if (exact !== undefined) return exact;
+  const settlementName = input.name.trim().replace(/\s+city$/i, "");
+  return settlementName !== input.name.trim()
+    ? index.get(identityCountryKey(settlementName, input.country))
+    : undefined;
+}
 const transferKey = (fromCanonicalId: string, toCanonicalId: string) => `${normalise(fromCanonicalId)}|${normalise(toCanonicalId)}`;
 
 export type DestinationKnowledgeStore = {
@@ -759,7 +770,7 @@ export function createDestinationKnowledgeStore(options: {
       if (resolved) return resolved;
     }
     if (input.country) {
-      const resolved = nameCountryToId.get(identityCountryKey(input.name, input.country));
+      const resolved = countryScopedIdentity(nameCountryToId, input);
       if (resolved) return resolved;
     }
     const candidates = nameCandidates.get(normalise(input.name));
@@ -788,7 +799,7 @@ export function createDestinationKnowledgeStore(options: {
       if (endpoint) return endpoint;
     }
     if (input.country) {
-      const endpoint = railEndpointByNameCountry.get(identityCountryKey(input.name, input.country));
+      const endpoint = countryScopedIdentity(railEndpointByNameCountry, input);
       if (endpoint) return endpoint;
     }
     const candidates = railEndpointNameCandidates.get(normalise(input.name));
