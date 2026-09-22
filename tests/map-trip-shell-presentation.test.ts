@@ -68,6 +68,7 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock\{[^}]*left:0!important[^}]*width:var\(--map-workspace-rail-width\)!important/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*right:92px!important;[\s\S]*bottom:48px!important/);
   assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
 });
 

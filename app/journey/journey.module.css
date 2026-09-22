@@ -1144,14 +1144,14 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
   .shellPlanner .mapPlaceContext,
   .shellPlanner .mapTransferContext{
     position:absolute!important;
-    top:auto!important;
-    right:18px!important;
-    bottom:18px!important;
+    top:calc(var(--map-workspace-strip-height) + 120px)!important;
+    right:92px!important;
+    bottom:48px!important;
     left:auto!important;
     display:block!important;
     width:min(330px,calc(100% - var(--map-workspace-rail-width) - 54px))!important;
     max-width:330px!important;
-    max-height:calc(100% - var(--map-workspace-strip-height) - 36px)!important;
+    max-height:none!important;
     padding:17px!important;
     overflow-y:auto!important;
     border-radius:3px!important;
