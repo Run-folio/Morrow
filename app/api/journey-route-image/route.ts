@@ -24,6 +24,41 @@ function withUnsplashReferral(url?: string) {
   return target.toString();
 }
 
+function upstreamReason(status: number) {
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  if (status === 429) return "rate-limited";
+  if (status >= 500) return "upstream-server-error";
+  return "other-upstream-error";
+}
+
+function sanitizedProviderErrors(value: unknown, accessKey: string): string[] {
+  if (!value || typeof value !== "object") return [];
+  const payload = value as { errors?: unknown; message?: unknown };
+  const messages = Array.isArray(payload.errors) ? payload.errors : [payload.message];
+  return messages.filter((message): message is string => typeof message === "string").slice(0, 3).map((message) =>
+    message
+      .replaceAll(accessKey, "[redacted]")
+      .replace(/\b(?:Client-ID|Bearer)\s+[^\s,;]+/gi, (match) => `${match.split(/\s/)[0]} [redacted]`)
+      .replace(/\b(client_id|access_key|token)=[^&\s]+/gi, "$1=[redacted]")
+      .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "[redacted]")
+      .replace(/[\x00-\x1f\x7f]/g, " ")
+      .trim()
+      .slice(0, 160)
+  ).filter(Boolean);
+}
+
+function numericHeader(value: string | null) {
+  return value && /^\d{1,6}$/.test(value) ? value : null;
+}
+
+function retryAfterHeader(value: string | null) {
+  if (!value) return null;
+  if (/^\d{1,6}$/.test(value)) return value;
+  const date = Date.parse(value);
+  return Number.isFinite(date) && value.endsWith(" GMT") ? new Date(date).toUTCString() : null;
+}
+
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 180);
   if (!query) return NextResponse.json({ image: null, configured: Boolean(process.env.UNSPLASH_ACCESS_KEY), reason: "missing-query" }, { status: 400 });
@@ -39,10 +74,22 @@ export async function GET(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(6000),
     });
-    if (!response.ok) return NextResponse.json(
-      { image: null, configured: true, reason: response.status === 429 ? "rate-limited" : "unsplash-error" },
-      { status: response.status === 429 ? 429 : 502, headers: { "Cache-Control": "no-store" } },
-    );
+    if (!response.ok) {
+      const providerPayload: unknown = await response.json().catch(() => null);
+      return NextResponse.json(
+        {
+          image: null,
+          configured: true,
+          reason: upstreamReason(response.status),
+          upstreamStatus: response.status,
+          upstreamErrors: sanitizedProviderErrors(providerPayload, accessKey),
+          rateLimitLimit: numericHeader(response.headers.get("X-Ratelimit-Limit")),
+          rateLimitRemaining: numericHeader(response.headers.get("X-Ratelimit-Remaining")),
+          retryAfter: retryAfterHeader(response.headers.get("Retry-After")),
+        },
+        { status: response.status === 429 ? 429 : 502, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const photos = ((await response.json()) as { results?: UnsplashPhoto[] }).results ?? [];
     const candidates = photos.flatMap((photo) => {
       const src = photo.urls?.regular;
