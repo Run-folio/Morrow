@@ -525,6 +525,7 @@ function TripBuilderDocument() {
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
   const [curatedRoute, setCuratedRoute] = useState<CuratedRouteKnowledge | undefined>();
   const [stopInput, setStopInput] = useState("");
+  const [stopSearchReadyKey, setStopSearchReadyKey] = useState(0);
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -2069,7 +2070,12 @@ function TripBuilderDocument() {
         if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
       }
       setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
-      setStopInput(""); setStopError(""); setStopChecking(false); setShowStopEditor(false);
+      setStopInput(""); setStopError(""); setStopChecking(false);
+      if (targetMentionId) setShowStopEditor(false);
+      else {
+        setShowStopEditor(true);
+        setStopSearchReadyKey((current) => current + 1);
+      }
       return addedStop;
     } catch {
       fail(ui.unavailable);
@@ -3891,11 +3897,12 @@ function TripBuilderDocument() {
                       excludeCanonicalIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
                       invalid={Boolean(stopError)}
                       describedBy={stopError ? stopErrorId : undefined}
+                      revealSuggestionsKey={stopSearchReadyKey}
                       onChange={(value) => { setStopInput(value); setStopError(""); }}
                       onSelect={(suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
                       onSubmitFreeText={() => { void addStop(); }}
                     />
-                      <button type="button" onClick={() => { if (resolvingPlaceMentionId) cancelTransientPlanningClarification(resolvingPlaceMentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); setStopChecking(false); }}>{language === "es" ? "Cancelar" : "Cancel"}</button></div>
+                      <button type="button" onClick={() => { if (resolvingPlaceMentionId) cancelTransientPlanningClarification(resolvingPlaceMentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); setStopChecking(false); }}>{stops.length ? (language === "es" ? "Terminar de añadir paradas" : "Done adding stops") : (language === "es" ? "Cancelar" : "Cancel")}</button></div>
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}

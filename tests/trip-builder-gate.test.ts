@@ -564,6 +564,56 @@ test("Builder only presents route-stop search results whose selected evidence ca
   }
 });
 
+test("Add stop remains ready for consecutive canonical additions on mobile and closes explicitly", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const places = [
+    { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:fixture:tokyo", providerId: "fixture:tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], placeType: "city", routability: "direct_destination" },
+  ];
+  const desktopPlace = { canonicalPlaceId: "open-world:fixture:seoul", providerId: "fixture:seoul", name: "Seoul", country: "South Korea", coordinates: [126.978, 37.5665], placeType: "city", routability: "direct_destination" };
+  const geocodeCandidates = Object.fromEntries([...places, desktopPlace].map((place) => [place.name, [{
+    ...place,
+    providerSourceLabel: "Controlled global place provider",
+  }]]));
+  const view = await renderBuilder({ geocodeCandidates });
+  try {
+    await view.page.setViewportSize({ width: 390, height: 844 });
+    for (const place of places) {
+      const search = view.page.getByRole("combobox", { name: /Add your first place|Add a destination/ });
+      await search.fill(place.name);
+      await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
+      await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
+      assert.equal(await search.count(), 1, "the same Add stop flow should remain mounted");
+      assert.equal(await search.inputValue(), "");
+      assert.equal(await search.evaluate((element: HTMLElement) => globalThis.document.activeElement === element), true,
+        "focus should return to the cleared search after a successful add");
+    }
+
+    const stopOrder = await view.page.locator('[aria-label="Confirmed stops"] > div > button').allTextContents();
+    assert.deepEqual(stopOrder.map((label: string) => label.replace(/\s+/g, " ").trim()), ["1. Almaty", "2. Samarkand", "3. Tokyo"]);
+
+    const search = view.page.getByRole("combobox", { name: "Add a destination" });
+    await search.fill("Almaty");
+    await view.page.waitForTimeout(350);
+    assert.equal(await view.page.getByRole("option", { name: /^Almaty/ }).count(), 0);
+    assert.equal(await view.page.getByText("Almaty", { exact: true }).count() > 0, true);
+
+    await view.page.getByRole("button", { name: "Done adding stops" }).click();
+    assert.equal(await view.page.getByRole("combobox", { name: "Add a destination" }).count(), 0);
+    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 1);
+
+    await view.page.setViewportSize({ width: 1280, height: 900 });
+    await view.page.getByRole("button", { name: "Add stop", exact: true }).click();
+    const desktopSearch = view.page.getByRole("combobox", { name: "Add a destination" });
+    await desktopSearch.fill(desktopPlace.name);
+    await view.page.getByRole("option", { name: new RegExp(`^${desktopPlace.name}`) }).click();
+    await view.page.getByText(desktopPlace.name, { exact: true }).first().waitFor();
+    assert.equal(await desktopSearch.inputValue(), "");
+    assert.equal(await desktopSearch.evaluate((element: HTMLElement) => globalThis.document.activeElement === element), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 test("an entered origin may reach validation but cannot build while unverified", () => {
   const input = validInput();
   input.originCoordinates = undefined;
