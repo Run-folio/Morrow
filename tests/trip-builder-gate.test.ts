@@ -506,6 +506,64 @@ test("provider unavailability never makes an unverified model base actionable", 
   } finally { await view.close(); }
 });
 
+test("Builder only presents route-stop search results whose selected evidence can be added canonically", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const providerPlaces = {
+    Almaty: {
+      canonicalPlaceId: "open-world:fixture:almaty",
+      providerId: "fixture:almaty",
+      providerSourceLabel: "Controlled global place provider",
+      name: "Almaty",
+      country: "Kazakhstan",
+      coordinates: [76.886, 43.2389],
+      placeType: "city",
+      routability: "direct_destination",
+    },
+    Samarkand: {
+      canonicalPlaceId: "open-world:fixture:samarkand",
+      providerId: "fixture:samarkand",
+      providerSourceLabel: "Controlled global place provider",
+      name: "Samarkand",
+      country: "Uzbekistan",
+      coordinates: [66.9597, 39.6542],
+      placeType: "city",
+      routability: "direct_destination",
+    },
+    Tokyo: {
+      canonicalPlaceId: "open-world:fixture:tokyo",
+      providerId: "fixture:tokyo",
+      providerSourceLabel: "Controlled global place provider",
+      name: "Tokyo",
+      country: "Japan",
+      coordinates: [139.6917, 35.6895],
+      placeType: "city",
+      routability: "direct_destination",
+    },
+  };
+  for (const place of Object.values(providerPlaces)) {
+    const view = await renderBuilder({ geocodeCandidates: { [place.name]: [place] } });
+    try {
+      const search = view.page.getByRole("combobox", { name: "Add your first place" });
+      await search.fill(place.name);
+      const option = view.page.getByRole("option", { name: new RegExp(`^${place.name}`) });
+      await option.waitFor({ timeout: 5_000 });
+      await option.click();
+      await view.page.getByText(place.name, { exact: true }).first().waitFor({ timeout: 5_000 });
+      assert.equal(await view.page.getByText(new RegExp(`We couldn't verify.*${place.name}`)).count(), 0);
+      assert.deepEqual(view.errors, []);
+    } finally { await view.close(); }
+  }
+
+  for (const weakCatalogPlace of ["Almaty", "Samarkand"]) {
+    const view = await renderBuilder();
+    try {
+      await view.page.getByRole("combobox", { name: "Add your first place" }).fill(weakCatalogPlace);
+      await view.page.waitForTimeout(350);
+      assert.equal(await view.page.getByRole("option", { name: new RegExp(`^${weakCatalogPlace}`) }).count(), 0,
+        `${weakCatalogPlace} must not be actionable without coordinates from canonical evidence`);
+    } finally { await view.close(); }
+  }
+});
+
 test("an entered origin may reach validation but cannot build while unverified", () => {
   const input = validInput();
   input.originCoordinates = undefined;

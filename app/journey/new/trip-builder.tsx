@@ -3702,6 +3702,7 @@ function TripBuilderDocument() {
                 <section className={styles.firstPlaceEntry} aria-label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}>
                   <h2>{language === "es" ? "Añade tu primer lugar" : "Add your first place"}</h2>
                   <CanonicalPlaceAutocomplete
+                    requireCoordinates
                     label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}
                     value={stopInput}
                     placeholder={language === "es" ? "Busca una ciudad o un lugar" : "Search for a city or place"}
@@ -3769,6 +3770,7 @@ function TripBuilderDocument() {
                     <div className={styles.inlinePlanningSearch}>
                       <CanonicalPlaceAutocomplete
                         autoFocus
+                        requireCoordinates
                         label={language === "es" ? `Punto de salida en ${placeDisplayName(inlineOriginPlanningMention)}` : `Starting point in ${placeDisplayName(inlineOriginPlanningMention)}`}
                         value={baseSearchInputs[inlineOriginPlanningMention.mentionId] ?? ""}
                         placeholder={language === "es" ? `Busca ciudades y lugares en ${placeDisplayName(inlineOriginPlanningMention)}` : `Search cities and places in ${placeDisplayName(inlineOriginPlanningMention)}`}
@@ -3859,6 +3861,7 @@ function TripBuilderDocument() {
                     <div className={styles.inlinePlanningSearch}>
                       <CanonicalPlaceAutocomplete
                         autoFocus
+                        requireCoordinates
                         label={language === "es" ? `Elegir una base en ${placeDisplayName(inlineStopBaseMention)}` : `Choose a base in ${placeDisplayName(inlineStopBaseMention)}`}
                         value={baseSearchInputs[inlineStopBaseMention.mentionId] ?? ""}
                         placeholder={language === "es" ? `Busca ciudades y lugares en ${placeDisplayName(inlineStopBaseMention)}` : `Search cities and places in ${placeDisplayName(inlineStopBaseMention)}`}
@@ -3880,6 +3883,7 @@ function TripBuilderDocument() {
                     {resolvingPlaceMentionId ? <small className={styles.baseSelectionContext}>{language === "es" ? "Busca un lugar para" : "Search for a place for"} {inlineStopPlanningMention ? placeDisplayName(inlineStopPlanningMention) : ""}</small> : null}
                     <div className={styles.inlineEditor}><CanonicalPlaceAutocomplete
                       autoFocus
+                      requireCoordinates
                       label={copy.addDestination}
                       value={stopInput}
                       placeholder={copy.destinationPlaceholder}
@@ -3934,6 +3938,7 @@ function TripBuilderDocument() {
                       }}>{originRelationship ? (language === "es" ? "Cambiar salida" : "Change departure") : multiPlace ? (language === "es" ? "Añadir o cambiar lugares" : "Add or change places") : (language === "es" ? "Cambiar base" : "Change base")}<span className="sr-only"> {placeDisplayName(mention)}</span></button>
                       {selection.kind === "base" && !originRelationship && resolvingPlaceMentionId === mention.mentionId ? <div className={styles.baseSelector}>
                         <CanonicalPlaceAutocomplete
+                          requireCoordinates
                           label={language === "es" ? `Cambiar la base para ${placeDisplayName(mention)}` : `Change the base for ${placeDisplayName(mention)}`}
                           value={baseSearchInputs[mention.mentionId] ?? ""}
                           placeholder={language === "es" ? `Busca dentro de ${placeDisplayName(mention)}…` : `Search within ${placeDisplayName(mention)}…`}
