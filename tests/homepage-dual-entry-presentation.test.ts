@@ -42,6 +42,21 @@ test("wide capture keeps one form and one primary submit", () => {
   assert.match(captureSource, /destinationEditorOpen/);
 });
 
+test("Homepage stop rows remain before trip details and the primary action in DOM order", () => {
+  const stopsBranchStart = captureSource.indexOf('homepageEntry.mode === "stops"');
+  const describeBranchStart = captureSource.indexOf("      </> : <>", stopsBranchStart);
+  const stopsMarkup = captureSource.slice(stopsBranchStart, describeBranchStart);
+  const destinationEditor = stopsMarkup.indexOf("styles.wideDestinationEditor");
+  const dates = stopsMarkup.indexOf("{homepageDates}");
+  const personalize = stopsMarkup.indexOf("{homepagePersonalize}");
+  const primaryAction = stopsMarkup.indexOf("{homepageAction}");
+
+  assert.ok(destinationEditor >= 0, "Stops mode must render its destination editor");
+  assert.ok(destinationEditor < dates, "All destination rows must precede trip dates");
+  assert.ok(dates < personalize, "Dates must precede Personalize");
+  assert.ok(personalize < primaryAction, "The primary action must follow the complete stop/details group");
+});
+
 test("wide capture stories exercise keyboard and click tabs plus retained personalization", () => {
   assert.match(captureStories, /WideHomepageCapture/);
   assert.match(captureStories, /new KeyboardEvent\("keydown", \{ key: "ArrowRight"/);

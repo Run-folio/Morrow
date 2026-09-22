@@ -275,12 +275,12 @@ export function MorroviaTripCapture({
                 <ChevronDown aria-hidden="true" />
               </EasyTButton>
             </div>
+            {homepageEntry.destinationEditor && destinationEditorOpen ? <div className={styles.wideDestinationEditor} id={`${stopsPanelId}-editor`}>{homepageEntry.destinationEditor}</div> : null}
             {homepageDates}
             {homepagePersonalize}
           </div>
           {homepageAction}
         </div>
-        {homepageEntry.destinationEditor && destinationEditorOpen ? <div className={styles.wideDestinationEditor} id={`${stopsPanelId}-editor`}>{homepageEntry.destinationEditor}</div> : null}
       </> : <>
         <div className={styles.wideDescribePanel} role="tabpanel" id={describePanelId} aria-labelledby={`${describePanelId}-tab`}>
           {promptField}
