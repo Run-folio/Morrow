@@ -644,6 +644,58 @@ export const DetailedBasemap: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "delhi", mode: "plan" } } } },
 };
 
+export const MapWorkspaceDesktop1440WholeRoute: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440Destination: Story = {
+  ...DetailedBasemap,
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440StayResults: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440SelectedStay: Story = {
+  ...DetailedBasemap,
+  args: {
+    storyTrip: goldenTriangleTrip,
+    storyState: {
+      mapMode: "detail",
+      shapeDayTab: "stay",
+      localPlaces: [providerPlaces.hotel],
+      selectedLocalPlaceId: providerPlaces.hotel.id,
+    },
+  },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceMobile390WholeRoute: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const MapWorkspaceMobile390SelectedStay: Story = {
+  ...DetailedBasemap,
+  args: {
+    storyTrip: goldenTriangleTrip,
+    storyState: {
+      mapMode: "detail",
+      shapeDayTab: "stay",
+      localPlaces: [providerPlaces.hotel],
+      selectedLocalPlaceId: providerPlaces.hotel.id,
+      mobileSheetSize: "medium",
+    },
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 export const AddPinCollapsed: Story = GoldenTriangle;
 
 export const AddPinChooseLocation: Story = {

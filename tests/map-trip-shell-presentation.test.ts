@@ -71,6 +71,20 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
 });
 
+test("Storybook covers the risk-based simplified Map workspace matrix", () => {
+  for (const story of [
+    "MapWorkspaceDesktop1440WholeRoute",
+    "MapWorkspaceDesktop1440Destination",
+    "MapWorkspaceDesktop1440StayResults",
+    "MapWorkspaceDesktop1440SelectedStay",
+    "MapWorkspaceMobile390WholeRoute",
+    "MapWorkspaceMobile390SelectedStay",
+  ]) {
+    assert.match(mapStoriesSource, new RegExp(`export const ${story}`), story);
+  }
+  assert.doesNotMatch(mapStoriesSource, /Fullscreen|expandedMap/);
+});
+
 test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /initialMapCameraMode\(customTrip, searchParams\)/);
   assert.match(mapWorkspaceSource, /overviewMode=\{mapMode === "overview"\}/);
