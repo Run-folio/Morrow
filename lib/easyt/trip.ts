@@ -456,6 +456,7 @@ export type EasyTTrip = {
 export type BuilderDay = {
   number: string;
   date: string;
+  stopId?: string;
   destination: string;
   title: string;
   reason: string;
@@ -564,9 +565,12 @@ export function tripFromBuilder(input: BuilderTripInput): EasyTTrip {
   });
   const curatedRoute = reconcileCuratedRouteKnowledge(input.curatedRoute, stops.map((stop) => stop.id));
 
+  const stopById = new Map(stops.map((stop) => [stop.id, stop]));
   const stopByName = new Map(stops.map((stop) => [stop.name, stop]));
   const planItems = input.draft.map((day, index): PlanItem => {
-    const stop = stopByName.get(day.destination) ?? stops[0];
+    // Generated days identify an occurrence, not merely a destination name.
+    // Keep name matching only for older drafts that predate occurrence IDs.
+    const stop = day.stopId ? stopById.get(day.stopId) : stopByName.get(day.destination) ?? stops[0];
     const date = new Date(`${input.startDate}T00:00:00`);
     date.setDate(date.getDate() + index);
     const mappedPlace = input.placeDetails?.[stop?.id ?? ""]?.find((place) => place.title === (day.placeTitle ?? day.title));

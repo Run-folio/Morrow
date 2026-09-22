@@ -101,7 +101,7 @@ test("11 foreign candidates never satisfy the Iran parent", () => {
 test("12 Georgia country and Georgia state remain materially distinct identities", () => {
   assert.notEqual(georgiaCountry.canonicalPlaceId, georgiaState.canonicalPlaceId);
   assert.notEqual(georgiaCountry.country, georgiaState.country);
-  assert.match(autocomplete, /showPlaceType \? ` · \$\{placeTypeLabel\(suggestion\.placeType\)\}`/);
+  assert.match(autocomplete, /showPlaceType \? ` · \$\{placeTypeLabel\(suggestion\.placeType, language\)\}`/);
 });
 
 test("13 choosing Georgia country creates a country-bound base flow", () => {
