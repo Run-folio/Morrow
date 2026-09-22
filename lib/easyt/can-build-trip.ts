@@ -58,6 +58,16 @@ export type CanBuildTripInput = {
   document: Pick<EasyTTrip, "stops" | "planItems" | "startDate" | "endDate">;
 };
 
+export function builderRouteInputIsReady(stops: CanBuildTripInput["stops"]) {
+  const stopIds = stops.map((stop) => stop.id);
+  return stopIds.length > 0
+    && new Set(stopIds).size === stopIds.length
+    && stops.every((stop) => stop.id.trim() && stop.name.trim() && stop.country?.trim()
+      && (stop.coordinates
+        ? stop.coordinates.every((value) => Number.isFinite(value))
+        : Boolean(stop.canonicalPlaceId?.trim())));
+}
+
 function exactDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
@@ -87,8 +97,7 @@ export function canBuildTrip(input: CanBuildTripInput) {
     conflicts.push(conflict({ code: "end-unverified", stage: "places", message: "Choose the ending place from the suggestions, or select Not sure yet.", source: "builder" }));
   }
   if (!input.stops.length) conflicts.push(conflict({ code: "route-empty", stage: "places", message: "Add at least one destination before building the trip.", source: "builder" }));
-  if (uniqueStopIds.size !== stopIds.length || input.stops.some((stop) => !stop.id.trim() || !stop.name.trim() || !stop.country?.trim()
-    || (stop.coordinates ? stop.coordinates.some((value) => !Number.isFinite(value)) : !stop.canonicalPlaceId?.trim()))) {
+  if (input.stops.length && !builderRouteInputIsReady(input.stops)) {
     conflicts.push(conflict({ code: "route-input-invalid", stage: "places", message: "Confirm every route destination before continuing.", stopIds, source: "builder" }));
   }
 

@@ -36,7 +36,7 @@ import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfil
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
-import { canBuildTrip } from "@/lib/easyt/can-build-trip";
+import { builderRouteInputIsReady, canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
@@ -933,7 +933,10 @@ function TripBuilderDocument() {
           if (locationMentions.length) {
             setIntakeMentions(locationMentions);
             const routableMentions = routableHandoffMentions(locationMentions);
-            setResolvingLocations(Boolean(routableMentions.length));
+            // Canonical handoffs are already valid route input. Provider
+            // lookups may enrich them, but their timing must not suppress the
+            // itinerary or create a browser-dependent false validation block.
+            setResolvingLocations(Boolean(routableMentions.length) && !builderRouteInputIsReady(initialStops));
             // Let the builder render immediately. These requests enrich the
             // route after arrival instead of holding the homepage transition.
             void (async () => {

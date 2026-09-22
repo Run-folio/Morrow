@@ -34,7 +34,19 @@ async function builderBundle() {
   return bundle;
 }
 
-export async function renderBuilder({ query = "", draft, path = "/journey/new" }: { query?: string; draft?: unknown; path?: string } = {}) {
+export async function renderBuilder({
+  query = "",
+  draft,
+  path = "/journey/new",
+  browserName = "chromium",
+  geocodeDelayMs = 0,
+}: {
+  query?: string;
+  draft?: unknown;
+  path?: string;
+  browserName?: "chromium" | "webkit";
+  geocodeDelayMs?: number;
+} = {}) {
   const script = await builderBundle();
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
@@ -56,11 +68,17 @@ export async function renderBuilder({ query = "", draft, path = "/journey/new" }
     response.end(`<div id="root"></div><script>${script.replaceAll("</script>", "<\\/script>")}</script>`);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { chromium } = require(runtime);
-  const browser = await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
+  const { chromium, webkit } = require(runtime);
+  const browser = browserName === "webkit"
+    ? await webkit.launch({ headless: true })
+    : await chromium.launch({ channel: process.env.MORROVIA_BROWSER_CHANNEL ?? "chrome", headless: true });
   const page = await browser.newPage();
   const errors: string[] = [];
   page.on("pageerror", (error: Error) => errors.push(error.message));
+  if (geocodeDelayMs > 0) await page.route("**/api/journey-geocode?**", async (route: { continue: () => Promise<void> }) => {
+    await new Promise((resolve) => setTimeout(resolve, geocodeDelayMs));
+    await route.continue();
+  });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
   const address = server.address() as { port: number };
   await page.goto(`http://127.0.0.1:${address.port}${path}${query}`);
