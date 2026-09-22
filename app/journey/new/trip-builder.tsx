@@ -525,6 +525,7 @@ function TripBuilderDocument() {
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
   const [curatedRoute, setCuratedRoute] = useState<CuratedRouteKnowledge | undefined>();
   const [stopInput, setStopInput] = useState("");
+  const [stopSearchReadyKey, setStopSearchReadyKey] = useState(0);
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -1378,6 +1379,8 @@ function TripBuilderDocument() {
     && !selectedMentionIds.has(issue.mentionId)
     && !placeIssueNeedsAttention(issue));
   const pendingPlaceCount = new Set(placeIssues.filter((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId)).map((issue) => issue.mentionId)).size;
+  const stopSectionEditing = showStopEditor || Boolean(inlineStopBaseMention) || pendingPlaceCount > 0;
+  const stopSectionVisible = stopSectionEditing || stops.length > 0;
   const areasToShapeCount = pendingReviewPlaceMentions.filter((mention) => mention.status !== "ambiguous" && mention.status !== "unresolved"
     && (mention.requiresBaseSelection || mention.routability === "planning_area" || mention.routability === "anchor_or_poi")).length;
   const identitiesToConfirmCount = pendingReviewPlaceMentions.filter((mention) => mention.status === "ambiguous" || mention.status === "unresolved").length;
@@ -2069,7 +2072,12 @@ function TripBuilderDocument() {
         if (restoredMention) setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== restoredMention.mentionId));
       }
       setDecisionSelections((current) => ({ ...current, routeOrder: undefined }));
-      setStopInput(""); setStopError(""); setStopChecking(false); setShowStopEditor(false);
+      setStopInput(""); setStopError(""); setStopChecking(false);
+      if (targetMentionId) setShowStopEditor(false);
+      else {
+        setShowStopEditor(true);
+        setStopSearchReadyKey((current) => current + 1);
+      }
       return addedStop;
     } catch {
       fail(ui.unavailable);
@@ -3702,6 +3710,7 @@ function TripBuilderDocument() {
                 <section className={styles.firstPlaceEntry} aria-label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}>
                   <h2>{language === "es" ? "Añade tu primer lugar" : "Add your first place"}</h2>
                   <CanonicalPlaceAutocomplete
+                    requireCoordinates
                     label={language === "es" ? "Añade tu primer lugar" : "Add your first place"}
                     value={stopInput}
                     placeholder={language === "es" ? "Busca una ciudad o un lugar" : "Search for a city or place"}
@@ -3769,6 +3778,7 @@ function TripBuilderDocument() {
                     <div className={styles.inlinePlanningSearch}>
                       <CanonicalPlaceAutocomplete
                         autoFocus
+                        requireCoordinates
                         label={language === "es" ? `Punto de salida en ${placeDisplayName(inlineOriginPlanningMention)}` : `Starting point in ${placeDisplayName(inlineOriginPlanningMention)}`}
                         value={baseSearchInputs[inlineOriginPlanningMention.mentionId] ?? ""}
                         placeholder={language === "es" ? `Busca ciudades y lugares en ${placeDisplayName(inlineOriginPlanningMention)}` : `Search cities and places in ${placeDisplayName(inlineOriginPlanningMention)}`}
@@ -3800,7 +3810,7 @@ function TripBuilderDocument() {
                   </>}
                 </TripBuilderDetailsEditor>
 
-                {(showStopEditor || Boolean(inlineStopBaseMention) || pendingPlaceCount > 0) && <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
+                {stopSectionVisible && <section id="builder-stops" className={`${styles.placesSection} ${!stopSectionEditing ? styles.mobileStopSummary : ""} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                   <div className={styles.placesSectionHead}>
                     {isHomepagePromptHandoff
                       ? <div><strong>{pendingPlaceCount
@@ -3811,7 +3821,7 @@ function TripBuilderDocument() {
                         ].filter(Boolean).join(" · ")
                         : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
-                    <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>
+                    {stopSectionEditing && <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>}
                   </div>
                   {stops.length > 0 && (isHomepagePromptHandoff
                     ? <div className={styles.handoffStops} role="list" aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
@@ -3859,6 +3869,7 @@ function TripBuilderDocument() {
                     <div className={styles.inlinePlanningSearch}>
                       <CanonicalPlaceAutocomplete
                         autoFocus
+                        requireCoordinates
                         label={language === "es" ? `Elegir una base en ${placeDisplayName(inlineStopBaseMention)}` : `Choose a base in ${placeDisplayName(inlineStopBaseMention)}`}
                         value={baseSearchInputs[inlineStopBaseMention.mentionId] ?? ""}
                         placeholder={language === "es" ? `Busca ciudades y lugares en ${placeDisplayName(inlineStopBaseMention)}` : `Search cities and places in ${placeDisplayName(inlineStopBaseMention)}`}
@@ -3880,6 +3891,7 @@ function TripBuilderDocument() {
                     {resolvingPlaceMentionId ? <small className={styles.baseSelectionContext}>{language === "es" ? "Busca un lugar para" : "Search for a place for"} {inlineStopPlanningMention ? placeDisplayName(inlineStopPlanningMention) : ""}</small> : null}
                     <div className={styles.inlineEditor}><CanonicalPlaceAutocomplete
                       autoFocus
+                      requireCoordinates
                       label={copy.addDestination}
                       value={stopInput}
                       placeholder={copy.destinationPlaceholder}
@@ -3887,11 +3899,12 @@ function TripBuilderDocument() {
                       excludeCanonicalIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
                       invalid={Boolean(stopError)}
                       describedBy={stopError ? stopErrorId : undefined}
+                      revealSuggestionsKey={stopSearchReadyKey}
                       onChange={(value) => { setStopInput(value); setStopError(""); }}
                       onSelect={(suggestion) => { void addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion); }}
                       onSubmitFreeText={() => { void addStop(); }}
                     />
-                      <button type="button" onClick={() => { if (resolvingPlaceMentionId) cancelTransientPlanningClarification(resolvingPlaceMentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); setStopChecking(false); }}>{language === "es" ? "Cancelar" : "Cancel"}</button></div>
+                      <button type="button" onClick={() => { if (resolvingPlaceMentionId) cancelTransientPlanningClarification(resolvingPlaceMentionId); setShowStopEditor(false); setResolvingPlaceMentionId(null); setStopInput(""); setStopError(""); setStopChecking(false); }}>{stops.length ? (language === "es" ? "Terminar de añadir paradas" : "Done adding stops") : (language === "es" ? "Cancelar" : "Cancel")}</button></div>
                     {stopChecking ? <small className={styles.hint} role="status">{ui.checking}</small> : null}
                     {stopError ? <small id={stopErrorId} className={styles.hintError} role="alert">{stopError}</small> : null}
                     {!stopInput.trim() && contextualSuggestions.length > 0 && <div className={styles.suggestions}>{contextualSuggestions.map((suggestion) => <button type="button" key={suggestion.canonicalPlaceId} onClick={() => addStop(suggestion.name, suggestion.country, undefined, undefined, suggestion)}><Plus /> {suggestion.label}</button>)}</div>}
@@ -3934,6 +3947,7 @@ function TripBuilderDocument() {
                       }}>{originRelationship ? (language === "es" ? "Cambiar salida" : "Change departure") : multiPlace ? (language === "es" ? "Añadir o cambiar lugares" : "Add or change places") : (language === "es" ? "Cambiar base" : "Change base")}<span className="sr-only"> {placeDisplayName(mention)}</span></button>
                       {selection.kind === "base" && !originRelationship && resolvingPlaceMentionId === mention.mentionId ? <div className={styles.baseSelector}>
                         <CanonicalPlaceAutocomplete
+                          requireCoordinates
                           label={language === "es" ? `Cambiar la base para ${placeDisplayName(mention)}` : `Change the base for ${placeDisplayName(mention)}`}
                           value={baseSearchInputs[mention.mentionId] ?? ""}
                           placeholder={language === "es" ? `Busca dentro de ${placeDisplayName(mention)}…` : `Search within ${placeDisplayName(mention)}…`}

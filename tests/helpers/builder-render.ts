@@ -40,6 +40,7 @@ export async function renderBuilder({
   path = "/journey/new",
   browserName = "chromium",
   geocodeDelayMs = 0,
+  geocodeCandidates = {},
   nearbyCandidates = [],
   nearbyStatus,
 }: {
@@ -48,6 +49,7 @@ export async function renderBuilder({
   path?: string;
   browserName?: "chromium" | "webkit";
   geocodeDelayMs?: number;
+  geocodeCandidates?: Record<string, unknown[]>;
   nearbyCandidates?: unknown[];
   nearbyStatus?: "ready" | "empty" | "unavailable";
 } = {}) {
@@ -67,6 +69,16 @@ export async function renderBuilder({
         response.setHeader("Content-Type", "application/json");
         response.statusCode = nearbyStatus === "unavailable" ? 503 : 200;
         response.end(JSON.stringify({ candidates: nearbyCandidates, status: nearbyStatus ?? (nearbyCandidates.length ? "ready" : "empty") }));
+        return;
+      }
+      if (url.pathname === "/api/journey-geocode" && url.searchParams.get("candidates") === "1") {
+        const place = url.searchParams.get("place") ?? "";
+        const defaultCandidate = place === "Tokyo"
+          ? { name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895], kind: "city" }
+          : undefined;
+        const candidates = geocodeCandidates[place] ?? (defaultCandidate ? [defaultCandidate] : []);
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ candidates }));
         return;
       }
       const result = url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo"

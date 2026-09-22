@@ -263,6 +263,7 @@ export function BuilderClarificationDialog({
         {search ? <section className={styles.search}>
           <strong>{search.label}</strong>
           <CanonicalPlaceAutocomplete
+            requireCoordinates
             label={search.label}
             value={search.value}
             placeholder={search.placeholder}

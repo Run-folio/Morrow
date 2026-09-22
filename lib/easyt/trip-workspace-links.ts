@@ -20,6 +20,13 @@ export function tripWorkspaceHref(tripId: string) {
   return `/journey/${encodeURIComponent(tripId)}`;
 }
 
+/** Device-only trips must opt into the recovery path when they return to the
+ * Builder. Account-owned trips continue through the canonical cloud path. */
+export function tripBuilderHref(tripId: string, ownerId: string | null) {
+  const base = `/journey/new?trip=${encodeURIComponent(tripId)}`;
+  return ownerId === null ? `${base}&recover=1` : base;
+}
+
 /** Generic Overview entry resets position; an explicit section hash keeps its native anchor behaviour. */
 export function shouldResetOverviewEntry(hash: string) {
   return hash === "" || hash === "#";

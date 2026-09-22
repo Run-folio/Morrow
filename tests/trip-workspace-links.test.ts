@@ -17,6 +17,7 @@ import {
   parseMapWorkspaceTarget,
   parseStayWorkspaceTarget,
   shouldResetOverviewEntry,
+  tripBuilderHref,
   tripSaveSignInHref,
   tripWorkspaceHref,
   stayWorkspaceHref,
@@ -94,6 +95,17 @@ test("a generated guest trip opens before auth and an explicit save returns to t
   const signIn = tripSaveSignInHref(id);
   assert.equal(signIn, `/journey/login?next=${encodeURIComponent(`${arrival}&saved=1`)}`);
   assert.equal(new URLSearchParams(signIn.split("?", 2)[1]).get("next"), `${arrival}&saved=1`);
+});
+
+test("Builder re-entry keeps device recovery explicit only for guest trips", () => {
+  assert.equal(
+    tripBuilderHref("trip-guest with spaces", null),
+    "/journey/new?trip=trip-guest%20with%20spaces&recover=1",
+  );
+  assert.equal(
+    tripBuilderHref("trip-account with spaces", "owner-a"),
+    "/journey/new?trip=trip-account%20with%20spaces",
+  );
 });
 
 test("a generated arrival remains distinguishable from normal workspace navigation", () => {
