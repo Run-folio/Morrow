@@ -1379,6 +1379,8 @@ function TripBuilderDocument() {
     && !selectedMentionIds.has(issue.mentionId)
     && !placeIssueNeedsAttention(issue));
   const pendingPlaceCount = new Set(placeIssues.filter((issue) => issue.blocksRoute && !selectedMentionIds.has(issue.mentionId)).map((issue) => issue.mentionId)).size;
+  const stopSectionEditing = showStopEditor || Boolean(inlineStopBaseMention) || pendingPlaceCount > 0;
+  const stopSectionVisible = stopSectionEditing || stops.length > 0;
   const areasToShapeCount = pendingReviewPlaceMentions.filter((mention) => mention.status !== "ambiguous" && mention.status !== "unresolved"
     && (mention.requiresBaseSelection || mention.routability === "planning_area" || mention.routability === "anchor_or_poi")).length;
   const identitiesToConfirmCount = pendingReviewPlaceMentions.filter((mention) => mention.status === "ambiguous" || mention.status === "unresolved").length;
@@ -3808,7 +3810,7 @@ function TripBuilderDocument() {
                   </>}
                 </TripBuilderDetailsEditor>
 
-                {(showStopEditor || Boolean(inlineStopBaseMention) || pendingPlaceCount > 0) && <section id="builder-stops" className={`${styles.placesSection} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
+                {stopSectionVisible && <section id="builder-stops" className={`${styles.placesSection} ${!stopSectionEditing ? styles.mobileStopSummary : ""} ${summaryFocus === "stops" ? styles.summaryEditorOn : ""} ${stopError ? styles.cardError : ""}`}>
                   <div className={styles.placesSectionHead}>
                     {isHomepagePromptHandoff
                       ? <div><strong>{pendingPlaceCount
@@ -3819,7 +3821,7 @@ function TripBuilderDocument() {
                         ].filter(Boolean).join(" · ")
                         : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
-                    <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>
+                    {stopSectionEditing && <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>}
                   </div>
                   {stops.length > 0 && (isHomepagePromptHandoff
                     ? <div className={styles.handoffStops} role="list" aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>

@@ -614,6 +614,56 @@ test("Add stop remains ready for consecutive canonical additions on mobile and c
   } finally { await view.close(); }
 });
 
+test("mobile Builder keeps the canonical stop summary visible beside Add stop", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const places = [
+    { canonicalPlaceId: "open-world:fixture:almaty", providerId: "fixture:almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389], placeType: "city", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:fixture:samarkand", providerId: "fixture:samarkand", name: "Samarkand", country: "Uzbekistan", coordinates: [66.9597, 39.6542], placeType: "city", routability: "direct_destination" },
+    { canonicalPlaceId: "open-world:fixture:tokyo", providerId: "fixture:tokyo", name: "Tokyo", country: "Japan", coordinates: [139.6917, 35.6895], placeType: "city", routability: "direct_destination" },
+  ];
+  const geocodeCandidates = Object.fromEntries(places.map((place) => [place.name, [{ ...place, providerSourceLabel: "Controlled global place provider" }]]));
+  const view = await renderBuilder({ geocodeCandidates });
+  try {
+    const summary = view.page.locator('[aria-label="Confirmed stops"]');
+    const routeWorkspace = view.page.locator("[data-builder-route-workspace]");
+    const summaryNames = async () => (await summary.locator(":scope > div > button").allTextContents())
+      .map((label: string) => label.replace(/^\s*\d+\.\s*/, "").trim());
+    await view.page.setViewportSize({ width: 390, height: 844 });
+    for (const place of places.slice(0, 3)) {
+      const search = view.page.getByRole("combobox", { name: /Add your first place|Add a destination/ });
+      await search.fill(place.name);
+      await view.page.getByRole("option", { name: new RegExp(`^${place.name}`) }).click();
+    }
+    await view.page.getByRole("button", { name: "Done adding stops" }).click();
+
+    for (const width of [390, 430]) {
+      await view.page.setViewportSize({ width, height: 844 });
+      assert.equal(await summary.isVisible(), true, `${width}px should keep the current route beside Add stop`);
+      assert.equal(await summary.evaluate((node: HTMLElement) => {
+        const workspace = globalThis.document.querySelector("[data-builder-route-workspace]");
+        return Boolean(workspace && (node.compareDocumentPosition(workspace) & globalThis.Node.DOCUMENT_POSITION_FOLLOWING));
+      }), true);
+      assert.equal(await view.page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth), true);
+    }
+
+    assert.equal(await view.page.getByRole("button", { name: "Add stop", exact: true }).count(), 1,
+      "the compact summary should hand off to the existing route-workspace action instead of duplicating it");
+    assert.deepEqual(await summaryNames(), ["Almaty", "Samarkand", "Tokyo"]);
+
+    await routeWorkspace.locator('summary[aria-label="Actions for Samarkand"]').click();
+    await routeWorkspace.getByRole("button", { name: "Earlier" }).click();
+    assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty", "Tokyo"]);
+
+    await summary.getByRole("button", { name: "Remove Tokyo" }).click();
+    assert.deepEqual(await summaryNames(), ["Samarkand", "Almaty"]);
+    assert.equal(await summary.isVisible(), true);
+    assert.equal(await view.page.getByRole("combobox", { name: "Add a destination" }).count(), 0);
+
+    await view.page.setViewportSize({ width: 1280, height: 900 });
+    assert.equal(await routeWorkspace.isVisible(), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 test("an entered origin may reach validation but cannot build while unverified", () => {
   const input = validInput();
   input.originCoordinates = undefined;
