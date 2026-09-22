@@ -13,6 +13,10 @@ test("Route Check keeps canonical rows and markers while presenting a comparison
   assert.match(workspace, /onCommitOrder\(routeCheckProposalStopIds, "route-check"\)/,
     "Apply must use the same canonical commit boundary as drag and menu movement");
   assert.match(workspace, /onDismissRouteCheck/);
+  assert.match(workspace, /onOpenRouteCheck \? <EasyTButton[\s\S]*>Check route<\/EasyTButton> : null/,
+    "the canonical Route Check must only offer an action when a proposal or warning can open");
+  assert.match(builder, /onOpenRouteCheck=\{routeRecommendationVisible \|\| showTimingWarning/,
+    "the Builder must not retain a dead Route Check action after removing duplicate route insights");
   assert.match(builder, /commitStopOrder\(order, "route-check"\)/);
   assert.match(builder, /commitStopOrder\(nextStops\.map\(\(stop\) => stop\.id\), "route-check"\)/);
   assert.doesNotMatch(builder, /apply a materially cleaner route[\s\S]*applyRecommendedOrder\(\)/,

@@ -26,7 +26,7 @@ export type TripBuilderRouteWorkspaceProps = {
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
   onAddStop: () => void;
-  onOpenRouteCheck: () => void;
+  onOpenRouteCheck?: () => void;
   routeCheckSummary: string;
   onDismissRouteCheck: () => void;
   onRouteCheckApplied: () => void;
@@ -206,7 +206,7 @@ export function TripBuilderRouteWorkspace({
       {routeCheckProposal?.ok ? <div className={styles.builderRouteCheckActions}>
         <EasyTButton size="small" onClick={() => { if (routeCheckProposalStopIds && onCommitOrder(routeCheckProposalStopIds, "route-check")) { onRouteCheckApplied(); onDismissRouteCheck(); } }}>Apply order</EasyTButton>
         <EasyTButton size="small" variant="secondary" onClick={onDismissRouteCheck}>Dismiss</EasyTButton>
-      </div> : <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton>}
+      </div> : onOpenRouteCheck ? <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton> : null}
     </section>
     <p className="sr-only" aria-live="polite">{reorder.draggingId ? `Moving stop ${reorder.draggingId}` : ""}</p>
   </section>;

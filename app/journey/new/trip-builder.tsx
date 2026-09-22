@@ -10,8 +10,8 @@
  */
 
 import {
-  ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronDown, ChevronRight,
-  Check, Clock, FileSpreadsheet, GripVertical, Info, Lock, MapPin, Pencil, Plane, Plus, Route, Sparkles, Train, Trash2, Users, X, CarFront, Ship, AlertTriangle, CheckCircle2,
+  ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronRight,
+  Check, FileSpreadsheet, GripVertical, Info, Lock, MapPin, Pencil, Plane, Plus, Route, Train, Trash2, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
@@ -36,7 +36,7 @@ import { defaultTravelProfile, travelProfileFromUnknown, tripInterestsWithProfil
 import { firstTripWorkspaceHref, mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { createLatestJourneyCaptureRequestGate, journeyCaptureFailureMessage, requestJourneyCapture } from "@/lib/easyt/journey-capture-client";
 import { HOME_TRIP_DRAFT_KEY, homepageHandoffMatchesTrip, homepageHandoffReceiptForOwner, homeTripDraftInterestsWereExplicit, homeTripDraftTimingFlexibility, initialHandoffRouteStops, mergeHandoffLocationChoice, preferredHandoffLocationChoice, removeHomeTripDraftIfDurable, resolveHandoffBatch, routableHandoffMentions, tripInterestsFromHomeDraft, type HandoffLocationChoice, type HomeTripDraft } from "@/lib/easyt/home-trip-handoff";
-import { canBuildTrip } from "@/lib/easyt/can-build-trip";
+import { builderRouteInputIsReady, canBuildTrip } from "@/lib/easyt/can-build-trip";
 import { validateFinalPlan } from "@/lib/easyt/plan-validator";
 import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
@@ -71,6 +71,7 @@ import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/l
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
+import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
 
 /* ---------------------------------------------------------------- data */
 
@@ -400,42 +401,6 @@ function StopReorderControl({
   </div>;
 }
 
-function BuilderSummaryRail({
-  language,
-  stops,
-  travellers,
-  totalDays,
-  totalNights,
-  areasToShapeCount,
-  identitiesToConfirmCount,
-}: {
-  language: EasyTLanguage;
-  stops: Stop[];
-  travellers: number;
-  totalDays: number;
-  totalNights: number;
-  areasToShapeCount: number;
-  identitiesToConfirmCount: number;
-}) {
-  const dayLabel = language === "es" ? (totalDays === 1 ? "día" : "días") : (totalDays === 1 ? "day" : "days");
-  const placeStatus = [
-    `${stops.length} ${language === "es" ? (stops.length === 1 ? "lugar elegido" : "lugares elegidos") : (stops.length === 1 ? "place selected" : "places selected")}`,
-    areasToShapeCount ? `${areasToShapeCount} ${language === "es" ? (areasToShapeCount === 1 ? "área por definir" : "áreas por definir") : (areasToShapeCount === 1 ? "area to shape" : "areas to shape")}` : "",
-    identitiesToConfirmCount ? `${identitiesToConfirmCount} ${language === "es" ? (identitiesToConfirmCount === 1 ? "identidad por confirmar" : "identidades por confirmar") : (identitiesToConfirmCount === 1 ? "identity to confirm" : "identities to confirm")}` : "",
-  ].filter(Boolean).join(" · ");
-  return <aside className={styles.builderSummaryRail} aria-label={language === "es" ? "Viaje de un vistazo" : "Trip at a glance"}>
-    <section className={styles.timingSummary}>
-      <h2>{language === "es" ? "Tu viaje de un vistazo" : "Your trip at a glance"}</h2>
-      <div className={styles.timeSummaryStats}>
-        <div><CalendarDays aria-hidden="true" /><strong>{`${totalDays} ${dayLabel}`}</strong></div>
-        <div><MapPin aria-hidden="true" /><strong>{placeStatus}</strong></div>
-        <div><Users aria-hidden="true" /><strong>{travellers} {language === "es" ? (travellers === 1 ? "viajero" : "viajeros") : (travellers === 1 ? "traveller" : "travellers")}</strong></div>
-      </div>
-      {stops.length ? <ol className={styles.timeSummaryStops}>{stops.map((stop, index) => <li key={stop.id}><b>{index + 1}</b><strong>{stop.name}</strong></li>)}</ol> : null}
-    </section>
-  </aside>;
-}
-
 /* ------------------------------------------------------------- main */
 
 export default function TripBuilder() {
@@ -623,7 +588,6 @@ function TripBuilderDocument() {
   const [travelProfile, setTravelProfile] = useState<TravelProfile>(defaultTravelProfile);
   const [hasSavedTravelProfile, setHasSavedTravelProfile] = useState(false);
   const [showBudgetOverride, setShowBudgetOverride] = useState(false);
-  const [routeInsightsOpen, setRouteInsightsOpen] = useState(true);
   const [timingWarningOpen, setTimingWarningOpen] = useState(false);
   const [hasPromptContext, setHasPromptContext] = useState(false);
   const [arrivedFromHomepage, setArrivedFromHomepage] = useState(false);
@@ -933,7 +897,10 @@ function TripBuilderDocument() {
           if (locationMentions.length) {
             setIntakeMentions(locationMentions);
             const routableMentions = routableHandoffMentions(locationMentions);
-            setResolvingLocations(Boolean(routableMentions.length));
+            // Canonical handoffs are already valid route input. Provider
+            // lookups may enrich them, but their timing must not suppress the
+            // itinerary or create a browser-dependent false validation block.
+            setResolvingLocations(Boolean(routableMentions.length) && !builderRouteInputIsReady(initialStops));
             // Let the builder render immediately. These requests enrich the
             // route after arrival instead of holding the homepage transition.
             void (async () => {
@@ -1691,24 +1658,11 @@ function TripBuilderDocument() {
     : travelConsequenceIssues.length >= 2
       ? (language === "es" ? `${travelConsequenceIssues.length} traslados reducen de forma importante el tiempo en sus destinos.` : `${travelConsequenceIssues.length} transfers materially reduce time at their destinations.`)
       : null;
-  const restoreRecommendedOrderVisible = decisionSelections.routeOrder === "entered"
-    && routeIntelligence.route.state === "recommendation"
-    && (routeIntelligence.route.improvementMinutes ?? 0) >= 90;
   const currentOrderKey = stops.map((stop) => stop.id).join("\u001f");
   const currentRouteScore = routeIntelligence.route.scoring?.rankedCandidates.find((candidate) => (
     candidate.state === "scored" && candidate.stopIds.join("\u001f") === currentOrderKey
   ));
-  const knownTransferMinutes = builderCanonicalLegs
-    .map((leg) => leg.doorToDoorMinutes ?? leg.durationMinutes)
-    .filter((minutes): minutes is number => minutes !== null);
-  const averageTransferMinutes = knownTransferMinutes.length === builderCanonicalLegs.length && knownTransferMinutes.length
-    ? Math.round(knownTransferMinutes.reduce((sum, minutes) => sum + minutes, 0) / knownTransferMinutes.length)
-    : null;
   const canonicalTimingComplete = builderCanonicalLegs.every((leg) => canonicalArrivalLoad(leg) !== "unknown");
-  const totalUsableDays = canonicalTimingComplete ? stops.reduce((sum, stop) => {
-    const arrivalLoad = canonicalArrivalLoad(builderCanonicalLegs.find((leg) => leg.toStopId === stop.id));
-    return sum + usableStopDays(allocation[stop.id] ?? 0, arrivalLoad);
-  }, 0) : null;
   const backtrackingPenaltyCount = currentRouteScore?.state === "scored"
     ? currentRouteScore.penalties.filter((penalty) => penalty.code === "unnecessary-backtracking").length
     : null;
@@ -3082,6 +3036,8 @@ function TripBuilderDocument() {
     });
     if (recovery.stored) {
       recoveryHandleRef.current = recovery.handle;
+      const durableUrl = durableBuilderRecoveryUrl(window.location.href, trip.id);
+      if (durableUrl) window.history.replaceState(window.history.state, "", durableUrl);
       const canonicalTrip = hydratedCanonicalTripRef.current;
       const currentUrl = new URL(window.location.href);
       if (trip.ownerId
@@ -4029,14 +3985,14 @@ function TripBuilderDocument() {
                 onCommitOrder={commitStopOrder}
                 onEditNights={updateAllocatedDays}
                 onAddStop={() => openSummaryEditor("stops")}
-                onOpenRouteCheck={() => {
+                onOpenRouteCheck={routeRecommendationVisible || showTimingWarning ? () => {
                   if (routeRecommendationVisible) {
                     setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds);
                     return;
                   }
-                  setRouteInsightsOpen(true);
-                  window.requestAnimationFrame(() => document.getElementById("route-insights-title")?.scrollIntoView({ behavior: "smooth", block: "center" }));
-                }}
+                  setTimingWarningOpen(true);
+                  window.requestAnimationFrame(() => timingWarningRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+                } : undefined}
                 routeCheckSummary={primaryRouteCheckSummary}
                 onDismissRouteCheck={() => setRouteCheckProposalStopIds(null)}
                 onRouteCheckApplied={() => trackEvent("route_accepted", { method: "recommended_order", stop_count: stops.length, duration_days: totalDays })}
@@ -4098,17 +4054,6 @@ function TripBuilderDocument() {
                   })() : null}
                 </div>
               </section>}
-              {routeIntelligence.route.state !== "insufficient-data" && (routeIntelligence.route.reasons.length > 0 || routeIntelligence.route.summary) ? <section className={styles.routeInsights} aria-labelledby="route-insights-title">
-                <button type="button" className={styles.disclosureHead} aria-expanded={routeInsightsOpen} aria-controls="route-insights-content" onClick={() => setRouteInsightsOpen((current) => !current)}>
-                  <Sparkles aria-hidden="true" /><span><strong id="route-insights-title">{language === "es" ? "Ideas sobre la ruta" : "Route insights"}</strong></span><ChevronRight aria-hidden="true" />
-                </button>
-                {routeInsightsOpen && <div id="route-insights-content" className={styles.routeInsightContent}>
-                  <article><Sparkles aria-hidden="true" /><div><strong>{language === "es" ? "Flujo geográfico" : "Geographic flow"}</strong><small>{averageTransferMinutes === null ? (language === "es" ? "Traslados por confirmar" : "Transfers to confirm") : `${durationLabel(averageTransferMinutes)} ${language === "es" ? "por traslado de media" : "average transfer"}`}</small></div></article>
-                  <article><Clock aria-hidden="true" /><div><strong>{language === "es" ? "Tiempo en cada lugar" : "Time in each place"}</strong><small>{totalUsableDays === null ? (language === "es" ? "Por confirmar" : "To confirm") : `~${totalUsableDays} ${language === "es" ? "días aprovechables" : "usable days"}`}</small></div></article>
-                  {backtrackingPenaltyCount !== null && <article><ArrowRight aria-hidden="true" /><div><strong>{language === "es" ? "Retrocesos" : "Backtracking"}</strong><small>{backtrackingPenaltyCount === 0 ? (language === "es" ? "Sin regresos innecesarios" : "No unnecessary returns") : (language === "es" ? `${backtrackingPenaltyCount} regreso por revisar` : `${backtrackingPenaltyCount} return to review`)}</small></div></article>}
-                  {restoreRecommendedOrderVisible && <button type="button" className={styles.routeInsightAction} onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Revisar el orden recomendado" : "Review recommended order"}<ArrowRight aria-hidden="true" /></button>}
-                </div>}
-              </section> : null}
               {showTimingWarning && <section ref={timingWarningRef} tabIndex={gateConflict ? -1 : undefined} className={`${styles.timingWarning} ${gateConflict ? styles.timingWarningBlocking : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? styles.timingWarningStrong : ""}`} role={gateConflict ? "alert" : "status"} aria-labelledby="timing-warning-title">
                 <button type="button" className={styles.disclosureHead} aria-expanded={timingWarningOpen} aria-controls="timing-warning-content" onClick={() => setTimingWarningOpen((current) => !current)}>
                   <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong><small>{timingWarningSummary}</small></span><ChevronRight aria-hidden="true" />
@@ -4127,7 +4072,6 @@ function TripBuilderDocument() {
           )}
         </div>
 
-        {hasRouteSkeleton && <BuilderSummaryRail language={language} stops={stops} travellers={effectiveIntent.travellers} totalDays={totalDays} totalNights={totalNights} areasToShapeCount={areasToShapeCount} identitiesToConfirmCount={identitiesToConfirmCount} />}
       </div>
 
       <BuilderClarificationDialog

@@ -80,7 +80,8 @@
 .wideAction { display: grid; align-self: center; }
 .wideAction button { position: relative; width: 100%; height: 56px; min-height: 56px; white-space: nowrap; }
 .wideAction button[aria-busy="true"] > span:first-child { position: absolute; left: 14px; }
-.wideDestinationEditor { min-width: 0; padding-top: 2px; animation: revealDetails 180ms ease-out; }
+.wideStopsRow > .wideAction { align-self: start; margin-top: 6px; }
+.wideDestinationEditor { grid-column: 1 / -1; min-width: 0; padding-top: 12px; background: var(--morrovia-paper); animation: revealDetails 180ms ease-out; }
 .wideDescribePanel { position: relative; min-width: 0; }
 .wideDescribePanel > .promptField { min-height: 130px; }
 .wideDescribePanel .textareaField textarea { min-height: 100px; resize: vertical; }

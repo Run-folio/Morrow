@@ -106,6 +106,27 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
   } finally { await view.close(); }
 });
 
+test("canonical published handoff stays ready while optional enrichment is pending in Chromium and WebKit", { skip: !builderBrowserTestsEnabled }, async () => {
+  for (const browserName of ["chromium", "webkit"] as const) {
+    const view = await renderBuilder({
+      query: "?inspire=japan-south-korea",
+      browserName,
+      geocodeDelayMs: 2_000,
+    });
+    try {
+      const build = view.page.getByRole("button", { name: "Build trip", exact: false });
+      await build.waitFor({ timeout: 3_000 });
+      assert.equal(await build.isDisabled(), false, `${browserName} must use the canonical handoff instead of pending enrichment`);
+      assert.equal(await view.page.getByText("Finish checking your places before continuing.", { exact: true }).count(), 0);
+      await build.evaluate((element: HTMLButtonElement) => element.click());
+      await view.page.waitForFunction(() => location.pathname !== "/journey/new", undefined, { timeout: 10_000 });
+      assert.match(new URL(view.page.url()).pathname, /^\/journey\/(?:trip-[^/]+|trips\/sync\/sign-in)/);
+    } finally {
+      await view.close();
+    }
+  }
+});
+
 function allocatedNightResult(allocations: Record<string, number>, state: "allocated" | "compromised" = "allocated"): NightAllocationResult {
   const total = Object.values(allocations).reduce((sum, nights) => sum + nights, 0);
   return {

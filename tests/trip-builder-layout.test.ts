@@ -139,6 +139,25 @@ browserTest("versioned direct, area and Describe handoffs hydrate the unified Bu
   }
 });
 
+browserTest("homepage handoff adopts its durable recovery URL once and restores on reload", async () => {
+  const draft = acceptedHomepageDraft("direct");
+  const view = await renderBuilder({ query: "?homeDraft=1&campaign=beta", draft });
+  try {
+    await view.page.waitForFunction(() => new URL(location.href).searchParams.get("trip") === "trip-reserved-direct");
+    const durableUrl = new URL(view.page.url());
+    assert.equal(durableUrl.searchParams.get("recover"), "1");
+    assert.equal(durableUrl.searchParams.has("homeDraft"), false);
+    assert.equal(durableUrl.searchParams.get("campaign"), "beta");
+    await view.page.getByText("Changes saved on this device", { exact: true }).waitFor();
+
+    await view.page.reload();
+    await view.page.getByRole("heading", { name: "Nights per stop" }).waitFor();
+    assert.equal(new URL(view.page.url()).searchParams.get("trip"), "trip-reserved-direct");
+    assert.equal(await view.page.getByText("Tokyo", { exact: true }).count() > 0, true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
 browserTest("legacy step query cannot switch an empty Builder into timing and preserves other parameters", async () => {
   const view = await renderBuilder({ query: "?step=1&recover=1&view=brief&campaign=test" });
   try {
@@ -170,8 +189,8 @@ test("Builder workspace height and capture width remain content-driven", () => {
 
   assert.match(styles, /\.wizardBody \{[^}]*border-top:\s*0/,
     "the adjacent workspace must not stack a second border against the step header");
-  assert.match(styles, /\.wizardBody:has\(\.placesSummaryRail\) \{[^}]*grid-template-columns:minmax\(0,1fr\) var\(--builder-rail-width\)/,
-    "the right summary rail must remain a separate grid column");
+  assert.match(styles, /\.wizardBody \{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    "the unified Builder must not reserve an empty column for a removed summary rail");
 });
 
 test("desktop Builder uses the approved wide workspace without changing tablet and mobile breakpoints", () => {
@@ -186,10 +205,8 @@ test("desktop Builder uses the approved wide workspace without changing tablet a
     "desktop should keep approximately 48px gutters");
   assert.match(desktop, /max-width: 1700px/,
     "wide displays should retain a useful maximum line length");
-  assert.match(desktop, /grid-template-columns: minmax\(0, 1fr\) var\(--builder-rail-width\)/,
-    "the main task and context rail should share one wide workspace grid");
-  assert.match(desktop, /column-gap: clamp\(16px, calc\(10vw - 124px\), 68px\)/,
-    "wide desktop should give the task area most of the additional width");
+  assert.match(desktop, /grid-template-columns: minmax\(0, 1fr\)/,
+    "the route and map should use the complete desktop Builder workspace after rail consolidation");
   assert.match(desktop, /grid-template-columns: minmax\(150px, 1fr\) minmax\(200px, 1\.3fr\) minmax\(110px, \.55fr\) minmax\(130px, \.7fr\)/,
     "the nights table should allocate useful width to transfer and usable-time details");
   assert.doesNotMatch(desktop, /@media\s*\(max-width:/,
@@ -345,6 +362,10 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "the obsolete top Route Check must not compete with the canonical check below the route workspace");
   assert.equal(builder.match(/<TripBuilderRouteWorkspace/g)?.length, 1,
     "the route workspace should remain the single owner of the primary Route Check surface");
+  assert.doesNotMatch(builder, /function BuilderSummaryRail|<BuilderSummaryRail/,
+    "the duplicate Trip-at-a-glance rail must not compete with compact journey details and the route");
+  assert.doesNotMatch(builder, /Route insights|Ideas sobre la ruta|styles\.routeInsights/,
+    "the overlapping Route insights panel must yield to the canonical Route Check and timing warnings");
   assert.match(builder, /searchParams\.set\("recover", "1"\)/,
     "a cloud-backed Builder with newer device edits must keep its recovery scope across refresh");
 });
