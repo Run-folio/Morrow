@@ -69,6 +69,11 @@ test("desktop Map has one persistent left rail and only contextual secondary det
   assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
   assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*right:92px!important;[\s\S]*bottom:48px!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*max-height:min\(440px,calc\(100% - var\(--map-workspace-strip-height\) - 168px\)\)!important/,
+    "selected detail stays compact instead of becoming a second rail");
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)\{grid-template-columns:auto minmax\(0,1fr\)!important\}/,
+    "shared status cards reflow to the desktop rail's container width");
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)>button\{grid-column:1\/-1!important;width:100%\}/);
   assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
   assert.match(mapWorkspaceSource, /const mapFocusOffset: \[number, number\] = isShellPresentation[\s\S]*hasExplicitMapContext[\s\S]*\? \[0, -80\][\s\S]*: \[180, -80\]/,
     "selected-result focus should stay in the usable canvas between the rail and contextual card on narrow desktop");

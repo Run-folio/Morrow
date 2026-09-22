@@ -1156,6 +1156,9 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
     overflow-y:auto!important;
     border-radius:3px!important;
   }
+  .shellPlanner .mapPlaceContext{max-height:min(440px,calc(100% - var(--map-workspace-strip-height) - 168px))!important}
+  .shellPlanner .finderDock :global([class*="sectionStatus"]){grid-template-columns:auto minmax(0,1fr)!important}
+  .shellPlanner .finderDock :global([class*="sectionStatus"])>button{grid-column:1/-1!important;width:100%}
   .shellPlanner :global(.planner-map .maplibregl-ctrl-top-right){top:14px!important;right:18px!important}
   .shellPlanner .pinDock{right:18px!important}
   .shellPlanner .mapAssistant{right:18px!important;bottom:18px!important}
