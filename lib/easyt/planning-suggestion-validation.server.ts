@@ -1,6 +1,7 @@
 import type { JourneyCaptureResult } from "./journey-capture.ts";
 import {
   isOvernightBaseEligible,
+  nearbyBaseAnchorForMention,
   normalizePlacePhrase,
   placeCandidateSuitableAsNearbyBase,
   placeCandidateWithinPlanningParent,
@@ -25,17 +26,13 @@ function countryMatches(candidate: PlaceProviderCandidate, country: string) {
   return candidate.parentCountries?.some((value) => normalizePlacePhrase(value) === expected);
 }
 
-function candidateFitsParent(parent: ResolvedPlaceMention, candidate: PlaceProviderCandidate, suggestion: PlanningSuggestionCandidate) {
+function candidateFitsParent(parent: ResolvedPlaceMention, candidate: PlaceProviderCandidate) {
   if (!isOvernightBaseEligible({
     placeType: candidate.placeType,
     routability: candidate.routability ?? "direct_destination",
   }) || !candidate.coordinates) return false;
-  if (["landmark", "natural_area", "island", "archipelago", "coast", "mountain_range", "valley", "travel_corridor"].includes(parent.placeType)
-    && parent.coordinates) return Boolean(placeCandidateSuitableAsNearbyBase(
-      parent,
-      candidate,
-      suggestion.role === "gateway-candidate" ? 350 : 180,
-    ));
+  const nearbyBaseAnchor = nearbyBaseAnchorForMention(parent);
+  if (nearbyBaseAnchor) return Boolean(placeCandidateSuitableAsNearbyBase(nearbyBaseAnchor, candidate));
   if (!parent.coordinates && !parent.bounds && parent.parentCountries.length) {
     return candidate.parentCountries?.some((country) => parent.parentCountries
       .some((parentCountry) => normalizePlacePhrase(parentCountry) === normalizePlacePhrase(country))) ?? false;
@@ -65,9 +62,10 @@ export async function canonicalizePlanningSuggestions(input: {
     const fallbackContainer = input.capture.mentions.find((mention) => mention.mentionId !== parent.mentionId
       && ["continent", "country", "macro_region", "region"].includes(mention.placeType)
       && mention.parentCountries.some((country) => normalizePlacePhrase(country) === normalizePlacePhrase(suggestion.country)));
+    const parentRequiresNearbyBase = Boolean(nearbyBaseAnchorForMention(parent));
     const candidate = candidates.find((item) => countryMatches(item, suggestion.country)
-      && (candidateFitsParent(parent, item, suggestion)
-        || Boolean(fallbackContainer && candidateFitsParent(fallbackContainer, item, suggestion))));
+      && (candidateFitsParent(parent, item)
+        || Boolean(!parentRequiresNearbyBase && fallbackContainer && candidateFitsParent(fallbackContainer, item))));
     if (!candidate?.coordinates) return undefined;
     return {
       mentionId: parent.mentionId,
@@ -75,6 +73,7 @@ export async function canonicalizePlanningSuggestions(input: {
       canonicalPlaceId: candidate.providerId.startsWith("open-world:") ? candidate.providerId : `open-world:${candidate.providerId}`,
       name: candidate.canonicalName,
       country: candidate.parentCountries?.[0] ?? suggestion.country,
+      region: candidate.parentRegionId,
       placeType: candidate.placeType,
       coordinates: [...candidate.coordinates] as [number, number],
       reason: suggestion.rationale,

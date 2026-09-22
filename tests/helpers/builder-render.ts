@@ -41,6 +41,7 @@ export async function renderBuilder({
   browserName = "chromium",
   geocodeDelayMs = 0,
   nearbyCandidates = [],
+  nearbyStatus,
 }: {
   query?: string;
   draft?: unknown;
@@ -48,6 +49,7 @@ export async function renderBuilder({
   browserName?: "chromium" | "webkit";
   geocodeDelayMs?: number;
   nearbyCandidates?: unknown[];
+  nearbyStatus?: "ready" | "empty" | "unavailable";
 } = {}) {
   const script = await builderBundle();
   const server = createServer(async (request, response) => {
@@ -63,7 +65,8 @@ export async function renderBuilder({
       }
       if (url.pathname === "/api/journey-geocode" && url.searchParams.get("nearbyBases") === "1") {
         response.setHeader("Content-Type", "application/json");
-        response.end(JSON.stringify({ candidates: nearbyCandidates, status: nearbyCandidates.length ? "ready" : "empty" }));
+        response.statusCode = nearbyStatus === "unavailable" ? 503 : 200;
+        response.end(JSON.stringify({ candidates: nearbyCandidates, status: nearbyStatus ?? (nearbyCandidates.length ? "ready" : "empty") }));
         return;
       }
       const result = url.pathname === "/api/journey-geocode" && url.searchParams.get("place") === "Tokyo"

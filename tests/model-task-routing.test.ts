@@ -118,6 +118,54 @@ test("model suggestions only survive provider-backed canonical and containment v
   assert.match(builder, /setPlanningSuggestions\(homeDraft\.planningSuggestions \?\? \[\]\)/);
 });
 
+test("nearby-base model suggestions cannot use a broad country mention to bypass the canonical anchor predicate", async () => {
+  const captured = captureJourneyBrief("Kruger National Park, South Africa");
+  const unresolvedKruger = captured.mentions.find((mention) => mention.sourceText === "Kruger National Park");
+  assert.ok(unresolvedKruger);
+  const capture = {
+    ...captured,
+    mentions: captured.mentions.map((mention) => mention.mentionId === unresolvedKruger.mentionId ? {
+      ...mention,
+      canonicalName: "Kruger National Park",
+      canonicalPlaceId: "fixture:kruger-national-park",
+      placeType: "natural_area" as const,
+      status: "resolved" as const,
+      parentCountries: ["South Africa"],
+      parentRegionId: "Mpumalanga",
+      coordinates: [31.485, -24.994] as [number, number],
+      routability: "needs_base_selection" as const,
+      directlyRoutable: false,
+      requiresBaseSelection: true,
+      isAnchor: true,
+      role: "preferred" as const,
+    } : mention),
+  };
+  const provider: PlaceIntelligenceProvider = {
+    id: "fixture",
+    label: "Fixture provider",
+    lookup: async () => [{
+      providerId: "fixture:hoedspruit",
+      canonicalName: "Hoedspruit",
+      placeType: "town",
+      parentCountries: ["South Africa"],
+      parentRegionId: "Limpopo",
+      coordinates: [30.9547, -24.351],
+      routability: "direct_destination",
+      matchQuality: "exact",
+    }],
+  };
+  const suggestions = [{
+    parentSourceText: "Kruger National Park",
+    name: "Hoedspruit",
+    country: "South Africa",
+    role: "overnight-base-candidate" as const,
+    rationale: "Possible overnight base candidate for the park region.",
+    confidence: "high" as const,
+  }];
+
+  assert.deepEqual(await canonicalizePlanningSuggestions({ suggestions, capture, provider }), []);
+});
+
 test("fallback order is Terra to Luna to provider-backed deterministic capture and display surfaces do not call models", () => {
   const route = readFileSync(new URL("../app/api/journey-capture/route.ts", import.meta.url), "utf8");
   assert.ok(route.indexOf("deduplicatedPlanningRequest") < route.indexOf("createOpenAISemanticIntentProvider({ tier: \"primary\" })"));

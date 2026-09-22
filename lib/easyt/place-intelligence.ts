@@ -433,6 +433,7 @@ export type RegionalBaseSuggestion = {
   canonicalPlaceId: string;
   name: string;
   country: string;
+  region?: string;
   placeType: PlaceType;
   coordinates: [number, number];
   reason: string;
@@ -790,6 +791,23 @@ export function placeCandidateSuitableAsNearbyBase(
   if (anchorRegion && candidateRegion && !sameRegion && distanceKm > 30) return undefined;
   if (anchorRegion && !candidateRegion && distanceKm > 60) return undefined;
   return { distanceKm, containment: sameRegion ? "region" as const : "country" as const };
+}
+
+/** Keeps persisted/model-backed suggestions behind the same actionability
+ * boundary as provider discovery and the eventual canonical add-stop mutation. */
+export function canonicalPlaceSuggestionSuitableAsNearbyBase(
+  anchor: NearbyBaseAnchor,
+  suggestion: CanonicalPlaceSuggestion,
+) {
+  return placeCandidateSuitableAsNearbyBase(anchor, {
+    providerId: suggestion.canonicalPlaceId,
+    canonicalName: suggestion.name,
+    placeType: suggestion.placeType,
+    parentCountries: [suggestion.country],
+    parentRegionId: suggestion.region,
+    coordinates: suggestion.coordinates,
+    routability: suggestion.routability ?? "direct_destination",
+  });
 }
 
 /** Rank a provider shortlist using only canonical containment, settlement

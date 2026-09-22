@@ -240,6 +240,30 @@ function krugerAttentionDraft() {
   };
 }
 
+function krugerAttentionDraftWithUnverifiedModelBase() {
+  const draft = krugerAttentionDraft();
+  return {
+    ...draft,
+    planningSuggestions: [{
+      mentionId: "place-kruger-national-park",
+      regionCanonicalPlaceId: "fixture:kruger-national-park",
+      canonicalPlaceId: "open-world:fixture:hoedspruit",
+      name: "Hoedspruit",
+      country: "South Africa",
+      placeType: "town" as const,
+      coordinates: [30.9547, -24.351] as [number, number],
+      reason: "Possible overnight base candidate for the park region.",
+      provenance: [{
+        id: "planning-model:place-kruger-national-park:hoedspruit",
+        label: "Morrovia planning suggestion",
+        kind: "context" as const,
+        supports: "A planning model proposed this optional candidate.",
+      }],
+      anchorMatched: true,
+    }],
+  };
+}
+
 test("valid builder document passes the authoritative invariant", () => {
   const result = canBuildTrip(validInput());
   assert.equal(result.canAdvanceToTime, true);
@@ -459,6 +483,25 @@ test("choosing a provider-backed Kruger base creates the canonical stop through 
           && trip?.brief?.structuredBrief?.placeSelections?.some((selection: { mentionId: string; selectedCanonicalPlaceId: string }) => selection.mentionId === "place-kruger-national-park"
             && selection.selectedCanonicalPlaceId === "open-world:fixture:hazyview");
       }), undefined, { timeout: 5_000 });
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("provider unavailability never makes an unverified model base actionable", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const view = await renderBuilder({
+    query: "?homeDraft=1",
+    draft: krugerAttentionDraftWithUnverifiedModelBase(),
+    nearbyStatus: "unavailable",
+  });
+  try {
+    await view.page.getByText(/Nearby place discovery is temporarily unavailable/).waitFor({ timeout: 5_000 });
+    assert.equal(await view.page.getByRole("button", { name: /Hoedspruit/ }).count(), 0);
+    assert.equal(await view.page.getByRole("combobox", { name: "Have somewhere else in mind?" }).count(), 1);
+    await view.page.getByRole("button", { name: "Finish later", exact: true }).click();
+    const build = view.page.getByRole("button", { name: /Build trip/ });
+    assert.equal(await build.isDisabled(), false);
+    await build.click();
+    assert.equal(await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).count(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
