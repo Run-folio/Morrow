@@ -1,6 +1,7 @@
 import { transportBookingForLeg } from "./booking-readiness.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./trip.ts";
+import { effectiveTripLeg } from "./transport-mode-choice.ts";
 
 export type ItineraryTransportAgendaStatus = "booked" | "available" | "confirm";
 
@@ -43,7 +44,8 @@ export function itineraryTransportAgendaStatus(leg: TripLeg, booking: TripBookin
  * remain the sole durable owners of transport state.
  */
 export function itineraryTransportAgenda(trip: EasyTTrip): ItineraryTransportAgendaLeg[] {
-  return trip.legs.flatMap((leg) => {
+  return trip.legs.flatMap((recommendedLeg) => {
+    const leg = effectiveTripLeg(trip, recommendedLeg);
     const from = routeEndpointForLeg(trip, leg, "from");
     const to = routeEndpointForLeg(trip, leg, "to");
     if (!from || !to || from.id === to.id) return [];

@@ -3,6 +3,7 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { cancunReturnTripFixture } from "./storybook/cancun-return-trip.fixture";
 import TripShell from "./trip-shell";
 import TripTransportWorkspace from "./trip-transport-workspace";
+import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "@/lib/easyt/transport-mode-choice";
 
 const transportTrip: EasyTTrip = {
   ...cancunReturnTripFixture,
@@ -30,6 +31,55 @@ const transportTrip: EasyTTrip = {
   } : leg),
 };
 
+const choiceLeg = transportTrip.legs[0];
+const choiceFrom = choiceLeg.fromEndpoint ?? { kind: "origin" as const, id: choiceLeg.fromStopId ?? "origin", name: "Cancún", country: "Mexico", coordinates: [-86.8515, 21.1619] as [number, number] };
+const choiceTo = choiceLeg.toEndpoint ?? { kind: "stop" as const, id: choiceLeg.toStopId, name: "Tulum", country: "Mexico", coordinates: [-87.4654, 20.2114] as [number, number] };
+const choiceCandidate = {
+  id: "road:routed:storybook",
+  summaryMode: "road" as const,
+  segments: [{
+    id: `${choiceLeg.id}:road:storybook`,
+    mode: "road" as const,
+    fromEndpoint: choiceFrom,
+    toEndpoint: choiceTo,
+    distanceKm: choiceLeg.distanceKm,
+    durationMinutes: 110,
+    provider: "OpenRouteService routed road estimate.",
+    provenance: "routing_engine" as const,
+    confidence: "medium" as const,
+    scheduleNeedsChecking: true,
+  }],
+  totalDurationMinutes: 110,
+  distanceKm: choiceLeg.distanceKm,
+  confidence: "medium" as const,
+  provenance: "routing_engine" as const,
+  evidence: "routed_road",
+  connectionCount: 0,
+  score: 60,
+  reasons: ["A road provider returned a plausible route."],
+};
+const modeChoiceTrip: EasyTTrip = {
+  ...transportTrip,
+  id: "storybook-transport-mode-choice",
+  legs: transportTrip.legs.map((leg, index) => index === 0 ? {
+    ...leg,
+    routeMetadata: {
+      ...leg.routeMetadata,
+      multimodalResolution: {
+        version: 1,
+        selected: leg.mode,
+        selectedCandidateId: "morrovia:recommendation",
+        candidates: [choiceCandidate],
+        rejected: [],
+      },
+    },
+  } : leg),
+};
+const explicitChoice = supportedTransportChoicesForLeg(modeChoiceTrip, modeChoiceTrip.legs[0])[0];
+const explicitChoiceTrip = explicitChoice
+  ? selectTripLegTransportChoice(modeChoiceTrip, modeChoiceTrip.legs[0].id, explicitChoice.identity)
+  : modeChoiceTrip;
+
 const meta = {
   title: "Morrovia/05 Workspaces/Transport",
   component: TripTransportWorkspace,
@@ -41,7 +91,7 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => <TripShell trip={transportTrip}><Story /></TripShell>,
+    (Story, context) => <TripShell trip={context.args.trip as EasyTTrip}><Story /></TripShell>,
   ],
   args: { trip: transportTrip },
 } satisfies Meta<typeof TripTransportWorkspace>;
@@ -59,4 +109,12 @@ export const CanonicalAgendaDesktop1440: Story = { globals: { viewport: { value:
 
 export const PartialUnknownTransport: Story = {
   args: { trip: transportTrip },
+};
+
+export const EvidenceBackedModeChoice: Story = {
+  args: { trip: modeChoiceTrip },
+};
+
+export const ExplicitTravellerChoice: Story = {
+  args: { trip: explicitChoiceTrip },
 };

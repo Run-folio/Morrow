@@ -2,7 +2,7 @@ import type { EasyTTrip, TripLeg } from "./trip";
 import { reconcileLegacyTransportLeg } from "./transport-leg-compatibility.ts";
 
 const singleStopReferenceKeys = new Set([
-  "stopId", "fromStopId", "toStopId", "neighbouringStopId", "routeStopId",
+  "stopId", "fromStopId", "toStopId", "fromEndpointId", "toEndpointId", "neighbouringStopId", "routeStopId",
   "suggestedCutStopId", "fixedStartStopId", "fixedEndStopId",
 ]);
 const manyStopReferenceKeys = new Set([

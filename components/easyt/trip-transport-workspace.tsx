@@ -11,6 +11,9 @@ import { itineraryTransportAgenda, type ItineraryTransportAgendaLeg } from "@/li
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
 import type { EasyTTrip, TripLeg } from "@/lib/easyt/trip";
 import styles from "./trip-transport-workspace.module.css";
+import TripTransportChoiceControl from "./trip-transport-choice-control";
+import { useTripShellMutation } from "./trip-shell-client";
+import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 
 type Language = "en" | "es";
 
@@ -103,7 +106,10 @@ function TransportRow({ trip, item, copy, language }: {
   copy: ReturnType<typeof copyFor>;
   language: Language;
 }) {
+  const mutation = useTripShellMutation();
   const { leg } = item;
+  const recommendedLeg = trip.legs.find((candidate) => candidate.id === leg.id) ?? leg;
+  const pendingKey = `transport-choice-${leg.id}`;
   const Icon = iconForLeg(leg.mode);
   const durationMinutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
   const segmentSummary = transferJourneySegmentSummary(leg);
@@ -119,6 +125,18 @@ function TransportRow({ trip, item, copy, language }: {
       </div>
       {segmentSummary ? <p className={styles.segments}>{segmentSummary}</p> : null}
       <span className={styles.status} data-status={item.status}>{statusLabel}</span>
+      <TripTransportChoiceControl
+        trip={trip}
+        leg={recommendedLeg}
+        pending={mutation.isPending(pendingKey)}
+        showUnavailable
+        onChange={(identity) => mutation.mutateTrip(
+          (current) => identity
+            ? selectTripLegTransportChoice(current, leg.id, identity)
+            : clearTripLegTransportChoice(current, leg.id),
+          pendingKey,
+        )}
+      />
       <details className={styles.details}>
         <summary>{copy.details}</summary>
         <dl>

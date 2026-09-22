@@ -21,14 +21,18 @@ test("Transport is first-class while Itinerary exposes Day by day and Calendar",
   assert.doesNotMatch(itinerary, /value: "transport", label: copy\.transport/);
 });
 
-test("Transport remains a read-only projection of canonical legs, endpoints, dates and bookings", () => {
+test("Transport derives its agenda and mutates only the shared canonical leg choice", () => {
   assert.match(projection, /trip\.legs\.flatMap/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "from"\)/);
   assert.match(projection, /routeEndpointForLeg\(trip, leg, "to"\)/);
   assert.match(projection, /transportBookingForLeg\(trip, leg, fromStop, toStop\)/);
   assert.match(projection, /to\.kind === "end"/);
   assert.doesNotMatch(projection, /mutate|setTrip|fetch\(/);
-  assert.doesNotMatch(transport, /useTripMutationPersistence|useTripShellMutation|mutateTrip|setTrip/);
+  assert.match(transport, /useTripShellMutation/);
+  assert.match(transport, /TripTransportChoiceControl/);
+  assert.match(transport, /selectTripLegTransportChoice\(current, leg\.id, identity\)/);
+  assert.match(transport, /clearTripLegTransportChoice\(current, leg\.id\)/);
+  assert.doesNotMatch(transport, /useTripMutationPersistence|setTrip|legs:\s*trip\.legs\.map/);
 });
 
 test("transport rows expose route, mode, duration, uncertainty, details and truthful booking evidence", () => {
@@ -69,7 +73,7 @@ test("Transport keeps planning information above a subordinate compact partner h
 });
 
 test("the first-class workspace has responsive Storybook coverage and narrow-screen containment", () => {
-  for (const story of ["CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport"]) {
+  for (const story of ["CanonicalAgendaMobile320", "CanonicalAgendaMobile390", "CanonicalAgendaMobile430", "CanonicalAgendaTablet768", "CanonicalAgendaDesktop1024", "CanonicalAgendaDesktop1440", "PartialUnknownTransport", "EvidenceBackedModeChoice", "ExplicitTravellerChoice"]) {
     assert.match(stories, new RegExp(`export const ${story}`));
   }
   assert.match(transportStyles, /@media \(max-width: 540px\)[\s\S]*--morrovia-mobile-dock-offset/);

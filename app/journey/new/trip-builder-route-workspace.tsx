@@ -4,11 +4,13 @@ import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, Mo
 import { useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
+import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import type { JourneyStop } from "@/lib/journey";
 import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import type { EasyTTrip } from "@/lib/easyt/trip";
+import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
 
@@ -25,6 +27,7 @@ export type TripBuilderRouteWorkspaceProps = {
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
+  onTransportChoiceChange: (legId: string, identity: string | null) => void;
   onAddStop: () => void;
   onOpenRouteCheck?: () => void;
   routeCheckSummary: string;
@@ -64,6 +67,7 @@ export function TripBuilderRouteWorkspace({
   onPreviewOrder,
   onCommitOrder,
   onEditNights,
+  onTransportChoiceChange,
   onAddStop,
   onOpenRouteCheck,
   routeCheckSummary,
@@ -74,7 +78,8 @@ export function TripBuilderRouteWorkspace({
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [mapLifecycle, setMapLifecycle] = useState<"loading" | "ready" | "unavailable">("loading");
   const preview = previewStopIds ? buildBuilderRoutePreview(canonicalTrip, previewStopIds) : null;
-  const presentedTrip = preview?.ok ? preview.trip : canonicalTrip;
+  const recommendedTrip = preview?.ok ? preview.trip : canonicalTrip;
+  const presentedTrip = tripWithEffectiveTransportChoices(recommendedTrip);
   const mapStops = useMemo(() => presentedTrip.stops.map(mapStop), [presentedTrip.stops]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(presentedTrip), [presentedTrip]);
   const routeCheckProposal = useMemo(() => routeCheckProposalStopIds ? buildBuilderRoutePreview(canonicalTrip, routeCheckProposalStopIds) : null, [canonicalTrip, routeCheckProposalStopIds]);
@@ -111,7 +116,8 @@ export function TripBuilderRouteWorkspace({
         </div>
         <div role="rowgroup">
           {presentedTrip.stops.map((stop, index) => {
-            const leg = presentedTrip.legs.find((candidate) => candidate.toStopId === stop.id) ?? null;
+            const recommendedLeg = recommendedTrip.legs.find((candidate) => candidate.toStopId === stop.id) ?? null;
+            const leg = recommendedLeg ? effectiveTripLeg(recommendedTrip, recommendedLeg) : null;
             const transferMinutes = leg?.doorToDoorMinutes ?? leg?.durationMinutes ?? null;
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
             const isLocked = fixedOrder || locked.has(stop.id);
@@ -138,7 +144,15 @@ export function TripBuilderRouteWorkspace({
               <div className={styles.builderRouteIdentity} role="cell"><b>{index + 1}</b><span><strong>{stop.name}</strong><small>{stop.country}</small></span></div>
               <div className={styles.builderRouteTransfer} role="cell">
                 <Route aria-hidden="true" />
-                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small></span>
+                <span><strong>{leg ? `${leg.fromEndpoint?.name ? `From ${leg.fromEndpoint.name} · ` : ""}${transferJourneyModeLabel(leg)}` : index === 0 ? "Starts here" : "Transfer to confirm"}</strong><small>{leg ? formatMapDuration(transferMinutes) : "No arrival transfer"}</small>
+                  {recommendedLeg && !preview?.ok ? <span onClick={(event) => event.stopPropagation()}>
+                    <TripTransportChoiceControl
+                      trip={canonicalTrip}
+                      leg={recommendedLeg}
+                      onChange={(identity) => onTransportChoiceChange(recommendedLeg.id, identity)}
+                    />
+                  </span> : null}
+                </span>
               </div>
               <div className={styles.builderRouteNights} role="cell">
                 <span className={styles.mobileFieldLabel}>Nights</span>

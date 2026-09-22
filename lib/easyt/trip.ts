@@ -362,8 +362,23 @@ export type TripCascadeStatus = {
 
 export type TripDecisionSelections = {
   routeOrder?: "entered" | "recommended";
-  transportByLeg: Record<string, "fastest" | "simplest" | "lower-cost" | "experience-led">;
+  transportByLeg: Record<string, TripTransportDecisionSelection>;
 };
+
+export type TripLegTransportChoice = {
+  /** Deterministic evidence identity, never a candidate array position. */
+  identity: string;
+  candidateId: string;
+  mode: TripTransferMode;
+  evidence: string;
+  fromEndpointId: string;
+  toEndpointId: string;
+};
+
+/** String values are retained for documents created by the legacy Map choice UI. */
+export type TripTransportDecisionSelection =
+  | string
+  | TripLegTransportChoice;
 
 export type TripCapturedIntent = {
   originalBrief: string;

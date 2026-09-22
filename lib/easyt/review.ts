@@ -9,6 +9,7 @@ import { deriveItineraryCoverage, deriveTripDateFacts, incomingLegForPlanItem, o
 import { isoDateKey, parseIsoDate } from "./trip-lifecycle.ts";
 import { canonicalLegIntegrityIssues, routeEndpointForLeg } from "./trip-legs.ts";
 import { placeIssueRepresentsUnresolvedIntent } from "./unresolved-place-intent.ts";
+import { tripWithEffectiveTransportChoices } from "./transport-mode-choice.ts";
 
 const recommendation = (
   trip: EasyTTrip,
@@ -66,6 +67,7 @@ function placeIssueEvidence(issue: PlaceIssue) {
  * These are planning signals, not live timetable, visa, or booking claims.
  */
 export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
+  trip = tripWithEffectiveTransportChoices(trip);
   const results: TripRecommendation[] = [];
   const orderedStops = [...trip.stops].sort((left, right) => left.order - right.order);
   const plannerStops = orderedStops.map((stop): PlannerStop => ({

@@ -16,9 +16,9 @@ let bundle: Promise<string> | undefined;
 async function builderBundle() {
   bundle ??= build({
     stdin: {
-      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
-      function OverviewFromShell(){const trip=useTripShellTrip();return React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
-      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const trip=Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:')).map(key=>JSON.parse(localStorage.getItem(key))).find(record=>record.trip)?.trip;return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(OverviewFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
+      contents: `import React from 'react'; import {createRoot} from 'react-dom/client'; import Builder from './app/journey/new/trip-builder'; import Importer from './app/journey/new/import/spreadsheet-import-client'; import Overview from './components/easyt/trip-overview-workspace'; import Transport from './components/easyt/trip-transport-workspace'; import TripShell from './components/easyt/trip-shell'; import {useTripShellTrip} from './components/easyt/trip-shell-client';
+      function WorkspaceFromShell(){const trip=useTripShellTrip();return location.pathname.endsWith('/transport')?React.createElement(Transport,{trip}):React.createElement(Overview,{trip,initialPrepActions:[],initialPrepReadinessCards:[],initialPrepProviderStatus:'available'});}
+      function App(){if(location.pathname.endsWith('/import'))return React.createElement(Importer);if(location.pathname!=='/journey/new'){const trip=Object.keys(localStorage).filter(key=>key.startsWith('easyt:trip-recovery:v2:')).map(key=>JSON.parse(localStorage.getItem(key))).filter(record=>record.trip).sort((left,right)=>(Date.parse(right.savedAt)||0)-(Date.parse(left.savedAt)||0)||right.writeId.localeCompare(left.writeId))[0]?.trip;return trip?React.createElement(TripShell,{trip,cacheTrip:false,orientationAutoStart:false},React.createElement(WorkspaceFromShell)):React.createElement('p',null,'Trip unavailable');}return React.createElement(Builder);}
       createRoot(document.getElementById('root')).render(React.createElement(App));`,
       resolveDir: fileURLToPath(new URL("../../", import.meta.url)), loader: "tsx",
     },
@@ -42,6 +42,7 @@ async function builderBundle() {
 export async function renderBuilder({
   query = "",
   draft,
+  initialTrip,
   path = "/journey/new",
   browserName = "chromium",
   geocodeDelayMs = 0,
@@ -51,6 +52,7 @@ export async function renderBuilder({
 }: {
   query?: string;
   draft?: unknown;
+  initialTrip?: { id: string; ownerId: string | null } & Record<string, unknown>;
   path?: string;
   browserName?: "chromium" | "webkit";
   geocodeDelayMs?: number;
@@ -62,6 +64,18 @@ export async function renderBuilder({
   const server = createServer(async (request, response) => {
     if (request.url?.startsWith("/api/")) {
       const url = new URL(request.url, "http://localhost");
+      if (url.pathname === "/api/journey-transfer-resolution") {
+        const chunks: Buffer[] = [];
+        for await (const chunk of request) chunks.push(Buffer.from(chunk));
+        const payload = JSON.parse(Buffer.concat(chunks).toString()) as { legs?: Array<{ id?: string; fromStopId?: string | null; toStopId?: string }> };
+        const canonicalLegs = (initialTrip as { legs?: Array<{ id: string; fromStopId: string | null; toStopId: string }> } | undefined)?.legs ?? [];
+        const legs = (payload.legs ?? []).map((leg) => canonicalLegs.find((candidate) => candidate.id === leg.id
+          && candidate.fromStopId === leg.fromStopId
+          && candidate.toStopId === leg.toStopId) ?? leg);
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify({ legs }));
+        return;
+      }
       if (url.pathname === "/api/journey-capture") {
         const chunks: Buffer[] = [];
         for await (const chunk of request) chunks.push(Buffer.from(chunk));
@@ -109,6 +123,19 @@ export async function renderBuilder({
     await route.continue();
   });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
+  if (initialTrip) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
+    const scope = value.ownerId === null ? "guest" : `owner-${encodeURIComponent(value.ownerId)}`;
+    const writeId = "browser-fixture";
+    localStorage.setItem(`easyt:trip-recovery:v2:${scope}:${encodeURIComponent(value.id)}:${writeId}`, JSON.stringify({
+      version: 2,
+      ownerId: value.ownerId,
+      tripId: value.id,
+      trip: value,
+      state: "pending",
+      writeId,
+      savedAt: "2026-09-22T12:00:00.000Z",
+    }));
+  }, initialTrip);
   const address = server.address() as { port: number };
   await page.goto(`http://127.0.0.1:${address.port}${path}${query}`);
   try {
@@ -116,7 +143,9 @@ export async function renderBuilder({
       ? Boolean(document.querySelector('a[href="/journey/new"]'))
       : location.pathname === "/journey/new"
         ? Boolean(document.querySelector('[data-builder-root="true"]:not([aria-busy="true"])'))
-        : Boolean(document.querySelector('[aria-label="Trip overview"]')), undefined, { timeout: 10000 });
+        : location.pathname.endsWith("/transport")
+          ? Boolean(document.querySelector('[aria-labelledby="transport-workspace-heading"]'))
+          : Boolean(document.querySelector('[aria-label="Trip overview"]')), undefined, { timeout: 10000 });
   } catch (error) {
     await browser.close(); server.close();
     throw new Error(`Builder failed to render: ${errors.join("; ")}`, { cause: error });
