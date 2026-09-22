@@ -51,7 +51,7 @@
 .confirmHero{padding:42px 5% 20px;border-bottom:0;background:linear-gradient(105deg,#fff 0%,#faf9ff 100%)}.confirmHero p{margin:0 0 20px;color:var(--signal);font:800 11px var(--morrovia-meta);letter-spacing:.14em}.confirmHero h1{max-width:690px;margin:0;color:var(--ink);font-family:var(--morrovia-display);font-size:clamp(48px,6vw,82px);font-weight:600;line-height:.94;letter-spacing:-.055em}.confirmHero span{display:block;margin-top:17px;color:var(--muted);font-size:17px}
 
 /* ------------------------------------------------------------- layout */
-.wizardBody { display: grid; grid-template-columns:minmax(0,1.58fr) minmax(330px,.82fr); border-top: 0; }
+.wizardBody { display: grid; grid-template-columns:minmax(0,1fr); border-top: 0; }
 .pane { min-height: 0; padding: 28px 5% 42px; }
 .stack { display: grid; gap: 12px; position: relative; }
 .initialCapture{display:grid;width:100%;max-width:800px;margin:12px auto 0;gap:14px}.initialCapture>form{max-width:none;margin-top:0}
@@ -654,7 +654,7 @@
 .steps:before { top:42px; }
 .stepTab { min-height:64px; grid-template-rows:38px auto; }
 .wizardBody,
-.wizardBody:has(.placesSummaryRail) { grid-template-columns:minmax(0,1fr) var(--builder-rail-width); border-top:0; }
+.wizardBody:has(.placesSummaryRail) { grid-template-columns:minmax(0,1fr); border-top:0; }
 .pane { padding:32px 5% 36px; }
 .stack { gap:16px; }
 .stepHero { gap:8px; margin:0 0 8px; }
@@ -743,7 +743,7 @@
 .homepageHandoff .stepTabOn > b { background: var(--signal); }
 .homepageHandoff .wizardBody,
 .homepageHandoff .wizardBody:has(.placesSummaryRail) {
-  grid-template-columns: minmax(0, 1fr) var(--builder-rail-width);
+  grid-template-columns: minmax(0, 1fr);
   border: 0;
   border-top: 0;
   background: rgba(255, 255, 255, .38);
@@ -1399,8 +1399,8 @@
   .wizardBody:has(.timeSummaryRail),
   .homepageHandoff .wizardBody,
   .homepageHandoff .wizardBody:has(.placesSummaryRail) {
-    grid-template-columns: minmax(0, 1fr) var(--builder-rail-width);
-    column-gap: clamp(16px, calc(10vw - 124px), 68px);
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
     border: 0;
     background: transparent;
     box-shadow: none;
