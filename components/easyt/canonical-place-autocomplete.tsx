@@ -161,6 +161,7 @@ export function CanonicalPlaceAutocomplete({
             name: string;
             country: string;
             region?: string;
+            accessPlaceName?: string;
             providerId?: string;
             providerSourceLabel?: string;
             coordinates: [number, number];
@@ -189,6 +190,7 @@ export function CanonicalPlaceAutocomplete({
               label: `${candidate.name}${candidate.region ? ` · ${candidate.region}` : ""}, ${candidate.country}`,
               country: candidate.country,
               region: candidate.region,
+              accessPlaceName: candidate.accessPlaceName,
               placeType,
               coordinates: candidate.coordinates,
               bounds: candidate.bounds,

@@ -1233,6 +1233,7 @@ function TripBuilderDocument() {
     if (anchor.canonicalPlaceId) params.set("anchorId", anchor.canonicalPlaceId);
     anchor.parentCountries.forEach((country) => params.append("anchorCountry", country));
     if (anchor.parentRegionId) params.set("anchorRegion", anchor.parentRegionId);
+    if (anchor.accessPlaceName) params.set("anchorAccessPlace", anchor.accessPlaceName);
     setNearbyBaseDiscovery((current) => current?.mentionId === activeClarificationMention.mentionId && current.status === "ready"
       ? current
       : { mentionId: activeClarificationMention.mentionId, status: "loading", suggestions: [] });
