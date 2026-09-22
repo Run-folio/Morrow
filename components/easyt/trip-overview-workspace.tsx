@@ -24,10 +24,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
-import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
 import { tripHealth } from "@/lib/easyt/review";
 import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
-import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
+import type { EasyTTrip, TripRecommendation } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
   firstItineraryDayForStop,
@@ -41,7 +40,6 @@ import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
-import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { EasyTLinkButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import { TripPreparationTaskSection, TripTravellerDetailsEditor } from "./trip-preparation";
@@ -53,6 +51,9 @@ import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
 import TripExplicitPlans from "./trip-explicit-plans";
+import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
+import { canonicalPlacePhotoCacheKey, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
+import MorroviaPhotoCredit from "./morrovia-photo-credit";
 
 type OverviewIssue = {
   id: string;
@@ -126,18 +127,6 @@ function routeRationaleCopy(route: NonNullable<EasyTTrip["brief"]["routeAssessme
     ?? route.summary;
 }
 
-function stopImage(trip: EasyTTrip, stop: TripStop, index: number) {
-  const days = [...trip.planItems]
-    .sort((left, right) => left.dayNumber - right.dayNumber)
-    .filter((item) => item.stopId === stop.id);
-  const imagedDay = days.find((item) => Boolean(item.image));
-  if (imagedDay?.image) return { src: imagedDay.image, alt: imagedDay.title };
-  const day = days[0];
-  if (!day) return null;
-  const image = itineraryImageFor({ title: day.title, destination: stop.name, items: day.notes }, index);
-  return image ? { src: image.src, alt: image.alt } : null;
-}
-
 function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined) {
   if (!leg) return null;
   const minutes = leg.doorToDoorMinutes ?? leg.durationMinutes;
@@ -158,7 +147,7 @@ export default function TripOverviewWorkspace({
 }: TripOverviewWorkspaceProps) {
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
   const [beforeGoOpen, setBeforeGoOpen] = useState(initialGoodTasksOpen);
-  const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, { src: string; alt: string }>>({});
+  const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, OverviewPlaceImage>>({});
   const prepReadiness = useTripPrepReadiness({
     trip,
     initialActions: initialPrepActions,
@@ -203,8 +192,8 @@ export default function TripOverviewWorkspace({
           ? "Plan my days"
           : itineraryCategory?.status === "complete" ? "Review itinerary" : "Continue planning",
       };
-  const origin = originEndpointForTrip(trip);
-  const journeyEnd = endEndpointForTrip(trip);
+  const origin = useMemo(() => originEndpointForTrip(trip), [trip]);
+  const journeyEnd = useMemo(() => endEndpointForTrip(trip), [trip]);
   const lastRouteStop = orderedStops.at(-1);
   const journeyEndIsLastStop = Boolean(journeyEnd && lastRouteStop && sameJourneyPlace({
     name: journeyEnd.name,
@@ -223,6 +212,20 @@ export default function TripOverviewWorkspace({
   }));
   const originLongitude = origin.coordinates?.[0] ?? null;
   const originLatitude = origin.coordinates?.[1] ?? null;
+  const initialPlaceImages = useMemo(() => {
+    const images: Record<string, OverviewPlaceImage> = {};
+    const originImage = overviewPlaceImage(origin);
+    if (originImage) images[origin.id] = originImage;
+    orderedStops.forEach((stop) => {
+      const image = overviewStopImage(trip, stop);
+      if (image) images[stop.id] = image;
+    });
+    if (journeyEnd) {
+      const endImage = overviewPlaceImage(journeyEnd);
+      if (endImage) images[journeyEnd.id] = endImage;
+    }
+    return images;
+  }, [journeyEnd, orderedStops, origin, trip]);
   const overviewMapStops = useMemo<JourneyStop[]>(() => [{
     id: origin.id,
     city: origin.name,
@@ -247,46 +250,94 @@ export default function TripOverviewWorkspace({
     aiPrompt: `What should I prioritise in ${stop.name}?`,
   }))], [orderedStops, origin.country, origin.id, origin.name, originLatitude, originLongitude]);
   const overviewMapLegs = useMemo(() => mapRouteLegsFromTrip(trip), [trip.brief, trip.id, trip.legs, trip.stops]);
-  const imageResolutionCandidates = useMemo(() => [
-    { id: origin.id, name: origin.name, country: origin.country ?? "", coordinates: origin.coordinates },
-    ...orderedStops.flatMap((stop, index) => stopImage(trip, stop, index)
-      ? []
-      : [{
-          id: stop.id,
-          name: stop.name,
-          country: stop.country,
-          coordinates: stop.longitude !== null && stop.latitude !== null
-            ? [stop.longitude, stop.latitude] as [number, number]
-            : undefined,
-        }]),
-  ], [orderedStops, origin.country, origin.id, origin.name, trip.planItems]);
+  const imageCacheKeysByOccurrence = useMemo(() => Object.fromEntries([
+    [origin.id, canonicalPlacePhotoCacheKey({
+      name: origin.name,
+      country: origin.country,
+      canonicalPlaceId: origin.canonicalPlaceId,
+      providerId: origin.providerId,
+      coordinates: origin.coordinates,
+    })],
+    ...orderedStops.map((stop) => [stop.id, canonicalPlacePhotoCacheKey({
+      name: stop.name,
+      country: stop.country,
+      canonicalPlaceId: stop.canonicalPlaceId,
+      providerId: stop.providerId,
+      coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] : undefined,
+    })]),
+    ...(journeyEnd ? [[journeyEnd.id, canonicalPlacePhotoCacheKey({
+      name: journeyEnd.name,
+      country: journeyEnd.country,
+      canonicalPlaceId: journeyEnd.canonicalPlaceId,
+      providerId: journeyEnd.providerId,
+      coordinates: journeyEnd.coordinates,
+    })]] : []),
+  ]), [journeyEnd, orderedStops, origin]);
+  const imageResolutionCandidates = useMemo(() => {
+    const unresolved = [
+      {
+        id: origin.id,
+        name: origin.name,
+        country: origin.country ?? "",
+        canonicalPlaceId: origin.canonicalPlaceId,
+        providerId: origin.providerId,
+        coordinates: origin.coordinates,
+      },
+      ...orderedStops.map((stop) => ({
+        id: stop.id,
+        name: stop.name,
+        country: stop.country,
+        canonicalPlaceId: stop.canonicalPlaceId,
+        providerId: stop.providerId,
+        coordinates: stop.longitude !== null && stop.latitude !== null
+          ? [stop.longitude, stop.latitude] as [number, number]
+          : undefined,
+      })),
+      ...(journeyEnd && !journeyEndIsLastStop ? [{
+        id: journeyEnd.id,
+        name: journeyEnd.name,
+        country: journeyEnd.country ?? "",
+        canonicalPlaceId: journeyEnd.canonicalPlaceId,
+        providerId: journeyEnd.providerId,
+        coordinates: journeyEnd.coordinates,
+      }] : []),
+    ].filter((candidate) => !initialPlaceImages[candidate.id]);
+    const grouped = new globalThis.Map<string, RoutePhotoCandidate>();
+    unresolved.forEach((candidate) => {
+      const cacheKey = imageCacheKeysByOccurrence[candidate.id];
+      const existing = grouped.get(cacheKey);
+      if (existing) {
+        existing.occurrenceIds.push(candidate.id);
+        return;
+      }
+      grouped.set(cacheKey, {
+        cacheKey,
+        occurrenceIds: [candidate.id],
+        queries: [`${candidate.name} ${candidate.country} travel`, `${candidate.name} ${candidate.country} landmark`],
+      });
+    });
+    return [...grouped.values()];
+  }, [imageCacheKeysByOccurrence, initialPlaceImages, journeyEnd, journeyEndIsLastStop, orderedStops, origin]);
 
   useEffect(() => {
     if (!imageResolutionCandidates.length) return;
-    const scope = createAbortableEffectScope("Overview place image request");
-    const resolveImages = async () => {
-      try {
-        const entries = await Promise.all(imageResolutionCandidates.map(async (candidate) => {
-          const params = new URLSearchParams({ title: candidate.name, country: candidate.country });
-          if (candidate.coordinates) {
-            params.set("lon", String(candidate.coordinates[0]));
-            params.set("lat", String(candidate.coordinates[1]));
-          }
-          const response = await fetch(`/api/journey-place?${params}`, { signal: scope.signal });
-          if (!response.ok) return null;
-          const payload = await response.json() as { place?: { image?: string; alt?: string } | null };
-          return payload.place?.image ? [candidate.id, { src: payload.place.image, alt: payload.place.alt ?? `View of ${candidate.name}` }] as const : null;
-        }));
-        const resolved = entries.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-        if (resolved.length) scope.commit(() => setResolvedPlaceImages((current) => ({ ...current, ...Object.fromEntries(resolved) })));
-      } catch (error) {
-        if (scope.isCancellation(error)) return;
-        // The established local/persisted-image fallback remains truthful.
-      }
-    };
-    void resolveImages();
-    return scope.dispose;
-  }, [imageResolutionCandidates]);
+    const controller = new AbortController();
+    void resolveRoutePhotoCandidates(imageResolutionCandidates, (candidate, selection) => {
+      if (selection.kind !== "photo") return;
+      setResolvedPlaceImages((current) => {
+        const next = { ...current };
+        // A late lookup may fill an empty canonical identity, but never replaces known truth.
+        if (!next[candidate.cacheKey]) next[candidate.cacheKey] = {
+          src: selection.photo.src,
+          alt: selection.photo.alt ?? "Destination view",
+          sourceUrl: selection.photo.sourceUrl,
+          sourceLabel: selection.photo.sourceLabel,
+        };
+        return next;
+      });
+    }, { signal: controller.signal });
+    return () => controller.abort();
+  }, [imageResolutionCandidates, initialPlaceImages]);
 
   const openTravellerDetails = () => {
     setTravellerDetailsOpen(true);
@@ -324,21 +375,22 @@ export default function TripOverviewWorkspace({
             <div className={styles.routeJourney}>
               {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                 {[
-                  { id: origin.id, name: origin.name, image: resolvedPlaceImages[origin.id], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
+                  { id: origin.id, name: origin.name, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
                   ...orderedStops.map((stop, index) => {
                     const next = orderedStops[index + 1];
                     const leg = next
                       ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === next.id)
                       : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
-                    return { id: stop.id, name: stop.name, image: stopImage(trip, stop, index) ?? resolvedPlaceImages[stop.id], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
+                    return { id: stop.id, name: stop.name, image: initialPlaceImages[stop.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[stop.id]], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
                   }),
-                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: resolvedPlaceImages[journeyEnd.id], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
+                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
                   <Link className={styles.routeStopLink} href={step.href}><article>
                     <div className={styles.stopNumber}>{index + 1}</div>
                     <ResilientImage src={step.image?.src} alt={step.image?.alt ?? ""} fallback={<div className={styles.stopFallback}><MapPin aria-hidden="true" /></div>} />
                     <div className={styles.stopOverlay}><h3>{step.name}</h3><span>{step.meta}</span></div>
                   </article></Link>
+                  {step.image?.sourceLabel ? <MorroviaPhotoCredit className={styles.stopCredit} placement="top-right" credit={step.image.sourceLabel} photoLabel={step.image.alt} sourceHref={step.image.sourceUrl} licenseHref={step.image.licenseUrl} fullCreditHref={step.image.fullCreditUrl} /> : null}
                   {step.transfer ? <div className={styles.transfer}><ArrowRight aria-hidden="true" /><span>{step.transfer}</span></div> : <div className={styles.transferSpacer} aria-hidden="true" />}
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}

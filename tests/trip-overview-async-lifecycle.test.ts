@@ -50,13 +50,15 @@ test("a genuine provider failure is not classified as cancellation and can selec
   assert.equal(scope.signal.aborted, false);
 });
 
-test("Overview effects use semantic dependencies, stale guards, and the shared cancellation scope", () => {
+test("Overview effects use semantic dependencies and abort stale shared-cache resolution", () => {
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /createAbortableEffectScope\("Overview place image request"\)/);
-  assert.match(source, /scope\.commit\(\(\) => setResolvedPlaceImages/);
+  assert.match(source, /resolveRoutePhotoCandidates\(imageResolutionCandidates/);
+  assert.match(source, /\{ signal: controller\.signal \}/);
+  assert.match(source, /if \(!next\[candidate\.cacheKey\]\)/);
+  assert.match(source, /resolvedPlaceImages\[imageCacheKeysByOccurrence\[stop\.id\]\]/);
   assert.doesNotMatch(source, /representativeStay|setRepresentativeStay/);
-  assert.doesNotMatch(source, /return \(\) => controller\.abort\(\)/);
-  assert.match(source, /\}, \[imageResolutionCandidates\]\);/);
+  assert.match(source, /return \(\) => controller\.abort\(\)/);
+  assert.match(source, /\}, \[imageResolutionCandidates, initialPlaceImages\]\);/);
 });
 
 test("each Map owner removes only its captured instance and ignores stale lifecycle callbacks", () => {

@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canonicalPlacePhotoCacheKey,
   findRoutePhotos,
+  readRoutePhotoSelection,
+  resolveRoutePhotoCandidates,
   routePhotoFromUnknown,
+  saveRoutePhotoSelection,
 } from "../lib/easyt/route-photo-cache.ts";
 
 const validPhoto = {
@@ -41,7 +45,7 @@ test("route photo lookup survives one failed query and filters malformed candida
 
   const result = await findRoutePhotos(["first query", "second query"]);
   assert.equal(calls, 2);
-  assert.deepEqual(result, { candidates: [validPhoto], configured: true });
+  assert.deepEqual(result, { candidates: [validPhoto], configured: true, status: "resolved" });
 });
 
 test("route photo lookup settles unavailable after malformed provider responses", async (context) => {
@@ -54,6 +58,153 @@ test("route photo lookup settles unavailable after malformed provider responses"
 
   assert.deepEqual(
     await findRoutePhotos(["malformed query"]),
-    { candidates: [], configured: true },
+    { candidates: [], configured: true, status: "unavailable" },
   );
+});
+
+class MemoryStorage implements Storage {
+  #values = new Map<string, string>();
+  get length() { return this.#values.size; }
+  clear() { this.#values.clear(); }
+  getItem(key: string) { return this.#values.get(key) ?? null; }
+  key(index: number) { return [...this.#values.keys()][index] ?? null; }
+  removeItem(key: string) { this.#values.delete(key); }
+  setItem(key: string, value: string) { this.#values.set(key, value); }
+}
+
+test("canonical place cache identity does not depend on route position or display spelling", () => {
+  const first = canonicalPlacePhotoCacheKey({
+    canonicalPlaceId: "geo:123",
+    name: "Marrakech",
+    country: "Morocco",
+    coordinates: [-8.008, 31.63],
+  });
+  const repeated = canonicalPlacePhotoCacheKey({
+    canonicalPlaceId: " GEO:123 ",
+    name: "Marrakesh",
+    country: "Morocco",
+    coordinates: [-8.01, 31.64],
+  });
+  assert.equal(first, repeated);
+  assert.equal(
+    canonicalPlacePhotoCacheKey({ name: "  Almaty ", country: "KAZAKHSTAN" }),
+    canonicalPlacePhotoCacheKey({ name: "almaty", country: "kazakhstan" }),
+  );
+});
+
+test("the shared cache retains both a reviewed selection and an intentional neutral fallback", () => {
+  const storage = new MemoryStorage();
+  saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
+  saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
+
+  assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
+  assert.deepEqual(readRoutePhotoSelection("place:two", storage), { kind: "empty" });
+});
+
+test("candidate resolution commits successful siblings without waiting for a failed batch", async () => {
+  const storage = new MemoryStorage();
+  let releaseFailure!: () => void;
+  const slowFailure = new Promise<void>((resolve) => { releaseFailure = resolve; });
+  const committed: string[] = [];
+
+  const resolving = resolveRoutePhotoCandidates([
+    { occurrenceIds: ["slow"], cacheKey: "slow", queries: ["slow"] },
+    { occurrenceIds: ["fast", "repeat"], cacheKey: "fast", queries: ["fast"] },
+  ], (candidate, selection) => {
+    if (selection.kind === "photo") committed.push(...candidate.occurrenceIds);
+  }, {
+    storage,
+    trackPhoto: () => undefined,
+    findPhotos: async (queries) => {
+      if (queries[0] === "slow") {
+        await slowFailure;
+        throw new TypeError("provider failed");
+      }
+      return { candidates: [validPhoto], configured: true, status: "resolved" };
+    },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(committed, ["fast", "repeat"]);
+  releaseFailure();
+  await resolving;
+  assert.deepEqual(readRoutePhotoSelection("fast", storage), { kind: "photo", photo: validPhoto });
+  assert.equal(readRoutePhotoSelection("slow", storage), null);
+});
+
+test("navigation and reload reuse the same positive choice without another lookup", async () => {
+  const storage = new MemoryStorage();
+  const candidate = { occurrenceIds: ["first-visit"], cacheKey: "same-place", queries: ["same place"] };
+  let lookups = 0;
+  let firstSelection: unknown;
+  await resolveRoutePhotoCandidates([candidate], (_candidate, selection) => { firstSelection = selection; }, {
+    storage,
+    trackPhoto: () => undefined,
+    findPhotos: async () => {
+      lookups += 1;
+      return { candidates: [validPhoto], configured: true, status: "resolved" };
+    },
+  });
+
+  let reloadedSelection: unknown;
+  await resolveRoutePhotoCandidates([{ ...candidate, occurrenceIds: ["after-navigation"] }], (_candidate, selection) => { reloadedSelection = selection; }, {
+    storage,
+    findPhotos: async () => {
+      throw new Error("cached selections must not re-fetch");
+    },
+  });
+
+  assert.equal(lookups, 1);
+  assert.deepEqual(reloadedSelection, firstSelection);
+});
+
+test("a genuine no-result remains the intentional neutral fallback after reload", async () => {
+  const storage = new MemoryStorage();
+  const candidate = { occurrenceIds: ["fallback"], cacheKey: "no-photo", queries: ["no photo"] };
+  let selection: unknown;
+  await resolveRoutePhotoCandidates([candidate], (_candidate, value) => { selection = value; }, {
+    storage,
+    findPhotos: async () => ({ candidates: [], configured: true, status: "no-result" }),
+  });
+  assert.deepEqual(selection, { kind: "empty" });
+
+  await resolveRoutePhotoCandidates([candidate], (_candidate, value) => { selection = value; }, {
+    storage,
+    findPhotos: async () => { throw new Error("neutral fallback must not re-fetch"); },
+  });
+  assert.deepEqual(selection, { kind: "empty" });
+});
+
+test("navigation retires the stale consumer without aborting the shared cache owner", async () => {
+  const storage = new MemoryStorage();
+  const controller = new AbortController();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  let staleCommits = 0;
+  const firstVisit = resolveRoutePhotoCandidates([
+    { occurrenceIds: ["visit-one"], cacheKey: "shared-in-flight", queries: ["shared"] },
+  ], () => { staleCommits += 1; }, {
+    storage,
+    signal: controller.signal,
+    trackPhoto: () => undefined,
+    findPhotos: async () => {
+      await pending;
+      return { candidates: [validPhoto], configured: true, status: "resolved" };
+    },
+  });
+
+  controller.abort();
+  release();
+  await firstVisit;
+  assert.equal(staleCommits, 0);
+  assert.deepEqual(readRoutePhotoSelection("shared-in-flight", storage), { kind: "photo", photo: validPhoto });
+
+  let nextVisit: unknown;
+  await resolveRoutePhotoCandidates([
+    { occurrenceIds: ["visit-two"], cacheKey: "shared-in-flight", queries: ["shared"] },
+  ], (_candidate, selection) => { nextVisit = selection; }, {
+    storage,
+    findPhotos: async () => { throw new Error("completed shared lookup must be cached"); },
+  });
+  assert.deepEqual(nextVisit, { kind: "photo", photo: validPhoto });
 });
