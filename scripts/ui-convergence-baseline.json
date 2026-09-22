@@ -47,7 +47,7 @@
       "components/easyt/easyt-feedback.tsx": 4,
       "components/easyt/easyt-product-tour.tsx": 8,
       "components/easyt/easyt-trip-copilot.tsx": 8,
-      "components/easyt/trip-itinerary-workspace.tsx": 8,
+      "components/easyt/trip-itinerary-workspace.tsx": 5,
       "components/easyt/voice-trip-brief.tsx": 1,
       "components/image-lightbox.tsx": 4,
       "components/journey-carousel.tsx": 3,
