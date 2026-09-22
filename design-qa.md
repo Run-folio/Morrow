@@ -1,3 +1,16 @@
+# #292 route-first Overview QA — 2026-09-22
+
+Final result: passed
+
+- Reference: `/Users/shaun/Downloads/Travel Route Overview Dashboard.png`; implementation: production `TripShell` + `TripOverviewWorkspace`, reviewed through the `FirstTripArrival`, `ReturningPartiallyPlanned`, `Desktop1440`, `Mobile390` and expanded Before You Go stories on local Storybook port 6007.
+- The implemented hierarchy matches the approved composition: trip identity, route-led orientation and map, contextual route/timing checks, one state-aware primary action, three Next to arrange links, then a quiet collapsed Before You Go owner. The duplicate next-step stay hero, standalone health dashboard and seven-column progress dashboard are absent.
+- State review confirmed a coherent fresh trip shows `Plan my days`; one explicitly shaped day changes the returning action to `Continue planning`; generated day containers alone remain Started rather than Complete. Stay copy says selected, not booked, and unresolved transport remains normal planning work while material route uncertainty stays contextual.
+- Desktop and compact visual comparison retained current Morrovia controls, typography and tokens. The existing horizontal route-card scroller is the only intentional compact overflow; at the 390px override the document `clientWidth` equalled `scrollWidth`, both collapsed and expanded preparation states stayed contained, and no duplicate mobile section appeared.
+- Differences from the directional mockup are intentional: canonical Peru fixture data replaces illustrative destinations, real health findings replace sample warnings, current shell navigation is retained, and no unsupported completion percentage, imagery or booking claim was added.
+- No actionable P0, P1 or P2 visual, responsive, interaction, accessibility or content-integrity issue remained after the final comparison.
+
+---
+
 # Itinerary implementation checkpoint — 2026-09-15
 
 Final result: blocked

@@ -3,21 +3,21 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  ArrowUpRight,
   BedDouble,
   CalendarCheck2,
   CarFront,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   ClipboardCheck,
-  ExternalLink,
   FileCheck2,
   HeartPulse,
+  Map,
   MapPin,
   Maximize2,
-  Route,
   ShieldCheck,
+  SlidersHorizontal,
   Smartphone,
   Sparkles,
   type LucideIcon,
@@ -25,10 +25,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { accommodationProgress, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { itineraryImageFor } from "@/lib/easyt/itinerary-media";
-import { tripHealth, tripHealthSummary } from "@/lib/easyt/review";
-import { deriveItineraryCoverage, deriveTripDateFacts, formatTripDuration, formatTripNights, stableStopDateRange } from "@/lib/easyt/trip-facts";
-import { getBookingAction, omioBookingActionForLeg, type ResolvedAffiliateAction } from "@/lib/easyt/booking-readiness";
-import { trackEvent } from "@/lib/analytics";
+import { tripHealth } from "@/lib/easyt/review";
+import { formatTripDuration, formatTripNights } from "@/lib/easyt/trip-facts";
 import type { EasyTTrip, TripRecommendation, TripStop } from "@/lib/easyt/trip";
 import ResilientImage from "./resilient-image";
 import {
@@ -36,6 +34,7 @@ import {
   itineraryDayForRecommendation,
   itineraryWorkspaceHref,
   mapWorkspaceHref,
+  tripBuilderHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
 import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
@@ -43,8 +42,7 @@ import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
-import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
-import { affiliateDisclosure, affiliateDisclosureForProvider, MorroviaAffiliateLink } from "./affiliate-link";
+import { EasyTLinkButton } from "./easyt-controls";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import { TripPreparationTaskSection, TripTravellerDetailsEditor } from "./trip-preparation";
 import { useTripPrepReadiness, type TripPrepProviderStatus } from "./use-trip-prep-readiness";
@@ -54,39 +52,14 @@ import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-r
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
-import { MorroviaPartnerPromotion } from "./partner-promotion";
 import TripExplicitPlans from "./trip-explicit-plans";
-import { personalRouteHref } from "@/lib/easyt/personal-route";
-
-type OverviewAction = {
-  title: string;
-  detail: string;
-  label: string;
-  href: string;
-  kind: "route" | "itinerary" | "stay" | "prep" | "ready" | "transport";
-  stopId?: string;
-  external?: boolean;
-  affiliate?: boolean;
-  transferId?: string;
-  originStopId?: string;
-  destinationStopId?: string;
-  provider?: string;
-  affiliateCategory?: string;
-};
 
 type OverviewIssue = {
   id: string;
   message: string;
-  severity: "critical" | "warning";
+  severity: TripRecommendation["severity"];
   href: string;
-};
-
-type OverviewStayResult = {
-  id: string;
-  name: string;
-  address: string;
-  rating?: number;
-  price?: { total: number; currency: string };
+  actionLabel: "Review timing" | "Review transport";
 };
 
 const progressIconByCategory: Record<OverviewReadinessCategoryId, LucideIcon> = {
@@ -110,11 +83,7 @@ type TripOverviewWorkspaceProps = {
   initialGoodTasksOpen?: boolean;
 };
 
-type ReadinessTileAction =
-  | { kind: "internal"; href: string; label: string }
-  | { kind: "external"; href: string; label: string; provider?: string }
-  | { kind: "affiliate"; action: ResolvedAffiliateAction }
-  | { kind: "traveller-details"; label: string };
+type ReadinessTileAction = { href: string; label: string };
 
 function routeIssueHref(tripId: string) {
   return mapWorkspaceHref(tripId);
@@ -131,102 +100,30 @@ function openHealthIssues(trip: EasyTTrip) {
     .sort((left, right) => ({ critical: 0, warning: 1, info: 2 }[left.severity] - { critical: 0, warning: 1, info: 2 }[right.severity]));
 }
 
-/**
- * Presentation-only precedence over canonical state. This does not persist a
- * second readiness model or replace Plan Review intelligence.
- */
-export function overviewActionForTrip(trip: EasyTTrip): OverviewAction {
-  const coverage = deriveItineraryCoverage(trip);
-  const itineraryComplete = coverage.state === "complete";
-  const accommodation = accommodationProgress(trip);
-  const missingStay = accommodation.stops.find((stop) => !stayBookingForStop(trip, stop));
-  const missingStayAction = missingStay ? getBookingAction({ category: "accommodation", trip, stop: missingStay }) : undefined;
-  const issues = openHealthIssues(trip).filter((issue) => issue.severity !== "info");
-  const critical = issues.find((issue) => issue.severity === "critical");
-  const prep = trip.brief.checklist ?? [];
-  const prepComplete = prep.length > 0 && prep.every((item) => item.complete);
-
-  if (critical) return {
-    title: critical.message,
-    detail: "Resolve this before relying on the current route or making connected bookings.",
-    label: "Review route",
-    href: recommendationHref(trip, critical),
-    kind: "route",
-  };
-  if (!itineraryComplete) return {
-    title: coverage.plannedDays ? "Finish shaping the itinerary" : "Start shaping the itinerary",
-    detail: coverage.label,
-    label: "Continue itinerary",
-    href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
-    kind: "itinerary",
-  };
-  if (missingStay && missingStayAction) return {
-    title: `Find accommodation in ${missingStay.name}`,
-    detail: `${accommodation.stops.length - accommodation.sortedCount} of ${accommodation.stops.length} overnight ${accommodation.stops.length === 1 ? "stop needs" : "stops need"} accommodation.`,
-    label: missingStayAction.cta,
-    href: missingStayAction.href,
-    kind: "stay",
-    stopId: missingStay.id,
-    external: true,
-    affiliate: true,
-    provider: missingStayAction.provider,
-    affiliateCategory: missingStayAction.category,
-  };
-  if (missingStay) return {
-    title: `Find a stay in ${missingStay.name}`,
-    detail: `${accommodation.stops.length - accommodation.sortedCount} of ${accommodation.stops.length} overnight ${accommodation.stops.length === 1 ? "stop needs" : "stops need"} accommodation.`,
-    label: "Find a stay",
-    href: mapWorkspaceHref(trip.id, missingStay.id, "stay"),
-    kind: "stay",
-    stopId: missingStay.id,
-  };
-  if (issues[0]) return {
-    title: issues[0].message,
-    detail: "Review the underlying route signal before treating this part of the plan as settled.",
-    label: "Review route",
-    href: recommendationHref(trip, issues[0]),
-    kind: "route",
-  };
-  if (prep.length > 0 && !prepComplete) return {
-    title: prep.length ? "Finish the remaining practical tasks" : "Review the practical details",
-    detail: prep.length
-      ? `${prep.filter((item) => item.complete).length} of ${prep.length} saved practical tasks are complete.`
-      : "Check entry guidance, documents and the practical details before departure.",
-    label: "Review tasks",
-    href: "#before-you-go",
-    kind: "prep",
-  };
-  const omioAction = trip.legs.map((leg) => omioBookingActionForLeg(trip, leg)).find((action) => Boolean(action));
-  if (omioAction) return {
-    title: omioAction.title,
-    detail: omioAction.detail,
-    label: omioAction.cta,
-    href: omioAction.href,
-    kind: "transport",
-    external: true,
-    affiliate: true,
-    provider: omioAction.provider,
-    affiliateCategory: "transport",
-    transferId: omioAction.transferId,
-    originStopId: omioAction.originStopId,
-    destinationStopId: omioAction.destinationStopId,
-  };
-  return {
-    title: "Your trip is looking ready",
-    detail: "The route, itinerary, stays and saved practical checklist are covered.",
-    label: "View itinerary",
-    href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
-    kind: "ready",
-  };
-}
+const materialRouteRules = new Set([
+  "route-integrity", "trip-dates", "stay-duration-confidence", "night-allocation-compromise",
+  "destination-identity", "split-base-sequence", "driving-load", "travel-day-impact", "trip-pace",
+  "missing-logistics", "connection-confidence", "recovery-time", "stop-density", "short-stop-heavy-transfer",
+  "transit-to-time-ratio", "fixed-date-conflict", "schedule-lock-conflict", "route-backtracking",
+  "trip-end-mismatch", "missing-transport-decision",
+]);
 
 function issueSummary(trip: EasyTTrip): OverviewIssue[] {
-  return openHealthIssues(trip).map((issue: TripRecommendation) => ({
+  return openHealthIssues(trip).filter((issue) => issue.severity === "critical" || materialRouteRules.has(issue.rule)).map((issue: TripRecommendation) => ({
     id: issue.id,
     message: issue.message,
-    severity: issue.severity === "critical" ? "critical" : "warning",
+    severity: issue.severity,
     href: recommendationHref(trip, issue),
+    actionLabel: ["missing-logistics", "connection-confidence", "missing-transport-decision"].includes(issue.rule)
+      || /transfer|transport|connection/i.test(issue.message)
+      ? "Review transport"
+      : "Review timing",
   }));
+}
+
+function routeRationaleCopy(route: NonNullable<EasyTTrip["brief"]["routeAssessment"]>["route"]) {
+  return route.reasons.find((reason) => !/entered order ranks first under (?:the )?current route criteria/i.test(reason))
+    ?? route.summary;
 }
 
 function stopImage(trip: EasyTTrip, stop: TripStop, index: number) {
@@ -249,22 +146,9 @@ function conciseTransferLabel(leg: EasyTTrip["legs"][number] | null | undefined)
   return leg.mode === "flight" ? `${duration} by air` : `${duration} transfer`;
 }
 
-function representativeStayFromPayload(value: unknown): OverviewStayResult | null {
-  if (!value || typeof value !== "object" || !Array.isArray((value as { properties?: unknown }).properties)) return null;
-  const candidate = (value as { properties: unknown[] }).properties[0];
-  if (!candidate || typeof candidate !== "object") return null;
-  const property = candidate as Record<string, unknown>;
-  if (typeof property.id !== "string" || !property.id.startsWith("booking-") || typeof property.name !== "string" || !property.name.trim() || typeof property.address !== "string") return null;
-  const rating = typeof property.rating === "number" && Number.isFinite(property.rating) ? property.rating : undefined;
-  const rawPrice = property.price && typeof property.price === "object" ? property.price as Record<string, unknown> : null;
-  const price = rawPrice && typeof rawPrice.total === "number" && Number.isFinite(rawPrice.total) && typeof rawPrice.currency === "string" && rawPrice.currency.trim()
-    ? { total: rawPrice.total, currency: rawPrice.currency }
-    : undefined;
-  return { id: property.id, name: property.name.trim(), address: property.address.trim(), ...(rating !== undefined ? { rating } : {}), ...(price ? { price } : {}) };
-}
-
 export default function TripOverviewWorkspace({
   trip,
+  firstArrival = false,
   initialPrepActions,
   initialPrepReadinessCards,
   initialPrepProfile,
@@ -273,7 +157,7 @@ export default function TripOverviewWorkspace({
   initialGoodTasksOpen = false,
 }: TripOverviewWorkspaceProps) {
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
-  const [representativeStay, setRepresentativeStay] = useState<OverviewStayResult | null>(null);
+  const [beforeGoOpen, setBeforeGoOpen] = useState(initialGoodTasksOpen);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, { src: string; alt: string }>>({});
   const prepReadiness = useTripPrepReadiness({
     trip,
@@ -286,11 +170,8 @@ export default function TripOverviewWorkspace({
   const nextOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-next");
   const progressOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-progress");
   useWorkspaceOrientationReady("overview", Boolean(trip.stops.length && trip.planItems.length));
-  const action = overviewActionForTrip(trip);
-  const issues = issueSummary(trip);
-  const visibleIssues = issues.slice(0, 2);
-  const healthSummary = tripHealthSummary(trip);
-  const health = healthSummary.health;
+  const materialRouteIssues = issueSummary(trip);
+  const visibleIssues = materialRouteIssues.slice(0, 2);
   const accommodation = accommodationProgress(trip);
   const prepProviderStatus = prepReadiness.providerUnavailable
     ? "unavailable"
@@ -302,35 +183,26 @@ export default function TripOverviewWorkspace({
     prepTasks: prepReadiness.tasks,
     providerStatus: prepProviderStatus,
   }), [prepProviderStatus, prepReadiness.tasks, trip]);
+  const planningCategories = readinessCategories.filter((category) => ["itinerary", "accommodation", "transport"].includes(category.id));
   const outstandingPrepGroups = useMemo(
     () => groupTripPrepTasks(prepReadiness.tasks.filter((task) => task.status !== "complete")),
     [prepReadiness.tasks],
   );
   const mustTasks = outstandingPrepGroups.must;
   const goodTasks = [...outstandingPrepGroups.good, ...outstandingPrepGroups.nice];
-  const prepTaskForKind = (kind: "passport" | "insurance" | "connectivity") => prepReadiness.tasks.find((task) => task.kind === kind);
-  const insuranceTask = prepTaskForKind("insurance");
-  const connectivityTask = prepTaskForKind("connectivity");
   const orderedStops = useMemo(() => [...trip.stops].sort((left, right) => left.order - right.order), [trip.stops]);
   const routeAssessment = trip.brief.routeAssessment?.route;
   const routeRationale = routeAssessment && routeAssessment.state !== "insufficient-data" ? routeAssessment : null;
-  const actionImageStop = action.kind === "stay" ? orderedStops.find((stop) => stop.id === action.stopId) : orderedStops[0];
-  const actionImage = actionImageStop ? stopImage(trip, actionImageStop, orderedStops.indexOf(actionImageStop)) ?? resolvedPlaceImages[actionImageStop.id] : null;
-  const staySearchDates = action.kind === "stay" && actionImageStop ? stableStopDateRange(actionImageStop, trip) : null;
-  const tripDates = deriveTripDateFacts(trip);
-  const routeCountries = [...new Set(orderedStops.map((stop) => stop.country?.trim()).filter((country): country is string => Boolean(country)))];
-  const routeHeading = tripDates.durationDays
-    ? `${tripDates.durationDays} ${tripDates.durationDays === 1 ? "day" : "days"}, ${orderedStops.length} ${orderedStops.length === 1 ? "stop" : "stops"}${routeCountries.length === 1 ? ` across ${routeCountries[0]}` : ""}`
-    : `${orderedStops.length} ${orderedStops.length === 1 ? "stop" : "stops"}, one connected trip`;
-  const routeEnd = orderedStops.at(-1)?.name;
-  const routeDetail = routeEnd
-    ? `${trip.brief.origin} to ${routeEnd} · ${trip.legs.length} ${trip.legs.length === 1 ? "transfer" : "transfers"}`
-    : `${trip.legs.length} ${trip.legs.length === 1 ? "transfer" : "transfers"}`;
-  const ActionIcon = action.kind === "stay" ? BedDouble
-    : action.kind === "itinerary" ? CalendarCheck2
-        : action.kind === "prep" ? ShieldCheck
-          : action.kind === "ready" ? CheckCircle2
-            : Route;
+  const itineraryCategory = planningCategories.find((category) => category.id === "itinerary");
+  const criticalRouteIssue = materialRouteIssues.find((issue) => issue.severity === "critical");
+  const primaryAction = criticalRouteIssue
+    ? { href: criticalRouteIssue.href, label: "Review route" }
+    : {
+        href: `/journey/${encodeURIComponent(trip.id)}/itinerary`,
+        label: firstArrival || itineraryCategory?.status === "to-do" || itineraryCategory?.percent === 0
+          ? "Plan my days"
+          : itineraryCategory?.status === "complete" ? "Review itinerary" : "Continue planning",
+      };
   const origin = originEndpointForTrip(trip);
   const journeyEnd = endEndpointForTrip(trip);
   const lastRouteStop = orderedStops.at(-1);
@@ -416,113 +288,37 @@ export default function TripOverviewWorkspace({
     return scope.dispose;
   }, [imageResolutionCandidates]);
 
-  useEffect(() => {
-    const stop = action.kind === "stay" ? actionImageStop : undefined;
-    const dateRange = staySearchDates;
-    if (!stop || !dateRange || typeof stop.latitude !== "number" || typeof stop.longitude !== "number") {
-      setRepresentativeStay(null);
-      return;
-    }
-    const scope = createAbortableEffectScope("Overview representative stay request");
-    const params = new URLSearchParams({
-      lat: String(stop.latitude),
-      lon: String(stop.longitude),
-      checkIn: dateRange.checkIn,
-      checkOut: dateRange.checkOut,
-      adults: String(Math.max(1, trip.travellers)),
-      rooms: "1",
-      currency: trip.currency,
-      locale: "en",
-    });
-    setRepresentativeStay(null);
-    const resolveStay = async () => {
-      try {
-        const response = await fetch(`/api/journey-accommodation-search?${params}`, { signal: scope.signal });
-        const result = response.ok ? representativeStayFromPayload(await response.json()) : null;
-        scope.commit(() => setRepresentativeStay(result));
-      } catch (error) {
-        if (!scope.isCancellation(error)) scope.commit(() => setRepresentativeStay(null));
-      }
-    };
-    void resolveStay();
-    return scope.dispose;
-  }, [action.kind, actionImageStop?.id, actionImageStop?.latitude, actionImageStop?.longitude, staySearchDates?.checkIn, staySearchDates?.checkOut, trip.currency, trip.travellers]);
-
   const openTravellerDetails = () => {
     setTravellerDetailsOpen(true);
     window.requestAnimationFrame(() => document.getElementById("overview-traveller-details")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
 
   const progressAction = (category: OverviewReadinessCategory): ReadinessTileAction | null => {
-    if (category.id === "itinerary") return { kind: "internal", href: `/journey/${encodeURIComponent(trip.id)}/itinerary`, label: "Open itinerary" };
+    if (category.id === "itinerary") return { href: `/journey/${encodeURIComponent(trip.id)}/itinerary`, label: "Open itinerary" };
+    if (category.id === "accommodation" && !accommodation.stops.length) return null;
     if (category.id === "accommodation") return {
-      kind: "internal",
       href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay"),
       label: "View stays",
     };
-    if (category.id === "transport") return { kind: "internal", href: mapWorkspaceHref(trip.id), label: "Review transport/route" };
-    if (category.id === "passport") return { kind: "traveller-details", label: "Add details" };
-    if (category.id === "checklist") return { kind: "internal", href: "#before-you-go", label: "Open checklist" };
-    const task = category.id === "insurance" ? insuranceTask : category.id === "connectivity" ? connectivityTask : undefined;
-    const taskAction = task?.action;
-    if (!taskAction?.href) return null;
-    if (taskAction.affiliate && taskAction.provider) {
-      const affiliateCategory = taskAction.provider === "world-nomads" ? "travel_insurance" : taskAction.provider === "saily" ? "connectivity" : null;
-      if (affiliateCategory) return { kind: "affiliate", action: {
-        provider: taskAction.provider,
-        category: affiliateCategory,
-        href: taskAction.href,
-        cta: taskAction.label,
-        affiliate: true,
-      } };
-    }
-    return { kind: "external", href: taskAction.href, label: taskAction.label, provider: taskAction.provider };
+    if (category.id === "transport") return { href: mapWorkspaceHref(trip.id), label: "Review transport" };
+    return null;
   };
 
   return (
     <section className={styles.overview} aria-label="Trip overview">
       <div className={styles.grid}>
-        <article ref={nextOrientationTarget} className={`${styles.nextAction} ${action.kind === "stay" && !representativeStay ? styles.nextActionFallback : ""}`}>
-          <div className={styles.nextCopy}>
-            <div className={styles.nextEyebrow}><span className={styles.actionIcon}><ActionIcon aria-hidden="true" /></span><p>Your next step</p></div>
-            <h2>{action.title}</h2>
-            <span>{action.detail}</span>
-            <div className={styles.nextActions}>
-              {action.external ? <a className={styles.primaryAction} href={action.href} target="_blank" rel="sponsored noopener noreferrer" aria-label={action.provider === "omio" ? `${action.label}, opens Omio in a new tab` : action.provider === "trip.com" ? `${action.label}, opens Trip.com in a new tab` : undefined} onClick={() => { if (action.provider === "omio") trackEvent("affiliate_link_clicked", { partner: "omio", placement: "overview_next_action", tripId: trip.id, transferId: action.transferId, originStopId: action.originStopId, destinationStopId: action.destinationStopId }); else if (action.affiliate && action.provider && action.affiliateCategory) trackEvent("affiliate_click", { category: action.affiliateCategory, provider: action.provider, trip_id: trip.id, stop_id: action.stopId, placement: "overview_next_action", workspace_view: "overview" }); }}>{action.label}<ExternalLink aria-hidden="true" /></a> : <EasyTLinkButton href={action.href} size="small">{action.label}<ChevronRight aria-hidden="true" /></EasyTLinkButton>}
-              {action.kind === "stay" && action.stopId && action.external ? <EasyTLinkButton href={mapWorkspaceHref(trip.id, action.stopId, "stay")} size="small" variant="secondary">Explore stays on map</EasyTLinkButton> : null}
-            </div>
-            {action.affiliate ? <small className={styles.affiliateDisclosure}>{affiliateDisclosure}</small> : null}
-            <MorroviaPartnerPromotion action={action} now={now ? new Date(now) : undefined} />
-          </div>
-          <div className={styles.nextVisual} aria-live="polite">
-            {actionImage ? <ResilientImage src={actionImage.src} alt={actionImage.alt} fallback={null} /> : null}
-            {representativeStay ? <div className={styles.stayResult}>
-              <p>Available for your selected dates</p>
-              <h3>{representativeStay.name}</h3>
-              {representativeStay.address ? <span><MapPin aria-hidden="true" />{representativeStay.address}</span> : null}
-              {representativeStay.rating !== undefined || representativeStay.price ? <small>{[representativeStay.rating !== undefined ? `${representativeStay.rating.toFixed(1)} rating` : null, representativeStay.price ? `${representativeStay.price.currency} ${representativeStay.price.total.toFixed(0)} total` : null].filter(Boolean).join(" · ")}</small> : null}
-            </div> : action.kind === "stay" && actionImageStop ? <div className={styles.stayFallback}><BedDouble aria-hidden="true" /><div><strong>Explore stays around {actionImageStop.name}</strong><span>Review stay results in the Map workspace or open a separate Trip.com search.</span></div></div> : !actionImage ? <Sparkles className={styles.nextFallback} aria-hidden="true" /> : null}
-          </div>
-        </article>
-
-        <article className={styles.healthCard}>
-          <p>Trip health</p>
-          <div className={styles.healthHeading}>
-            {health.blockingCount ? <CircleAlert className={styles.healthCritical} aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+        <section ref={nextOrientationTarget} className={styles.routeCard} aria-labelledby="overview-route-title">
+          <div className={styles.routeIntro}>
             <div>
-              <h2>{healthSummary.headline}</h2>
-              <span>{healthSummary.detail}</span>
+              <p>Your route</p>
+              <h2 id="overview-route-title">Your route is ready to shape</h2>
+              <span>Here’s your trip at a glance. Review the route, check the timing and start planning your days.</span>
             </div>
-          </div>
-          {visibleIssues.length ? <ul>{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : undefined}><Link href={issue.href}><CircleAlert aria-hidden="true" /><span>{issue.message}</span><ChevronRight aria-hidden="true" /></Link></li>)}</ul> : <div className={styles.clearHealth}><ShieldCheck aria-hidden="true" />Keep live timings and entry guidance checked before booking.</div>}
-          {issues.length > visibleIssues.length ? <span className={styles.healthIssueCount}>Showing the {visibleIssues.length} highest-priority of {issues.length} checks.</span> : null}
-          <EasyTLinkButton className={styles.healthAction} href={issues[0]?.href ?? routeIssueHref(trip.id)} size="small" variant="secondary" fullWidth>{issues.length ? "Start review" : "Review trip"}<ChevronRight aria-hidden="true" /></EasyTLinkButton>
-        </article>
-
-        <section className={styles.routeCard} aria-labelledby="overview-route-title">
-          <div className={styles.sectionHeading}>
-            <div><p>Your route</p><h2 id="overview-route-title">{routeHeading}</h2><span className={styles.sectionDetail}>{routeDetail}</span></div>
-            <EasyTLinkButton href={personalRouteHref(trip.id)} size="small" variant="secondary" icon={ArrowUpRight}>View my route</EasyTLinkButton>
+            <div className={styles.routeActions}>
+              <EasyTLinkButton href={primaryAction.href} size="small">{primaryAction.label}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
+              <EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary" icon={Map}>Explore on map</EasyTLinkButton>
+              <EasyTLinkButton href={tripBuilderHref(trip.id, trip.ownerId)} size="small" variant="quiet" icon={SlidersHorizontal}>Adjust route</EasyTLinkButton>
+            </div>
           </div>
           <div className={styles.routeComposition}>
             <div className={styles.routeJourney}>
@@ -547,57 +343,60 @@ export default function TripOverviewWorkspace({
                   {index < steps.length - 1 ? <ChevronRight className={styles.routeDirection} aria-hidden="true" /> : null}
                 </li>)}
               </ol> : <div className={styles.emptyRoute}><MapPin aria-hidden="true" /><p>Add a destination to start shaping this trip.</p></div>}
-              {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationale.reasons[0] ?? routeRationale.summary}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
+              {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
               <EasyTLinkButton className={styles.routeMapAction} href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary">View full map<Maximize2 aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
           </div>
+          {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : undefined}><CircleAlert aria-hidden="true" /><span>{issue.message}</span><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
         </section>
 
-        <section ref={progressOrientationTarget} className={styles.progressCard} aria-labelledby="overview-progress-title">
+        <section ref={progressOrientationTarget} className={styles.arrangeCard} aria-labelledby="overview-progress-title">
           <div className={styles.sectionHeading}>
-            <div><p>Readiness at a glance</p><h2 id="overview-progress-title">Planning progress</h2></div>
+            <div><p>Next to arrange</p><h2 id="overview-progress-title">Keep building your trip</h2><span className={styles.sectionDetail}>A few key things to sort next. You’re making useful progress.</span></div>
           </div>
-          <div className={styles.progressGrid}>
-            {readinessCategories.map((category) => {
+          <div className={styles.arrangeGrid}>
+            {planningCategories.map((category) => {
               const tileAction = progressAction(category);
-              return <ProgressItem
+              return <ArrangeItem
                 key={category.id}
                 icon={progressIconByCategory[category.id]}
                 label={category.label}
                 detail={category.detail}
-                percent={category.percent}
                 status={category.status}
                 action={tileAction}
-                tripId={trip.id}
-                onOpenTravellerDetails={openTravellerDetails}
               />;
             })}
           </div>
-          {insuranceTask?.action?.affiliate || connectivityTask?.action?.affiliate ? <div className={styles.progressDisclosures}>
-            {insuranceTask?.action?.affiliate ? <small>{affiliateDisclosureForProvider(insuranceTask.action.provider ?? "")}</small> : null}
-            {connectivityTask?.action?.affiliate ? <small>{affiliateDisclosure}</small> : null}
-          </div> : null}
         </section>
 
         <TripExplicitPlans trip={trip} variant="overview" />
 
         <section className={styles.beforeGo} id="before-you-go" aria-labelledby="overview-before-go-title">
-          <div className={styles.sectionHeading}>
-            <div><p>Before you go</p><h2 id="overview-before-go-title">Practical tasks for this trip</h2><span className={styles.sectionDetail}>Prioritised from your saved trip, booking state and current travel guidance.</span></div>
-          </div>
-          {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
-            {prepProviderStatus === "unavailable"
-              ? <MorroviaSectionStatus state="error" title="Some guidance is unavailable" detail="Your saved trip is unchanged. Retry before relying on the provider-backed task list." onRetry={prepReadiness.retryProviders} />
-              : <MorroviaSectionStatus title="Checking practical tasks" detail="Your saved trip tasks remain visible while current guidance loads." />}
-          </div> : null}
-          {mustTasks.length || goodTasks.length ? <div className={styles.beforeGoGrid}>
-            <TripPreparationTaskSection id="overview-must" title="Must do" icon={Sparkles} tasks={mustTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} />
-            <TripPreparationTaskSection id="overview-good" title="Good to do" icon={HeartPulse} tasks={goodTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} collapsible defaultOpen={initialGoodTasksOpen} showPartnerPromotion promotionNow={now ? new Date(now) : undefined} />
-          </div> : <div className={styles.beforeGoEmpty}><CheckCircle2 aria-hidden="true" /><div><strong>No outstanding practical tasks</strong><span>Keep official guidance and booking details checked before departure.</span></div></div>}
-          {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
+          <details className={styles.beforeGoDisclosure} open={beforeGoOpen} onToggle={(event) => setBeforeGoOpen(event.currentTarget.open)}>
+            <summary>
+              <div className={styles.beforeGoHeading}><p>Before you go</p><h2 id="overview-before-go-title">Get ready for a smoother trip</h2><span className={styles.sectionDetail}>Practical details stay quiet until you’re ready for them.</span></div>
+              <div className={styles.beforeGoCounts}>
+                <span className={styles.mustCount}>{mustTasks.length} must do</span>
+                <span>{goodTasks.length} good to do</span>
+                <ChevronDown aria-hidden="true" />
+              </div>
+            </summary>
+            <div className={styles.beforeGoContent}>
+              {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
+                {prepProviderStatus === "unavailable"
+                  ? <MorroviaSectionStatus state="error" title="Some guidance is unavailable" detail="Your saved trip is unchanged. Retry before relying on the provider-backed task list." onRetry={prepReadiness.retryProviders} />
+                  : <MorroviaSectionStatus title="Checking practical tasks" detail="Your saved trip tasks remain visible while current guidance loads." />}
+              </div> : null}
+              {mustTasks.length || goodTasks.length ? <div className={styles.beforeGoGrid}>
+                <TripPreparationTaskSection id="overview-must" title="Must do" icon={Sparkles} tasks={mustTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} />
+                <TripPreparationTaskSection id="overview-good" title="Good to do" icon={HeartPulse} tasks={goodTasks} tripId={trip.id} onOpenTravellerDetails={openTravellerDetails} showPartnerPromotion promotionNow={now ? new Date(now) : undefined} />
+              </div> : <div className={styles.beforeGoEmpty}><CheckCircle2 aria-hidden="true" /><div><strong>No outstanding practical tasks</strong><span>Keep official guidance and booking details checked before departure.</span></div></div>}
+              {travellerDetailsOpen ? <div id="overview-traveller-details"><TripTravellerDetailsEditor ownerId={trip.ownerId} profile={prepReadiness.profile} onClose={() => setTravellerDetailsOpen(false)} onSave={prepReadiness.setProfile} /></div> : null}
+            </div>
+          </details>
         </section>
       </div>
     </section>
@@ -605,40 +404,30 @@ export default function TripOverviewWorkspace({
 }
 
 const progressStatusLabel: Record<OverviewReadinessCategory["status"], string> = {
-  complete: "Complete",
-  "in-progress": "In progress",
+  complete: "Ready",
+  "in-progress": "Started",
   "to-do": "To do",
   "needs-review": "Needs review",
 };
 
-function ProgressItem({ icon: Icon, label, detail, percent, status, action, tripId, onOpenTravellerDetails }: {
+function ArrangeItem({ icon: Icon, label, detail, status, action }: {
   icon: LucideIcon;
   label: string;
   detail: string;
-  percent: number | null;
   status: OverviewReadinessCategory["status"];
   action: ReadinessTileAction | null;
-  tripId: string;
-  onOpenTravellerDetails: () => void;
 }) {
-  const className = `${styles.progressItem} ${action ? styles.progressItemInteractive : ""}`;
+  const className = `${styles.arrangeItem} ${action ? styles.arrangeItemInteractive : ""}`;
   const content = <>
-    <div className={styles.progressSummary}><Icon aria-hidden="true" /><div><h3>{label}</h3><span>{detail}</span></div></div>
-    {percent !== null ? <div className={styles.progressTrack} aria-label={`${label}: ${percent}%`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><i style={{ width: `${percent}%` }} /></div> : <div className={styles.progressTrackPlaceholder} aria-hidden="true" />}
-    <div className={styles.progressFooter}>
-      <small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small>
-      {action ? <span className={styles.progressAction}>{action.kind === "affiliate" ? action.action.cta : action.label}{action.kind === "affiliate" || action.kind === "external" ? <ExternalLink aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}</span> : null}
+    <div className={styles.arrangeIcon}><Icon aria-hidden="true" /></div>
+    <div className={styles.arrangeCopy}>
+      <div className={styles.arrangeTitle}><h3>{label}</h3><small className={`${styles.progressStatus} ${styles[`progressStatus-${status}`]}`}>{progressStatusLabel[status]}</small></div>
+      <span>{detail}</span>
+      {action ? <strong>{action.label}<ArrowRight aria-hidden="true" /></strong> : null}
     </div>
+    {action ? <ChevronRight className={styles.arrangeChevron} aria-hidden="true" /> : null}
   </>;
 
   if (!action) return <article className={className}>{content}</article>;
-  if (action.kind === "affiliate") return <MorroviaAffiliateLink
-    action={action.action}
-    context={{ placement: "trip_readiness", tripId, workspaceView: "overview" }}
-    className={className}
-    renderAsSurface
-  >{content}</MorroviaAffiliateLink>;
-  if (action.kind === "external") return <a className={className} href={action.href} target="_blank" rel="noopener noreferrer" aria-label={`${action.label}: ${label}, opens ${action.provider ?? "provider"} in a new tab`}>{content}</a>;
-  if (action.kind === "traveller-details") return <a className={className} href="#overview-traveller-details" aria-label={`${action.label}: ${label}`} onClick={(event) => { event.preventDefault(); onOpenTravellerDetails(); }}>{content}</a>;
   return <Link className={className} href={action.href} aria-label={`${action.label}: ${label}`}>{content}</Link>;
 }

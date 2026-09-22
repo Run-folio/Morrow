@@ -52,8 +52,8 @@ type OrientationStep = {
 
 const steps: Record<WorkspaceOrientationWorkspace, readonly OrientationStep[]> = {
   overview: [
-    { target: "overview-next", eyebrow: "Overview", title: "Start with the next action", body: "Morrovia brings the most useful thing to do next to the top of your trip." },
-    { target: "overview-progress", eyebrow: "Overview", title: "See what still needs planning", body: "Review route issues, stays, transport and practical preparation without searching through the whole trip." },
+    { target: "overview-next", eyebrow: "Overview", title: "Understand your route", body: "Start with the whole journey, its timing and any route decisions that still need attention." },
+    { target: "overview-progress", eyebrow: "Overview", title: "Keep planning from here", body: "Continue with your days, stays or transport, while practical preparation stays available below." },
     { target: "workspace-navigation", eyebrow: "Overview", title: "Three views, one trip", body: "Use Map to explore places and Itinerary to organise each day. Your trip stays connected across all three views." },
   ],
   map: [
