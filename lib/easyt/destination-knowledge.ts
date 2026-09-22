@@ -292,6 +292,19 @@ function curatedDestination(input: CuratedDestinationInput): DestinationKnowledg
 
 /** A deliberately modest set drawn from current curated route families. */
 export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
+  ...[
+    { canonicalId: "almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389] as [number, number] },
+    { canonicalId: "tashkent", name: "Tashkent", country: "Uzbekistan", coordinates: [69.2401, 41.2995] as [number, number] },
+  ].map((place) => curatedDestination({
+    ...place, region: "asia", experienceTags: [],
+    connectivity: [{ mode: "air", reach: "international", access: "direct" }],
+    source: {
+      id: "air-astana:international-endpoints", label: "Air Astana destination evidence", kind: "official",
+      url: "https://bestfares.airastana.com/en-kz/flights-from-almaty-to-uzbekistan",
+      reviewedAt: "2026-09-22",
+      supports: "Almaty and Tashkent have international air access. Not a schedule, nonstop guarantee or availability check for arbitrary endpoint pairs.",
+    },
+  })),
   curatedDestination({
     canonicalId: "tokyo", name: "Tokyo", aliases: ["seed-tokyo"], country: "Japan", region: "asia",
     coordinates: [139.6917, 35.6895], roles: ["anchor", "hub"], minimumNights: 3, idealNights: 4,
@@ -518,6 +531,19 @@ const intercityRailEvidenceSource: KnowledgeSource = {
  */
 export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowledge[] = [
   {
+    id: "uzbekistan-afrosiyob", label: "Uzbekistan Afrosiyob intercity network",
+    connectionEvidence: "strong-intercity", supportsCrossBorder: false,
+    minimumDistanceKm: 80, maximumDistanceKm: 700,
+    // Conservative effective speed and city/station allowance, not a timetable.
+    routeDistanceFactor: 1.15, planningSpeedKmh: 140, stationAllowanceMinutes: 60,
+    source: {
+      id: "adb:uzbekistan-rail-2026", label: "ADB Samarkand 2026 participant rail guide", kind: "official",
+      url: "https://www.adb.org/annual-meeting/2026/guide-participants",
+      reviewedAt: "2026-09-22",
+      supports: "Afrosiyob intercity rail between Tashkent and Samarkand; generalized door-to-door estimates require live timetable verification with Uzbekistan Railways.",
+    },
+  },
+  {
     id: "uk-intercity-mainline",
     label: "United Kingdom intercity mainline network",
     connectionEvidence: "strong-intercity",
@@ -611,6 +637,8 @@ export const CURATED_INTERCITY_RAIL_NETWORKS: readonly IntercityRailNetworkKnowl
 ];
 
 export const CURATED_INTERCITY_RAIL_ENDPOINTS: readonly IntercityRailEndpointKnowledge[] = [
+  { canonicalId: "tashkent", name: "Tashkent", country: "Uzbekistan", networkIds: ["uzbekistan-afrosiyob"] },
+  { canonicalId: "samarkand", name: "Samarkand", country: "Uzbekistan", networkIds: ["uzbekistan-afrosiyob"] },
   { canonicalId: "london", name: "London", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
   { canonicalId: "edinburgh", name: "Edinburgh", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },
   { canonicalId: "glasgow", name: "Glasgow", country: "United Kingdom", networkIds: ["uk-intercity-mainline"] },

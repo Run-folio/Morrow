@@ -313,7 +313,9 @@ function railCandidate(
       ? null
       : networkEvidence.connectionCount + Math.max(0, segments.length - 1),
     reasons: networkEvidence
-      ? [`Both canonical endpoints share reviewed strong intercity evidence on the ${networkEvidence.networkLabel}.`, "Rail avoids airport and driving friction for this intercity distance."]
+      ? [`Both canonical endpoints share reviewed strong intercity evidence on the ${networkEvidence.networkLabel}.`,
+        `Evidence: ${networkEvidence.source.label}${networkEvidence.source.url ? ` (${networkEvidence.source.url})` : ""}.`,
+        "Rail avoids airport and driving friction for this intercity distance."]
       : ["Both canonical endpoints have direct national or regional rail connectivity.", "Rail avoids airport and driving friction for this intercity distance."],
   });
 }
@@ -420,9 +422,8 @@ function directFlightCandidate(
         scheduleNeedsChecking: true,
       });
   if (!flightSegment || flightSegment.durationMinutes === null) return null;
-  if (!directEvidence) {
-    flightSegment.provider = "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.";
-  }
+  // Direct access to airports is not evidence of a nonstop service between them.
+  flightSegment.provider = "Morrovia door-to-door flight planning estimate; a connection may be required, so verify the complete live journey.";
   return candidate({
     id: directEvidence ? "flight:direct-connectivity" : "flight:legacy-estimate",
     summaryMode: "flight",
@@ -430,10 +431,15 @@ function directFlightCandidate(
     totalDurationMinutes: flightSegment.durationMinutes,
     distanceKm: flightSegment.distanceKm,
     confidence: directEvidence ? "medium" : "low",
-    provenance: leg.provenance ?? "planning_estimate",
+    provenance: "planning_estimate",
     evidence: directEvidence ? "direct_air_connectivity" : "legacy_flight_estimate",
-    connectionCount: directEvidence ? 0 : null,
-    reasons: [directEvidence ? "Both actual endpoints have direct air connectivity evidence." : "The legacy planner supports a flight estimate and no gateway contradiction is known."],
+    connectionCount: null,
+    reasons: directEvidence
+      ? ["Both actual endpoints have air access evidence; the service and any connections need checking.",
+        ...[fromKnowledge, toKnowledge].flatMap((place) => place.connectivity.status === "known"
+          ? place.connectivity.sources.map((source) => `Evidence: ${source.label}${source.url ? ` (${source.url})` : ""}.`)
+          : [])]
+      : ["The legacy planner supports a flight estimate and no gateway contradiction is known."],
   });
 }
 
