@@ -54,14 +54,14 @@ export default function ProfileForm({
   ownerId,
   name: initialName,
   email,
-  initialLanguage,
+  language,
   initialTravelProfile,
   initialTravelReadinessProfile,
 }: {
   ownerId: string;
   name: string;
   email: string;
-  initialLanguage: "en" | "es";
+  language: "en" | "es";
   initialTravelProfile: TravelProfile;
   initialTravelReadinessProfile: TravelReadinessProfile;
 }) {
@@ -70,7 +70,6 @@ export default function ProfileForm({
   if (session?.user?.id) authenticatedOwnerRef.current = session.user.id;
   const [rememberedOwnerId, setRememberedOwnerId] = useState<string | null>(ownerId);
   const [name, setName] = useState(initialName);
-  const [language, setLanguage] = useState(initialLanguage);
   const [accountMessage, setAccountMessage] = useState<SaveMessage | null>(null);
   const [travelMessage, setTravelMessage] = useState<SaveMessage | null>(null);
   const [accountSaving, setAccountSaving] = useState(false);
@@ -133,14 +132,6 @@ export default function ProfileForm({
         preferencesSaved: "Travel preferences saved. Morrovia will use them as a starting point for new trips.",
         preferencesError: "We could not save your travel preferences. Try again; your current trip will not change.",
       };
-
-  useEffect(() => {
-    window.localStorage.setItem("easyt-language", initialLanguage);
-    document.documentElement.lang = initialLanguage;
-    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<"en" | "es">).detail);
-    window.addEventListener("easyt-language-change", updateLanguage);
-    return () => window.removeEventListener("easyt-language-change", updateLanguage);
-  }, [initialLanguage]);
 
   useEffect(() => {
     setAccountMessage(null);

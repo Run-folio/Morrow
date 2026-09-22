@@ -892,6 +892,14 @@ button.mapPlanAgendaRow{cursor:pointer;border-radius:var(--morrovia-control-radi
   border-radius:0;
   box-shadow:none;
 }
+.canonicalPlanner.shellPlannerExpanded{
+  position:fixed;
+  z-index:calc(var(--morrovia-layer-header) + 1);
+  inset:0;
+  width:100vw;
+  height:100svh;
+  min-height:0;
+}
 .shellPlanner :global(.journey-map),
 .shellPlanner :global(.planner-map){position:absolute!important;inset:var(--map-workspace-strip-height) 0 0!important;width:100%!important;height:auto!important}
 .shellPlanner .canonicalPlannerDestination{display:none!important}

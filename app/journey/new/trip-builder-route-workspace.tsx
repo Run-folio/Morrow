@@ -116,6 +116,8 @@ export function TripBuilderRouteWorkspace({
             const usableDays = usableTime(stop.nights ?? 0, transferMinutes);
             const isLocked = fixedOrder || locked.has(stop.id);
             const isSelected = selectedStopId === stop.id;
+            const isDragging = reorder.draggingId === stop.id;
+            const isDropTarget = Boolean(reorder.previewIds && reorder.draggingId === stop.id);
             return <div
               key={stop.id}
               data-builder-stop-index={index}
@@ -123,7 +125,7 @@ export function TripBuilderRouteWorkspace({
               role="row"
               tabIndex={isSelected ? 0 : -1}
               aria-selected={isSelected}
-              className={`${styles.builderRouteRow} ${isSelected ? styles.builderRouteRowSelected : ""}`}
+              className={`${styles.builderRouteRow} ${isSelected ? styles.builderRouteRowSelected : ""} ${isDragging ? styles.builderRouteRowDragging : ""} ${isDropTarget ? styles.builderRouteDropTarget : ""}`}
               onClick={() => selectStop(stop.id)}
               onDragEnter={(event) => { event.preventDefault(); reorder.previewActiveAt(index); }}
               onDragOver={(event) => { event.preventDefault(); reorder.previewActiveAt(index); }}

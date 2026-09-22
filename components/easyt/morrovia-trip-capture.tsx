@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronDown, Heart, MapPin, Search, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { EasyTLanguage } from "@/lib/easyt/i18n";
 import { journeyCaptureValidationMessage, validateJourneyCaptureSubmission, type JourneyCaptureValidationIssue } from "@/lib/easyt/journey-capture-client";
@@ -38,12 +38,14 @@ const copy = {
     privacy: "Privacy details",
     planWithStops: "Plan with stops",
     describeTrip: "Describe my trip",
+    destinationLabel: "Where do you want to go?",
     editPlaces: "Edit places",
     travelDates: "Travel dates",
     clearDates: "Clear dates",
     datesHeading: "When are you travelling?",
     clear: "Clear",
     personalize: "Personalize",
+    personalizeSummary: "Budget, interests & more",
     hidePersonalize: "Hide personalization",
     budget: "Budget",
     budgetValue: "Budget",
@@ -73,12 +75,14 @@ const copy = {
     privacy: "Detalles de privacidad",
     planWithStops: "Planificar con paradas",
     describeTrip: "Describir mi viaje",
+    destinationLabel: "¿Adónde quieres ir?",
     editPlaces: "Editar lugares",
     travelDates: "Fechas del viaje",
     clearDates: "Borrar fechas",
     datesHeading: "¿Cuándo viajas?",
     clear: "Borrar",
     personalize: "Personalizar",
+    personalizeSummary: "Presupuesto, intereses y más",
     hidePersonalize: "Ocultar personalización",
     budget: "Presupuesto",
     budgetValue: "Económico",
@@ -251,10 +255,10 @@ export function MorroviaTripCapture({
     homepageEntry?.onModeChange(order[next]);
     (order[next] === "stops" ? stopsTabRef : describeTabRef).current?.focus();
   };
-  const submitAction = <EasyTButton type="submit" size="large" loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
+  const submitAction = <EasyTButton type="submit" size="large" icon={homepageEntry ? Search : undefined} loading={loading} disabled={disabled}>{loading && !homepageEntry ? text.checking : <>{text.continue} <ArrowRight aria-hidden="true" /></>}</EasyTButton>;
   const homepageDates = homepageEntry ? <MorroviaDatePicker className={styles.wideDatePicker} mode="range" locale={language} combinedLabel={text.travelDates} clearLabel={text.clearDates} startLabel={text.startDate} endLabel={text.endDate} startValue={startDate} endValue={endDate} disabled={disabled || loading} onChange={onDatesChange} onClear={homepageEntry.onDatesClear} /> : null;
   const homepagePersonalize = homepageEntry ? <div className={styles.personalizeRow}>
-    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span>{text.personalize}</span>{personalizationSummary ? <small>{personalizationSummary}</small> : null}</span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
+    <EasyTButton className={styles.personalizeToggle} variant="secondary" size="small" disabled={disabled || loading} aria-label={text.personalize} aria-expanded={personalizeOpen} aria-controls={personalizeId} icon={SlidersHorizontal} onClick={() => setPersonalizeOpen((current) => !current)}><span className={styles.personalizeLabel}><span>{text.personalize}</span><small>{personalizationSummary || text.personalizeSummary}</small></span><ChevronDown className={styles.personalizeChevron} aria-hidden="true" /></EasyTButton>
   </div> : null;
   const homepageAction = <div className={styles.wideAction}>{submitAction}</div>;
 
@@ -270,7 +274,7 @@ export function MorroviaTripCapture({
             <div className={styles.wideEntryPanel} role="tabpanel" id={stopsPanelId} aria-labelledby={`${stopsPanelId}-tab`}>
               <EasyTButton className={styles.destinationToggle} variant="quiet" type="button" aria-expanded={destinationEditorOpen} aria-controls={`${stopsPanelId}-editor`} disabled={disabled || loading} onClick={() => setDestinationEditorOpen((current) => !current)}>
                 <MapPin aria-hidden="true" />
-                <span>{homepageEntry.destinationEntry}</span>
+                <span className={styles.destinationLabel}><small>{text.destinationLabel}</small><strong>{homepageEntry.destinationEntry}</strong></span>
                 <small>{text.editPlaces}</small>
                 <ChevronDown aria-hidden="true" />
               </EasyTButton>

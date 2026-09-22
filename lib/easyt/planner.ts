@@ -158,6 +158,7 @@ export type RoutePlanningConstraints = {
 export type PlannedDay = {
   number: string;
   date: string;
+  stopId?: string;
   destination: string;
   title: string;
   reason: string;
@@ -813,7 +814,7 @@ export function buildCredibleItinerary(input: {
 
     for (let localDay = 0; localDay < count; localDay += 1) {
       const number = dayIndex + 1;
-      const base = { number: pad(number), date: dateAt(input.startDate, dayIndex), destination: stop.name };
+      const base = { number: pad(number), date: dateAt(input.startDate, dayIndex), stopId: stop.id, destination: stop.name };
       if (localDay === 0) {
         days.push({
           ...base,

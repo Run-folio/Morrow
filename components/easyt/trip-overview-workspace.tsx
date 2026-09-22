@@ -15,7 +15,6 @@ import {
   HeartPulse,
   Map,
   MapPin,
-  Maximize2,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -40,7 +39,8 @@ import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import type { JourneyStop } from "@/lib/journey";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
-import { EasyTLinkButton } from "./easyt-controls";
+import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
+import { MorroviaStatusBanner } from "./morrovia-feedback";
 import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import { TripPreparationTaskSection, TripTravellerDetailsEditor } from "./trip-preparation";
 import { useTripPrepReadiness, type TripPrepProviderStatus } from "./use-trip-prep-readiness";
@@ -399,7 +399,6 @@ export default function TripOverviewWorkspace({
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
-              <EasyTLinkButton className={styles.routeMapAction} href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary">View full map<Maximize2 aria-hidden="true" /></EasyTLinkButton>
             </aside> : null}
           </div>
           {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : undefined}><CircleAlert aria-hidden="true" /><span>{issue.message}</span><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
@@ -439,7 +438,7 @@ export default function TripOverviewWorkspace({
             <div className={styles.beforeGoContent}>
               {prepProviderStatus !== "available" ? <div className={styles.beforeGoStatus}>
                 {prepProviderStatus === "unavailable"
-                  ? <MorroviaSectionStatus state="error" title="Some guidance is unavailable" detail="Your saved trip is unchanged. Retry before relying on the provider-backed task list." onRetry={prepReadiness.retryProviders} />
+                  ? <MorroviaStatusBanner title="Some guidance is unavailable" detail="Your saved trip is unchanged. Retry before relying on the provider-backed task list." actions={<EasyTButton size="small" variant="secondary" onClick={prepReadiness.retryProviders}>Try again</EasyTButton>} />
                   : <MorroviaSectionStatus title="Checking practical tasks" detail="Your saved trip tasks remain visible while current guidance loads." />}
               </div> : null}
               {mustTasks.length || goodTasks.length ? <div className={styles.beforeGoGrid}>

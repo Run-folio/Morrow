@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import {
   ChevronDown,
   CircleHelp,
@@ -22,7 +22,7 @@ import { beginNewTripNavigation, forgetRememberedOwner, rememberLastOwner } from
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import MorroviaBrandLogo from "@/components/morrovia-brand-logo";
 import EasyTProductTour from "@/components/easyt/easyt-product-tour";
-import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { commitSessionLanguage, EASYT_LANGUAGE_CHANGE_EVENT, easytCopy, establishSessionLanguage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import styles from "./easyt-navigation.module.css";
 
 type EasyTNavigationProps = {
@@ -56,15 +56,11 @@ export default function EasyTNavigation({
       ? { id: session.user.id, name: session.user.name, email: session.user.email }
       : undefined;
 
-  useEffect(() => {
-    if (account?.language) {
-      setLanguage(account.language);
-      window.localStorage.setItem("easyt-language", account.language);
-      document.documentElement.lang = account.language;
-      return;
-    }
-    const saved = window.localStorage.getItem("easyt-language");
-    if (saved === "en" || saved === "es") setLanguage(saved);
+  useLayoutEffect(() => {
+    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
+    window.addEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
+    setLanguage(establishSessionLanguage(account?.language));
+    return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
   }, [account?.language]);
 
   useEffect(() => {
@@ -119,10 +115,7 @@ export default function EasyTNavigation({
   }, [activeAccount?.email]);
 
   const changeLanguage = (next: Language) => {
-    setLanguage(next);
-    window.localStorage.setItem("easyt-language", next);
-    document.documentElement.lang = next;
-    window.dispatchEvent(new CustomEvent("easyt-language-change", { detail: next }));
+    setLanguage(commitSessionLanguage(next));
     if (activeAccount) {
       void fetch("/api/easyt/profile", {
         method: "PATCH",

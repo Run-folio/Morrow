@@ -92,13 +92,17 @@ test("canonical place cache identity does not depend on route position or displa
   );
 });
 
-test("the shared cache retains both a reviewed selection and an intentional neutral fallback", () => {
+test("the shared cache retains valid imagery but ignores and evicts persisted empty choices", () => {
   const storage = new MemoryStorage();
   saveRoutePhotoSelection("place:one", { kind: "photo", photo: validPhoto }, storage);
-  saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
+  storage.setItem("morrovia:route-photo:place:two", JSON.stringify({ kind: "empty" }));
 
   assert.deepEqual(readRoutePhotoSelection("place:one", storage), { kind: "photo", photo: validPhoto });
-  assert.deepEqual(readRoutePhotoSelection("place:two", storage), { kind: "empty" });
+  assert.equal(readRoutePhotoSelection("place:two", storage), null);
+  assert.equal(storage.getItem("morrovia:route-photo:place:two"), null);
+
+  saveRoutePhotoSelection("place:two", { kind: "empty" }, storage);
+  assert.equal(storage.getItem("morrovia:route-photo:place:two"), null);
 });
 
 test("candidate resolution commits successful siblings without waiting for a failed batch", async () => {
@@ -158,7 +162,45 @@ test("navigation and reload reuse the same positive choice without another looku
   assert.deepEqual(reloadedSelection, firstSelection);
 });
 
-test("a genuine no-result remains the intentional neutral fallback after reload", async () => {
+test("Dubai to Almaty to Samarkand and back to Dubai shares canonical positive choices", async () => {
+  const storage = new MemoryStorage();
+  const places = [
+    { name: "Dubai", country: "United Arab Emirates", canonicalPlaceId: "dubai" },
+    { name: "Almaty", country: "Kazakhstan", canonicalPlaceId: "almaty" },
+    { name: "Samarkand", country: "Uzbekistan", canonicalPlaceId: "samarkand" },
+  ];
+  const [dubai, almaty, samarkand] = places.map(canonicalPlacePhotoCacheKey);
+  const candidates = [
+    { occurrenceIds: ["origin-dubai", "return-dubai"], cacheKey: dubai!, queries: ["Dubai UAE travel"] },
+    { occurrenceIds: ["almaty"], cacheKey: almaty!, queries: ["Almaty Kazakhstan travel"] },
+    { occurrenceIds: ["samarkand"], cacheKey: samarkand!, queries: ["Samarkand Uzbekistan travel"] },
+  ];
+  const selections = new Map<string, string>();
+  let lookups = 0;
+  await resolveRoutePhotoCandidates(candidates, (candidate, selection) => {
+    if (selection.kind === "photo") candidate.occurrenceIds.forEach((id) => selections.set(id, selection.photo.src));
+  }, {
+    storage,
+    trackPhoto: () => undefined,
+    findPhotos: async (queries) => {
+      lookups += 1;
+      return { candidates: [{ ...validPhoto, src: `https://images.example.test/${encodeURIComponent(queries[0]!)}.jpg` }], configured: true, status: "resolved" };
+    },
+  });
+  assert.equal(lookups, 3);
+  assert.equal(selections.get("origin-dubai"), selections.get("return-dubai"));
+  assert.ok(selections.get("almaty"));
+  assert.ok(selections.get("samarkand"));
+
+  await resolveRoutePhotoCandidates(candidates, (candidate, selection) => {
+    if (selection.kind === "photo") candidate.occurrenceIds.forEach((id) => assert.equal(selection.photo.src, selections.get(id)));
+  }, {
+    storage,
+    findPhotos: async () => { throw new Error("navigation and reload must reuse positive decisions"); },
+  });
+});
+
+test("a no-result is neutral for this render and a later lookup can populate imagery", async () => {
   const storage = new MemoryStorage();
   const candidate = { occurrenceIds: ["fallback"], cacheKey: "no-photo", queries: ["no photo"] };
   let selection: unknown;
@@ -167,12 +209,28 @@ test("a genuine no-result remains the intentional neutral fallback after reload"
     findPhotos: async () => ({ candidates: [], configured: true, status: "no-result" }),
   });
   assert.deepEqual(selection, { kind: "empty" });
+  assert.equal(readRoutePhotoSelection(candidate.cacheKey, storage), null);
 
   await resolveRoutePhotoCandidates([candidate], (_candidate, value) => { selection = value; }, {
     storage,
-    findPhotos: async () => { throw new Error("neutral fallback must not re-fetch"); },
+    trackPhoto: () => undefined,
+    findPhotos: async () => ({ candidates: [validPhoto], configured: true, status: "resolved" }),
   });
-  assert.deepEqual(selection, { kind: "empty" });
+  assert.deepEqual(selection, { kind: "photo", photo: validPhoto });
+  assert.deepEqual(readRoutePhotoSelection(candidate.cacheKey, storage), selection);
+});
+
+test("a later provider failure cannot replace a known positive image", async () => {
+  const storage = new MemoryStorage();
+  const candidate = { occurrenceIds: ["first", "repeat"], cacheKey: "same-destination", queries: ["same destination"] };
+  saveRoutePhotoSelection(candidate.cacheKey, { kind: "photo", photo: validPhoto }, storage);
+  const selected: unknown[] = [];
+  await resolveRoutePhotoCandidates([candidate], (_candidate, selection) => { selected.push(selection); }, {
+    storage,
+    findPhotos: async () => { throw new Error("positive cache must not re-fetch"); },
+  });
+  assert.deepEqual(selected, [{ kind: "photo", photo: validPhoto }]);
+  assert.deepEqual(readRoutePhotoSelection(candidate.cacheKey, storage), { kind: "photo", photo: validPhoto });
 });
 
 test("navigation retires the stale consumer without aborting the shared cache owner", async () => {

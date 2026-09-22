@@ -3,3 +3,11 @@
   margin-left: 50%;
   transform: translateX(-50%);
 }
+
+.wideMap:has([data-map-expanded="true"]) {
+  width: 100vw;
+  height: calc(100svh - var(--morrovia-navigation-height));
+  min-height: 680px;
+  margin-left: calc(50% - 50vw);
+  transform: none;
+}

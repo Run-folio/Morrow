@@ -1,5 +1,15 @@
 export type EasyTLanguage = "en" | "es";
 
+export const EASYT_LANGUAGE_STORAGE_KEY = "easyt-language";
+export const EASYT_LANGUAGE_CHANGE_EVENT = "easyt-language-change";
+
+export type EasyTLanguageRuntime = {
+  read: () => string | null;
+  write: (language: EasyTLanguage) => void;
+  setDocumentLanguage: (language: EasyTLanguage) => void;
+  notify: (language: EasyTLanguage) => void;
+};
+
 export const easytCopy = {
   en: {
     nav: { back: "Back", home: "Home", prototype: "Prototype", trips: "Trips", newTrip: "New trip", stamped: "Stamps", account: "Account", profile: "Profile", privacy: "Privacy", language: "Language", tour: "Tour", signOut: "Sign out" },
@@ -15,7 +25,58 @@ export const easytCopy = {
   },
 } as const;
 
+function browserLanguageRuntime(): EasyTLanguageRuntime {
+  return {
+    read: () => window.localStorage.getItem(EASYT_LANGUAGE_STORAGE_KEY),
+    write: (language) => window.localStorage.setItem(EASYT_LANGUAGE_STORAGE_KEY, language),
+    setDocumentLanguage: (language) => { document.documentElement.lang = language; },
+    notify: (language) => window.dispatchEvent(new CustomEvent(EASYT_LANGUAGE_CHANGE_EVENT, { detail: language })),
+  };
+}
+
+function supportedLanguage(value: unknown): EasyTLanguage | null {
+  return value === "en" || value === "es" ? value : null;
+}
+
+export function resolveSessionLanguage(
+  storedLanguage: unknown,
+  accountLanguage?: unknown,
+): EasyTLanguage {
+  return supportedLanguage(storedLanguage) ?? supportedLanguage(accountLanguage) ?? "en";
+}
+
+export function commitSessionLanguage(
+  language: EasyTLanguage,
+  runtime: EasyTLanguageRuntime = browserLanguageRuntime(),
+): EasyTLanguage {
+  try { runtime.write(language); } catch { /* Browser preference storage is optional. */ }
+  runtime.setDocumentLanguage(language);
+  runtime.notify(language);
+  return language;
+}
+
+export function establishSessionLanguage(
+  accountLanguage?: EasyTLanguage,
+  runtime: EasyTLanguageRuntime = browserLanguageRuntime(),
+): EasyTLanguage {
+  let storedLanguage: string | null = null;
+  try { storedLanguage = runtime.read(); } catch { /* Fall back to the account or English. */ }
+  const establishedLanguage = supportedLanguage(storedLanguage) ?? supportedLanguage(accountLanguage);
+  if (establishedLanguage) return commitSessionLanguage(establishedLanguage, runtime);
+
+  // English is the rendering fallback, not an explicit session preference.
+  // Leaving storage empty lets a subsequently loaded account preference seed
+  // the current browser session instead of being masked by a provisional value.
+  runtime.setDocumentLanguage("en");
+  runtime.notify("en");
+  return "en";
+}
+
 export function languageFromStorage(): EasyTLanguage {
   if (typeof window === "undefined") return "en";
-  return window.localStorage.getItem("easyt-language") === "es" ? "es" : "en";
+  try {
+    return resolveSessionLanguage(window.localStorage.getItem(EASYT_LANGUAGE_STORAGE_KEY));
+  } catch {
+    return "en";
+  }
 }

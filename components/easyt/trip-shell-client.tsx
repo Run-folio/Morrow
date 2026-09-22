@@ -94,7 +94,7 @@ export function TripShellIdentityAndActions() {
       </dl>
     </div>
     <div className={styles.headerActions}>
-      <MorroviaSaveStatus state={mutation.saveState} />
+      {trip.ownerId ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
       <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary">Edit trip brief</EasyTLinkButton>
       <WorkspaceOrientationLauncher onRenameTrip={openRename} />
     </div>

@@ -14,7 +14,7 @@ import { recommendationDetailForStayResult } from "@/lib/easyt/recommendation-de
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import { stayCandidateFit, stayIsSelected, stayWorkspaceContext, type StayWorkspaceContext } from "@/lib/easyt/stay-workspace";
 import type { EasyTTrip } from "@/lib/easyt/trip";
-import { mapWorkspaceHref, stayWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { mapWorkspaceHref, stayWorkspaceHref, tripBuilderHref } from "@/lib/easyt/trip-workspace-links";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import ItineraryItemDetail from "./itinerary-item-detail";
@@ -140,7 +140,7 @@ function StayFinderSurface({
         {inventoryLoading ? <p className={styles.inventoryNote} role="status">Checking current room availability.</p> : null}
         {finder.status === "loading" ? <div className={styles.loading}><MorroviaSectionStatus title="Finding stays for this stop" detail={`Keeping ${context.stop.name}, ${context.nights} nights and ${context.dateLabel} in place.`} /><div aria-hidden="true"><MorroviaSkeleton height={240} radius="card" /><MorroviaSkeleton height={240} radius="card" /></div></div> : null}
         {finder.status === "failed" ? <MorroviaSectionStatus state="error" title="Stay options are unavailable" detail="No mapped or live options could be loaded. Your trip and selected stop are unchanged." retryLabel="Try stay search again" onRetry={finder.retry} /> : null}
-        {finder.status === "empty" ? <MorroviaSectionStatus title="No stay options found" detail="No valid accommodation came back for this stop. Try again later or check the booking provider directly." /> : null}
+        {finder.status === "empty" ? <MorroviaStatusBanner title="No stay options found" detail="No valid accommodation came back for this stop. Try again later or check the booking provider directly." /> : null}
         {finder.candidates.length ? <div className={styles.grid}>{finder.candidates.map((place) => {
           const isSelected = place.id === selectedBase?.id;
           const isChosen = stayIsSelected(workingTrip, context, place);
@@ -224,7 +224,7 @@ export default function TripStayWorkspace({ trip, initialStopId, initialSelected
   const navigationStops = useMemo(() => selectedStopId ? routeTimelineStopsForTrip(workingTrip, { scopeId: selectedStopId }).filter((item) => item.kind === "stop" && overnightStops.some((stop) => stop.id === item.id)) : [], [overnightStops, selectedStopId, workingTrip]);
 
   if (!context || !context.searchCoordinates) {
-    return <section className={styles.workspace} aria-label="Stay planning"><MorroviaSectionStatus title={overnightStops.length ? "This stop needs a mapped location" : "No overnight stays to plan"} detail={overnightStops.length ? "Add a trustworthy destination location before searching for accommodation." : "Add an overnight destination to the route before choosing accommodation."} /></section>;
+    return <section className={styles.workspace} aria-label="Stay planning"><MorroviaStatusBanner title={overnightStops.length ? "This stop needs a mapped location" : "No overnight stays to plan"} detail={overnightStops.length ? "Add a trustworthy destination location before searching for accommodation." : "Add an overnight destination to the route before choosing accommodation."} actions={overnightStops.length ? <EasyTLinkButton size="small" variant="secondary" href={tripBuilderHref(workingTrip.id, workingTrip.ownerId)}>Adjust route</EasyTLinkButton> : undefined} /></section>;
   }
 
   return <section className={styles.workspace} aria-label={`Stay planning for ${context.stop.name}`}>

@@ -7,6 +7,7 @@ const captureStyles = readFileSync(new URL("../components/easyt/morrovia-trip-ca
 const captureStories = readFileSync(new URL("../components/easyt/morrovia-trip-capture.stories.tsx", import.meta.url), "utf8");
 const voiceSource = readFileSync(new URL("../components/easyt/voice-trip-brief.tsx", import.meta.url), "utf8");
 const immersiveSource = readFileSync(new URL("../app/journey/home/immersive/immersive-home.tsx", import.meta.url), "utf8");
+const homeTripStarterSource = readFileSync(new URL("../app/journey/home/home-trip-starter.tsx", import.meta.url), "utf8");
 const immersiveStyles = readFileSync(new URL("../app/journey/home/immersive/immersive.module.css", import.meta.url), "utf8");
 const routeChaptersSource = readFileSync(new URL("../app/journey/home/immersive/route-chapters.tsx", import.meta.url), "utf8");
 const immersiveStories = readFileSync(new URL("../app/journey/home/immersive/immersive-home.stories.tsx", import.meta.url), "utf8");
@@ -72,13 +73,22 @@ test("the connected dual-entry homepage is the only production composition", () 
   assert.match(immersiveSource, /<HomepageRouteInspiration routes=\{routes\}\s*\/>[\s\S]*<HomepageHowItWorks\s*\/>[\s\S]*<RouteChapters/);
 });
 
-test("dual-entry hero is full-height, wide, and may grow with open planner panels", () => {
-  assert.match(immersiveStyles, /\.heroDualEntry\s*\{[^}]*min-height:\s*100svh/);
+test("dual-entry hero is compact on desktop and may grow with open planner panels", () => {
+  assert.match(immersiveStyles, /\.heroDualEntry\s*\{[^}]*min-height:\s*clamp\(650px,74svh,760px\)/);
+  assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /min-height:\s*100svh/);
   assert.doesNotMatch(immersiveStyles.match(/\.heroDualEntry\s*\{[^}]*\}/)?.[0] ?? "", /overflow:\s*(?:hidden|clip)/);
   assert.match(immersiveStyles, /\.heroDecorative\s*\{[^}]*overflow:\s*clip/);
-  assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*grid-template-columns:\s*1fr/);
+  assert.match(immersiveStyles, /\.heroDualEntry[\s\S]*\.heroBodyDualEntry[\s\S]*width:min\(1400px,calc\(100% - 80px\)\)/);
   assert.match(immersiveSource, /Plan multi-stop trips with suggested routes, places to stay and things to do\. Then make the plan your own\./);
   assert.match(immersiveStories, /FullComposition/);
+});
+
+test("Homepage planner gives its two entry modes and compact destination a clear hierarchy", () => {
+  assert.match(captureStyles, /\.modeTab \{[^}]*min-height: 48px[^}]*font: 700 14px\/1\.2 var\(--morrovia-ui\)/);
+  assert.match(captureStyles, /\.modeTab\[aria-selected="true"\]::after \{[^}]*height: 3px[^}]*background: var\(--morrovia-action\)/);
+  assert.match(captureSource, /className=\{styles\.destinationLabel\}[\s\S]*text\.destinationLabel[\s\S]*homepageEntry\.destinationEntry/);
+  assert.match(captureSource, /icon=\{homepageEntry \? Search : undefined\}/);
+  assert.match(homeTripStarterSource, /Add your first stop/);
 });
 
 test("Route Chapters always retains the independent lower story without recreating the route selector", () => {
@@ -128,7 +138,7 @@ test("expanded Homepage personalization keeps labels and controls on one desktop
 });
 
 test("Homepage inspiration and How it works retain the wide page-local container", () => {
-  assert.match(immersiveStyles, /\.inspiration,\.howItWorks \{ width:min\(1400px,calc\(100% - 80px\)\);/);
+  assert.match(immersiveStyles, /\.inspiration,\.howItWorks \{ width:min\(1400px,calc\(100% - 48px\)\);/);
   assert.match(immersiveStyles, /\.inspirationGrid \{ display:grid; grid-template-columns:repeat\(7,minmax\(0,1fr\)\);/);
   assert.match(immersiveStyles, /\.howSteps \{ display:grid; grid-template-columns:repeat\(3,minmax\(0,1fr\)\);/);
 });

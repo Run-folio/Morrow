@@ -65,7 +65,7 @@ import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preserva
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
 import { validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
-import { canonicalJourneyEndpointPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
+import { canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
@@ -529,6 +529,7 @@ function TripBuilderDocument() {
   const [stopError, setStopError] = useState("");
   const [stopChecking, setStopChecking] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [dragTargetId, setDragTargetId] = useState<string | null>(null);
   const [routePreviewStopIds, setRoutePreviewStopIds] = useState<readonly string[] | null>(null);
   const [routeCheckProposalStopIds, setRouteCheckProposalStopIds] = useState<readonly string[] | null>(null);
   const [selectedRouteStopId, setSelectedRouteStopId] = useState<string | null>(null);
@@ -1938,7 +1939,7 @@ function TripBuilderDocument() {
     };
     const value = (name ?? stopInput).trim();
     if (!value) return fail(ui.typePlace);
-    if (isDuplicatePlaceIdentity(stops, {
+    if (!targetMentionId && isDuplicatePlaceIdentity(stops, {
       name: value,
       canonicalPlaceId: canonicalSuggestion?.canonicalPlaceId,
     })) return fail(`${value} is already in your route.`);
@@ -2020,6 +2021,20 @@ function TripBuilderDocument() {
       }
       const resolvedCountry = resolved.country;
       const resolvedName = (canonicalSuggestion?.name ?? resolved.name?.split(",")[0]?.trim()) || value;
+      // A landmark or planning-area base may already be a route occurrence.
+      // Provider and catalogue IDs can differ for the same physical city; use
+      // the shared geographic identity check, never display-name deduplication.
+      const existingBaseMatches = targetMention && targetMention.routability !== "direct_destination"
+        ? stops.filter((stop) => isSameCanonicalPlace(stop, {
+          name: resolvedName, country: resolvedCountry,
+          canonicalPlaceId: selectedCanonicalPlaceId ?? resolved.canonicalPlaceId,
+          providerId: resolved.providerId, coordinates: resolved.coordinates,
+        }))
+        : [];
+      if (existingBaseMatches.length > 1) return fail(language === "es"
+        ? `${resolvedName} aparece más de una vez en tu ruta. Elige desde qué parada visitarlo.`
+        : `${resolvedName} appears more than once in your route. Choose which stop to visit from.`);
+      const existingBase = existingBaseMatches[0];
       const multiPlacePlanningMention = Boolean(targetMention && placeMentionSupportsMultipleSelections(targetMention));
       const existingTargetSelection = targetMentionId && !multiPlacePlanningMention
         ? placeSelections.find((selection) => selection.mentionId === targetMentionId && (selection.kind === "base" || selection.kind === "visit"))
@@ -2028,7 +2043,7 @@ function TripBuilderDocument() {
         && !placeSelections.some((selection) => selection.mentionId !== targetMentionId && selection.routeStopId === existingTargetSelection.routeStopId)
         ? existingTargetSelection.routeStopId
         : undefined;
-      const id = replaceableRouteStopId ?? `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
+      const id = existingBase?.id ?? replaceableRouteStopId ?? `${resolvedName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
       const addedStop: Stop = {
         id,
         name: resolvedName,
@@ -2040,10 +2055,12 @@ function TripBuilderDocument() {
         coordinates: resolved.coordinates,
         locality: resolved.locality,
       };
-      rememberStructuralChange(replaceableRouteStopId ? "change_regional_base" : "add_stop", 1);
-      setStops((current) => replaceableRouteStopId
-        ? current.map((stop) => stop.id === replaceableRouteStopId ? addedStop : stop)
-        : [...current, addedStop]);
+      if (!existingBase) {
+        rememberStructuralChange(replaceableRouteStopId ? "change_regional_base" : "add_stop", 1);
+        setStops((current) => replaceableRouteStopId
+          ? current.map((stop) => stop.id === replaceableRouteStopId ? addedStop : stop)
+          : [...current, addedStop]);
+      }
       if (targetMentionId) {
         const nextSelection: PlaceSelection = {
           mentionId: targetMentionId,
@@ -2061,7 +2078,7 @@ function TripBuilderDocument() {
           ...(targetMention?.routability === "anchor_or_poi" ? { relationshipType: "visit-from-base" as const } : {}),
         };
         setPlaceSelections((current) => [nextSelection, ...current.filter((selection) => multiPlacePlanningMention
-          ? selection.mentionId !== targetMentionId || selection.selectedCanonicalPlaceId !== nextSelection.selectedCanonicalPlaceId
+          ? selection.mentionId !== targetMentionId || (selection.selectedCanonicalPlaceId !== nextSelection.selectedCanonicalPlaceId && selection.routeStopId !== nextSelection.routeStopId)
           : selection.mentionId !== targetMentionId)]);
         setResolvingPlaceMentionId(null);
         setTransientPlanningMentionId((current) => current === targetMentionId ? null : current);
@@ -2079,7 +2096,7 @@ function TripBuilderDocument() {
         setShowStopEditor(true);
         setStopSearchReadyKey((current) => current + 1);
       }
-      return addedStop;
+      return existingBase ?? addedStop;
     } catch {
       fail(ui.unavailable);
     } finally {
@@ -2095,7 +2112,10 @@ function TripBuilderDocument() {
       return;
     }
     const optionCountry = option.country;
-    const existingNamed = stops.find((stop) => stop.name.toLocaleLowerCase() === option.label.toLocaleLowerCase() && stop.country === optionCountry);
+    const existingNamed = stops.find((stop) => isSameCanonicalPlace(stop, {
+      name: option.label, country: optionCountry, canonicalPlaceId: option.canonicalPlaceId,
+      coordinates: option.coordinates,
+    }));
     const routeDestination = sourceRouteKey
       ? capturedStructuredBrief.destinations.find((destination) => destination.placeMentionId === issue.mentionId)
       : undefined;
@@ -2988,7 +3008,9 @@ function TripBuilderDocument() {
     document: activeTripDocument,
   }), [origin, originCoordinates, journeyEnd, stops, resolvingLocations, buildPlaceIssues, routeIntelligence.route.constraintIssues, structuredRouteConstraints.requiredStopIds, structuredRouteConstraints.maximumStops, structuredRouteConstraints.fixedCommitments, effectiveIntent.hardConstraints.mustSeeStopIds, startDate, endDate, totalDays, effectiveStructuredBrief.duration, effectiveStructuredBrief.issues, nightAllocation, allocation, finalPlanValidation, activeTripDocument]);
   const gateConflict = buildInvariant.firstConflict;
-  const gate = gateConflict?.message ?? "";
+  const gate = gateConflict?.code === "itinerary-stop-uncovered"
+    ? (language === "es" ? "No pudimos incluir todas las paradas en el itinerario. Revisa tu ruta e inténtalo de nuevo." : "We couldn't include every stop in the itinerary. Review your route and try again.")
+    : gateConflict?.message ?? "";
   const buildAttention = buildInvariant.needsAttention;
   const firstBuildAttention = buildAttention[0];
   const buildAttentionNames = [...new Set(buildAttention.map((item) => item.sourceText))];
@@ -3018,8 +3040,8 @@ function TripBuilderDocument() {
           ? (language === "es" ? `La mayor parte de esta parada sería viaje` : `Most of this stop would be spent travelling`)
           : (language === "es" ? `El viaje reduce el tiempo en ${longJourneyIssue.stop.name}` : `Travel reduces time in ${longJourneyIssue.stop.name}`)
       : (language === "es" ? "Este viaje necesita un ritmo más ajustado" : "This trip needs a tighter pace");
-  const timingWarningSummary = gateConflict?.message
-    ?? (highlyCompressedTrip
+  const timingWarningSummary = gateConflict ? gate
+    : (highlyCompressedTrip
       ? (unknownTransferCount > 0
         ? (language === "es" ? `${oneNightStopCount} paradas tienen una noche o menos y ${unknownTransferCount === 1 ? "un traslado aún necesita" : `${unknownTransferCount} traslados aún necesitan`} comprobarse.` : `${oneNightStopCount} stops have one night or less, and ${unknownTransferCount === 1 ? "one transfer still needs" : `${unknownTransferCount} transfers still need`} checking.`)
         : (language === "es" ? `${oneNightStopCount} paradas tienen una noche o menos, y los traslados ocupan una parte importante del viaje.` : `${oneNightStopCount} stops have one night or less, and transfers take a meaningful share of the trip.`))
@@ -3832,11 +3854,12 @@ function TripBuilderDocument() {
                           key={stop.id}
                           role="listitem"
                           draggable={!locked}
-                          className={`${styles.handoffStop} ${dragId === stop.id ? styles.handoffStopDragging : ""}`}
-                          onDragStart={(event) => { setDragId(stop.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }}
-                          onDragOver={(event) => { if (!locked) event.preventDefault(); }}
-                          onDrop={(event) => { event.preventDefault(); const sourceId = dragId ?? event.dataTransfer.getData("text/plain"); moveStop(stops.findIndex((item) => item.id === sourceId), index); setDragId(null); }}
-                          onDragEnd={() => setDragId(null)}
+                          className={`${styles.handoffStop} ${dragId === stop.id ? styles.handoffStopDragging : ""} ${dragTargetId === stop.id ? styles.handoffStopDropTarget : ""} ${dragTargetId === stop.id && stops.findIndex((item) => item.id === dragId) < index ? styles.handoffStopDropTargetAfter : ""}`}
+                          onDragStart={(event) => { setDragId(stop.id); setDragTargetId(null); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", stop.id); }}
+                          onDragEnter={(event) => { if (locked || dragId === stop.id) { setDragTargetId(null); return; } event.preventDefault(); setDragTargetId(stop.id); }}
+                          onDragOver={(event) => { if (locked || dragId === stop.id) { setDragTargetId(null); return; } event.preventDefault(); setDragTargetId(stop.id); }}
+                          onDrop={(event) => { event.preventDefault(); const sourceId = dragId ?? event.dataTransfer.getData("text/plain"); moveStop(stops.findIndex((item) => item.id === sourceId), index); setDragId(null); setDragTargetId(null); }}
+                          onDragEnd={() => { setDragId(null); setDragTargetId(null); }}
                         >
                           <GripVertical aria-hidden="true" />
                           <b aria-hidden="true">{index + 1}</b>
@@ -4124,12 +4147,11 @@ function TripBuilderDocument() {
                   <AlertTriangle aria-hidden="true" /><span><strong id="timing-warning-title"><span className="sr-only">{gateConflict ? (language === "es" ? "Bloqueo: " : "Blocking: ") : highlyCompressedTrip || longJourneyIssue?.consequence.level === "strong" ? (language === "es" ? "Advertencia importante: " : "Strong caution: ") : (language === "es" ? "Aviso: " : "Caution: ")}</span>{timingWarningTitle}</strong><small>{timingWarningSummary}</small></span><ChevronRight aria-hidden="true" />
                 </button>
                 {timingWarningOpen && <div id="timing-warning-content" className={styles.timingWarningContent}>
-                  <section><strong>{language === "es" ? "Qué significa" : "What this means"}</strong><ul>
+                  {gateConflict?.code !== "itinerary-stop-uncovered" && <section><strong>{language === "es" ? "Qué significa" : "What this means"}</strong><ul>
                     {highlyCompressedTrip && <><li>{language === "es" ? `${oneNightStopCount} de ${stops.length} paradas tienen una noche o menos.` : `${oneNightStopCount} of ${stops.length} stops have one night or less.`}</li>{unknownTransferCount > 0 && <li>{language === "es" ? `${unknownTransferCount === 1 ? "Un traslado" : `${unknownTransferCount} traslados`} aún necesita comprobarse, por lo que el tiempo aprovechable puede ser menor.` : `${unknownTransferCount === 1 ? "One transfer" : `${unknownTransferCount} transfers`} still ${unknownTransferCount === 1 ? "needs" : "need"} checking, so usable time may be lower.`}</li>}{longTransferCount > 0 && <li>{language === "es" ? `${longTransferCount === 1 ? "Un traslado ocupa" : `${longTransferCount} traslados ocupan`} gran parte de un día.` : `${longTransferCount === 1 ? "One transfer uses" : `${longTransferCount} transfers use`} a large part of a day.`}</li>}</>}
                     {!highlyCompressedTrip && longJourneyIssue && <><li>{language === "es" ? `Tendrás aproximadamente ${longJourneyIssue.usableDays} días aprovechables en ${longJourneyIssue.stop.name}.` : `You’ll have about ${longJourneyIssue.usableDays} usable days in ${longJourneyIssue.stop.name}.`}</li><li>{longJourneyIssue.duration.reason}</li></>}
-                    {gateConflict && <li>{gateConflict.message}</li>}
                     {!gateConflict && !highlyCompressedTrip && !longJourneyIssue && tripTimingNotice && <li>{tripTimingNotice}</li>}
-                  </ul></section>
+                  </ul></section>}
                   {!gateConflict && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><button type="button" onClick={() => applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</button></article>)}</div></section> : <div className={styles.reviewRouteFallback}><button type="button" onClick={() => { openSummaryEditor("stops"); }}>{language === "es" ? "Revisar ruta" : "Review route"}<ArrowRight aria-hidden="true" /></button></div>}
                 </div>}
               </section>}
@@ -4314,7 +4336,7 @@ function TripBuilderDocument() {
       /></div> : null}
       {hasRouteSkeleton && <div className={styles.wizardFoot}>
         <div className={styles.footRight}>
-          {gate && <small className={styles.gate}>{gate}</small>}
+          {gate && gateConflict?.code !== "itinerary-stop-uncovered" && <small className={styles.gate}>{gate}</small>}
           <button type="button" className={styles.primary} disabled={Boolean(gate) || openingTrip || Boolean(cloudConflictTrip) || (Boolean(session?.user) && saveState === "error")} aria-busy={openingTrip || undefined}
             onClick={async () => {
               if (gate) return;

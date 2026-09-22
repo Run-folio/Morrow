@@ -10,7 +10,7 @@ const meta = {
     ownerId: "storybook-owner",
     name: "Sam Rivera",
     email: "traveller@example.com",
-    initialLanguage: "en",
+    language: "en",
     initialTravelProfile: {
       pace: "balanced",
       usualInterests: ["food", "culture"],
