@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`https://api.unsplash.com/search/photos?${new URLSearchParams({ query, per_page: "8", orientation: "landscape", content_filter: "high" })}`, {
       headers: { Authorization: `Client-ID ${accessKey}` },
-      next: { revalidate: 60 * 60 * 24 * 7 },
+      // Only a validated positive API response receives the durable image cache.
+      cache: "no-store",
       signal: AbortSignal.timeout(6000),
     });
     if (!response.ok) return NextResponse.json(
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
       }];
     });
     const photo = candidates[0];
-    if (!photo) return NextResponse.json({ image: null, candidates: [], configured: true, reason: "no-result" }, { headers: responseHeaders });
+    if (!photo) return NextResponse.json({ image: null, candidates: [], configured: true, reason: "no-result" }, { headers: { "Cache-Control": "no-store" } });
     return NextResponse.json(
       { image: photo, candidates, configured: true, query },
       { headers: responseHeaders },

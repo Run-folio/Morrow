@@ -90,7 +90,10 @@ export function readRoutePhotoSelection(routeKey: string, storage: Storage | nul
     const value = storage.getItem(`${prefix}${routeKey}`);
     if (!value) return null;
     const parsed: unknown = JSON.parse(value);
-    if (isRecord(parsed) && parsed.kind === "empty") return { kind: "empty" };
+    if (isRecord(parsed) && parsed.kind === "empty") {
+      storage.removeItem(`${prefix}${routeKey}`);
+      return null;
+    }
     if (isRecord(parsed) && parsed.kind === "photo") {
       const photo = routePhotoFromUnknown(parsed.photo);
       return photo ? { kind: "photo", photo } : null;
@@ -105,10 +108,7 @@ export function readRoutePhotoSelection(routeKey: string, storage: Storage | nul
 export function saveRoutePhotoSelection(routeKey: string, selection: CachedRoutePhotoSelection, storage: Storage | null = browserStorage()) {
   if (!storage) return;
   try {
-    if (selection.kind === "empty") {
-      storage.setItem(`${prefix}${routeKey}`, JSON.stringify(selection));
-      return;
-    }
+    if (selection.kind === "empty") return;
     const validated = routePhotoFromUnknown(selection.photo);
     if (validated) storage.setItem(`${prefix}${routeKey}`, JSON.stringify({ kind: "photo", photo: validated }));
   } catch {
@@ -196,9 +196,7 @@ export async function resolveRoutePhotoCandidates(
           return selection;
         }
         if (result.status === "no-result") {
-          const selection = { kind: "empty" } as const;
-          saveRoutePhotoSelection(candidate.cacheKey, selection, storage);
-          return selection;
+          return { kind: "empty" } as const;
         }
         return null;
       })();
