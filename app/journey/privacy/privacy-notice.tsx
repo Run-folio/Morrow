@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bot, ChevronLeft, Cookie, Database, ExternalLink, Mail, MapPin, Mic, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { EasyTLinkButton } from "@/components/easyt/easyt-controls";
-import type { EasyTLanguage } from "@/lib/easyt/i18n";
+import { EASYT_LANGUAGE_CHANGE_EVENT, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import styles from "./privacy.module.css";
 
@@ -107,10 +107,10 @@ export default function PrivacyNotice() {
   const [language, setLanguage] = useState<EasyTLanguage>("en");
 
   useEffect(() => {
-    const refresh = () => setLanguage(window.localStorage.getItem("easyt-language") === "es" ? "es" : "en");
-    refresh();
-    window.addEventListener("easyt-language-change", refresh);
-    return () => window.removeEventListener("easyt-language-change", refresh);
+    setLanguage(languageFromStorage());
+    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
+    window.addEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
+    return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
   }, []);
 
   const t = copy[language];

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { EASYT_LANGUAGE_CHANGE_EVENT, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { morroviaLegalIdentity } from "@/lib/morrovia-legal-identity";
 import MorroviaBrandLogo from "./morrovia-brand-logo";
 import styles from "./morrovia-footer.module.css";
@@ -38,10 +38,10 @@ export default function MorroviaFooter({ overImage = false, omitOnImmersiveHome 
   const [language, setLanguage] = useState<EasyTLanguage>("en");
 
   useEffect(() => {
-    const refresh = () => setLanguage(languageFromStorage());
-    refresh();
-    window.addEventListener("easyt-language-change", refresh);
-    return () => window.removeEventListener("easyt-language-change", refresh);
+    setLanguage(languageFromStorage());
+    const updateLanguage = (event: Event) => setLanguage((event as CustomEvent<EasyTLanguage>).detail);
+    window.addEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
+    return () => window.removeEventListener(EASYT_LANGUAGE_CHANGE_EVENT, updateLanguage);
   }, []);
 
   const text = copy[language];
