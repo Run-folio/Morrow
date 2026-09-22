@@ -459,7 +459,7 @@ type Story = StoryObj<typeof meta>;
 export const ActivePlanning: Story = {};
 
 export const TourCapture: Story = {
-  args: { storyTrip: tourTripFixture, presentation: "focused", storyState: { mapMode: "overview", expandedMap: false, destinationExpanded: true } },
+  args: { storyTrip: tourTripFixture, presentation: "focused", storyState: { mapMode: "overview", destinationExpanded: true } },
 };
 
 const scheduledResultHandoffParameters = {
@@ -644,6 +644,58 @@ export const DetailedBasemap: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: "/journey/delhi-agra-jaipur/map", query: { stop: "delhi", mode: "plan" } } } },
 };
 
+export const MapWorkspaceDesktop1440WholeRoute: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440Destination: Story = {
+  ...DetailedBasemap,
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440StayResults: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceDesktop1440SelectedStay: Story = {
+  ...DetailedBasemap,
+  args: {
+    storyTrip: goldenTriangleTrip,
+    storyState: {
+      mapMode: "detail",
+      shapeDayTab: "stay",
+      localPlaces: [providerPlaces.hotel],
+      selectedLocalPlaceId: providerPlaces.hotel.id,
+    },
+  },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
+export const MapWorkspaceMobile390WholeRoute: Story = {
+  ...GoldenTriangle,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview" } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const MapWorkspaceMobile390SelectedStay: Story = {
+  ...DetailedBasemap,
+  args: {
+    storyTrip: goldenTriangleTrip,
+    storyState: {
+      mapMode: "detail",
+      shapeDayTab: "stay",
+      localPlaces: [providerPlaces.hotel],
+      selectedLocalPlaceId: providerPlaces.hotel.id,
+      mobileSheetSize: "medium",
+    },
+  },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
 export const AddPinCollapsed: Story = GoldenTriangle;
 
 export const AddPinChooseLocation: Story = {
@@ -670,16 +722,6 @@ export const RenameDeletePin: Story = {
 };
 
 export const RichDestinationEmbedded: Story = DetailedBasemap;
-
-export const RichDestinationFullscreen: Story = {
-  ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", expandedMap: true, destinationExpanded: true } },
-};
-
-export const RichDestinationClosed: Story = {
-  ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", expandedMap: true, destinationExpanded: false } },
-};
 
 export const ShapeDayAndTripHealth: Story = GoldenTriangle;
 
@@ -711,20 +753,9 @@ export const Mobile390SelectedTransfer: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
-export const Mobile390FullscreenOverview: Story = {
-  args: { storyTrip: trip, storyState: { mapMode: "overview", expandedMap: true } },
-  globals: { viewport: { value: "morrovia390", isRotated: false } },
-};
-
 export const Mobile390PinComposer: Story = {
   ...AddPinNameLocation,
   parameters: { ...AddPinNameLocation.parameters },
-  globals: { viewport: { value: "morrovia390", isRotated: false } },
-};
-
-export const Mobile390RichFullscreen: Story = {
-  ...RichDestinationFullscreen,
-  parameters: { ...RichDestinationFullscreen.parameters },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
@@ -832,8 +863,6 @@ export const CompositionKeyboardFocus: Story = {
     (canvasElement.querySelector("[data-map-route-reset]") as HTMLButtonElement | null)?.focus();
   },
 };
-
-export const CompositionFullscreen: Story = RichDestinationFullscreen;
 
 export const CompositionTablet768: Story = {
   ...DetailedBasemap,

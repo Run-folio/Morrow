@@ -47,12 +47,51 @@ const mapStoriesSource = readFileSync(
   "utf8",
 );
 
-test("the normal Map workspace breaks out from the readable trip shell", () => {
-  assert.match(tripMapWorkspaceStylesSource, /width: min\(2200px, calc\(100vw - 32px\)\)/);
+test("the normal Map workspace is viewport-dominant without a separate fullscreen mode", () => {
+  assert.match(tripMapWorkspaceStylesSource, /width:\s*100vw/);
   assert.match(tripMapWorkspaceStylesSource, /margin-left: 50%/);
   assert.match(tripMapWorkspaceStylesSource, /transform: translateX\(-50%\)/);
-  assert.match(tripMapWorkspaceStylesSource, /@media \(max-width: 980px\)[\s\S]*width: 100vw/);
-  assert.match(tripMapWorkspaceStylesSource, /:has\(:global\(\.morrovia-map-expanded\)\)[\s\S]*transform: none/);
+  assert.match(mapStylesSource, /--map-workspace-strip-height:\s*64px/);
+  assert.match(mapStylesSource, /--map-workspace-rail-width:\s*clamp\(360px,[^,]+,420px\)/);
+  assert.match(mapStylesSource, /height:\s*calc\(100svh - var\(--morrovia-navigation-height\)\)/);
+  assert.doesNotMatch(mapWorkspaceSource, /isExpandedMap|toggleExpandedMap|closeExpandedMap/);
+  assert.doesNotMatch(mapWorkspaceSource, /Fullscreen map|Exit fullscreen|onFullTrip=|fullTripExpanded=/);
+  assert.doesNotMatch(mapStylesSource, /shellPlannerExpanded/);
+});
+
+test("desktop Map has one persistent left rail and only contextual secondary detail", () => {
+  assert.match(mapWorkspaceSource, /const showFinderDock = Boolean\(hasCanonicalPlanner && selected\.coordinates\)/);
+  assert.match(mapWorkspaceSource, /\{showFinderDock \? <aside id="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /styles\.mapDefaultContext/);
+  assert.match(mapWorkspaceSource, /!tripStatusExpanded\s*&&\s*!copilotOpen/);
+  assert.match(mapWorkspaceSource, /tripIssueCount > 0/);
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock\{[^}]*left:0!important[^}]*width:var\(--map-workspace-rail-width\)!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext[^}]*position:absolute!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*right:92px!important;[\s\S]*bottom:48px!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapPlaceContext,[\s\S]*max-height:min\(440px,calc\(100% - var\(--map-workspace-strip-height\) - 168px\)\)!important/,
+    "selected detail stays compact instead of becoming a second rail");
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)\{grid-template-columns:auto minmax\(0,1fr\)!important\}/,
+    "shared status cards reflow to the desktop rail's container width");
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)>button\{grid-column:1\/-1!important;width:100%\}/);
+  assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
+  assert.match(mapWorkspaceSource, /const mapFocusOffset: \[number, number\] = isShellPresentation[\s\S]*hasExplicitMapContext[\s\S]*\? \[0, -80\][\s\S]*: \[180, -80\]/,
+    "selected-result focus should stay in the usable canvas between the rail and contextual card on narrow desktop");
+  assert.match(mapWorkspaceSource, /focusOffset=\{mapFocusOffset\}/);
+});
+
+test("Storybook covers the risk-based simplified Map workspace matrix", () => {
+  for (const story of [
+    "MapWorkspaceDesktop1440WholeRoute",
+    "MapWorkspaceDesktop1440Destination",
+    "MapWorkspaceDesktop1440StayResults",
+    "MapWorkspaceDesktop1440SelectedStay",
+    "MapWorkspaceMobile390WholeRoute",
+    "MapWorkspaceMobile390SelectedStay",
+  ]) {
+    assert.match(mapStoriesSource, new RegExp(`export const ${story}`), story);
+  }
+  assert.doesNotMatch(mapStoriesSource, /Fullscreen|expandedMap/);
 });
 
 test("the canonical Map workspace keeps one MapLibre camera model", () => {
@@ -84,7 +123,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);
-  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "isExpandedMap", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {
+  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {
     assert.match(cameraInteractionKey, new RegExp(state.replace(/[()]/g, "\\$&")), state);
   }
 });
@@ -121,7 +160,7 @@ test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapWorkspaceSource, /selectedDestinationMedia\?\.learnMoreUrl/);
   assert.match(mapWorkspaceSource, /scope=\{copilotScope\}/);
   assert.match(mapWorkspaceSource, /setSelectedRouteLegId\(null\);[\s\S]*setMapMode\("overview"\)/);
-  assert.match(mapWorkspaceSource, /showShellContext = Boolean\(!copilotOpen/);
+  assert.match(mapWorkspaceSource, /showShellContext = Boolean\([\s\S]*!tripStatusExpanded[\s\S]*!copilotOpen/);
   assert.match(mapWorkspaceSource, /setSelectedMapResult\(null\);[\s\S]*setSelectedPlannerPin\(null\);[\s\S]*setSelectedRouteLegId\(null\)/);
 });
 
@@ -145,7 +184,7 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /selectedDestinationDescription = conciseMapDescription\(selectedDestinationMedia\?\.description\)/);
   assert.match(mapWorkspaceSource, /selectedDestinationImage = selectedDestinationMedia\?\.image \?\? selectedMapStopFirstItem\?\.image/);
   assert.match(mapWorkspaceSource, /const showDayPlanner = Boolean\(hasCanonicalPlanner && selected\.coordinates && mapMode === "detail"/);
-  assert.match(mapWorkspaceSource, /showDayPlanner \? <aside id="shape-day-workspace"/);
+  assert.match(mapWorkspaceSource, /showFinderDock \? <aside id="shape-day-workspace"/);
   assert.match(mapWorkspaceSource, /context=\{\{[\s\S]*selectedDay,[\s\S]*selectedStop: selected,[\s\S]*planItem: selectedPlanItem,[\s\S]*days: selectedStopPlanDays,[\s\S]*items: selectedPlanAgenda\?\.items/);
   assert.match(mapWorkspaceSource, /onSelectDay: selectMapPlanDay/);
   assert.match(mapWorkspaceSource, /onSelectItem: selectMapPlanItem/);
@@ -154,14 +193,9 @@ test("destination detail and Shape the day remain tied to canonical selection", 
   assert.match(mapWorkspaceSource, /aria-controls="map-contextual-sheet"/);
   assert.match(mapStylesSource, /\.finderDock\.mobileShapeDayOpen\{display:flex!important\}/);
   assert.match(mapStylesSource, /\.mobileShapeDayClosed/);
-  assert.match(mapWorkspaceSource, /showFullscreenDestination/);
-  assert.match(mapWorkspaceSource, /styles\.fullscreenDestination/);
-  assert.match(mapStylesSource, /\.shellPlannerExpanded \.fullscreenDestination/);
-  assert.match(mapStylesSource, /:has\(\.fullscreenDestination\) \.finderDock/);
-  assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.finderDock/);
-  assert.match(mapStylesSource, /right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
-  assert.match(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\) \.mapDestinationContext/);
-  assert.match(mapStylesSource, /left:18px!important;[\s\S]*width:clamp\(330px,23vw,380px\)!important/);
+  assert.match(mapStylesSource, /\.shellPlanner \.finderDock/);
+  assert.match(mapWorkspaceSource, /defaultMapContext/);
+  assert.match(mapStylesSource, /\.shellPlanner \.mapDefaultContext\{display:none!important\}/);
 });
 
 test("Map Plan is a compact canonical projection with truthful spatial actions", () => {
@@ -242,12 +276,10 @@ test("mobile transfer context progressively discloses evidence without hiding un
   assert.match(mapStoriesSource, /Mobile390SelectedTransfer/);
 });
 
-test("mobile navigation has no persistent dock and Map keeps explicit fullscreen exit coverage", () => {
+test("mobile navigation has no persistent dock and Map keeps one contextual sheet owner", () => {
   assert.doesNotMatch(navigationStylesSource, /\.mobileDock/);
-  assert.match(mapWorkspaceSource, /isExpandedMap \? "Exit fullscreen" : "Fullscreen map"/);
   assert.match(mapDockStylesSource, /\[class\*="mapContextualSurface"\]/);
-  assert.match(mapDockStylesSource, /\[class\*="fullscreenDestination"\]\) \{ display:none!important; \}/);
-  assert.match(mapStoriesSource, /Mobile390FullscreenOverview/);
+  assert.equal((mapWorkspaceSource.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
 });
 
 test("mobile Map has one contextual sheet owner with explicit reachable sizes", () => {
@@ -267,7 +299,10 @@ test("mobile Map has one contextual sheet owner with explicit reachable sizes", 
 
 test("mobile result detail replaces the list and has a visible route back", () => {
   assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace \? "Results" : "Map"/);
-  assert.match(mapWorkspaceSource, /clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetSize\("medium"\)/);
+  assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetCollapsed\(false\);[\s\S]*setMobileMapSheetSize\("medium"\);/);
+  assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
+  assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace[\s\S]*dismissSelectedMapResult\(\);/);
+  assert.match(mapWorkspaceSource, /aria-label="Close selected place details"[\s\S]*onClose=\{dismissSelectedMapResult\}/);
   assert.match(mapWorkspaceSource, /onMapResultSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectMapResult\(place\); \}\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);

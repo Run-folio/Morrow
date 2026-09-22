@@ -99,7 +99,10 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /cameraRequestKey === lastCameraRequestKeyRef\.current/);
   assert.match(source, /focusMapCamera\(/);
   assert.match(source, /fitMapCamera\(/);
-  assert.match(source, /new ResizeObserver[\s\S]*?\}, \[overviewMode, overviewPaddingKey, overviewRouteKey, previewMode\]\);/);
+  assert.match(
+    source,
+    /new ResizeObserver[\s\S]*?\}, \[comparisonLegs, comparisonRouteKey, overviewMode, overviewPaddingKey, overviewRouteKey, previewMode\]\);/,
+  );
   assert.match(source, /container\.addEventListener\("pointerdown", interrupt/);
   assert.match(source, /container\.addEventListener\("wheel", interrupt/);
   assert.match(source, /container\.addEventListener\("keydown", interruptKeyboardCamera/);
