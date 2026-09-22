@@ -1,17 +1,5 @@
 .wideMap {
-  width: min(2200px, calc(100vw - 32px));
+  width: 100vw;
   margin-left: 50%;
   transform: translateX(-50%);
-}
-
-.wideMap:has(:global(.morrovia-map-expanded)) {
-  transform: none;
-}
-
-@media (max-width: 980px) {
-  .wideMap {
-    width: 100vw;
-    margin-left: 50%;
-    transform: translateX(-50%);
-  }
 }

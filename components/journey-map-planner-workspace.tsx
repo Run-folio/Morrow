@@ -331,7 +331,6 @@ export type JourneyMapPlannerWorkspaceProps = {
     pinPlacement?: boolean;
     pinCoordinates?: [number, number] | null;
     selectedPlannerPinId?: string;
-    expandedMap?: boolean;
     destinationExpanded?: boolean;
     shapeDayTab?: "plan" | "stay" | "eat" | "see";
     localPlaces?: JourneyLocalPlace[];
@@ -426,7 +425,6 @@ export function JourneyMapPlannerWorkspace({
   const [pinEditDraft, setPinEditDraft] = useState("");
   const [mapMode, setMapMode] = useState<"overview" | "detail">(() => storyState?.mapMode ?? (providedTrip ? initialMapCameraMode(providedTrip, searchParams) : "overview"));
   const [mapDetailScope, setMapDetailScope] = useState<"stop" | "day">("stop");
-  const [isExpandedMap, setIsExpandedMap] = useState(Boolean(storyState?.expandedMap));
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(storyState?.selectedRouteLegId ?? null);
   const [transferDetailsExpanded, setTransferDetailsExpanded] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
@@ -447,7 +445,6 @@ export function JourneyMapPlannerWorkspace({
     selectedDayId,
     shapeDayTab,
     mobileShapeDayOpen,
-    isExpandedMap,
     destinationExpanded,
     copilotOpen,
     pinPlacementMode,
@@ -463,7 +460,6 @@ export function JourneyMapPlannerWorkspace({
   ]);
   const healthDetailCloseRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
-  const expandedHistoryEntryRef = useRef(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
   const recoveryHandleRef = useRef<TripRecoveryHandle | null>(null);
@@ -617,37 +613,6 @@ export function JourneyMapPlannerWorkspace({
     window.addEventListener("easyt-language-change", updateLanguage);
     return () => window.removeEventListener("easyt-language-change", updateLanguage);
   }, []);
-  const restoreExpandedControlFocus = useCallback(() => {
-    window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("[data-map-expand-control]")?.focus());
-  }, []);
-  const closeExpandedMap = useCallback((navigateBack = true) => {
-    const ownsHistoryEntry = expandedHistoryEntryRef.current;
-    expandedHistoryEntryRef.current = false;
-    setIsExpandedMap(false);
-    setDestinationExpanded(false);
-    if (navigateBack && ownsHistoryEntry) window.history.back();
-    restoreExpandedControlFocus();
-  }, [restoreExpandedControlFocus]);
-  const toggleExpandedMap = useCallback(() => {
-    if (isExpandedMap) {
-      closeExpandedMap();
-      return;
-    }
-    setIsExpandedMap(true);
-    if (mapMode === "detail") setDestinationExpanded(true);
-    expandedHistoryEntryRef.current = true;
-    window.history.pushState({ ...window.history.state, morroviaMapExpanded: true }, "", window.location.href);
-  }, [closeExpandedMap, isExpandedMap, mapMode]);
-  useEffect(() => {
-    const onPopState = () => {
-      if (!isExpandedMap) return;
-      closeExpandedMap(false);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-    };
-  }, [closeExpandedMap, isExpandedMap]);
   useEffect(() => {
     const updateRememberedOwner = () => setRememberedOwnerId(loadRememberedOwner());
     updateRememberedOwner();
@@ -912,7 +877,6 @@ export function JourneyMapPlannerWorkspace({
     Boolean(isShellPresentation && planHydrated && customTrip?.stops.length && customTrip.planItems.length),
     cloudSaveState === "error" || Boolean(cloudConflictTrip) || recoveryBlockedByExisting || cloudAuthInterrupted,
   );
-  const showFullscreenDestination = Boolean(isShellPresentation && isExpandedMap && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg && !copilotOpen);
   const copilotScope: MapCopilotScope = selectedLocalPlace || selectedPlannerPin
     ? "selected-place"
     : selectedRouteLeg
@@ -1058,14 +1022,10 @@ export function JourneyMapPlannerWorkspace({
         window.requestAnimationFrame(() => workspaceRef.current?.querySelector<HTMLButtonElement>(".planner-map__stop")?.focus());
         return;
       }
-      if (isExpandedMap) {
-        event.preventDefault();
-        closeExpandedMap();
-      }
     };
     window.addEventListener("keydown", onMapEscape);
     return () => window.removeEventListener("keydown", onMapEscape);
-  }, [clearSelectedLocalPlace, clearSelectedRouteLeg, closeExpandedMap, copilotOpen, isExpandedMap, mapMode, resetWholeRoute, restoreMapMarkerFocus, selectedMapResult, selectedPlannerPin, selectedRouteLegId]);
+  }, [clearSelectedLocalPlace, clearSelectedRouteLeg, copilotOpen, mapMode, resetWholeRoute, restoreMapMarkerFocus, selectedMapResult, selectedPlannerPin, selectedRouteLegId]);
   const handleRestaurantSelect = useCallback((restaurant?: JourneyRestaurant, meal?: RestaurantMeal) => {
     setSelectedRestaurant(restaurant ? { restaurant, meal } : undefined);
   }, []);
@@ -2171,7 +2131,6 @@ export function JourneyMapPlannerWorkspace({
       setSelectedPlannerPin(pin);
       setPinEditDraft(pin?.title ?? "");
     }
-    if (storyState.expandedMap !== undefined) setIsExpandedMap(storyState.expandedMap);
     if (storyState.destinationExpanded !== undefined) setDestinationExpanded(storyState.destinationExpanded);
     if (storyState.shapeDayTab !== undefined) {
       setShapeDayTab(storyState.shapeDayTab);
@@ -2360,7 +2319,7 @@ export function JourneyMapPlannerWorkspace({
       {!hasCanonicalPlanner ? <div className={styles.productNavigation}>
         <EasyTNavigation current="prototype" storageOwnerId={activeBrowserOwnerId} />
       </div> : null}
-      <main ref={workspaceRef} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""} ${isExpandedMap ? `${styles.shellPlannerExpanded} morrovia-map-expanded` : ""}`}>
+      <main ref={workspaceRef} className={`${styles.journey} ${mobileLayout.plan} ${mapDocks.plan} ${hasCanonicalPlanner ? styles.canonicalPlanner : ""} ${isShellPresentation ? styles.shellPlanner : ""}`}>
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
             <JourneyPlannerMap
@@ -2402,7 +2361,6 @@ export function JourneyMapPlannerWorkspace({
                 setMapMode("detail");
                 setMobileMapSheetCollapsed(false);
                 setMobileMapSheetSize("peek");
-                if (isExpandedMap) setDestinationExpanded(true);
               }}
             />
           </div>
@@ -2439,11 +2397,9 @@ export function JourneyMapPlannerWorkspace({
         stops={canonicalStripStops}
         addStopHref={`/journey/new?trip=${encodeURIComponent(customTrip.id)}`}
         fullTripHref={isShellPresentation ? undefined : mapWorkspaceHref(customTrip.id)}
-        fullTripLabel={isShellPresentation ? isExpandedMap ? "Exit fullscreen" : "Fullscreen map" : "Return to trip map"}
-        fullTripExpanded={isExpandedMap}
+        fullTripLabel="Return to trip map"
         wholeRouteActive={mapMode === "overview"}
         onWholeRoute={resetWholeRoute}
-        onFullTrip={isShellPresentation ? toggleExpandedMap : undefined}
         presentation={isShellPresentation ? "integrated" : "focused"}
         onSelectStop={(stopId) => {
           const scopeId = routeTimelineScopeId(customTrip.id, stopId);
@@ -2465,7 +2421,6 @@ export function JourneyMapPlannerWorkspace({
           setMapMode("detail");
           setMobileMapSheetCollapsed(false);
           setMobileMapSheetSize("peek");
-          if (isExpandedMap) setDestinationExpanded(true);
         }}
         overflow={isShellPresentation ? <>
           <button type="button" onClick={() => setIsPlaying((playing) => !playing)}>{isPlaying ? planCopy.pause : planCopy.play}</button>
@@ -2530,7 +2485,7 @@ export function JourneyMapPlannerWorkspace({
         </nav>
       </header>}
 
-      <section className={`${styles.destination} ${hasCanonicalPlanner ? `${styles.destinationWithPinDock} ${styles.canonicalPlannerDestination}` : ""} ${hasCanonicalPlanner && !destinationExpanded ? styles.destinationCompact : ""} ${showFullscreenDestination ? styles.fullscreenDestination : ""}`} aria-live="polite">
+      <section className={`${styles.destination} ${hasCanonicalPlanner ? `${styles.destinationWithPinDock} ${styles.canonicalPlannerDestination}` : ""} ${hasCanonicalPlanner && !destinationExpanded ? styles.destinationCompact : ""}`} aria-live="polite">
         <motion.div
           key={selected.id}
           initial={hasMounted.current ? { opacity: 0, x: -7, filter: "blur(2px)" } : false}
@@ -2609,7 +2564,7 @@ export function JourneyMapPlannerWorkspace({
           </div>
         </header>
         <div className={styles.mobileMapSheetBody}>
-      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${showFullscreenDestination || pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
+      <aside className={`${styles.itineraryPanel} ${hasCanonicalPlanner ? `${styles.itineraryWithFinder} ${styles.canonicalPlannerStatus}` : ""} ${hasCanonicalPlanner && tripStatusExpanded ? styles.tripStatusExpanded : ""} ${tripHealthDetail ? styles.healthDetailOpen : ""} ${pinPlacementMode || Boolean(pinCoordinates) ? styles.mapContextHidden : ""} ${isShellPresentation && !showShellContext ? styles.mapContextEmpty : ""} ${isShellPresentation && selectedRouteLeg ? styles.mapTransferContext : ""} ${isShellPresentation && (selectedLocalPlace || selectedPlannerPin) ? styles.mapPlaceContext : ""} ${isShellPresentation && mapMode === "detail" && !selectedLocalPlace && !selectedPlannerPin && !selectedRouteLeg ? styles.mapDestinationContext : ""}`} aria-label="Selected map context" aria-live="polite">
         {isShellPresentation && customTrip ? showShellContext ? <section className={styles.mapContextPanel} aria-labelledby="map-context-title">
           <p className={styles.mapContextEyebrow}>{selectedLocalPlace || selectedPlannerPin ? "Selected place" : selectedRouteLeg ? "Selected transfer" : mapMode === "overview" ? "Whole route" : mapDetailScope === "day" ? "Selected day" : "Selected stop"}</p>
           <div className={styles.mapContextHeading}>
