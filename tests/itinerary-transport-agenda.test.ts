@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { omioBookingActionForLeg } from "../lib/easyt/booking-readiness.ts";
-import { itineraryTransportAgenda, itineraryTransportAgendaStatus } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { itineraryTransportAgenda, itineraryTransportAgendaStatus, transportJourneyKnowledge } from "../lib/easyt/itinerary-transport-agenda.ts";
+import { selectTripLegTransportChoice, supportedTransportChoicesForLeg } from "../lib/easyt/transport-mode-choice.ts";
 import type { EasyTTrip, TripLeg } from "../lib/easyt/trip.ts";
 
 function trip(): EasyTTrip {
@@ -61,6 +62,48 @@ test("projects the full canonical journey in leg order without mutating trip sta
   assert.equal(JSON.stringify(source), before);
 });
 
+test("projects the same canonical explicit transport choice without overwriting the recommendation", () => {
+  const source = trip();
+  const recommendation = source.legs[1]!;
+  const roadSegment = {
+    id: "paris:rome:road:0",
+    mode: "road" as const,
+    fromEndpoint: recommendation.fromEndpoint!,
+    toEndpoint: recommendation.toEndpoint!,
+    distanceKm: 1_430,
+    durationMinutes: 960,
+    provider: "Evidence-backed routed road fixture.",
+    provenance: "routing_engine" as const,
+    confidence: "medium" as const,
+    scheduleNeedsChecking: true,
+  };
+  recommendation.routeMetadata.multimodalResolution = {
+    version: 1,
+    selected: "train",
+    selectedCandidateId: "rail:recommendation",
+    candidates: [{
+      id: "road:routed",
+      summaryMode: "road",
+      segments: [roadSegment],
+      totalDurationMinutes: 960,
+      distanceKm: 1_430,
+      confidence: "medium",
+      provenance: "routing_engine",
+      evidence: "routed_road",
+      connectionCount: 0,
+      score: 40,
+      reasons: ["The road provider returned a plausible route."],
+    }],
+    rejected: [],
+  };
+  const road = supportedTransportChoicesForLeg(source, recommendation)[0];
+  assert.ok(road);
+  const selected = selectTripLegTransportChoice(source, recommendation.id, road.identity);
+
+  assert.equal(itineraryTransportAgenda(selected).find((item) => item.leg.id === recommendation.id)?.leg.mode, "road");
+  assert.equal(selected.legs[1]?.mode, "train");
+});
+
 test("uses canonical transport bookings as the only booked truth", () => {
   const source = trip();
   const agenda = itineraryTransportAgenda(source);
@@ -71,6 +114,15 @@ test("uses canonical transport bookings as the only booked truth", () => {
   assert.equal(itineraryTransportAgendaStatus({ ...leg, scheduleNeedsChecking: true }, null), "confirm");
   assert.equal(itineraryTransportAgendaStatus({ ...leg, mode: "unknown", durationMinutes: null }, null), "confirm");
   assert.equal(itineraryTransportAgendaStatus(leg, { id: leg.id, type: "reservation", title: "Dinner", date: null, confirmation: null, url: null }), "available");
+});
+
+test("classifies known, partial and unknown journey truth without inventing missing evidence", () => {
+  const source = trip();
+  const known = source.legs[1]!;
+  assert.equal(transportJourneyKnowledge(known), "known");
+  assert.equal(transportJourneyKnowledge({ ...known, scheduleNeedsChecking: true }), "partial");
+  assert.equal(transportJourneyKnowledge({ ...known, durationMinutes: null, doorToDoorMinutes: null }), "partial");
+  assert.equal(transportJourneyKnowledge({ ...known, mode: "unknown", durationMinutes: null, doorToDoorMinutes: null }), "unknown");
 });
 
 test("does not reuse a free-text booking for the reverse repeated-city leg", () => {

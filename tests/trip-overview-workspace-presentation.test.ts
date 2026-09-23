@@ -62,6 +62,19 @@ test("material route uncertainty is contextual and keeps canonical severity", ()
   assert.doesNotMatch(source, /Showing the \{visibleIssues\.length\} highest-priority/);
 });
 
+test("unresolved place intent is one quiet route recovery row with canonical recovery and dismissal actions", () => {
+  assert.match(source, /unresolvedPlaceIntentsForTrip\(trip\)/);
+  assert.match(source, /recommendationIsRepresentedByUnresolvedPlaceIntent/);
+  assert.match(source, /Not included yet/);
+  assert.match(source, /Choose a nearby base/);
+  assert.match(source, />Dismiss</);
+  assert.match(source, /tripBuilderHref\(trip\.id, trip\.ownerId, \{ placeMentionId:/);
+  assert.match(source, /dismissUnresolvedPlaceIntent/);
+  assert.match(source, /useTripShellMutation\(\)/);
+  assert.match(styles, /\.unresolvedIntent/);
+  assert.doesNotMatch(styles.match(/\.unresolvedIntent[^}]*\}/)?.[0] ?? "", /morrovia-(?:warning|danger)/);
+});
+
 test("Next to arrange stays derived and exposes only Days, Stays and Transport", () => {
   assert.match(source, /deriveOverviewReadinessCategories\(\{/);
   assert.match(source, /planningCategories\.map/);

@@ -108,6 +108,17 @@ test("Builder re-entry keeps device recovery explicit only for guest trips", () 
   );
 });
 
+test("unresolved-place recovery targets the exact retained mention without losing guest recovery", () => {
+  assert.equal(
+    tripBuilderHref("trip-guest with spaces", null, { placeMentionId: "place/kruger national park" }),
+    "/journey/new?trip=trip-guest%20with%20spaces&recover=1&placeIntent=place%2Fkruger+national+park",
+  );
+  assert.equal(
+    tripBuilderHref("trip-account", "owner-a", { placeMentionId: "place-kruger" }),
+    "/journey/new?trip=trip-account&placeIntent=place-kruger",
+  );
+});
+
 test("a generated arrival remains distinguishable from normal workspace navigation", () => {
   assert.equal(isFirstTripWorkspaceArrival("?created=1&saved=1"), true);
   assert.equal(isFirstTripWorkspaceArrival("?created=0"), false);

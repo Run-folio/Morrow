@@ -19,6 +19,7 @@ import { MorroviaRecoveryFeedback, MorroviaSaveStatus } from "@/components/easyt
 import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
 import ItineraryItemDetail from "@/components/easyt/itinerary-item-detail";
+import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "@/components/easyt/affiliate-link";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "@/components/easyt/workspace-orientation";
 import type { TripMutationPersistence } from "@/components/easyt/use-trip-mutation-persistence";
@@ -43,8 +44,7 @@ import { languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { authClient } from "@/lib/auth-client";
 import { tripIntentForTrip, type EasyTTrip, type ItineraryDayPart, type ItineraryIdea, type PlannerMapPin, type PlannerPinCategory } from "@/lib/easyt/trip";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
-import { estimateLeg, legDecisionAlternatives, type RoutePlanningConstraints } from "@/lib/easyt/planner";
-import { routeConstraintsFromStructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
+import { estimateLeg } from "@/lib/easyt/planner";
 import { replanTripAfterDayOrder } from "@/lib/easyt/trip-replan";
 import { applyRecommendation, recommendationImpact, reviewTrip, tripHealthSummary, undoRecommendation } from "@/lib/easyt/review";
 import { accommodationProgress, removeMappedStayForStop, selectMappedStayForStop, stayBookingForStop } from "@/lib/easyt/accommodation";
@@ -55,6 +55,7 @@ import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
+import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import styles from "@/app/journey/journey.module.css";
 import mobileNav from "@/app/journey/plan-mobile-nav.module.css";
@@ -542,7 +543,8 @@ export function JourneyMapPlannerWorkspace({
   }, [selectedDay.id, selectedPlanItem?.stopId]);
   const selectedTripStop = customTrip?.stops.find((stop) => stop.id === (mapDetailScope === "stop" ? selectedMapStopId : null))
     ?? customTrip?.stops.find((stop) => stop.id === selectedPlanItem?.stopId);
-  const selectedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
+  const selectedRecommendedLeg = customTrip && selectedPlanItem ? incomingLegForPlanItem(customTrip, selectedPlanItem) ?? undefined : undefined;
+  const selectedLeg = customTrip && selectedRecommendedLeg ? effectiveTripLeg(customTrip, selectedRecommendedLeg) : undefined;
   const selectedCanonicalTravel = customTrip && selectedLeg ? {
     mode: (selectedLeg.mode === "train" ? "rail" : selectedLeg.mode === "walk" ? "road" : selectedLeg.mode) as JourneyLeg["mode"],
     from: routeEndpointForLeg(customTrip, selectedLeg, "from")?.name,
@@ -565,22 +567,6 @@ export function JourneyMapPlannerWorkspace({
     && selectedTripStop.latitude !== null
     ? [selectedTripStop.longitude, selectedTripStop.latitude]
     : selected.coordinates;
-  const transportAlternatives = useMemo(() => {
-    if (!customTrip || !selectedLeg) return [];
-    const destination = customTrip.stops.find((stop) => stop.id === selectedLeg.toStopId);
-    const originStop = customTrip.stops.find((stop) => stop.id === selectedLeg.fromStopId);
-    if (!destination) return [];
-    const constraints: RoutePlanningConstraints = customTrip.brief.structuredBrief
-      ? routeConstraintsFromStructuredTripBrief(customTrip.brief.structuredBrief, customTrip.stops.map((stop) => stop.id))
-      : customTrip.brief.intent?.hardConstraints.avoidDriving
-        ? { avoidDriving: true, excludedTransportModes: ["road"] }
-        : {};
-    return legDecisionAlternatives(
-      originStop ? { id: originStop.id, name: originStop.name, country: originStop.country, coordinates: originStop.longitude !== null && originStop.latitude !== null ? [originStop.longitude, originStop.latitude] : undefined } : { name: customTrip.brief.origin, country: customTrip.brief.origin, coordinates: customTrip.brief.originCoordinates },
-      { id: destination.id, name: destination.name, country: destination.country, coordinates: destination.longitude !== null && destination.latitude !== null ? [destination.longitude, destination.latitude] : undefined },
-      constraints,
-    );
-  }, [customTrip, selectedLeg]);
   const selectedActivities = (selectedPlanItem?.notes ?? selectedDay.items).map((item) => {
     if (!selectedLeg || !/^(?:Estimated door-to-door: about|Morrovia planning estimate:)/i.test(item)) return item;
     const minutes = selectedLeg.doorToDoorMinutes ?? selectedLeg.durationMinutes;
@@ -717,7 +703,7 @@ export function JourneyMapPlannerWorkspace({
             };
       })];
   }, [customTrip, journey.stops]);
-  const canonicalMapLegs = useMemo(() => customTrip ? mapRouteLegsFromTrip(customTrip) : [], [customTrip]);
+  const canonicalMapLegs = useMemo(() => customTrip ? mapRouteLegsFromTrip(tripWithEffectiveTransportChoices(customTrip)) : [], [customTrip]);
   const canonicalDestinationCards = useMemo(() => customTrip?.stops.map((stop) => {
     const items = customTrip.planItems.filter((item) => item.stopId === stop.id).sort((left, right) => left.dayNumber - right.dayNumber);
     const first = items[0];
@@ -1726,13 +1712,14 @@ export function JourneyMapPlannerWorkspace({
     }
   }, [activeBrowserOwnerId, cacheSavedTrip, canonicalMutation, cloudConflictTrip, customTrip, reviewRecommendations, savePlannerRecovery, session?.user, updatePlannerTrip]);
 
-  const chooseTransportAlternative = (option: (typeof transportAlternatives)[number]) => {
-    if (!selectedLeg) return;
-    updatePlannerTrip((trip) => ({
-      ...trip,
-      brief: { ...trip.brief, decisionSelections: { routeOrder: trip.brief.decisionSelections?.routeOrder, transportByLeg: { ...(trip.brief.decisionSelections?.transportByLeg ?? {}), [selectedLeg.id]: option.id } } },
-      legs: trip.legs.map((leg) => leg.id === selectedLeg.id ? { ...leg, mode: option.mode, durationMinutes: option.estimatedMinutes, provider: `${option.label} planning estimate; verify live service and price.`, routeMetadata: { ...leg.routeMetadata, decisionOption: option.id, planningEstimate: true } } : leg),
-    }), `${option.label} selected`);
+  const chooseTransportAlternative = (identity: string | null) => {
+    if (!selectedRecommendedLeg) return;
+    updatePlannerTrip(
+      (trip) => identity
+        ? selectTripLegTransportChoice(trip, selectedRecommendedLeg.id, identity)
+        : clearTripLegTransportChoice(trip, selectedRecommendedLeg.id),
+      identity ? "Transport choice selected" : "Morrovia recommendation restored",
+    );
     trackEvent("trip_refined", { change_type: "transport_alternative", affected_stop_count: 1 });
   };
 
@@ -2760,13 +2747,9 @@ export function JourneyMapPlannerWorkspace({
             setLocalFinderKind("stay");
             setShapeDayTab("stay");
           }} /> : null}
-          {isPlanningPreview && customTrip && selectedLeg && transportAlternatives.length > 1 ? <details className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
-            <summary><span><small>{language === "es" ? "DECISIÓN DE TRASLADO" : "TRANSFER DECISION"}</small><strong>{language === "es" ? "Elige el compromiso que te conviene" : "Choose the trade-off that suits you"}</strong></span><b>{language === "es" ? "Revisar opciones" : "Review options"}</b></summary>
-            <div className={styles.transportChoiceList}>{transportAlternatives.map((option) => {
-              const selectedOption = customTrip.brief.decisionSelections?.transportByLeg[selectedLeg.id] === option.id;
-              return <button type="button" key={option.id} className={selectedOption ? styles.transportChoiceSelected : ""} onClick={() => chooseTransportAlternative(option)}><span><b>{option.label}</b>{option.recommended ? <em>{language === "es" ? "RECOMENDADO" : "RECOMMENDED"}</em> : null}</span><small>{option.estimatedMinutes ? `${Math.floor(option.estimatedMinutes / 60)}h ${option.estimatedMinutes % 60}m` : (language === "es" ? "Tiempo por verificar" : "Time to verify")}{option.timeImpactMinutes && option.timeImpactMinutes > 0 ? ` · +${Math.floor(option.timeImpactMinutes / 60)}h ${option.timeImpactMinutes % 60}m` : ""} · {option.costImpact}</small><p>{option.tradeoff}</p>{option.recommendationReason ? <i>{option.recommendationReason}</i> : null}</button>;
-            })}</div>
-          </details> : null}
+          {isPlanningPreview && customTrip && selectedRecommendedLeg ? <div className={styles.transportChoices} aria-label={language === "es" ? "Alternativas de transporte" : "Transport alternatives"}>
+            <TripTransportChoiceControl trip={customTrip} leg={selectedRecommendedLeg} onChange={chooseTransportAlternative} />
+          </div> : null}
         </motion.div>
         </>}
       </aside>

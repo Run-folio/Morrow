@@ -22,9 +22,18 @@ export function tripWorkspaceHref(tripId: string) {
 
 /** Device-only trips must opt into the recovery path when they return to the
  * Builder. Account-owned trips continue through the canonical cloud path. */
-export function tripBuilderHref(tripId: string, ownerId: string | null) {
+export function tripBuilderHref(
+  tripId: string,
+  ownerId: string | null,
+  target?: { placeMentionId?: string },
+) {
   const base = `/journey/new?trip=${encodeURIComponent(tripId)}`;
-  return ownerId === null ? `${base}&recover=1` : base;
+  const recovery = ownerId === null ? "&recover=1" : "";
+  const placeMentionId = target?.placeMentionId?.trim();
+  const placeIntent = placeMentionId
+    ? `&${new URLSearchParams({ placeIntent: placeMentionId }).toString()}`
+    : "";
+  return `${base}${recovery}${placeIntent}`;
 }
 
 /** Generic Overview entry resets position; an explicit section hash keeps its native anchor behaviour. */

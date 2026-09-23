@@ -1,0 +1,13 @@
+.control { min-width: 0; display: grid; gap: 8px; }
+.current { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 9px; }
+.current > span { min-width: 0; color: var(--morrovia-ink); font: var(--morrovia-type-control); }
+.current > small { color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); }
+.current > button { margin-left: auto; }
+.options { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.options > span { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+
+@media (max-width: 540px) {
+  .current > button { margin-left: 0; }
+  .options { align-items: stretch; flex-direction: column; }
+  .options > button { width: 100%; }
+}

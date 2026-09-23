@@ -72,6 +72,7 @@ import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
+import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
 
 /* ---------------------------------------------------------------- data */
 
@@ -411,6 +412,7 @@ export default function TripBuilder() {
 }
 
 function TripBuilderDocument() {
+  const builderSearchParams = useSearchParams();
   const { data: session, isPending: sessionPending, error: sessionError } = authClient.useSession();
   const authenticatedOwnerId = session?.user?.id ?? null;
   const lastAuthenticatedOwnerIdRef = useRef<string | null>(authenticatedOwnerId);
@@ -470,6 +472,7 @@ function TripBuilderDocument() {
   const [deviceRecoveryBlocked, setDeviceRecoveryBlocked] = useState(false);
   const legacyFocusRef = useRef<"summary" | "timing" | null>(null);
   const legacyFocusScheduledRef = useRef(false);
+  const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [showOriginEditor, setShowOriginEditor] = useState(false);
   const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
@@ -1282,13 +1285,16 @@ function TripBuilderDocument() {
 
   useEffect(() => {
     if (!hydrated || typeof document === "undefined") return;
+    const requestedPlaceIntentId = requestedPlaceIntentRef.current;
+    const hasRequestedPlaceIntent = Boolean(requestedPlaceIntentId
+      && pendingClarificationIds.includes(requestedPlaceIntentId));
     const competingModal = Boolean(document.querySelector(
       '[role="dialog"]:not([data-builder-clarification-ui="true"]), [data-product-tour-prompt="true"]',
     ));
     if (!shouldAutoOpenBuilderClarification({
       hydrated,
       placesStep: true,
-      arrivedFromHomepage,
+      arrivedFromHomepage: arrivedFromHomepage || hasRequestedPlaceIntent,
       resolving: resolvingLocations,
       itemCount: pendingClarificationIds.length,
       alreadyOpened: clarificationAutoOpened,
@@ -1296,8 +1302,12 @@ function TripBuilderDocument() {
       competingModal: competingModal || productTourOpen,
       recoveryBlocked: Boolean(cloudSaveError || cloudConflictTrip || deviceRecoveryBlocked || deviceStorageBlocked || pendingStopRemoval),
     })) return;
+    const requestedIndex = requestedPlaceIntentId
+      ? pendingClarificationIds.indexOf(requestedPlaceIntentId)
+      : -1;
     setClarificationSessionIds(pendingClarificationIds);
-    setClarificationIndex(0);
+    setClarificationIndex(Math.max(0, requestedIndex));
+    requestedPlaceIntentRef.current = null;
     setClarificationAutoOpened(true);
     setClarificationOpen(true);
   }, [arrivedFromHomepage, clarificationAutoOpened, clarificationDismissed, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, hydrated, pendingClarificationIds, pendingStopRemoval, productTourOpen, resolvingLocations]);
@@ -4042,7 +4052,7 @@ function TripBuilderDocument() {
                       <div><span>{language === "es" ? "RITMO" : "PACE"}</span><div className={styles.intentToggle}>{(["relaxed", "balanced", "packed"] as TripIntentPace[]).map((pace) => <button type="button" key={pace} className={effectiveIntent.preferences.pace === pace ? styles.intentChoiceOn : ""} onClick={() => updateIntentPreferences({ pace })}>{language === "es" ? ({ relaxed: "Tranquilo", balanced: "Equilibrado", packed: "Intenso" }[pace]) : ({ relaxed: "Relaxed", balanced: "Balanced", packed: "Packed" }[pace])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentFieldRow}>
-                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Volar", train: "Tren", drive: "Coche" }[mode]) : ({ flight: "Fly", train: "Train", drive: "Drive" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }))}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
+                      <div><span>{language === "es" ? "TRANSPORTE" : "TRANSPORT"}</span><div className={styles.intentToggle}>{(["flight", "train", "drive"] as TripTransportMode[]).map((mode) => <button type="button" key={mode} className={effectiveIntent.preferences.transportModes.includes(mode) ? styles.intentChoiceOn : ""} onClick={() => toggleTransportMode(mode)}>{language === "es" ? ({ flight: "Preferir vuelos en trayectos largos", train: "Preferir tren cuando sea práctico", drive: "Preferir carretera cuando sea útil" }[mode]) : ({ flight: "Prefer flights for long journeys", train: "Prefer rail when practical", drive: "Prefer road where useful" }[mode])}</button>)}<button type="button" className={effectiveIntent.hardConstraints.avoidDriving ? styles.intentChoiceOn : ""} onClick={() => setTripIntent((current) => ({ ...current, hardConstraints: { ...current.hardConstraints, avoidDriving: !current.hardConstraints.avoidDriving } }))}>{language === "es" ? "Evitar coche" : "Avoid driving"}</button></div></div>
                       <div><span>{language === "es" ? "PRESUPUESTO" : "BUDGET"}</span><div className={styles.intentToggle}>{(["value", "mid", "high"] as const).map((band) => <button type="button" key={band} className={budget === band ? styles.intentChoiceOn : ""} onClick={() => { setBudget(band); setBudgetPreference({ source: "explicit", value: band }); updateIntentPreferences({ budgetSensitivity: band }); }}>{language === "es" ? ({ value: "Ajustado", mid: "Medio", high: "Alto" }[band]) : ({ value: "Value", mid: "Mid", high: "High" }[band])}</button>)}</div></div>
                     </div>
                     <div className={styles.intentInterestRow}><span>{language === "es" ? "INTERESES" : "INTERESTS"}</span><div>{tripInterestIds.map((interest) => <button type="button" key={interest} className={effectiveIntent.preferences.interests.includes(interest) ? styles.intentChoiceOn : ""} onClick={() => toggleInterest(interest)}>{tripInterestLabels[language][interest]}</button>)}</div></div>
@@ -4072,6 +4082,12 @@ function TripBuilderDocument() {
                 onPreviewOrder={setRoutePreviewStopIds}
                 onCommitOrder={commitStopOrder}
                 onEditNights={updateAllocatedDays}
+                onTransportChoiceChange={(legId, identity) => {
+                  const next = identity
+                    ? selectTripLegTransportChoice(activeTripDocument, legId, identity)
+                    : clearTripLegTransportChoice(activeTripDocument, legId);
+                  setDecisionSelections(next.brief.decisionSelections ?? { transportByLeg: {} });
+                }}
                 onAddStop={() => openSummaryEditor("stops")}
                 onOpenRouteCheck={routeRecommendationVisible || showTimingWarning ? () => {
                   if (routeRecommendationVisible) {

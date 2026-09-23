@@ -1,8 +1,10 @@
 import { transportBookingForLeg } from "./booking-readiness.ts";
 import { routeEndpointForLeg } from "./trip-legs.ts";
 import type { CanonicalRouteEndpoint, EasyTTrip, TripBooking, TripLeg } from "./trip.ts";
+import { effectiveTripLeg } from "./transport-mode-choice.ts";
 
 export type ItineraryTransportAgendaStatus = "booked" | "available" | "confirm";
+export type TransportJourneyKnowledge = "known" | "partial" | "unknown";
 
 export type ItineraryTransportAgendaLeg = {
   leg: TripLeg;
@@ -38,12 +40,24 @@ export function itineraryTransportAgendaStatus(leg: TripLeg, booking: TripBookin
   return "available";
 }
 
+export function transportJourneyKnowledge(leg: TripLeg): TransportJourneyKnowledge {
+  const duration = leg.doorToDoorMinutes ?? leg.durationMinutes;
+  if (leg.mode === "unknown" && typeof duration !== "number") return "unknown";
+  if (leg.mode === "unknown"
+    || typeof duration !== "number"
+    || leg.scheduleNeedsChecking
+    || leg.confidence === "low"
+    || leg.confidence === "unknown") return "partial";
+  return "known";
+}
+
 /**
  * Read-only itinerary projection. Canonical trip legs, endpoints and bookings
  * remain the sole durable owners of transport state.
  */
 export function itineraryTransportAgenda(trip: EasyTTrip): ItineraryTransportAgendaLeg[] {
-  return trip.legs.flatMap((leg) => {
+  return trip.legs.flatMap((recommendedLeg) => {
+    const leg = effectiveTripLeg(trip, recommendedLeg);
     const from = routeEndpointForLeg(trip, leg, "from");
     const to = routeEndpointForLeg(trip, leg, "to");
     if (!from || !to || from.id === to.id) return [];

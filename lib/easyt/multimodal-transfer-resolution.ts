@@ -49,7 +49,9 @@ export type TransferResolutionDiagnostic = {
   version: 1;
   selected: TripTransferMode | "preserved" | "unresolved";
   selectedCandidateId?: string;
-  candidates: Array<Pick<TransferJourneyCandidate, "id" | "summaryMode" | "totalDurationMinutes" | "score" | "evidence" | "reasons">>;
+  /** Complete evidence-backed plans allow a traveller choice to be projected
+   * without replacing or reconstructing Morrovia's recommended TripLeg. */
+  candidates: TransferJourneyCandidate[];
   rejected: string[];
 };
 
@@ -755,7 +757,7 @@ export async function resolveCanonicalTransferJourney(
     diagnostic.rejected.push("Road lookup skipped because credible low-change rail is under six hours and the traveller has no road preference.");
   }
   const rankedCandidates = rankCandidates(candidates, preferredModes);
-  diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates).map(({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }) => ({ id, summaryMode, totalDurationMinutes, score, evidence, reasons }));
+  diagnostic.candidates = rankedCandidates.slice(0, MULTIMODAL_SELECTION_RULES.maximumCandidates);
   const selected = rankedCandidates[0];
   if (!selected) {
     const source = leg.routeMetadata.source;

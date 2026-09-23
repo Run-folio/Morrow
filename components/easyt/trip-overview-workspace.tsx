@@ -54,6 +54,13 @@ import TripExplicitPlans from "./trip-explicit-plans";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
+import { useTripShellMutation } from "./trip-shell-client";
+import {
+  dismissUnresolvedPlaceIntent,
+  recommendationIsRepresentedByUnresolvedPlaceIntent,
+  unresolvedPlaceIntentsForTrip,
+  type UnresolvedPlaceIntent,
+} from "@/lib/easyt/unresolved-place-intent";
 
 type OverviewIssue = {
   id: string;
@@ -109,8 +116,10 @@ const materialRouteRules = new Set([
   "trip-end-mismatch", "missing-transport-decision",
 ]);
 
-function issueSummary(trip: EasyTTrip): OverviewIssue[] {
-  return openHealthIssues(trip).filter((issue) => issue.severity === "critical" || materialRouteRules.has(issue.rule)).map((issue: TripRecommendation) => ({
+function issueSummary(trip: EasyTTrip, unresolvedPlaceIntents: readonly UnresolvedPlaceIntent[]): OverviewIssue[] {
+  return openHealthIssues(trip)
+    .filter((issue) => !recommendationIsRepresentedByUnresolvedPlaceIntent(issue, unresolvedPlaceIntents))
+    .filter((issue) => issue.severity === "critical" || materialRouteRules.has(issue.rule)).map((issue: TripRecommendation) => ({
     id: issue.id,
     message: issue.message,
     severity: issue.severity,
@@ -145,6 +154,7 @@ export default function TripOverviewWorkspace({
   now,
   initialGoodTasksOpen = false,
 }: TripOverviewWorkspaceProps) {
+  const mutation = useTripShellMutation();
   const [travellerDetailsOpen, setTravellerDetailsOpen] = useState(false);
   const [beforeGoOpen, setBeforeGoOpen] = useState(initialGoodTasksOpen);
   const [resolvedPlaceImages, setResolvedPlaceImages] = useState<Record<string, OverviewPlaceImage>>({});
@@ -159,7 +169,8 @@ export default function TripOverviewWorkspace({
   const nextOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-next");
   const progressOrientationTarget = useWorkspaceOrientationTarget("overview", "overview-progress");
   useWorkspaceOrientationReady("overview", Boolean(trip.stops.length && trip.planItems.length));
-  const materialRouteIssues = issueSummary(trip);
+  const unresolvedPlaceIntents = useMemo(() => unresolvedPlaceIntentsForTrip(trip), [trip]);
+  const materialRouteIssues = issueSummary(trip, unresolvedPlaceIntents);
   const visibleIssues = materialRouteIssues.slice(0, 2);
   const accommodation = accommodationProgress(trip);
   const prepProviderStatus = prepReadiness.providerUnavailable
@@ -401,6 +412,35 @@ export default function TripOverviewWorkspace({
               <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
             </aside> : null}
           </div>
+          {unresolvedPlaceIntents.length ? <div className={styles.unresolvedIntentList} aria-label="Places not included in this route">
+            {unresolvedPlaceIntents.map((intent) => {
+              const pendingKey = `unresolved-place-dismiss-${intent.mention.mentionId}`;
+              return <aside className={styles.unresolvedIntent} key={intent.mention.mentionId}>
+                <MapPin aria-hidden="true" />
+                <div>
+                  <p>Not included yet</p>
+                  <strong>{intent.mention.sourceText}</strong>
+                  <span>Morrovia couldn’t confidently add this place to your route.</span>
+                </div>
+                <div className={styles.unresolvedIntentActions}>
+                  <EasyTLinkButton
+                    href={tripBuilderHref(trip.id, trip.ownerId, { placeMentionId: intent.mention.mentionId })}
+                    size="small"
+                    variant="secondary"
+                  >{intent.issue.code === "region_requires_base" ? "Choose a nearby base" : "Resolve place"}</EasyTLinkButton>
+                  <EasyTButton
+                    size="small"
+                    variant="quiet"
+                    disabled={mutation.isPending(pendingKey)}
+                    onClick={() => mutation.mutateTrip(
+                      (current) => dismissUnresolvedPlaceIntent(current, intent.mention.mentionId),
+                      pendingKey,
+                    )}
+                  >Dismiss</EasyTButton>
+                </div>
+              </aside>;
+            })}
+          </div> : null}
           {visibleIssues.length ? <ul className={styles.routeIssues} aria-label="Route and timing checks">{visibleIssues.map((issue) => <li key={issue.id} className={issue.severity === "critical" ? styles.issueCritical : issue.severity === "info" ? styles.issueInfo : undefined}><CircleAlert aria-hidden="true" /><span>{issue.message}</span><Link href={issue.href}>{issue.actionLabel}<ChevronRight aria-hidden="true" /></Link></li>)}</ul> : null}
         </section>
 

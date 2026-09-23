@@ -55,7 +55,7 @@
       "components/journey-itinerary-accommodation.tsx": 3,
       "components/journey-itinerary-refinement.tsx": 4,
       "components/journey-local-finder.tsx": 8,
-      "components/journey-map-planner-workspace.tsx": 46,
+      "components/journey-map-planner-workspace.tsx": 45,
       "components/journey-plan-workspace.tsx": 8,
       "components/journey-planner-strip.tsx": 3,
       "components/journey-restaurant-finder.tsx": 6,
@@ -100,7 +100,7 @@
       "components/easyt/morrovia-loading-states.stories.module.css": 11,
       "components/easyt/morrovia-quantity-selector.module.css": 1,
       "components/easyt/trip-itinerary-workspace.module.css": 8,
-      "components/easyt/trip-overview-workspace.module.css": 15,
+      "components/easyt/trip-overview-workspace.module.css": 14,
       "components/easyt/trip-shell.module.css": 4,
       "components/journey-itinerary-accommodation.module.css": 4,
       "components/journey-itinerary-refinement.module.css": 4,
@@ -175,7 +175,7 @@
       "components/easyt/morrovia-loading-states.module.css": 5,
       "components/easyt/morrovia-loading-states.stories.module.css": 1,
       "components/easyt/morrovia-quantity-selector.module.css": 1,
-      "components/easyt/trip-overview-workspace.module.css": 3,
+      "components/easyt/trip-overview-workspace.module.css": 2,
       "components/easyt/trip-shell.module.css": 1,
       "components/journey-planner-strip.module.css": 5
     }
