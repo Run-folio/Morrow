@@ -99,11 +99,11 @@ type MorroviaMapSurfaceVariant = "workspace" | "embedded" | "preview";
 
 | Variant | Interaction | Map controls | Camera updates | Intended surfaces |
 | --- | --- | --- | --- | --- |
-| `workspace` | Full pan/zoom and domain selection | Zoom controls; no compass or fullscreen; whole-route reset remains in the owning workspace UI | Route, stop, leg and collection targets | Builder, authenticated Map and Transport, full Discover |
-| `embedded` | Pan/zoom and direct entity selection where the owner exposes details | Zoom controls only when the map is the primary interaction in the section; no compass or fullscreen | Route, stop and connection targets | Route Detail and saved-trip Journey |
-| `preview` | No map navigation or map selection | None | Initial fit and resize preservation only | Overview, Dashboard cards, itinerary/stay previews, Discover route preview, homepage demo |
+| `workspace` | Full pan/zoom and domain selection | Zoom controls; no compass or fullscreen; whole-route reset remains in the owning workspace UI | Route, stop, leg and collection targets | Authenticated Map and Transport; full Discover |
+| `embedded` | Direct domain selection with a required `selection-only` or `pan-zoom` interaction profile | None for `selection-only`; zoom controls for `pan-zoom`; no compass or fullscreen | The owning surface's selected stop, item, result or connection | Stay result map and Itinerary day map (`selection-only`); Route Detail and saved-trip Journey (`pan-zoom`) |
+| `preview` | No map navigation or map selection | None | Initial fit and resize preservation only | Builder route map; Overview; Dashboard cards; Discover route preview; homepage demo |
 
-Preview content may remain a link or button at the page level, but the MapLibre canvas and markers inside it are non-interactive. This removes undocumented clickable pins while preserving contextual navigation owned by the surrounding card or section.
+An `embedded` map must declare its interaction profile. `selection-only` keeps the camera and controls static while preserving deliberate marker-to-card/item selection. `pan-zoom` enables map navigation and only the zoom controls required by that job. A `preview` may remain inside a page-level link or button, but its MapLibre canvas and markers are non-interactive.
 
 ### Shared setup contract
 
@@ -186,6 +186,17 @@ A shared marker factory and shared CSS own stop marker structure across all thre
 
 Transport-mode icons and planner-specific pins stay with `JourneyPlannerMap`; #333 does not collapse them into the stop-marker abstraction. Page-local overrides are removed when the shared contract covers them.
 
+### Transport marker and icon acceptance
+
+Transport semantics remain owned by `JourneyPlannerMap` and continue to resolve through `components/easyt/morrovia-transport-icons.ts`. The shared map presentation owns their visual treatment across the relevant authenticated Map and Transport surfaces.
+
+- Every mapped leg with a relevant marker renders a visible canonical transport icon.
+- Icon containers use the shared intended background, border, shadow and foreground treatment rather than page-specific replacements.
+- Hover, focus-visible and selected states use one shared state contract and keep the icon legible.
+- Unsupported, missing or unknown modes render the truthful shared `CircleHelp`/unknown treatment with an accessible unknown-transport label; they never render a blank marker or invent a mode.
+- Flight rotation continues to compensate for the Lucide plane's intrinsic bearing; other modes remain upright.
+- Page-local transport-marker or transport-icon styling is removed wherever the shared transport-icon/presentation system covers the same state. Layout rules unique to a containing workspace may remain local, but may not restyle the icon contract.
+
 ### Route line state
 
 The existing route source and paint helpers remain the source of truth. Renderers expose route line states consistently:
@@ -203,8 +214,11 @@ Line selection can be initiated by pointer interaction where the renderer alread
 
 `JourneyPlannerMap` adopts the shared setup, variant, camera, padding and stop-marker contracts without changing canonical trip data or the existing map/hash selection architecture.
 
-- Builder and full Map use `workspace`.
-- Overview, Dashboard, Itinerary and Stay map previews use `preview` and become non-interactive inside the map canvas.
+- Builder uses `preview`. Its collapsible route map remains deliberately non-pannable and non-selectable while adopting shared setup, marker, camera and padding policy. Builder route-list selection remains outside the map, and #333 must not add map interaction without a separately evidenced product requirement.
+- Full Map uses `workspace`.
+- Overview and Dashboard maps use `preview` and remain non-interactive inside the map canvas.
+- Stay uses `embedded` with the `selection-only` profile. Result markers retain their canonical `selectionId` and select the corresponding stay card/detail; card selection updates the active marker. The map itself remains non-pannable and control-free, and **Open full map** remains the exploration handoff.
+- The Itinerary day map uses `embedded` with the `selection-only` profile. Planner pins retain their canonical itinerary-item selection and item selection updates the active pin. It remains non-pannable and control-free, with **Open full map** as the exploration handoff.
 - Transport uses `workspace` and retains transport-specific markers and details.
 - Selecting a leg in Map or Transport fits that leg's endpoints/relevant geometry rather than leaving the camera on the whole route.
 - Selecting the same entity in a list, strip, card, marker or route line produces the same canonical selection.
@@ -328,7 +342,9 @@ Implementation is test-first and sequential. Source-regex assertions are used on
 - Pointer and keyboard activation produce the same canonical entity.
 - Pointer-up/click deduplication activates once.
 - Whole-route reset, stop focus and selected-leg/connection fit issue the expected camera target.
-- Preview variants have no map controls and no interactive markers.
+- Builder and other `preview` variants have no map controls or interactive markers.
+- Stay result markers and Itinerary planner pins use `embedded`/`selection-only`, remain control-free and preserve bidirectional canonical selection.
+- Map and Transport render canonical transport icons with the shared background and state treatment; unknown modes render the truthful fallback and no covered page-local icon rules remain.
 - Attribution remains enabled.
 - Route Detail hashes survive load, activation, history and invalid indices.
 - Desktop Journey navigator and 320/390 mobile strip expose the same ordered entities and selection.
@@ -346,6 +362,7 @@ The verified scenario matrix includes:
 - Discover route and stop selection.
 - Sparse and partially mapped routes.
 - Mobile 320 and 390 px; tablet; desktop with visible rails.
+- Responsive verification at exactly 320, 390, 430, 768, 1024 and 1440 CSS pixels.
 - Relevant #328 and #330 regression suites.
 
 ### Required checks
@@ -376,12 +393,13 @@ The migration may extend the existing shared files or add narrowly named map-pol
 
 #333 is complete only when:
 
-- Every MapLibre surface declares an explicit variant and follows its control policy.
+- Every MapLibre surface declares an explicit variant; every `embedded` surface declares its interaction profile; each follows its control policy.
 - The three domain renderers share setup, camera, padding and stop-marker policy without surrendering domain ownership.
 - Whole route, stop, leg/connection and collection selections frame the intended geography with visible UI occlusions accounted for.
 - Repeated stops remain distinct by canonical occurrence ID.
 - Map and adjacent UI selection are bidirectional with pointer/keyboard parity.
-- Preview maps are intentionally non-interactive and control-free.
+- Builder and genuine visual-only previews are intentionally non-interactive and control-free; Stay and Itinerary preserve their intentional canonical marker selection through `embedded`/`selection-only`.
+- Relevant Map and Transport markers show canonical transport icons, shared backgrounds and consistent selected/hover/focus states; unknown modes use the truthful shared fallback and covered page-local icon styling is removed.
 - Published Route Detail hashes and #328 publication/readiness boundaries remain intact.
 - Desktop Route Detail and personal Journey use the visible ordered Journey navigator; mobile uses the compact strip; duplicate whole-route controls and the native selector are gone.
 - The saved-trip Journey is available from the canonical authenticated workspace navigation and the Overview contextual entry.
