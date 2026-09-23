@@ -80,9 +80,23 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.match(summary, /<option value="whole">Whole route<\/option>/);
   assert.doesNotMatch(summary, /<EasyTButton[^>]*>Whole route<\/EasyTButton>|icon=\{Route\}/);
   assert.match(summary, /routeMapSelectionFromHash\(location\.hash, stops\.length\)/);
+  assert.match(detail, /id="route-map" tabIndex=\{-1\}/);
+  assert.match(summary, /closest<HTMLElement>\("#route-map"\)/);
+  assert.match(summary, /mapRegion\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(summary, /mapRegion\?\.scrollIntoView\(\{ block: "start", behavior: "instant" \}\)/);
+  assert.doesNotMatch(summary, /closest<HTMLElement>\("section"\)/);
   assert.match(summary, /id=\{`route-map-stop-\$\{index\}`\}/);
   assert.match(liveMap, /marker\.type = "button"/);
   assert.match(liveMap, /setAttribute\("aria-pressed"/);
+});
+
+test("sparse why copy and practical cards use only canonical rendered content", () => {
+  const detail = read("app/journey/routes/[slug]/route-detail-view.tsx");
+  assert.match(detail, /showFallbackReasons/);
+  assert.match(detail, /discovery\.story\.fallbackReasons\.map/);
+  assert.match(detail, /const practicalCards[^=]*=/);
+  assert.match(detail, /practicalCards\.map\(\(card, index\)/);
+  assert.match(detail, /String\(index \+ 1\)\.padStart\(2, "0"\)/);
 });
 
 test("browser and MapLibre error events normalize to bounded Error values", () => {

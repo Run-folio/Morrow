@@ -31,10 +31,10 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
       if (!/^#route-map(?:$|-)/.test(location.hash)) return;
       setSelected(routeMapSelectionFromHash(location.hash, stops.length));
       // Native links retain a no-JS destination. Hydrated links converge on the
-      // map heading, not a control far down the side list. No scroll animation.
-      const section = root.current?.closest<HTMLElement>("section");
-      section?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
-      section?.scrollIntoView({ block: "start", behavior: "instant" });
+      // focusable map region so mobile users remain beside the selected detail.
+      const mapRegion = root.current?.closest<HTMLElement>("#route-map");
+      mapRegion?.focus({ preventScroll: true });
+      mapRegion?.scrollIntoView({ block: "start", behavior: "instant" });
     };
     const followLink = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

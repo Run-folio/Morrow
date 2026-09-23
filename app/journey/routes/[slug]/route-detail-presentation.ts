@@ -33,6 +33,7 @@ export type RouteDiscoveryPresentation = {
     rhythm: string | null;
     bestFor: string;
     styleSignals: string[];
+    fallbackReasons: Array<{ name: string; reason: string }>;
   };
   highlights: RouteDiscoveryHighlight[];
   experiences: RouteDiscoveryExperience[];
@@ -141,6 +142,7 @@ export function routeDiscoveryPresentation(detail: PublicRouteDetail): RouteDisc
       rhythm: family?.character ?? detail.rhythm ?? null,
       bestFor: family?.bestFor ?? detail.summary,
       styleSignals: (family?.interests ?? []).map(titleCase),
+      fallbackReasons: detail.stops.slice(0, 3).map(stop => ({ name: stop.name, reason: stop.reason })),
     },
     highlights: isRich ? candidates : [],
     experiences: isRich ? experiences : [],

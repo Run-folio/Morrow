@@ -7,7 +7,7 @@ import { routeEditorialImagery } from "../lib/easyt/route-editorial-imagery.ts";
 
 type DiscoveryProjection = {
   isRich: boolean;
-  story: { promise: string; arc: string | null; rhythm: string | null; bestFor: string; styleSignals: string[] };
+  story: { promise: string; arc: string | null; rhythm: string | null; bestFor: string; styleSignals: string[]; fallbackReasons: Array<{ name: string; reason: string }> };
   highlights: Array<{ id: string; title: string; stopName: string; context: string; photo: { author: string; licenseUrl: string; sourceUrl: string; variants: Array<{ src: string }> } }>;
   experiences: Array<{ name: string; stopName: string; context: string; photo: { author: string; licenseUrl: string; sourceUrl: string } }>;
   practical: string[];
@@ -53,6 +53,16 @@ test("sparse published routes degrade to factual content without highlight or im
     assert.ok(discovery.story.styleSignals.length > 0, key);
     assert.ok(discovery.practical.every(item => !/pending|placeholder|not recorded/i.test(item)), key);
   }
+});
+
+test("a sparse route without distinct editorial rationale falls back to canonical stop reasons", () => {
+  const detail = publicRouteDetailFor("india-golden-triangle")!;
+  const discovery = project("india-golden-triangle");
+
+  assert.equal(discovery.story.arc, null);
+  assert.equal(discovery.story.rhythm, null);
+  assert.equal(discovery.story.bestFor, discovery.story.promise);
+  assert.deepEqual(discovery.story.fallbackReasons, detail.stops.map(stop => ({ name: stop.name, reason: stop.reason })));
 });
 
 test("discovery projection selects existing truth without mutating Route Detail or Builder draft", () => {

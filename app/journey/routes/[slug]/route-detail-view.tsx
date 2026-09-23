@@ -29,6 +29,12 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
   const practical = discovery.practical.filter(item => item !== detail.conditions);
   const distinctArc = discovery.story.arc && discovery.story.arc !== discovery.story.promise ? discovery.story.arc : null;
   const distinctBestFor = discovery.story.bestFor !== discovery.story.promise ? discovery.story.bestFor : null;
+  const showFallbackReasons = !distinctArc && !discovery.story.rhythm && !distinctBestFor;
+  const practicalCards: Array<{ title: string; strong?: string; copy?: string }> = [
+    ...((detail.bestTime || detail.conditions) ? [{ title: "When to go", strong: detail.bestTime, copy: detail.conditions }] : []),
+    ...practical.map(note => ({ title: "Worth knowing", copy: note })),
+    ...(pendingConnections > 0 ? [{ title: "Connections to confirm", strong: `${pendingConnections} ${pendingConnections === 1 ? "leg" : "legs"}`, copy: "Confirm current schedules, changes and reservations for your dates." }] : []),
+  ];
 
   return <>
     <a className={styles.skipLink} href="#route-title">Skip to this route</a>
@@ -52,6 +58,7 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
           {distinctArc && <p>{distinctArc}</p>}
           {discovery.story.rhythm && <p><strong>Trip rhythm</strong>{discovery.story.rhythm}</p>}
           {distinctBestFor && <p><strong>Best for</strong>{distinctBestFor}</p>}
+          {showFallbackReasons && <ul className={styles.whyFallback}>{discovery.story.fallbackReasons.map(item => <li key={item.name}><strong>{item.name}</strong><span>{item.reason}</span></li>)}</ul>}
           <ul className={styles.styleSignals} aria-label="Travel styles">{discovery.story.styleSignals.map(signal => <li key={signal}>{signal}</li>)}</ul>
         </div>
         <dl className={styles.heroFacts}>
@@ -95,7 +102,7 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
             </Link>}
           </li>;
         })}</ol>
-        <div className={styles.journeyMap} id="route-map">
+        <div className={styles.journeyMap} id="route-map" tabIndex={-1}>
           <RouteMapSummary title={detail.title} stops={detail.stops} countries={detail.countries} nights={visual.nights} durationDays={detail.durationDays} totalNights={detail.totalNights} character={visual.character} rationale={release?.routeOrderRationale} warning={detail.warnings.at(-1)} initialSelection={initialMapSelection} />
           <p className={styles.mapNote}>The line shows the sequence between bases, not an exact road, rail or flight path.</p>
         </div>
@@ -108,12 +115,10 @@ export default function RouteDetailView({ detail, activityAction, navigation, in
       {experienceAction && <aside className={styles.experienceBooking} aria-label="Activity booking options"><div><span>Booking options from {affiliateProviderLabel(experienceAction.provider)}</span><p>Browse tours, activities and tickets around these bases. Availability and details remain with the provider.</p></div><div><MorroviaAffiliateLink action={experienceAction} context={{ placement: "route_detail_experiences", destinationCount: detail.stops.length }} /><small>{affiliateDisclosure}</small></div></aside>}
     </section>}
 
-    {(detail.bestTime || detail.conditions || practical.length > 0 || pendingConnections > 0) && <section className={`${styles.practicalSection} ${styles.wrap}`} id="route-notes" aria-labelledby="route-notes-heading">
+    {practicalCards.length > 0 && <section className={`${styles.practicalSection} ${styles.wrap}`} id="route-notes" aria-labelledby="route-notes-heading">
       <header className={styles.sectionHeading}><p className={styles.eyebrow}>Practical context</p><h2 id="route-notes-heading">What matters <em>before booking.</em></h2></header>
       <div className={styles.practicalGrid}>
-        {(detail.bestTime || detail.conditions) && <article><span>01</span><h3>When to go</h3>{detail.bestTime && <strong>{detail.bestTime}</strong>}{detail.conditions && <p>{detail.conditions}</p>}</article>}
-        {practical.map((note, index) => <article key={note}><span>{String(index + 2).padStart(2, "0")}</span><h3>Worth knowing</h3><p>{note}</p></article>)}
-        {pendingConnections > 0 && <article><span>{String(practical.length + 2).padStart(2, "0")}</span><h3>Connections to confirm</h3><strong>{pendingConnections} {pendingConnections === 1 ? "leg" : "legs"}</strong><p>Confirm current schedules, changes and reservations for your dates.</p></article>}
+        {practicalCards.map((card, index) => <article key={`${card.title}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><h3>{card.title}</h3>{card.strong && <strong>{card.strong}</strong>}{card.copy && <p>{card.copy}</p>}</article>)}
       </div>
     </section>}
 
