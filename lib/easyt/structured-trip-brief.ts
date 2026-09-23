@@ -109,6 +109,9 @@ export type StructuredTripBrief = {
   placeIssues?: PlaceIssue[];
   /** Explicit traveller choices that resolve an ambiguity or choose a regional base. */
   placeSelections?: PlaceSelection[];
+  /** Explicit recommendation drafts by broad mention. Empty means the traveller
+   * removed every default; unlike absence, it must not regenerate defaults. */
+  countryDiscoveryChoices?: Record<string, string[]>;
   /** Broad planning areas remain open for multiple child selections until the
    * traveller explicitly says that the route has enough places. */
   completedPlanningAreaMentionIds?: string[];

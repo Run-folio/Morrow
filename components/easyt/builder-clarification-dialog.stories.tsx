@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { PlaceType } from "@/lib/easyt/place-intelligence";
+import { resolvePlaceMentions } from "@/lib/easyt/place-intelligence";
+import { buildCountryDiscovery } from "@/lib/easyt/country-discovery";
+import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-images";
+import { useState, type ComponentProps } from "react";
 import { BuilderClarificationDialog, BuilderClarificationResume } from "./builder-clarification-dialog";
 
 const noop = () => undefined;
@@ -47,6 +51,66 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const BroadAreaStep1Of4: Story = {};
+
+const tajikistanMention = resolvePlaceMentions("Tajikistan").mentions[0]!;
+const tajikistanDiscovery = buildCountryDiscovery(tajikistanMention, { totalNights: 8, interests: ["nature"] });
+function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog>) {
+  const [selectedIds, setSelectedIds] = useState(tajikistanDiscovery.selectedIds);
+  return <BuilderClarificationDialog {...args}
+    doneDisabled={!selectedIds.length}
+    discovery={{
+      candidates: tajikistanDiscovery.candidates.map((candidate) => ({
+        id: candidate.placeId, name: candidate.name, country: candidate.country,
+        reason: candidate.reason, stayGuidance: candidate.stayGuidance, alreadyInTrip: false,
+      })),
+      selectedIds,
+      availableNights: tajikistanDiscovery.availableNights,
+      onToggle: (id, selected) => setSelectedIds((current) => selected ? [...new Set([...current, id])] : current.filter((item) => item !== id)),
+    }} />;
+}
+
+export const CountryDiscovery: Story = {
+  args: {
+    itemKey: "tajikistan-discovery",
+    title: "Where should you go in Tajikistan?",
+    description: "Morrovia suggests a few places to start. You can change them before continuing.",
+    suggestions: [],
+    search: { ...bulgariaSearch, label: "Search within Tajikistan", placeholder: "Search within Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
+    doneLabel: "Continue",
+    doneDisabled: false,
+  },
+  render: (args) => <CountryDiscoveryFixture {...args} />,
+};
+
+export const CountryDiscovery320: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia320" } } };
+export const CountryDiscovery390: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const CountryDiscovery430: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia430" } } };
+export const CountryDiscovery768: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia768" } } };
+export const CountryDiscovery1024: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1024" } } };
+export const CountryDiscovery1440: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1440" } } };
+
+const japanMention = resolvePlaceMentions("Japan").mentions[0]!;
+const japanDiscovery = buildCountryDiscovery(japanMention, { totalNights: 18, interests: ["food"] });
+export const CountryDiscoveryJapanWithImagery: Story = {
+  args: {
+    ...CountryDiscovery.args,
+    itemKey: "japan-discovery",
+    title: "Where should you go in Japan?",
+    discovery: {
+      candidates: japanDiscovery.candidates.map((candidate) => {
+        const photo = routeDestinationPhoto(candidate.name, candidate.country);
+        const src = photo?.variants.at(-1)?.src;
+        const credit = src ? routeImageCredit(src) : null;
+        return { id: candidate.placeId, name: candidate.name, country: candidate.country, reason: candidate.reason,
+          stayGuidance: candidate.stayGuidance, alreadyInTrip: false,
+          image: credit ? { src: credit.src, alt: photo?.alt ?? candidate.name, creditHref: credit.fullCreditUrl, credit: credit.sourceLabel } : undefined };
+      }),
+      selectedIds: japanDiscovery.selectedIds,
+      onToggle: noop,
+    },
+    search: { ...bulgariaSearch, label: "Search within Japan", placeholder: "Search within Japan", contextCountries: ["Japan"], parentConstraint: { canonicalName: "Japan", placeType: "country", parentCountries: ["Japan"] } },
+  },
+};
 
 export const OneSelectedPlaceNotComplete: Story = {
   args: {

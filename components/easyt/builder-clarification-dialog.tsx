@@ -5,6 +5,7 @@ import { forwardRef, useEffect, useId, useRef, useState } from "react";
 import type { CanonicalPlaceSuggestion, NearbyBaseAnchor, PlaceType, PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { EasyTButton } from "./easyt-controls";
+import ResilientImage from "./resilient-image";
 import styles from "./builder-clarification-dialog.module.css";
 
 export type BuilderClarificationSelectedPlace = {
@@ -48,6 +49,18 @@ export type BuilderClarificationSearch = {
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
 };
 
+export type BuilderCountryDiscovery = {
+  candidates: Array<{
+    id: string; name: string; country: string; reason: string; stayGuidance?: string;
+    alreadyInTrip: boolean;
+    source?: { label: string; url: string };
+    image?: { src: string; alt: string; creditHref: string; credit: string };
+  }>;
+  selectedIds: string[];
+  availableNights?: number;
+  onToggle: (id: string, selected: boolean) => void;
+};
+
 export const BuilderClarificationResume = forwardRef<HTMLButtonElement, {
   label: string;
   itemNames: string[];
@@ -76,6 +89,7 @@ export function BuilderClarificationDialog({
   suggestionsStatus,
   choices = [],
   routeShapes = [],
+  discovery,
   search,
   doneLabel,
   doneDisabled = false,
@@ -108,6 +122,7 @@ export function BuilderClarificationDialog({
   suggestionsStatus?: string;
   choices?: BuilderClarificationChoice[];
   routeShapes?: BuilderClarificationRouteShape[];
+  discovery?: BuilderCountryDiscovery;
   search?: BuilderClarificationSearch;
   doneLabel?: string;
   doneDisabled?: boolean;
@@ -133,6 +148,8 @@ export function BuilderClarificationDialog({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dismissRef = useRef(onDismiss);
   const [reviewingShapeId, setReviewingShapeId] = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showAllDiscovery, setShowAllDiscovery] = useState(false);
   const text = language === "es" ? {
     close: "Cerrar la selección de lugares",
     choices: "Opciones de lugar",
@@ -187,6 +204,8 @@ export function BuilderClarificationDialog({
   useEffect(() => {
     if (!open) return;
     setReviewingShapeId(null);
+    setShowSearch(false);
+    setShowAllDiscovery(false);
     window.requestAnimationFrame(() => titleRef.current?.focus());
   }, [itemKey, open]);
 
@@ -230,7 +249,41 @@ export function BuilderClarificationDialog({
           </span>)}</div>
         </section> : null}
 
-        {routeShapes.length ? <section className={styles.shapes} aria-label={text.ways}>
+        {discovery ? <section className={styles.discovery} aria-label={language === "es" ? "Lugares recomendados" : "Recommended places"}>
+          <div className={styles.discoveryIntro}>
+            <strong>{language === "es" ? "MORROVIA RECOMIENDA" : "MORROVIA RECOMMENDS"}</strong>
+            <p>{discovery.candidates.length
+              ? discovery.availableNights
+                ? language === "es" ? "Según la duración de tu viaje, empieza con unos pocos lugares y ajusta la selección." : "Based on your trip length, start with a few places and adjust the selection."
+                : language === "es" ? "Empieza con estos lugares verificados y ajusta la selección." : "Start with these supported places and adjust the selection."
+              : language === "es" ? "Aún no tenemos suficientes lugares verificados para recomendar. Tu país sigue en el viaje; busca un lugar concreto." : "We do not have enough supported places to recommend yet. Your country stays in the trip; search for somewhere specific."}</p>
+          </div>
+          {discovery.candidates.length ? <div className={styles.discoveryGrid}>
+            {discovery.candidates.slice(0, showAllDiscovery ? 10 : 4).map((candidate) => {
+              const selected = discovery.selectedIds.includes(candidate.id) || candidate.alreadyInTrip;
+              return <article key={candidate.id} className={selected ? styles.discoverySelected : undefined}>
+                {candidate.image ? <div className={styles.discoveryImage}>
+                  <ResilientImage src={candidate.image.src} alt={candidate.image.alt} fallback={<span aria-hidden="true" />} />
+                  <a href={candidate.image.creditHref} target="_blank" rel="noreferrer">{candidate.image.credit}</a>
+                </div> : null}
+                <div className={styles.discoveryCardBody}>
+                  <div><b>{candidate.name}</b><small>{candidate.country}</small></div>
+                  <p>{candidate.reason}</p>
+                  {candidate.stayGuidance ? <small>{candidate.stayGuidance}</small> : null}
+                  {candidate.source ? <a className={styles.discoverySource} href={candidate.source.url} target="_blank" rel="noreferrer">{language === "es" ? "Fuente" : "Source"}: {candidate.source.label}</a> : null}
+                  {/* morrovia-ui-audit-allow-next-line native-control -- A pressed-state selection control in a discovery card, not a generic action button. */}
+                  <button type="button" aria-pressed={selected} disabled={candidate.alreadyInTrip} aria-label={`${candidate.name}: ${selected ? "selected, remove" : "not selected, add"}`} onClick={() => discovery.onToggle(candidate.id, !selected)}>
+                    {selected ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                    {candidate.alreadyInTrip ? language === "es" ? "Ya en el viaje" : "Already in trip" : selected ? language === "es" ? "Seleccionado · Quitar" : "Selected · Remove" : language === "es" ? "Añadir" : "Add"}
+                  </button>
+                </div>
+              </article>;
+            })}
+          </div> : null}
+          {discovery.candidates.length > 4 && !showAllDiscovery ? <EasyTButton variant="quiet" size="small" onClick={() => setShowAllDiscovery(true)}>{language === "es" ? "Ver más lugares" : "See more places"}</EasyTButton> : null}
+        </section> : null}
+
+        {!discovery && routeShapes.length ? <section className={styles.shapes} aria-label={text.ways}>
           <strong>{text.ways}</strong>
           <div>{routeShapes.map((shape) => {
             const reviewing = reviewingShapeId === shape.id;
@@ -248,7 +301,7 @@ export function BuilderClarificationDialog({
           })}</div>
         </section> : null}
 
-        {suggestions.length || suggestionsStatus ? <section className={styles.suggestions} aria-label={suggestionsLabel ?? text.suggested}>
+        {!discovery && (suggestions.length || suggestionsStatus) ? <section className={styles.suggestions} aria-label={suggestionsLabel ?? text.suggested}>
           <strong>{suggestionsLabel ?? text.suggested}</strong>
           {suggestions.length ? <div>{suggestions.map((suggestion) => <div key={suggestion.id}>
             {/* morrovia-ui-audit-allow-next-line native-control -- A suggestion option has two-line place metadata and a list-selection contract distinct from the shared action button. */}
@@ -260,7 +313,8 @@ export function BuilderClarificationDialog({
           {suggestionsActionLabel && onSuggestionsAction ? <EasyTButton className={styles.suggestionsMore} variant="quiet" size="small" onClick={onSuggestionsAction}>{suggestionsActionLabel}</EasyTButton> : null}
         </section> : null}
 
-        {search ? <section className={styles.search}>
+        {discovery && search && discovery.candidates.length > 0 ? <EasyTButton className={styles.discoverySearchToggle} variant="quiet" size="small" onClick={() => setShowSearch((value) => !value)} aria-expanded={showSearch}>{language === "es" ? "Buscar un lugar concreto" : "Search for somewhere specific"}</EasyTButton> : null}
+        {search && (!discovery || showSearch || discovery.candidates.length === 0) ? <section className={styles.search}>
           <strong>{search.label}</strong>
           <CanonicalPlaceAutocomplete
             requireCoordinates
@@ -288,7 +342,7 @@ export function BuilderClarificationDialog({
       <footer className={styles.footer}>
         <div>{onBack ? <EasyTButton icon={ArrowLeft} variant="quiet" onClick={onBack}>{backLabel}</EasyTButton> : null}
           <EasyTButton variant="quiet" onClick={onDismiss}>{finishLaterLabel}</EasyTButton></div>
-        {doneLabel && onDone ? <EasyTButton icon={Check} disabled={doneDisabled} aria-describedby={doneDisabled && doneDisabledReason ? disabledReasonId : undefined} onClick={onDone}>{doneLabel}</EasyTButton> : null}
+        {doneLabel && onDone ? <EasyTButton icon={Check} disabled={doneDisabled} aria-describedby={doneDisabled && doneDisabledReason ? disabledReasonId : undefined} onClick={onDone}>{discovery ? language === "es" ? `Continuar con ${discovery.selectedIds.length + selectedPlaces.length} lugares` : `Continue with ${discovery.selectedIds.length + selectedPlaces.length} places` : doneLabel}</EasyTButton> : null}
       </footer>
       {removeLabel && onRemoveItem ? <EasyTButton className={styles.remove} variant="quiet" size="small" onClick={onRemoveItem}>{removeLabel}</EasyTButton> : null}
     </section>
