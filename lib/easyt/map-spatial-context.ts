@@ -55,6 +55,13 @@ export type MapRouteLeg = {
 
 type MapPoint = { x: number; y: number };
 
+/** MapLibre may consume the mouse click after handling a pointer gesture on a
+ * marker. Activate on pointer-up for mouse/touch, and reserve click detail zero
+ * for keyboard or programmatic button activation so one gesture fires once. */
+export function mapRouteLegActivationEvent(event: { type: string; detail?: number }) {
+  return event.type === "pointerup" || (event.type === "click" && event.detail === 0);
+}
+
 function pointToSegmentDistanceSquared(point: MapPoint, from: MapPoint, to: MapPoint) {
   const deltaX = to.x - from.x;
   const deltaY = to.y - from.y;

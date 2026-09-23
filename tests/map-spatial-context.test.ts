@@ -9,6 +9,7 @@ import {
   mapRouteLegIdAtPoint,
   mapRouteBearing,
   mapRouteLegsFromTrip,
+  mapRouteLegActivationEvent,
   mapRouteMarkerCoordinates,
 } from "../lib/easyt/map-spatial-context.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
@@ -175,6 +176,13 @@ test("identical repeated-destination geometry retains the selected occurrence id
     ([x, y]) => ({ x, y }),
     "trip-leg-return",
   ), "trip-leg-return");
+});
+
+test("map leg markers activate once for pointer input and remain keyboard accessible", () => {
+  assert.equal(mapRouteLegActivationEvent({ type: "pointerup", detail: 0 }), true);
+  assert.equal(mapRouteLegActivationEvent({ type: "click", detail: 1 }), false, "the click following pointer-up must not activate twice");
+  assert.equal(mapRouteLegActivationEvent({ type: "click", detail: 0 }), true, "keyboard and programmatic button activation use click detail zero");
+  assert.equal(mapRouteLegActivationEvent({ type: "pointermove", detail: 0 }), false);
 });
 
 test("map context projection and co-pilot prompts cannot mutate TripDocument", () => {

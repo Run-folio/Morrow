@@ -14,7 +14,7 @@ import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -628,7 +628,15 @@ export function JourneyPlannerMap({
             <small>{tripLegClassificationLabel(leg.classification)} · {leg.provenanceLabel}</small>
           </span>
         </>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onLegSelectRef.current?.(leg); });
+        const activateLeg = (event: MouseEvent | PointerEvent) => {
+          event.stopPropagation();
+          if (!mapRouteLegActivationEvent(event)) return;
+          interruptMapCamera(map as unknown as MapCamera);
+          currentCameraRequestRef.current = null;
+          onLegSelectRef.current?.(leg);
+        };
+        element.addEventListener("pointerup", activateLeg);
+        element.addEventListener("click", activateLeg);
         element.addEventListener("mouseenter", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], leg.id]); });
         element.addEventListener("mouseleave", () => { if (map.getLayer("trip-route-hover")) map.setFilter("trip-route-hover", ["==", ["get", "id"], ""]); });
         return new maplibregl.Marker({ element, anchor: "center" }).setLngLat(mapRouteMarkerCoordinates(leg)).addTo(map);
