@@ -54,7 +54,7 @@ import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, mapWork
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
-import type { MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
+import type { MorroviaMapInsets, MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -465,6 +465,7 @@ export function JourneyMapPlannerWorkspace({
   ]);
   const healthDetailCloseRef = useRef<HTMLButtonElement>(null);
   const workspaceRef = useRef<HTMLElement>(null);
+  const [mapCameraOcclusions, setMapCameraOcclusions] = useState<Partial<MorroviaMapInsets>>({});
   const restoreScrollOnExitRef = useRef(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const hasMounted = useRef(false);
@@ -840,6 +841,33 @@ export function JourneyMapPlannerWorkspace({
   // result set. Keep the finder mounted so selecting a marker or row cannot
   // tear down its provider request and results.
   const showFinderDock = Boolean(hasCanonicalPlanner && selected.coordinates);
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!isShellPresentation || !workspace || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const mapElement = workspace.querySelector<HTMLElement>(".planner-map");
+      const rail = workspace.querySelector<HTMLElement>(`.${styles.finderDock}`);
+      if (!mapElement || !rail || !rail.getClientRects().length) {
+        setMapCameraOcclusions((current) => current.left || current.right ? {} : current);
+        return;
+      }
+      const mapRect = mapElement.getBoundingClientRect();
+      const railRect = rail.getBoundingClientRect();
+      const overlap = Math.max(0, Math.min(mapRect.right, railRect.right) - Math.max(mapRect.left, railRect.left));
+      const next = overlap > 0
+        ? railRect.left + railRect.width / 2 <= mapRect.left + mapRect.width / 2
+          ? { left: Math.round(overlap) }
+          : { right: Math.round(overlap) }
+        : {};
+      setMapCameraOcclusions((current) => current.left === next.left && current.right === next.right ? current : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(workspace);
+    const rail = workspace.querySelector<HTMLElement>(`.${styles.finderDock}`);
+    if (rail) observer.observe(rail);
+    return () => observer.disconnect();
+  }, [isShellPresentation, mobileShapeDayOpen, shapeDayTab, showFinderDock]);
   const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg);
   const mobileMapSheetView = tripStatusExpanded
     ? "status"
@@ -2388,7 +2416,7 @@ export function JourneyMapPlannerWorkspace({
               overviewMode={mapMode === "overview"}
               preserveCameraOnResize={isShellPresentation}
               cameraSafeEdge={isShellPresentation ? 76 : undefined}
-              cameraOcclusions={isShellPresentation ? { right: 8, left: 364 } : undefined}
+              cameraOcclusions={mapCameraOcclusions}
               cameraInteractionKey={cameraInteractionKey}
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}

@@ -14,10 +14,10 @@ import mapPresentation from "./easyt/morrovia-map-presentation.module.css";
 import type { JourneyLeg, JourneyStop } from "@/lib/journey";
 import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
-import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
-import { resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
+import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
+import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -202,9 +202,17 @@ export function JourneyPlannerMap({
   const cameraOcclusionKey = `${cameraSafeEdge}:${cameraOcclusions?.top ?? 0}:${cameraOcclusions?.right ?? 0}:${cameraOcclusions?.bottom ?? 0}:${cameraOcclusions?.left ?? 0}`;
   const selectedStop = stops.find((stop) => stop.id === selectedId && stop.coordinates);
   const selectedResult = selectedMapResult;
+  const selectedLegTarget = useMemo(() => {
+    const selectedLeg = spatialLegs.find((leg) => leg.id === selectedLegId);
+    return selectedLeg
+      ? { kind: "leg" as const, id: selectedLeg.id, coordinates: mapRouteFitCoordinates(selectedLeg) }
+      : null;
+  }, [selectedLegId, spatialLegs]);
   const cameraRequestKey = presentationOnly
     ? null
-    : overviewMode
+    : selectedLegTarget
+      ? `leg:${selectedLegTarget.id}:${selectedLegTarget.coordinates.map((coordinate) => coordinate.join(",")).join(";")}`
+      : overviewMode
       ? `overview:${overviewRouteKey}`
       : selectedResult
         ? `result:${selectedResult.selectionId}:${selectedResult.coordinates.join(",")}`
@@ -544,7 +552,17 @@ export function JourneyPlannerMap({
         // On first mount the focus effect can run before the map is ready.
         // Start at the pin itself so opening/adding a pin never leaves it
         // outside the visible map.
-        if (overviewMode && !focusCoordinates && overviewCoordinates.length > 1) {
+        if (selectedLegTarget) {
+          applyMapCameraRequest(
+            map as unknown as MapCamera,
+            resolveMapCameraRequest(selectedLegTarget, resolvedCameraInsets(map, cameraSafeEdge, cameraOcclusions)),
+            (coordinates) => coordinates.slice(1).reduce(
+              (result, coordinates) => result.extend(coordinates),
+              new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+            ),
+            true,
+          );
+        } else if (overviewMode && !focusCoordinates && overviewCoordinates.length > 1) {
           const bounds = overviewCoordinates.slice(1).reduce(
             (result, coordinates) => result.extend(coordinates),
             new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
@@ -586,7 +604,7 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [basemapStyleRevision, cameraOcclusionKey, cameraOcclusions, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, spatialLegs, stops]);
+  }, [basemapStyleRevision, cameraOcclusionKey, cameraOcclusions, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, selectedLegTarget, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -845,6 +863,17 @@ export function JourneyPlannerMap({
     if (!map || !cameraRequestKey || !hasInitialisedViewRef.current || cameraRequestKey === lastCameraRequestKeyRef.current) return;
     lastCameraRequestKeyRef.current = cameraRequestKey;
     currentCameraRequestRef.current = cameraRequestKey;
+    if (selectedLegTarget) {
+      applyMapCameraRequest(
+        map as unknown as MapCamera,
+        resolveMapCameraRequest(selectedLegTarget, resolvedCameraInsets(map, cameraSafeEdge, cameraOcclusions)),
+        (coordinates) => coordinates.slice(1).reduce(
+          (result, coordinates) => result.extend(coordinates),
+          new maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+        ),
+      );
+      return;
+    }
     if (overviewMode) {
       const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
       if (mappedStops.length < 2) return;
@@ -866,7 +895,7 @@ export function JourneyPlannerMap({
       ? Math.max(map.getZoom(), 14)
       : focusZoom ?? Math.max(map.getZoom(), 11);
     focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
-  }, [cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedResult, selectedStop, stops]);
+  }, [cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedLegTarget, selectedResult, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

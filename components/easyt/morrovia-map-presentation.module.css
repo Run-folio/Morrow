@@ -14,8 +14,15 @@
 .surface :global(.planner-map__stop.is-origin),.surface :global(.planner-map__stop.is-destination){position:absolute;overflow:visible}
 .surface :global(.planner-map__stop.is-origin)::after,.surface :global(.planner-map__stop.is-destination)::after{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;border:2px solid var(--morrovia-paper);border-radius:50%;background:var(--morrovia-ink);content:""}
 .surface :global(.planner-map__stop.is-destination)::after{background:var(--morrovia-signal)}
+.surface :global(.planner-map__leg){position:absolute;display:grid;width:50px;height:50px;place-items:center;padding:0;border:3px solid var(--morrovia-paper);border-radius:50%;background:var(--morrovia-signal);box-shadow:0 0 0 6px color-mix(in srgb,var(--morrovia-signal) 12%,transparent),var(--morrovia-map-marker-shadow);color:var(--morrovia-paper);cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s}
+.surface :global(.planner-map__leg:hover),.surface :global(.planner-map__leg:focus-visible),.surface :global(.planner-map__leg.is-active){z-index:5;background:var(--morrovia-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--morrovia-ink) 14%,transparent),var(--morrovia-map-marker-shadow);transform:scale(1.06)}
+.surface :global(.planner-map__leg:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}
+.surface :global(.planner-map__leg.is-unknown){border-style:dashed;background:var(--morrovia-muted)}
+.surface :global(.planner-map__leg-icon){display:grid;place-items:center;font:var(--morrovia-type-control)}
+.surface :global(.planner-map__leg-icon svg){width:24px;height:24px;stroke-width:1.9}
 .surface :global(.maplibregl-ctrl-group button){width:44px;height:44px}
-@media(prefers-reduced-motion:reduce){.surface :global(.planner-map__stop){transition:none}}
+@media(prefers-reduced-motion:reduce){.surface :global(.planner-map__stop),.surface :global(.planner-map__leg){transition:none}}
+@media(max-width:720px){.surface :global(.planner-map__leg){width:46px;height:46px}.surface :global(.planner-map__leg-icon svg){width:21px;height:21px}}
 
 .surface :global(.maplibregl-ctrl-group){overflow:hidden;border:1px solid var(--morrovia-line);border-radius:var(--morrovia-control-radius);box-shadow:var(--morrovia-map-marker-shadow)}
 .surface :global(.maplibregl-ctrl-attrib){font:var(--morrovia-type-fine-print)}

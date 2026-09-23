@@ -17,6 +17,7 @@ import {
   mapTransportIcon,
   mapTransportIconRotation,
 } from "../components/easyt/morrovia-transport-icons.ts";
+import { mapRouteFitCoordinates, mapRouteLegActivationEvent, type MapRouteLeg } from "../lib/easyt/map-spatial-context.ts";
 
 function camera(center: [number, number] = [0, 0], zoom = 4) {
   const calls: Array<{ method: string; options?: unknown }> = [];
@@ -93,6 +94,29 @@ test("plane rotation compensates the proved Lucide baseline and other icons stay
   assert.equal(mapTransportIconRotation("unknown", 90), null);
 });
 
+test("selected-leg framing prefers finite routed geometry and falls back to endpoints", () => {
+  const leg = {
+    fromCoordinates: [135, 35],
+    toCoordinates: [136, 36],
+    routeGeometry: [[135, 35], [135.4, 35.8], [136, 36]],
+  } as MapRouteLeg;
+  assert.deepEqual(mapRouteFitCoordinates(leg), leg.routeGeometry);
+  assert.deepEqual(mapRouteFitCoordinates({ ...leg, routeGeometry: [[Number.NaN, 0]] }), [[135, 35], [136, 36]]);
+  assert.deepEqual(mapRouteFitCoordinates({
+    ...leg,
+    routeSegments: [{ mode: "train", fromCoordinates: [135, 35], toCoordinates: [136, 36], routeGeometry: [[135, 35], [135.2, 35.6], [136, 36]] }],
+  }), [[135, 35], [135.2, 35.6], [136, 36]]);
+});
+
+test("transport marker pointer and keyboard activation fire once per intent", () => {
+  let activations = 0;
+  for (const event of [{ type: "pointerup", detail: 1 }, { type: "click", detail: 1 }]) {
+    if (mapRouteLegActivationEvent(event)) activations += 1;
+  }
+  assert.equal(activations, 1, "the click synthesized after pointer-up is ignored");
+  assert.equal(mapRouteLegActivationEvent({ type: "click", detail: 0 }), true, "Enter and Space synthesize a detail-zero click");
+});
+
 test("the Map has one replaceable camera request and explicit manual interruption paths", () => {
   const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
   assert.match(source, /lastCameraRequestKeyRef/);
@@ -100,6 +124,8 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /cameraRequestKey === lastCameraRequestKeyRef\.current/);
   assert.match(source, /focusMapCamera\(/);
   assert.match(source, /fitMapCamera\(/);
+  assert.match(source, /applyMapCameraRequest\(/);
+  assert.match(source, /kind: "leg"/);
   assert.match(source, /container\.addEventListener\("pointerdown", interrupt/);
   assert.match(source, /container\.addEventListener\("wheel", interrupt/);
   assert.match(source, /container\.addEventListener\("keydown", interruptKeyboardCamera/);

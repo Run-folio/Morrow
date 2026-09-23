@@ -753,6 +753,11 @@ export const Mobile390SelectedTransfer: Story = {
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
+export const Desktop1440SelectedTransfer: Story = {
+  args: { storyTrip: trip, storyState: { mapMode: "overview", selectedRouteLegId: "valley-arequipa" } },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+};
+
 export const Mobile390PinComposer: Story = {
   ...AddPinNameLocation,
   parameters: { ...AddPinNameLocation.parameters },

@@ -81,7 +81,7 @@ const explicitChoiceTrip = explicitChoice
   : modeChoiceTrip;
 
 const meta = {
-  title: "Morrovia/05 Workspaces/Transport",
+  title: "Morrovia/05 Product Patterns/Trip workspace/Transport",
   component: TripTransportWorkspace,
   parameters: {
     layout: "fullscreen",
@@ -106,6 +106,7 @@ export const CanonicalAgendaMobile430: Story = { globals: { viewport: { value: "
 export const CanonicalAgendaTablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const CanonicalAgendaDesktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const CanonicalAgendaDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const SelectedJourneyDesktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 
 export const PartialUnknownTransport: Story = {
   args: { trip: transportTrip },

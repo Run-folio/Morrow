@@ -124,6 +124,23 @@ function usableRouteGeometry(geometry: Array<[number, number]> | undefined) {
     && Number.isFinite(coordinate[1])) ?? [];
 }
 
+export function mapRouteFitCoordinates(
+  leg: Pick<MapRouteLeg, "fromCoordinates" | "toCoordinates" | "routeGeometry" | "routeSegments">,
+) {
+  const segmentCoordinates = leg.routeSegments?.flatMap((segment) => {
+    const geometry = usableRouteGeometry(segment.routeGeometry);
+    return geometry.length >= 2 ? geometry : usableRouteGeometry([segment.fromCoordinates, segment.toCoordinates]);
+  }) ?? [];
+  if (segmentCoordinates.length >= 2) {
+    return segmentCoordinates.filter((coordinate, index) => index === 0
+      || coordinate[0] !== segmentCoordinates[index - 1]![0]
+      || coordinate[1] !== segmentCoordinates[index - 1]![1]);
+  }
+  const geometry = usableRouteGeometry(leg.routeGeometry);
+  if (geometry.length >= 2) return geometry;
+  return usableRouteGeometry([leg.fromCoordinates, leg.toCoordinates]);
+}
+
 export function mapRouteMarkerCoordinates(leg: Pick<MapRouteLeg, "fromCoordinates" | "toCoordinates" | "routeGeometry">): [number, number] {
   const geometry = usableRouteGeometry(leg.routeGeometry);
   if (geometry.length) return geometry[Math.floor(geometry.length / 2)];

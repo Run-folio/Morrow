@@ -18,6 +18,14 @@ const mapMarkerSource = readFileSync(
   new URL("../components/easyt/morrovia-map-markers.ts", import.meta.url),
   "utf8",
 );
+const mapPresentationStylesSource = readFileSync(
+  new URL("../components/easyt/morrovia-map-presentation.module.css", import.meta.url),
+  "utf8",
+);
+const transportWorkspaceSource = readFileSync(
+  new URL("../components/easyt/trip-transport-workspace.tsx", import.meta.url),
+  "utf8",
+);
 const plannerStripSource = readFileSync(
   new URL("../components/journey-planner-strip.tsx", import.meta.url),
   "utf8",
@@ -154,6 +162,10 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(presentation, /MORROVIA_DETAILED_BASEMAP_STYLE_URL = "https:\/\/tiles\.openfreemap\.org\/styles\/positron"/);
   assert.match(presentation, /export function createMorroviaFallbackMapStyle/);
   assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
+  assert.match(mapWorkspaceSource, /new ResizeObserver/);
+  assert.match(mapWorkspaceSource, /cameraOcclusions=\{mapCameraOcclusions\}/);
+  assert.match(transportWorkspaceSource, /new ResizeObserver/);
+  assert.match(transportWorkspaceSource, /cameraOcclusions=\{transportCameraOcclusions\}/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);
   for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {
@@ -211,6 +223,14 @@ test("transport markers use the canonical mode and never invent an unknown mode"
   assert.match(mapSource, /leg\.distanceKm !== null/);
   assert.match(mapSource, /formatMapDuration\(leg\.doorToDoorMinutes\)/);
   assert.match(mapSource, /leg\.provenanceLabel/);
+});
+
+test("shared presentation owns transport marker backgrounds and interaction states", () => {
+  for (const selector of [".planner-map__leg", ".planner-map__leg-icon", ".planner-map__leg:hover", ".planner-map__leg:focus-visible", ".planner-map__leg.is-active", ".planner-map__leg.is-unknown"]) {
+    assert.match(mapPresentationStylesSource, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.doesNotMatch(mapStylesSource, /:global\(\.planner-map__leg\)\{/);
+  assert.doesNotMatch(mapStylesSource, /:global\(\.planner-map__leg-icon(?: svg)?\)\{/);
 });
 
 test("destination detail and Shape the day remain tied to canonical selection", () => {
@@ -286,7 +306,9 @@ test("authenticated Map mutations use the account persistence queue", () => {
 });
 
 test("map overlays expose keyboard-equivalent controls and predictable Escape cleanup", () => {
-  assert.match(mapSource, /const activateLeg = \(event: MouseEvent \| PointerEvent\) => \{[\s\S]*onLegSelectRef\.current\?\.\(leg\);[\s\S]*element\.addEventListener\("click", activateLeg\)/);
+  assert.match(mapSource, /mapRouteLegActivationEvent\(event\)/);
+  assert.match(mapSource, /element\.addEventListener\("pointerup", activateLeg\)/);
+  assert.match(mapSource, /element\.addEventListener\("click", activateLeg\)/);
   assert.doesNotMatch(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelectRef\.current\?\.\(leg\)\)/);
   assert.match(mapSource, /element\.addEventListener\("mouseenter",/);
   assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\);[\s\S]*onSelectRef\.current\(stop\.id\); \}\)/);
