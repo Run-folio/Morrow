@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, MoonStar, Route } from "lucide-react";
+import { ArrowRight, MoonStar } from "lucide-react";
 import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import type { PublicRouteConnection, PublicRouteStop } from "@/lib/easyt/public-route";
@@ -59,7 +59,7 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
     setSelected({ type: type as "stop" | "connection", index: Number(index) });
   };
   return <div ref={root}>
-    <div className={styles.mapToolbar}><span>{countries.join(" → ")}</span><EasyTButton variant="secondary" icon={Route} onClick={() => changeSelection("whole")}>Whole route</EasyTButton></div>
+    <div className={styles.mapToolbar}><span>{countries.join(" → ")}</span></div>
     <div className={styles.mapLayout}>
       <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={setSelected} resetVersion={reset} />
       <aside className={styles.mapDetail} aria-label="Route map details">

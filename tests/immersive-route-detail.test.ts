@@ -131,11 +131,10 @@ test("actions reuse canonical handoff and analytics while mobile and motion keep
   assert.equal((action.match(/trackEvent\("route_started"/g) ?? []).length, 1);
   assert.match(action, /\/journey\/new\?inspire=/);
   assert.doesNotMatch(view, /trackEvent|useEffect|localStorage|routePlannerPayload/);
-  assert.equal((view.match(/>Start with this route<\/RoutePlanLink>/g) ?? []).length, 2);
-  assert.match(view, /href="#route-map"/);
-  assert.match(view, /Shape the nights in Builder/);
+  assert.equal((view.match(/>Plan this route<\/RoutePlanLink>/g) ?? []).length, 2);
+  assert.doesNotMatch(view, /href="#route-map"|Shape the nights in Builder/);
   assert.match(view, /route_detail_experiences/);
-  assert.match(view, /RouteRelatedRoutes/);
+  assert.doesNotMatch(view, /RouteRelatedRoutes/);
   assert.equal((view.match(/Sources &amp; review/g) ?? []).length, 1);
   assert.match(read(owner + "route-overview.module.css"), /prefers-reduced-motion:reduce/);
   assert.match(read("components/analytics.tsx"), /lastPageViewRef.current === pathname/);

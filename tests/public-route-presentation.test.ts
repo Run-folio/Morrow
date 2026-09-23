@@ -51,6 +51,27 @@ test("Route Detail follows the discovery hierarchy and absorbs the duplicated #3
   assert.doesNotMatch(detail, />See [^<]+ on the map</);
 });
 
+test("journey rows and the map share one hash-compatible selection system", () => {
+  const detail = read("app/journey/routes/[slug]/route-detail-view.tsx");
+  const summary = read("app/journey/routes/[slug]/route-map-summary.tsx");
+  const liveMap = read("app/journey/routes/[slug]/route-live-map.tsx");
+
+  assert.equal((detail.match(/id="route-journey"/g) ?? []).length, 1);
+  assert.doesNotMatch(detail, /id="route-(?:places|pacing)"/);
+  assert.match(detail, /journeyStopHeading[\s\S]*href=\{`#route-map-stop-\$\{index\}`\}/);
+  assert.match(detail, /journeyStopMeta[\s\S]*guide\.recommended[\s\S]*guide\.minimum/);
+  assert.match(detail, /href=\{`#route-map-connection-\$\{index\}`\}/);
+  assert.match(detail, /className=\{styles\.journeyConnection\}/);
+
+  assert.equal((summary.match(/<EasyTSelect/g) ?? []).length, 1);
+  assert.match(summary, /<option value="whole">Whole route<\/option>/);
+  assert.doesNotMatch(summary, /<EasyTButton[^>]*>Whole route<\/EasyTButton>|icon=\{Route\}/);
+  assert.match(summary, /routeMapSelectionFromHash\(location\.hash, stops\.length\)/);
+  assert.match(summary, /id=\{`route-map-stop-\$\{index\}`\}/);
+  assert.match(liveMap, /marker\.type = "button"/);
+  assert.match(liveMap, /setAttribute\("aria-pressed"/);
+});
+
 test("browser and MapLibre error events normalize to bounded Error values", () => {
   const browserEvent = new Event("error");
   const nested = normalizeRouteMapFailure({ type: "error", error: browserEvent });
