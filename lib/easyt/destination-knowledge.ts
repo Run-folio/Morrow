@@ -293,6 +293,32 @@ function curatedDestination(input: CuratedDestinationInput): DestinationKnowledg
 /** A deliberately modest set drawn from current curated route families. */
 export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
   ...[
+    { canonicalId: "dushanbe", name: "Dushanbe", country: "Tajikistan", coordinates: [68.787, 38.5598] as [number, number], experienceTags: ["culture", "food"] },
+    { canonicalId: "khujand", name: "Khujand", country: "Tajikistan", coordinates: [69.6247, 40.283] as [number, number], experienceTags: ["culture"] },
+    { canonicalId: "panjakent", name: "Panjakent", country: "Tajikistan", coordinates: [67.6093, 39.4952] as [number, number], experienceTags: ["culture", "nature", "hiking"] },
+    { canonicalId: "khorog", name: "Khorog", country: "Tajikistan", coordinates: [71.553, 37.4897] as [number, number], experienceTags: ["nature", "hiking"] },
+  ].map((place) => curatedDestination({
+    ...place, region: "asia", roles: ["base"],
+    source: { id: "tajikistan-tourism:routes", label: "Tourism Development Committee of Tajikistan", kind: "official",
+      url: "https://ctd.tj/en/2023/04/19/tourist-routes/", reviewedAt: "2026-09-23",
+      supports: "Named places and broad cultural or nature context in official visitor routes; no transfer or stay duration claim." },
+  })),
+  ...[
+    { canonicalId: "antananarivo", name: "Antananarivo", country: "Madagascar", coordinates: [47.5079, -18.8792] as [number, number], experienceTags: ["culture", "food"] },
+    { canonicalId: "antsirabe", name: "Antsirabe", country: "Madagascar", coordinates: [47.0333, -19.8667] as [number, number], experienceTags: ["culture"] },
+    { canonicalId: "morondava", name: "Morondava", country: "Madagascar", coordinates: [44.2833, -20.2833] as [number, number], experienceTags: ["nature"] },
+    { canonicalId: "andasibe", name: "Andasibe", country: "Madagascar", coordinates: [48.4167, -18.9333] as [number, number], experienceTags: ["nature", "wildlife"] },
+  ].map((place) => curatedDestination({
+    ...place, region: "africa", roles: ["base"],
+    source: { id: `madagascar-tourism:${place.canonicalId}`, label: "Madagascar National Tourism Office", kind: "official",
+      url: place.canonicalId === "morondava"
+        ? "https://madagascar-tourisme.com/fr/morondava-accueillera-la-journee-mondiale-du-tourisme-place-sous-le-theme-du-tourisme-et-transformation-durable/"
+        : place.canonicalId === "andasibe"
+          ? "https://madagascar-tourisme.com/wp-content/uploads/2024/10/Catalog-FAMTRIP-December-2024.pdf"
+          : "https://madagascar-tourisme.com/fr/la-destination/les-terres-centrales/", reviewedAt: "2026-09-23",
+      supports: "Named visitor places and broad regional interests in official destination material; no transfer or stay duration claim." },
+  })),
+  ...[
     { canonicalId: "almaty", name: "Almaty", country: "Kazakhstan", coordinates: [76.886, 43.2389] as [number, number] },
     { canonicalId: "tashkent", name: "Tashkent", country: "Uzbekistan", coordinates: [69.2401, 41.2995] as [number, number] },
   ].map((place) => curatedDestination({
