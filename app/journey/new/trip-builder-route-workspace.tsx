@@ -206,9 +206,9 @@ export function TripBuilderRouteWorkspace({
             draftPinCoordinates={null}
             pinPlacementMode={false}
             overviewMode
-            previewMode
+            surface={{ variant: "preview" }}
             previewLabel="Builder route map"
-            overviewPadding={{ top: 54, right: 54, bottom: 54, left: 54 }}
+            cameraSafeEdge={54}
             onMapPinDrop={() => undefined}
             onPlannerPinSelect={() => undefined}
             onSelect={(stopId) => selectStop(stopId, true)}

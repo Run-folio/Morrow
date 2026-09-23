@@ -228,6 +228,9 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /<ItineraryItemDetail/);
   assert.match(workspace, /useTripShellMutation/);
   assert.match(workspace, /selectMappedStayForStop/);
+  assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
+  assert.match(workspace, /selectedMapResult=\{selectedMapResult\}/);
+  assert.match(workspace, /onMapResultSelect=\{\(result\) => \{[\s\S]*result\.sourceId[\s\S]*selectPlace\(place\)/);
   assert.match(workspace, /Check independently on Trip\.com/);
   assert.match(workspace, /may differ from the Booking\.com live information above/);
   assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);

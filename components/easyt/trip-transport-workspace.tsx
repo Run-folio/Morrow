@@ -126,8 +126,8 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
         <div className={styles.mapFrame}>
           {mapLifecycle === "unavailable" ? <div className={styles.mapUnavailable} role="status"><AlertCircle aria-hidden="true" /><p>{copy.mapUnavailable}</p></div> : <JourneyPlannerMap
             stops={mapStops} legs={mapLegs} selectedId={selected?.to.id ?? mapStops[0]?.id ?? ""} selectedLegId={selectedLegId} contextCardsHidden
-            plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode
-            overviewPadding={{ top: 42, right: 42, bottom: 42, left: 42 }} onLifecycleChange={setMapLifecycle}
+            plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }}
+            cameraSafeEdge={42} onLifecycleChange={setMapLifecycle}
             onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onLegSelect={(leg) => setSelectedLegId(leg.id)} onSelect={() => undefined}
           />}
         </div>

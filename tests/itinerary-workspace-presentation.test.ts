@@ -48,3 +48,10 @@ test("Itinerary uses Map's recovery, queue, CAS, and canonical cache pipeline", 
   assert.match(persistence, /EasyTTripSaveConflictError/);
   assert.doesNotMatch(workspace, /useState\(trip\)/);
 });
+
+test("Itinerary map pins keep canonical item selection without capture workarounds", () => {
+  assert.match(workspace, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
+  assert.match(workspace, /selectedPlannerPinId=\{mapContext\.selectedPlannerPinId\}/);
+  assert.match(workspace, /onPlannerPinSelect=\{\(pin\) => setSelectedItemId\(itinerarySelectionForMapPin\(pin, active\)\)\}/);
+  assert.doesNotMatch(workspace, /selectPreviewPin|onPointerDownCapture|onMouseDownCapture|onClickCapture/);
+});

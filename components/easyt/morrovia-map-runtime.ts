@@ -22,17 +22,17 @@ export function morroviaMapOptions(
   };
 }
 
-type MapControlOwner = {
-  addControl: (control: unknown, position?: "top-right") => unknown;
+type MapControlOwner<Control> = {
+  addControl(control: Control, position?: "top-right"): unknown;
 };
 
-type MapLibreControlRuntime = {
-  NavigationControl: new (options: { showCompass: boolean }) => unknown;
+type MapLibreControlRuntime<Control> = {
+  NavigationControl: new (options: { showCompass: boolean }) => Control;
 };
 
-export function installMorroviaMapControls(
-  map: MapControlOwner,
-  runtime: MapLibreControlRuntime,
+export function installMorroviaMapControls<Control>(
+  map: MapControlOwner<Control>,
+  runtime: MapLibreControlRuntime<Control>,
   surface: MorroviaMapSurface,
 ) {
   if (!resolveMapSurfacePolicy(surface).zoomControl) return;

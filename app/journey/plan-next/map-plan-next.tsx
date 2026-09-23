@@ -176,7 +176,7 @@ export default function MapPlanNext() {
       </aside>
 
       <section className={styles.mapSurface} aria-label="Interactive trip map">
-        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
+        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }} onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
       </section>
 
       <aside className={styles.decisions}>

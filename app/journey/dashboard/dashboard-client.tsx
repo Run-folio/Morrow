@@ -135,9 +135,9 @@ function TripRoutePreview({ trip, label, compact = false }: { trip: EasyTTrip; l
     draftPinCoordinates={null}
     pinPlacementMode={false}
     overviewMode
-    previewMode
+    surface={{ variant: "preview" }}
     previewLabel={label}
-    overviewPadding={compact ? { top: 14, right: 14, bottom: 14, left: 14 } : { top: 28, right: 28, bottom: 28, left: 28 }}
+    cameraSafeEdge={compact ? 14 : 28}
     onMapPinDrop={() => undefined}
     onPlannerPinSelect={() => undefined}
     onSelect={() => undefined}

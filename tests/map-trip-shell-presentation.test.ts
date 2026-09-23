@@ -10,6 +10,14 @@ const mapSource = readFileSync(
   new URL("../components/journey-planner-map.tsx", import.meta.url),
   "utf8",
 );
+const mapRuntimeSource = readFileSync(
+  new URL("../components/easyt/morrovia-map-runtime.ts", import.meta.url),
+  "utf8",
+);
+const mapMarkerSource = readFileSync(
+  new URL("../components/easyt/morrovia-map-markers.ts", import.meta.url),
+  "utf8",
+);
 const plannerStripSource = readFileSync(
   new URL("../components/journey-planner-strip.tsx", import.meta.url),
   "utf8",
@@ -123,10 +131,12 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(plannerStripSource, /Fit map to whole route/);
   assert.match(plannerStripSource, /data-map-route-reset/);
   assert.match(mapWorkspaceSource, /onWholeRoute=\{resetWholeRoute\}/);
-  assert.match(mapSource, /showCompass: false/);
+  assert.match(mapSource, /installMorroviaMapControls\(map, maplibregl, surface\)/);
+  assert.match(mapRuntimeSource, /showCompass: false/);
   assert.match(mapSource, /fitMapCamera\(/);
   assert.match(mapWorkspaceSource, /legs=\{canonicalMapLegs\}/);
-  assert.match(mapSource, /maplibregl\.setWorkerUrl\("\/maplibre\/maplibre-gl-worker\.mjs"\)/);
+  assert.match(mapSource, /maplibregl\.setWorkerUrl\(MORROVIA_MAP_WORKER_URL\)/);
+  assert.match(mapRuntimeSource, /MORROVIA_MAP_WORKER_URL = "\/maplibre\/maplibre-gl-worker\.mjs"/);
   assert.match(mapSource, /geometry: \{ type: "LineString" as const, coordinates: mappedStops\.map\(\(stop\) => stop\.coordinates\) \}/);
   assert.match(mapSource, /coordinates: segment\.routeGeometry\?\.length \? segment\.routeGeometry : \[segment\.fromCoordinates, segment\.toCoordinates\]/);
   assert.match(mapSource, /source: "trip-route"/);
@@ -136,7 +146,8 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(presentation, /line-dasharray/);
   assert.match(mapSource, /planner-map__leg/);
   assert.equal((mapSource.match(/new maplibregl\.Map\(/g) ?? []).length, 1);
-  assert.match(mapSource, /style: morroviaMapStyle/);
+  assert.match(mapSource, /\.\.\.morroviaMapOptions\(surface, "compact"\)/);
+  assert.match(mapRuntimeSource, /style: morroviaMapStyle/);
   assert.match(readFileSync(new URL("../components/easyt/morrovia-map-presentation.ts", import.meta.url), "utf8"), /"morrovia-countries"/);
   assert.match(presentation, /id: "morrovia-land"/);
   assert.match(presentation, /id: "morrovia-borders"/);
@@ -174,7 +185,8 @@ test("the route-first map restores progressive spatial intelligence", () => {
   assert.match(mapWorkspaceSource, /destinationCards=\{canonicalDestinationCards\}/);
   assert.match(mapSource, /const cards = new Map\(destinationCards\.map\(\(card\) => \[card\.stopId, card\]\)\)/);
   assert.match(mapSource, /const card = cards\.get\(stop\.id\)/);
-  assert.match(mapSource, /element\.dataset\.mapStopId = stop\.id/);
+  assert.match(mapSource, /createMorroviaStopMarker\(document,/);
+  assert.match(mapMarkerSource, /element\.dataset\.mapStopId = model\.dataset\.mapStopId/);
   assert.match(mapWorkspaceSource, /Selected transfer/);
   assert.match(mapWorkspaceSource, /Door to door/);
   assert.match(mapWorkspaceSource, /Exact schedules and current operating details still need checking/);
@@ -274,7 +286,7 @@ test("authenticated Map mutations use the account persistence queue", () => {
 });
 
 test("map overlays expose keyboard-equivalent controls and predictable Escape cleanup", () => {
-  assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\);[\s\S]*onLegSelectRef\.current\?\.\(leg\); \}\)/);
+  assert.match(mapSource, /const activateLeg = \(event: MouseEvent \| PointerEvent\) => \{[\s\S]*onLegSelectRef\.current\?\.\(leg\);[\s\S]*element\.addEventListener\("click", activateLeg\)/);
   assert.doesNotMatch(mapSource, /element\.addEventListener\("focus", \(\) => onLegSelectRef\.current\?\.\(leg\)\)/);
   assert.match(mapSource, /element\.addEventListener\("mouseenter",/);
   assert.match(mapSource, /element\.addEventListener\("click", \(event\) => \{ event\.stopPropagation\(\);[\s\S]*onSelectRef\.current\(stop\.id\); \}\)/);

@@ -276,6 +276,7 @@ function MapContext({ state = "initial" }: { state?: "initial" | "fitting" | "re
       <MorroviaMapLoading state={mapState} onRetry={() => setMapState("initial")}>
         <div className={`${journeyStyles.journey} ${styles.mapDemo}`}>
           <JourneyPlannerMap
+            surface={{ variant: "workspace" }}
             stops={mapStops}
             legs={mapLegs}
             selectedId=""

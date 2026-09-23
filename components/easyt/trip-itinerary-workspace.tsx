@@ -1201,12 +1201,6 @@ export default function TripItineraryWorkspace({
     moveCanonicalActivity(dragged.activity, dragged.sourceDayId, targetDay.id, dragged.activity.dayPart);
   };
 
-  const selectPreviewPin = (target: EventTarget | null) => {
-    const pinId = (target as HTMLElement | null)?.closest<HTMLElement>("[data-planner-pin-id]")?.dataset.plannerPinId;
-    const pin = pinId ? mapContext.pins.find((candidate) => candidate.id === pinId) : null;
-    if (pin) setSelectedItemId(itinerarySelectionForMapPin(pin, active));
-  };
-
   const currentWeekIndex = calendarWeeks.findIndex((week) => week.days.some((day) => day?.id === active.id));
   const navigatePeriod = (direction: -1 | 1) => {
     if (workspaceView === "days") { setSelectedIndex(Math.max(0, Math.min(days.length - 1, index + direction))); return; }
@@ -1512,12 +1506,7 @@ export default function TripItineraryWorkspace({
         {workspaceView === "days" ? <div className={styles.contextRailBody} hidden={Boolean(selectedDetail || selectedTransportAgenda || selectedBooking)}>
         {mapContext.stops.length || mapContext.pins.length ? <details className={styles.contextSection} open>
           <summary><span>{copy.dayMap}</span><MapPin aria-hidden="true" /></summary>
-          <div
-            className={styles.mapPreview}
-            onPointerDownCapture={(event) => selectPreviewPin(event.target)}
-            onMouseDownCapture={(event) => selectPreviewPin(event.target)}
-            onClickCapture={(event) => selectPreviewPin(event.target)}
-          >
+          <div className={styles.mapPreview}>
             {!selectedDetail ? <JourneyPlannerMap
               stops={mapContext.stops}
               legs={mapContext.legs}
@@ -1530,9 +1519,9 @@ export default function TripItineraryWorkspace({
               draftPinCoordinates={null}
               pinPlacementMode={false}
               overviewMode={mapContext.stops.length > 1}
-              previewMode
+              surface={{ variant: "embedded", interaction: "selection-only" }}
               previewLabel={`${copy.mapPreview}: ${stop?.name ?? active.title}`}
-              overviewPadding={{ top: 24, right: 24, bottom: 24, left: 24 }}
+              cameraSafeEdge={24}
               onMapPinDrop={() => undefined}
               onPlannerPinSelect={(pin) => setSelectedItemId(itinerarySelectionForMapPin(pin, active))}
               onLegSelect={(leg) => setSelectedItemId(`leg-${leg.id}`)}

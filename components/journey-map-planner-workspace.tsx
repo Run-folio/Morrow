@@ -54,6 +54,7 @@ import { initialMapCameraMode, itineraryWorkspaceHref, mapWorkspaceHref, mapWork
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { deriveTripDateFacts, formatTripNights, incomingLegForPlanItem, orderedTripPlanItems, stableStopDateRange } from "@/lib/easyt/trip-facts";
 import { conciseMapDescription, formatMapDuration, mapRouteLegsFromTrip, type MapCopilotScope } from "@/lib/easyt/map-spatial-context";
+import type { MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { originEndpointForTrip, routeEndpointForLeg, tripLegClassificationLabel, tripOriginEndpointId } from "@/lib/easyt/trip-legs";
 import { clearTripLegTransportChoice, effectiveTripLeg, selectTripLegTransportChoice, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
@@ -324,6 +325,7 @@ export function makeEasyTJourney(trip: EasyTTrip) {
 export type JourneyMapPlannerWorkspaceProps = {
   trip?: EasyTTrip | null;
   presentation?: "focused" | "shell";
+  surface?: MorroviaMapSurface;
   canonicalMutation?: TripMutationPersistence | null;
   activityAction?: ResolvedAffiliateAction | null;
   /** Deterministic visual state for Storybook acceptance stories only. */
@@ -352,6 +354,7 @@ const emptyJourneyDay: JourneyCalendarDay = { id: "empty", date: "Date to confir
 export function JourneyMapPlannerWorkspace({
   trip: providedTrip = null,
   presentation = "focused",
+  surface = { variant: "workspace" },
   canonicalMutation = null,
   activityAction,
   storyState,
@@ -2366,6 +2369,7 @@ export function JourneyMapPlannerWorkspace({
       {hasCanonicalPlanner ? (
         <div className={styles.mapDetailLayer}>
             <JourneyPlannerMap
+              surface={surface}
               stops={canonicalMapStops}
               legs={canonicalMapLegs}
               selectedId={mapMode === "overview" ? "" : selectedTripStop?.id ?? canonicalMapStops[0]?.id ?? selectedId}
@@ -2383,7 +2387,8 @@ export function JourneyMapPlannerWorkspace({
               pinPlacementMode={pinPlacementMode}
               overviewMode={mapMode === "overview"}
               preserveCameraOnResize={isShellPresentation}
-              overviewPadding={isShellPresentation ? { top: 76, right: 84, bottom: 76, left: 440 } : undefined}
+              cameraSafeEdge={isShellPresentation ? 76 : undefined}
+              cameraOcclusions={isShellPresentation ? { right: 8, left: 364 } : undefined}
               cameraInteractionKey={cameraInteractionKey}
               onMapPinDrop={(coordinates) => { setPinCoordinates(coordinates); setPinPlacementMode(false); }}
               onPlannerPinSelect={selectPlannerPin}

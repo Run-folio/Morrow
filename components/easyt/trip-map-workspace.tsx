@@ -11,5 +11,5 @@ import styles from "./trip-map-workspace.module.css";
  */
 export default function TripMapWorkspace({ trip, storyState, activityAction }: { trip: EasyTTrip; storyState?: JourneyMapPlannerWorkspaceProps["storyState"]; activityAction?: JourneyMapPlannerWorkspaceProps["activityAction"] }) {
   const canonicalMutation = useTripShellMutation();
-  return <div className={styles.wideMap}><JourneyMapPlannerWorkspace trip={trip} presentation="shell" canonicalMutation={canonicalMutation} storyState={storyState} activityAction={activityAction} /></div>;
+  return <div className={styles.wideMap}><JourneyMapPlannerWorkspace trip={trip} presentation="shell" surface={{ variant: "workspace" }} canonicalMutation={canonicalMutation} storyState={storyState} activityAction={activityAction} /></div>;
 }

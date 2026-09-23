@@ -409,7 +409,7 @@ export default function TripOverviewWorkspace({
               {routeRationale ? <aside className={styles.routeRationale} aria-labelledby="overview-route-rationale-title"><Sparkles aria-hidden="true" /><div><p id="overview-route-rationale-title">Why this order</p><span>{routeRationaleCopy(routeRationale)}</span></div><EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/itinerary`} size="small" variant="quiet">View detailed itinerary<ChevronRight aria-hidden="true" /></EasyTLinkButton></aside> : null}
             </div>
             {overviewMapStops.filter((stop) => stop.coordinates).length > 1 ? <aside className={styles.routeMapPreview} aria-label="Whole-trip map preview">
-              <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode previewMode overviewPadding={{ top: 34, right: 34, bottom: 34, left: 34 }} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
+              <JourneyPlannerMap stops={overviewMapStops} legs={overviewMapLegs} selectedId="" plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "preview" }} cameraSafeEdge={34} onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onSelect={() => undefined} />
             </aside> : null}
           </div>
           {unresolvedPlaceIntents.length ? <div className={styles.unresolvedIntentList} aria-label="Places not included in this route">
