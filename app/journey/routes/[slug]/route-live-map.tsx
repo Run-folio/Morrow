@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { mapRouteCasing, mapRouteLine, mapRoutePlanning, morroviaMapStyle } from "@/components/easyt/morrovia-map-presentation";
 import mapPresentation from "@/components/easyt/morrovia-map-presentation.module.css";
 import { normalizeRouteMapFailure } from "@/lib/easyt/route-map-runtime";
-import type { RouteMapSelection } from "./route-map-selection";
+import { editorialConnectionId, type RouteMapSelection } from "./route-map-selection";
 import styles from "./route-overview.module.css";
 
-type RouteStop = { id: string; name: string; coordinates: [number, number] | null };
+type RouteStop = { id: string; name: string; coordinates: [number, number] | null; onward?: { id?: string | null } | null };
 
-export default function RouteLiveMap({ title, stops, className, selected = null, onSelect, resetVersion = 0 }: {
+export default function RouteLiveMap({ title, stops, className, selected = { kind: "route" }, onSelect, resetVersion = 0 }: {
   title: string; stops: RouteStop[]; className?: string; selected?: RouteMapSelection;
   onSelect?: (selection: RouteMapSelection) => void; resetVersion?: number;
 }) {
@@ -86,7 +86,7 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
         marker.setAttribute("aria-pressed", "false");
         marker.addEventListener("click", (event) => {
           event.stopPropagation();
-          onSelectRef.current?.({ type: "stop", index });
+          onSelectRef.current?.({ kind: "stop", stopId: stop.id });
         });
         return new maplibregl.Marker({ element: marker, anchor: "center" }).setLngLat(stop.coordinates).addTo(map!);
       });
@@ -103,7 +103,7 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
               const next = stops[index + 1];
               // Never bridge over a missing coordinate and imply a different leg.
               if (!stop.coordinates || !next.coordinates || ![...stop.coordinates, ...next.coordinates].every(Number.isFinite)) return [];
-              return [{ type: "Feature" as const, properties: { index }, geometry: { type: "LineString" as const, coordinates: [stop.coordinates, next.coordinates] } }];
+              return [{ type: "Feature" as const, properties: { index, connectionId: editorialConnectionId(stop.id, next.id, stop.onward?.id) }, geometry: { type: "LineString" as const, coordinates: [stop.coordinates, next.coordinates] } }];
             }),
           },
         });
@@ -114,8 +114,8 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
         map.addLayer({ id: "route-overview-hit", type: "line", source: "route-overview-line", paint: { "line-color": selectedColor, "line-width": 28, "line-opacity": 0 } });
         map.on("click", "route-overview-hit", (event) => {
           if ((event.originalEvent.target as HTMLElement)?.closest(".route-overview-map__marker")) return;
-          const index = Number(event.features?.[0]?.properties?.index);
-          if (Number.isInteger(index)) onSelectRef.current?.({ type: "connection", index });
+          const connectionId = event.features?.[0]?.properties?.connectionId;
+          if (typeof connectionId === "string") onSelectRef.current?.({ kind: "connection", connectionId });
         });
         map.on("mouseenter", "route-overview-hit", () => { if (map) map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "route-overview-hit", () => { if (map) map.getCanvas().style.cursor = ""; });
@@ -128,9 +128,13 @@ export default function RouteLiveMap({ title, stops, className, selected = null,
         updateSelection.current = () => {
           if (!map) return;
           const selection = selectionRef.current;
-          markers.forEach((marker, index) => marker.getElement().setAttribute("aria-pressed", String(selection?.type === "stop" && selection.index === mappedStops[index].index)));
-          map.setFilter("route-overview-selected", ["==", ["get", "index"], selection?.type === "connection" ? selection.index : -1]);
-          const active = selection ? mappedStops.filter(stop => stop.index === selection.index || (selection.type === "connection" && stop.index === selection.index + 1)) : mappedStops;
+          const selectedConnectionIndex = selection.kind === "connection" ? stops.findIndex((stop, index) => {
+            const next = stops[index + 1];
+            return Boolean(next && editorialConnectionId(stop.id, next.id, stop.onward?.id) === selection.connectionId);
+          }) : -1;
+          markers.forEach((marker, index) => marker.getElement().setAttribute("aria-pressed", String(selection.kind === "stop" && selection.stopId === mappedStops[index].id)));
+          map.setFilter("route-overview-selected", ["==", ["get", "index"], selectedConnectionIndex]);
+          const active = selection.kind === "route" ? mappedStops : mappedStops.filter(stop => selection.kind === "stop" ? stop.id === selection.stopId : stop.index === selectedConnectionIndex || stop.index === selectedConnectionIndex + 1);
           fit(active.map(stop => stop.coordinates));
         };
         updateSelection.current();

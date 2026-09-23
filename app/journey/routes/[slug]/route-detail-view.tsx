@@ -14,7 +14,7 @@ import { nightLabel, transferStatus } from "./route-detail-labels";
 import type { RouteMapSelection } from "./route-map-selection";
 import styles from "./route-overview.module.css";
 
-export default function RouteDetailView({ detail, activityAction, navigation, initialMapSelection = null }: {
+export default function RouteDetailView({ detail, activityAction, navigation, initialMapSelection = { kind: "route" } }: {
   detail: PublicRouteDetail;
   activityAction?: ResolvedAffiliateAction | null;
   navigation?: ReactNode;

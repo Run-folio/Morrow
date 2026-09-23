@@ -75,6 +75,14 @@ test("repeated city visits retain stable visit identity, order and exact legs", 
   ]);
   assert.equal(view.stops[0]?.onward?.to, "Naxos");
   assert.equal(view.stops[1]?.onward?.to, "Athens");
+  assert.equal(view.stops[0]?.onward?.id, "out-ferry");
+  assert.equal(view.stops[1]?.onward?.id, "return-ferry");
+});
+
+test("connections without a canonical leg use adjacent occurrence ids", () => {
+  const trip = personalFixture();
+  trip.legs = trip.legs.slice(0, 1);
+  assert.equal(personalRoutePresentation(trip).stops[1]?.onward?.id, "connection:naxos:athens-return");
 });
 
 test("missing nights, coordinates, imagery and transport remain explicit unknowns", () => {

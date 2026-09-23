@@ -68,9 +68,9 @@ export const BalkansReviewedDiscovery: Story = { args: { detail: balkans } };
 export const PortugalFactualFallback: Story = { args: { detail: portugal } };
 export const IcelandEditorialReview: Story = { args: { detail: publicRouteDetailFor("iceland-ring-road")! } };
 
-export const SelectedJapanStop: Story = { args: { detail: japan, initialMapSelection: { type: "stop", index: 2 } } };
-export const SelectedBalkansConnection: Story = { args: { detail: balkans, initialMapSelection: { type: "connection", index: 0 } } };
-export const UnknownSelectedTransfer: Story = { args: { detail: unknownTransfers, initialMapSelection: { type: "connection", index: 0 } } };
+export const SelectedJapanStop: Story = { args: { detail: japan, initialMapSelection: { kind: "stop", stopId: japan.stops[2].id } } };
+export const SelectedBalkansConnection: Story = { args: { detail: balkans, initialMapSelection: { kind: "connection", connectionId: `connection:${balkans.stops[0].id}:${balkans.stops[1].id}` } } };
+export const UnknownSelectedTransfer: Story = { args: { detail: unknownTransfers, initialMapSelection: { kind: "connection", connectionId: `connection:${unknownTransfers.stops[0].id}:${unknownTransfers.stops[1].id}` } } };
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const JapanMobile390: Story = { args: { detail: japan }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const PortugalMobile430: Story = { args: { detail: portugal }, globals: { viewport: { value: "morrovia430", isRotated: false } } };

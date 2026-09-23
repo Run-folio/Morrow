@@ -18,6 +18,7 @@ export type PersonalRouteHighlight = {
 };
 
 export type PersonalRouteConnection = {
+  id: string;
   from: string;
   to: string;
   mode: string | null;
@@ -79,6 +80,7 @@ function connectionFor(leg: TripLeg | null, from: TripStop, to: TripStop): Perso
     : leg.confidence ?? (minutes === null ? "unknown" : "medium");
   const modeLabel = knownMode ? titleCase(knownMode) : "Transfer";
   return {
+    id: leg?.id ?? `connection:${from.id}:${to.id}`,
     from: from.name,
     to: to.name,
     mode: knownMode,

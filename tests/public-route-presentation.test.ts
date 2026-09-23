@@ -79,7 +79,9 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.equal((summary.match(/<EasyTSelect/g) ?? []).length, 1);
   assert.match(summary, /<option value="whole">Whole route<\/option>/);
   assert.doesNotMatch(summary, /<EasyTButton[^>]*>Whole route<\/EasyTButton>|icon=\{Route\}/);
-  assert.match(summary, /routeMapSelectionFromHash\(location\.hash, stops\.length\)/);
+  assert.match(summary, /routeMapSelectionFromHash\(location\.hash, stops\)/);
+  assert.match(summary, /selected\.kind === "stop"/);
+  assert.match(summary, /selected\.connectionId/);
   assert.match(detail, /id="route-map" tabIndex=\{-1\}/);
   assert.match(summary, /closest<HTMLElement>\("#route-map"\)/);
   assert.match(summary, /mapRegion\?\.focus\(\{ preventScroll: true \}\)/);

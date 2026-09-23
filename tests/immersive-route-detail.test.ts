@@ -6,7 +6,7 @@ import { routeFamilyByKey } from "../lib/easyt/route-catalog.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { routeDetailPresentation, relatedRouteDetails } from "../app/journey/routes/[slug]/route-detail-presentation.ts";
 import { nightLabel, transferStatus } from "../app/journey/routes/[slug]/route-detail-labels.ts";
-import { routeMapSelectionFromHash, validRouteSelection } from "../app/journey/routes/[slug]/route-map-selection.ts";
+import { editorialConnectionId, routeMapHashForSelection, routeMapSelectionFromHash, validRouteSelection } from "../app/journey/routes/[slug]/route-map-selection.ts";
 import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const owner = "app/journey/routes/[slug]/";
@@ -48,11 +48,20 @@ test("known modes with unknown durations never become timed or verified transfer
   assert.match(transferStatus({ ...connection, planningMinutes: 120, confidence: "needs-review" }), /details to confirm/);
 });
 
-test("selection deep links keep indices in bounds and do not mutate route data", () => {
-  assert.deepEqual(routeMapSelectionFromHash("#route-map-stop-4", 5), { type: "stop", index: 4 });
-  assert.deepEqual(routeMapSelectionFromHash("#route-map-connection-3", 5), { type: "connection", index: 3 });
-  for (const hash of ["#route-map", "#route-map-stop-5", "#route-map-connection-4", "#route-map-stop--1", "#route-map-stop-1.5", "#other"]) assert.equal(routeMapSelectionFromHash(hash, 5), null);
-  assert.equal(validRouteSelection({ type: "stop", index: NaN }, 5), null);
+test("selection deep links translate public indices to canonical occurrence identities", () => {
+  const stops = [
+    { id: "tokyo-first", onward: { id: "leg-first-kyoto" } },
+    { id: "kyoto", onward: { id: "connection:kyoto:tokyo-return" } },
+    { id: "tokyo-return", onward: null },
+  ];
+  assert.deepEqual(routeMapSelectionFromHash("#route-map-stop-2", stops), { kind: "stop", stopId: "tokyo-return" });
+  assert.deepEqual(routeMapSelectionFromHash("#route-map-connection-0", stops), { kind: "connection", connectionId: "leg-first-kyoto" });
+  assert.equal(routeMapHashForSelection({ kind: "connection", connectionId: "leg-first-kyoto" }, stops), "#route-map-connection-0");
+  assert.equal(routeMapHashForSelection({ kind: "stop", stopId: "tokyo-return" }, stops), "#route-map-stop-2");
+  assert.equal(routeMapHashForSelection({ kind: "route" }, stops), "#route-map");
+  for (const hash of ["#route-map", "#route-map-stop-3", "#route-map-connection-2", "#route-map-stop--1", "#route-map-stop-1.5", "#other"]) assert.deepEqual(routeMapSelectionFromHash(hash, stops), { kind: "route" });
+  assert.deepEqual(validRouteSelection({ kind: "stop", stopId: "missing" }, stops), { kind: "route" });
+  assert.equal(editorialConnectionId("kyoto", "tokyo-return"), "connection:kyoto:tokyo-return");
 });
 
 test("photography resolves only to licensed canonical destinations and preserves attribution", () => {
