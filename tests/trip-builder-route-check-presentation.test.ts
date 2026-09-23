@@ -31,3 +31,15 @@ test("the map comparison layer is dashed, noninteractive and does not create mar
   assert.doesNotMatch(map, /comparisonMarkers/);
   assert.match(map, /comparisonLabel/);
 });
+
+test("Route Check projects country continuity through the existing reason and protected apply boundary", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+
+  assert.match(builder, /currentCountryReentryPenaltyCount/);
+  assert.match(builder, /recommendedCountryReentryPenaltyCount/);
+  assert.match(builder, /recommendedCountryReentryPenaltyCount < currentCountryReentryPenaltyCount/);
+  assert.match(builder, /keeps stops in the same country together, reducing avoidable re-entry/i);
+  assert.match(builder, /applyRecommendedOrder[\s\S]*scheduleLocks\.stopIds\.length[\s\S]*scheduleLocks\.arrivalDates[\s\S]*structuredRouteConstraints\.fixedCommitments/);
+  assert.match(builder, /applyScoredRouteCandidate[\s\S]*scheduleLocks\.stopIds\.length[\s\S]*scheduleLocks\.arrivalDates[\s\S]*structuredRouteConstraints\.fixedCommitments/);
+  assert.match(builder, /validateBuilderStopOrder\(stops, proposedIds,[\s\S]*lockedStopIds: scheduleLocks\.stopIds,[\s\S]*fixedOrder: Boolean\(structuredRouteConstraints\.fixedCommitments\?\.length\)/);
+});

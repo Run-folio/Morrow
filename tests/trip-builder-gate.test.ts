@@ -7,6 +7,7 @@ import { publicRouteDetailFor } from "../lib/easyt/public-route.ts";
 import { routePlannerPayload } from "../lib/easyt/public-route-handoff.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { validateBuilderStopOrder } from "../lib/easyt/trip-builder-order.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { builderBrowserTestsEnabled, renderBuilder } from "./helpers/builder-render.ts";
 
@@ -910,4 +911,21 @@ test("the builder gate preserves distinct feasible and unknown realism outcomes"
     }],
   };
   assert.equal(canBuildTrip(unsupported).qualityClassification, "unknown due to insufficient transport evidence");
+});
+
+test("Builder applies a country-continuity proposal by occurrence-safe stop IDs", () => {
+  const stops = [
+    { id: "delhi-first", canonicalPlaceId: "delhi", countryCode: "IN" },
+    { id: "dubai", canonicalPlaceId: "dubai", countryCode: "AE" },
+    { id: "delhi-return", canonicalPlaceId: "delhi", countryCode: "IN" },
+  ];
+  const proposedIds = ["delhi-first", "delhi-return", "dubai"];
+  const applied = validateBuilderStopOrder(stops, proposedIds);
+
+  assert.equal(applied.ok, true);
+  assert.deepEqual(applied.ok ? applied.ids : [], proposedIds);
+  assert.deepEqual(applied.ok ? applied.stops.map((stop) => stop.id) : [], proposedIds);
+  assert.equal(applied.ok ? applied.stops.filter((stop) => stop.canonicalPlaceId === "delhi").length : 0, 2);
+  assert.deepEqual(validateBuilderStopOrder(stops, proposedIds, { fixedOrder: true }), { ok: false, reason: "fixed-order" });
+  assert.deepEqual(validateBuilderStopOrder(stops, proposedIds, { lockedStopIds: ["dubai"] }), { ok: false, reason: "locked-stop" });
 });

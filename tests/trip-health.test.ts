@@ -74,6 +74,63 @@ const readyTrip = (): EasyTTrip => {
   return trip;
 };
 
+const countryReentryTrip = (): EasyTTrip => {
+  const trip = baseTrip();
+  trip.startDate = "2026-09-01";
+  trip.endDate = "2026-09-07";
+  trip.brief.originCoordinates = [0, 0];
+  trip.brief.originCountry = "United Kingdom";
+  trip.brief.intent = {
+    ...trip.brief.intent!,
+    hardConstraints: {
+      ...trip.brief.intent!.hardConstraints,
+      mustSeeStopIds: ["india-north", "uae", "india-south"],
+      fixedCommitments: [],
+    },
+  };
+  trip.stops = [
+    { id: "india-north", order: 0, name: "India North", country: "India", countryCode: "IN", latitude: 0, longitude: 0, arrivalDate: "2026-09-01", departureDate: "2026-09-03", nights: 2 },
+    { id: "uae", order: 1, name: "UAE", country: "United Arab Emirates", countryCode: "AE", latitude: 0, longitude: 0, arrivalDate: "2026-09-03", departureDate: "2026-09-05", nights: 2 },
+    { id: "india-south", order: 2, name: "India South", country: "India", countryCode: "IN", latitude: 0, longitude: 0, arrivalDate: "2026-09-05", departureDate: "2026-09-07", nights: 2 },
+  ];
+  trip.legs = [
+    {
+      id: "origin-india", fromStopId: "health-origin", toStopId: "india-north", mode: "train", distanceKm: 120, durationMinutes: 150,
+      provider: "Fixture", routeMetadata: { planningEstimate: true, routingConfidence: "high" }, classification: "arrival",
+      fromEndpoint: { kind: "origin", id: "health-origin", name: "London", country: "United Kingdom", coordinates: [0, 0] },
+      toEndpoint: { kind: "stop", id: "india-north", name: "India North", country: "India", coordinates: [0, 0] },
+    },
+    {
+      id: "india-uae", fromStopId: "india-north", toStopId: "uae", mode: "train", distanceKm: 120, durationMinutes: 150,
+      provider: "Fixture", routeMetadata: { planningEstimate: true, routingConfidence: "high" }, classification: "international",
+      fromEndpoint: { kind: "stop", id: "india-north", name: "India North", country: "India", coordinates: [0, 0] },
+      toEndpoint: { kind: "stop", id: "uae", name: "UAE", country: "United Arab Emirates", coordinates: [0, 0] },
+    },
+    {
+      id: "uae-india", fromStopId: "uae", toStopId: "india-south", mode: "train", distanceKm: 120, durationMinutes: 150,
+      provider: "Fixture", routeMetadata: { planningEstimate: true, routingConfidence: "high" }, classification: "international",
+      fromEndpoint: { kind: "stop", id: "uae", name: "UAE", country: "United Arab Emirates", coordinates: [0, 0] },
+      toEndpoint: { kind: "stop", id: "india-south", name: "India South", country: "India", coordinates: [0, 0] },
+    },
+  ];
+  trip.planItems = Array.from({ length: 7 }, (_, index) => ({
+    id: `country-day-${index + 1}`,
+    stopId: index < 2 ? "india-north" : index < 4 ? "uae" : "india-south",
+    dayNumber: index + 1,
+    date: `2026-09-0${index + 1}`,
+    type: "activity" as const,
+    title: `Day ${index + 1}`,
+    reason: "",
+    notes: [],
+    startsAt: null,
+    endsAt: null,
+    bookingUrl: null,
+    latitude: null,
+    longitude: null,
+  }));
+  return trip;
+};
+
 const placeIssue = (input: Pick<PlaceIssue, "code" | "severity" | "blocksRoute" | "mentionId" | "sourceText" | "reason">): PlaceIssue => ({
   ...input,
   canonicalPlaceId: undefined,
@@ -191,6 +248,16 @@ test("Trip Health exposes unresolved independent final-plan validation", () => {
   const trip = baseTrip();
   const issues = reviewTrip(trip);
   assert.equal(issues.some((item) => item.rule === "post-generation-total-nights-mismatch" && item.severity === "critical"), true);
+});
+
+test("Trip Health surfaces one advisory country-continuity validator issue with status and repairability", () => {
+  const issues = reviewTrip(countryReentryTrip()).filter((item) => item.rule === "post-generation-country-reentry");
+
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0]?.severity, "warning");
+  assert.match(issues[0]?.message ?? "", /India.*separate route blocks/i);
+  assert.match(issues[0]?.evidence ?? "", /avoidable/);
+  assert.match(issues[0]?.evidence ?? "", /manual/);
 });
 
 test("treats a fixed commitment outside the trip dates as blocking", () => {

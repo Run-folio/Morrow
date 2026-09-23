@@ -186,6 +186,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
     "total-nights-mismatch",
     "duplicate-stop",
     "transport-restriction-conflict",
+    "country-reentry",
   ]);
   const hasUnknownNights = trip.stops.some((stop) => stop.nights === null);
   const surfacedCriticIssues = dateFacts.state === "valid"
@@ -559,11 +560,14 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   surfacedCriticIssues.forEach((item) => {
+    const continuityStatus = item.code === "country-reentry" && typeof item.evidence.continuityStatus === "string"
+      ? ` Country continuity status: ${item.evidence.continuityStatus}; advisory repairability: ${item.repairability}.`
+      : "";
     results.push(recommendation(trip, {
       rule: `post-generation-${item.code}`,
       severity: item.severity === "error" ? "critical" : "warning",
       message: item.message,
-      evidence: `Independent final-plan validation (${finalValidation.configVersion}); ${item.repairability === "automatic" ? "a bounded targeted repair is supported" : "manual resolution is required"}.`,
+      evidence: `Independent final-plan validation (${finalValidation.configVersion}); ${item.repairability === "automatic" ? "a bounded targeted repair is supported" : "manual resolution is required"}.${continuityStatus}`,
       affectedDays: trip.planItems.filter((planItem) => item.stopIds.includes(planItem.stopId)).map((planItem) => planItem.dayNumber),
       confidence: "high",
       proposedChange: null,

@@ -1685,12 +1685,18 @@ function TripBuilderDocument() {
   const backtrackingPenaltyCount = currentRouteScore?.state === "scored"
     ? currentRouteScore.penalties.filter((penalty) => penalty.code === "unnecessary-backtracking").length
     : null;
+  const currentCountryReentryPenaltyCount = currentRouteScore?.state === "scored"
+    ? currentRouteScore.penalties.filter((penalty) => penalty.code === "country-reentry").length
+    : null;
   const recommendedOrderKey = routeIntelligence.route.recommendedStopIds.join("\u001f");
   const recommendedRouteScore = routeIntelligence.route.scoring?.rankedCandidates.find((candidate) => (
     candidate.state === "scored" && candidate.stopIds.join("\u001f") === recommendedOrderKey
   ));
   const recommendedBacktrackingPenaltyCount = recommendedRouteScore?.state === "scored"
     ? recommendedRouteScore.penalties.filter((penalty) => penalty.code === "unnecessary-backtracking").length
+    : null;
+  const recommendedCountryReentryPenaltyCount = recommendedRouteScore?.state === "scored"
+    ? recommendedRouteScore.penalties.filter((penalty) => penalty.code === "country-reentry").length
     : null;
   const scoredAlternativeRoutes = (routeIntelligence.route.scoring?.rankedCandidates ?? []).flatMap((score) => {
     if (!canonicalTimingComplete) return [];
@@ -2461,7 +2467,7 @@ function TripBuilderDocument() {
 
   const applyRecommendedOrder = () => {
     if (routeIntelligence.route.state !== "recommendation") return;
-    if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length) return;
+    if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length || structuredRouteConstraints.fixedCommitments?.length) return;
     const order = routeIntelligence.route.recommendedStopIds;
     if (!commitStopOrder(order, "route-check")) return;
     setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
@@ -3031,13 +3037,17 @@ function TripBuilderDocument() {
     setTimingWarningOpen(true);
   }, [gateConflict, hasRouteSkeleton]);
 
-  const routeRecommendationReason = backtrackingPenaltyCount !== null
-    && recommendedBacktrackingPenaltyCount !== null
-    && recommendedBacktrackingPenaltyCount < backtrackingPenaltyCount
-    ? (language === "es" ? "Reduce los retrocesos innecesarios entre tus paradas." : "It reduces unnecessary backtracking between your stops.")
-    : canonicalTimingComplete && (routeIntelligence.route.improvementMinutes ?? 0) >= 90
-      ? (language === "es" ? "Reduce el tiempo estimado de traslado y deja más tiempo en los destinos." : "It reduces estimated transfer time, leaving more of the trip for your destinations.")
-      : (language === "es" ? "Mantiene el viaje avanzando en una dirección geográfica más clara." : "It keeps the trip moving in a clearer geographic direction.");
+  const routeRecommendationReason = currentCountryReentryPenaltyCount !== null
+    && recommendedCountryReentryPenaltyCount !== null
+    && recommendedCountryReentryPenaltyCount < currentCountryReentryPenaltyCount
+    ? (language === "es" ? "Mantiene juntas las paradas del mismo país y reduce reentradas evitables." : "It keeps stops in the same country together, reducing avoidable re-entry.")
+    : backtrackingPenaltyCount !== null
+      && recommendedBacktrackingPenaltyCount !== null
+      && recommendedBacktrackingPenaltyCount < backtrackingPenaltyCount
+      ? (language === "es" ? "Reduce los retrocesos innecesarios entre tus paradas." : "It reduces unnecessary backtracking between your stops.")
+      : canonicalTimingComplete && (routeIntelligence.route.improvementMinutes ?? 0) >= 90
+        ? (language === "es" ? "Reduce el tiempo estimado de traslado y deja más tiempo en los destinos." : "It reduces estimated transfer time, leaving more of the trip for your destinations.")
+        : (language === "es" ? "Mantiene el viaje avanzando en una dirección geográfica más clara." : "It keeps the trip moving in a clearer geographic direction.");
   const showTimingWarning = Boolean(gateConflict || highlyCompressedTrip || longJourneyIssue || tripTimingNotice);
   const timingWarningTitle = gateConflict
     ? (language === "es" ? "Revisa esto antes de crear el viaje" : "Review this before building")
@@ -3066,7 +3076,7 @@ function TripBuilderDocument() {
     : blockingPlaceIssue
       ? (language === "es" ? "Confirma los lugares pendientes antes de evaluar la ruta completa." : "Confirm the remaining places before checking the complete route.")
       : routeRecommendationVisible
-        ? (language === "es" ? "Hay disponible un orden más directo." : "A cleaner order is available.")
+        ? routeRecommendationReason
         : routeIntelligence.route.tradeoffs[0] && effectiveIntent.hardConstraints.avoidDriving
           ? (language === "es" ? "Evitar coche está activo: compara tren o vuelo para los traslados locales antes de reservar." : "Avoid driving is active: compare rail or flight for local transfers before booking.")
         : canonicalTransferReviewCount > 0
