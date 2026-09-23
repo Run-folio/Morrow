@@ -57,7 +57,7 @@ function PersonalRouteStory({ trip, initialSection }: { trip: EasyTTrip; initial
     return () => cancelAnimationFrame(frame);
   }, [initialSection]);
 
-  return <PersonalRouteView presentation={personalRoutePresentation(trip)} navigation={<EasyTNavigation current="trips" />} />;
+  return <PersonalRouteView presentation={personalRoutePresentation(trip)} navigation={<EasyTNavigation current="trips" logoTone="light" />} />;
 }
 
 const meta = {

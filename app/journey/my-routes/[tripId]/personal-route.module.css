@@ -1,5 +1,7 @@
 .page { min-height:100vh; }
 .title { max-width:100%; overflow-wrap:anywhere; }
+.heroMissing { background:var(--morrovia-ink); }
+.heroMissing :global([class*="photoFallback"]) { color:var(--morrovia-paper); background:var(--morrovia-ink); }
 .accessState { width:min(920px,calc(100% - 40px)); min-height:55vh; margin:0 auto; padding:80px 0; }
 .deviceNotice { width:min(1280px,calc(100% - 112px)); margin:20px auto 0; }
 .unknownFact { display:flex; align-items:center; gap:8px; margin-top:18px!important; color:var(--morrovia-muted); font:var(--morrovia-type-supporting-body); }

@@ -15,6 +15,7 @@ import {
   HeartPulse,
   Map,
   MapPin,
+  Route,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -50,6 +51,7 @@ import type { ReadinessCard, TravelReadinessProfile } from "@/lib/easyt/travel-r
 import { groupTripPrepTasks } from "@/lib/easyt/trip-prep";
 import { useWorkspaceOrientationReady, useWorkspaceOrientationTarget } from "./workspace-orientation";
 import { sameJourneyPlace } from "@/lib/easyt/journey-endpoints";
+import { personalRouteHref } from "@/lib/easyt/personal-route";
 import TripExplicitPlans from "./trip-explicit-plans";
 import { overviewPlaceImage, overviewStopImage, type OverviewPlaceImage } from "@/lib/easyt/trip-overview-imagery";
 import { canonicalPlacePhotoCacheKey, resolveRoutePhotoCandidates, type RoutePhotoCandidate } from "@/lib/easyt/route-photo-cache";
@@ -379,6 +381,7 @@ export default function TripOverviewWorkspace({
             <div className={styles.routeActions}>
               <EasyTLinkButton href={primaryAction.href} size="small">{primaryAction.label}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
               <EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary" icon={Map}>Explore on map</EasyTLinkButton>
+              <EasyTLinkButton href={personalRouteHref(trip.id)} size="small" variant="secondary" icon={Route}>View journey</EasyTLinkButton>
               <EasyTLinkButton href={tripBuilderHref(trip.id, trip.ownerId)} size="small" variant="quiet" icon={SlidersHorizontal}>Adjust route</EasyTLinkButton>
             </div>
           </div>

@@ -29,7 +29,7 @@ export default function PersonalRouteView({ presentation, navigation }: { presen
   const highlightStops = new Map(presentation.stops.map((stop) => [stop.id, stop.name]));
   return <main className={`${routeStyles.page} ${styles.page}`}>
     <a className={routeStyles.skipLink} href="#personal-route-title">Skip to your route</a>
-    <section className={`${routeStyles.hero} ${presentation.hero ? "" : routeStyles.heroMissing}`} aria-labelledby="personal-route-title">
+    <section className={`${routeStyles.hero} ${presentation.hero ? "" : `${routeStyles.heroMissing} ${styles.heroMissing}`}`} aria-labelledby="personal-route-title">
       <PersonalRoutePhoto image={presentation.hero} label={presentation.title} className={routeStyles.heroPhoto} />
       <div className={routeStyles.navigation}>{navigation}</div>
       <div className={routeStyles.heroCopy}>

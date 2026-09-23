@@ -23,14 +23,14 @@ export default async function PersonalRoutePage({ params }: { params: Promise<{ 
     ? await getAuth().api.getSession({ headers: await headers() })
     : null;
   if (!session?.user?.id || !session.user.email) {
-    const navigation = <EasyTNavigation current="trips" />;
+    const navigation = <EasyTNavigation current="trips" logoTone="light" />;
     return <PersonalRouteDeviceResolver tripId={tripId} ownerId={null} navigation={navigation} />;
   }
   const [trip, preferences] = await Promise.all([
     getTripForOwner(session.user.id, tripId),
     getEasyTUserPreferences(session.user.id),
   ]);
-  const navigation = <EasyTNavigation current="trips" account={{
+  const navigation = <EasyTNavigation current="trips" logoTone="light" account={{
     id: session.user.id,
     name: session.user.name,
     email: session.user.email,

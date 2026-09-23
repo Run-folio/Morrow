@@ -30,6 +30,7 @@ import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, Mor
 import { useWorkspaceOrientationBlocker, useWorkspaceOrientationTarget, WorkspaceOrientationLauncher } from "./workspace-orientation";
 import { renameTripIdentity, tripCustomTitle, tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { deriveTripDateFacts } from "@/lib/easyt/trip-facts";
+import { personalRouteHref } from "@/lib/easyt/personal-route";
 import { overnightAccommodationStops } from "@/lib/easyt/accommodation";
 import { useTripMutationPersistence, type TripMutationPersistence } from "./use-trip-mutation-persistence";
 import styles from "./trip-shell.module.css";
@@ -301,6 +302,7 @@ export function useTripShellTrip() {
 
 const views = [
   { id: "overview", label: "Overview", icon: House, suffix: "" },
+  { id: "journey", label: "Journey", icon: Route, href: personalRouteHref },
   { id: "map", label: "Map", icon: Map, suffix: "/map" },
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
@@ -336,7 +338,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
           <Link
             key={view.id}
             className={active ? styles.subnavActive : undefined}
-            href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
+            href={"href" in view ? view.href(tripId) : view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
             aria-current={active ? "page" : undefined}
           >
             <Icon aria-hidden="true" />

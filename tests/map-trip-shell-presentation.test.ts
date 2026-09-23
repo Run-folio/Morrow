@@ -386,8 +386,9 @@ test("Map workspace navigation contains no legacy planner destinations", () => {
   assert.match(mapWorkspaceSource, /mapWorkspaceHref\(/);
 });
 
-test("TripShell keeps Overview canonical with the approved six-workspace order", () => {
+test("TripShell keeps Overview canonical and exposes one first-class Journey destination", () => {
   const overview = tripShellSource.indexOf('{ id: "overview", label: "Overview", icon: House, suffix: "" }');
+  const journey = tripShellSource.indexOf('{ id: "journey", label: "Journey", icon: Route, href: personalRouteHref }');
   const map = tripShellSource.indexOf('{ id: "map", label: "Map"');
   const itinerary = tripShellSource.indexOf('{ id: "itinerary", label: "Itinerary"');
   const explore = tripShellSource.indexOf('{ id: "explore", label: "Explore"');
@@ -395,7 +396,9 @@ test("TripShell keeps Overview canonical with the approved six-workspace order",
   const transport = tripShellSource.indexOf('{ id: "transport", label: "Transport"');
 
   assert.ok(overview >= 0);
-  assert.ok(overview < map && map < itinerary && itinerary < explore && explore < stay && stay < transport);
+  assert.ok(overview < journey && journey < map && map < itinerary && itinerary < explore && explore < stay && stay < transport);
+  assert.equal((tripShellSource.match(/id: "journey"/g) ?? []).length, 1);
+  assert.match(tripShellSource, /"href" in view \? view\.href\(tripId\)/);
   assert.doesNotMatch(tripShellSource, /id: "prep"|label: "Prep"|suffix: "\/prep"/);
   assert.match(tripShellSource, /: "overview";/);
 });

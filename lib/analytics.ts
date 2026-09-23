@@ -241,6 +241,7 @@ export function classifyAnalyticsSaveError(error: unknown): "auth" | "network" |
 export function normalizeAnalyticsPath(value: string) {
   const rawPath = value.split(/[?#]/, 1)[0] || "/";
   const segments = rawPath.split("/");
+  if (segments[1] === "journey" && segments[2] === "my-routes" && segments[3]) return ["", "journey", "my-routes", "[tripId]", ...segments.slice(4)].join("/");
   if (segments[1] !== "journey" || !segments[2] || STATIC_JOURNEY_ROUTES.has(segments[2])) return rawPath;
   return ["", "journey", "[tripId]", ...segments.slice(3)].join("/");
 }

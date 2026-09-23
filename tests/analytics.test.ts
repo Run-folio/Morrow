@@ -14,6 +14,7 @@ import { createPrivacyConsentRecord } from "../lib/privacy-consent.ts";
 test("analytics paths omit query data and collapse opaque workspace IDs", () => {
   assert.equal(normalizeAnalyticsPath("/journey/home?brief=private"), "/journey/home");
   assert.equal(normalizeAnalyticsPath("/journey/trip-123/map?stay=stop-2"), "/journey/[tripId]/map");
+  assert.equal(normalizeAnalyticsPath("/journey/my-routes/trip-secret"), "/journey/my-routes/[tripId]");
   assert.equal(normalizeAnalyticsPath("/journey/dashboard#trips"), "/journey/dashboard");
 });
 

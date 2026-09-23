@@ -125,13 +125,17 @@ test("personal route access is owner-scoped, no-store, noindex and read-only for
   assert.match(access, /loadTripRecovery\(tripId, ownerId\)/);
   assert.doesNotMatch(access, /saveTripToEasyT|saveTripRecoveryToEasyT|cacheCanonicalTrip|claimGuestTripRecoveryForOwner|discardTripRecovery/);
   assert.doesNotMatch(sitemap, /my-routes/);
+  assert.equal((page.match(/logoTone="light"/g) ?? []).length, 2);
+  assert.doesNotMatch(read("app/journey/my-routes/[tripId]/personal-route-view.tsx"), /trackEvent\(/);
+  assert.match(read("app/journey/my-routes/[tripId]/personal-route.module.css"), /\.heroMissing\s*\{[^}]*background:var\(--morrovia-ink\)/);
 });
 
-test("Overview exposes one secondary personal-route action and public Route Detail keeps its planning handoff", () => {
+test("Overview exposes one Journey action beside Map and public Route Detail keeps its planning handoff", () => {
   const overview = read("components/easyt/trip-overview-workspace.tsx");
   const publicDetail = read("app/journey/routes/[slug]/route-detail-view.tsx");
-  assert.equal(overview.match(/View my route/g)?.length, 1);
+  assert.equal(overview.match(/View journey/g)?.length, 1);
   assert.match(overview, /personalRouteHref\(trip\.id\)/);
-  assert.match(publicDetail, />Start with this route</);
+  assert.equal(overview.match(/Explore on map/g)?.length, 1);
+  assert.match(publicDetail, />Plan this route<\/RoutePlanLink>/);
   assert.match(publicDetail, /RoutePlanLink/);
 });
