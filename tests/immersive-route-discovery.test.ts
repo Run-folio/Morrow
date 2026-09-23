@@ -89,13 +89,27 @@ test("preview stop selector owns a contained, stable selected state", () => {
   const css = source("app/journey/discover/discover.module.css");
   const stories = source("components/easyt/storybook/morrovia-routes-discovery.stories.tsx");
   assert.match(preview, /<ol className=\{styles\["stop-order"\]\} aria-label="Route stops in order">/);
-  assert.match(preview, /aria-pressed=\{index === stop\}/);
+  assert.match(preview, /aria-pressed=\{item\.id === selectedStopId\}/);
+  assert.match(preview, /stopId: item\.id/);
   assert.doesNotMatch(css, /\.stop-order\{[^}]*border-top:1px/);
   assert.match(css, /\.stop-order button\{[^}]*padding:14px 22px[^}]*grid-template-columns:auto minmax\(0,1fr\)[^}]*min-height:72px/);
   assert.match(css, /\.stop-order button\[aria-pressed=true\]\{background:var\(--morrovia-lilac\)\}/);
   assert.doesNotMatch(css, /\.stop-order button\[aria-pressed=true\]::before/);
   assert.doesNotMatch(css, /\.stop-order button\[aria-pressed=true\]\{[^}]*margin-top/);
   for (const state of ["SelectedFirst1440", "SelectedMiddle1024", "SelectedLongName768", "SelectedMiddle390", "SelectedFinal430"]) assert.match(stories, new RegExp(`export const ${state}`));
+});
+test("Discover map selection is entity-stable and surface-specific", () => {
+  const map = source("app/journey/discover/discovery-map.tsx");
+  const browser = source("app/journey/discover/discovery-browser.tsx");
+  const preview = source("app/journey/discover/route-preview.tsx");
+  assert.match(map, /\{ kind: "stop"; routeKey: string; stopId: string \}/);
+  assert.match(map, /selection\.stopId === stop\.id/);
+  assert.match(map, /kind: "route" as const,[\s\S]*coordinates: selectedRoute\.stops\.map/);
+  assert.match(map, /kind: "collection" as const,[\s\S]*ids: visible\.map/);
+  assert.match(browser, /surface=\{\{ variant: "workspace" \}\}/);
+  assert.match(browser, /cameraOcclusions=\{mapOcclusions\}/);
+  assert.match(preview, /surface=\{\{ variant: "preview" \}\}/);
+  assert.doesNotMatch(preview, /NavigationControl|planner-map__stop[^\n]*onClick/);
 });
 test("map and preview stay behind dynamic imports, with no eager catalogue or map module on client", () => {
   const browser=source("app/journey/discover/discovery-browser.tsx");

@@ -13,6 +13,7 @@ const mexicoGuatemala = routes.find(r => r.key === "mexico-guatemala")!;
 const names = ["Tokyo", "Kanazawa", "Takayama", "Kyoto", "Osaka", "Hiroshima", "Fukuoka", "Nagasaki"];
 const coordinates: [number,number][] = [[139.69,35.68],[136.65,36.56],[137.25,36.14],[135.77,35.01],[135.50,34.69],[132.46,34.38],[130.40,33.59],[129.87,32.75]];
 const specimen = (count: number): DiscoveryRoute => ({...japan,key:`layout-specimen-${count}`,title:`Japan · ${count}-stop layout specimen`,stops:names.slice(0,count).map((name,index)=>({id:`specimen-${index}`,name,country:"Japan",coordinates:coordinates[index],reason:"Structural layout fixture only; not a published route."})),href:"/journey/discover"});
+const repeatedTokyo = {...specimen(4),key:"layout-specimen-tokyo-return",title:"Tokyo return identity specimen",stops:[...specimen(4).stops,{...specimen(4).stops[0],id:"specimen-tokyo-return",reason:"Distinct return occurrence for stable-selection QA."}]};
 const meta = {title:"Morrovia/05 Product Patterns/Routes Discovery",component:DiscoveryBrowser,parameters:{layout:"fullscreen",nextjs:{appDirectory:true,navigation:{pathname:"/journey/discover"}}},decorators:[(Story)=><main className={styles.page}><Story /></main>],args:{routes}} satisfies Meta<typeof DiscoveryBrowser>;
 export default meta;
 type Story=StoryObj<typeof meta>;
@@ -40,11 +41,16 @@ const selectStop = (name: string) => async ({ canvasElement }: { canvasElement: 
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('[aria-label="Route stops in order"] button')].find((button) => button.textContent?.includes(name))?.click();
 };
+const selectStopOccurrence = (name: string, occurrence: number) => async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('[aria-label="Route stops in order"] button')].filter((button) => button.textContent?.includes(name))[occurrence]?.click();
+};
 export const SelectedFirst1440: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia1440",isRotated:false}} };
 export const SelectedMiddle1024: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia1024",isRotated:false}}, play: selectStop("Takayama") };
 export const SelectedLongName768: Story = { render: () => preview(mexicoGuatemala), globals:{viewport:{value:"morrovia768",isRotated:false}}, play: selectStop("San Cristóbal de las Casas") };
 export const SelectedMiddle390: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia390",isRotated:false}}, play: selectStop("Takayama") };
 export const SelectedFinal430: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia430",isRotated:false}}, play: selectStop(japan.stops.at(-1)!.name) };
+export const RepeatedTokyoSecondOccurrence390: Story = { render: () => preview(repeatedTokyo), globals:{viewport:{value:"morrovia390",isRotated:false}}, play: selectStopOccurrence("Tokyo",1) };
 
 // The same catalogue cards retain imagery and full identity in the Map rail.
 export const MapAt390: Story = {args:{initialView:"map"},globals:{viewport:{value:"morrovia390",isRotated:false}}};
