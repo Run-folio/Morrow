@@ -552,6 +552,9 @@ function attemptRepair(
     case "extreme-pacing":
       if (protectsCalendar) return null;
       return reallocate(plan, issue, estimateLeg, knowledge);
+    case "country-reentry":
+      if (issue.evidence.continuityStatus !== "avoidable") return null;
+      return reorderRoute(plan, estimateLeg, knowledge, preferences, routeSelection);
     case "unnecessary-backtracking":
     case "unsupported-transfer":
     case "excessive-travel-day-burden":
@@ -566,7 +569,7 @@ const hardIssueKey = (issue: PlanValidationIssue) => `${issue.code}:${issue.stop
 const repairFamily = (issue: PlanValidationIssue) => {
   if (issue.code === "fixed-start-broken" || issue.code === "fixed-end-broken") return "fixed-gateways";
   if (issue.code === "total-nights-mismatch" || issue.code === "below-minimum-stay" || issue.code === "minimum-stay-conflict" || issue.code === "one-night-anchor-after-large-transfer" || issue.code === "extreme-pacing") return "night-allocation";
-  if (issue.code === "unnecessary-backtracking" || issue.code === "unsupported-transfer" || issue.code === "excessive-travel-day-burden" || issue.code === "transport-restriction-conflict") return "route-order";
+  if (issue.code === "unnecessary-backtracking" || issue.code === "country-reentry" || issue.code === "unsupported-transfer" || issue.code === "excessive-travel-day-burden" || issue.code === "transport-restriction-conflict") return "route-order";
   return issue.id;
 };
 

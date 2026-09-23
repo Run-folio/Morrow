@@ -208,11 +208,14 @@ export function fixedChronologyCountryContinuityProofs(
   commitments: readonly FixedCommitmentConstraint[] | undefined,
 ): CountryContinuityConstraintProof[] {
   const byId = new Map(stops.map((stop) => [stop.id, stop]));
-  const linked = (commitments ?? []).flatMap((commitment) => {
+  const linkedOccurrences = (commitments ?? []).flatMap((commitment) => {
     const date = canonicalDate(commitment.date);
     const stop = commitment.stopId ? byId.get(commitment.stopId) : undefined;
     return date && stop ? [{ commitment, date, stop }] : [];
-  }).sort((left, right) => left.date.localeCompare(right.date) || left.stop.id.localeCompare(right.stop.id));
+  });
+  const linked = linkedOccurrences.filter((item, index, all) => all.findIndex((candidate) =>
+    candidate.stop.id === item.stop.id && candidate.date === item.date) === index)
+    .sort((left, right) => left.date.localeCompare(right.date) || left.stop.id.localeCompare(right.stop.id));
   if (linked.length < 3 || new Set(linked.map((item) => item.date)).size !== linked.length) return [];
 
   const continuity = analyzeRouteCountryContinuity(linked.map((item) => item.stop));

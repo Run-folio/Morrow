@@ -1,6 +1,16 @@
 import { destinationKnowledge, type DestinationKnowledgeStore } from "./destination-knowledge.ts";
+import { countryNameFor } from "./country-registry.ts";
 import type { NightAllocationResult } from "./night-allocation.ts";
 import { estimateLeg, haversineKm, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { generateRouteCandidates } from "./route-candidates.ts";
+import {
+  analyzeRouteCountryContinuity,
+  classifyCountryContinuity,
+  fixedChronologyCountryContinuityProofs,
+  fixedGatewayCountryContinuityProofs,
+  hardTransportCountryContinuityProofs,
+} from "./route-country-continuity.ts";
+import { DEFAULT_ROUTE_SCORING_CONFIG, scoreRouteCandidates } from "./route-scoring.ts";
 import {
   routeConstraintsFromStructuredTripBrief,
   type StructuredTripBrief,
@@ -24,7 +34,8 @@ export type PlanValidationIssueCode =
   | "duplicate-stop"
   | "fixed-date-conflict"
   | "transport-restriction-conflict"
-  | "maximum-transfer-time-conflict";
+  | "maximum-transfer-time-conflict"
+  | "country-reentry";
 
 export type PlanValidationSeverity = "error" | "warning";
 export type PlanIssueRepairability = "automatic" | "manual" | "none";
@@ -176,7 +187,8 @@ const ISSUE_ORDER: Record<PlanValidationIssueCode, number> = {
   "extreme-pacing": 12,
   "unsupported-transfer": 13,
   "excessive-travel-day-burden": 14,
-  "unnecessary-backtracking": 15,
+  "country-reentry": 15,
+  "unnecessary-backtracking": 16,
 };
 
 const normalizedPace = (pace: FinalPlan["pace"]): "relaxed" | "balanced" | "fast" => pace === "relaxed"
@@ -415,6 +427,113 @@ function routeConstraintIssues(plan: FinalPlan, legs: readonly LegFact[], struct
   return issues;
 }
 
+function countryContinuityIssues(plan: FinalPlan, estimatePlanLeg: PlanLegEstimator) {
+  const currentContinuity = analyzeRouteCountryContinuity(plan.stops);
+  if (!currentContinuity.repeatedCountryCodes.length) return [];
+
+  const generation = generateRouteCandidates({
+    origin: plan.origin,
+    stops: plan.stops,
+    constraints: plan.constraints,
+    estimateLeg: estimatePlanLeg,
+  });
+  const lockedArrivalCommitments: FinalPlanFixedCommitment[] = Object.entries(plan.scheduleLocks?.arrivalDates ?? {})
+    .map(([stopId, date]) => ({ label: `Locked arrival for ${stopId}`, date, stopId }));
+  const proofs = [
+    ...fixedGatewayCountryContinuityProofs(plan.stops, plan.constraints),
+    ...fixedChronologyCountryContinuityProofs(plan.stops, [
+      ...(plan.constraints?.fixedCommitments ?? []),
+      ...lockedArrivalCommitments,
+    ]),
+    ...hardTransportCountryContinuityProofs(generation.countryBlockRejections),
+  ];
+  const alternatives = generation.candidates.map((candidate) => analyzeRouteCountryContinuity(candidate.stops));
+  const assessments = classifyCountryContinuity({
+    route: currentContinuity,
+    viableAlternatives: alternatives,
+    proofs,
+  });
+  const selection = scoreRouteCandidates({
+    origin: plan.origin,
+    candidates: generation.candidates,
+    estimateLeg: estimatePlanLeg,
+    preferences: { pace: plan.pace },
+    availableDays: plan.totalNights + 1,
+    allocations: Object.fromEntries(plan.stops.map((stop) => [stop.id, stop.nights])),
+    requiredStopIds: plan.constraints?.requiredStopIds,
+    fixedStartStopId: plan.constraints?.fixedStartStopId,
+    fixedEndStopId: plan.constraints?.fixedEndStopId,
+    countryContinuityProofs: proofs,
+  });
+  const currentScore = selection.rankedCandidates.find((candidate) => candidate.matchesOriginalOrder);
+  const protectsOrder = Boolean(
+    plan.constraints?.fixedCommitments?.length
+      || plan.scheduleLocks?.stopIds?.length
+      || Object.keys(plan.scheduleLocks?.arrivalDates ?? {}).length
+      || plan.stops.some((stop) => stop.arrivalDate || stop.departureDate),
+  );
+
+  return assessments.map((assessment) => {
+    const observedAlternative = generation.candidates.find((candidate) => {
+      const continuity = analyzeRouteCountryContinuity(candidate.stops);
+      return (continuity.reentriesByCountry[assessment.countryCode] ?? 0) < assessment.reentryCount;
+    });
+    const winner = selection.winner;
+    const winnerLowersBlocks = Boolean(winner
+      && (winner.metrics.countryContinuityAssessments.find((item) => item.countryCode === assessment.countryCode)?.reentryCount ?? 0) < assessment.reentryCount);
+    const scoreAdvantage = winner && currentScore?.state === "scored"
+      ? winner.totalScore - currentScore.totalScore
+      : null;
+    const currentMinutes = currentScore?.metrics.transferMinutes ?? null;
+    const winnerMinutes = winner?.metrics.transferMinutes ?? null;
+    const extraMinutes = currentMinutes !== null && winnerMinutes !== null
+      ? Math.max(0, winnerMinutes - currentMinutes)
+      : null;
+    const acceptableTradeoff = extraMinutes !== null && currentMinutes !== null
+      && extraMinutes <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffMinutes
+      && extraMinutes / Math.max(1, currentMinutes) <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffRatio;
+    const automatic = assessment.status === "avoidable"
+      && !protectsOrder
+      && winnerLowersBlocks
+      && scoreAdvantage !== null
+      && scoreAdvantage >= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.minimumRecommendationScoreAdvantage
+      && currentMinutes !== null
+      && winnerMinutes !== null
+      && (winnerMinutes <= currentMinutes || acceptableTradeoff);
+    const countryName = countryNameFor(assessment.countryCode) ?? assessment.countryCode;
+    const message = assessment.status === "avoidable"
+      ? `${countryName} appears in ${assessment.blockCount} separate route blocks; a hard-constraint-safe lower-block order was observed${automatic ? " and clears the route-change threshold" : ", but no automatic change clears every scoring and protection rule"}.`
+      : assessment.status === "proven-constraint-driven"
+        ? `${countryName} remains in ${assessment.blockCount} route blocks because typed ${assessment.proof?.kind ?? "canonical"} evidence requires the protected order.`
+        : `${countryName} appears in ${assessment.blockCount} route blocks. The current planning boundary did not establish a lower-block alternative or prove the split necessary, so the order remains protected for review.`;
+    return issue({
+      code: "country-reentry",
+      severity: "warning",
+      hardConstraint: false,
+      repairability: automatic ? "automatic" : "manual",
+      message,
+      stopIds: assessment.affectedStopIds,
+      legIndexes: assessment.legIndexes,
+      evidence: {
+        continuityStatus: assessment.status,
+        countryCode: assessment.countryCode,
+        blockCount: assessment.blockCount,
+        reentryCount: assessment.reentryCount,
+        observedLowerBlockCount: assessment.observedLowerBlockCount ?? null,
+        affectedStopIds: assessment.affectedStopIds,
+        observedAlternativeStopIds: observedAlternative?.stops.map((stop) => stop.id) ?? [],
+        suggestedStopIds: automatic ? winner?.stopIds ?? [] : [],
+        proofKind: assessment.proof?.kind ?? null,
+        proofConstraintIds: assessment.proof?.constraintIds ?? [],
+        scoreAdvantage,
+        currentTransferMinutes: currentMinutes,
+        suggestedTransferMinutes: automatic ? winnerMinutes : null,
+      },
+      sources: ["candidate-scoring", "final-plan"],
+    });
+  });
+}
+
 /**
  * Independent post-generation critic. It diagnoses final plan facts against
  * explicit intent and upstream evidence, but never treats the route scorer's
@@ -444,6 +563,7 @@ export function validateFinalPlan(input: ValidateFinalPlanInput): PlanValidation
 
   const legs = duplicateIds.length ? [] : legsFor(plan, estimatePlanLeg);
   issues.push(...routeConstraintIssues(plan, legs, input.structuredBrief));
+  if (!duplicateIds.length) issues.push(...countryContinuityIssues(plan, estimatePlanLeg));
 
   const allocatedNights = plan.stops.reduce((total, stop) => total + (Number.isFinite(stop.nights) ? Math.max(0, Math.round(stop.nights)) : 0), 0);
   const dateNights = validDate(plan.startDate) && validDate(plan.endDate)

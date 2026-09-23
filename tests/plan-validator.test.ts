@@ -394,3 +394,140 @@ test("maximum transfer time remains a hard unresolved validator issue", () => {
   assert.equal(result.state, "unresolved");
   assert.equal(result.repairs.length, 0);
 });
+
+test("reports and repairs only an observed score-gated avoidable country re-entry", () => {
+  const source = plan([
+    stop("india-north", [0, 0], 2, { country: "India", countryCode: "IN" }),
+    stop("uae", [0, 0], 2, { country: "United Arab Emirates", countryCode: "AE" }),
+    stop("india-south", [0, 0], 2, { country: "India", countryCode: "IN" }),
+  ]);
+  const report = validateFinalPlan({ plan: source, estimateLeg: supportedRoad });
+  const countryIssue = report.issues.find((item) => item.code === "country-reentry");
+
+  assert.equal(countryIssue?.repairability, "automatic");
+  assert.equal(countryIssue?.evidence.continuityStatus, "avoidable");
+  assert.equal(countryIssue?.evidence.countryCode, "IN");
+  assert.equal(countryIssue?.evidence.blockCount, 2);
+  assert.equal(countryIssue?.evidence.observedLowerBlockCount, 1);
+  assert.deepEqual(countryIssue?.evidence.affectedStopIds, ["india-north", "india-south"]);
+  assert.ok(Array.isArray(countryIssue?.evidence.suggestedStopIds));
+
+  const repaired = repairFinalPlan({ plan: source, estimateLeg: supportedRoad });
+  const countries = repaired.plan.stops.map((item) => item.countryCode);
+  assert.equal(repaired.repairs.some((item) => item.issueCode === "country-reentry" && item.action === "reorder-route"), true);
+  assert.equal(countries.join("|").includes("IN|AE|IN"), false);
+  assert.equal(repaired.finalValidation.issues.some((item) => item.code === "country-reentry"), false);
+});
+
+test("keeps an observed but unscoreable country re-entry manual", () => {
+  const unknown: PlanLegEstimator = (from, to) => ({
+    mode: "train",
+    distanceKm: 120,
+    durationMinutes: null,
+    label: `${from.name} → ${to.name}`,
+    note: "Duration is not supported.",
+    confidence: "unconfirmed",
+  });
+  const report = validateFinalPlan({
+    plan: plan([
+      stop("india-north", [0, 0], 2, { country: "India", countryCode: "IN" }),
+      stop("uae", [0, 0], 2, { country: "United Arab Emirates", countryCode: "AE" }),
+      stop("india-south", [0, 0], 2, { country: "India", countryCode: "IN" }),
+    ]),
+    estimateLeg: unknown,
+  });
+  const countryIssue = report.issues.find((item) => item.code === "country-reentry");
+
+  assert.equal(countryIssue?.evidence.continuityStatus, "avoidable");
+  assert.equal(countryIssue?.repairability, "manual");
+  assert.deepEqual(countryIssue?.evidence.suggestedStopIds, []);
+});
+
+test("uses linked fixed chronology as typed proof and never repairs that split", () => {
+  const source = plan([
+    stop("india-north", [0, 0], 2, { country: "India", countryCode: "IN", arrivalDate: "2026-09-01", departureDate: "2026-09-03", fixedNights: 2 }),
+    stop("uae", [0, 0], 2, { country: "United Arab Emirates", countryCode: "AE", arrivalDate: "2026-09-05", departureDate: "2026-09-07", fixedNights: 2 }),
+    stop("india-south", [0, 0], 2, { country: "India", countryCode: "IN", arrivalDate: "2026-09-09", departureDate: "2026-09-11", fixedNights: 2 }),
+  ], {
+    constraints: {
+      fixedCommitments: [
+        { label: "North booking", date: "2026-09-01", stopId: "india-north" },
+        { label: "UAE booking", date: "2026-09-05", stopId: "uae" },
+        { label: "South booking", date: "2026-09-09", stopId: "india-south" },
+      ],
+    },
+    scheduleLocks: {
+      stopIds: ["india-north", "uae", "india-south"],
+      arrivalDates: {
+        "india-north": "2026-09-01",
+        uae: "2026-09-05",
+        "india-south": "2026-09-09",
+      },
+    },
+  });
+  const result = repairFinalPlan({ plan: source, estimateLeg: supportedRoad });
+  const countryIssue = result.initialValidation.issues.find((item) => item.code === "country-reentry");
+
+  assert.equal(countryIssue?.evidence.continuityStatus, "proven-constraint-driven");
+  assert.equal(countryIssue?.evidence.proofKind, "fixed-position-chronology");
+  assert.equal(countryIssue?.repairability, "manual");
+  assert.deepEqual(result.plan.stops, source.stops);
+  assert.deepEqual(result.plan.scheduleLocks, source.scheduleLocks);
+  assert.deepEqual(result.plan.constraints?.fixedCommitments, source.constraints?.fixedCommitments);
+  assert.equal(result.repairs.some((item) => item.issueCode === "country-reentry"), false);
+});
+
+test("keeps an unrelated fixed commitment unproven and preserves the protected order", () => {
+  const source = plan([
+    stop("india-north", [0, 0], 2, { country: "India", countryCode: "IN", arrivalDate: "2026-09-01", departureDate: "2026-09-03", fixedNights: 2 }),
+    stop("uae", [0, 0], 2, { country: "United Arab Emirates", countryCode: "AE", arrivalDate: "2026-09-05", departureDate: "2026-09-07", fixedNights: 2 }),
+    stop("india-south", [0, 0], 2, { country: "India", countryCode: "IN", arrivalDate: "2026-09-09", departureDate: "2026-09-11", fixedNights: 2 }),
+  ], {
+    constraints: { fixedCommitments: [{ label: "Unrelated call", date: "2026-09-05" }] },
+    scheduleLocks: { stopIds: ["india-north", "uae", "india-south"] },
+  });
+  const result = repairFinalPlan({ plan: source, estimateLeg: supportedRoad });
+  const countryIssue = result.initialValidation.issues.find((item) => item.code === "country-reentry");
+
+  assert.equal(countryIssue?.evidence.continuityStatus, "unproven-protected");
+  assert.equal(countryIssue?.evidence.proofKind, null);
+  assert.equal(countryIssue?.repairability, "manual");
+  assert.doesNotMatch(countryIssue?.message ?? "", /every|required by|constraint-driven/i);
+  assert.deepEqual(result.plan.stops, source.stops);
+  assert.deepEqual(result.plan.scheduleLocks?.stopIds, source.scheduleLocks?.stopIds);
+  assert.equal(result.plan.scheduleLocks?.arrivalDates, source.scheduleLocks?.arrivalDates);
+  assert.deepEqual(result.plan.constraints?.fixedCommitments, source.constraints?.fixedCommitments);
+  assert.equal(result.repairs.some((item) => item.issueCode === "country-reentry"), false);
+});
+
+test("uses rejected country-block transport evidence as typed proof", () => {
+  const transportBound: PlanLegEstimator = (from, to) => {
+    const fromId = "id" in from ? from.id : "origin";
+    const durationMinutes = fromId === "india-north" && to.id === "india-south" ? 300 : 30;
+    return {
+      mode: "train",
+      distanceKm: durationMinutes,
+      durationMinutes,
+      label: `${from.name} → ${to.name}`,
+      note: "Deterministic transport-bound proof.",
+      confidence: "high",
+    };
+  };
+  const source = plan([
+    stop("india-north", [0, 0], 2, { country: "India", countryCode: "IN" }),
+    stop("uae", [1, 0], 2, { country: "United Arab Emirates", countryCode: "AE" }),
+    stop("india-south", [2, 0], 2, { country: "India", countryCode: "IN" }),
+    stop("china-one", [3, 0], 2, { country: "China", countryCode: "CN" }),
+    stop("china-two", [4, 0], 2, { country: "China", countryCode: "CN" }),
+    stop("japan-one", [5, 0], 2, { country: "Japan", countryCode: "JP" }),
+    stop("japan-two", [6, 0], 2, { country: "Japan", countryCode: "JP" }),
+  ], { constraints: { maximumTransferMinutes: 120 } });
+  const result = repairFinalPlan({ plan: source, estimateLeg: transportBound });
+  const countryIssue = result.initialValidation.issues.find((item) => item.code === "country-reentry");
+
+  assert.equal(countryIssue?.evidence.continuityStatus, "proven-constraint-driven");
+  assert.equal(countryIssue?.evidence.proofKind, "hard-transport-rejection");
+  assert.equal(countryIssue?.repairability, "manual");
+  assert.deepEqual(result.plan.stops.map((item) => item.id), source.stops.map((item) => item.id));
+  assert.equal(result.repairs.some((item) => item.issueCode === "country-reentry"), false);
+});

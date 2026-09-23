@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   analyzeRouteCountryContinuity,
   classifyCountryContinuity,
+  fixedChronologyCountryContinuityProofs,
   type CountryContinuityConstraintProof,
 } from "../lib/easyt/route-country-continuity.ts";
 import type { PlannerStop } from "../lib/easyt/planner.ts";
@@ -152,4 +153,26 @@ test("an observed lower-block route takes precedence over supplied proof", () =>
     viableAlternatives: [current, lowerBlock],
     proofs: [contradictedProof],
   })[0]?.status, "avoidable");
+});
+
+test("deduplicates the same dated occurrence before proving fixed chronology", () => {
+  const stops = [
+    stop("india-north", "India", "IN"),
+    stop("uae", "United Arab Emirates", "AE"),
+    stop("india-south", "India", "IN"),
+  ];
+  const proof = fixedChronologyCountryContinuityProofs(stops, [
+    { label: "North booking", date: "2026-09-01", stopId: "india-north" },
+    { label: "North arrival lock", date: "2026-09-01", stopId: "india-north" },
+    { label: "UAE booking", date: "2026-09-05", stopId: "uae" },
+    { label: "South booking", date: "2026-09-09", stopId: "india-south" },
+  ]);
+
+  assert.equal(proof[0]?.kind, "fixed-position-chronology");
+  assert.deepEqual(proof[0]?.stopIds, ["india-north", "uae", "india-south"]);
+  assert.deepEqual(fixedChronologyCountryContinuityProofs(stops, [
+    { label: "North booking", date: "2026-09-01", stopId: "india-north" },
+    { label: "UAE booking", date: "2026-09-01", stopId: "uae" },
+    { label: "South booking", date: "2026-09-09", stopId: "india-south" },
+  ]), []);
 });
