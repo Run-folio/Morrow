@@ -24,6 +24,7 @@
 - Do not add Wikidata, a CMS, a content owner, generated travel prose, route-wide enrichment, compass, geolocation or fullscreen controls.
 - Reuse `EasyTButton`, `EasyTLinkButton`, `MorroviaMapLoading`, `JourneyPlannerStrip`, existing semantic tokens and existing breakpoint patterns.
 - Work test-first and commit after every independently reviewable task.
+- Do not add or modify ESLint/lint infrastructure; the accepted base may expose Next.js's interactive first-time lint setup.
 - Do not push, merge or deploy.
 
 ## File Structure
@@ -156,16 +157,16 @@ git commit -m "feat: define shared map surface and camera policy"
 
 **Interfaces:**
 - Consumes: `MorroviaMapSurface` and `resolveMapSurfacePolicy()` from Task 1.
-- Produces: `MORROVIA_MAP_WORKER_URL`, `morroviaMapOptions()`, `installMorroviaMapControls()`, `MorroviaStopMarkerInput`, `morroviaStopMarkerModel()`, `createMorroviaStopMarker()` and `setMorroviaStopMarkerState()`.
+- Produces: `MORROVIA_MAP_WORKER_URL`, `MorroviaMapAttributionMode`, `morroviaMapOptions()`, `installMorroviaMapControls()`, `MorroviaStopMarkerInput`, `morroviaStopMarkerModel()`, `createMorroviaStopMarker()` and `setMorroviaStopMarkerState()`.
 
 - [ ] **Step 1: Write failing runtime and marker-model tests**
 
 ```ts
-test("preview and selection-only maps are control-free but keep attribution", () => {
-  assert.equal(morroviaMapOptions({ variant: "preview" }).interactive, false);
-  assert.equal(morroviaMapOptions({ variant: "embedded", interaction: "selection-only" }).interactive, false);
-  assert.equal(morroviaMapOptions({ variant: "workspace" }).interactive, true);
-  assert.equal(morroviaMapOptions({ variant: "workspace" }).attributionControl.compact, false);
+test("surface interaction never hides the requested attribution presentation", () => {
+  assert.equal(morroviaMapOptions({ variant: "preview" }, "compact").interactive, false);
+  assert.deepEqual(morroviaMapOptions({ variant: "preview" }, "compact").attributionControl, { compact: true });
+  assert.equal(morroviaMapOptions({ variant: "embedded", interaction: "selection-only" }, "compact").interactive, false);
+  assert.deepEqual(morroviaMapOptions({ variant: "workspace" }, "expanded").attributionControl, { compact: false });
 });
 
 test("repeated stops and fallback labels retain occurrence identity", () => {
@@ -187,12 +188,13 @@ Expected: FAIL because the runtime and marker modules do not exist.
 
 ```ts
 export const MORROVIA_MAP_WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
+export type MorroviaMapAttributionMode = "compact" | "expanded";
 
-export function morroviaMapOptions(surface: MorroviaMapSurface) {
+export function morroviaMapOptions(surface: MorroviaMapSurface, attribution: MorroviaMapAttributionMode) {
   const policy = resolveMapSurfacePolicy(surface);
   return {
     style: morroviaMapStyle,
-    attributionControl: { compact: false as const },
+    attributionControl: { compact: attribution === "compact" },
     interactive: policy.panZoom,
     scrollZoom: policy.panZoom,
     dragRotate: false,
@@ -201,7 +203,7 @@ export function morroviaMapOptions(surface: MorroviaMapSurface) {
 }
 ```
 
-`installMorroviaMapControls()` adds a `NavigationControl({ showCompass: false })` only when `zoomControl` is true. It never adds compass, geolocation or fullscreen. Each renderer still constructs and disposes its own map.
+`installMorroviaMapControls()` adds a `NavigationControl({ showCompass: false })` only when `zoomControl` is true. It never adds compass, geolocation or fullscreen. Each renderer still constructs and disposes its own map. Every owner explicitly chooses `compact` or `expanded` to preserve its established presentation; the shared runtime never accepts hidden/`false` attribution.
 
 - [ ] **Step 4: Implement shared stop marker construction and CSS**
 
@@ -230,6 +232,8 @@ git commit -m "feat: centralize MapLibre setup and stop markers"
 - Modify: `app/journey/home/immersive/demo-map.tsx`
 - Modify: `components/easyt/trip-stay-workspace.tsx`
 - Modify: `components/easyt/trip-itinerary-workspace.tsx`
+- Modify: `components/easyt/trip-map-workspace.tsx`
+- Modify: `components/easyt/trip-transport-workspace.tsx`
 - Modify: `app/journey/plan-next/map-plan-next.tsx`
 - Create: `tests/map-surface-consumers.test.ts`
 - Modify: `tests/stay-workspace.test.ts`
@@ -285,7 +289,7 @@ Expected: PASS, including canonical Stay/Itinerary selection and Builder's inert
 - [ ] **Step 6: Commit explicit consumer variants**
 
 ```bash
-git add components/journey-planner-map.tsx app/journey/new/trip-builder-route-workspace.tsx components/easyt/trip-overview-workspace.tsx app/journey/dashboard/dashboard-client.tsx app/journey/home/immersive/demo-map.tsx components/easyt/trip-stay-workspace.tsx components/easyt/trip-itinerary-workspace.tsx app/journey/plan-next/map-plan-next.tsx tests/map-surface-consumers.test.ts tests/stay-workspace.test.ts tests/itinerary-workspace-presentation.test.ts
+git add components/journey-planner-map.tsx app/journey/new/trip-builder-route-workspace.tsx components/easyt/trip-overview-workspace.tsx app/journey/dashboard/dashboard-client.tsx app/journey/home/immersive/demo-map.tsx components/easyt/trip-stay-workspace.tsx components/easyt/trip-itinerary-workspace.tsx components/easyt/trip-map-workspace.tsx components/easyt/trip-transport-workspace.tsx app/journey/plan-next/map-plan-next.tsx tests/map-surface-consumers.test.ts tests/stay-workspace.test.ts tests/itinerary-workspace-presentation.test.ts
 git commit -m "refactor: declare map interaction variants"
 ```
 
@@ -685,12 +689,17 @@ node --experimental-strip-types --test \
 
 Expected: PASS. If browser tests report skipped because `MORROVIA_BUILDER_BROWSER_TESTS` is unset, rerun them with `MORROVIA_BUILDER_BROWSER_TESTS=1` and record that result.
 
-- [ ] **Step 5: Run static and production checks**
+- [ ] **Step 5: Attempt the accepted lint command without changing lint infrastructure**
+
+Run: `npm run lint`
+
+Expected: either exit 0, or the same accepted-base interactive Next.js first-time ESLint configuration prompt. If the prompt appears, stop the command, record lint as unavailable due to accepted baseline configuration, and do not create or modify ESLint/package/config files.
+
+- [ ] **Step 6: Run the non-interactive static and production checks**
 
 Run:
 
 ```bash
-npm run lint
 npm run typecheck
 npm run audit:ui
 npm run build:check
@@ -699,14 +708,14 @@ npm run build-storybook
 
 Expected: every command exits 0.
 
-- [ ] **Step 6: Visually verify the exact responsive matrix**
+- [ ] **Step 7: Visually verify the exact responsive matrix**
 
 At **320, 390, 430, 768, 1024 and 1440 CSS pixels**, inspect Map, Transport, Stay, Itinerary, Discover, published Route Detail and personal Journey stories. Record pass/fail for:
 
 | Check | 320 | 390 | 430 | 768 | 1024 | 1440 |
 | --- | --- | --- | --- | --- | --- | --- |
 | Selected geography clears visible rail/navigator | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
-| Attribution visible and unclipped | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
+| Attribution visible, usable and unclipped in its surface-appropriate compact/expanded form | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
 | Controls match the declared variant/profile | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
 | Stop and transport marker states remain legible | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
 | Journey navigator/strip keeps active item visible | Pass required | Pass required | Pass required | Pass required | Pass required | Pass required |
@@ -714,7 +723,7 @@ At **320, 390, 430, 768, 1024 and 1440 CSS pixels**, inspect Map, Transport, Sta
 
 Use Storybook's existing viewport names and capture any failure before changing code. Re-run the owning task's focused test after each correction.
 
-- [ ] **Step 7: Verify repository scope and commit final coverage**
+- [ ] **Step 8: Verify repository scope and commit final coverage**
 
 Run: `git diff --check && git status --short && git diff --stat 812604ebe162a9b81f36d90189ae99f73f6fc801...HEAD`
 
@@ -740,7 +749,7 @@ Check the branch against every acceptance criterion in the specification, with p
 
 - [ ] **Step 2: Run the final verification commands from a clean shell**
 
-Run the focused regression group and all five static/production commands from Task 10 again if any code changed during review. Expected: PASS and a clean `git status --short`.
+Run the focused regression group and the non-interactive static/production commands from Task 10 again if any code changed during review. Re-attempt lint only to confirm whether its accepted baseline status changed; never configure it as part of #333. Expected: all available commands PASS and a clean `git status --short`.
 
 - [ ] **Step 3: Request code review before integration**
 
