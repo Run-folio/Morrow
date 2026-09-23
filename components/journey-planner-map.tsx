@@ -14,7 +14,7 @@ import type { PlannerMapPin } from "@/lib/easyt/trip";
 import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -420,14 +420,16 @@ export function JourneyPlannerMap({
     const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
       interruptMapCamera(map as unknown as MapCamera);
       currentCameraRequestRef.current = null;
-      const id = event.features?.[0]?.properties?.id;
+      const hitLegIds = event.features?.flatMap((feature) => typeof feature.properties?.id === "string" ? [feature.properties.id] : []) ?? [];
+      const id = mapRouteLegIdAtPoint(spatialLegs, hitLegIds, event.point, (coordinates) => map.project(coordinates), selectedLegIdRef.current);
       const leg = spatialLegs.find((candidate) => candidate.id === id);
       if (leg) onLegSelectRef.current?.(leg);
     };
     const hoverRoute = (event: maplibregl.MapLayerMouseEvent) => {
       map.getCanvas().style.cursor = "pointer";
-      const id = event.features?.[0]?.properties?.id;
-      map.setFilter("trip-route-hover", ["==", ["get", "id"], typeof id === "string" ? id : ""]);
+      const hitLegIds = event.features?.flatMap((feature) => typeof feature.properties?.id === "string" ? [feature.properties.id] : []) ?? [];
+      const id = mapRouteLegIdAtPoint(spatialLegs, hitLegIds, event.point, (coordinates) => map.project(coordinates), selectedLegIdRef.current);
+      map.setFilter("trip-route-hover", ["==", ["get", "id"], id ?? ""]);
     };
     const leaveRoute = () => {
       map.getCanvas().style.cursor = pinPlacementMode ? "crosshair" : "";

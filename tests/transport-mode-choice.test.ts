@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { TransferSegment, TripLeg, EasyTTrip, TripTransportDecisionSelection } from "../lib/easyt/trip.ts";
+import { buildCanonicalTripLegs } from "../lib/easyt/trip-legs.ts";
+import { resolveCanonicalTransferJourney } from "../lib/easyt/multimodal-transfer-resolution.ts";
 import { reviewTrip } from "../lib/easyt/review.ts";
 import { canonicalTripForOwner } from "../lib/easyt/trip-promotion.ts";
 
@@ -238,4 +240,41 @@ test("Route Check evaluates the derived effective choice", async () => {
 
   assert.equal(reviewTrip(source).some((item) => item.rule === "driving-load"), false);
   assert.equal(reviewTrip(selected).some((item) => item.rule === "driving-load"), true);
+});
+
+test("real Fenghuang to Hong Kong evidence retains a selectable alternative through reload and reset", async () => {
+  const module = await import("../lib/easyt/transport-mode-choice.ts");
+  const fenghuang = { id: "fenghuang-occurrence", order: 0, name: "Fenghuang", country: "China", canonicalPlaceId: "fenghuang", longitude: 109.6017, latitude: 27.9483, arrivalDate: "2027-05-01", departureDate: "2027-05-04", nights: 3 };
+  const hongKong = { id: "hong-kong-occurrence", order: 1, name: "Hong Kong", country: "China", canonicalPlaceId: "hong-kong", longitude: 114.1694, latitude: 22.3193, arrivalDate: "2027-05-04", departureDate: "2027-05-08", nights: 4 };
+  const [baseline] = buildCanonicalTripLegs({
+    tripId: "real-runtime-choice",
+    origin: { name: fenghuang.name, country: fenghuang.country, canonicalPlaceId: fenghuang.canonicalPlaceId, coordinates: [fenghuang.longitude, fenghuang.latitude] },
+    stops: [hongKong],
+  });
+  const resolved = await resolveCanonicalTransferJourney(baseline);
+  const source: EasyTTrip = {
+    ...trip(),
+    id: "real-runtime-choice",
+    title: "Fenghuang and Hong Kong",
+    startDate: "2027-05-01",
+    endDate: "2027-05-08",
+    brief: { ...trip().brief, origin: fenghuang.name, originCountry: fenghuang.country, originCanonicalPlaceId: fenghuang.canonicalPlaceId, originCoordinates: [fenghuang.longitude, fenghuang.latitude], decisionSelections: { transportByLeg: {} } },
+    stops: [fenghuang, hongKong],
+    legs: [resolved.leg],
+    planItems: [],
+  };
+
+  const choices = module.supportedTransportChoicesForLeg(source, source.legs[0]);
+  assert.deepEqual(choices.map((choice) => [choice.candidateId, choice.mode, choice.evidence]), [
+    ["rail:network:china-high-speed-intercity", "train", "intercity_rail_network"],
+    ["mixed:air-gateway", "mixed", "air_gateway_composition"],
+  ]);
+  const alternative = choices.find((choice) => choice.candidateId === "mixed:air-gateway");
+  assert.ok(alternative);
+  const selected = module.selectTripLegTransportChoice(source, source.legs[0].id, alternative.identity);
+  const reloaded = JSON.parse(JSON.stringify(selected)) as EasyTTrip;
+  assert.equal(module.effectiveTripLeg(reloaded, reloaded.legs[0]).mode, "mixed");
+  assert.equal(reloaded.legs[0].mode, "train", "Morrovia's recommendation remains intact");
+  const cleared = module.clearTripLegTransportChoice(reloaded, reloaded.legs[0].id);
+  assert.equal(module.effectiveTripLeg(cleared, cleared.legs[0]).mode, "train");
 });

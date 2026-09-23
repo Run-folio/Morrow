@@ -30,12 +30,46 @@ test("Transport keeps selected journey, card and map leg synchronized at desktop
     assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-2"]').getAttribute("data-selected"), "true");
     assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-2");
 
+    await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getByRole("button", { name: "View details" }).click();
+    assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-1");
+    assert.match(await view.page.locator('[aria-live="polite"] h3').innerText(), /Tokyo[\s\S]*Kyoto/);
+    await view.page.getByRole("button", { name: "Map leg Kyoto to Osaka" }).click();
+    assert.match(await view.page.locator('[aria-live="polite"] h3').innerText(), /Kyoto[\s\S]*Osaka/);
+
+    await view.page.reload();
+    await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').waitFor();
+    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getAttribute("data-selected"), "true");
+
     await view.page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await view.page.locator("#transport-route-map").getAttribute("data-mobile-open"), "false");
     await view.page.getByRole("button", { name: "Show route map" }).click();
     assert.equal(await view.page.locator("#transport-route-map").getAttribute("data-mobile-open"), "true");
+    await view.page.getByRole("button", { name: "Map leg Kyoto to Osaka" }).click();
+    await view.page.getByRole("button", { name: "Hide route map" }).click();
     assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-2"]').getAttribute("data-selected"), "true");
+    await view.page.getByRole("button", { name: "Show route map" }).click();
+    assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-2");
     assert.equal(await view.page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test("Transport selection keeps repeated place occurrences distinct by canonical leg ID", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+  const trip = twoLegTrip();
+  trip.stops.push({ id: "tokyo-return", order: 3, name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", latitude: 35.6895, longitude: 139.6917, arrivalDate: "2027-04-10", departureDate: "2027-04-12", nights: 2 });
+  trip.legs.push({
+    id: "trip-japan-choice-leg-3", fromStopId: "osaka", toStopId: "tokyo-return",
+    fromEndpoint: { kind: "stop", id: "osaka", name: "Osaka", country: "Japan", canonicalPlaceId: "osaka", coordinates: [135.5023, 34.6937] },
+    toEndpoint: { kind: "stop", id: "tokyo-return", name: "Tokyo", country: "Japan", canonicalPlaceId: "tokyo", coordinates: [139.6917, 35.6895] },
+    classification: "intercity", mode: "train", distanceKm: 515, durationMinutes: 180, doorToDoorMinutes: 180, headlineMinutes: 180,
+    provider: "Reviewed rail evidence.", provenance: "canonical_schedule", confidence: "high", scheduleNeedsChecking: true, warnings: [], routeMetadata: {},
+  });
+  const view = await renderBuilder({ path: `/journey/${trip.id}/transport`, initialTrip: trip });
+  try {
+    await view.page.getByRole("button", { name: "Map leg Osaka to Tokyo" }).click();
+    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-3"]').getAttribute("data-selected"), "true");
+    assert.equal(await view.page.locator('[data-transport-leg-id="trip-japan-choice-leg-1"]').getAttribute("data-selected"), null);
+    assert.equal(await view.page.locator('[aria-label="Whole-trip route map preview"]').getAttribute("data-selected-leg-id"), "trip-japan-choice-leg-3");
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

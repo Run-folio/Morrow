@@ -53,6 +53,57 @@ export type MapRouteLeg = {
   routeProvider?: "openrouteservice";
 };
 
+type MapPoint = { x: number; y: number };
+
+function pointToSegmentDistanceSquared(point: MapPoint, from: MapPoint, to: MapPoint) {
+  const deltaX = to.x - from.x;
+  const deltaY = to.y - from.y;
+  if (deltaX === 0 && deltaY === 0) return (point.x - from.x) ** 2 + (point.y - from.y) ** 2;
+  const progress = Math.max(0, Math.min(1, ((point.x - from.x) * deltaX + (point.y - from.y) * deltaY) / (deltaX ** 2 + deltaY ** 2)));
+  const nearestX = from.x + progress * deltaX;
+  const nearestY = from.y + progress * deltaY;
+  return (point.x - nearestX) ** 2 + (point.y - nearestY) ** 2;
+}
+
+function projectedLegDistanceSquared(
+  leg: Pick<MapRouteLeg, "fromCoordinates" | "toCoordinates" | "routeGeometry" | "routeSegments">,
+  point: MapPoint,
+  project: (coordinates: [number, number]) => MapPoint,
+) {
+  const coordinatePaths = leg.routeSegments?.length
+    ? leg.routeSegments.map((segment) => usableRouteGeometry(segment.routeGeometry).length >= 2
+      ? usableRouteGeometry(segment.routeGeometry)
+      : [segment.fromCoordinates, segment.toCoordinates])
+    : [usableRouteGeometry(leg.routeGeometry).length >= 2
+      ? usableRouteGeometry(leg.routeGeometry)
+      : [leg.fromCoordinates, leg.toCoordinates]];
+  return Math.min(...coordinatePaths.flatMap((coordinates) => coordinates.slice(1).map((to, index) =>
+    pointToSegmentDistanceSquared(point, project(coordinates[index]!), project(to)))));
+}
+
+/**
+ * MapLibre can return several hit-layer features under one pointer at route
+ * overview zoom. Resolve that visual ambiguity by geometry, then return the
+ * canonical TripLeg.id carried by the exact map projection. Endpoint labels,
+ * route indexes and feature ordering never participate in selection identity.
+ */
+export function mapRouteLegIdAtPoint(
+  legs: readonly Pick<MapRouteLeg, "id" | "fromCoordinates" | "toCoordinates" | "routeGeometry" | "routeSegments">[],
+  hitLegIds: readonly string[],
+  point: MapPoint,
+  project: (coordinates: [number, number]) => MapPoint,
+  selectedLegId?: string | null,
+) {
+  const hits = new Set(hitLegIds);
+  const distances = legs
+    .filter((leg) => hits.has(leg.id))
+    .map((leg) => ({ id: leg.id, distance: projectedLegDistanceSquared(leg, point, project) }))
+    .sort((left, right) => left.distance - right.distance
+      || Number(right.id === selectedLegId) - Number(left.id === selectedLegId)
+      || left.id.localeCompare(right.id));
+  return distances[0]?.id ?? null;
+}
+
 export type MapCopilotScope =
   | "whole-trip"
   | "selected-stop"

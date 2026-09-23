@@ -6,6 +6,7 @@ import {
   conciseMapDescription,
   geographicRouteBearing,
   mapCopilotPrompts,
+  mapRouteLegIdAtPoint,
   mapRouteBearing,
   mapRouteLegsFromTrip,
   mapRouteMarkerCoordinates,
@@ -137,6 +138,43 @@ test("route marker bearings follow ordered geometry and cross the dateline corre
   };
   assert.deepEqual(mapRouteMarkerCoordinates(curved), [10, 10]);
   assert.ok(Math.abs(mapRouteBearing(curved) ?? 999) < 1, "the marker follows the local northbound segment, not the endpoint chord");
+});
+
+test("overlapping map hits resolve the nearest canonical leg instead of MapLibre feature order", () => {
+  const legs = [
+    {
+      id: "trip-leg-kanazawa-takayama",
+      fromCoordinates: [0, 0] as [number, number],
+      toCoordinates: [100, 0] as [number, number],
+    },
+    {
+      id: "trip-leg-kyoto-osaka",
+      fromCoordinates: [0, 8] as [number, number],
+      toCoordinates: [100, 8] as [number, number],
+    },
+  ];
+
+  assert.equal(mapRouteLegIdAtPoint(
+    legs,
+    ["trip-leg-kanazawa-takayama", "trip-leg-kyoto-osaka"],
+    { x: 50, y: 7 },
+    ([x, y]) => ({ x, y }),
+  ), "trip-leg-kyoto-osaka");
+});
+
+test("identical repeated-destination geometry retains the selected occurrence identity", () => {
+  const legs = [
+    { id: "trip-leg-outbound", fromCoordinates: [0, 0] as [number, number], toCoordinates: [10, 0] as [number, number] },
+    { id: "trip-leg-return", fromCoordinates: [10, 0] as [number, number], toCoordinates: [0, 0] as [number, number] },
+  ];
+
+  assert.equal(mapRouteLegIdAtPoint(
+    legs,
+    ["trip-leg-outbound", "trip-leg-return"],
+    { x: 5, y: 0 },
+    ([x, y]) => ({ x, y }),
+    "trip-leg-return",
+  ), "trip-leg-return");
 });
 
 test("map context projection and co-pilot prompts cannot mutate TripDocument", () => {
