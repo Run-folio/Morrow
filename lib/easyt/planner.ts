@@ -631,7 +631,7 @@ export function assessRouteOrder(input: {
       .filter((assessment) => assessment.status === "avoidable" && !winner?.metrics.repeatedCountryCodes.includes(assessment.countryCode))
       .map((assessment) => countryNameFor(assessment.countryCode) ?? assessment.countryCode)
     : [];
-  const reasons = [
+  const primaryReasons = [
     ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."]
       : improvementMinutes !== null && improvementMinutes > 0
         ? [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]
@@ -640,19 +640,26 @@ export function assessRouteOrder(input: {
             ? `It removes an avoidable country re-entry for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`
             : `${ROUTE_BACKTRACKING_REASON_PREFIX} for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
         : [scoring.explanation]),
-    ...(improvedCountryNames.length
-      ? [`It keeps the planned stops in ${improvedCountryNames.join(" and ")} in one country block.`]
-      : []),
-    ...(bestLongLegs < currentLongLegs
-      ? ["It also reduces the number of travel-heavy days."]
-      : removesBacktracking
-        ? [`${ROUTE_BACKTRACKING_REASON_PREFIX} under the current route criteria.`]
-        : []),
   ];
+  const countryContinuityReasons = improvedCountryNames.length
+    ? [`It keeps the planned stops in ${improvedCountryNames.join(" and ")} in one country block.`]
+    : [];
+  const existingBacktrackingReason = primaryReasons.find((reason) => reason.startsWith(ROUTE_BACKTRACKING_REASON_PREFIX));
+  const backtrackingReasons = removesBacktracking
+    ? [existingBacktrackingReason ?? `${ROUTE_BACKTRACKING_REASON_PREFIX} under the current route criteria.`]
+    : [];
+  const structuralReasons = [...countryContinuityReasons, ...backtrackingReasons];
+  const supportingReasons = primaryReasons.filter((reason) => reason !== existingBacktrackingReason);
+  const operationalReasons = bestLongLegs < currentLongLegs
+    ? ["It also reduces the number of travel-heavy days."]
+    : [];
+  const reasons = structuralReasons.length >= 2
+    ? structuralReasons.slice(0, 2)
+    : [...supportingReasons, ...structuralReasons, ...operationalReasons].slice(0, 2);
   return {
     state: "recommendation", currentStopIds, recommendedStopIds: best.stops.map((stop) => stop.id),
     currentTransferMinutes: current.minutes, recommendedTransferMinutes: best.minutes, improvementMinutes,
-    reasons: reasons.slice(0, 2),
+    reasons,
     tradeoffs: transportTradeoffs(best.legs, input.constraints),
     summary: `${best.stops.map((stop) => stop.name).join(" → ")} is the strongest order under the current route criteria.`,
     ...candidateFields,

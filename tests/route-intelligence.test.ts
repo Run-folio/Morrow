@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, routeTransferSavingMinutes, usableStopDays } from "../lib/easyt/planner.ts";
+import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, ROUTE_BACKTRACKING_REASON_PREFIX, routeTransferSavingMinutes, usableStopDays } from "../lib/easyt/planner.ts";
 import { analyzeRouteCountryContinuity } from "../lib/easyt/route-country-continuity.ts";
 import { transferHeadlineMinutes } from "../lib/easyt/transfer-impact.ts";
 
@@ -217,6 +217,8 @@ test("the Madrid acceptance route retains every stay and chooses one India block
   assert.equal(assessment.recommendedStopIds.includes("madrid-end"), false);
   assert.equal(recommended ? analyzeRouteCountryContinuity(recommended.stops).blocksByCountry.IN : undefined, 1);
   assert.match([assessment.scoring?.explanation, ...assessment.reasons].join(" "), /country re-entr|India.*country block/i);
+  assert.match(assessment.reasons.join(" "), new RegExp(ROUTE_BACKTRACKING_REASON_PREFIX, "i"));
+  assert.equal(assessment.reasons.length, 2);
 });
 
 test("protects a full day when a transfer is travel-heavy", () => {
