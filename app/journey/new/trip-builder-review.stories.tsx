@@ -116,19 +116,20 @@ function AnchorGuidance() {
 }
 
 function RouteReview({ accepted = false }: { accepted?: boolean }) {
-  return <section className={styles.routeCheck} aria-live="polite">
-    <div><p>ROUTE CHECK</p>{accepted
-      ? <><h3>This order keeps the trip moving in a sensible direction.</h3><span>Cancún → Tulum → Caye Caulker → Flores → Antigua Guatemala → San Pedro La Laguna</span></>
-      : <><h3>A cleaner order is available.</h3><span>Cancún → Tulum → Caye Caulker → Flores → Antigua Guatemala → San Pedro La Laguna</span><span className={styles.routeCheckReason}>It reduces unnecessary backtracking between your stops.</span></>}
+  return <section className={styles.timingWarning} role="status" aria-label="Route Check result">
+    <button type="button" className={styles.disclosureHead} aria-expanded="true"><Route aria-hidden="true" /><span><strong>{accepted ? "Route order accepted" : "A better route order is available"}</strong></span><ChevronRight aria-hidden="true" /></button>
+    <div className={styles.timingWarningContent}>
+      <section><strong>What this means</strong><ul><li>{accepted ? "This order keeps the trip moving in a sensible direction." : "It reduces unnecessary backtracking between your stops."}</li></ul></section>
+      <section><strong>{accepted ? "Current order" : "Recommended order"}</strong><p>Cancún → Tulum → Caye Caulker → Flores → Antigua Guatemala → San Pedro La Laguna</p>{!accepted && <div className={styles.routeStatusActions}><EasyTButton size="small">Apply order</EasyTButton><EasyTButton size="small" variant="secondary">Keep current order</EasyTButton></div>}</section>
     </div>
-    {!accepted && <div className={styles.routeCheckActions}><EasyTButton size="small">Use this order</EasyTButton><EasyTButton size="small" variant="secondary">Keep my order</EasyTButton></div>}
   </section>;
 }
 
 function TourRouteReview() {
   return <div style={{ display: "grid", gap: 16, padding: 24 }}>
-    <section className={styles.routeCheck} aria-label="Tour route review">
-      <div><p>ROUTE CHECK</p><h3>This order keeps the trip moving in a sensible direction.</h3><span>{TOUR_TRIP_ROUTE}</span><span className={styles.routeCheckReason}>Seven nights, with the longest transfer protected as a travel day.</span></div>
+    <section className={styles.timingWarning} aria-label="Tour route review">
+      <button type="button" className={styles.disclosureHead} aria-expanded="true"><Route aria-hidden="true" /><span><strong>Route order accepted</strong></span><ChevronRight aria-hidden="true" /></button>
+      <div className={styles.timingWarningContent}><section><strong>What this means</strong><ul><li>Seven nights, with the longest transfer protected as a travel day.</li></ul></section><section><strong>Current order</strong><p>{TOUR_TRIP_ROUTE}</p></section></div>
     </section>
     <section className={styles.resolvedPlaces} aria-label="Confirmed stay structure">
       <header><CheckCircle2 aria-hidden="true" /><span><strong>STAY STRUCTURE CONFIRMED</strong><small>Each overnight base has enough time to support the route.</small></span></header>
@@ -138,7 +139,7 @@ function TourRouteReview() {
 }
 
 function TimingReview({ kind }: { kind: "normal" | "compressed" | "unknown" | "arrival" | "road" | "rail" | "mixed" }) {
-  const title = kind === "compressed" ? "6 stops in 7 days is very fast-paced."
+  const title = kind === "compressed" ? "Very fast pace"
     : kind === "unknown" ? "One major transfer still needs checking."
       : kind === "arrival" ? "The arrival journey takes most of the first day."
         : kind === "road" ? "The road connection is resolved for planning."
@@ -153,9 +154,10 @@ function TimingReview({ kind }: { kind: "normal" | "compressed" | "unknown" | "a
             : kind === "mixed" ? "La Paz → Huacachina · Flight + road · ~8h 45m total."
           : "All nights are allocated, with time protected around the known transfers.";
   return <div style={{ display: "grid", gap: 12 }}>
-    <div className={styles.timeAllocationState}><span className={styles.allocationLabel}>NIGHTS</span><p><CheckCircle2 aria-hidden="true" /><strong>6 total</strong><span aria-hidden="true">•</span><b>All allocated</b></p></div>
+    <header className={styles.builderRouteHeader}><div><p>ROUTE PLAN</p><h2>Your route</h2><span className={styles.builderRouteNightStatus} role="status"><CheckCircle2 aria-hidden="true" /><strong>6 total</strong><span aria-hidden="true">·</span><b>All allocated</b></span></div></header>
     <section className={`${styles.timingWarning} ${kind === "compressed" ? styles.timingWarningStrong : ""}`} role="status" aria-label={`${kind === "compressed" ? "Strong caution" : "Trip pacing"}: ${title}`}>
-      <button type="button" className={styles.disclosureHead} aria-expanded="false">{kind === "road" ? <CarFront aria-hidden="true" /> : kind === "rail" ? <TrainFront aria-hidden="true" /> : kind === "mixed" ? <Route aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}<span><strong>{title}</strong><small>{summary}</small></span><ChevronRight aria-hidden="true" /></button>
+      <button type="button" className={styles.disclosureHead} aria-expanded={kind === "compressed"}>{kind === "road" ? <CarFront aria-hidden="true" /> : kind === "rail" ? <TrainFront aria-hidden="true" /> : kind === "mixed" ? <Route aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}<span><strong>{title}</strong></span><ChevronRight aria-hidden="true" /></button>
+      {kind === "compressed" && <div className={styles.timingWarningContent}><section><strong>What this means</strong><ul><li>{summary}</li></ul></section></div>}
     </section>
   </div>;
 }
@@ -255,9 +257,11 @@ export const DirectEmptyEntryAtLaptop: Story = { ...DirectEmptyEntry, globals: {
 export const DirectEmptyEntryAt768: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const DirectEmptyEntryAt390: Story = { ...DirectEmptyEntry, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const PopulatedHandoffAt1440: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
-export const PopulatedHandoffAtLaptop: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
+export const PopulatedHandoffAt1024: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const PopulatedHandoffAt768: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const PopulatedHandoffAt430: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const PopulatedHandoffAt390: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const PopulatedHandoffAt320: Story = { ...PopulatedHandoff, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 export const BuilderClarificationAt1440: Story = { ...BuilderClarification, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const BuilderClarificationAtLaptop: Story = { ...BuilderClarification, globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
 export const BuilderClarificationAt768: Story = { ...BuilderClarification, globals: { viewport: { value: "morrovia768", isRotated: false } } };

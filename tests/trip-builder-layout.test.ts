@@ -412,6 +412,24 @@ test("night allocation is compact Route metadata instead of a separate band", ()
     "Route metadata must distinguish complete and unresolved allocation using canonical counts");
 });
 
+test("Builder hierarchy has production Storybook coverage at every required width", () => {
+  const stories = readFileSync(new URL("../app/journey/new/trip-builder-review.stories.tsx", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../app/journey/new/trip-builder.module.css", import.meta.url), "utf8");
+
+  for (const width of [320, 390, 430, 768, 1024, 1440]) {
+    assert.match(stories, new RegExp(`PopulatedHandoffAt${width}[\\s\\S]*morrovia${width}`),
+      `the production Builder should have a populated ${width}px fixture`);
+  }
+  assert.doesNotMatch(stories, /styles\.routeCheck/,
+    "Storybook must not preserve the removed standalone Route Check pattern");
+  assert.match(stories, /Very fast pace/);
+  assert.doesNotMatch(stories, /6 stops in 7 days is very fast-paced\.|<small>\{summary\}<\/small>/);
+  assert.match(styles, /@media\(max-width:520px\)[\s\S]*\.placesSectionHead>button\{[^}]*min-height:44px/,
+    "the mobile Journey Add stop action should retain a full touch target");
+  assert.match(styles, /@media\(max-width:520px\)[\s\S]*\.detailsActions button\{[^}]*min-height:44px/,
+    "mobile journey commit controls should retain full touch targets");
+});
+
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 
