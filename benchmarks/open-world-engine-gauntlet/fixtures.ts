@@ -313,12 +313,12 @@ export const OPEN_WORLD_ENGINE_GAUNTLET: OpenWorldGauntletFixture[] = [
   {
     id: "provider-outage-fails-closed",
     cohort: "provider-failure",
-    prompt: "Antananarivo and Andasibe",
-    mentions: ["Antananarivo", "Andasibe"].map((sourceText) => ({ sourceText, kind: "route-stop" })),
+    prompt: "Antananarivo and Ambositra",
+    mentions: ["Antananarivo", "Ambositra"].map((sourceText) => ({ sourceText, kind: "route-stop" })),
     candidates: {
       antananarivo: [candidate({ id: "node:64001", name: "Antananarivo", country: "Madagascar", type: "city", coordinates: [47.5079, -18.8792] })],
-      andasibe: [],
+      ambositra: [],
     },
-    expected: [resolved("Antananarivo", "Antananarivo", "Madagascar", "city"), review("Andasibe", undefined, undefined, undefined, "provider failure must retain unknown identity and require confirmation")],
+    expected: [resolved("Antananarivo", "Antananarivo", "Madagascar", "city"), review("Ambositra", undefined, undefined, undefined, "provider failure must retain unknown identity and require confirmation")],
   },
 ];

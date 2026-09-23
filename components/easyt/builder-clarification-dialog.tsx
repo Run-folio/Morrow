@@ -272,7 +272,7 @@ export function BuilderClarificationDialog({
                   {candidate.stayGuidance ? <small>{candidate.stayGuidance}</small> : null}
                   {candidate.source ? <a className={styles.discoverySource} href={candidate.source.url} target="_blank" rel="noreferrer">{language === "es" ? "Fuente" : "Source"}: {candidate.source.label}</a> : null}
                   {/* morrovia-ui-audit-allow-next-line native-control -- A pressed-state selection control in a discovery card, not a generic action button. */}
-                  <button type="button" aria-pressed={selected} disabled={candidate.alreadyInTrip} aria-label={`${candidate.name}: ${selected ? "selected, remove" : "not selected, add"}`} onClick={() => discovery.onToggle(candidate.id, !selected)}>
+                  <button type="button" aria-pressed={selected} disabled={candidate.alreadyInTrip} aria-label={`${candidate.name}: ${candidate.alreadyInTrip ? language === "es" ? "ya en el viaje" : "already in trip" : selected ? language === "es" ? "seleccionado, quitar" : "selected, remove" : language === "es" ? "no seleccionado, añadir" : "not selected, add"}`} onClick={() => discovery.onToggle(candidate.id, !selected)}>
                     {selected ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
                     {candidate.alreadyInTrip ? language === "es" ? "Ya en el viaje" : "Already in trip" : selected ? language === "es" ? "Seleccionado · Quitar" : "Selected · Remove" : language === "es" ? "Añadir" : "Add"}
                   </button>

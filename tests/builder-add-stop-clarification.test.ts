@@ -147,11 +147,11 @@ test("19 needs-base clarification is neutral, focus-managed, and not aria-invali
 });
 
 test("20 pending geography blocks Step 2 until a base or broad-area completion clears it", () => {
-  assert.match(builder, /const blockingPlaceIssue = placeIssues\.find\(\(issue\) => issue\.blocksRoute && !selectedMentionIds\.has\(issue\.mentionId\)\)/);
+  assert.match(builder, /const pendingPlaceCount = new Set\(placeIssues\.filter\(\(issue\) => issue\.blocksRoute && !selectedMentionIds\.has\(issue\.mentionId\)\)/);
   assert.match(builder, /const nextSelection: PlaceSelection = \{[\s\S]*?mentionId: targetMentionId/);
   assert.match(builder, /setPlaceSelections\(\(current\) => \[nextSelection,/);
   assert.match(builder, /setTransientPlanningMentionId\(\(current\) => current === targetMentionId \? null : current\)/);
-  assert.match(builder, /const completePlanningArea = \(mention: CapturedLocation\) =>/);
+  assert.match(builder, /const completePlanningArea = \(mention: CapturedLocation, committedNow = false\) =>/);
   assert.match(builder, /setCompletedPlanningAreaMentionIds\(\(current\) => \[\.\.\.new Set\(\[\.\.\.current, mention\.mentionId\]\)\]\)/);
 });
 

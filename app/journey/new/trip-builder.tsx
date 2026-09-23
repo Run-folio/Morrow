@@ -42,8 +42,9 @@ import { transferImpactFromMetadata } from "@/lib/easyt/transfer-impact";
 import { createDestinationKnowledgeStore, destinationKnowledge } from "@/lib/easyt/destination-knowledge";
 import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt/country-discovery";
 import { countryCodeFor } from "@/lib/easyt/country-registry";
+import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -80,7 +81,7 @@ import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib
 
 export type Place = PlannerPlace;
 export type Stop = { id: string; name: string; country: string; canonicalPlaceId?: string; countryCode?: string; region?: string; providerId?: string; coordinates?: [number, number]; intent?: "place" | "landmark"; locality?: string };
-type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; summary: string };
+type StructuralSnapshot = { stops: Stop[]; allocations: Record<string, number>; manualNightStopIds: string[]; startDate: string; endDate: string; locks: TripScheduleLocks; placeSelections: PlaceSelection[]; completedPlanningAreaMentionIds: string[]; removedPlaceMentionIds: string[]; countryDiscoveryChoices?: Record<string, string[]>; capturedPlaceSelections?: PlaceSelection[]; capturedDestinations: StructuredTripBrief["destinations"]; capturedMustVisit: StructuredTripBrief["mustVisit"]; summary: string };
 type NightEditFeedback = { title: string; detail?: string; tone: "info" | "warning" };
 type CapturedLocation = ResolvedPlaceMention;
 type LocationChoice = HandoffLocationChoice;
@@ -553,12 +554,14 @@ function TripBuilderDocument() {
   const [clarificationIndex, setClarificationIndex] = useState(0);
   const [clarificationAutoOpened, setClarificationAutoOpened] = useState(false);
   const [clarificationDismissed, setClarificationDismissed] = useState(false);
+  const [discoveryCommitting, setDiscoveryCommitting] = useState(false);
   const [buildAttentionReviewOpen, setBuildAttentionReviewOpen] = useState(false);
   const [nearbyBaseDiscovery, setNearbyBaseDiscovery] = useState<NearbyBaseDiscoveryState | null>(null);
   const [nearbyBaseRetryNonce, setNearbyBaseRetryNonce] = useState(0);
   const [expandedNearbyBaseMentionIds, setExpandedNearbyBaseMentionIds] = useState<string[]>([]);
   const [productTourOpen, setProductTourOpen] = useState(false);
   const clarificationResumeRef = useRef<HTMLButtonElement>(null);
+  const discoveryCommitRef = useRef(false);
   const restoreClarificationResumeFocusRef = useRef(false);
   const clarificationScopeRef = useRef<string | null | undefined>(undefined);
   const originErrorId = useId();
@@ -1731,7 +1734,7 @@ function TripBuilderDocument() {
   const routeNightDifference = routeNights - totalNights;
 
   const rememberStructuralChange = (summary: string, affectedStopCount: number) => {
-    setLastStructuralChange({ stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, summary });
+    setLastStructuralChange({ stops, allocations: dayAllocations, manualNightStopIds, startDate, endDate, locks: scheduleLocks, placeSelections, completedPlanningAreaMentionIds, removedPlaceMentionIds, countryDiscoveryChoices: capturedStructuredBrief.countryDiscoveryChoices, capturedPlaceSelections: capturedStructuredBrief.placeSelections, capturedDestinations: capturedStructuredBrief.destinations, capturedMustVisit: capturedStructuredBrief.mustVisit, summary });
     trackEvent("trip_refined", { change_type: summary, affected_stop_count: affectedStopCount });
   };
 
@@ -1746,7 +1749,9 @@ function TripBuilderDocument() {
     setPlaceSelections(lastStructuralChange.placeSelections);
     setCompletedPlanningAreaMentionIds(lastStructuralChange.completedPlanningAreaMentionIds);
     setRemovedPlaceMentionIds(lastStructuralChange.removedPlaceMentionIds);
-    setCapturedStructuredBrief((current) => ({ ...current, countryDiscoveryChoices: lastStructuralChange.countryDiscoveryChoices }));
+    setCapturedStructuredBrief((current) => ({ ...current, countryDiscoveryChoices: lastStructuralChange.countryDiscoveryChoices,
+      placeSelections: lastStructuralChange.capturedPlaceSelections, destinations: lastStructuralChange.capturedDestinations,
+      mustVisit: lastStructuralChange.capturedMustVisit }));
     setNightEditFeedback(null);
     setLastStructuralChange(null);
   };
@@ -1762,13 +1767,26 @@ function TripBuilderDocument() {
       : capturedStructuredBrief.placeMentions?.find((mention) => mention.canonicalName.toLocaleLowerCase() === stop.name.toLocaleLowerCase());
     if (linkedSelection) {
       setPlaceSelections((current) => current.filter((selection) => selection.routeStopId !== stopId));
-      setCapturedStructuredBrief((current) => ({
-        ...current,
-        countryDiscoveryChoices: {
-          ...current.countryDiscoveryChoices,
-          [linkedSelection.mentionId]: updateCountryDiscoveryChoice(current.countryDiscoveryChoices?.[linkedSelection.mentionId] ?? [], linkedSelection.selectedCanonicalPlaceId, false),
-        },
-      }));
+      setCapturedStructuredBrief((current) => {
+        const independentlyNamed = current.placeMentions?.some((mention) => mention.mentionId !== linkedSelection.mentionId
+          && mention.canonicalPlaceId === linkedSelection.selectedCanonicalPlaceId) ?? false;
+        return {
+          ...current,
+          // The structured-brief merge preserves old facts. Remove only this
+          // country-child's saved projection, not its broad parent or a city
+          // independently named in the traveller's original intent.
+          placeSelections: current.placeSelections?.filter((selection) => selection.routeStopId !== stopId),
+          destinations: independentlyNamed ? current.destinations : current.destinations.filter((destination) =>
+            destination.id !== stopId && !(destination.placeMentionId === linkedSelection.mentionId
+              && destination.canonicalPlaceId === linkedSelection.selectedCanonicalPlaceId)),
+          mustVisit: independentlyNamed ? current.mustVisit : current.mustVisit.filter((destination) =>
+            destination.id !== stopId && destination.name.toLocaleLowerCase() !== stop.name.toLocaleLowerCase()),
+          countryDiscoveryChoices: {
+            ...current.countryDiscoveryChoices,
+            [linkedSelection.mentionId]: updateCountryDiscoveryChoice(current.countryDiscoveryChoices?.[linkedSelection.mentionId] ?? [], linkedSelection.selectedCanonicalPlaceId, false),
+          },
+        };
+      });
       const remainingForMention = placeSelections.filter((selection) => selection.mentionId === linkedSelection.mentionId && selection.routeStopId !== stopId);
       if (!remainingForMention.length) setCompletedPlanningAreaMentionIds((current) => current.filter((mentionId) => mentionId !== linkedSelection.mentionId));
     }
@@ -2246,7 +2264,9 @@ function TripBuilderDocument() {
     name: suggestion.name,
     label: `${suggestion.name}, ${suggestion.country}`,
     country: suggestion.country,
-    region: ["country", "continent"].includes(mention.placeType) ? undefined : mention.canonicalName,
+    // Only catalogue hierarchy may assert sub-region containment. The dialog
+    // parent is context, never independent evidence of a child's location.
+    region: findCatalogPlaceById(suggestion.canonicalPlaceId)?.parentRegionId,
     placeType: suggestion.placeType,
     coordinates: suggestion.coordinates,
     routability: "direct_destination",
@@ -3509,7 +3529,7 @@ function TripBuilderDocument() {
     : [];
   const clarificationModelSuggestions = activeClarificationMention
     ? (clarificationUsesNearbyBases
-      ? planningSuggestions
+      ? [...planningSuggestions, ...regionalBaseSuggestions(activeClarificationMention).map((suggestion) => ({ ...suggestion, anchorMatched: false }))]
       : planningAreaSuggestionsWithinParent(planningSuggestions, planningParentForMention(activeClarificationMention)))
       .filter((suggestion) => suggestion.mentionId === activeClarificationMention.mentionId
         && (!clarificationUsesNearbyBases || Boolean(activeNearbyBaseAnchor && canonicalPlaceSuggestionSuitableAsNearbyBase(activeNearbyBaseAnchor, {
@@ -3523,14 +3543,14 @@ function TripBuilderDocument() {
           routability: "direct_destination",
           provenance: suggestion.provenance,
         })))
-        && !isDuplicatePlaceIdentity(stops, { name: suggestion.name, canonicalPlaceId: suggestion.canonicalPlaceId }))
+        // A nearby base already on the route can resolve this separate park
+        // intent through Add stop's canonical existing-base reuse path.
+        && (clarificationUsesNearbyBases || !isDuplicatePlaceIdentity(stops, { name: suggestion.name, canonicalPlaceId: suggestion.canonicalPlaceId })))
     : [];
   const activeNearbyDiscovery = nearbyBaseDiscovery?.mentionId === activeClarificationMention?.mentionId ? nearbyBaseDiscovery : null;
   const nearbySuggestions = clarificationUsesNearbyBases
-    ? [...clarificationModelSuggestions, ...(activeNearbyDiscovery?.suggestions ?? [])].filter((suggestion) => !isDuplicatePlaceIdentity(stops, {
-      name: suggestion.name,
-      canonicalPlaceId: suggestion.canonicalPlaceId,
-    })).filter((suggestion, index, all) => all.findIndex((item) => item.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
+    ? [...clarificationModelSuggestions, ...(activeNearbyDiscovery?.suggestions ?? [])]
+      .filter((suggestion, index, all) => all.findIndex((item) => item.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
     : [];
   const nearbyExpanded = Boolean(activeClarificationMention && expandedNearbyBaseMentionIds.includes(activeClarificationMention.mentionId));
   const visibleNearbySuggestions = nearbySuggestions.slice(0, nearbyExpanded ? 5 : 3);
@@ -3538,7 +3558,9 @@ function TripBuilderDocument() {
     ? visibleNearbySuggestions.map((suggestion) => ({
       id: suggestion.canonicalPlaceId,
       name: suggestion.name,
-      detail: `${suggestion.country} · ${suggestion.reason}`,
+      detail: `${suggestion.country} · ${isDuplicatePlaceIdentity(stops, { name: suggestion.name, canonicalPlaceId: suggestion.canonicalPlaceId })
+        ? language === "es" ? "Ya en la ruta; usar como base" : "Already in route; use as base"
+        : suggestion.reason}`,
     }))
     : [...clarificationModelSuggestions, ...clarificationGuidedSuggestions]
       .filter((suggestion, index, all) => all.findIndex((item) => item.canonicalPlaceId === suggestion.canonicalPlaceId) === index)
@@ -3548,7 +3570,7 @@ function TripBuilderDocument() {
       detail: `${suggestion.country} · ${suggestion.reason}`,
     }));
   const clarificationSuggestionsStatus = clarificationUsesNearbyBases
-    ? !activeNearbyBaseAnchor
+    ? nearbySuggestions.length ? undefined : !activeNearbyBaseAnchor
       ? language === "es"
         ? `Morrovia no tiene datos de ubicación suficientemente fiables para sugerir una base. Se conserva ${clarificationParentName}; busca un lugar cercano.`
         : `Morrovia does not have trustworthy enough location data to suggest a base. ${clarificationParentName} is preserved; search for a nearby place instead.`
@@ -4283,8 +4305,8 @@ function TripBuilderDocument() {
             ? language === "es" ? "Terminar de dar forma a la ruta" : "Finish shaping route"
             : language === "es" ? `Listo con ${clarificationParentName}` : `Done with ${clarificationParentName}`
           : undefined}
-        doneDisabled={!clarificationSelected.length && !clarificationDiscovery?.selectedIds.length}
-        doneDisabledReason={language === "es" ? `Elige al menos un lugar para ${clarificationParentName} antes de completarlo.` : `Choose at least one place for ${clarificationParentName} before completing it.`}
+        doneDisabled={discoveryCommitting || (!clarificationSelected.length && !clarificationDiscovery?.selectedIds.length)}
+        doneDisabledReason={discoveryCommitting ? undefined : language === "es" ? `Elige al menos un lugar para ${clarificationParentName} antes de completarlo.` : `Choose at least one place for ${clarificationParentName} before completing it.`}
         backLabel={language === "es" ? "Atrás" : "Back"}
         finishLaterLabel={language === "es" ? "Terminar más tarde" : "Finish later"}
         removeLabel={activeClarificationMention && !isOriginMention(activeClarificationMention) && activeClarificationRemovalPlan?.ownershipKnown
@@ -4295,17 +4317,25 @@ function TripBuilderDocument() {
         onDone={() => {
           if (!activeClarificationMention || (!clarificationSelected.length && !clarificationDiscovery?.selectedIds.length)) return;
           if (clarificationDiscovery?.selectedIds.length) {
+            if (discoveryCommitRef.current) return;
+            discoveryCommitRef.current = true;
+            setDiscoveryCommitting(true);
             void (async () => {
-              let committed = 0;
-              for (const id of clarificationDiscovery.selectedIds) {
-                const candidate = clarificationDiscovery.candidates.find((item) => item.placeId === id);
-                if (!candidate) continue;
-                const added = await addGuidedPlanningPlace(activeClarificationMention, candidate);
-                if (!added) return;
-                committed += 1;
+              try {
+                let committed = 0;
+                for (const id of clarificationDiscovery.selectedIds) {
+                  const candidate = clarificationDiscovery.candidates.find((item) => item.placeId === id);
+                  if (!candidate) continue;
+                  const added = await addGuidedPlanningPlace(activeClarificationMention, candidate);
+                  if (!added) return;
+                  committed += 1;
+                }
+                completePlanningArea(activeClarificationMention, committed > 0);
+                advanceClarificationSession();
+              } finally {
+                discoveryCommitRef.current = false;
+                setDiscoveryCommitting(false);
               }
-              completePlanningArea(activeClarificationMention, committed > 0);
-              advanceClarificationSession();
             })();
             return;
           }

@@ -14,6 +14,7 @@ import {
   type PlanningConfidence,
   type PlanningConfidenceSource,
 } from "./planning-confidence.ts";
+import { destinationKnowledge } from "./destination-knowledge.ts";
 import { routeFamilies, routeFamilyByKey, type RouteFamily } from "./route-catalog.ts";
 
 export const PLACE_INTELLIGENCE_VERSION = 1 as const;
@@ -1361,6 +1362,23 @@ export function regionalBaseSuggestions(
       }],
     }]
     : [];
+  const containedBases = PLACE_CATALOG.flatMap((place) => {
+    if (place.parentRegionId !== canonicalPlaceId || !place.coordinates || !place.parentCountries[0]
+      || !isOvernightBaseEligible({ placeType: place.placeType, routability: place.routability })) return [];
+    const knowledge = destinationKnowledge.findDestination({ canonicalPlaceId: place.canonicalPlaceId,
+      name: place.canonicalName, country: place.parentCountries[0] });
+    if (knowledge?.roles.status !== "known" || !knowledge.roles.value.includes("base")) return [];
+    const source = knowledge.roles.sources[0];
+    seen.add(`${normalizePlacePhrase(place.canonicalName)}|${normalizePlacePhrase(place.parentCountries[0])}`);
+    return [{
+      mentionId, regionCanonicalPlaceId: canonicalPlaceId, canonicalPlaceId: place.canonicalPlaceId,
+      name: place.canonicalName, country: place.parentCountries[0], placeType: place.placeType,
+      coordinates: [...place.coordinates] as [number, number],
+      reason: `${place.canonicalName} is a reviewed overnight locality for ${anchor?.canonicalName ?? canonicalPlaceId}; availability still needs checking.`,
+      provenance: [{ id: source.id, label: source.label, kind: "canonical" as const,
+        supports: source.supports, reviewedAt: source.reviewedAt }],
+    }];
+  });
   const routeSuggestions = relatedPlanningIds.flatMap(routeFamiliesForRegion).flatMap((route) => route.stops.flatMap((stop) => {
     const key = `${normalizePlacePhrase(stop.name)}|${normalizePlacePhrase(stop.country)}`;
     if (seen.has(key)) return [];
@@ -1384,7 +1402,7 @@ export function regionalBaseSuggestions(
       }],
     }];
   }));
-  return unique([...linkedBase, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
+  return unique([...linkedBase, ...containedBases, ...routeSuggestions], (suggestion) => suggestion.canonicalPlaceId);
 }
 
 /** Guided choices for a recognised broad place. Every option comes from

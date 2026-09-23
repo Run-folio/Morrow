@@ -27,3 +27,9 @@ test("responsive Storybook covers discovery at required widths", () => {
   }
   assert.match(stories, /CountryDiscovery/);
 });
+
+test("natural-area clarification keeps reviewed canonical nearby bases alongside provider results", () => {
+  assert.match(builder, /regionalBaseSuggestions\(activeClarificationMention\)/);
+  assert.match(builder, /canonicalPlaceSuggestionSuitableAsNearbyBase\(activeNearbyBaseAnchor/);
+  assert.match(builder, /\[\.\.\.clarificationModelSuggestions, \.\.\.\(activeNearbyDiscovery\?\.suggestions \?\? \[\]\)\]/);
+});

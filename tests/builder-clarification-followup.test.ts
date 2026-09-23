@@ -309,6 +309,6 @@ test("44 preserved children shed a removed parent relationship without losing th
 test("45 a retained same-name child stays visible and enables shaping completion", () => {
   assert.match(builder, /const clarificationSelected = activeClarificationMention[\s\S]*?selection\.mentionId === activeClarificationMention\.mentionId/);
   assert.match(builder, /selectedPlaces=\{clarificationSelectedPlaces\}/);
-  assert.match(builder, /doneDisabled=\{!clarificationSelected\.length && !clarificationDiscovery\?\.selectedIds\.length\}/);
+  assert.match(builder, /doneDisabled=\{discoveryCommitting \|\| \(!clarificationSelected\.length && !clarificationDiscovery\?\.selectedIds\.length\)\}/);
   assert.match(builder, /if \(!activeClarificationMention \|\| \(!clarificationSelected\.length && !clarificationDiscovery\?\.selectedIds\.length\)\) return/);
 });

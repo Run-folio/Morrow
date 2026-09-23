@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
+import { canonicalPlaceSuggestionSuitableAsNearbyBase, nearbyBaseAnchorForMention, regionalBaseSuggestions, resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
 import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "../lib/easyt/country-discovery.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
@@ -22,6 +22,9 @@ test("Tajikistan and Madagascar have canonical recommendation-first starting set
   }
   assert.ok(buildCountryDiscovery(mention("Madagascar"), { totalNights: 12 }).selectedIds.length <= 2,
     "without stay guidance, a longer country should start conservatively");
+  const natureShort = buildCountryDiscovery(mention("Tajikistan"), { totalNights: 6, interests: ["nature"] });
+  assert.ok(!(natureShort.selectedIds.includes("panjakent") && natureShort.selectedIds.includes("khorog")),
+    "distant places without route evidence must not both be preselected for a short trip");
 });
 
 test("short trips select fewer places and existing explicit Tokyo is never selected twice", () => {
@@ -42,18 +45,26 @@ test("Thailand recommendations deduplicate names and Philippines only recommends
   const philippines = buildCountryDiscovery(mention("Philippines"), { totalNights: 12 });
   assert.ok(philippines.candidates.length >= 3);
   assert.ok(philippines.candidates.some((candidate) => candidate.name === "Puerto Princesa"));
+  assert.ok(philippines.candidates.every((candidate) => !candidate.placeId.startsWith("route-base:")));
+  assert.ok(!philippines.candidates.some((candidate) => candidate.name === "Palawan"));
   assert.ok(philippines.candidates.every((candidate) => ["city", "town", "transport_gateway"].includes(candidate.placeType)));
+  const shortPhilippines = buildCountryDiscovery(mention("Philippines"), { totalNights: 6 });
+  const chosen = shortPhilippines.selectedIds.map((id) => shortPhilippines.candidates.find((candidate) => candidate.placeId === id)!);
+  const minimums = { Manila: 2, Cebu: 3 } as Record<string, number>;
+  assert.ok(chosen.reduce((sum, candidate) => sum + (minimums[candidate.name] ?? 2), 0) + Math.max(0, chosen.length - 1) <= 6);
+  const existingCebu = buildCountryDiscovery(mention("Philippines"), { totalNights: 5, existingPlaceIds: ["cebu-city"] });
+  assert.deepEqual(existingCebu.selectedIds, [], "a committed three-night base and another two-night base need a transfer allowance");
 });
 
 test("interest ranking uses supported evidence and explicit deselection remains authoritative", () => {
-  const panama = mention("Panama");
-  const food = buildCountryDiscovery(panama, { totalNights: 14, interests: ["food"] });
-  const nature = buildCountryDiscovery(panama, { totalNights: 14, interests: ["nature"] });
+  const tajikistan = mention("Tajikistan");
+  const food = buildCountryDiscovery(tajikistan, { totalNights: 14, interests: ["food"] });
+  const nature = buildCountryDiscovery(tajikistan, { totalNights: 14, interests: ["nature"] });
   assert.notDeepEqual(food.candidates.map((candidate) => candidate.placeId), nature.candidates.map((candidate) => candidate.placeId));
   const first = food.selectedIds[0];
   assert.ok(first);
   const explicit = updateCountryDiscoveryChoice(food.selectedIds, first, false);
-  const restored = buildCountryDiscovery(panama, { totalNights: 14, interests: ["food"], explicitChoiceIds: explicit });
+  const restored = buildCountryDiscovery(tajikistan, { totalNights: 14, interests: ["food"], explicitChoiceIds: explicit });
   assert.ok(!restored.selectedIds.includes(first));
 });
 
@@ -61,6 +72,15 @@ test("sparse country knowledge remains a search fallback and does not invent rec
   const result = buildCountryDiscovery(mention("Eritrea"), { totalNights: 10 });
   assert.deepEqual(result.candidates, []);
   assert.deepEqual(result.selectedIds, []);
+});
+
+test("a broad region never recommends a place merely because it shares a country", () => {
+  const patagonia = buildCountryDiscovery(mention("Patagonia"), { totalNights: 14, interests: ["nature"] });
+  assert.ok(!patagonia.candidates.some((candidate) => candidate.name === "Buenos Aires"));
+  assert.ok(patagonia.candidates.every((candidate) => ["el-calafate", "el-chalten", "puerto-natales"].includes(candidate.placeId)));
+  const africa = buildCountryDiscovery(mention("Africa"), { totalNights: 14 });
+  const selectedCountries = new Set(africa.selectedIds.map((id) => africa.candidates.find((candidate) => candidate.placeId === id)?.country));
+  assert.ok(selectedCountries.size <= 1, "continent-scale defaults need a coherent single-country starting focus");
 });
 
 test("multi-country time is shared conservatively and Serengeti narrows Africa without turning it into a base", () => {
@@ -71,13 +91,28 @@ test("multi-country time is shared conservatively and Serengeti narrows Africa w
   assert.equal(single.availableNights, 10);
   assert.equal(multi.availableNights, 5);
   assert.ok(multi.selectedIds.length <= single.selectedIds.length);
+  const foreignStops = buildCountryDiscovery(japan, { totalNights: 14, existingPlaceIds: ["beijing", "shanghai", "xian"] });
+  const withoutForeignStops = buildCountryDiscovery(japan, { totalNights: 14 });
+  assert.deepEqual(foreignStops.selectedIds, withoutForeignStops.selectedIds,
+    "other countries' committed places must not consume Japan's starting-set cap");
 
-  const africa = mention("Africa");
-  const serengeti = { ...africa, mentionId: "serengeti", canonicalName: "Serengeti National Park",
-    placeType: "natural_area" as const, parentCountries: ["Tanzania"], routability: "anchor_or_poi" as const,
-    role: "anchor" as const, isAnchor: true };
-  const discovery = buildCountryDiscovery(africa, { mentions: [africa, serengeti], interests: ["nature"], totalNights: 14 });
-  assert.ok(discovery.candidates.length > 0);
+  const africaJourney = resolvePlaceMentions("Africa and Serengeti").mentions;
+  const africa = africaJourney.find((item) => item.canonicalName === "Africa")!;
+  const serengeti = africaJourney.find((item) => item.canonicalName === "Serengeti National Park")!;
+  assert.ok(serengeti);
+  assert.equal(serengeti.placeType, "natural_area");
+  assert.deepEqual(serengeti.parentCountries, ["Tanzania"]);
+  const serengetiAnchor = nearbyBaseAnchorForMention(serengeti)!;
+  assert.ok(serengetiAnchor);
+  const supportedBase = regionalBaseSuggestions(serengeti).find((candidate) => candidate.canonicalPlaceId === "seronera");
+  assert.ok(supportedBase, "a reviewed Seronera overnight locality should be offered without provider dependency");
+  assert.ok(canonicalPlaceSuggestionSuitableAsNearbyBase(serengetiAnchor, {
+    canonicalPlaceId: supportedBase.canonicalPlaceId, name: supportedBase.name,
+    label: `${supportedBase.name}, ${supportedBase.country}`, country: supportedBase.country,
+    region: supportedBase.region, placeType: supportedBase.placeType,
+    coordinates: supportedBase.coordinates, routability: "direct_destination", provenance: supportedBase.provenance,
+  }));
+  const discovery = buildCountryDiscovery(africa, { mentions: africaJourney, interests: ["nature"], totalNights: 14 });
   assert.ok(discovery.candidates.every((candidate) => candidate.country === "Tanzania"));
   assert.ok(discovery.candidates.every((candidate) => candidate.placeId !== "serengeti"));
 });

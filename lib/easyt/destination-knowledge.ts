@@ -292,6 +292,20 @@ function curatedDestination(input: CuratedDestinationInput): DestinationKnowledg
 
 /** A deliberately modest set drawn from current curated route families. */
 export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
+  curatedDestination({
+    canonicalId: "arusha", name: "Arusha", country: "Tanzania", region: "africa",
+    coordinates: [36.6829, -3.3869], roles: ["hub", "base"], experienceTags: ["nature", "wildlife"],
+    source: { id: "tanapa:northern-circuit", label: "Tanzania National Parks visitor brochure", kind: "official",
+      url: "https://tanzaniaparks.go.tz/uploads/publications/en-1581671752-TANAPA%20GENERAL%20BROCHURES%202020-WEBSITE%20%281%29.pdf",
+      reviewedAt: "2026-09-23", supports: "Arusha is a northern-circuit starting point in official park visitor material; no specific Serengeti transfer or stay duration is claimed." },
+  }),
+  curatedDestination({
+    canonicalId: "seronera", name: "Seronera", country: "Tanzania", region: "Serengeti National Park",
+    coordinates: [34.81909, -2.44672], roles: ["base"], experienceTags: ["nature", "wildlife"],
+    source: { id: "tanapa:seronera-accommodation", label: "Tanzania National Parks Serengeti visitor brochure", kind: "official",
+      url: "https://www.tanzaniaparks.go.tz/uploads/publications/en-1634493627-SE-ENG.pdf",
+      reviewedAt: "2026-09-23", supports: "TANAPA documents lodges, public campsites and rest houses at Seronera; this supports an overnight locality, not availability or a trip-specific stay." },
+  }),
   ...[
     { canonicalId: "puerto-princesa", name: "Puerto Princesa", coordinates: [118.7353, 9.7392] as [number, number], experienceTags: ["nature", "beach"] },
     { canonicalId: "el-nido", name: "El Nido", coordinates: [119.3922, 11.1956] as [number, number], experienceTags: ["nature", "beach"] },
