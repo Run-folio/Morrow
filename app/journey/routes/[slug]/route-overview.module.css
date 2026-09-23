@@ -384,7 +384,7 @@
  .experienceHeading h2 { font-size: 36px; }
 }
 
-/* #328 discovery hierarchy. Existing Route Detail primitives remain the owner. */
+/* Ticket 328 discovery hierarchy. Existing Route Detail primitives remain the owner. */
 .heroPromise { max-width:720px; margin:0 0 20px!important; font:clamp(18px,2vw,25px)/1.45 var(--morrovia-ui); }
 .whySection { padding-block:86px 92px; }
 .whyLayout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(310px,.8fr); gap:9%; align-items:start; margin-top:36px; }
@@ -454,7 +454,15 @@
 }
 @media(max-width:430px) {
   .highlightCard .photo,.highlightCard:nth-child(1) .photo,.highlightCard:nth-child(2) .photo { height:170px; }
+  .highlightCard p { display:none; }
   .journeyStop > article { grid-template-columns:1fr; }
   .journeyStopPhoto { display:none; }
   .journeyConnection { margin-left:0; }
+  .journeyMap .mapShell { height:340px; min-height:340px; }
+  .experienceGrid { display:grid; grid-template-columns:1fr 1fr; gap:28px 14px; }
+  .experienceCard { margin-top:0; }
+  .experienceCard .photo,.experienceCard:nth-child(1) .photo,.experienceCard:nth-child(2) .photo { height:170px; }
+  .experienceCopy { display:block; padding-top:12px; }
+  .experienceCopy > span { display:block; margin-bottom:7px; }
+  .experienceCopy small { display:none; }
 }

@@ -32,6 +32,19 @@ test("the production Route story composes the real owner at every protected revi
   }
 });
 
+test("Storybook covers representative rich and factual routes at desktop and mobile review widths", () => {
+  const story = read("app/journey/routes/[slug]/route-detail-view.stories.tsx");
+  const css = read("app/journey/routes/[slug]/route-overview.module.css");
+  for (const state of ["JapanReviewedDiscovery", "IndiaFactualFallback", "VietnamCambodiaReviewedDiscovery", "BalkansReviewedDiscovery", "PortugalFactualFallback", "JapanMobile390", "PortugalMobile430"]) {
+    assert.match(story, new RegExp(`export const ${state}`), state);
+  }
+  assert.match(story, /JapanMobile390[\s\S]*morrovia390/);
+  assert.match(story, /PortugalMobile430[\s\S]*morrovia430/);
+  assert.match(css, /@media\(max-width:700px\)[\s\S]*\.highlightGrid\s*\{[^}]*grid-template-columns:1fr 1fr/);
+  assert.match(css, /@media\(max-width:430px\)[\s\S]*\.journeyMap \.mapShell\s*\{[^}]*height:340px/);
+  assert.match(css, /@media\(max-width:430px\)[\s\S]*\.journeyStopPhoto\s*\{[^}]*display:none/);
+});
+
 test("Route Detail follows the discovery hierarchy and absorbs the duplicated #317 controls", () => {
   const detail = read("app/journey/routes/[slug]/route-detail-view.tsx");
   const orderedIds = ["route-title", "route-why", "route-highlights", "route-journey", "route-experiences", "route-notes", "route-plan"];

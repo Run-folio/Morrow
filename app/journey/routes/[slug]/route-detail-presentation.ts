@@ -124,7 +124,8 @@ export function routeDiscoveryPresentation(detail: PublicRouteDetail): RouteDisc
     const photo = routeEditorialPhoto(moment.photoKey);
     return isRouteDetailPhoto(photo) ? [{ ...moment, photo }] : [];
   });
-  const candidates = [...stopHighlights, ...momentHighlights].slice(0, 10);
+  const highlightLimit = Math.min(10, Math.max(6, stopHighlights.length));
+  const candidates = [...stopHighlights, ...momentHighlights].slice(0, highlightLimit);
   const isRich = Boolean(editorial)
     && (editorial?.moments.length ?? 0) >= 3
     && photos.length > 0

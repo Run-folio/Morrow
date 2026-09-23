@@ -23,9 +23,11 @@ function project(key: string) {
 test("the eight reviewed editorial routes qualify for bounded attributed highlights", () => {
   assert.equal(Object.keys(routeEditorialImagery).length, 8);
   for (const key of Object.keys(routeEditorialImagery)) {
+    const detail = publicRouteDetailFor(key)!;
     const discovery = project(key);
     assert.equal(discovery.isRich, true, key);
     assert.ok(discovery.highlights.length >= 6 && discovery.highlights.length <= 10, key);
+    assert.equal(discovery.highlights.length, Math.min(10, Math.max(6, detail.stops.length)), `${key} should add only enough reviewed moments to meet readiness`);
     assert.equal(new Set(discovery.highlights.map(item => item.id)).size, discovery.highlights.length, key);
     assert.ok(discovery.experiences.length >= 3, key);
     for (const item of [...discovery.highlights, ...discovery.experiences]) {

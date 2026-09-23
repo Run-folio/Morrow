@@ -8,6 +8,9 @@ const andean = publicRouteDetailFor("andean-highlands") as PublicRouteDetail;
 const longerRoute = publicRouteDetailFor("vietnam-cambodia") as PublicRouteDetail;
 const unknownTransfers = publicRouteDetailFor("thailand-laos") as PublicRouteDetail;
 const portugal = publicRouteDetailFor("portugal-atlantic") as PublicRouteDetail;
+const japan = publicRouteDetailFor("japan-slow") as PublicRouteDetail;
+const india = publicRouteDetailFor("india-golden-triangle") as PublicRouteDetail;
+const balkans = publicRouteDetailFor("balkans-overland") as PublicRouteDetail;
 
 const missingVisuals: PublicRouteDetail = {
   ...andean,
@@ -57,16 +60,20 @@ export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024"
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const Desktop1680: Story = { globals: { viewport: { value: "morrovia1680", isRotated: false } } };
 
-/** Canonical editorial candidates; Storybook does not publish these routes. */
-export const JapanFiveStopEditorialReview: Story = { args: { detail: publicRouteDetailFor("japan-slow")! } };
-export const BalkansEditorialReview: Story = { args: { detail: publicRouteDetailFor("balkans-overland")! } };
-export const VietnamCambodiaEditorialReview: Story = { args: { detail: publicRouteDetailFor("vietnam-cambodia")! } };
+/** Representative reviewed-rich and concise factual production states. */
+export const JapanReviewedDiscovery: Story = { args: { detail: japan } };
+export const IndiaFactualFallback: Story = { args: { detail: india } };
+export const VietnamCambodiaReviewedDiscovery: Story = { args: { detail: longerRoute } };
+export const BalkansReviewedDiscovery: Story = { args: { detail: balkans } };
+export const PortugalFactualFallback: Story = { args: { detail: portugal } };
 export const IcelandEditorialReview: Story = { args: { detail: publicRouteDetailFor("iceland-ring-road")! } };
 
-export const SelectedJapanStop: Story = { args: { detail: publicRouteDetailFor("japan-slow")!, initialMapSelection: { type: "stop", index: 2 } } };
-export const SelectedBalkansConnection: Story = { args: { detail: publicRouteDetailFor("balkans-overland")!, initialMapSelection: { type: "connection", index: 0 } } };
+export const SelectedJapanStop: Story = { args: { detail: japan, initialMapSelection: { type: "stop", index: 2 } } };
+export const SelectedBalkansConnection: Story = { args: { detail: balkans, initialMapSelection: { type: "connection", index: 0 } } };
 export const UnknownSelectedTransfer: Story = { args: { detail: unknownTransfers, initialMapSelection: { type: "connection", index: 0 } } };
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const JapanMobile390: Story = { args: { detail: japan }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const PortugalMobile430: Story = { args: { detail: portugal }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Desktop1920: Story = {
   parameters: { viewport: { options: { morrovia1920: { name: "1920", styles: { width: "1920px", height: "1080px" } } } } },
   globals: { viewport: { value: "morrovia1920", isRotated: false } },
