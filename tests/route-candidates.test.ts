@@ -172,7 +172,7 @@ test("country-block grouping improves known spans without crossing an unknown ba
 
   assert.ok(countryBlocks.some(({ stops: candidateStops }) =>
     candidateStops.map((item) => item.id).join("|") === "in-1|in-2|unknown|jp-1|jp-2|cn-1|ae-1"));
-  assert.ok(countryBlocks.every(({ stops: candidateStops }) => candidateStops.indexOf(unknown) === 2));
+  assert.ok(generated.candidates.every(({ stops: candidateStops }) => candidateStops.indexOf(unknown) === 2));
 });
 
 test("country-block candidates preserve fixed gateways, required and repeated occurrences", () => {

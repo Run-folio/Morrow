@@ -35,7 +35,6 @@ import { countryNameFor } from "./country-registry.ts";
 import {
   fixedChronologyCountryContinuityProofs,
   fixedGatewayCountryContinuityProofs,
-  hardTransportCountryContinuityProofs,
 } from "./route-country-continuity.ts";
 import { canonicalPlaceFactsMatch } from "./place-intelligence.ts";
 import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
@@ -519,7 +518,6 @@ export function assessRouteOrder(input: {
   const countryContinuityProofs = [
     ...fixedGatewayCountryContinuityProofs(input.stops, input.constraints),
     ...fixedChronologyCountryContinuityProofs(input.stops, input.constraints?.fixedCommitments),
-    ...hardTransportCountryContinuityProofs(generation.countryBlockRejections),
   ];
   const legacyPreferredModes = input.constraints?.transportModes?.map((mode) => mode === "drive" ? "road" as const : mode);
   const interestTagsByStopId = Object.fromEntries(input.stops.flatMap((stop) => {

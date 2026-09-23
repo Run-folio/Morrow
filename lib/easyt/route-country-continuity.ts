@@ -34,9 +34,43 @@ export type CountryContinuityConstraintProof = {
     | "fixed-gateway-position"
     | "authoritative-protected-order"
     | "hard-transport-rejection";
+  /** Number of re-entries the cited canonical evidence actually requires. */
+  provenReentryCount: number;
   stopIds: string[];
   constraintIds: string[];
 };
+
+function stopIdsByKnownSpan(route: RouteCountryContinuity) {
+  const spans = Array.from({ length: route.knownSpanCount }, () => [] as string[]);
+  for (const block of route.blocks) spans[block.spanIndex]?.push(...block.stopIds);
+  return spans;
+}
+
+/**
+ * Unknown-country occurrences are immutable separators. An alternative may
+ * reorder known stops inside a span, but it cannot move an occurrence across
+ * an unknown stop or reorder the unknown occurrences themselves.
+ */
+export function respectsCountryContinuityBarriers(
+  route: RouteCountryContinuity,
+  alternative: RouteCountryContinuity,
+) {
+  // With no known country on either route there is no country-continuity span
+  // to protect; ordinary geographic routing remains available.
+  if (route.knownStopCount === 0 && alternative.knownStopCount === 0) return true;
+  if (route.unknownCountryStopIds.length !== alternative.unknownCountryStopIds.length) return false;
+  if (route.unknownCountryStopIds.some((id, index) => alternative.unknownCountryStopIds[index] !== id)) return false;
+  const routeSpans = stopIdsByKnownSpan(route);
+  const alternativeSpans = stopIdsByKnownSpan(alternative);
+  if (routeSpans.length !== alternativeSpans.length) return false;
+  return routeSpans.every((ids, index) => {
+    const other = alternativeSpans[index] ?? [];
+    const sortedIds = [...ids].sort();
+    const sortedOther = [...other].sort();
+    return sortedIds.length === sortedOther.length
+      && sortedIds.every((id, stopIndex) => sortedOther[stopIndex] === id);
+  });
+}
 
 export type CountryContinuityAssessment = {
   countryCode: string;
@@ -140,11 +174,13 @@ export function classifyCountryContinuity(input: {
     const currentBlocks = input.route.blocksByCountry[countryCode] ?? 0;
     const currentReentries = input.route.reentriesByCountry[countryCode] ?? 0;
     const lowerAlternatives = input.viableAlternatives.filter((alternative) =>
-      (alternative.reentriesByCountry[countryCode] ?? 0) < currentReentries);
+      respectsCountryContinuityBarriers(input.route, alternative)
+      && (alternative.reentriesByCountry[countryCode] ?? 0) < currentReentries);
     const observedLowerBlockCount = lowerAlternatives.length
       ? Math.min(...lowerAlternatives.map((alternative) => alternative.blocksByCountry[countryCode] ?? 0))
       : undefined;
-    const proof = input.proofs?.find((item) => item.countryCode === countryCode);
+    const proof = input.proofs?.find((item) =>
+      item.countryCode === countryCode && item.provenReentryCount >= currentReentries);
     const repeatedSpans = repeatedSpanIndexes(input.route, countryCode);
     const affectedBlocks = input.route.blocks.filter((block) =>
       block.countryCode === countryCode && repeatedSpans.has(block.spanIndex));
@@ -184,6 +220,10 @@ export function fixedGatewayCountryContinuityProofs(
   if (!start || !end || start.id === end.id) return [];
   const countryCode = canonicalCountryCodeForStop(start);
   if (!countryCode || canonicalCountryCodeForStop(end) !== countryCode) return [];
+  const continuity = analyzeRouteCountryContinuity(stops);
+  const startBlock = continuity.blocks.find((block) => block.stopIds.includes(start.id));
+  const endBlock = continuity.blocks.find((block) => block.stopIds.includes(end.id));
+  if (!startBlock || !endBlock || startBlock.spanIndex !== endBlock.spanIndex) return [];
   const between = stops.filter((stop) => {
     if (stop.id === start.id || stop.id === end.id) return false;
     const code = canonicalCountryCodeForStop(stop);
@@ -193,7 +233,8 @@ export function fixedGatewayCountryContinuityProofs(
   return [{
     countryCode,
     kind: "fixed-gateway-position",
-    stopIds: [start.id, ...between.map((stop) => stop.id), end.id],
+    provenReentryCount: 1,
+    stopIds: stops.map((stop) => stop.id),
     constraintIds: [`fixed-start:${start.id}`, `fixed-end:${end.id}`],
   }];
 }
@@ -222,26 +263,8 @@ export function fixedChronologyCountryContinuityProofs(
   return continuity.repeatedCountryCodes.map((countryCode) => ({
     countryCode,
     kind: "fixed-position-chronology" as const,
+    provenReentryCount: continuity.reentriesByCountry[countryCode] ?? 0,
     stopIds: linked.map((item) => item.stop.id),
     constraintIds: linked.map((item) => `fixed-commitment:${item.stop.id}:${item.date}`),
   }));
-}
-
-export function hardTransportCountryContinuityProofs(
-  rejections: readonly {
-    countryCode: string;
-    stopIds: string[];
-    issueCodes: readonly string[];
-    constraintIds: string[];
-  }[],
-): CountryContinuityConstraintProof[] {
-  return rejections.flatMap((rejection) => rejection.issueCodes.some((code) =>
-    code === "forbidden-transport-mode" || code === "maximum-transfer-time-exceeded")
-    ? [{
-      countryCode: rejection.countryCode,
-      kind: "hard-transport-rejection" as const,
-      stopIds: [...rejection.stopIds],
-      constraintIds: [...rejection.constraintIds],
-    }]
-    : []);
 }

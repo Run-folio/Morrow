@@ -311,6 +311,7 @@ test("typed gateway proof is recorded without manufacturing an avoidable penalty
   const proof: CountryContinuityConstraintProof = {
     countryCode: "IN",
     kind: "fixed-gateway-position",
+    provenReentryCount: 1,
     stopIds: ["Mumbai", "Dubai", "Agra"],
     constraintIds: ["fixed-start:Mumbai", "fixed-end:Agra"],
   };

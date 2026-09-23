@@ -259,7 +259,7 @@ git commit -m "feat: score observed country reentry"
 
 - [ ] Run `npm run test:route-intelligence` and confirm the new assertions fail.
 
-- [ ] Add pure fixed-gateway and linked fixed-position chronology proof builders. Chronology qualifies only when canonical stop IDs and dates structurally order the affected `A → B → A` occurrences. Convert `countryBlockRejections` to `hard-transport-rejection` proof only when the retained issue is `forbidden-transport-mode` or `maximum-transfer-time-exceeded`; other rejection absence is not proof.
+- [ ] Add pure fixed-gateway and linked fixed-position chronology proof builders. Chronology qualifies only when canonical stop IDs and dates structurally order the affected `A → B → A` occurrences. Retain `countryBlockRejections` as diagnostics; a single rejected bounded seed does not prove every lower-block ordering impossible and must not become `hard-transport-rejection` proof.
 
 - [ ] Pass those proofs to `scoreRouteCandidates`. Generalize the existing backtracking exception without changing its numeric bounds:
 
@@ -289,7 +289,7 @@ git commit -m "feat: explain country continuity recommendations"
 - Modify: `lib/easyt/plan-repair.ts`
 - Modify: `tests/plan-validator.test.ts`
 
-- [ ] Add failing validator tests for an automatic avoidable split whose lower-block alternative wins within the existing recommendation gate, a manual unscoreable avoidable split, a proven dated chronology, a proven hard-transport rejection and an unproven protected singleton caused by an unrelated commitment.
+- [ ] Add failing validator tests for an automatic avoidable split whose lower-block alternative wins within the existing recommendation gate, a manual unscoreable avoidable split, a proven dated chronology, a bounded hard-transport rejection that remains unproven, and an unproven protected singleton caused by an unrelated commitment.
 
 - [ ] In the unrelated-commitment case assert:
 

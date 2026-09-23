@@ -8,7 +8,6 @@ import {
   classifyCountryContinuity,
   fixedChronologyCountryContinuityProofs,
   fixedGatewayCountryContinuityProofs,
-  hardTransportCountryContinuityProofs,
 } from "./route-country-continuity.ts";
 import { DEFAULT_ROUTE_SCORING_CONFIG, scoreRouteCandidates } from "./route-scoring.ts";
 import {
@@ -445,7 +444,6 @@ function countryContinuityIssues(plan: FinalPlan, estimatePlanLeg: PlanLegEstima
       ...(plan.constraints?.fixedCommitments ?? []),
       ...lockedArrivalCommitments,
     ]),
-    ...hardTransportCountryContinuityProofs(generation.countryBlockRejections),
   ];
   const alternatives = generation.candidates.map((candidate) => analyzeRouteCountryContinuity(candidate.stops));
   const assessments = classifyCountryContinuity({

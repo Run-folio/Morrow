@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, routeTransferSavingMinutes, usableStopDays } from "../lib/easyt/planner.ts";
-import { analyzeRouteCountryContinuity, hardTransportCountryContinuityProofs } from "../lib/easyt/route-country-continuity.ts";
+import { analyzeRouteCountryContinuity } from "../lib/easyt/route-country-continuity.ts";
 import { transferHeadlineMinutes } from "../lib/easyt/transfer-impact.ts";
 
 const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
@@ -30,11 +30,11 @@ test("accepts a small estimated-time tradeoff when the scorer removes material b
   const assessment = assessRouteOrder({
     origin: { name: "Ljubljana", coordinates: [14.5058, 46.0569] },
     stops: [
-      { id: "ljubljana", name: "Ljubljana", country: "Slovenia", coordinates: [14.5058, 46.0569] },
-      { id: "sarajevo", name: "Sarajevo", country: "Bosnia and Herzegovina", coordinates: [18.4131, 43.8563] },
-      { id: "zagreb", name: "Zagreb", country: "Croatia", coordinates: [15.9819, 45.815] },
-      { id: "split", name: "Split", country: "Croatia", coordinates: [16.4402, 43.5081] },
-      { id: "dubrovnik", name: "Dubrovnik", country: "Croatia", coordinates: [18.0944, 42.6507] },
+      { id: "ljubljana", name: "Ljubljana", country: "Slovenia", countryCode: "SI", coordinates: [14.5058, 46.0569] },
+      { id: "sarajevo", name: "Sarajevo", country: "Bosnia and Herzegovina", countryCode: "BA", coordinates: [18.4131, 43.8563] },
+      { id: "zagreb", name: "Zagreb", country: "Croatia", countryCode: "HR", coordinates: [15.9819, 45.815] },
+      { id: "split", name: "Split", country: "Croatia", countryCode: "HR", coordinates: [16.4402, 43.5081] },
+      { id: "dubrovnik", name: "Dubrovnik", country: "Croatia", countryCode: "HR", coordinates: [18.0944, 42.6507] },
     ],
     constraints: {
       fixedStartStopId: "ljubljana",
@@ -162,27 +162,6 @@ test("linked fixed chronology proves re-entry while an unrelated commitment does
     constraints: { fixedCommitments: [{ label: "Unlinked wedding", date: "2026-10-06" }] },
   });
   assert.equal(unrelated.scoring?.winner?.metrics.countryContinuityAssessments[0]?.status, "unproven-protected");
-});
-
-test("hard transport proof requires a concrete rejected lower-block order", () => {
-  const proofs = hardTransportCountryContinuityProofs([{
-    countryCode: "IN",
-    stopIds: ["mumbai", "agra", "dubai"],
-    issueCodes: ["maximum-transfer-time-exceeded"],
-    constraintIds: ["maximum-transfer-minutes:120"],
-  }]);
-  assert.deepEqual(proofs, [{
-    countryCode: "IN",
-    kind: "hard-transport-rejection",
-    stopIds: ["mumbai", "agra", "dubai"],
-    constraintIds: ["maximum-transfer-minutes:120"],
-  }]);
-  assert.deepEqual(hardTransportCountryContinuityProofs([{
-    countryCode: "IN",
-    stopIds: ["mumbai", "agra", "dubai"],
-    issueCodes: ["required-stop-missing"],
-    constraintIds: [],
-  }]), []);
 });
 
 test("country continuity uses the existing 60-minute and five-percent structural gate", () => {

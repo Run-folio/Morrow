@@ -133,8 +133,8 @@ const balkans = [
   stop("ljubljana", "Ljubljana", "Slovenia", [14.5058, 46.0569]),
   stop("zagreb", "Zagreb", "Croatia", [15.9819, 45.815]),
   stop("split", "Split", "Croatia", [16.4402, 43.5081]),
-  stop("sarajevo", "Sarajevo", "Bosnia and Herzegovina", [18.4131, 43.8563]),
-  stop("mostar", "Mostar", "Bosnia and Herzegovina", [17.8078, 43.3438]),
+  { ...stop("sarajevo", "Sarajevo", "Bosnia and Herzegovina", [18.4131, 43.8563]), countryCode: "BA" },
+  { ...stop("mostar", "Mostar", "Bosnia and Herzegovina", [17.8078, 43.3438]), countryCode: "BA" },
   stop("dubrovnik", "Dubrovnik", "Croatia", [18.0944, 42.6507]),
 ];
 

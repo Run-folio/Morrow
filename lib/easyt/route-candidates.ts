@@ -1,5 +1,5 @@
 import type { EstimatedLeg, PlannerStop, RoutePlanningConstraints } from "./planner.ts";
-import { analyzeRouteCountryContinuity, canonicalCountryCodeForStop } from "./route-country-continuity.ts";
+import { analyzeRouteCountryContinuity, canonicalCountryCodeForStop, respectsCountryContinuityBarriers } from "./route-country-continuity.ts";
 import { transferDoorToDoorMinutes } from "./transfer-impact.ts";
 
 export type RouteCandidateSource =
@@ -338,6 +338,8 @@ export function generateRouteCandidates(input: {
   const countryBlockRejections: CountryBlockRejection[] = [];
   const originalContinuity = analyzeRouteCountryContinuity(original);
   const viable = deduplicated.flatMap((seed) => {
+    const candidateContinuity = analyzeRouteCountryContinuity(seed.stops);
+    if (!respectsCountryContinuityBarriers(originalContinuity, candidateContinuity)) return [];
     const issues = candidateIssues(input.origin, seed.stops, input.constraints, input.estimateLeg, input.end);
     issues.forEach((issue) => {
       const key = `${issue.code}:${issue.stopIds.join("|")}`;
@@ -347,7 +349,6 @@ export function generateRouteCandidates(input: {
       const hardTransportIssues = issues.filter((issue) =>
         issue.code === "forbidden-transport-mode" || issue.code === "maximum-transfer-time-exceeded");
       if (seed.source === "country-block" && hardTransportIssues.length) {
-        const candidateContinuity = analyzeRouteCountryContinuity(seed.stops);
         for (const countryCode of originalContinuity.repeatedCountryCodes) {
           if ((candidateContinuity.reentriesByCountry[countryCode] ?? 0) >= (originalContinuity.reentriesByCountry[countryCode] ?? 0)) continue;
           if (countryBlockRejections.some((rejection) => rejection.countryCode === countryCode)) continue;

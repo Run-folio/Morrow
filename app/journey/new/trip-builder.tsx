@@ -1685,8 +1685,8 @@ function TripBuilderDocument() {
   const backtrackingPenaltyCount = currentRouteScore?.state === "scored"
     ? currentRouteScore.penalties.filter((penalty) => penalty.code === "unnecessary-backtracking").length
     : null;
-  const currentCountryReentryPenaltyCount = currentRouteScore?.state === "scored"
-    ? currentRouteScore.penalties.filter((penalty) => penalty.code === "country-reentry").length
+  const currentAvoidableCountryReentryCount = currentRouteScore?.state === "scored"
+    ? currentRouteScore.metrics.observedAvoidableCountryReentryCount
     : null;
   const recommendedOrderKey = routeIntelligence.route.recommendedStopIds.join("\u001f");
   const recommendedRouteScore = routeIntelligence.route.scoring?.rankedCandidates.find((candidate) => (
@@ -1695,8 +1695,8 @@ function TripBuilderDocument() {
   const recommendedBacktrackingPenaltyCount = recommendedRouteScore?.state === "scored"
     ? recommendedRouteScore.penalties.filter((penalty) => penalty.code === "unnecessary-backtracking").length
     : null;
-  const recommendedCountryReentryPenaltyCount = recommendedRouteScore?.state === "scored"
-    ? recommendedRouteScore.penalties.filter((penalty) => penalty.code === "country-reentry").length
+  const recommendedAvoidableCountryReentryCount = recommendedRouteScore?.state === "scored"
+    ? recommendedRouteScore.metrics.observedAvoidableCountryReentryCount
     : null;
   const scoredAlternativeRoutes = (routeIntelligence.route.scoring?.rankedCandidates ?? []).flatMap((score) => {
     if (!canonicalTimingComplete) return [];
@@ -3037,9 +3037,9 @@ function TripBuilderDocument() {
     setTimingWarningOpen(true);
   }, [gateConflict, hasRouteSkeleton]);
 
-  const routeRecommendationReason = currentCountryReentryPenaltyCount !== null
-    && recommendedCountryReentryPenaltyCount !== null
-    && recommendedCountryReentryPenaltyCount < currentCountryReentryPenaltyCount
+  const routeRecommendationReason = currentAvoidableCountryReentryCount !== null
+    && recommendedAvoidableCountryReentryCount !== null
+    && recommendedAvoidableCountryReentryCount < currentAvoidableCountryReentryCount
     ? (language === "es" ? "Mantiene juntas las paradas del mismo país y reduce reentradas evitables." : "It keeps stops in the same country together, reducing avoidable re-entry.")
     : backtrackingPenaltyCount !== null
       && recommendedBacktrackingPenaltyCount !== null

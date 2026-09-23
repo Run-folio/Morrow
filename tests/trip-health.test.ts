@@ -260,6 +260,30 @@ test("Trip Health surfaces one advisory country-continuity validator issue with 
   assert.match(issues[0]?.evidence ?? "", /manual/);
 });
 
+test("Trip Health does not add a backtracking claim to a country-continuity recommendation", () => {
+  const trip = countryReentryTrip();
+  trip.brief.routeAssessment = {
+    route: {
+      state: "recommendation",
+      currentStopIds: trip.stops.map((stop) => stop.id),
+      recommendedStopIds: ["india-north", "india-south", "uae"],
+      currentTransferMinutes: 600,
+      recommendedTransferMinutes: 510,
+      improvementMinutes: 90,
+      reasons: ["It keeps the India stops in one country block."],
+      tradeoffs: [],
+      summary: "Country-contiguous order recommended.",
+    },
+    durations: {},
+    comfortableDays: 7,
+    shortfallDays: 0,
+  };
+
+  const rules = reviewTrip(trip).map((item) => item.rule);
+  assert.equal(rules.includes("post-generation-country-reentry"), true);
+  assert.equal(rules.includes("route-backtracking"), false);
+});
+
 test("treats a fixed commitment outside the trip dates as blocking", () => {
   const trip = baseTrip();
   trip.brief.intent!.hardConstraints.fixedCommitments = [{ id: "fixed", label: "Wedding", date: "2026-09-08" }];

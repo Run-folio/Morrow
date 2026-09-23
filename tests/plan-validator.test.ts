@@ -500,7 +500,7 @@ test("keeps an unrelated fixed commitment unproven and preserves the protected o
   assert.equal(result.repairs.some((item) => item.issueCode === "country-reentry"), false);
 });
 
-test("uses rejected country-block transport evidence as typed proof", () => {
+test("does not treat one rejected bounded country-block seed as proof of necessity", () => {
   const transportBound: PlanLegEstimator = (from, to) => {
     const fromId = "id" in from ? from.id : "origin";
     const durationMinutes = fromId === "india-north" && to.id === "india-south" ? 300 : 30;
@@ -525,9 +525,39 @@ test("uses rejected country-block transport evidence as typed proof", () => {
   const result = repairFinalPlan({ plan: source, estimateLeg: transportBound });
   const countryIssue = result.initialValidation.issues.find((item) => item.code === "country-reentry");
 
-  assert.equal(countryIssue?.evidence.continuityStatus, "proven-constraint-driven");
-  assert.equal(countryIssue?.evidence.proofKind, "hard-transport-rejection");
+  assert.equal(countryIssue?.evidence.continuityStatus, "unproven-protected");
+  assert.equal(countryIssue?.evidence.proofKind, null);
   assert.equal(countryIssue?.repairability, "manual");
   assert.deepEqual(result.plan.stops.map((item) => item.id), source.stops.map((item) => item.id));
   assert.equal(result.repairs.some((item) => item.issueCode === "country-reentry"), false);
+});
+
+test("never uses or repairs through an alternative that crosses an unknown-country barrier", () => {
+  const source = plan([
+    stop("in-1", [0, 0], 2, { country: "India", countryCode: "IN" }),
+    stop("ae", [0, 0], 2, { country: "United Arab Emirates", countryCode: "AE" }),
+    stop("in-2", [0, 0], 2, { country: "India", countryCode: "IN" }),
+    stop("unknown", [0, 0], 2, { country: "Unknown", countryCode: undefined }),
+    stop("in-3", [0, 0], 2, { country: "India", countryCode: "IN" }),
+  ], {
+    constraints: { fixedStartStopId: "in-1", fixedEndStopId: "in-3", maximumTransferMinutes: 120 },
+  });
+  const estimateLeg: PlanLegEstimator = (from, to) => ({
+    mode: "train",
+    durationMinutes: from.name === "IN-1" && to.id === "in-2" ? 300 : 30,
+    distanceKm: 30,
+    confidence: "high",
+    label: `${from.name} → ${to.name}`,
+    note: "Unknown-barrier regression fixture.",
+  });
+
+  const validation = validateFinalPlan({ plan: source, estimateLeg });
+  const countryIssue = validation.issues.find((item) => item.code === "country-reentry");
+  const repaired = repairFinalPlan({ plan: source, estimateLeg });
+
+  assert.equal(countryIssue?.evidence.continuityStatus, "unproven-protected");
+  assert.equal(countryIssue?.repairability, "manual");
+  assert.deepEqual(countryIssue?.evidence.suggestedStopIds, []);
+  assert.deepEqual(repaired.plan.stops.map((item) => item.id), source.stops.map((item) => item.id));
+  assert.equal(repaired.repairs.some((item) => item.issueCode === "country-reentry"), false);
 });

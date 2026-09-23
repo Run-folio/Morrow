@@ -284,14 +284,15 @@ type CountryContinuityAssessment = {
       | "fixed-gateway-position"
       | "authoritative-protected-order"
       | "hard-transport-rejection";
+    provenReentryCount: number;
     constraintIds: string[];
   };
 };
 ```
 
-The classifier is pure. It accepts the analyzed route, the generated viable candidate analyses and zero or more typed `CountryContinuityConstraintProof` records. Those proof records are created only from canonical constraint data or from an explicitly evaluated lower-block order rejected by an authoritative hard rule. The classifier does not inspect raw prompts or invent a cause from candidate counts.
+The classifier is pure. It accepts the analyzed route, the generated viable candidate analyses and zero or more typed `CountryContinuityConstraintProof` records. Those proof records are created only from canonical constraint data or from complete evidence that an authoritative hard rule rules out the claimed lower-block re-entries. Each proof states how many re-entries its evidence actually requires; partial proof cannot label additional re-entries constraint-driven. The classifier does not inspect raw prompts or invent a cause from candidate counts.
 
-Candidate generation must retain narrowly scoped diagnostics for a country-block seed rejected by an existing hard transport or fixed-position check: the proposed stop-ID order, affected country code, hard issue code and referenced constraint IDs. It does not retain every rejected permutation or expand the 20-candidate viable bound. Scoring and validation consume the same typed assessments rather than independently interpreting absence.
+Candidate generation must retain narrowly scoped diagnostics for a country-block seed rejected by an existing hard transport or fixed-position check: the proposed stop-ID order, affected country code, hard issue code and referenced constraint IDs. One rejected bounded seed remains diagnostic only: it cannot prove that every lower-block arrangement is impossible. It does not retain every rejected permutation or expand the 20-candidate viable bound. Scoring and validation consume the same typed assessments rather than independently interpreting absence.
 
 ### A. Avoidable
 
@@ -304,9 +305,9 @@ Concrete canonical constraints themselves demonstrate that the split is required
 - dated or fixed occurrences whose chronology structurally requires `country A → another country → country A`;
 - fixed start/end or gateway positions that structurally require another planned country between occurrences of the repeated country;
 - an actual authoritative protected-order boundary supplied by the application contract; or
-- a constructed lower-block arrangement that is demonstrably rejected by an existing hard transport rule, with the rejected order and hard issue code retained as diagnostic evidence.
+- a hard transport rule that demonstrably rejects every arrangement needed to remove the claimed re-entries, with complete coverage evidence. The V1 bounded seed diagnostics do not establish that completeness and therefore remain advisory.
 
-The proof must identify the affected occurrence IDs and the canonical constraint or hard-rejection evidence. A generic fixed commitment, booking or schedule lock elsewhere in the trip is not proof. Nor is a singleton candidate set, an absent seed, `sequenceKind`, `decisionSelections.routeOrder: "entered"`, or raw prompt wording.
+The proof must identify the affected occurrence IDs, the number of re-entries it actually requires and the canonical constraint or complete hard-rejection evidence. A generic fixed commitment, booking or schedule lock elsewhere in the trip is not proof. Nor is a singleton candidate set, one rejected bounded seed, an absent seed, `sequenceKind`, `decisionSelections.routeOrder: "entered"`, or raw prompt wording.
 
 The current model has no general authoritative prompt-order field. Therefore `authoritative-protected-order` remains valid only when an existing application boundary supplies explicit typed evidence; #335 does not add prompt interpretation to manufacture that evidence.
 
