@@ -94,7 +94,11 @@ test("a lazy preview can inspect a URL style before style.load without crashing"
   const demoMap = readFileSync(new URL("../app/journey/home/immersive/demo-map.tsx", import.meta.url), "utf8");
   assert.match(productDemo, /IntersectionObserver[\s\S]*setMapReady\(true\)/);
   assert.match(productDemo, /mapReady \? <DemoMap/);
-  assert.match(demoMap, /<JourneyPlannerMap[\s\S]*overviewMode previewMode/);
+  assert.match(
+    demoMap,
+    /<JourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/,
+  );
+  assert.doesNotMatch(demoMap, /previewMode/);
 
   const map = new FakeBasemap();
   const states: MorroviaBasemapSnapshot[] = [];

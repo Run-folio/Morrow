@@ -1,4 +1,5 @@
 import type { Preview } from "@storybook/nextjs-vite";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "../app/globals.css";
 import "../app/journey/journey-design.css";
 import { resetStorybookAuthOwner } from "./auth-client.mock";

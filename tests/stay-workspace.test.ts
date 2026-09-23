@@ -234,6 +234,7 @@ test("Stay production surface reuses shared owners and keeps commercial action s
   assert.match(workspace, /Check independently on Trip\.com/);
   assert.match(workspace, /may differ from the Booking\.com live information above/);
   assert.match(styles, /\.rail \{[\s\S]*position: sticky;[\s\S]*top: var\(--morrovia-sticky-content-offset\);[\s\S]*max-height: calc\(100svh - var\(--morrovia-sticky-content-offset\) - 14px\);[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /\.workspace\s*\{[^}]*overflow:\s*hidden;/, "the narrow stop track must not escape the Stay workspace");
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.rail \{ position: static; max-height: none; overflow: visible;/);
   assert.doesNotMatch(workspace, /useTripMutationPersistence|OpenAI|LLM|Best Value|More comfortable/);
   assert.match(workspace, /key=\{context\.key\}/);

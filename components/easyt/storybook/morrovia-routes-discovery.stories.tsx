@@ -51,8 +51,13 @@ export const SelectedLongName768: Story = { render: () => preview(mexicoGuatemal
 export const SelectedMiddle390: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia390",isRotated:false}}, play: selectStop("Takayama") };
 export const SelectedFinal430: Story = { render: () => preview(japan), globals:{viewport:{value:"morrovia430",isRotated:false}}, play: selectStop(japan.stops.at(-1)!.name) };
 export const RepeatedTokyoSecondOccurrence390: Story = { render: () => preview(repeatedTokyo), globals:{viewport:{value:"morrovia390",isRotated:false}}, play: selectStopOccurrence("Tokyo",1) };
+export const MapAt320: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia320", isRotated: false } } };
 
 // The same catalogue cards retain imagery and full identity in the Map rail.
 export const MapAt390: Story = {args:{initialView:"map"},globals:{viewport:{value:"morrovia390",isRotated:false}}};
+export const MapAt430: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const MapAt768: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const MapAt1024: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const MapAt1440: Story = { args: { initialView: "map" }, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
 export const MapMultiCountry: Story = {args:{initialView:"map",initialFilters:{...initialDiscoveryFilters,multi:true}}};
 export const MapImageUnavailable: Story = {args:{initialView:"map",imageUnavailable:true}};

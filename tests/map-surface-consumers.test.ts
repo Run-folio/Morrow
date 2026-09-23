@@ -34,3 +34,17 @@ test("legacy preview booleans and viewport camera branching leave production own
   assert.match(map, /resolveMapSurfacePolicy\(surface\)/);
   assert.match(map, /resolveMapInsets\(/);
 });
+
+test("the verification stories cover every declared interaction policy", () => {
+  const discover = source("../components/easyt/storybook/morrovia-routes-discovery.stories.tsx");
+  const stay = source("../components/easyt/trip-stay-workspace.stories.tsx");
+  const itinerary = source("../components/easyt/trip-itinerary-workspace.stories.tsx");
+  const route = source("../app/journey/routes/[slug]/route-detail-view.stories.tsx");
+  for (const width of [320, 390, 430, 768, 1024, 1440]) {
+    assert.match(discover, new RegExp(`MapAt${width}`));
+  }
+  assert.match(discover, /render: \(\) => preview\(/);
+  assert.match(stay, /SelectedPropertyWithMiniMap/);
+  assert.match(itinerary, /MixedResolvedTravelDay/);
+  assert.match(route, /DesktopJourneyNavigator|MobileJourneyStrip/);
+});

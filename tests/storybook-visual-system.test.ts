@@ -127,7 +127,8 @@ test("the generated visual inventory is deterministic, grouped and wired into St
 
 test("major responsive patterns expose the agreed Storybook review widths", () => {
   const preview = read(".storybook/preview.ts");
-  for (const width of [320, 390, 768, 1024, 1440]) assert.match(preview, new RegExp(`morrovia${width}`));
+  assert.match(preview, /maplibre-gl\/dist\/maplibre-gl\.css/, "Storybook must render MapLibre controls and attribution with production CSS");
+  for (const width of [320, 390, 430, 768, 1024, 1440]) assert.match(preview, new RegExp(`morrovia${width}`));
   for (const section of ["01 Foundations", "02 Controls", "03 Status & Feedback", "04 Structure", "05 Product Patterns", "06 Audit"]) {
     assert.match(preview, new RegExp(section.replace(/[&]/g, "\\&")));
   }
@@ -137,6 +138,27 @@ test("major responsive patterns expose the agreed Storybook review widths", () =
     for (const marker of ["Mobile", "Tablet768", "Desktop1024", "Desktop1440"]) assert.match(source, new RegExp(marker), `${path}: ${marker}`);
     assert.match(source, /globals:\s*\{\s*viewport:\s*\{\s*value:/, `${path}: Storybook 10 viewport globals`);
     assert.doesNotMatch(source, /defaultViewport/, `${path}: legacy viewport parameters no longer apply a viewport in Storybook 10`);
+  }
+});
+
+test("every unified map owner exposes the exact responsive QA matrix and risk states", () => {
+  const owners = [
+    "components/easyt/trip-map-workspace.stories.tsx",
+    "components/easyt/trip-transport-workspace.stories.tsx",
+    "components/easyt/trip-stay-workspace.stories.tsx",
+    "components/easyt/trip-itinerary-workspace.stories.tsx",
+    "components/easyt/storybook/morrovia-routes-discovery.stories.tsx",
+    "app/journey/routes/[slug]/route-detail-view.stories.tsx",
+    "app/journey/my-routes/[tripId]/personal-route-view.stories.tsx",
+  ];
+  const requiredViewports = ["morrovia320", "morrovia390", "morrovia430", "morrovia768", "morrovia1024", "morrovia1440"];
+  const joined = owners.map((path) => read(path)).join("\n");
+  for (const path of owners) {
+    const stories = read(path);
+    for (const viewport of requiredViewports) assert.match(stories, new RegExp(`viewport:\\s*\\{\\s*value:\\s*[\"']${viewport}[\"']`), `${path}: ${viewport}`);
+  }
+  for (const state of ["PartialUnknownTransport", "RepeatedTokyoSecondOccurrence390", "RepeatedCityLoop", "PortugalFactualFallback", "PartialFacts", "MapUnavailableFallback"]) {
+    assert.match(joined, new RegExp(`export const ${state}`), state);
   }
 });
 

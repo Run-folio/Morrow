@@ -84,4 +84,5 @@ export const Mobile320: Story = { globals: { viewport: { value: "morrovia320", i
 export const Mobile390: Story = { globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const Mobile430: Story = { globals: { viewport: { value: "morrovia430", isRotated: false } } };
 export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const Desktop1024: Story = { args: { trip: repeatedTrip, initialSection: "route-map" }, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
