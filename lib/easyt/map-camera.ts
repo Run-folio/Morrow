@@ -1,3 +1,5 @@
+import type { MorroviaMapCameraRequest } from "./map-surface-policy.ts";
+
 export type MapCameraCenter = { lng: number; lat: number };
 
 export type MapCamera = {
@@ -66,4 +68,25 @@ export function fitMapCamera(
   camera.stop();
   camera.fitBounds(bounds, { ...options, duration });
   return duration;
+}
+
+export function applyMapCameraRequest(
+  camera: MapCamera,
+  request: MorroviaMapCameraRequest,
+  createBounds: (coordinates: Array<[number, number]>) => unknown,
+  reducedMotion = prefersReducedMapMotion(),
+) {
+  if (request.kind === "none") return null;
+  if (request.kind === "focus") {
+    return focusMapCamera(camera, {
+      center: request.center,
+      zoom: request.zoom,
+      ...(request.offset ? { offset: request.offset } : {}),
+      ...(reducedMotion ? { duration: 0 } : {}),
+    });
+  }
+  return fitMapCamera(camera, createBounds(request.coordinates), {
+    padding: request.padding,
+    maxZoom: request.maxZoom,
+  }, reducedMotion);
 }

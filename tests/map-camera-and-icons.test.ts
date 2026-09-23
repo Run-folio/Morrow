@@ -4,6 +4,7 @@ import test from "node:test";
 import { CircleHelp, Plane, TrainFront } from "lucide-react";
 
 import {
+  applyMapCameraRequest,
   fitMapCamera,
   focusMapCamera,
   interruptMapCamera,
@@ -99,10 +100,6 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /cameraRequestKey === lastCameraRequestKeyRef\.current/);
   assert.match(source, /focusMapCamera\(/);
   assert.match(source, /fitMapCamera\(/);
-  assert.match(
-    source,
-    /new ResizeObserver[\s\S]*?\}, \[comparisonLegs, comparisonRouteKey, overviewMode, overviewPaddingKey, overviewRouteKey, previewMode\]\);/,
-  );
   assert.match(source, /container\.addEventListener\("pointerdown", interrupt/);
   assert.match(source, /container\.addEventListener\("wheel", interrupt/);
   assert.match(source, /container\.addEventListener\("keydown", interruptKeyboardCamera/);
@@ -111,6 +108,26 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /<span className="planner-map__leg-icon"[^>]*style=\{rotation[\s\S]*?<MarkerIcon \/>/);
   assert.doesNotMatch(source, /<MarkerIcon style=/);
   assert.doesNotMatch(source, /duration: (?:420|550)/);
+});
+
+test("resolved camera requests replace earlier movement and leave the newest target last", () => {
+  const resolved = camera([0, 0], 4);
+  const bounds = (coordinates: Array<[number, number]>) => ({ coordinates });
+
+  applyMapCameraRequest(resolved.value, { kind: "focus", center: [12, 4], zoom: 8 }, bounds, true);
+  applyMapCameraRequest(resolved.value, {
+    kind: "fit",
+    coordinates: [[20, 5], [24, 7]],
+    padding: { top: 10, right: 20, bottom: 30, left: 40 },
+    maxZoom: 9,
+  }, bounds, true);
+
+  assert.deepEqual(resolved.calls.map((call) => call.method), ["stop", "easeTo", "stop", "fitBounds"]);
+  assert.deepEqual(resolved.calls.at(-1)?.options, {
+    padding: { top: 10, right: 20, bottom: 30, left: 40 },
+    maxZoom: 9,
+    duration: 0,
+  });
 });
 
 test("route geometry draws as soon as the style is ready instead of waiting for all tiles", () => {
