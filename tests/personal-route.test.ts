@@ -85,6 +85,13 @@ test("connections without a canonical leg use adjacent occurrence ids", () => {
   assert.equal(personalRoutePresentation(trip).stops[1]?.onward?.id, "connection:naxos:athens-return");
 });
 
+test("personal Journey stories expose the shared desktop navigator and compact mobile strip", () => {
+  const stories = read("app/journey/my-routes/[tripId]/personal-route-view.stories.tsx");
+  assert.match(stories, /DesktopJourneyNavigator/);
+  assert.match(stories, /MobileJourneyStrip/);
+  assert.match(stories, /RepeatedCityLoop/);
+});
+
 test("missing nights, coordinates, imagery and transport remain explicit unknowns", () => {
   const trip = hostileUnknownTransportTrip();
   trip.stops[1] = { ...trip.stops[1], nights: null, latitude: null, longitude: null, arrivalDate: null, departureDate: null };

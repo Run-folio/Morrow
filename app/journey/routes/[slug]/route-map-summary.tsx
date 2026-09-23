@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MoonStar } from "lucide-react";
-import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
+import { EasyTButton } from "@/components/easyt/easyt-controls";
 import { MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import type { PublicRouteConnection, PublicRouteStop } from "@/lib/easyt/public-route";
 import type { RouteNightGuide } from "./route-detail-presentation";
 import { transferStatus, nightLabel } from "./route-detail-labels";
-import { editorialConnectionId, routeMapSelectionFromHash, validRouteSelection, type RouteMapSelection } from "./route-map-selection";
+import { editorialConnectionId, routeMapHashForSelection, routeMapSelectionFromHash, validRouteSelection, type RouteMapSelection } from "./route-map-selection";
 import RouteLiveMap from "./route-live-map";
 import styles from "./route-overview.module.css";
 
@@ -19,12 +19,15 @@ export type RouteMapSummaryStop = Omit<PublicRouteStop, "coordinates" | "nights"
   onward: RouteMapSummaryConnection | null;
 };
 
+function journeySelectionKey(selection: RouteMapSelection) {
+  return selection.kind === "route" ? "route" : selection.kind === "stop" ? `stop:${selection.stopId}` : `connection:${selection.connectionId}`;
+}
+
 export default function RouteMapSummary({ title, stops, countries, nights, durationDays, totalNights, character, rationale, warning, initialSelection = { kind: "route" }, tripFacts = false }: {
   title: string; stops: RouteMapSummaryStop[]; countries: string[]; nights: RouteNightGuide[]; durationDays: number | null; totalNights: number | null;
   character: string; rationale?: string; warning?: string; initialSelection?: RouteMapSelection; tripFacts?: boolean;
 }) {
   const [selected, setSelected] = useState<RouteMapSelection>(() => validRouteSelection(initialSelection, stops));
-  const [reset, setReset] = useState(0);
   const [navigatorWidth, setNavigatorWidth] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const navigatorRef = useRef<HTMLElement>(null);
@@ -41,6 +44,9 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
     observer.observe(navigator);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    navigatorRef.current?.querySelector<HTMLElement>('[aria-current="location"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [selected]);
   useEffect(() => {
     const followAnchor = () => {
       if (!/^#route-map(?:$|-)/.test(location.hash)) return;
@@ -72,17 +78,36 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
   const stop = stopIndex >= 0 ? stops[stopIndex] : null;
   const connection = connectionIndex >= 0 ? stops[connectionIndex]?.onward : null;
   const guide = stopIndex >= 0 ? nights[stopIndex] : null;
-  const selectionValue = selected.kind === "route" ? "whole" : selected.kind === "stop" ? `stop:${selected.stopId}` : `connection:${selected.connectionId}`;
-  const changeSelection = (value: string) => {
-    if (value === "whole") { setSelected({ kind: "route" }); setReset(current => current + 1); return; }
-    if (value.startsWith("stop:")) setSelected({ kind: "stop", stopId: value.slice(5) });
-    if (value.startsWith("connection:")) setSelected({ kind: "connection", connectionId: value.slice(11) });
+  const items = [
+    { selection: { kind: "route" } as const, label: "Whole journey", meta: `${stops.length} stops` },
+    ...stops.flatMap((item, index) => {
+      const next = stops[index + 1];
+      return [
+        { selection: { kind: "stop", stopId: item.id } as const, label: `${index + 1}. ${item.name}`, meta: item.country },
+        ...(item.onward && next ? [{ selection: { kind: "connection", connectionId: editorialConnectionId(item.id, next.id, item.onward.id) } as const, label: `${item.name} to ${item.onward.to}`, meta: item.onward.modeLabel }] : []),
+      ];
+    }),
+  ];
+  const activateSelection = (selection: RouteMapSelection) => {
+    const hash = routeMapHashForSelection(selection, stops);
+    history.replaceState(history.state, "", hash);
+    setSelected(selection);
   };
   return <div ref={root}>
     <div className={styles.mapToolbar}><span>{countries.join(" → ")}</span></div>
     <div className={styles.mapLayout}>
-      <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={setSelected} resetVersion={reset} cameraOcclusions={{ right: navigatorWidth }} />
-      <aside ref={navigatorRef} className={styles.mapDetail} aria-label="Route map details">
+      <nav ref={navigatorRef} className={styles.journeyNavigator} aria-label="Explore this journey">
+        <ol>{items.map((item) => {
+          const active = journeySelectionKey(item.selection) === journeySelectionKey(selected);
+          return <li key={journeySelectionKey(item.selection)}>
+            <EasyTButton variant="quiet" className={styles.journeyNavigatorButton} aria-current={active ? "location" : undefined} onClick={() => activateSelection(item.selection)}>
+              <span>{item.label}</span><small>{item.meta}</small>{item.selection.kind === "connection" && <ArrowRight aria-hidden="true" />}
+            </EasyTButton>
+          </li>;
+        })}</ol>
+      </nav>
+      <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={activateSelection} cameraOcclusions={{ right: navigatorWidth }} />
+      <aside className={styles.mapDetail} aria-label="Route map details">
         <div className={styles.mapContext} aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{stop ? `${stop.country} · Stop ${stopIndex + 1}` : connection ? "Connection context" : "The whole route"}</p>
           <h3>{stop?.name ?? (connection ? `${connection.from} → ${connection.to}` : `${stops[0]?.name} to ${stops.at(-1)?.name}`)}</h3>
@@ -92,14 +117,6 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
             <div><dt>Shape</dt><dd>{stops.length} bases</dd></div><div><dt>{tripFacts ? "Trip" : "Example"}</dt><dd>{durationDays === null ? "Dates to confirm" : `${durationDays} days`}{totalNights === null ? " · nights to confirm" : ` · ${totalNights} nights`}</dd></div><div><dt>Character</dt><dd>{character}</dd></div>
           </dl>{warning && <MorroviaStatusBanner tone="warning" title="Check before booking" detail={warning} />}</>}
         </div>
-        {stop?.onward && stops[stopIndex + 1] && <EasyTButton variant="quiet" icon={ArrowRight} onClick={() => setSelected({ kind: "connection", connectionId: editorialConnectionId(stop.id, stops[stopIndex + 1].id, stop.onward?.id) })}>Next: {stop.onward.to}</EasyTButton>}
-        <EasyTSelect label="Explore the map" value={selectionValue} onChange={(event) => changeSelection(event.target.value)}>
-          <option value="whole">Whole route</option>
-          {stops.flatMap((item, index) => [
-            <option key={`stop-${item.id}`} value={`stop:${item.id}`}>{String(index + 1).padStart(2, "0")} · {item.name}, {item.country}</option>,
-            item.onward && stops[index + 1] ? <option key={`connection-${item.id}`} value={`connection:${editorialConnectionId(item.id, stops[index + 1].id, item.onward.id)}`}>{item.name} → {item.onward.to} · {transferStatus(item.onward)}</option> : null,
-          ])}
-        </EasyTSelect>
         {stops.map((item, index) => <span className={styles.srOnly} id={`route-map-stop-${index}`} key={`anchor-stop-${item.id}`}>{item.name}</span>)}
         {stops.slice(0, -1).map((item, index) => <span className={styles.srOnly} id={`route-map-connection-${index}`} key={`anchor-connection-${item.id}`}>{item.name} to {item.onward?.to}</span>)}
       </aside>

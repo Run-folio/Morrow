@@ -76,9 +76,13 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.match(detail, /href=\{`#route-map-connection-\$\{index\}`\}/);
   assert.match(detail, /className=\{styles\.journeyConnection\}/);
 
-  assert.equal((summary.match(/<EasyTSelect/g) ?? []).length, 1);
-  assert.match(summary, /<option value="whole">Whole route<\/option>/);
-  assert.doesNotMatch(summary, /<EasyTButton[^>]*>Whole route<\/EasyTButton>|icon=\{Route\}/);
+  assert.doesNotMatch(summary, /EasyTSelect|<option|Whole route/);
+  assert.equal((summary.match(/Whole journey/g) ?? []).length, 1);
+  assert.match(summary, /className=\{styles\.journeyNavigator\}/);
+  assert.match(summary, /aria-current=\{active \? "location" : undefined\}/);
+  assert.match(summary, /key=\{journeySelectionKey\(item\.selection\)\}/);
+  assert.match(summary, /routeMapHashForSelection\(selection, stops\)/);
+  assert.match(summary, /history\.replaceState\(history\.state, "", hash\)/);
   assert.match(summary, /routeMapSelectionFromHash\(location\.hash, stops\)/);
   assert.match(summary, /selected\.kind === "stop"/);
   assert.match(summary, /selected\.connectionId/);
@@ -92,6 +96,7 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.match(liveMap, /setMorroviaStopMarkerState/);
   assert.match(summary, /ResizeObserver/);
   assert.match(summary, /cameraOcclusions=\{\{ right: navigatorWidth \}\}/);
+  assert.doesNotMatch(summary, /onKeyDown|\.focus\(\)/);
 });
 
 test("sparse why copy and practical cards use only canonical rendered content", () => {
