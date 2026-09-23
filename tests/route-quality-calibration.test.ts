@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  COUNTRY_CONTINUITY_ACCEPTANCE_FIXTURES,
   ROUTE_QUALITY_CALIBRATION_FIXTURES,
   type RouteQualityCalibrationGeography,
 } from "../benchmarks/route-quality-calibration/fixtures.ts";
@@ -9,6 +10,9 @@ import {
   runRouteQualityCalibration,
 } from "../benchmarks/route-quality-calibration/harness.ts";
 import { NIGHT_ALLOCATION_EXPECTATIONS } from "../benchmarks/route-quality-calibration/night-expectations.ts";
+import { assessRouteOrder } from "../lib/easyt/planner.ts";
+import { analyzeRouteCountryContinuity } from "../lib/easyt/route-country-continuity.ts";
+import { DEFAULT_ROUTE_SCORING_CONFIG } from "../lib/easyt/route-scoring.ts";
 
 const requiredGeographies: RouteQualityCalibrationGeography[] = [
   "japan",
@@ -27,6 +31,114 @@ const requiredGeographies: RouteQualityCalibrationGeography[] = [
 
 const orderKey = (ids: readonly string[]) => ids.join("|");
 const sortedIds = (ids: readonly string[]) => [...ids].sort();
+
+test("the country-continuity acceptance corpus covers the approved route classes", () => {
+  assert.deepEqual(COUNTRY_CONTINUITY_ACCEPTANCE_FIXTURES.map((fixture) => fixture.id), [
+    "madrid-india-round-trip",
+    "multi-stop-india",
+    "tajikistan-contiguous",
+    "japan-china-alternating",
+    "repeated-city-occurrence",
+    "hub-geographic-exception",
+    "unknown-country-barrier",
+    "large-bounded-alternating",
+    "sensible-linear-route",
+    "unrelated-fixed-commitment",
+    "fixed-chronology-proof",
+  ]);
+});
+
+test("country-continuity acceptance fixtures preserve route facts and deterministic quality invariants", () => {
+  const statusCounts = {
+    avoidable: 0,
+    "proven-constraint-driven": 0,
+    "unproven-protected": 0,
+  };
+
+  for (const fixture of COUNTRY_CONTINUITY_ACCEPTANCE_FIXTURES) {
+    const input = {
+      origin: fixture.origin,
+      end: fixture.end,
+      stops: fixture.stops,
+      constraints: fixture.constraints,
+    };
+    const first = assessRouteOrder(input);
+    const second = assessRouteOrder(input);
+    assert.deepEqual(first, second, `${fixture.id} must be deterministic`);
+
+    const selectedIds = first.state === "recommendation" ? first.recommendedStopIds : first.currentStopIds;
+    const selectedStops = selectedIds.map((id) => fixture.stops.find((stop) => stop.id === id)!);
+    const selectedContinuity = analyzeRouteCountryContinuity(selectedStops);
+    assert.deepEqual(sortedIds(selectedIds), sortedIds(fixture.stops.map((stop) => stop.id)), `${fixture.id} must retain every stop occurrence`);
+    assert.ok((first.candidates?.length ?? 0) > 0, `${fixture.id} needs a viable candidate`);
+    if (fixture.stops.length >= 7) {
+      assert.ok((first.candidates?.length ?? 0) <= 20, `${fixture.id} must respect the bounded candidate ceiling`);
+    }
+    assert.equal(first.candidates?.every((candidate) => candidate.constraintsSatisfied), true, `${fixture.id} emitted a hard-unsafe candidate`);
+
+    if (fixture.constraints?.fixedStartStopId) {
+      assert.equal(selectedIds[0], fixture.constraints.fixedStartStopId, `${fixture.id} moved its fixed start`);
+    }
+    if (fixture.constraints?.fixedEndStopId) {
+      assert.equal(selectedIds.at(-1), fixture.constraints.fixedEndStopId, `${fixture.id} moved its fixed end`);
+    }
+    for (const [countryCode, blockCount] of Object.entries(fixture.expected.selectedCountryBlocks ?? {})) {
+      assert.equal(selectedContinuity.blocksByCountry[countryCode], blockCount, `${fixture.id} selected the wrong ${countryCode} block count`);
+    }
+    if (fixture.expected.candidateCountryBlocks) {
+      const matching = first.candidates?.find((candidate) => {
+        const continuity = analyzeRouteCountryContinuity(candidate.stops);
+        return Object.entries(fixture.expected.candidateCountryBlocks!).every(([countryCode, blockCount]) =>
+          continuity.blocksByCountry[countryCode] === blockCount);
+      });
+      assert.ok(matching, `${fixture.id} omitted its required country-block candidate`);
+    }
+
+    const current = first.scoring?.rankedCandidates.find((candidate) => candidate.matchesOriginalOrder);
+    for (const expected of fixture.expected.currentStatuses ?? []) {
+      const assessment = current?.metrics.countryContinuityAssessments.find((item) => item.countryCode === expected.countryCode);
+      assert.equal(assessment?.status, expected.status, `${fixture.id} misclassified ${expected.countryCode}`);
+    }
+    for (const assessment of current?.metrics.countryContinuityAssessments ?? []) statusCounts[assessment.status] += 1;
+
+    if (fixture.expected.preserveEntered) {
+      assert.deepEqual(selectedIds, fixture.stops.map((stop) => stop.id), `${fixture.id} must preserve the entered order`);
+    }
+    if (fixture.expected.externalEndId) {
+      assert.equal(selectedIds.includes(fixture.expected.externalEndId), false, `${fixture.id} inserted the external journey end as a stay`);
+    }
+    if (fixture.expected.repeatedCanonicalPlaceId) {
+      assert.equal(selectedStops.filter((stop) => stop.canonicalPlaceId === fixture.expected.repeatedCanonicalPlaceId?.canonicalPlaceId).length,
+        fixture.expected.repeatedCanonicalPlaceId.occurrenceCount,
+        `${fixture.id} collapsed a repeated canonical place occurrence`);
+    }
+    if (fixture.expected.unknownBarrier) {
+      const barrier = fixture.expected.unknownBarrier;
+      const grouped = first.candidates?.find((candidate) => {
+        const ids = candidate.stops.map((stop) => stop.id);
+        const firstSuffix = ids.indexOf(barrier.groupedSuffixIds[0]!);
+        return ids.indexOf(barrier.stopId) === barrier.index
+          && barrier.groupedSuffixIds.every((id, offset) => ids[firstSuffix + offset] === id);
+      });
+      assert.ok(grouped, `${fixture.id} must group its known suffix without crossing the unknown barrier`);
+      assert.equal(first.candidates?.filter((candidate) => candidate.source === "country-block")
+        .every((candidate) => candidate.stops[barrier.index]?.id === barrier.stopId), true,
+      `${fixture.id} moved an occurrence across the unknown barrier in a country-block seed`);
+    }
+    if (fixture.expected.bounded) {
+      assert.ok(fixture.stops.length >= 7, `${fixture.id} is not a bounded-size route`);
+      assert.equal(first.candidates?.some((candidate) => candidate.source === "country-block"), true,
+        `${fixture.id} needs bounded country-block candidate evidence`);
+    }
+  }
+
+  assert.deepEqual(statusCounts, {
+    avoidable: 11,
+    "proven-constraint-driven": 1,
+    "unproven-protected": 1,
+  });
+  assert.equal(DEFAULT_ROUTE_SCORING_CONFIG.penalties["country-reentry"], 12);
+});
 
 test("the calibration corpus contains 20 canonical trips across every requested geography", () => {
   assert.equal(ROUTE_QUALITY_CALIBRATION_FIXTURES.length, 20);

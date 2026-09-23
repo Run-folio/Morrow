@@ -559,3 +559,230 @@ export const ROUTE_QUALITY_CALIBRATION_FIXTURES: RouteQualityCalibrationFixture[
     },
   }),
 ];
+
+export type CountryContinuityAcceptanceFixture = {
+  id: string;
+  name: string;
+  origin: { name: string; coordinates: [number, number] };
+  end?: PlannerStop;
+  stops: PlannerStop[];
+  constraints?: RoutePlanningConstraints;
+  expected: {
+    selectedCountryBlocks?: Record<string, number>;
+    candidateCountryBlocks?: Record<string, number>;
+    currentStatuses?: Array<{
+      countryCode: string;
+      status: "avoidable" | "proven-constraint-driven" | "unproven-protected";
+    }>;
+    preserveEntered?: boolean;
+    externalEndId?: string;
+    repeatedCanonicalPlaceId?: { canonicalPlaceId: string; occurrenceCount: number };
+    unknownBarrier?: { stopId: string; index: number; groupedSuffixIds: string[] };
+    bounded?: boolean;
+  };
+};
+
+const continuityStop = (
+  id: string,
+  name: string,
+  country: string,
+  countryCode: string | undefined,
+  coordinates: [number, number],
+  canonicalPlaceId = id,
+): PlannerStop => ({
+  id,
+  name,
+  country,
+  ...(countryCode ? { countryCode } : {}),
+  canonicalPlaceId,
+  coordinates,
+});
+
+/**
+ * Focused route-quality evidence that complements the stable 20-trip
+ * calibration baseline without introducing a second benchmark harness or
+ * night-allocation corpus.
+ */
+export const COUNTRY_CONTINUITY_ACCEPTANCE_FIXTURES: readonly CountryContinuityAcceptanceFixture[] = [
+  {
+    id: "madrid-india-round-trip",
+    name: "Madrid round trip keeps the two India stays together",
+    origin: { name: "Madrid", coordinates: [-3.7038, 40.4168] },
+    end: continuityStop("madrid-end", "Madrid", "Spain", "ES", [-3.7038, 40.4168]),
+    stops: [
+      continuityStop("mumbai", "Mumbai", "India", "IN", [72.8777, 19.076]),
+      continuityStop("dubai", "Dubai", "United Arab Emirates", "AE", [55.2708, 25.2048]),
+      continuityStop("cape-town", "Cape Town", "South Africa", "ZA", [18.4241, -33.9249]),
+      continuityStop("swakopmund", "Swakopmund", "Namibia", "NA", [14.5058, -22.6784]),
+      continuityStop("dushanbe", "Dushanbe", "Tajikistan", "TJ", [68.787, 38.5598]),
+      continuityStop("agra", "Agra", "India", "IN", [78.0081, 27.1767]),
+    ],
+    expected: {
+      selectedCountryBlocks: { IN: 1 },
+      currentStatuses: [{ countryCode: "IN", status: "avoidable" }],
+      externalEndId: "madrid-end",
+    },
+  },
+  {
+    id: "multi-stop-india",
+    name: "Three India stays remain one block around a Gulf stop",
+    origin: { name: "London", coordinates: [-0.1276, 51.5072] },
+    stops: [
+      continuityStop("mumbai", "Mumbai", "India", "IN", [72.8777, 19.076]),
+      continuityStop("dubai", "Dubai", "United Arab Emirates", "AE", [55.2708, 25.2048]),
+      continuityStop("jaipur", "Jaipur", "India", "IN", [75.7873, 26.9124]),
+      continuityStop("agra", "Agra", "India", "IN", [78.0081, 27.1767]),
+    ],
+    expected: {
+      selectedCountryBlocks: { IN: 1 },
+      currentStatuses: [{ countryCode: "IN", status: "avoidable" }],
+    },
+  },
+  {
+    id: "tajikistan-contiguous",
+    name: "Tajikistan stops group when Kazakhstan is also present",
+    origin: { name: "Dubai", coordinates: [55.2708, 25.2048] },
+    stops: [
+      continuityStop("dushanbe", "Dushanbe", "Tajikistan", "TJ", [68.787, 38.5598]),
+      continuityStop("almaty", "Almaty", "Kazakhstan", "KZ", [76.886, 43.2389]),
+      continuityStop("khujand", "Khujand", "Tajikistan", "TJ", [69.6222, 40.2833]),
+      continuityStop("khorog", "Khorog", "Tajikistan", "TJ", [71.5486, 37.4917]),
+    ],
+    expected: {
+      selectedCountryBlocks: { TJ: 1 },
+      currentStatuses: [{ countryCode: "TJ", status: "avoidable" }],
+    },
+  },
+  {
+    id: "japan-china-alternating",
+    name: "Alternating Japan and China stays become coherent country blocks",
+    origin: { name: "Seoul", coordinates: [126.978, 37.5665] },
+    stops: [
+      continuityStop("tokyo", "Tokyo", "Japan", "JP", [139.6917, 35.6895]),
+      continuityStop("shanghai", "Shanghai", "China", "CN", [121.4737, 31.2304]),
+      continuityStop("kyoto", "Kyoto", "Japan", "JP", [135.7681, 35.0116]),
+      continuityStop("beijing", "Beijing", "China", "CN", [116.4074, 39.9042]),
+    ],
+    expected: {
+      selectedCountryBlocks: { JP: 1, CN: 1 },
+      currentStatuses: [
+        { countryCode: "JP", status: "avoidable" },
+        { countryCode: "CN", status: "avoidable" },
+      ],
+    },
+  },
+  {
+    id: "repeated-city-occurrence",
+    name: "Repeated city occurrences retain distinct operational IDs",
+    origin: { name: "London", coordinates: [-0.1276, 51.5072] },
+    stops: [
+      continuityStop("mumbai-first", "Mumbai", "India", "IN", [72.8777, 19.076], "mumbai"),
+      continuityStop("dubai", "Dubai", "United Arab Emirates", "AE", [55.2708, 25.2048]),
+      continuityStop("mumbai-return", "Mumbai", "India", "IN", [72.8777, 19.076], "mumbai"),
+    ],
+    expected: {
+      selectedCountryBlocks: { IN: 1 },
+      currentStatuses: [{ countryCode: "IN", status: "avoidable" }],
+      repeatedCanonicalPlaceId: { canonicalPlaceId: "mumbai", occurrenceCount: 2 },
+    },
+  },
+  {
+    id: "hub-geographic-exception",
+    name: "A material hub advantage can retain a soft-penalized split",
+    origin: { name: "India West", coordinates: [0, 0] },
+    stops: [
+      continuityStop("india-west", "India West", "India", "IN", [0, 0]),
+      continuityStop("hub", "Regional Hub", "United Arab Emirates", "AE", [10, 0]),
+      continuityStop("india-east", "India East", "India", "IN", [20, 0]),
+    ],
+    expected: {
+      currentStatuses: [{ countryCode: "IN", status: "avoidable" }],
+      preserveEntered: true,
+    },
+  },
+  {
+    id: "unknown-country-barrier",
+    name: "Known suffix grouping never crosses an unknown occurrence",
+    origin: { name: "Origin", coordinates: [-1, 0] },
+    stops: [
+      continuityStop("india-one", "India One", "India", "IN", [0, 0]),
+      continuityStop("india-two", "India Two", "India", "IN", [1, 0]),
+      continuityStop("unknown", "Unresolved stop", "Unknown", undefined, [2, 0]),
+      continuityStop("japan-one", "Japan One", "Japan", "JP", [3, 0]),
+      continuityStop("china", "China", "China", "CN", [4, 0]),
+      continuityStop("japan-two", "Japan Two", "Japan", "JP", [5, 0]),
+      continuityStop("korea", "Korea", "South Korea", "KR", [6, 0]),
+    ],
+    expected: {
+      candidateCountryBlocks: { JP: 1 },
+      currentStatuses: [{ countryCode: "JP", status: "avoidable" }],
+      unknownBarrier: { stopId: "unknown", index: 2, groupedSuffixIds: ["japan-one", "japan-two"] },
+      bounded: true,
+    },
+  },
+  {
+    id: "large-bounded-alternating",
+    name: "Seven-stop alternating route receives a bounded country-block seed",
+    origin: { name: "Origin", coordinates: [-1, 0] },
+    stops: [
+      continuityStop("india-one", "India One", "India", "IN", [0, 0]),
+      continuityStop("china-one", "China One", "China", "CN", [1, 0]),
+      continuityStop("india-two", "India Two", "India", "IN", [2, 0]),
+      continuityStop("japan-one", "Japan One", "Japan", "JP", [3, 0]),
+      continuityStop("china-two", "China Two", "China", "CN", [4, 0]),
+      continuityStop("japan-two", "Japan Two", "Japan", "JP", [5, 0]),
+      continuityStop("uae", "UAE", "United Arab Emirates", "AE", [6, 0]),
+    ],
+    expected: {
+      candidateCountryBlocks: { IN: 1, CN: 1, JP: 1 },
+      currentStatuses: [
+        { countryCode: "IN", status: "avoidable" },
+        { countryCode: "CN", status: "avoidable" },
+        { countryCode: "JP", status: "avoidable" },
+      ],
+      bounded: true,
+    },
+  },
+  {
+    id: "sensible-linear-route",
+    name: "Existing sensible Japan route remains stable",
+    origin: { name: "Tokyo", coordinates: [139.6917, 35.6895] },
+    stops: [japan[0], japan[3], japan[5]],
+    constraints: { fixedStartStopId: "tokyo", fixedEndStopId: "osaka", requiredStopIds: ["tokyo", "kyoto", "osaka"] },
+    expected: { preserveEntered: true },
+  },
+  {
+    id: "unrelated-fixed-commitment",
+    name: "Unrelated commitment protects the boundary without proving necessity",
+    origin: { name: "Origin", coordinates: [0, 0] },
+    stops: [
+      continuityStop("india-one", "India One", "India", "IN", [1, 0]),
+      continuityStop("uae", "UAE", "United Arab Emirates", "AE", [2, 0]),
+      continuityStop("india-two", "India Two", "India", "IN", [3, 0]),
+    ],
+    constraints: { fixedCommitments: [{ label: "Unrelated wedding", date: "2026-09-10" }] },
+    expected: {
+      currentStatuses: [{ countryCode: "IN", status: "unproven-protected" }],
+      preserveEntered: true,
+    },
+  },
+  {
+    id: "fixed-chronology-proof",
+    name: "Linked dated occurrences prove the protected re-entry chronology",
+    origin: { name: "Origin", coordinates: [0, 0] },
+    stops: [
+      continuityStop("india-one", "India One", "India", "IN", [1, 0]),
+      continuityStop("uae", "UAE", "United Arab Emirates", "AE", [2, 0]),
+      continuityStop("india-two", "India Two", "India", "IN", [3, 0]),
+    ],
+    constraints: { fixedCommitments: [
+      { label: "India One booking", date: "2026-09-01", stopId: "india-one" },
+      { label: "UAE booking", date: "2026-09-05", stopId: "uae" },
+      { label: "India Two booking", date: "2026-09-09", stopId: "india-two" },
+    ] },
+    expected: {
+      currentStatuses: [{ countryCode: "IN", status: "proven-constraint-driven" }],
+      preserveEntered: true,
+    },
+  },
+];
