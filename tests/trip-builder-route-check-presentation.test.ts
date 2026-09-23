@@ -16,6 +16,8 @@ test("Route Check keeps canonical rows and markers while presenting a comparison
     "Apply must use the same canonical commit boundary as drag and menu movement");
   assert.match(builder, /routeRecommendationVisible \? <section[\s\S]*Compare order/,
     "a recommendation result should expose one specific comparison action in the canonical disclosure");
+  assert.match(builder, /!routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes\.length > 0/,
+    "warning alternatives must not compete with the canonical route recommendation decision");
   assert.match(builder, /commitStopOrder\(nextStops\.map\(\(stop\) => stop\.id\), "route-check"\)/);
   assert.doesNotMatch(builder, /apply a materially cleaner route[\s\S]*applyRecommendedOrder\(\)/,
     "Build must never silently apply a Route Check recommendation");
