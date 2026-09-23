@@ -15,7 +15,7 @@ test("published Route Detail keeps its canonical production CSS owner connected"
   assert.match(page, /import styles from "\.\/route-overview\.module\.css"/);
   assert.match(page, /className=\{`\$\{styles\.page\} morrovia-editorial-page`\}/);
   assert.match(detail, /import styles from "\.\/route-overview\.module\.css"/);
-  for (const className of ["hero", "heroFacts", "overviewSection", "sequenceSection", "itinerarySection", "experiencesSection", "practicalSection", "sourcesSection", "alternatives", "finalCta"]) {
+  for (const className of ["hero", "heroFacts", "whySection", "highlightsSection", "journeySection", "experiencesSection", "practicalSection", "sourcesSection", "finalCta"]) {
     assert.match(detail, new RegExp(`styles\\.${className}`), className);
     assert.match(css, new RegExp(`\\.${className}(?:[\\s,{:]|$)`), className);
   }
@@ -30,6 +30,25 @@ test("the production Route story composes the real owner at every protected revi
   for (const state of ["StandardAndean", "MapUnavailableFallback", "Mobile320", "Mobile390", "Tablet768", "Desktop1024", "Desktop1440", "Desktop1680"]) {
     assert.match(story, new RegExp(`export const ${state}`), state);
   }
+});
+
+test("Route Detail follows the discovery hierarchy and absorbs the duplicated #317 controls", () => {
+  const detail = read("app/journey/routes/[slug]/route-detail-view.tsx");
+  const orderedIds = ["route-title", "route-why", "route-highlights", "route-journey", "route-experiences", "route-notes", "route-plan"];
+  let cursor = -1;
+  for (const id of orderedIds) {
+    const next = detail.indexOf(`id="${id}"`);
+    assert.ok(next > cursor, `${id} must follow the accepted discovery order`);
+    cursor = next;
+  }
+
+  assert.match(detail, /routeDiscoveryPresentation\(detail\)/);
+  assert.equal((detail.match(/<RoutePlanLink/g) ?? []).length, 2, "only hero and final conversion actions remain");
+  assert.ok((detail.match(/>Plan this route<\/RoutePlanLink>/g) ?? []).length >= 2);
+  assert.doesNotMatch(detail, /A starting point|routeNavigation|Shape the nights in Builder/);
+  assert.doesNotMatch(detail, /RouteRelatedRoutes|relatedRouteDetails|related-routes-heading/);
+  assert.doesNotMatch(detail, /photoQualification|pending editorial review|No additional route context is recorded yet/);
+  assert.doesNotMatch(detail, />See [^<]+ on the map</);
 });
 
 test("browser and MapLibre error events normalize to bounded Error values", () => {
