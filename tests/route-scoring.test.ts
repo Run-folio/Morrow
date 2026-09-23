@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { generateRouteCandidates, type RouteCandidate } from "../lib/easyt/route-candidates.ts";
-import { scoreRouteCandidates } from "../lib/easyt/route-scoring.ts";
+import { DEFAULT_ROUTE_SCORING_CONFIG, scoreRouteCandidates } from "../lib/easyt/route-scoring.ts";
+import type { CountryContinuityConstraintProof } from "../lib/easyt/route-country-continuity.ts";
 import { knownKnowledgeFact } from "../lib/easyt/destination-knowledge.ts";
 import { TRANSFER_IMPACT_RULE_SOURCE, estimateTransferImpact, type TransferImpact } from "../lib/easyt/transfer-impact.ts";
 import type { EstimatedLeg, PlannerStop } from "../lib/easyt/planner.ts";
@@ -13,6 +14,12 @@ const stop = (id: string, longitude: number, intent?: PlannerStop["intent"]): Pl
   country: "Testland",
   coordinates: [longitude, 0],
   intent,
+});
+const countryStop = (id: string, country: string, countryCode: string | undefined): PlannerStop => ({
+  id,
+  name: id,
+  country,
+  ...(countryCode ? { countryCode } : {}),
 });
 
 const candidate = (stops: PlannerStop[], candidateIndex: number, matchesOriginalOrder = candidateIndex === 0): RouteCandidate => ({
@@ -245,4 +252,117 @@ test("stay penalties require explicit allocations and protect a one-day anchor",
   assert.equal(withoutAllocations.winner?.penalties.some((penalty) => penalty.code === "one-night-anchor"), false);
   assert.equal(withAllocations.winner?.penalties.some((penalty) => penalty.code === "one-night-anchor"), true);
   assert.equal(withAllocations.winner?.penalties.some((penalty) => penalty.code === "arrival-or-departure-consumes-stay"), true);
+});
+
+test("an observed India re-entry receives the centralized penalty and loses a close comparison", () => {
+  const mumbai = countryStop("Mumbai", "India", "IN");
+  const agra = countryStop("Agra", "India", "IN");
+  const dubai = countryStop("Dubai", "United Arab Emirates", "AE");
+  const dushanbe = countryStop("Dushanbe", "Tajikistan", "TJ");
+  const candidates = [
+    candidate([mumbai, dubai, dushanbe, agra], 0),
+    candidate([mumbai, agra, dubai, dushanbe], 1, false),
+  ];
+  const estimate = pairEstimator({
+    "Origin|Mumbai": leg("train", 0, 0),
+    "Mumbai|Dubai": leg("train", 100, 0),
+    "Dubai|Dushanbe": leg("train", 150, 0),
+    "Dushanbe|Agra": leg("train", 150, 0),
+    "Mumbai|Agra": leg("train", 120, 0),
+    "Agra|Dubai": leg("train", 160, 0),
+  });
+  const result = scoreRouteCandidates({ origin, candidates, estimateLeg: estimate });
+  const split = result.rankedCandidates.find((item) => item.candidateIndex === 0);
+
+  assert.deepEqual(result.winner?.stopIds, ["Mumbai", "Agra", "Dubai", "Dushanbe"]);
+  assert.equal(DEFAULT_ROUTE_SCORING_CONFIG.penalties["country-reentry"], 12);
+  assert.equal(split?.penalties.find((penalty) => penalty.code === "country-reentry")?.points, 12);
+  assert.equal(split?.metrics.observedAvoidableCountryReentryCount, 1);
+  assert.deepEqual(split?.metrics.repeatedCountryCodes, ["IN"]);
+  assert.equal(split?.metrics.countryBlockCount, 4);
+  assert.equal(split?.metrics.countryReentryCount, 1);
+  assert.match(result.explanation, /fewer avoidable country re-entries/i);
+});
+
+test("a singleton produced by an unrelated planning boundary remains unproven-protected", () => {
+  const split = candidate([
+    countryStop("Mumbai", "India", "IN"),
+    countryStop("Dubai", "United Arab Emirates", "AE"),
+    countryStop("Agra", "India", "IN"),
+    countryStop("Mystery", "Unknown", undefined),
+  ], 0);
+  const result = scoreRouteCandidates({ origin, candidates: [split], estimateLeg: () => leg("train", 60, 10) });
+  const scored = result.winner;
+
+  assert.equal(scored?.penalties.some((penalty) => penalty.code === "country-reentry"), false);
+  assert.deepEqual(scored?.metrics.provenConstraintDrivenCountryCodes, []);
+  assert.deepEqual(scored?.metrics.unprovenProtectedCountryCodes, ["IN"]);
+  assert.deepEqual(scored?.metrics.unknownCountryStopIds, ["Mystery"]);
+  assert.equal(scored?.metrics.countryContinuityAssessments[0]?.status, "unproven-protected");
+  assert.doesNotMatch(result.explanation, /constraint-driven|every hard-constraint-safe/i);
+});
+
+test("typed gateway proof is recorded without manufacturing an avoidable penalty", () => {
+  const split = candidate([
+    countryStop("Mumbai", "India", "IN"),
+    countryStop("Dubai", "United Arab Emirates", "AE"),
+    countryStop("Agra", "India", "IN"),
+  ], 0);
+  const proof: CountryContinuityConstraintProof = {
+    countryCode: "IN",
+    kind: "fixed-gateway-position",
+    stopIds: ["Mumbai", "Dubai", "Agra"],
+    constraintIds: ["fixed-start:Mumbai", "fixed-end:Agra"],
+  };
+  const result = scoreRouteCandidates({
+    origin,
+    candidates: [split],
+    estimateLeg: () => leg("train", 60, 10),
+    countryContinuityProofs: [proof],
+  });
+
+  assert.deepEqual(result.winner?.metrics.provenConstraintDrivenCountryCodes, ["IN"]);
+  assert.deepEqual(result.winner?.metrics.unprovenProtectedCountryCodes, []);
+  assert.equal(result.winner?.metrics.countryContinuityAssessments[0]?.proof?.kind, "fixed-gateway-position");
+  assert.equal(result.winner?.penalties.some((penalty) => penalty.code === "country-reentry"), false);
+  assert.match(result.winner?.reasons.join(" ") ?? "", /fixed gateway positions require/i);
+});
+
+test("a large supported hub advantage can retain an avoidable split despite the soft penalty", () => {
+  const a1 = countryStop("A1", "India", "IN");
+  const hub = countryStop("Hub", "United Arab Emirates", "AE");
+  const a2 = countryStop("A2", "India", "IN");
+  const split = candidate([a1, hub, a2], 0);
+  const contiguous = candidate([a1, a2, hub], 1, false);
+  const estimate = pairEstimator({
+    "Origin|A1": leg("flight", 0, 0),
+    "A1|Hub": leg("flight", 40, 0),
+    "Hub|A2": leg("flight", 40, 0),
+    "A1|A2": leg("train", 600, 0),
+    "A2|Hub": leg("flight", 600, 0),
+  });
+  const result = scoreRouteCandidates({ origin, candidates: [split, contiguous], estimateLeg: estimate });
+
+  assert.equal(result.winner?.candidateIndex, 0);
+  assert.equal(result.winner?.metrics.countryContinuityAssessments[0]?.status, "avoidable");
+  assert.equal(result.winner?.penalties.find((penalty) => penalty.code === "country-reentry")?.points, 12);
+});
+
+test("country-reentry reasons pluralize multiple observed re-entries truthfully", () => {
+  const a1 = countryStop("A1", "India", "IN");
+  const a2 = countryStop("A2", "India", "IN");
+  const a3 = countryStop("A3", "India", "IN");
+  const b = countryStop("B", "China", "CN");
+  const c = countryStop("C", "Japan", "JP");
+  const result = scoreRouteCandidates({
+    origin,
+    candidates: [
+      candidate([a1, b, a2, c, a3], 0),
+      candidate([a1, a2, a3, b, c], 1, false),
+    ],
+    estimateLeg: () => leg("train", 60, 0),
+  });
+  const split = result.rankedCandidates.find((item) => item.candidateIndex === 0);
+
+  assert.match(split?.penalties.find((penalty) => penalty.code === "country-reentry")?.reason ?? "", /2 avoidable country re-entries/);
 });

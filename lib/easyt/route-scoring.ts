@@ -1,5 +1,13 @@
 import type { RouteCandidate, RouteCandidateSource } from "./route-candidates.ts";
+import { countryNameFor } from "./country-registry.ts";
 import type { EstimatedLeg, PlannerStop } from "./planner.ts";
+import {
+  analyzeRouteCountryContinuity,
+  classifyCountryContinuity,
+  type CountryContinuityAssessment,
+  type CountryContinuityConstraintProof,
+  type RouteCountryContinuity,
+} from "./route-country-continuity.ts";
 import {
   aggregatePlanningConfidence,
   planningConfidenceForLegacyLeg,
@@ -44,7 +52,8 @@ export type RoutePenaltyCode =
   | "excessive-transfer-burden"
   | "one-night-anchor"
   | "arrival-or-departure-consumes-stay"
-  | "unnecessary-flight";
+  | "unnecessary-flight"
+  | "country-reentry";
 
 export type RouteScorePenalty = {
   code: RoutePenaltyCode;
@@ -70,6 +79,14 @@ export type RouteCandidateMetrics = {
   flightLegs: number;
   preferredModeLegs: number;
   meaningfulPreferenceLegs: number;
+  countryBlockCount: number;
+  countryReentryCount: number;
+  observedAvoidableCountryReentryCount: number;
+  repeatedCountryCodes: string[];
+  provenConstraintDrivenCountryCodes: string[];
+  unprovenProtectedCountryCodes: string[];
+  countryContinuityAssessments: CountryContinuityAssessment[];
+  unknownCountryStopIds: string[];
 };
 
 type CandidateScoreBase = {
@@ -135,7 +152,7 @@ export type RouteScoringConfig = {
  * current route boundary has no dependable fare data.
  */
 export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
-  version: "route-scoring-v3-backtracking-severity",
+  version: "route-scoring-v4-country-continuity",
   weights: {
     "travel-efficiency": 0.45,
     pacing: 0.15,
@@ -149,6 +166,7 @@ export const DEFAULT_ROUTE_SCORING_CONFIG: RouteScoringConfig = {
     "one-night-anchor": 12,
     "arrival-or-departure-consumes-stay": 8,
     "unnecessary-flight": 8,
+    "country-reentry": 12,
   },
   thresholds: {
     travelHeavyMinutes: 300,
@@ -181,6 +199,7 @@ type CandidateFacts = {
   candidate: RouteCandidate;
   legs: ScoredLeg[];
   metrics: RouteCandidateMetrics;
+  continuity: RouteCountryContinuity;
   confidence: PlanningConfidence;
 };
 
@@ -200,6 +219,7 @@ export type ScoreRouteCandidatesInput = {
   requiredStopIds?: string[];
   fixedStartStopId?: string;
   fixedEndStopId?: string;
+  countryContinuityProofs?: readonly CountryContinuityConstraintProof[];
   config?: RouteScoringConfig;
 };
 
@@ -251,6 +271,7 @@ function legsFor(origin: RouteOrigin, candidate: RouteCandidate, estimateLeg: Le
 
 function candidateFacts(input: ScoreRouteCandidatesInput, candidate: RouteCandidate, config: RouteScoringConfig): CandidateFacts {
   const legs = legsFor(input.origin, candidate, input.estimateLeg, input.end);
+  const continuity = analyzeRouteCountryContinuity(candidate.stops);
   const legConfidences = legs.map(({ leg }) => leg.planningConfidence ?? planningConfidenceForLegacyLeg({
     confidence: leg.confidence,
     durationMinutes: leg.durationMinutes,
@@ -274,6 +295,7 @@ function candidateFacts(input: ScoreRouteCandidatesInput, candidate: RouteCandid
   return {
     candidate,
     legs,
+    continuity,
     confidence: aggregatePlanningConfidence(legConfidences.map((item) => item.overall), {
       scope: "general-route",
       reason: "Confidence in the route score based on its weakest material connection evidence.",
@@ -296,8 +318,39 @@ function candidateFacts(input: ScoreRouteCandidatesInput, candidate: RouteCandid
       flightLegs: meaningful.filter(({ leg }) => leg.mode === "flight").length,
       preferredModeLegs: meaningful.filter(({ leg }) => preferred.has(leg.mode)).length,
       meaningfulPreferenceLegs: meaningful.length,
+      countryBlockCount: continuity.blockCount,
+      countryReentryCount: continuity.reentryCount,
+      observedAvoidableCountryReentryCount: 0,
+      repeatedCountryCodes: continuity.repeatedCountryCodes,
+      provenConstraintDrivenCountryCodes: [],
+      unprovenProtectedCountryCodes: [],
+      countryContinuityAssessments: [],
+      unknownCountryStopIds: continuity.unknownCountryStopIds,
     },
   };
+}
+
+function avoidableReentries(assessment: CountryContinuityAssessment) {
+  if (assessment.status !== "avoidable" || assessment.observedLowerBlockCount === undefined) return 0;
+  return Math.max(0, assessment.blockCount - assessment.observedLowerBlockCount);
+}
+
+function continuityReason(assessment: CountryContinuityAssessment) {
+  const country = countryNameFor(assessment.countryCode) ?? assessment.countryCode;
+  if (assessment.status === "avoidable") {
+    const count = avoidableReentries(assessment);
+    return `${country} appears in separate route blocks, adding ${count} avoidable ${count === 1 ? "country re-entry" : "country re-entries"}.`;
+  }
+  if (assessment.status === "unproven-protected") {
+    return `${country} appears in ${assessment.blockCount} route blocks. The current protected planning boundary did not produce a proven lower-block alternative, so this route is preserved without treating the split as required.`;
+  }
+  const proofReason: Record<NonNullable<CountryContinuityAssessment["proof"]>["kind"], string> = {
+    "fixed-position-chronology": "linked fixed-date chronology requires this order",
+    "fixed-gateway-position": "fixed gateway positions require this split",
+    "authoritative-protected-order": "an authoritative protected order requires this split",
+    "hard-transport-rejection": "the lower-block order is rejected by a hard transport constraint",
+  };
+  return `${country} remains in ${assessment.blockCount} route blocks because ${assessment.proof ? proofReason[assessment.proof.kind] : "typed canonical constraints require the split"}.`;
 }
 
 function component(
@@ -484,9 +537,14 @@ function explanationFor(winner: ScoredRouteCandidate, runnerUp?: ScoredRouteCand
     .map((item) => item.label);
   const penaltyDifference = runnerUp.penalties.reduce((total, penalty) => total + penalty.points, 0)
     - winner.penalties.reduce((total, penalty) => total + penalty.points, 0);
+  const countryPenaltyDifference = runnerUp.penalties
+    .filter((penalty) => penalty.code === "country-reentry")
+    .reduce((total, penalty) => total + penalty.points, 0)
+    - winner.penalties.filter((penalty) => penalty.code === "country-reentry")
+      .reduce((total, penalty) => total + penalty.points, 0);
   const because = [
     ...(strongest.length ? [`stronger ${strongest.join(" and ")}`] : []),
-    ...(penaltyDifference > 0 ? ["fewer supported penalties"] : []),
+    ...(countryPenaltyDifference > 0 ? ["fewer avoidable country re-entries"] : penaltyDifference > 0 ? ["fewer supported penalties"] : []),
   ];
   return `${route} scores ${difference} points above ${runnerUp.stopIds.join(" → ")}${because.length ? ` because it has ${because.join(" and ")}` : " under the same deterministic criteria"}.${suffix}`;
 }
@@ -506,6 +564,22 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
   }
 
   const facts = input.candidates.map((candidate) => candidateFacts(input, candidate, config));
+  const viableContinuities = facts.map((item) => item.continuity);
+  for (const item of facts) {
+    const assessments = classifyCountryContinuity({
+      route: item.continuity,
+      viableAlternatives: viableContinuities,
+      proofs: input.countryContinuityProofs,
+    });
+    item.metrics.countryContinuityAssessments = assessments;
+    item.metrics.observedAvoidableCountryReentryCount = assessments.reduce((total, assessment) => total + avoidableReentries(assessment), 0);
+    item.metrics.provenConstraintDrivenCountryCodes = assessments
+      .filter((assessment) => assessment.status === "proven-constraint-driven")
+      .map((assessment) => assessment.countryCode);
+    item.metrics.unprovenProtectedCountryCodes = assessments
+      .filter((assessment) => assessment.status === "unproven-protected")
+      .map((assessment) => assessment.countryCode);
+  }
   const scoreable = facts.filter((item) => item.metrics.transferMinutes !== null);
   const bestMinutes = Math.min(...scoreable.map((item) => item.metrics.transferMinutes ?? Number.POSITIVE_INFINITY));
   const knownDistances = scoreable.map((item) => item.metrics.distanceKm).filter((value): value is number => value !== null);
@@ -541,6 +615,18 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
     const anchors = destinationFit(input, item, config);
     const components = [travel, pacing, preferences, convenience, anchors.score];
     const penalties = [...anchors.penalties];
+
+    for (const assessment of item.metrics.countryContinuityAssessments) {
+      const count = avoidableReentries(assessment);
+      if (!count) continue;
+      penalties.push({
+        code: "country-reentry",
+        points: config.penalties["country-reentry"] * count,
+        reason: continuityReason(assessment),
+        stopIds: assessment.affectedStopIds,
+        legIndexes: assessment.legIndexes,
+      });
+    }
 
     if (bestDistance !== null && item.metrics.distanceKm !== null) {
       const excessKm = item.metrics.distanceKm - bestDistance;
@@ -592,7 +678,10 @@ export function scoreRouteCandidates(input: ScoreRouteCandidatesInput): RouteCan
       totalScore: round(clamp(baseScore - penaltyPoints)),
       components,
       penalties,
-      reasons: components.flatMap((itemComponent) => itemComponent.reasons),
+      reasons: [
+        ...components.flatMap((itemComponent) => itemComponent.reasons),
+        ...item.metrics.countryContinuityAssessments.map(continuityReason),
+      ],
     };
   });
 
