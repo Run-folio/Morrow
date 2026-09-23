@@ -36,7 +36,39 @@
 
 ---
 
-## Task 1: Add the pure country-continuity analyzer and proof-safe classifier
+## Task 1: Preserve country identity through replan and state transitions
+
+**Files:**
+
+- Modify: `lib/easyt/trip-replan.ts`
+- Modify: `tests/trip-replan.test.ts`
+- Modify when needed for explicit regression only: `tests/cascade.test.ts`
+- Modify when needed for explicit regression only: `tests/state-preservation-torture.test.ts`
+
+- [ ] Add a failing saved-trip replan test where every `TripStop.countryCode` survives the `PlannerStop` projection, recommendation/application and cascade.
+
+- [ ] Include repeated same-place occurrences, journey endpoints, canonical place IDs, locks, bookings, authored days and canonical legs in the fixture so a route permutation cannot silently drop adjacent state.
+
+- [ ] Run `npm run test:trip-replan` and confirm the country-code assertion fails on the accepted base.
+
+- [ ] Add the missing projection field only:
+
+```ts
+countryCode: stop.countryCode,
+```
+
+- [ ] Run `npm run test:trip-replan`, `npm run test:trip-cascade`, `npm run test:state-preservation`, `npm run test:persistence`, `npm run typecheck` and `git diff --check`.
+
+- [ ] Commit the exact files changed:
+
+```bash
+git add lib/easyt/trip-replan.ts tests/trip-replan.test.ts
+git commit -m "fix: preserve country identity through replan"
+```
+
+Add `tests/cascade.test.ts` or `tests/state-preservation-torture.test.ts` only if the explicit regression required changing them.
+
+## Task 2: Add the pure country-continuity analyzer and proof-safe classifier
 
 **Files:**
 
@@ -93,7 +125,7 @@ git add lib/easyt/route-country-continuity.ts tests/route-country-continuity.tes
 git commit -m "feat: analyze country continuity safely"
 ```
 
-## Task 2: Add bounded segmented country-block candidates and rejection evidence
+## Task 3: Add bounded segmented country-block candidates and rejection evidence
 
 **Files:**
 
@@ -153,7 +185,7 @@ git add lib/easyt/route-candidates.ts tests/route-candidates.test.ts
 git commit -m "feat: generate bounded country block routes"
 ```
 
-## Task 3: Integrate the three-state assessment into scoring
+## Task 4: Integrate the three-state assessment into scoring
 
 **Files:**
 
@@ -207,7 +239,7 @@ git add lib/easyt/route-scoring.ts tests/route-scoring.test.ts
 git commit -m "feat: score observed country reentry"
 ```
 
-## Task 4: Wire canonical proofs, recommendation gating and planner explanations
+## Task 5: Wire canonical proofs, recommendation gating and planner explanations
 
 **Files:**
 
@@ -248,7 +280,7 @@ git add lib/easyt/route-country-continuity.ts lib/easyt/planner.ts tests/route-i
 git commit -m "feat: explain country continuity recommendations"
 ```
 
-## Task 5: Classify final plans and restrict repair to observed avoidability
+## Task 6: Classify final plans and restrict repair to observed avoidability
 
 **Files:**
 
@@ -287,38 +319,6 @@ assert.doesNotMatch(issue.message, /every|required by|constraint-driven/i);
 git add lib/easyt/route-country-continuity.ts lib/easyt/plan-validator.ts lib/easyt/plan-repair.ts tests/plan-validator.test.ts
 git commit -m "feat: validate country reentry safely"
 ```
-
-## Task 6: Preserve country identity through replan and state transitions
-
-**Files:**
-
-- Modify: `lib/easyt/trip-replan.ts`
-- Modify: `tests/trip-replan.test.ts`
-- Modify when needed for explicit regression only: `tests/cascade.test.ts`
-- Modify when needed for explicit regression only: `tests/state-preservation-torture.test.ts`
-
-- [ ] Add a failing saved-trip replan test where every `TripStop.countryCode` survives the `PlannerStop` projection, recommendation/application and cascade.
-
-- [ ] Include repeated same-place occurrences, journey endpoints, canonical place IDs, locks, bookings, authored days and canonical legs in the fixture so a route permutation cannot silently drop adjacent state.
-
-- [ ] Run `npm run test:trip-replan` and confirm the country-code assertion fails on the accepted base.
-
-- [ ] Add the missing projection field only:
-
-```ts
-countryCode: stop.countryCode,
-```
-
-- [ ] Run `npm run test:trip-replan`, `npm run test:trip-cascade`, `npm run test:state-preservation`, `npm run test:persistence`, `npm run typecheck` and `git diff --check`.
-
-- [ ] Commit the exact files changed:
-
-```bash
-git add lib/easyt/trip-replan.ts tests/trip-replan.test.ts
-git commit -m "fix: preserve country identity through replan"
-```
-
-Add `tests/cascade.test.ts` or `tests/state-preservation-torture.test.ts` only if the explicit regression required changing them.
 
 ## Task 7: Project the shared reason into Builder and Trip Health
 
