@@ -65,6 +65,7 @@ export function TripBuilderDetailsEditor({
   canonicalDraftRef.current = canonicalDraft;
   const [draft, setDraft] = useState<TripBuilderDetailsDraft>(canonicalDraft);
   const [draftFingerprint, setDraftFingerprint] = useState(sourceFingerprint);
+  const [draftRevision, setDraftRevision] = useState(0);
   useEffect(() => {
     setDraft(canonicalDraftRef.current);
     setDraftFingerprint(sourceFingerprint);
@@ -73,6 +74,7 @@ export function TripBuilderDetailsEditor({
   const cancel = () => {
     setDraft(canonicalDraftRef.current);
     setDraftFingerprint(sourceFingerprint);
+    setDraftRevision((current) => current + 1);
   };
 
   const save = async () => {
@@ -84,7 +86,7 @@ export function TripBuilderDetailsEditor({
     <div className={styles.placesSectionHead}>
       <strong>{language === "es" ? "Tu viaje" : "Your journey"}</strong>
     </div>
-    <div className={styles.detailsFields}>
+    <div key={draftRevision} className={styles.detailsFields}>
       {children({ draft, setDraft })}
       <div className={styles.detailsCompactGrid}>
         <MorroviaDatePicker
