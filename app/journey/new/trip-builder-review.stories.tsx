@@ -48,7 +48,7 @@ function InlineBaseClarification() {
     <div className={styles.stopEditor}>
       <div className={styles.inlinePlanningClarification}>
         <div className={styles.inlinePlanningIdentity} role="status"><strong>Scotland</strong><span>Region</span><p>Where in Scotland would you like to stay?</p></div>
-        <div className={styles.inlinePlanningSearch}><div className={styles.placeAutocomplete}><input aria-label="Choose a base in Scotland" placeholder="Search cities and places in Scotland" /></div><button type="button">Cancel</button></div>
+        <div className={styles.inlinePlanningSearch}><EasyTField label="Choose a base in Scotland" placeholder="Search cities and places in Scotland" /><EasyTButton type="button" variant="secondary" size="small">Cancel</EasyTButton></div>
       </div>
     </div>
   </section>;
