@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { replanTripAfterDayOrder } from "../lib/easyt/trip-replan.ts";
 import { reviewTrip } from "../lib/easyt/review.ts";
@@ -45,6 +46,65 @@ test("recalculates canonical stops and legs for a contiguous day-order change", 
     assert.equal(result.trip.legs[1]?.fromStopId, "b");
     assert.equal(result.trip.legs[1]?.toStopId, "a");
   }
+});
+
+test("saved-trip replan projects countryCode and preserves canonical lifecycle state", () => {
+  const sourceText = readFileSync(new URL("../lib/easyt/trip-replan.ts", import.meta.url), "utf8");
+  assert.match(sourceText, /countryCode:\s*stop\.countryCode/);
+
+  const source = trip();
+  source.endDate = "2026-09-05";
+  source.brief.journeyEnd = {
+    mode: "explicit",
+    place: { name: "Madrid", canonicalPlaceId: "madrid", country: "Spain", coordinates: [-3.7038, 40.4168] },
+  };
+  source.brief.scheduleLocks = { stopIds: ["a"], arrivalDates: {} };
+  source.brief.bookings = [{
+    id: "booking-a",
+    type: "stay",
+    title: "Mumbai stay",
+    date: "2026-09-01",
+    confirmation: "CONFIRMED",
+    url: null,
+    location: "Mumbai",
+  }];
+  source.brief.dayNotes = { 2: ["Traveller-authored note"] };
+  source.brief.customActivities = { 2: ["Traveller-authored activity"] };
+  source.stops = [
+    { ...source.stops[0]!, id: "a", order: 0, name: "Mumbai", country: "India", countryCode: "IN", canonicalPlaceId: "mumbai" },
+    { ...source.stops[1]!, id: "b", order: 1, name: "Dubai", country: "United Arab Emirates", countryCode: "AE", canonicalPlaceId: "dubai" },
+    { ...source.stops[0]!, id: "a-return", order: 2, name: "Mumbai", country: "India", countryCode: "IN", canonicalPlaceId: "mumbai", longitude: 1.1 },
+  ];
+  source.planItems = [
+    { ...source.planItems[0]!, id: "day-a", stopId: "a", dayNumber: 1, date: "2026-09-01", title: "Mumbai arrival" },
+    { ...source.planItems[1]!, id: "day-a-activity", stopId: "a", dayNumber: 2, date: "2026-09-02", title: "Authored Mumbai day", notes: ["Keep this authored row"] },
+    { ...source.planItems[2]!, id: "day-b", stopId: "b", dayNumber: 3, date: "2026-09-03", title: "Dubai" },
+    { ...source.planItems[3]!, id: "day-a-return", stopId: "a-return", dayNumber: 4, date: "2026-09-04", title: "Mumbai return" },
+  ];
+
+  const result = replanTripAfterDayOrder(source, source.planItems);
+  assert.equal(result.state, "recalculated");
+  if (result.state !== "recalculated") return;
+
+  assert.deepEqual(result.trip.stops.map(({ id, countryCode, canonicalPlaceId }) => ({ id, countryCode, canonicalPlaceId })), [
+    { id: "a", countryCode: "IN", canonicalPlaceId: "mumbai" },
+    { id: "b", countryCode: "AE", canonicalPlaceId: "dubai" },
+    { id: "a-return", countryCode: "IN", canonicalPlaceId: "mumbai" },
+  ]);
+  assert.notEqual(result.trip.stops[0]?.id, result.trip.stops[2]?.id);
+  assert.deepEqual(result.trip.brief.journeyEnd, source.brief.journeyEnd);
+  assert.deepEqual(result.trip.brief.scheduleLocks, source.brief.scheduleLocks);
+  assert.deepEqual(result.trip.brief.bookings, source.brief.bookings);
+  assert.deepEqual(result.trip.brief.dayNotes, source.brief.dayNotes);
+  assert.deepEqual(result.trip.brief.customActivities, source.brief.customActivities);
+  assert.equal(result.trip.planItems.some((item) => item.notes.includes("Keep this authored row")), true);
+  assert.equal(result.trip.legs.at(-1)?.toEndpoint?.canonicalPlaceId, "madrid");
+
+  const storage = new MemoryStorage();
+  assert.equal(saveTripRecoveryToStorage(storage, result.trip, { writeId: "country-code-lifecycle" }).stored, true);
+  const recovered = loadTripRecoveryFromStorage(storage, result.trip.id, result.trip.ownerId)?.trip;
+  assert.deepEqual(recovered?.stops.map((stop) => stop.countryCode), ["IN", "AE", "IN"]);
+  assert.deepEqual(recovered?.stops.map((stop) => stop.canonicalPlaceId), ["mumbai", "dubai", "mumbai"]);
 });
 
 test("benign route replanning preserves stable stop-bound manual night intent", () => {

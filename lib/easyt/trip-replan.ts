@@ -77,6 +77,7 @@ export function replanTripAfterDayOrder(trip: EasyTTrip, orderedPlanItems: PlanI
       name: stop.name,
       country: stop.country,
       canonicalPlaceId: stop.canonicalPlaceId,
+      countryCode: stop.countryCode,
       coordinates: stop.longitude !== null && stop.latitude !== null ? [stop.longitude, stop.latitude] as [number, number] : undefined,
     })),
     picks: trip.brief.selectedPlaces,
