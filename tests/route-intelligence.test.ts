@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assessRouteIntelligence, assessRouteOrder, estimateLeg, legDecisionAlternatives, recommendStopDurations, routeTransferSavingMinutes, usableStopDays } from "../lib/easyt/planner.ts";
+import { analyzeRouteCountryContinuity, hardTransportCountryContinuityProofs } from "../lib/easyt/route-country-continuity.ts";
 import { transferHeadlineMinutes } from "../lib/easyt/transfer-impact.ts";
 
 const origin = { name: "Start", coordinates: [0, 0] as [number, number] };
@@ -104,15 +105,139 @@ test("protects fixed commitments instead of silently reordering around them", ()
   const assessment = assessRouteOrder({
     origin,
     stops: [
-      { id: "c", name: "C", country: "Testland", coordinates: [20, 0] },
-      { id: "a", name: "A", country: "Testland", coordinates: [1, 0] },
-      { id: "b", name: "B", country: "Testland", coordinates: [10, 0] },
+      { id: "mumbai", name: "Mumbai", country: "India", countryCode: "IN", coordinates: [20, 0] },
+      { id: "dubai", name: "Dubai", country: "United Arab Emirates", countryCode: "AE", coordinates: [1, 0] },
+      { id: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [10, 0] },
     ],
-    constraints: { fixedCommitments: [{ label: "Wedding in B", date: "2026-09-10" }] },
+    constraints: { fixedCommitments: [{ label: "Unrelated wedding", date: "2026-09-10" }] },
   });
 
   assert.equal(assessment.state, "current-order");
   assert.match(assessment.summary, /protected/i);
+  assert.equal(assessment.scoring?.winner?.metrics.countryContinuityAssessments[0]?.status, "unproven-protected");
+  assert.deepEqual(assessment.scoring?.winner?.metrics.provenConstraintDrivenCountryCodes, []);
+  assert.doesNotMatch(assessment.reasons.join(" "), /constraint-driven|all valid|every hard/i);
+});
+
+test("fixed gateways provide typed proof only when they structurally require a country split", () => {
+  const assessment = assessRouteOrder({
+    origin,
+    stops: [
+      { id: "mumbai", name: "Mumbai", country: "India", countryCode: "IN", coordinates: [1, 0] },
+      { id: "dubai", name: "Dubai", country: "United Arab Emirates", countryCode: "AE", coordinates: [2, 0] },
+      { id: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [3, 0] },
+    ],
+    constraints: { fixedStartStopId: "mumbai", fixedEndStopId: "agra", requiredStopIds: ["dubai"] },
+  });
+  const continuity = assessment.scoring?.winner?.metrics.countryContinuityAssessments[0];
+
+  assert.equal(continuity?.status, "proven-constraint-driven");
+  assert.equal(continuity?.proof?.kind, "fixed-gateway-position");
+  assert.deepEqual(continuity?.proof?.constraintIds, ["fixed-start:mumbai", "fixed-end:agra"]);
+  assert.deepEqual(continuity?.proof?.stopIds, ["mumbai", "dubai", "agra"]);
+});
+
+test("linked fixed chronology proves re-entry while an unrelated commitment does not", () => {
+  const stops = [
+    { id: "mumbai", name: "Mumbai", country: "India", countryCode: "IN", coordinates: [1, 0] as [number, number] },
+    { id: "dubai", name: "Dubai", country: "United Arab Emirates", countryCode: "AE", coordinates: [2, 0] as [number, number] },
+    { id: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [3, 0] as [number, number] },
+  ];
+  const proven = assessRouteOrder({
+    origin,
+    stops,
+    constraints: { fixedCommitments: [
+      { label: "Mumbai booking", date: "2026-10-03", stopId: "mumbai" },
+      { label: "Dubai booking", date: "2026-10-06", stopId: "dubai" },
+      { label: "Agra booking", date: "2026-10-10", stopId: "agra" },
+    ] },
+  });
+  const proof = proven.scoring?.winner?.metrics.countryContinuityAssessments[0]?.proof;
+  assert.equal(proof?.kind, "fixed-position-chronology");
+  assert.deepEqual(proof?.stopIds, ["mumbai", "dubai", "agra"]);
+
+  const unrelated = assessRouteOrder({
+    origin,
+    stops,
+    constraints: { fixedCommitments: [{ label: "Unlinked wedding", date: "2026-10-06" }] },
+  });
+  assert.equal(unrelated.scoring?.winner?.metrics.countryContinuityAssessments[0]?.status, "unproven-protected");
+});
+
+test("hard transport proof requires a concrete rejected lower-block order", () => {
+  const proofs = hardTransportCountryContinuityProofs([{
+    countryCode: "IN",
+    stopIds: ["mumbai", "agra", "dubai"],
+    issueCodes: ["maximum-transfer-time-exceeded"],
+    constraintIds: ["maximum-transfer-minutes:120"],
+  }]);
+  assert.deepEqual(proofs, [{
+    countryCode: "IN",
+    kind: "hard-transport-rejection",
+    stopIds: ["mumbai", "agra", "dubai"],
+    constraintIds: ["maximum-transfer-minutes:120"],
+  }]);
+  assert.deepEqual(hardTransportCountryContinuityProofs([{
+    countryCode: "IN",
+    stopIds: ["mumbai", "agra", "dubai"],
+    issueCodes: ["required-stop-missing"],
+    constraintIds: [],
+  }]), []);
+});
+
+test("country continuity uses the existing 60-minute and five-percent structural gate", () => {
+  const withinGate = assessRouteOrder({
+    origin: { name: "Far origin", coordinates: [-200, 0] },
+    stops: [
+      { id: "in-1", name: "India One", country: "India", countryCode: "IN", coordinates: [0, 0] },
+      { id: "ae", name: "UAE", country: "United Arab Emirates", countryCode: "AE", coordinates: [2, 0] },
+      { id: "in-2", name: "India Two", country: "India", countryCode: "IN", coordinates: [4, 0] },
+    ],
+  });
+  assert.equal(withinGate.state, "recommendation");
+  const tradeoffMinutes = (withinGate.recommendedTransferMinutes ?? 0) - (withinGate.currentTransferMinutes ?? 0);
+  assert.equal(analyzeRouteCountryContinuity(withinGate.candidates?.find((candidate) => candidate.stops.map((stop) => stop.id).join("|") === withinGate.recommendedStopIds.join("|"))?.stops ?? []).blocksByCountry.IN, 1);
+  assert.ok(tradeoffMinutes > 0 && tradeoffMinutes <= 60);
+  assert.ok(tradeoffMinutes / Math.max(1, withinGate.currentTransferMinutes ?? 1) <= 0.05);
+  assert.match(withinGate.reasons.join(" "), /country|re-entr/i);
+
+  const overRatio = assessRouteOrder({
+    origin: { name: "Far origin", coordinates: [-200, 0] },
+    stops: [
+      { id: "in-1", name: "India One", country: "India", countryCode: "IN", coordinates: [0, 0] },
+      { id: "ae", name: "UAE", country: "United Arab Emirates", countryCode: "AE", coordinates: [1, 0] },
+      { id: "in-2", name: "India Two", country: "India", countryCode: "IN", coordinates: [6, 0] },
+    ],
+  });
+  assert.equal(overRatio.state, "current-order");
+  assert.notDeepEqual(overRatio.scoring?.winner?.stopIds, overRatio.currentStopIds);
+  const rejectedTradeoff = (overRatio.scoring?.winner?.metrics.transferMinutes ?? 0) - (overRatio.currentTransferMinutes ?? 0);
+  assert.ok(rejectedTradeoff > 60 || rejectedTradeoff / Math.max(1, overRatio.currentTransferMinutes ?? 1) > 0.05);
+  const overRatioWinner = overRatio.candidates?.find((candidate) => candidate.metadata.candidateIndex === overRatio.scoring?.winner?.candidateIndex);
+  assert.equal(overRatioWinner ? analyzeRouteCountryContinuity(overRatioWinner.stops).blocksByCountry.IN : undefined, 1);
+});
+
+test("the Madrid acceptance route retains every stay and chooses one India block", () => {
+  const stops = [
+    { id: "mumbai", name: "Mumbai", country: "India", countryCode: "IN", coordinates: [72.8777, 19.076] as [number, number] },
+    { id: "dubai", name: "Dubai", country: "United Arab Emirates", countryCode: "AE", coordinates: [55.2708, 25.2048] as [number, number] },
+    { id: "cape-town", name: "Cape Town", country: "South Africa", countryCode: "ZA", coordinates: [18.4241, -33.9249] as [number, number] },
+    { id: "swakopmund", name: "Swakopmund", country: "Namibia", countryCode: "NA", coordinates: [14.5058, -22.6784] as [number, number] },
+    { id: "dushanbe", name: "Dushanbe", country: "Tajikistan", countryCode: "TJ", coordinates: [68.787, 38.5598] as [number, number] },
+    { id: "agra", name: "Agra", country: "India", countryCode: "IN", coordinates: [78.0081, 27.1767] as [number, number] },
+  ];
+  const assessment = assessRouteOrder({
+    origin: { name: "Madrid", coordinates: [-3.7038, 40.4168] },
+    end: { id: "madrid-end", name: "Madrid", country: "Spain", countryCode: "ES", coordinates: [-3.7038, 40.4168] },
+    stops,
+  });
+  const recommended = assessment.candidates?.find((candidate) =>
+    candidate.stops.map((stop) => stop.id).join("|") === assessment.recommendedStopIds.join("|"));
+
+  assert.deepEqual(new Set(assessment.recommendedStopIds), new Set(stops.map((stop) => stop.id)));
+  assert.equal(assessment.recommendedStopIds.includes("madrid-end"), false);
+  assert.equal(recommended ? analyzeRouteCountryContinuity(recommended.stops).blocksByCountry.IN : undefined, 1);
+  assert.match([assessment.scoring?.explanation, ...assessment.reasons].join(" "), /country re-entr|India.*country block/i);
 });
 
 test("protects a full day when a transfer is travel-heavy", () => {

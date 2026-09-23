@@ -31,6 +31,12 @@ import {
   type RouteCandidateSelection,
   type RouteScoringPreferences,
 } from "./route-scoring.ts";
+import { countryNameFor } from "./country-registry.ts";
+import {
+  fixedChronologyCountryContinuityProofs,
+  fixedGatewayCountryContinuityProofs,
+  hardTransportCountryContinuityProofs,
+} from "./route-country-continuity.ts";
 import { canonicalPlaceFactsMatch } from "./place-intelligence.ts";
 import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
 
@@ -510,6 +516,11 @@ export function assessRouteOrder(input: {
   // wrapper deliberately turns a forbidden mode into `unknown` for downstream
   // presentation, which would otherwise hide the hard conflict from generation.
   const generation = generateRouteCandidates({ ...input, estimateLeg });
+  const countryContinuityProofs = [
+    ...fixedGatewayCountryContinuityProofs(input.stops, input.constraints),
+    ...fixedChronologyCountryContinuityProofs(input.stops, input.constraints?.fixedCommitments),
+    ...hardTransportCountryContinuityProofs(generation.countryBlockRejections),
+  ];
   const legacyPreferredModes = input.constraints?.transportModes?.map((mode) => mode === "drive" ? "road" as const : mode);
   const interestTagsByStopId = Object.fromEntries(input.stops.flatMap((stop) => {
     const fact = destinationKnowledge.forRouteScoring(stop).experienceTags;
@@ -531,6 +542,7 @@ export function assessRouteOrder(input: {
     requiredStopIds: input.constraints?.requiredStopIds,
     fixedStartStopId: input.constraints?.fixedStartStopId,
     fixedEndStopId: input.constraints?.fixedEndStopId,
+    countryContinuityProofs,
   });
   const candidateFields = { candidates: generation.candidates, constraintIssues: generation.constraintIssues, scoring, confidence: scoring.confidence };
   if (!generation.candidates.length) {
@@ -567,10 +579,11 @@ export function assessRouteOrder(input: {
   // a stop and re-timed, holding the traveller's entered order is safer than
   // offering an apparently efficient route that could break a booking.
   if (input.constraints?.fixedCommitments?.length) {
+    const provenContinuityReason = scoring.winner?.reasons.find((reason) => /remains in .* route blocks because/i.test(reason));
     return {
       state: "current-order", currentStopIds, recommendedStopIds: currentStopIds,
       currentTransferMinutes: current.minutes, recommendedTransferMinutes: current.minutes, improvementMinutes: 0,
-      reasons: ["The entered order is held while a fixed date or booking is in the trip."],
+      reasons: ["The entered order is held while a fixed date or booking is in the trip.", ...(provenContinuityReason ? [provenContinuityReason] : [])],
       tradeoffs: ["Confirm where each fixed commitment sits before changing the route order.", ...transportTradeoffs(current.legs, input.constraints)],
       summary: "Your fixed commitments are protected.",
       ...candidateFields,
@@ -584,15 +597,17 @@ export function assessRouteOrder(input: {
   const legacyMeaningful = improvementMinutes !== null && current.minutes !== null
     && improvementMinutes >= 90 && improvementMinutes / Math.max(1, current.minutes) >= 0.1;
   const timeTradeoffMinutes = current.minutes !== null && best.minutes !== null ? Math.max(0, best.minutes - current.minutes) : null;
-  const replacesBacktracking = originalScore?.state === "scored"
-    && originalScore.penalties.some((penalty) => penalty.code === "unnecessary-backtracking")
-    && !winner!.penalties.some((penalty) => penalty.code === "unnecessary-backtracking");
-  const acceptableBacktrackingTradeoff = timeTradeoffMinutes !== null && current.minutes !== null
-    && replacesBacktracking
+  const structuralCodes = ["unnecessary-backtracking", "country-reentry"] as const;
+  const originalPenalties = new Set(originalScore?.state === "scored" ? originalScore.penalties.map((penalty) => penalty.code) : []);
+  const winnerPenalties = new Set(winner?.penalties.map((penalty) => penalty.code) ?? []);
+  const replacesStructuralPenalty = structuralCodes.some((code) => originalPenalties.has(code) && !winnerPenalties.has(code));
+  const removesCountryReentry = originalPenalties.has("country-reentry") && !winnerPenalties.has("country-reentry");
+  const acceptableStructuralTradeoff = timeTradeoffMinutes !== null && current.minutes !== null
+    && replacesStructuralPenalty
     && timeTradeoffMinutes <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffMinutes
     && timeTradeoffMinutes / Math.max(1, current.minutes) <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffRatio;
   const scoreMeaningful = scoreAdvantage >= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.minimumRecommendationScoreAdvantage
-    && (current.minutes === null || best.minutes <= current.minutes || acceptableBacktrackingTradeoff);
+    && (current.minutes === null || best.minutes <= current.minutes || acceptableStructuralTradeoff);
   const winnerMatchesCurrent = best.stops.every((stop, index) => stop.id === input.stops[index]?.id);
   if ((originalViable && !legacyMeaningful && !scoreMeaningful) || winnerMatchesCurrent) {
     return {
@@ -609,13 +624,23 @@ export function assessRouteOrder(input: {
 
   const currentLongLegs = current.legs.filter((leg) => (transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes) ?? 0) >= 300).length;
   const bestLongLegs = best.legs.filter((leg) => (transferDoorToDoorMinutes(leg.transferImpact, leg.durationMinutes) ?? 0) >= 300).length;
+  const improvedCountryNames = originalScore?.state === "scored"
+    ? originalScore.metrics.countryContinuityAssessments
+      .filter((assessment) => assessment.status === "avoidable" && !winner?.metrics.repeatedCountryCodes.includes(assessment.countryCode))
+      .map((assessment) => countryNameFor(assessment.countryCode) ?? assessment.countryCode)
+    : [];
   const reasons = [
     ...(!originalViable ? ["It preserves the fixed route gateways and required destinations."]
       : improvementMinutes !== null && improvementMinutes > 0
         ? [`It removes about ${Math.floor(improvementMinutes / 60)}h ${improvementMinutes % 60}m of estimated door-to-door travel.`]
-        : acceptableBacktrackingTradeoff && timeTradeoffMinutes !== null
-          ? [`It removes material geographic backtracking for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
+        : acceptableStructuralTradeoff && timeTradeoffMinutes !== null
+          ? [removesCountryReentry
+            ? `It removes an avoidable country re-entry for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`
+            : `It removes material geographic backtracking for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
         : [scoring.explanation]),
+    ...(improvedCountryNames.length
+      ? [`It keeps the planned stops in ${improvedCountryNames.join(" and ")} in one country block.`]
+      : []),
     ...(bestLongLegs < currentLongLegs ? ["It also reduces the number of travel-heavy days."] : ["It keeps the route moving in one direction instead of doubling back."]),
   ];
   return {

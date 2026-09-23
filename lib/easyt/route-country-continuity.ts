@@ -1,4 +1,5 @@
 import { countryCodeFor } from "./country-registry.ts";
+import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
 import type { PlannerStop } from "./planner.ts";
 
 export type RouteCountryBlock = {
@@ -171,4 +172,73 @@ export function classifyCountryContinuity(input: {
       ...(observedLowerBlockCount === undefined && proof ? { proof } : {}),
     };
   });
+}
+
+export function fixedGatewayCountryContinuityProofs(
+  stops: readonly PlannerStop[],
+  constraints: { fixedStartStopId?: string; fixedEndStopId?: string } | undefined,
+): CountryContinuityConstraintProof[] {
+  if (!constraints?.fixedStartStopId || !constraints.fixedEndStopId) return [];
+  const start = stops.find((stop) => stop.id === constraints.fixedStartStopId);
+  const end = stops.find((stop) => stop.id === constraints.fixedEndStopId);
+  if (!start || !end || start.id === end.id) return [];
+  const countryCode = canonicalCountryCodeForStop(start);
+  if (!countryCode || canonicalCountryCodeForStop(end) !== countryCode) return [];
+  const between = stops.filter((stop) => {
+    if (stop.id === start.id || stop.id === end.id) return false;
+    const code = canonicalCountryCodeForStop(stop);
+    return Boolean(code && code !== countryCode);
+  });
+  if (!between.length) return [];
+  return [{
+    countryCode,
+    kind: "fixed-gateway-position",
+    stopIds: [start.id, ...between.map((stop) => stop.id), end.id],
+    constraintIds: [`fixed-start:${start.id}`, `fixed-end:${end.id}`],
+  }];
+}
+
+const canonicalDate = (value: string | undefined) => value && /^\d{4}-\d{2}-\d{2}$/.test(value)
+  && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+  ? value
+  : null;
+
+export function fixedChronologyCountryContinuityProofs(
+  stops: readonly PlannerStop[],
+  commitments: readonly FixedCommitmentConstraint[] | undefined,
+): CountryContinuityConstraintProof[] {
+  const byId = new Map(stops.map((stop) => [stop.id, stop]));
+  const linked = (commitments ?? []).flatMap((commitment) => {
+    const date = canonicalDate(commitment.date);
+    const stop = commitment.stopId ? byId.get(commitment.stopId) : undefined;
+    return date && stop ? [{ commitment, date, stop }] : [];
+  }).sort((left, right) => left.date.localeCompare(right.date) || left.stop.id.localeCompare(right.stop.id));
+  if (linked.length < 3 || new Set(linked.map((item) => item.date)).size !== linked.length) return [];
+
+  const continuity = analyzeRouteCountryContinuity(linked.map((item) => item.stop));
+  return continuity.repeatedCountryCodes.map((countryCode) => ({
+    countryCode,
+    kind: "fixed-position-chronology" as const,
+    stopIds: linked.map((item) => item.stop.id),
+    constraintIds: linked.map((item) => `fixed-commitment:${item.stop.id}:${item.date}`),
+  }));
+}
+
+export function hardTransportCountryContinuityProofs(
+  rejections: readonly {
+    countryCode: string;
+    stopIds: string[];
+    issueCodes: readonly string[];
+    constraintIds: string[];
+  }[],
+): CountryContinuityConstraintProof[] {
+  return rejections.flatMap((rejection) => rejection.issueCodes.some((code) =>
+    code === "forbidden-transport-mode" || code === "maximum-transfer-time-exceeded")
+    ? [{
+      countryCode: rejection.countryCode,
+      kind: "hard-transport-rejection" as const,
+      stopIds: [...rejection.stopIds],
+      constraintIds: [...rejection.constraintIds],
+    }]
+    : []);
 }
