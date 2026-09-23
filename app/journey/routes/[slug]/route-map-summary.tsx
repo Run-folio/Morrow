@@ -25,7 +25,22 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
 }) {
   const [selected, setSelected] = useState<RouteMapSelection>(() => validRouteSelection(initialSelection, stops));
   const [reset, setReset] = useState(0);
+  const [navigatorWidth, setNavigatorWidth] = useState(0);
   const root = useRef<HTMLDivElement>(null);
+  const navigatorRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const navigator = navigatorRef.current;
+    if (!navigator || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const mobile = typeof matchMedia === "function" && matchMedia("(max-width: 700px)").matches;
+      const width = mobile ? 0 : Math.round(navigator.getBoundingClientRect().width);
+      setNavigatorWidth((current) => current === width ? current : width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(navigator);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const followAnchor = () => {
       if (!/^#route-map(?:$|-)/.test(location.hash)) return;
@@ -66,8 +81,8 @@ export default function RouteMapSummary({ title, stops, countries, nights, durat
   return <div ref={root}>
     <div className={styles.mapToolbar}><span>{countries.join(" → ")}</span></div>
     <div className={styles.mapLayout}>
-      <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={setSelected} resetVersion={reset} />
-      <aside className={styles.mapDetail} aria-label="Route map details">
+      <RouteLiveMap title={title} stops={stops} className={styles.liveRouteMap} selected={selected} onSelect={setSelected} resetVersion={reset} cameraOcclusions={{ right: navigatorWidth }} />
+      <aside ref={navigatorRef} className={styles.mapDetail} aria-label="Route map details">
         <div className={styles.mapContext} aria-live="polite" aria-atomic="true">
           <p className={styles.eyebrow}>{stop ? `${stop.country} · Stop ${stopIndex + 1}` : connection ? "Connection context" : "The whole route"}</p>
           <h3>{stop?.name ?? (connection ? `${connection.from} → ${connection.to}` : `${stops[0]?.name} to ${stops.at(-1)?.name}`)}</h3>

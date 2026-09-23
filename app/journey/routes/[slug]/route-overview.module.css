@@ -107,9 +107,7 @@
 .mapStatus { position:absolute; inset:0; background:var(--morrovia-lilac); padding:40px; pointer-events:none; font:var(--morrovia-type-supporting-body); }
 .liveRouteMap :global(.maplibregl-canvas) { outline:none; }
 .liveRouteMap :global(.maplibregl-ctrl-group button) { width:44px; height:44px; }
-.liveRouteMap :global(.route-overview-map__marker) { color:var(--morrovia-ink); background:var(--morrovia-paper); border:1px solid var(--morrovia-action); border-radius:var(--morrovia-control-radius); padding:8px 12px; min-height:44px; display:flex; align-items:center; gap:6px; font:var(--morrovia-type-fine-print); cursor:pointer; }
-.liveRouteMap :global(.route-overview-map__marker[aria-pressed="true"]) { color:var(--morrovia-paper); background:var(--morrovia-action); z-index:2; }
-.liveRouteMap :global(.route-overview-map__marker:focus-visible),.liveRouteMap :global(.maplibregl-canvas:focus-visible) { outline:3px solid var(--morrovia-action); outline-offset:3px; }
+.liveRouteMap :global(.maplibregl-canvas:focus-visible) { outline:3px solid var(--morrovia-action); outline-offset:3px; }
 .liveRouteMap :global(.maplibregl-ctrl-attrib) { font:var(--morrovia-type-fine-print); }
 .judgement { display:grid; grid-template-columns:1fr 1fr; gap:9%; padding-block:20px 80px; }
 .judgement h2 { margin-top:20px; }
@@ -262,12 +260,6 @@
 .mapDetail > label { margin-top:auto; }
 .geographyReasons { display:grid; grid-template-columns:repeat(3,1fr); gap:30px; margin:30px 0 0; padding:0; list-style:none; }
 .geographyReasons li { padding-top:18px; border-top:1px solid var(--morrovia-line); color:var(--morrovia-ink-soft); font:var(--morrovia-type-supporting-body); }
-/* morrovia-ui-audit-allow-next-line raw-radius -- Route Detail inherits the shared Trip Map circular stop-marker silhouette. */
-.liveRouteMap :global(.route-overview-map__marker) { position:relative; min-height:44px; padding:0; border:2px solid var(--morrovia-ink); border-radius:50%; display:grid; place-items:center; font:var(--morrovia-type-metadata); }
-.liveRouteMap :global(.route-overview-map__marker b) { position:absolute; left:50px; padding:5px 8px; border:1px solid var(--morrovia-line); border-radius:var(--morrovia-control-radius); color:var(--morrovia-ink); background:color-mix(in srgb,var(--morrovia-paper) 94%,transparent); box-shadow:var(--morrovia-map-marker-shadow); font:var(--morrovia-type-fine-print); white-space:nowrap; }
-.liveRouteMap :global(.route-overview-map__marker b[data-side="left"]) { left:auto; right:50px; }
-.liveRouteMap :global(.route-overview-map__marker[aria-pressed="true"]) { background:var(--morrovia-signal); border-color:var(--morrovia-signal); }
-
 .experiencesSection { display:block; padding-block:70px 100px; border-top:1px solid var(--morrovia-line); }
 .experienceHeading { display:grid; grid-template-columns:1fr .7fr; gap:8%; align-items:end; margin-bottom:34px; }
 .experienceHeading h2 { margin:18px 0 0; }
@@ -342,7 +334,6 @@
   .mapShell { height:420px; min-height:420px; }
   .mapDetail { padding:24px 18px; border-left:0; border-top:1px solid var(--morrovia-line); }
   .mapDetail > label { margin-top:4px; }
-  .liveRouteMap :global(.route-overview-map__marker b) { display:none; }
   .geographyReasons { grid-template-columns:1fr; gap:0; margin-top:26px; }
   .experiencesSection { padding-block:48px 64px; }
   .experienceHeading { grid-template-columns:1fr; gap:20px; }

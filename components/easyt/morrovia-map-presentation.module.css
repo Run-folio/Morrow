@@ -12,10 +12,18 @@
 .surface :global(.planner-map__stop-number){display:grid;place-items:center}
 .surface :global(.planner-map__stop:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}
 .surface :global(.planner-map__stop.is-origin),.surface :global(.planner-map__stop.is-destination){position:absolute;overflow:visible}
-.surface :global(.planner-map__stop.is-origin)::after,.surface :global(.planner-map__stop.is-destination)::after{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;border:2px solid var(--morrovia-paper);border-radius:50%;background:var(--morrovia-ink);content:""}
+.surface :global(.planner-map__stop.is-origin)::after,.surface :global(.planner-map__stop.is-destination)::after{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;border:2px solid var(--morrovia-paper);background:var(--morrovia-ink);content:""}
+/* morrovia-ui-audit-allow-next-line raw-radius -- Endpoint dots are circular geographic status marks. */
+.surface :global(.planner-map__stop.is-origin)::after,.surface :global(.planner-map__stop.is-destination)::after{border-radius:50%}
 .surface :global(.planner-map__stop.is-destination)::after{background:var(--morrovia-signal)}
-.surface :global(.planner-map__leg){position:absolute;display:grid;width:50px;height:50px;place-items:center;padding:0;border:3px solid var(--morrovia-paper);border-radius:50%;background:var(--morrovia-signal);box-shadow:0 0 0 6px color-mix(in srgb,var(--morrovia-signal) 12%,transparent),var(--morrovia-map-marker-shadow);color:var(--morrovia-paper);cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s}
-.surface :global(.planner-map__leg:hover),.surface :global(.planner-map__leg:focus-visible),.surface :global(.planner-map__leg.is-active){z-index:5;background:var(--morrovia-ink);box-shadow:0 0 0 8px color-mix(in srgb,var(--morrovia-ink) 14%,transparent),var(--morrovia-map-marker-shadow);transform:scale(1.06)}
+.surface :global(.planner-map__leg){position:absolute;display:grid;width:50px;height:50px;place-items:center;padding:0;border:3px solid var(--morrovia-paper);background:var(--morrovia-signal);color:var(--morrovia-paper);cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s}
+/* morrovia-ui-audit-allow-next-line raw-radius -- Transport markers share the circular map-marker silhouette. */
+.surface :global(.planner-map__leg){border-radius:50%}
+/* morrovia-ui-audit-allow-next-line raw-shadow -- Transport markers combine a semantic mode halo with the canonical map elevation. */
+.surface :global(.planner-map__leg){box-shadow:0 0 0 6px color-mix(in srgb,var(--morrovia-signal) 12%,transparent),var(--morrovia-map-marker-shadow)}
+.surface :global(.planner-map__leg:hover),.surface :global(.planner-map__leg:focus-visible),.surface :global(.planner-map__leg.is-active){z-index:5;background:var(--morrovia-ink);transform:scale(1.06)}
+/* morrovia-ui-audit-allow-next-line raw-shadow -- Active transport markers retain both focus separation and canonical map elevation. */
+.surface :global(.planner-map__leg:hover),.surface :global(.planner-map__leg:focus-visible),.surface :global(.planner-map__leg.is-active){box-shadow:0 0 0 8px color-mix(in srgb,var(--morrovia-ink) 14%,transparent),var(--morrovia-map-marker-shadow)}
 .surface :global(.planner-map__leg:focus-visible){outline:3px solid var(--morrovia-focus-ring);outline-offset:3px}
 .surface :global(.planner-map__leg.is-unknown){border-style:dashed;background:var(--morrovia-muted)}
 .surface :global(.planner-map__leg-icon){display:grid;place-items:center;font:var(--morrovia-type-control)}

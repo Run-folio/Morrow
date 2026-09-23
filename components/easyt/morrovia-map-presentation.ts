@@ -78,3 +78,21 @@ export const mapRoutePlanning: LineLayerSpecification["paint"] = {
             "line-opacity": 0.9,
             "line-dasharray": [0.7, 1.35],
           };
+
+export const mapRouteSubdued: LineLayerSpecification["paint"] = {
+  ...mapRouteLine,
+  "line-width": 5,
+  "line-opacity": 0.28,
+};
+
+export const mapRouteSelected: LineLayerSpecification["paint"] = {
+  ...mapRouteLine,
+  "line-width": 7,
+  "line-opacity": 1,
+};
+
+export const mapRouteHit: LineLayerSpecification["paint"] = {
+  ...mapRouteLine,
+  "line-width": 28,
+  "line-opacity": 0,
+};

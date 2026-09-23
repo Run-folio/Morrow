@@ -8,6 +8,7 @@ import { routeDetailPresentation, relatedRouteDetails } from "../app/journey/rou
 import { nightLabel, transferStatus } from "../app/journey/routes/[slug]/route-detail-labels.ts";
 import { editorialConnectionId, routeMapHashForSelection, routeMapSelectionFromHash, validRouteSelection } from "../app/journey/routes/[slug]/route-map-selection.ts";
 import { immersiveRouteKeys } from "../lib/easyt/immersive-homepage-routes.ts";
+import { resolveMapCameraRequest } from "../lib/easyt/map-surface-policy.ts";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const owner = "app/journey/routes/[slug]/";
 const keys = [...immersiveRouteKeys];
@@ -62,6 +63,17 @@ test("selection deep links translate public indices to canonical occurrence iden
   for (const hash of ["#route-map", "#route-map-stop-3", "#route-map-connection-2", "#route-map-stop--1", "#route-map-stop-1.5", "#other"]) assert.deepEqual(routeMapSelectionFromHash(hash, stops), { kind: "route" });
   assert.deepEqual(validRouteSelection({ kind: "stop", stopId: "missing" }, stops), { kind: "route" });
   assert.equal(editorialConnectionId("kyoto", "tokyo-return"), "connection:kyoto:tokyo-return");
+});
+
+test("editorial camera requests frame only the selected canonical geography", () => {
+  const padding = { top: 24, right: 320, bottom: 24, left: 24 };
+  const tokyo: [number, number] = [139.69, 35.68];
+  const kyoto: [number, number] = [135.77, 35.01];
+  assert.deepEqual(resolveMapCameraRequest({ kind: "route", ids: ["tokyo-first", "kyoto"], coordinates: [tokyo, kyoto] }, padding), { kind: "fit", coordinates: [tokyo, kyoto], padding, maxZoom: 8 });
+  assert.deepEqual(resolveMapCameraRequest({ kind: "stop", id: "tokyo-return", coordinates: tokyo }, padding), { kind: "focus", center: tokyo, zoom: 8, offset: [-148, 0] });
+  assert.deepEqual(resolveMapCameraRequest({ kind: "leg", id: "connection:tokyo-first:kyoto", coordinates: [tokyo, kyoto] }, padding), { kind: "fit", coordinates: [tokyo, kyoto], padding, maxZoom: 9 });
+  assert.equal(resolveMapCameraRequest({ kind: "route", coordinates: [tokyo] }, padding).kind, "focus");
+  assert.deepEqual(resolveMapCameraRequest({ kind: "route", coordinates: [[Number.NaN, 0]] }, padding), { kind: "none" });
 });
 
 test("photography resolves only to licensed canonical destinations and preserves attribution", () => {
@@ -125,10 +137,12 @@ test("the map library remains behind intersection and selection never recreates 
   assert.match(map, /IntersectionObserver/);
   assert.match(map, /\}, \[stops, title\]\)/);
   assert.match(map, /event.stopPropagation\(\)/);
-  assert.match(map, /duration: 0/);
-  assert.match(map, /morroviaMapStyle/);
+  assert.match(map, /morroviaMapOptions\(surface, "expanded"\)/);
+  assert.match(map, /surface = \{ variant: "embedded", interaction: "pan-zoom" \}/);
+  assert.match(map, /createMorroviaStopMarker/);
+  assert.match(map, /resolveMapInsets/);
+  assert.match(map, /applyMapCameraRequest/);
   assert.match(map, /mapRouteCasing/);
-  assert.match(map, /planner-map__stop/);
   assert.match(read(owner + "route-map-summary.tsx"), /aria-live="polite"/);
   assert.doesNotMatch(read(owner + "route-map-summary.tsx"), /className=\{styles\.mapStops\}/);
 });

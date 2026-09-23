@@ -88,8 +88,10 @@ test("journey rows and the map share one hash-compatible selection system", () =
   assert.match(summary, /mapRegion\?\.scrollIntoView\(\{ block: "start", behavior: "instant" \}\)/);
   assert.doesNotMatch(summary, /closest<HTMLElement>\("section"\)/);
   assert.match(summary, /id=\{`route-map-stop-\$\{index\}`\}/);
-  assert.match(liveMap, /marker\.type = "button"/);
-  assert.match(liveMap, /setAttribute\("aria-pressed"/);
+  assert.match(liveMap, /createMorroviaStopMarker/);
+  assert.match(liveMap, /setMorroviaStopMarkerState/);
+  assert.match(summary, /ResizeObserver/);
+  assert.match(summary, /cameraOcclusions=\{\{ right: navigatorWidth \}\}/);
 });
 
 test("sparse why copy and practical cards use only canonical rendered content", () => {
@@ -114,9 +116,12 @@ test("browser and MapLibre error events normalize to bounded Error values", () =
   assert.equal(runtime.error.message, "Invalid route layer");
 });
 
-test("Route map uses the bundled worker and handles provider errors at its boundary", () => {
+test("Route map uses the shared runtime and handles provider errors at its boundary", () => {
   const source = read("app/journey/routes/[slug]/route-live-map.tsx");
-  assert.match(source, /setWorkerUrl\("\/maplibre\/maplibre-gl-worker\.mjs"\)/);
+  assert.match(source, /setWorkerUrl\(MORROVIA_MAP_WORKER_URL\)/);
+  assert.match(source, /morroviaMapOptions\(surface, "expanded"\)/);
+  assert.match(source, /installMorroviaMapControls/);
+  assert.doesNotMatch(source, /showCompass: true|attributionControl: false/);
   assert.match(source, /map\.on\("error", reportFailure/);
   assert.match(source, /map\?\.off\("error", reportFailure/);
   assert.match(source, /initialise\(\)\.catch\(reportFailure\)/);
