@@ -116,6 +116,9 @@ export type RouteOrderAssessment = {
   confidence?: PlanningConfidence;
 };
 
+/** Reserved route-assessment copy emitted only when scoring removes an actual backtracking penalty. */
+export const ROUTE_BACKTRACKING_REASON_PREFIX = "It removes material geographic backtracking";
+
 /** A route recommendation only has a time-saving claim when both totals are valid and the saving is positive. */
 export function routeTransferSavingMinutes(
   route: Pick<RouteOrderAssessment, "currentTransferMinutes" | "recommendedTransferMinutes">,
@@ -600,6 +603,7 @@ export function assessRouteOrder(input: {
   const winnerPenalties = new Set(winner?.penalties.map((penalty) => penalty.code) ?? []);
   const replacesStructuralPenalty = structuralCodes.some((code) => originalPenalties.has(code) && !winnerPenalties.has(code));
   const removesCountryReentry = originalPenalties.has("country-reentry") && !winnerPenalties.has("country-reentry");
+  const removesBacktracking = originalPenalties.has("unnecessary-backtracking") && !winnerPenalties.has("unnecessary-backtracking");
   const acceptableStructuralTradeoff = timeTradeoffMinutes !== null && current.minutes !== null
     && replacesStructuralPenalty
     && timeTradeoffMinutes <= DEFAULT_ROUTE_SCORING_CONFIG.thresholds.maximumBacktrackingTradeoffMinutes
@@ -634,12 +638,16 @@ export function assessRouteOrder(input: {
         : acceptableStructuralTradeoff && timeTradeoffMinutes !== null
           ? [removesCountryReentry
             ? `It removes an avoidable country re-entry for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`
-            : `It removes material geographic backtracking for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
+            : `${ROUTE_BACKTRACKING_REASON_PREFIX} for about ${timeTradeoffMinutes}m more in the current broad transfer estimates.`]
         : [scoring.explanation]),
     ...(improvedCountryNames.length
       ? [`It keeps the planned stops in ${improvedCountryNames.join(" and ")} in one country block.`]
       : []),
-    ...(bestLongLegs < currentLongLegs ? ["It also reduces the number of travel-heavy days."] : ["It keeps the route moving in one direction instead of doubling back."]),
+    ...(bestLongLegs < currentLongLegs
+      ? ["It also reduces the number of travel-heavy days."]
+      : removesBacktracking
+        ? [`${ROUTE_BACKTRACKING_REASON_PREFIX} under the current route criteria.`]
+        : []),
   ];
   return {
     state: "recommendation", currentStopIds, recommendedStopIds: best.stops.map((stop) => stop.id),

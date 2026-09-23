@@ -1,5 +1,5 @@
 import type { EasyTTrip, TripChange, TripRecommendation } from "./trip.ts";
-import { arrivalLoadFromTransfer, findDestinationIntegrityIssues, travelStayConsequence, usableStopDays, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
+import { arrivalLoadFromTransfer, findDestinationIntegrityIssues, ROUTE_BACKTRACKING_REASON_PREFIX, travelStayConsequence, usableStopDays, type EstimatedLeg, type PlannerStop, type RoutePlanningConstraints } from "./planner.ts";
 import { validateFinalPlan, type PlanLegEstimator, type PlanValidationIssueCode } from "./plan-validator.ts";
 import type { PlaceIssue } from "./place-intelligence.ts";
 import { legPlanningConfidenceFromMetadata } from "./planning-confidence.ts";
@@ -516,7 +516,7 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const route = trip.brief.routeAssessment?.route;
-  const hasBacktrackingEvidence = route?.reasons.some((reason) => /backtrack|doubl(?:e|ing) back/i.test(reason)) ?? false;
+  const hasBacktrackingEvidence = route?.reasons.some((reason) => reason.startsWith(ROUTE_BACKTRACKING_REASON_PREFIX)) ?? false;
   if (hasBacktrackingEvidence && route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
     results.push(recommendation(trip, {
       rule: "route-backtracking",
