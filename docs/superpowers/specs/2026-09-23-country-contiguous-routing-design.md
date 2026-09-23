@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-23
 
-**Status:** Proposed for specification review; no product implementation has started
+**Status:** Approved design direction, amended for proof-safe continuity classification; no product implementation has started
 
 **Issue:** #335
 
@@ -10,11 +10,11 @@
 
 ## Decision summary
 
-Morrovia will extend its existing deterministic `RouteCandidate` pipeline with a canonical-country continuity signal. The engine will strongly prefer completing the planned stays in one country before leaving it, while retaining country re-entry whenever the current hard-constraint-safe candidate set proves that the split is protected or materially better.
+Morrovia will extend its existing deterministic `RouteCandidate` pipeline with a canonical-country continuity signal. The engine will strongly prefer completing the planned stays in one country before leaving it, while retaining country re-entry whenever the current protected planning boundary cannot safely change it or the split route is materially better.
 
 The change will not introduce another optimizer. A small pure country-block analyzer will be shared by candidate generation, scoring and final-plan validation. Exhaustive generation remains unchanged for routes of six or fewer stays. Bounded generation will gain a small deterministic country-block seed so the scorer can actually consider a contiguous alternative on larger routes. The scorer will add one typed, centralized `country-reentry` penalty only for avoidable repeated country blocks.
 
-Country identity will be resolved through the existing ISO-backed country registry, preferring an existing `countryCode`. Raw display strings will never be compared directly. Unknown identity disables the affected inference rather than causing Morrovia to guess.
+Country identity will be resolved through the existing ISO-backed country registry, preferring an existing `countryCode`. Raw display strings will never be compared directly. Unknown identity is a stable barrier: Morrovia never guesses the country or moves a known block across that occurrence, but may still improve fully known spans on either side.
 
 ## Accepted base and audit divergence
 
@@ -59,9 +59,9 @@ This is a strong soft preference. It must never invalidate a candidate or overri
 
 - Detect a country represented by multiple separated blocks of planned stop occurrences.
 - Make avoidable re-entry a visible, typed and deterministic scoring penalty.
-- Generate at least one realistic country-contiguous candidate for bounded larger routes when canonical identity is complete.
+- Generate at least one realistic country-contiguous candidate for bounded larger routes inside each fully known span.
 - Preserve every stop occurrence, including repeat visits to the same canonical place.
-- Explain both avoidable re-entry and constraint-driven re-entry without visa claims.
+- Distinguish observed avoidability, proven constraint-driven re-entry and unproven protected re-entry without visa claims.
 - Keep fixed commitments, schedule locks, bookings, gateways, required stops and hard transport constraints authoritative.
 - Make Builder Route Check, final-plan validation, repair and Trip Health consume the same engine fact without creating separate country logic.
 - Preserve deterministic bounds and existing route-quality safeguards.
@@ -109,7 +109,7 @@ This is a strong soft preference. It must never invalidate a candidate or overri
 - Hard transport exclusions and maximum-transfer constraints continue to prune before scoring.
 - External origin and journey-end gateways remain routing context rather than overnight stop occurrences.
 
-There is no first-class engine flag today for “the traveller stated this exact order and it is authoritative.” Ordered prompt syntax is intentionally broader than that meaning, and `decisionSelections.routeOrder: "entered"` can also describe a normal initial route. #335 must not convert either signal into a new hard constraint. The explicit-order regression will exercise the existing protected-order boundary: once the application supplies a singleton hard-safe candidate through fixed commitments/locks or retains an explicitly kept route, country continuity may explain the split but cannot reorder it. A future dedicated authoritative-order model is outside this ticket.
+There is no first-class engine flag today for “the traveller stated this exact order and it is authoritative.” Ordered prompt syntax is intentionally broader than that meaning, and `decisionSelections.routeOrder: "entered"` can also describe a normal initial route. #335 must not convert either signal into a new hard constraint. A singleton candidate caused by the current fixed-commitment generation boundary is protected from automatic change, but the singleton alone is not proof that the re-entry is required. A future dedicated authoritative-order model is outside this ticket.
 
 ## Options considered
 
@@ -129,7 +129,7 @@ Rejected because it would violate fixed commitments, deliberate returns, hub rou
 
 Add a pure canonical country-block analyzer, use it to introduce a small bounded seed, and score avoidable re-entry relative to the hard-safe candidate set.
 
-Selected because it extends the current architecture, keeps constraints authoritative, remains explainable and bounded, and can distinguish an avoidable split from one shared by every viable candidate.
+Selected because it extends the current architecture, keeps constraints authoritative, remains explainable and bounded, and can identify an observed lower-block alternative without treating incomplete generation as proof that no such alternative exists.
 
 ## Canonical country identity
 
@@ -157,26 +157,32 @@ Conceptual result:
 type RouteCountryContinuity = {
   knownStopCount: number;
   unknownCountryStopIds: string[];
+  knownSpanCount: number;
   blockCount: number;
   blocks: Array<{
     countryCode: string;
     stopIds: string[];
+    spanIndex: number;
     startIndex: number;
     endIndex: number;
   }>;
   blocksByCountry: Record<string, number>;
+  reentriesByCountry: Record<string, number>;
   reentryCount: number;
   repeatedCountryCodes: string[];
 };
 ```
 
-Adjacent occurrences with the same resolved code form one block. A re-entry is an additional block for the same country after at least one known, different country block.
+Adjacent occurrences with the same resolved code form one block inside a fully known span. A re-entry is an additional block for the same country after at least one known, different country block in that same span.
 
 Unknown identity is an uncertainty barrier:
 
 - `IN → unknown → IN` does not prove an India re-entry and receives none.
-- `IN → unknown → AE → IN` does prove that India was left for a known different country and may count one re-entry.
+- `IN → unknown → AE → IN` does not connect the two India occurrences across the barrier.
+- `IN → IN → unknown → JP → CN → JP` detects the Japan re-entry within the fully known suffix.
 - Unknown stops remain distinct occurrences and are never assigned to a country group.
+- Blocks and re-entries are never joined, inferred or moved across an unknown occurrence.
+- `blocksByCountry` may report blocks on both sides for audit, but `reentriesByCountry`, `reentryCount` and `repeatedCountryCodes` count only repetition established inside a fully known span.
 
 The helper must be deterministic, side-effect-free and tested independently.
 
@@ -184,14 +190,16 @@ The helper must be deterministic, side-effect-free and tested independently.
 
 Exhaustive generation for six or fewer stops already includes every possible country-contiguous order and remains unchanged.
 
-For bounded routes, `RouteCandidateSource` gains `country-block`. The generator adds at most two country-block seeds before local-swap seeds:
+For bounded routes, `RouteCandidateSource` gains `country-block`. The generator splits the flexible middle into maximal fully known spans separated by stable unknown-country occurrences, then adds at most two country-block seeds before local-swap seeds:
 
-1. **Stable country-block seed:** group flexible stops by resolved country in first-appearance order while preserving the entered occurrence order inside each country.
-2. **Reverse country-block seed:** reverse the flexible country-group order while preserving the occurrence order inside each group.
+1. **Stable country-block seed:** within each known span, group stops by resolved country in first-appearance order while preserving the entered occurrence order inside each country.
+2. **Reverse country-block seed:** within each known span, reverse the country-group order while preserving the occurrence order inside each group.
 
-Fixed start and end stops remain outside the flexible middle exactly as today. A flexible group matching a fixed-start country is placed first; a distinct group matching a fixed-end country is placed last. If the same country is required at both endpoints with other countries between, the repeated block is constraint-driven rather than “fixed” by violating a gateway.
+Unknown occurrences remain at their original barrier positions relative to the spans, and no known stop may cross them. For example, `IN1 → IN2 → unknown → JP1 → CN1 → JP2` may become `IN1 → IN2 → unknown → JP1 → JP2 → CN1`, but no India, Japan or China occurrence may move across `unknown`.
 
-Country-block seeds are emitted only when every participating stop has a resolved canonical country code. If any relevant stop is unknown, generation keeps the existing seeds and makes no country-based movement.
+Fixed start and end stops remain outside the flexible middle exactly as today. A flexible group matching a fixed-start country is placed first only within the first known span; a distinct group matching a fixed-end country is placed last only within the last known span. If the same country is required at both endpoints with other required countries between, the repeated block may be proven constraint-driven by those concrete positions rather than “fixed” by violating a gateway.
+
+Segmented grouping is the V1 policy. It is a bounded extension of the same two seeds, not a new search: grouping is applied independently inside each known span, and the concatenated result remains one seed. The conservative global opt-out is therefore not adopted.
 
 The existing stop-ID order key deduplicates the new seeds. Repeat occurrences of the same city retain distinct IDs and remain present. The overall bound stays `MAX_BOUNDED_CANDIDATES = 20`; country-block seeds displace only the lowest-priority local-swap seeds when the limit is reached. There is no factorial expansion.
 
@@ -203,25 +211,29 @@ Hard candidate filtering remains unchanged and runs after seed construction. A c
 
 - `countryBlockCount`
 - `countryReentryCount`
-- `avoidableCountryReentryCount`
+- `observedAvoidableCountryReentryCount`
 - `repeatedCountryCodes`
-- `constraintDrivenCountryCodes`
+- `provenConstraintDrivenCountryCodes`
+- `unprovenProtectedCountryCodes`
+- `countryContinuityAssessments`
 - `unknownCountryStopIds`
 
-Scoring first computes each viable candidate’s country blocks. Because all viable candidates retain the same stop occurrences, the scorer can derive the minimum block count for each known country across the hard-safe candidate set.
+Scoring first computes each viable candidate’s country blocks. Because all viable candidates retain the same stop occurrences, the scorer can derive the minimum observed block count for each known country across the generated hard-safe candidate set.
 
 For candidate `C` and country `X`:
 
 ```text
-avoidable re-entries for X = max(0, blocks(C, X) - minimum blocks(X) across viable candidates)
+observed avoidable re-entries for X = max(0, blocks(C, X) - minimum observed blocks(X) across generated viable candidates)
 ```
 
 This gives the required distinction:
 
 - `IN → IN → AE` has one India block and no re-entry.
 - `IN → AE → TJ → IN` has two India blocks and one re-entry.
-- If another viable candidate has one India block, that re-entry is avoidable and penalized.
-- If every hard-safe candidate has two India blocks, India is recorded as constraint-driven and receives no penalty.
+- If another generated viable candidate has one India block, that re-entry is observed avoidable and penalized.
+- If no generated viable candidate has fewer India blocks, generation has established no impossibility claim. The split is classified from concrete canonical constraint evidence, not from candidate-set absence.
+
+Candidate-set minima are one-way evidence: they can prove that a lower-block alternative was observed, but they cannot prove that a lower-block alternative is impossible. Bounded generation, and the current singleton behavior in the presence of any fixed commitment, make the opposite inference unsound.
 
 Add typed penalty code `country-reentry` to the centralized scoring configuration. The initial default is **12 points per avoidable re-entry**. This is stronger than one excessive-transfer penalty and three times the existing four-point recommendation guard, but it is not absolute: a candidate with materially better supported travel, pacing or transport evidence can still win. Calibration may change the centralized value before implementation is accepted, but fixtures must not receive country-specific weights.
 
@@ -248,17 +260,63 @@ The existing bounds remain authoritative: at most 60 additional estimated minute
 
 This prevents a 15-minute estimate difference from preserving an avoidable country split, while a hub or geography-driven route with a large supported transfer advantage can retain the re-entry. The penalty itself remains soft, and the planner recommendation gate remains a second protection against weak evidence.
 
-## Constraint-driven re-entry
+## Country-continuity classification and proof
 
-A re-entry is constraint-driven when the country has more than one block in every hard-constraint-safe candidate considered by the scorer. This definition avoids guessing why a constraint exists and naturally covers:
+Every repeated known-country block receives one of three explicit classifications:
 
-- current full-order protection from fixed commitments or bookings;
-- application-protected schedule locks;
-- fixed start/end configurations that necessarily split a country;
-- hard transport or maximum-transfer filters that reject the contiguous orders; and
-- a deliberately retained singleton candidate.
+```ts
+type CountryContinuityStatus =
+  | "avoidable"
+  | "proven-constraint-driven"
+  | "unproven-protected";
 
-Constraint-driven re-entry is recorded in metrics and reasons but receives zero `country-reentry` penalty points. It remains visible for audit without implying that Morrovia should violate the protected plan.
+type CountryContinuityAssessment = {
+  countryCode: string;
+  status: CountryContinuityStatus;
+  blockCount: number;
+  reentryCount: number;
+  observedLowerBlockCount?: number;
+  affectedStopIds: string[];
+  legIndexes: number[];
+  proof?: {
+    kind:
+      | "fixed-position-chronology"
+      | "fixed-gateway-position"
+      | "authoritative-protected-order"
+      | "hard-transport-rejection";
+    constraintIds: string[];
+  };
+};
+```
+
+The classifier is pure. It accepts the analyzed route, the generated viable candidate analyses and zero or more typed `CountryContinuityConstraintProof` records. Those proof records are created only from canonical constraint data or from an explicitly evaluated lower-block order rejected by an authoritative hard rule. The classifier does not inspect raw prompts or invent a cause from candidate counts.
+
+Candidate generation must retain narrowly scoped diagnostics for a country-block seed rejected by an existing hard transport or fixed-position check: the proposed stop-ID order, affected country code, hard issue code and referenced constraint IDs. It does not retain every rejected permutation or expand the 20-candidate viable bound. Scoring and validation consume the same typed assessments rather than independently interpreting absence.
+
+### A. Avoidable
+
+A lower-block ordering was actually generated, passed all existing hard constraints and retained every occurrence. This is positive evidence that the current split is avoidable within the engine’s current planning boundary. The observed difference is eligible for the centralized `country-reentry` penalty and, subject to the existing scoring and 60-minute/5% recommendation gate, automatic repair.
+
+### B. Proven constraint-driven
+
+Concrete canonical constraints themselves demonstrate that the split is required. Permitted proof is narrow and inspectable:
+
+- dated or fixed occurrences whose chronology structurally requires `country A → another country → country A`;
+- fixed start/end or gateway positions that structurally require another planned country between occurrences of the repeated country;
+- an actual authoritative protected-order boundary supplied by the application contract; or
+- a constructed lower-block arrangement that is demonstrably rejected by an existing hard transport rule, with the rejected order and hard issue code retained as diagnostic evidence.
+
+The proof must identify the affected occurrence IDs and the canonical constraint or hard-rejection evidence. A generic fixed commitment, booking or schedule lock elsewhere in the trip is not proof. Nor is a singleton candidate set, an absent seed, `sequenceKind`, `decisionSelections.routeOrder: "entered"`, or raw prompt wording.
+
+The current model has no general authoritative prompt-order field. Therefore `authoritative-protected-order` remains valid only when an existing application boundary supplies explicit typed evidence; #335 does not add prompt interpretation to manufacture that evidence.
+
+### C. Unproven / protected by current planning boundary
+
+The engine did not generate a lower-block viable alternative, but no permitted canonical proof demonstrates that the split is required. The route remains protected because the current generator or application boundary cannot safely produce and apply a change. The re-entry fact remains available for audit and review, but it receives no automatic repair and no explanation may claim that all valid routes require the split.
+
+This state explicitly covers the current behavior where any unrelated fixed commitment collapses generation to the entered singleton order. That boundary must preserve the route without being relabeled as a semantic necessity.
+
+`proven-constraint-driven` and `unproven-protected` receive zero `country-reentry` penalty points because no observed lower-block viable comparator exists. Their metrics remain distinct so downstream review cannot turn uncertainty into proof.
 
 The engine does not infer hard order from raw prose. Existing ordered capture remains useful sequence input, not proof that reordering is forbidden. The Builder’s current Keep/apply semantics remain unchanged.
 
@@ -268,7 +326,8 @@ Scoring reasons become specific enough to support review:
 
 - Avoidable: “India appears in two separate route blocks, adding one avoidable country re-entry.”
 - Improved winner: “This order keeps Mumbai and Agra in one India block.”
-- Constraint-driven: “India remains in two route blocks because every hard-constraint-safe candidate preserves the split.”
+- Proven constraint-driven: name the actual proof, for example “India remains in two route blocks because the fixed start and end positions require another planned country between them.”
+- Unproven protected: “India appears in two route blocks. The current protected planning boundary did not produce a proven lower-block alternative, so Morrovia preserved the route without treating the split as required.”
 - Unknown: “Country continuity was not scored for one stop because its canonical country is not confirmed.”
 
 `explanationFor` should prefer “fewer avoidable country re-entries” over the current generic “fewer supported penalties” when that is a material difference between winner and runner-up.
@@ -279,14 +338,15 @@ Builder Route Check may update its current one-line reason projection to recogni
 
 ## Validation, repair and Trip Health
 
-Add `country-reentry` to `PlanValidationIssueCode` as a soft warning. Final-plan validation will use the same analyzer and the same generated hard-safe candidates to decide whether the current split is avoidable.
+Add `country-reentry` to `PlanValidationIssueCode` as a soft warning. Final-plan validation will use the shared analyzer, observed generated alternatives and explicit proof evidence to assign the same three-state classification as scoring.
 
-- Avoidable split with no fixed/dated/locked protection and at least one numerically scoreable lower-block candidate: `repairability: "automatic"`.
+- Avoidable split with no fixed/dated/locked protection and a numerically scoreable lower-block candidate selected by the shared scorer within the existing recommendation gate: `repairability: "automatic"`.
 - Avoidable split whose lower-block alternative lacks enough transfer evidence to score: `repairability: "manual"`; validation must not promise an automatic reorder the scorer cannot support.
-- Constraint-driven split or protected calendar/order: `repairability: "manual"` or no issue when the split is an acknowledged protected route; it must never trigger automatic reorder.
-- Evidence includes country codes, block counts, affected stop IDs and whether a one-block alternative exists.
+- Proven constraint-driven split: `repairability: "manual"` or no issue when the protected route is already acknowledged; evidence must name the concrete proof and it must never trigger automatic reorder.
+- Unproven protected split: `repairability: "manual"` or no issue at an acknowledged application boundary; evidence must state that no lower-block alternative was observed and no constraint proof was established. It must never trigger automatic reorder or a `constraint-driven` explanation.
+- Evidence includes country codes, block counts, affected stop IDs, observed lower-block alternatives and any concrete proof record. Candidate absence is recorded only as absence.
 
-The existing bounded repair loop already routes order defects through `generateRouteCandidates` and `scoreRouteCandidates`. Add the new issue to that existing route-order repair family; do not add a repair algorithm.
+The existing bounded repair loop already routes order defects through `generateRouteCandidates` and `scoreRouteCandidates`. Add only automatically repairable `avoidable` issues to that existing route-order repair family; do not add a repair algorithm. `proven-constraint-driven` and `unproven-protected` issues remain advisory.
 
 Trip Health can surface the final validator warning by adding the typed code to its existing critic projection. This preserves one source of truth and avoids a second review-only detector.
 
@@ -321,11 +381,13 @@ Implementation must begin with failing tests and proceed through the existing ow
 - Repeat occurrences keep distinct stop IDs.
 - Canonical aliases/codes resolve through the shared registry.
 - Unknown identity never receives an invented classification or unsafe penalty.
+- Unknown occurrences divide analysis into stable spans; re-entry is neither inferred nor joined across a barrier.
 
 ### Candidate generation
 
 - The primary six-stop India fixture proves exhaustive generation includes a Mumbai–Agra-contiguous candidate.
 - A seven-plus-stop alternating-country fixture proves bounded generation now includes at least one all-known country-block candidate.
+- `IN1 → IN2 → unknown → JP1 → CN1 → JP2` can group the known suffix without moving any occurrence across the unknown barrier.
 - Candidate count remains at most 20 and output is byte-for-byte deterministic across repeated runs.
 - Fixed start/end, required stops, maximum stops, transport exclusions and maximum transfer constraints remain preserved.
 - Repeated city occurrences are retained and never deduplicated by canonical place ID.
@@ -337,8 +399,11 @@ Implementation must begin with failing tests and proceed through the existing ow
 - Two or more India stops mixed with other countries default to one India block.
 - Dushanbe plus two or three Tajikistan stops default to one Tajikistan block when feasible.
 - Multi-stop Japan and China avoid `Japan → China → Japan → China` when a coherent block candidate exists.
-- A protected explicit order remains unchanged and is explained as constraint-driven.
-- Fixed-date/booked-anchor protection remains unchanged and does not receive an avoidable penalty.
+- A genuinely authoritative protected order remains unchanged and is explained as proven constraint-driven only when that typed boundary is actually present.
+- Fixed-date/booked-anchor protection remains unchanged and does not receive an avoidable penalty; only chronology that structurally requires the split is labeled proven constraint-driven.
+- An unrelated fixed commitment that collapses generation to a singleton preserves the split as `unproven-protected`, never as `proven-constraint-driven`.
+- Absence of a lower-block generated candidate never appears in metrics or prose as proof that the split is required.
+- A hard-transport proof is accepted only when the concrete lower-block arrangement and authoritative hard rejection are recorded.
 - A hub/geographic fixture proves a split route can still win when its supported advantage exceeds the soft penalty and recommendation guard.
 - Existing sensible linear routes retain accepted quality.
 
@@ -347,7 +412,8 @@ Implementation must begin with failing tests and proceed through the existing ow
 - `assessRouteOrder` can recommend a country-contiguous route within the existing 60-minute/5% structural trade-off bound.
 - Builder Route Check applies the same occurrence-safe permutation and names country continuity in its existing reason.
 - Final-plan validation emits one typed country-re-entry warning without duplicating backtracking warnings.
-- Bounded repair uses the existing scorer, preserves every hard constraint and terminates within the current loop bound.
+- Bounded repair uses the existing scorer for automatically repairable `avoidable` issues, preserves every hard constraint and terminates within the current loop bound.
+- Validator and repair retain `proven-constraint-driven` and `unproven-protected` as advisory states and never manufacture a reorder.
 - Trip Health consumes the validator issue once.
 - Saved-trip replan preserves `countryCode`, canonical identity, endpoints, locks, bookings and authored state.
 
@@ -455,8 +521,8 @@ These failures must be held constant or resolved separately; #335 must not disgu
 
 Production:
 
-- `lib/easyt/route-country-continuity.ts` — new pure analyzer and stable grouping helper
-- `lib/easyt/route-candidates.ts` — bounded country-block seeds and source type
+- `lib/easyt/route-country-continuity.ts` — new pure analyzer, segmented grouping helper and proof-safe classifier
+- `lib/easyt/route-candidates.ts` — bounded country-block seeds, source type and explicit hard-rejection diagnostics
 - `lib/easyt/route-scoring.ts` — metrics, typed penalty, config and explanation
 - `lib/easyt/planner.ts` — scoring inputs, structural trade-off and route reason
 - `lib/easyt/plan-validator.ts` — typed warning and shared analysis
