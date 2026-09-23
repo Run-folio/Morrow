@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, ArrowRight, CarFront, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
@@ -88,9 +88,6 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const [selectedLegId, setSelectedLegId] = useState<string | null>(items[0]?.leg.id ?? null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [mapLifecycle, setMapLifecycle] = useState<"ready" | "unavailable" | null>(null);
-  const detailRailRef = useRef<HTMLElement>(null);
-  const mapPanelRef = useRef<HTMLElement>(null);
-  const [transportCameraOcclusions, setTransportCameraOcclusions] = useState<{ right?: number }>({});
   const effectiveTrip = useMemo(() => tripWithEffectiveTransportChoices(trip), [trip]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(effectiveTrip), [effectiveTrip]);
   const mapStops = useMemo(() => mapStopsForAgenda(items, language), [items, language]);
@@ -103,23 +100,6 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
     if (!items.length) setSelectedLegId(null);
     else if (!items.some((item) => item.leg.id === selectedLegId)) setSelectedLegId(items[0]!.leg.id);
   }, [items, selectedLegId]);
-
-  useEffect(() => {
-    const panel = mapPanelRef.current;
-    if (!panel || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const rail = detailRailRef.current;
-      const visibleDesktopRail = rail?.getClientRects().length
-        && window.getComputedStyle(panel).position === "sticky";
-      const right = visibleDesktopRail ? Math.round(rail.getBoundingClientRect().width) : 0;
-      setTransportCameraOcclusions((current) => current.right === right ? current : right ? { right } : {});
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(panel);
-    if (detailRailRef.current) observer.observe(detailRailRef.current);
-    return () => observer.disconnect();
-  }, [mobileMapOpen, selectedLegId]);
 
   return <section className={styles.workspace} aria-labelledby={headingId}>
     <header className={styles.header}>
@@ -141,17 +121,17 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
           selected={item.leg.id === selected?.leg.id} onSelect={() => setSelectedLegId(item.leg.id)} key={item.leg.id} />)}
       </div>
 
-      <aside ref={mapPanelRef} className={styles.mapPanel} id="transport-route-map" data-mobile-open={mobileMapOpen ? "true" : "false"}
+      <aside className={styles.mapPanel} id="transport-route-map" data-mobile-open={mobileMapOpen ? "true" : "false"}
         aria-label={language === "es" ? "Mapa contextual de la ruta" : "Contextual route map"}>
         <div className={styles.mapFrame}>
           {mapLifecycle === "unavailable" ? <div className={styles.mapUnavailable} role="status"><AlertCircle aria-hidden="true" /><p>{copy.mapUnavailable}</p></div> : <JourneyPlannerMap
             stops={mapStops} legs={mapLegs} selectedId={selected?.to.id ?? mapStops[0]?.id ?? ""} selectedLegId={selectedLegId} contextCardsHidden
             plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }}
-            cameraSafeEdge={42} cameraOcclusions={transportCameraOcclusions} onLifecycleChange={setMapLifecycle}
+            cameraSafeEdge={42} onLifecycleChange={setMapLifecycle}
             onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onLegSelect={(leg) => setSelectedLegId(leg.id)} onSelect={() => undefined}
           />}
         </div>
-        {selected ? <SelectedJourneyDetail detailRef={detailRailRef} trip={trip} item={selected} language={language} copy={copy} /> : null}
+        {selected ? <SelectedJourneyDetail trip={trip} item={selected} language={language} copy={copy} /> : null}
       </aside>
     </div>}
   </section>;
@@ -181,14 +161,14 @@ function TransportCard({ item, index, language, copy, selected, onSelect }: {
   </article>;
 }
 
-function SelectedJourneyDetail({ detailRef, trip, item, language, copy }: { detailRef: RefObject<HTMLElement | null>; trip: EasyTTrip; item: ItineraryTransportAgendaLeg; language: Language; copy: ReturnType<typeof copyFor> }) {
+function SelectedJourneyDetail({ trip, item, language, copy }: { trip: EasyTTrip; item: ItineraryTransportAgendaLeg; language: Language; copy: ReturnType<typeof copyFor> }) {
   const mutation = useTripShellMutation();
   const { leg } = item;
   const recommendedLeg = trip.legs.find((candidate) => candidate.id === leg.id) ?? leg;
   const pendingKey = `transport-choice-${leg.id}`;
   const Icon = iconForLeg(leg.mode);
   const omioAction = item.booking ? null : omioBookingActionForLeg(trip, leg);
-  return <section ref={detailRef} className={styles.selectedDetail} aria-live="polite">
+  return <section className={styles.selectedDetail} aria-live="polite">
     <span className={styles.detailEyebrow}>{copy.selectedJourney}</span>
     <div className={styles.detailHeading}><span className={styles.modeIcon}><Icon aria-hidden="true" /></span><div>
       <h3>{item.from.name}<span aria-hidden="true"> → </span>{item.to.name}</h3><p>{displayDate(item.date, language, copy.dateUnknown)}</p>

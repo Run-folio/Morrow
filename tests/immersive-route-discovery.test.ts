@@ -90,7 +90,10 @@ test("preview stop selector owns a contained, stable selected state", () => {
   const stories = source("components/easyt/storybook/morrovia-routes-discovery.stories.tsx");
   assert.match(preview, /<ol className=\{styles\["stop-order"\]\} aria-label="Route stops in order">/);
   assert.match(preview, /aria-pressed=\{item\.id === selectedStopId\}/);
-  assert.match(preview, /stopId: item\.id/);
+  assert.match(preview, /setSelectedStopId\(item\.id\)/);
+  assert.match(preview, /useMemo<DiscoveryMapSelection>\(\(\) => \(\{ kind: "route", routeKey: route\.key \}\), \[route\.key\]\)/);
+  assert.match(preview, /<DiscoveryMap route=\{route\} selection=\{mapSelection\} surface=\{\{ variant: "preview" \}\}/);
+  assert.doesNotMatch(preview, /setMapSelection/);
   assert.doesNotMatch(css, /\.stop-order\{[^}]*border-top:1px/);
   assert.match(css, /\.stop-order button\{[^}]*padding:14px 22px[^}]*grid-template-columns:auto minmax\(0,1fr\)[^}]*min-height:72px/);
   assert.match(css, /\.stop-order button\[aria-pressed=true\]\{background:var\(--morrovia-lilac\)\}/);

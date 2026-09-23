@@ -47,7 +47,7 @@
 - `app/journey/new/trip-builder-route-workspace.tsx` — declare `preview`.
 - `components/easyt/trip-overview-workspace.tsx`, `app/journey/dashboard/dashboard-client.tsx`, `app/journey/home/immersive/demo-map.tsx` — declare genuine previews.
 - `components/easyt/trip-stay-workspace.tsx`, `components/easyt/trip-itinerary-workspace.tsx` — declare `embedded`/`selection-only` while retaining canonical selection.
-- `components/easyt/trip-map-workspace.tsx`, `components/easyt/trip-transport-workspace.tsx` — supply selected-leg targets and measured occlusions.
+- `components/easyt/trip-map-workspace.tsx`, `components/easyt/trip-transport-workspace.tsx` — supply selected-leg targets and only measured UI that actually overlaps the map as occlusions.
 - `app/journey/discover/discovery-map.tsx`, `app/journey/discover/discovery-browser.tsx`, `app/journey/discover/route-preview.tsx` — migrate setup and stable route/stop selection.
 - `app/journey/routes/[slug]/route-map-selection.ts` — public-hash ↔ canonical-ID translation.
 - `app/journey/routes/[slug]/route-live-map.tsx`, `app/journey/routes/[slug]/route-map-summary.tsx`, `app/journey/routes/[slug]/route-overview.module.css` — shared runtime/camera and Journey navigator.
@@ -314,7 +314,7 @@ git commit -m "refactor: declare map interaction variants"
 
 - [ ] **Step 1: Write failing selected-leg and icon acceptance tests**
 
-Extend pure camera tests with a curved leg whose `mapRouteFitCoordinates()` result is `routeGeometry`, plus a two-endpoint fallback when geometry is absent. Add Map/Transport tests that a visible desktop rail supplies its measured left/right occlusion and that hiding the mobile panel supplies zero occlusion. Extend Transport browser coverage so selecting leg B updates both `data-selected` and the mocked map's `data-selected-leg-id` to `leg-B`. Add static CSS ownership assertions that shared presentation contains `.planner-map__leg`, `.planner-map__leg-icon`, active, hover, focus-visible and unknown rules while `journey.module.css` no longer restyles those classes.
+Extend pure camera tests with a curved leg whose `mapRouteFitCoordinates()` result is `routeGeometry`, plus a two-endpoint fallback when geometry is absent. Add Map tests that a visible desktop rail supplies its measured occlusion and that hiding the mobile panel supplies zero occlusion. Verify that Transport's below-map detail does not create a fictional right occlusion. Extend Transport browser coverage so selecting leg B updates both `data-selected` and the mocked map's `data-selected-leg-id` to `leg-B`. Add static CSS ownership assertions that shared presentation contains `.planner-map__leg`, `.planner-map__leg-icon`, active, hover, focus-visible and unknown rules while `journey.module.css` no longer restyles those classes.
 
 - [ ] **Step 2: Run focused tests and observe whole-route framing/local CSS failures**
 
@@ -334,7 +334,7 @@ const selectedLegTarget = selectedLeg
 
 Give the newest stop/result/leg selection one camera request key; selecting a leg replaces whole-route framing, and reset restores `{ kind: "route" }`. Preserve manual interruption and reduced motion.
 
-Observe the existing Map planning rail and Transport detail rail in their owning workspaces. Pass their measured, currently visible widths through `cameraOcclusions`; do not recreate either rail inside `JourneyPlannerMap`.
+Observe the existing Map planning rail in its owning workspace and pass its measured, currently visible width through `cameraOcclusions`; do not recreate the rail inside `JourneyPlannerMap`. Transport's selected detail is below the map, so it must not be reported as a right-side occlusion.
 
 - [ ] **Step 4: Move the transport marker visual contract to shared presentation**
 

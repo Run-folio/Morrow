@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, X } from "lucide-react";
 import type { DiscoveryRoute } from "@/lib/easyt/discovery-catalogue";
 import type { PublicRoutePlanDraft } from "@/lib/easyt/public-route";
@@ -16,7 +16,8 @@ const DiscoveryMap = dynamic(() => import("./discovery-map"), { loading: () => <
 
 export default function RoutePreview({ route, onClose, imageUnavailable = false }: { route: DiscoveryRoute; onClose: () => void; imageUnavailable?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [mapSelection, setMapSelection] = useState<DiscoveryMapSelection>({ kind: "route", routeKey: route.key });
+  const mapSelection = useMemo<DiscoveryMapSelection>(() => ({ kind: "route", routeKey: route.key }), [route.key]);
+  const [selectedStopId, setSelectedStopId] = useState(route.stops[0]?.id);
   const [draft, setDraft] = useState<PublicRoutePlanDraft | null>(null);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -40,7 +41,6 @@ export default function RoutePreview({ route, onClose, imageUnavailable = false 
     }).catch((value: unknown) => { if (!controller.signal.aborted) setError(value instanceof Error ? value.message : "The starting route is unavailable."); });
     return () => controller.abort();
   }, [route.key, attempt]);
-  const selectedStopId = mapSelection.kind === "stop" && mapSelection.routeKey === route.key ? mapSelection.stopId : route.stops[0]?.id;
   const selectedStop = route.stops.find((item) => item.id === selectedStopId) ?? route.stops[0];
   return (
     // morrovia-ui-audit-allow-next-line native-dialog -- atlas exploration needs a scrollable native modal; the canonical confirmation dialog owns consequential confirmation rather than route browsing
@@ -50,7 +50,7 @@ export default function RoutePreview({ route, onClose, imageUnavailable = false 
       <div className={styles["atlas-copy"]}>
         <div className={styles["atlas-heading"]}><div><span className={styles.eyebrow}>{route.countries.join(" → ")}</span><h2 id="atlas-title">{route.title}</h2></div><div className={styles["atlas-facts"]}><strong>{discoveryDuration(route)}</strong><span>{discoveryShape(route)}</span><small>Suggested range</small></div></div>
         <p className={styles["route-character"]}>{route.character}</p><p className={styles["best-for"]}>{route.bestFor}</p>
-        <ol className={styles["stop-order"]} aria-label="Route stops in order">{route.stops.map((item, index) => <li key={item.id}><Button variant="quiet" aria-pressed={item.id === selectedStopId} onClick={() => setMapSelection({ kind: "stop", routeKey: route.key, stopId: item.id })}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.name}</strong><small>{item.country}</small></Button></li>)}</ol>
+        <ol className={styles["stop-order"]} aria-label="Route stops in order">{route.stops.map((item, index) => <li key={item.id}><Button variant="quiet" aria-pressed={item.id === selectedStopId} onClick={() => setSelectedStopId(item.id)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.name}</strong><small>{item.country}</small></Button></li>)}</ol>
         <p className={styles["stop-reason"]}><strong>{selectedStop?.name}</strong> {selectedStop?.reason}</p>
         <p className={styles["route-truth"]}>Suggested durations are catalogue guidance. Connections are illustrative; schedules and transfer details need checking.</p>
         {error && <MorroviaStatusBanner tone="warning" title="Starting route unavailable" detail={error} actions={<Button variant="secondary" onClick={() => setAttempt((value) => value + 1)}>Try again</Button>} />}

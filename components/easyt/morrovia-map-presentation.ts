@@ -63,35 +63,35 @@ export const morroviaMapStyle = MORROVIA_DETAILED_BASEMAP_STYLE_URL;
 export const MORROVIA_STOP_MARKER_CLASS = "planner-map__stop";
 export const MORROVIA_STOP_MARKER_NUMBER_CLASS = "planner-map__stop-number";
 
-export const mapRouteCasing: LineLayerSpecification["paint"] = { "line-color": "rgba(255,255,255,.98)", "line-width": 10, "line-opacity": 0.98 };
+export const mapRouteCasing: NonNullable<LineLayerSpecification["paint"]> = { "line-color": "rgba(255,255,255,.98)", "line-width": 10, "line-opacity": 0.98 };
 
-export const mapRouteLine: LineLayerSpecification["paint"] = {
+export const mapRouteLine: NonNullable<LineLayerSpecification["paint"]> = {
         /* morrovia-ui-audit-allow-next-line inline-color -- Canonical Trip Map paint is shared unchanged; MapLibre style expressions require literal colours. */
             "line-color": "#f42b7a",
             "line-width": 6,
             "line-opacity": 0.94,
           };
 
-export const mapRoutePlanning: LineLayerSpecification["paint"] = {
+export const mapRoutePlanning: NonNullable<LineLayerSpecification["paint"]> = {
             "line-color": "rgba(255,255,255,.94)",
             "line-width": 1.8,
             "line-opacity": 0.9,
             "line-dasharray": [0.7, 1.35],
           };
 
-export const mapRouteSubdued: LineLayerSpecification["paint"] = {
+export const mapRouteSubdued: NonNullable<LineLayerSpecification["paint"]> = {
   ...mapRouteLine,
   "line-width": 5,
   "line-opacity": 0.28,
 };
 
-export const mapRouteSelected: LineLayerSpecification["paint"] = {
+export const mapRouteSelected: NonNullable<LineLayerSpecification["paint"]> = {
   ...mapRouteLine,
   "line-width": 7,
   "line-opacity": 1,
 };
 
-export const mapRouteHit: LineLayerSpecification["paint"] = {
+export const mapRouteHit: NonNullable<LineLayerSpecification["paint"]> = {
   ...mapRouteLine,
   "line-width": 28,
   "line-opacity": 0,

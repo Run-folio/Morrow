@@ -1,8 +1,8 @@
 # #333 Unified map behaviour, controls and visual system
 
-**Status:** Accepted design direction, awaiting specification review  
-**Date:** 2026-09-23  
-**Accepted base:** `812604ebe162a9b81f36d90189ae99f73f6fc801`  
+**Status:** Accepted design direction, awaiting specification review
+**Date:** 2026-09-23
+**Accepted base:** `812604ebe162a9b81f36d90189ae99f73f6fc801`
 **Scope:** Map-system hardening and saved-trip Journey integration only
 
 ## Outcome
@@ -164,7 +164,7 @@ type MorroviaMapInsets = {
 The shared calculation combines token-based safe edge space with actual rail, navigator, panel or compact-overlay measurements. It is clamped so the remaining drawable area stays positive at 320 px and during resizing.
 
 - The authenticated Map workspace continues to supply its left planning rail, replacing the fixed legacy assumption with its measured width.
-- Transport supplies the visible detail rail when present.
+- Transport supplies an occlusion only for UI that actually overlaps the map. Its current selected-journey detail is below the map and therefore contributes no fictional right inset.
 - Discover supplies its visible results rail or mobile sheet occlusion.
 - Desktop editorial Journey uses a right-side navigator over the map treatment; its measured width is included as the right occlusion inset.
 - Mobile editorial Journey moves navigation out of the map viewport into the compact route strip, so only the strip's actual overlap, if any, is included.

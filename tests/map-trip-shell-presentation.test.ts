@@ -92,9 +92,10 @@ test("expanded Map restores scroll and focus before Escape can dismiss map state
   assert.match(mapWorkspaceSource, /if \(event\.key !== "Escape"\) return;[\s\S]*?if \(isExpandedMap\)[\s\S]*?if \(copilotOpen\) return;/);
 });
 
-test("TripShell keeps the ResizeObserver but does not re-fit a manually moved whole-route camera", () => {
+test("TripShell keeps the ResizeObserver and reframes only while scripted camera ownership remains", () => {
   assert.match(mapWorkspaceSource, /preserveCameraOnResize=\{isShellPresentation\}/);
-  assert.match(mapSource, /map\.resize\(\);[\s\S]*?if \(preserveCameraOnResize \|\| !overviewMode/);
+  assert.match(mapSource, /map\.resize\(\);[\s\S]*?currentCameraRequestRef\.current !== null[\s\S]*?setCameraViewportKey/);
+  assert.match(mapSource, /currentCameraRequestRef\.current !== cameraRequestKey/);
 });
 
 test("desktop Map has one persistent left rail and only contextual secondary detail", () => {
@@ -164,8 +165,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.match(mapWorkspaceSource, /cameraInteractionKey=\{cameraInteractionKey\}/);
   assert.match(mapWorkspaceSource, /new ResizeObserver/);
   assert.match(mapWorkspaceSource, /cameraOcclusions=\{mapCameraOcclusions\}/);
-  assert.match(transportWorkspaceSource, /new ResizeObserver/);
-  assert.match(transportWorkspaceSource, /cameraOcclusions=\{transportCameraOcclusions\}/);
+  assert.doesNotMatch(transportWorkspaceSource, /transportCameraOcclusions|detailRailRef|mapPanelRef/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);
   for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {

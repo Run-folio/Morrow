@@ -79,6 +79,8 @@ test("Transport synchronizes one occurrence-safe selected journey with the canon
   assert.match(transport, /onLegSelect=\{\(leg\) => setSelectedLegId\(leg\.id\)\}/);
   assert.match(transport, /data-selected=\{selected \? "true" : undefined\}/);
   assert.match(transportStyles, /grid-template-columns:\s*minmax\(0,\s*1\.08fr\)\s+minmax\(320px,\s*\.92fr\)/);
+  assert.doesNotMatch(transport, /cameraOcclusions=\{transportCameraOcclusions\}/);
+  assert.doesNotMatch(transport, /detailRailRef|mapPanelRef|transportCameraOcclusions/);
 });
 
 test("Transport preserves the list when the map is unavailable and keeps mobile list-first", () => {

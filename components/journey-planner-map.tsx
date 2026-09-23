@@ -1,11 +1,11 @@
 "use client";
 
 import * as maplibregl from "maplibre-gl";
-import type { GeoJSONSource } from "maplibre-gl";
+import type { GeoJSONSource, LineLayerSpecification } from "maplibre-gl";
 import { BedDouble, Landmark, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { mapRouteCasing, mapRouteLine, mapRoutePlanning } from "./easyt/morrovia-map-presentation";
+import { mapRouteCasing, mapRouteLine, mapRoutePlanning, mapRouteSelected, mapRouteSubdued } from "./easyt/morrovia-map-presentation";
 import { createMorroviaStopMarker, setMorroviaStopMarkerState } from "./easyt/morrovia-map-markers";
 import { installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./easyt/morrovia-map-runtime";
 import { EasyTButton } from "./easyt/easyt-controls";
@@ -58,7 +58,7 @@ type JourneyPlannerMapProps = {
   cameraOcclusions?: Partial<MorroviaMapInsets>;
   /** Keep a traveller-adjusted camera when the TripShell map changes size. */
   preserveCameraOnResize?: boolean;
-  /** Changes whenever surrounding Map UI should immediately release camera ownership. */
+  /** Changes whenever surrounding Map UI should interrupt in-flight camera movement. */
   cameraInteractionKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
@@ -86,6 +86,15 @@ function resolvedCameraInsets(
 ) {
   const container = map.getContainer();
   return resolveMapInsets({ width: container.clientWidth, height: container.clientHeight, safe, occlusions });
+}
+
+function setRouteLinePaint(
+  map: maplibregl.Map,
+  paint: NonNullable<LineLayerSpecification["paint"]>,
+) {
+  map.setPaintProperty("trip-route-line", "line-color", paint["line-color"]);
+  map.setPaintProperty("trip-route-line", "line-width", paint["line-width"]);
+  map.setPaintProperty("trip-route-line", "line-opacity", paint["line-opacity"]);
 }
 
 const overviewMaxZoom = 5.2;
@@ -139,10 +148,12 @@ export function JourneyPlannerMap({
   const draftPinRef = useRef<maplibregl.Marker | null>(null);
   const hasInitialisedViewRef = useRef(false);
   const lastCameraRequestKeyRef = useRef<string | null>(null);
+  const lastCameraTargetKeyRef = useRef<string | null>(null);
   const currentCameraRequestRef = useRef<string | null>(null);
   const lastCameraInteractionKeyRef = useRef(cameraInteractionKey);
   const [basemapStatus, setBasemapStatus] = useState<MorroviaBasemapStatus>("loading");
   const [basemapStyleRevision, setBasemapStyleRevision] = useState(0);
+  const [cameraViewportKey, setCameraViewportKey] = useState("unmeasured");
   const selectedLegIdRef = useRef(selectedLegId);
   const selectedPlannerPinIdRef = useRef(selectedPlannerPinId);
   const onLegSelectRef = useRef(onLegSelect);
@@ -221,6 +232,9 @@ export function JourneyPlannerMap({
           : selectedStop?.coordinates
             ? `stop:${selectedStop.id}:${selectedStop.coordinates.join(",")}:${focusZoom ?? "auto"}`
             : null;
+  const cameraFrameKey = cameraRequestKey
+    ? `${cameraRequestKey}|${cameraOcclusionKey}|${cameraViewportKey}`
+    : null;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -342,11 +356,6 @@ export function JourneyPlannerMap({
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === "undefined") return;
-    const mappedStops = stops.filter((stop): stop is JourneyStop & { coordinates: [number, number] } => Boolean(stop.coordinates));
-    const overviewCoordinates = [
-      ...mappedStops.map((stop) => stop.coordinates),
-      ...comparisonLegs.flatMap((leg) => [leg.fromCoordinates, leg.toCoordinates]),
-    ];
     let frame = 0;
     const observer = new ResizeObserver(() => {
       window.cancelAnimationFrame(frame);
@@ -354,15 +363,9 @@ export function JourneyPlannerMap({
         const map = mapRef.current;
         if (!map) return;
         map.resize();
-        if (preserveCameraOnResize || !overviewMode || overviewCoordinates.length < 2) return;
-        const bounds = overviewCoordinates.slice(1).reduce(
-          (result, coordinates) => result.extend(coordinates),
-          new maplibregl.LngLatBounds(overviewCoordinates[0], overviewCoordinates[0]),
-        );
-        fitMapCamera(map as unknown as MapCamera, bounds, {
-          padding: resolvedCameraInsets(map, cameraSafeEdge, cameraOcclusions),
-          maxZoom: overviewMaxZoom,
-        }, true);
+        if (!preserveCameraOnResize || currentCameraRequestRef.current !== null) {
+          setCameraViewportKey(`${container.clientWidth}x${container.clientHeight}`);
+        }
       });
     });
     observer.observe(container);
@@ -370,7 +373,7 @@ export function JourneyPlannerMap({
       window.cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [cameraOcclusionKey, cameraOcclusions, cameraSafeEdge, comparisonLegs, comparisonRouteKey, overviewMode, overviewRouteKey, preserveCameraOnResize]);
+  }, [preserveCameraOnResize]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -396,14 +399,18 @@ export function JourneyPlannerMap({
         }));
       }),
     };
-    const route = routeLegs.features.length ? routeLegs : {
-      type: "FeatureCollection" as const,
-      features: [{
-        type: "Feature" as const,
-        properties: { id: "whole-route", mode: "unknown" },
-        geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
-      }],
-    };
+    const route = routeLegs.features.length
+      ? routeLegs
+      : mappedStops.length > 1
+        ? {
+            type: "FeatureCollection" as const,
+            features: [{
+              type: "Feature" as const,
+              properties: { id: "whole-route", mode: "unknown" },
+              geometry: { type: "LineString" as const, coordinates: mappedStops.map((stop) => stop.coordinates) },
+            }],
+          }
+        : { type: "FeatureCollection" as const, features: [] };
     const comparisonRoute = {
       type: "FeatureCollection" as const,
       features: comparisonLegs.flatMap((leg) => {
@@ -474,6 +481,7 @@ export function JourneyPlannerMap({
           paint: mapRouteLine,
         });
       }
+      setRouteLinePaint(map, selectedLegIdRef.current ? mapRouteSubdued : mapRouteLine);
       if (!map.getLayer("trip-route-planning")) {
         map.addLayer({
           id: "trip-route-planning",
@@ -500,7 +508,7 @@ export function JourneyPlannerMap({
           source: "trip-route-legs",
           filter: ["==", ["get", "id"], ""],
           layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": "#17106f", "line-width": 14, "line-opacity": 0.28 },
+          paint: mapRouteSelected,
         });
       }
       if (!map.getLayer("trip-route-hit")) {
@@ -546,7 +554,8 @@ export function JourneyPlannerMap({
 
       if (!hasInitialisedViewRef.current && mappedStops.length) {
         hasInitialisedViewRef.current = true;
-        lastCameraRequestKeyRef.current = cameraRequestKey;
+        lastCameraTargetKeyRef.current = cameraRequestKey;
+        lastCameraRequestKeyRef.current = cameraFrameKey;
         currentCameraRequestRef.current = cameraRequestKey;
         const activeStop = mappedStops.find((stop) => stop.id === selectedId) ?? mappedStops[0];
         // On first mount the focus effect can run before the map is ready.
@@ -604,12 +613,13 @@ export function JourneyPlannerMap({
         map.off("mouseleave", "trip-route-hit", leaveRoute);
       }
     };
-  }, [basemapStyleRevision, cameraOcclusionKey, cameraOcclusions, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, selectedLegTarget, spatialLegs, stops]);
+  }, [basemapStyleRevision, cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, comparisonLegs, comparisonRouteKey, domainSelection, focusOffset, focusZoom, overviewMode, pinPlacementMode, presentationOnly, routeFocusKey, routeSelectionKey, selectedId, selectedLegTarget, spatialLegs, stops]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map?.getLayer("trip-route-selected")) return;
     map.setFilter("trip-route-selected", ["==", ["get", "id"], selectedLegId ?? ""]);
+    setRouteLinePaint(map, selectedLegId ? mapRouteSubdued : mapRouteLine);
   }, [selectedLegId]);
 
   useEffect(() => {
@@ -854,14 +864,20 @@ export function JourneyPlannerMap({
   useEffect(() => {
     if (lastCameraInteractionKeyRef.current === cameraInteractionKey) return;
     lastCameraInteractionKeyRef.current = cameraInteractionKey;
-    currentCameraRequestRef.current = null;
     interruptMapCamera(mapRef.current as unknown as MapCamera);
   }, [cameraInteractionKey]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !cameraRequestKey || !hasInitialisedViewRef.current || cameraRequestKey === lastCameraRequestKeyRef.current) return;
-    lastCameraRequestKeyRef.current = cameraRequestKey;
+    if (!map || !cameraRequestKey || !cameraFrameKey || !hasInitialisedViewRef.current) return;
+    const targetChanged = cameraRequestKey !== lastCameraTargetKeyRef.current;
+    if (!targetChanged && cameraFrameKey === lastCameraRequestKeyRef.current) return;
+    if (!targetChanged && currentCameraRequestRef.current !== cameraRequestKey) {
+      lastCameraRequestKeyRef.current = cameraFrameKey;
+      return;
+    }
+    lastCameraTargetKeyRef.current = cameraRequestKey;
+    lastCameraRequestKeyRef.current = cameraFrameKey;
     currentCameraRequestRef.current = cameraRequestKey;
     if (selectedLegTarget) {
       applyMapCameraRequest(
@@ -895,7 +911,7 @@ export function JourneyPlannerMap({
       ? Math.max(map.getZoom(), 14)
       : focusZoom ?? Math.max(map.getZoom(), 11);
     focusMapCamera(map as unknown as MapCamera, { center: target, zoom, offset });
-  }, [cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedLegTarget, selectedResult, selectedStop, stops]);
+  }, [cameraFrameKey, cameraOcclusionKey, cameraOcclusions, cameraRequestKey, cameraSafeEdge, focusCoordinates, focusOffset, focusZoom, overviewMode, selectedLegTarget, selectedResult, selectedStop, stops]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -121,7 +121,9 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
   assert.match(source, /lastCameraRequestKeyRef/);
   assert.match(source, /currentCameraRequestRef/);
-  assert.match(source, /cameraRequestKey === lastCameraRequestKeyRef\.current/);
+  assert.match(source, /cameraFrameKey === lastCameraRequestKeyRef\.current/);
+  assert.match(source, /currentCameraRequestRef\.current !== cameraRequestKey/);
+  assert.match(source, /setCameraViewportKey\(`\$\{container\.clientWidth\}x\$\{container\.clientHeight\}`\)/);
   assert.match(source, /focusMapCamera\(/);
   assert.match(source, /fitMapCamera\(/);
   assert.match(source, /applyMapCameraRequest\(/);
@@ -134,6 +136,22 @@ test("the Map has one replaceable camera request and explicit manual interruptio
   assert.match(source, /<span className="planner-map__leg-icon"[^>]*style=\{rotation[\s\S]*?<MarkerIcon \/>/);
   assert.doesNotMatch(source, /<MarkerIcon style=/);
   assert.doesNotMatch(source, /duration: (?:420|550)/);
+  const layoutInterrupt = source.slice(source.indexOf("lastCameraInteractionKeyRef.current === cameraInteractionKey"), source.indexOf("}, [cameraInteractionKey])"));
+  assert.doesNotMatch(layoutInterrupt, /currentCameraRequestRef\.current = null/, "layout changes interrupt motion without masquerading as manual map input");
+});
+
+test("selected route geometry uses shared subdued and selected paints", () => {
+  const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
+  assert.match(source, /mapRouteSubdued/);
+  assert.match(source, /mapRouteSelected/);
+  assert.match(source, /map\.setPaintProperty\("trip-route-line"/);
+  assert.doesNotMatch(source, /id: "trip-route-selected"[\s\S]{0,240}line-color/);
+});
+
+test("the route source never emits an invalid one-coordinate LineString", () => {
+  const source = readFileSync(new URL("../components/journey-planner-map.tsx", import.meta.url), "utf8");
+  assert.match(source, /mappedStops\.length > 1[\s\S]*geometry: \{ type: "LineString"/);
+  assert.match(source, /features: \[\]/);
 });
 
 test("resolved camera requests replace earlier movement and leave the newest target last", () => {
