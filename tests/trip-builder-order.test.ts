@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { builderStopOrderFingerprint, validateBuilderStopOrder } from "../lib/easyt/trip-builder-order.ts";
+import {
+  builderStopOrderFingerprint,
+  currentBuilderRouteProposal,
+  validateBuilderStopOrder,
+} from "../lib/easyt/trip-builder-order.ts";
 
 const stops = [
   { id: "tokyo-1", place: "Tokyo" },
@@ -31,4 +35,13 @@ test("rejects stale source and locked-stop displacement", () => {
 test("treats unchanged and globally fixed orders as non-mutations", () => {
   assert.deepEqual(validateBuilderStopOrder(stops, stops.map(({ id }) => id)), { ok: false, reason: "same-order" });
   assert.deepEqual(validateBuilderStopOrder(stops, ["kyoto-1", "tokyo-1", "tokyo-2"], { fixedOrder: true }), { ok: false, reason: "fixed-order" });
+});
+
+test("keeps a Route Check proposal only while it exactly matches the current recommendation", () => {
+  const proposal = ["tokyo-2", "kyoto-1", "tokyo-1"];
+
+  assert.equal(currentBuilderRouteProposal(proposal, proposal, true), proposal);
+  assert.equal(currentBuilderRouteProposal(proposal, ["kyoto-1", "tokyo-2", "tokyo-1"], true), null);
+  assert.equal(currentBuilderRouteProposal(proposal, proposal, false), null);
+  assert.equal(currentBuilderRouteProposal(null, proposal, true), null);
 });

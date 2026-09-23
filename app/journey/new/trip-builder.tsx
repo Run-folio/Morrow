@@ -63,7 +63,7 @@ import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { preserveBuilderCanonicalState } from "@/lib/easyt/trip-builder-preservation";
 import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/easyt/trip-builder-document-commit";
-import { validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
+import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
 import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
@@ -1435,6 +1435,16 @@ function TripBuilderDocument() {
   }), [origin, originCoordinates, routeJourneyEnd, stops, effectivePicks, totalDays, effectiveIntent, projectedFixedCommitments, structuredRouteConstraints, structuredScoringPreferences]);
   const routeKey = stops.map((stop) => stop.id).join("|");
   const routeRecommendationVisible = routeIntelligence.route.state === "recommendation" && keptRouteKey !== routeKey;
+  const currentRouteCheckProposalStopIds = currentBuilderRouteProposal(
+    routeCheckProposalStopIds,
+    routeIntelligence.route.recommendedStopIds,
+    routeRecommendationVisible,
+  );
+  useEffect(() => {
+    if (routeCheckProposalStopIds && !currentRouteCheckProposalStopIds) {
+      setRouteCheckProposalStopIds(null);
+    }
+  }, [currentRouteCheckProposalStopIds, routeCheckProposalStopIds]);
   const routeAnalyticsKey = `${tripId}:${routeKey}:${startDate}:${endDate}:${effectiveIntent.hardConstraints.fixedCommitments.length}:${effectiveIntent.hardConstraints.avoidDriving}`;
   useEffect(() => {
     if (!hydrated || routeIntelligence.route.state === "insufficient-data") return;
@@ -2459,9 +2469,9 @@ function TripBuilderDocument() {
   };
 
   const applyRouteCheckProposal = () => {
-    if (!routeCheckProposalStopIds || routeIntelligence.route.state !== "recommendation") return;
+    if (!currentRouteCheckProposalStopIds || routeIntelligence.route.state !== "recommendation") return;
     if (scheduleLocks.stopIds.length || Object.keys(scheduleLocks.arrivalDates).length || structuredRouteConstraints.fixedCommitments?.length) return;
-    if (!commitStopOrder(routeCheckProposalStopIds, "route-check")) return;
+    if (!commitStopOrder(currentRouteCheckProposalStopIds, "route-check")) return;
     setDecisionSelections((current) => ({ ...current, routeOrder: "recommended" }));
     setKeptRouteKey(null);
     setRouteCheckProposalStopIds(null);
@@ -4064,7 +4074,7 @@ function TripBuilderDocument() {
                 selectedStopId={selectedRouteStopId}
                 lockedStopIds={scheduleLocks.stopIds}
                 fixedOrder={Boolean(structuredRouteConstraints.fixedCommitments?.length)}
-                routeCheckProposalStopIds={routeCheckProposalStopIds}
+                routeCheckProposalStopIds={currentRouteCheckProposalStopIds}
                 nightStatus={{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language }}
                 onSelectStop={setSelectedRouteStopId}
                 onPreviewOrder={setRoutePreviewStopIds}
@@ -4148,7 +4158,7 @@ function TripBuilderDocument() {
                     {!gateConflict && transportReviewNotice && <li>{transportReviewNotice}</li>}
                   </ul></section>}
                   {!gateConflict && !routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes.length > 0 ? <section><strong>{language === "es" ? "Revisar opciones" : "Review options"}</strong><div className={styles.timingAlternatives}>{scoredAlternativeRoutes.map((alternative) => <article key={alternative.candidateIndex}><div><b>{alternative.names.join(" → ")}</b><small>{alternative.usableDayGain > 0 ? `+${alternative.usableDayGain} ${language === "es" ? "días aprovechables" : "usable days"}` : `${durationLabel(alternative.transferMinuteGain)} ${language === "es" ? "menos de traslado" : "less transfer"}`}</small></div><button type="button" onClick={() => applyScoredRouteCandidate(alternative.candidateIndex, alternative.stopIds)}>{language === "es" ? "Usar" : "Use route"}</button></article>)}</div></section> : null}
-                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Orden recomendado" : "Recommended order"}</strong>{routeCheckProposalStopIds ? <><p>{routeIntelligence.route.recommendedStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
+                  {!gateConflict && routeRecommendationVisible ? <section><strong>{language === "es" ? "Orden recomendado" : "Recommended order"}</strong>{currentRouteCheckProposalStopIds ? <><p>{currentRouteCheckProposalStopIds.map((id) => stops.find((stop) => stop.id === id)?.name).filter(Boolean).join(" → ")}</p><div className={styles.routeStatusActions}><EasyTButton size="small" onClick={applyRouteCheckProposal}>{language === "es" ? "Aplicar orden" : "Apply order"}</EasyTButton><EasyTButton size="small" variant="secondary" onClick={() => { setRouteCheckProposalStopIds(null); setKeptRouteKey(routeKey); }}>{language === "es" ? "Mantener orden actual" : "Keep current order"}</EasyTButton></div></> : <EasyTButton size="small" variant="secondary" onClick={() => setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds)}>{language === "es" ? "Comparar orden" : "Compare order"}</EasyTButton>}</section> : null}
                 </div>}
               </section>}
             </div>

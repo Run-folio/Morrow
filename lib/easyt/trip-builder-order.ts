@@ -16,6 +16,15 @@ export function builderStopOrderFingerprint(items: readonly ({ id: string } | st
   return items.map((item) => typeof item === "string" ? item : item.id).join("\u001f");
 }
 
+export function currentBuilderRouteProposal(
+  proposedIds: readonly string[] | null,
+  recommendedIds: readonly string[],
+  recommendationVisible: boolean,
+) {
+  if (!proposedIds || !recommendationVisible || proposedIds.length !== recommendedIds.length) return null;
+  return proposedIds.every((id, index) => id === recommendedIds[index]) ? proposedIds : null;
+}
+
 export function validateBuilderStopOrder<T extends { id: string }>(
   current: readonly T[],
   proposedIds: readonly string[],

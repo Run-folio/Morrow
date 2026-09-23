@@ -12,8 +12,12 @@ test("Route Check keeps canonical rows and markers while presenting a comparison
     "Route Check must use a separate map comparison instead of preview order");
   assert.doesNotMatch(workspace, /builderRouteCheck|Check route|routeCheckSummary|onOpenRouteCheck/,
     "the workspace must not render a second Route Check owner");
-  assert.match(builder, /commitStopOrder\(routeCheckProposalStopIds, "route-check"\)/,
+  assert.match(builder, /currentBuilderRouteProposal\([\s\S]*routeCheckProposalStopIds[\s\S]*routeRecommendationVisible/,
+    "a comparison proposal must be derived from the current visible recommendation");
+  assert.match(builder, /commitStopOrder\(currentRouteCheckProposalStopIds, "route-check"\)/,
     "Apply must use the same canonical commit boundary as drag and menu movement");
+  assert.match(builder, /routeCheckProposalStopIds && !currentRouteCheckProposalStopIds[\s\S]*setRouteCheckProposalStopIds\(null\)/,
+    "a stale proposal must be cleared when route intelligence changes or disappears");
   assert.match(builder, /routeRecommendationVisible \? <section[\s\S]*Compare order/,
     "a recommendation result should expose one specific comparison action in the canonical disclosure");
   assert.match(builder, /!routeRecommendationVisible && longJourneyIssue && scoredAlternativeRoutes\.length > 0/,

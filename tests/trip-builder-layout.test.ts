@@ -406,8 +406,10 @@ test("night allocation is compact Route metadata instead of a separate band", ()
     "the existing canonical night totals should feed Route presentation directly");
   assert.doesNotMatch(builder, /className=\{styles\.timeAllocationState\}/,
     "night allocation must not retain its own full-width band");
-  assert.match(workspace, /className=\{styles\.builderRouteNightStatus\}[\s\S]*role="status"/,
+  assert.match(workspace, /builderRouteNightStatusIncomplete[\s\S]*role="status"/,
     "Route metadata should retain an accessible status announcement");
+  assert.match(workspace, /nightStatus\.complete \? <CheckCircle2[\s\S]*: <AlertTriangle/,
+    "unresolved night allocation must not use the resolved success icon");
   assert.match(workspace, /nightStatus\.complete[\s\S]*nightStatus\.allocated[\s\S]*nightStatus\.total/,
     "Route metadata must distinguish complete and unresolved allocation using canonical counts");
 });

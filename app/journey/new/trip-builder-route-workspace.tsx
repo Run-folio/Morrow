@@ -95,8 +95,8 @@ export function TripBuilderRouteWorkspace({
       <div>
         <p>ROUTE PLAN</p>
         <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
-        <span className={styles.builderRouteNightStatus} role="status">
-          <CheckCircle2 aria-hidden="true" />
+        <span className={`${styles.builderRouteNightStatus} ${nightStatus.complete ? "" : styles.builderRouteNightStatusIncomplete}`} role="status">
+          {nightStatus.complete ? <CheckCircle2 aria-hidden="true" /> : <AlertTriangle aria-hidden="true" />}
           <strong>{nightStatus.total} {nightStatus.language === "es" ? "en total" : "total"}</strong>
           <span aria-hidden="true">·</span>
           <b>{nightStatus.complete
