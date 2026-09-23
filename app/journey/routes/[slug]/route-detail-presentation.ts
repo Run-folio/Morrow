@@ -12,6 +12,45 @@ export type RouteExperience = PublicRouteDetail["attractions"][number] & {
   photo: RoutePhoto | null;
   photoQualification: string | null;
 };
+export type RouteDiscoveryHighlight = {
+  id: string;
+  title: string;
+  stopName: string;
+  context: string;
+  photo: RoutePhoto;
+};
+export type RouteDiscoveryExperience = {
+  name: string;
+  stopName: string;
+  context: string;
+  photo: RoutePhoto;
+};
+export type RouteDiscoveryPresentation = {
+  isRich: boolean;
+  story: {
+    promise: string;
+    arc: string | null;
+    rhythm: string | null;
+    bestFor: string;
+    styleSignals: string[];
+  };
+  highlights: RouteDiscoveryHighlight[];
+  experiences: RouteDiscoveryExperience[];
+  practical: string[];
+  additions: [];
+};
+
+const unique = <T,>(values: T[]) => values.filter((value, index, all) => all.indexOf(value) === index);
+
+function titleCase(value: string) {
+  return value.replaceAll("-", " ").replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function isRouteDetailPhoto(photo: RoutePhoto | null): photo is RoutePhoto {
+  return Boolean(photo?.author && photo.licenseUrl && photo.sourceUrl
+    && photo.variants.length
+    && !photo.approvedRoles?.includes("homepage-featured-route"));
+}
 
 function attractionStopIndex(detail: PublicRouteDetail, stopName?: string, attractionName = "") {
   const named = stopName?.toLocaleLowerCase();
@@ -53,6 +92,59 @@ export function routeDetailPresentation(detail: PublicRouteDetail) {
         : null;
       return { ...attraction, photo, photoQualification } satisfies RouteExperience;
     }),
+  };
+}
+
+/** Selects only reviewed route story and imagery; it never creates travel facts. */
+export function routeDiscoveryPresentation(detail: PublicRouteDetail): RouteDiscoveryPresentation {
+  const family = routeFamilyByKey[detail.key];
+  const editorial = routeEditorialImagery[detail.key];
+  const photos = detail.stops.map(stop => family ? routeStopPhoto(family, stop) : null);
+  const stopHighlights = detail.stops.flatMap((stop, index): RouteDiscoveryHighlight[] => {
+    const photo = photos[index];
+    return isRouteDetailPhoto(photo) ? [{
+      id: `stop-${stop.id}`,
+      title: stop.name,
+      stopName: stop.name,
+      context: stop.reason,
+      photo,
+    }] : [];
+  });
+  const momentHighlights = (editorial?.moments ?? []).flatMap((moment, index): RouteDiscoveryHighlight[] => {
+    const photo = routeEditorialPhoto(moment.photoKey);
+    return isRouteDetailPhoto(photo) ? [{
+      id: `moment-${index}-${moment.photoKey}`,
+      title: moment.name,
+      stopName: moment.stopName,
+      context: moment.context,
+      photo,
+    }] : [];
+  });
+  const experiences = (editorial?.moments ?? []).flatMap((moment): RouteDiscoveryExperience[] => {
+    const photo = routeEditorialPhoto(moment.photoKey);
+    return isRouteDetailPhoto(photo) ? [{ ...moment, photo }] : [];
+  });
+  const candidates = [...stopHighlights, ...momentHighlights].slice(0, 10);
+  const isRich = Boolean(editorial)
+    && (editorial?.moments.length ?? 0) >= 3
+    && photos.length > 0
+    && photos.every(isRouteDetailPhoto)
+    && candidates.length >= 6
+    && experiences.length >= 3;
+
+  return {
+    isRich,
+    story: {
+      promise: detail.summary,
+      arc: family?.release?.routeOrderRationale ?? detail.countryContext ?? null,
+      rhythm: family?.character ?? detail.rhythm ?? null,
+      bestFor: family?.bestFor ?? detail.summary,
+      styleSignals: (family?.interests ?? []).map(titleCase),
+    },
+    highlights: isRich ? candidates : [],
+    experiences: isRich ? experiences : [],
+    practical: unique([detail.conditions, ...detail.seasonalNotes].filter((item): item is string => Boolean(item))),
+    additions: [],
   };
 }
 
