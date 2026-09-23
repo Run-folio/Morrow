@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Plus, Route, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route, Sparkles } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { EasyTButton } from "@/components/easyt/easyt-controls";
@@ -28,7 +28,6 @@ export type TripBuilderRouteWorkspaceProps = {
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
   onTransportChoiceChange: (legId: string, identity: string | null) => void;
-  onAddStop: () => void;
   onOpenRouteCheck?: () => void;
   routeCheckSummary: string;
   onDismissRouteCheck: () => void;
@@ -68,7 +67,6 @@ export function TripBuilderRouteWorkspace({
   onCommitOrder,
   onEditNights,
   onTransportChoiceChange,
-  onAddStop,
   onOpenRouteCheck,
   routeCheckSummary,
   onDismissRouteCheck,
@@ -106,7 +104,6 @@ export function TripBuilderRouteWorkspace({
         <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
         <span>Reorder stops, adjust the nights, and check how travel affects your time.</span>
       </div>
-      <EasyTButton size="small" variant="secondary" icon={Plus} onClick={onAddStop}>Add stop</EasyTButton>
     </header>
 
     <div className={styles.builderRouteGrid}>

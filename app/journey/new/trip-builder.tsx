@@ -474,7 +474,6 @@ function TripBuilderDocument() {
   const legacyFocusScheduledRef = useRef(false);
   const requestedPlaceIntentRef = useRef(builderSearchParams.get("placeIntent"));
   const [showTripDetails, setShowTripDetails] = useState(false);
-  const [showOriginEditor, setShowOriginEditor] = useState(false);
   const [detailsCommitBusy, setDetailsCommitBusy] = useState(false);
   const [detailsCommitError, setDetailsCommitError] = useState("");
   const [showStopEditor, setShowStopEditor] = useState(false);
@@ -521,9 +520,6 @@ function TripBuilderDocument() {
   } | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
   const hasRouteSkeleton = hasUsefulRouteSkeleton(stops);
-  useEffect(() => {
-    if (hasRouteSkeleton && !origin.trim()) setShowOriginEditor(true);
-  }, [hasRouteSkeleton, origin]);
   const [routeHints, setRouteHints] = useState<string[]>([]);
   const [sourceRouteKey, setSourceRouteKey] = useState<string | undefined>();
   const [curatedRoute, setCuratedRoute] = useState<CuratedRouteKnowledge | undefined>();
@@ -1411,7 +1407,6 @@ function TripBuilderDocument() {
     return labels;
   }, [effectiveIntent.preferences.interests, effectiveStructuredBrief, language]);
   const openSummaryEditor = (target: "origin" | "stops" | "dates" | "constraints") => {
-    if (target === "origin") setShowOriginEditor(true);
     if (target === "stops") setShowStopEditor(true);
     if (target === "constraints") setShowTripDetails(true);
     setSummaryFocus(target);
@@ -1902,7 +1897,6 @@ function TripBuilderDocument() {
       setOriginError("");
       setOriginTouched(true);
       setOriginPlanningMentionId(appended.mention.mentionId);
-      setShowOriginEditor(true);
     } else {
       setResolvingPlaceMentionId(null);
       setStopInput("");
@@ -2649,7 +2643,6 @@ function TripBuilderDocument() {
     setTransientPlanningMentionId((current) => current === mention.mentionId ? null : current);
     setBaseSearchInputs((current) => ({ ...current, [mention.mentionId]: "" }));
     setBaseSearchErrors((current) => ({ ...current, [mention.mentionId]: "" }));
-    setShowOriginEditor(false);
     return true;
   };
 
@@ -3783,11 +3776,9 @@ function TripBuilderDocument() {
                   endDate={endDate}
                   travellers={effectiveIntent.travellers}
                   budget={budget}
-                  expanded={!hasRouteSkeleton || showOriginEditor || Boolean(inlineOriginPlanningMention)}
                   sourceFingerprint={builderDetailsFingerprint(activeTripDocument)}
                   busy={detailsCommitBusy}
                   error={detailsCommitError}
-                  onExpandedChange={(expanded) => { setDetailsCommitError(""); setShowOriginEditor(expanded); }}
                   onCommit={commitTripDetailsDraft}
                   className={`${styles.placesSection} ${isHomepagePromptHandoff ? styles.handoffOrigin : ""} ${summaryFocus === "origin" ? styles.summaryEditorOn : ""} ${originMissing ? styles.cardError : ""}`}
                 >
@@ -3838,7 +3829,6 @@ function TripBuilderDocument() {
                         const isTransientClarification = inlineOriginPlanningMention.mentionId === transientPlanningMentionId;
                         cancelTransientPlanningClarification(inlineOriginPlanningMention.mentionId);
                         setOriginPlanningMentionId(null);
-                        setShowOriginEditor(false);
                         if (isTransientClarification) {
                           const previousOrigin = originBeforePlanningClarificationRef.current;
                           replaceJourneyOrigin(previousOrigin ?? { name: "" });
@@ -3864,7 +3854,7 @@ function TripBuilderDocument() {
                         ].filter(Boolean).join(" · ")
                         : (language === "es" ? `Paradas (${stops.length})` : `Stops (${stops.length})`)}</strong></div>
                       : <strong>{language === "es" ? "Paradas" : "Stops"}</strong>}
-                    {stopSectionEditing && <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>}
+                    <button type="button" onClick={() => openSummaryEditor("stops")}><Plus /> {language === "es" ? "Añadir parada" : "Add stop"}</button>
                   </div>
                   {stops.length > 0 && (isHomepagePromptHandoff
                     ? <div className={styles.handoffStops} role="list" aria-label={language === "es" ? "Paradas confirmadas" : "Confirmed stops"}>
@@ -3979,7 +3969,6 @@ function TripBuilderDocument() {
                       <button type="button" onClick={() => {
                         if (originRelationship) {
                           setOriginPlanningMentionId(mention.mentionId);
-                          setShowOriginEditor(true);
                           setSummaryFocus("origin");
                         } else if (multiPlace || selection.kind === "visit") {
                           reopenPlanningArea(mention);
@@ -4098,7 +4087,6 @@ function TripBuilderDocument() {
                     : clearTripLegTransportChoice(activeTripDocument, legId);
                   setDecisionSelections(next.brief.decisionSelections ?? { transportByLeg: {} });
                 }}
-                onAddStop={() => openSummaryEditor("stops")}
                 onOpenRouteCheck={routeRecommendationVisible || showTimingWarning ? () => {
                   if (routeRecommendationVisible) {
                     setRouteCheckProposalStopIds(routeIntelligence.route.recommendedStopIds);

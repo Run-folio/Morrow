@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { EasyTButton, EasyTSelect } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
@@ -31,11 +31,9 @@ export function TripBuilderDetailsEditor({
   endDate,
   travellers,
   budget,
-  expanded,
   sourceFingerprint,
   busy = false,
   error,
-  onExpandedChange,
   onCommit,
   className,
   children,
@@ -47,17 +45,14 @@ export function TripBuilderDetailsEditor({
   endDate: string;
   travellers: number;
   budget: BudgetBand;
-  expanded: boolean;
   sourceFingerprint: string;
   busy?: boolean;
   error?: string | null;
-  onExpandedChange: (expanded: boolean) => void;
   onCommit: (draft: TripBuilderDetailsDraft, sourceFingerprint: string) => Promise<boolean> | boolean;
   className?: string;
   children: (controls: TripBuilderDetailsDraftControls) => ReactNode;
 }) {
-  const contentId = useId();
-  const canonicalDraft = (): TripBuilderDetailsDraft => ({
+  const canonicalDraft: TripBuilderDetailsDraft = {
     journeyOrigin: startPlace,
     journeyEnd: endSelection,
     journeyEndInput: endSelection.mode === "explicit" ? endSelection.place.name : "",
@@ -65,48 +60,31 @@ export function TripBuilderDetailsEditor({
     endDate,
     travellers,
     budget,
-  });
+  };
+  const canonicalDraftRef = useRef(canonicalDraft);
+  canonicalDraftRef.current = canonicalDraft;
   const [draft, setDraft] = useState<TripBuilderDetailsDraft>(canonicalDraft);
   const [draftFingerprint, setDraftFingerprint] = useState(sourceFingerprint);
-  const wasExpanded = useRef(false);
-  const unknown = language === "es" ? "Aún no lo sé" : "Not sure yet";
-  const endLabel = endSelection.mode === "explicit" ? endSelection.place.name
-    : endSelection.mode === "same_as_start"
-      ? `${language === "es" ? "Igual que el inicio" : "Same as start"} · ${startPlace.name || unknown}`
-      : unknown;
   useEffect(() => {
-    if (expanded && !wasExpanded.current) {
-      setDraft(canonicalDraft());
-      setDraftFingerprint(sourceFingerprint);
-    }
-    wasExpanded.current = expanded;
-  }, [expanded, sourceFingerprint, startPlace, endSelection]);
+    setDraft(canonicalDraftRef.current);
+    setDraftFingerprint(sourceFingerprint);
+  }, [sourceFingerprint]);
 
   const cancel = () => {
-    setDraft(canonicalDraft());
+    setDraft(canonicalDraftRef.current);
     setDraftFingerprint(sourceFingerprint);
-    onExpandedChange(false);
   };
 
   const save = async () => {
     if (busy) return;
-    if (await onCommit(draft, draftFingerprint)) onExpandedChange(false);
+    await onCommit(draft, draftFingerprint);
   };
 
   return <section id="builder-origin" className={className} aria-label={language === "es" ? "Detalles del viaje" : "Journey details"}>
     <div className={styles.placesSectionHead}>
       <strong>{language === "es" ? "Tu viaje" : "Your journey"}</strong>
-      {!expanded ? <EasyTButton variant="secondary" size="small" aria-expanded={false} aria-controls={contentId} onClick={() => onExpandedChange(true)}>
-        {language === "es" ? "Editar viaje" : "Edit trip"}
-      </EasyTButton> : null}
     </div>
-    {!expanded ? <dl className={styles.detailsSummary}>
-      <div><dt>{language === "es" ? "Desde" : "Starting from"}</dt><dd>{startPlace.name || unknown}</dd></div>
-      <div><dt>{language === "es" ? "Final del viaje" : "Journey end"}</dt><dd>{endLabel}</dd></div>
-      <div><dt>{language === "es" ? "Fechas" : "Dates"}</dt><dd>{startDate} – {endDate}</dd></div>
-      <div><dt>{language === "es" ? "Viajeros" : "Travellers"}</dt><dd>{travellers}</dd></div>
-    </dl> : null}
-    {expanded ? <div id={contentId} className={styles.detailsFields}>
+    <div className={styles.detailsFields}>
       {children({ draft, setDraft })}
       <div className={styles.detailsCompactGrid}>
         <MorroviaDatePicker
@@ -144,6 +122,6 @@ export function TripBuilderDetailsEditor({
         <EasyTButton variant="secondary" size="small" disabled={busy} onClick={cancel}>{language === "es" ? "Cancelar" : "Cancel"}</EasyTButton>
         <EasyTButton size="small" disabled={busy} onClick={() => { void save(); }}>{busy ? (language === "es" ? "Guardando…" : "Saving…") : (language === "es" ? "Guardar cambios" : "Save changes")}</EasyTButton>
       </div>
-    </div> : null}
+    </div>
   </section>;
 }

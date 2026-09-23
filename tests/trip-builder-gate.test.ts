@@ -21,24 +21,20 @@ const endpointDraft = {
   startDate: "2027-04-02", endDate: "2027-04-12", datesExplicit: true,
 };
 
-test("populated Builder exposes explicit, Same as start and unknown journey ends through Edit trip", { skip: !builderBrowserTestsEnabled }, async () => {
+test("populated Builder directly exposes explicit, Same as start and unknown journey ends", { skip: !builderBrowserTestsEnabled }, async () => {
   for (const [journeyEnd, expectedEnd] of [
     [{ mode: "explicit", place: endpointDraft.destinations[1] }, "Busan"],
-    [{ mode: "same_as_start" }, "Same as start · London"],
-    [{ mode: "unknown" }, "Not sure yet"],
+    [{ mode: "same_as_start" }, "London"],
+    [{ mode: "unknown" }, ""],
   ] as const) {
     const view = await renderBuilder({ query: "?homeDraft=1", draft: { ...endpointDraft, journeyEnd } });
     try {
       const details = view.page.getByRole("region", { name: "Journey details", exact: true });
       await details.waitFor({ timeout: 3000 });
-      assert.match(await details.innerText(), new RegExp(expectedEnd));
-      assert.equal(await details.getByRole("combobox").count(), 0);
-      await details.getByRole("button", { name: "Edit trip", exact: true }).click();
-      assert.equal(await details.getByRole("combobox", { name: "Ending at" }).inputValue(), journeyEnd.mode === "explicit" ? "Busan" : journeyEnd.mode === "same_as_start" ? "London" : "");
+      assert.equal(await details.getByRole("combobox", { name: "Ending at" }).inputValue(), expectedEnd);
+      assert.equal(await details.getByRole("button", { name: "Edit trip", exact: true }).count(), 0);
       assert.equal(await view.page.getByRole("heading", { name: "Nights per stop" }).count(), 1);
       assert.equal(await view.page.getByRole("textbox", { name: "TELL US ABOUT YOUR TRIP" }).count(), 0);
-      await details.getByRole("button", { name: "Cancel", exact: true }).click();
-      assert.equal(await details.getByRole("button", { name: "Edit trip", exact: true }).getAttribute("aria-expanded"), "false");
       assert.deepEqual(view.errors, []);
     } finally { await view.close(); }
   }
@@ -66,14 +62,12 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
     });
     const details = view.page.getByRole("region", { name: "Journey details", exact: true });
     await details.waitFor({ timeout: 3000 });
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     const before = await storedTrip("unknown");
     const stopIds = before.stops.map((stop) => stop.id);
     await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
     await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
     await details.getByRole("button", { name: "Cancel", exact: true }).click();
     assert.equal((await storedTrip("unknown")).brief.journeyEnd?.mode, "unknown");
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("combobox", { name: "Ending at" }).fill("Busan");
     await details.getByRole("option").filter({ hasText: "Busan" }).first().click();
     await details.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -81,7 +75,6 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
     assert.equal(explicit.brief.journeyEnd?.mode === "explicit" && explicit.brief.journeyEnd.place.canonicalPlaceId, "busan");
     assert.deepEqual(explicit.stops.map((stop) => stop.id), stopIds);
     assert.equal(explicit.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights, before.stops.find((stop) => stop.canonicalPlaceId === "busan")?.nights);
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: "Same as start", exact: true }).click();
     await details.getByRole("button", { name: "Save changes", exact: true }).click();
     const roundTrip = await storedTrip("same_as_start");
@@ -89,17 +82,14 @@ test("editing Builder end modes commits atomically and Cancel leaves canonical r
     assert.equal(roundTrip.legs.at(-1)?.classification, "departure");
     assert.equal(roundTrip.legs.at(-1)?.toEndpoint?.canonicalPlaceId, "london");
     assert.equal(roundTrip.stops.some((stop) => stop.canonicalPlaceId === "london"), false);
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: "Clear journey end", exact: true }).click();
     await details.getByRole("button", { name: "Save changes", exact: true }).click();
     const unknown = await storedTrip("unknown");
     assert.deepEqual(unknown.stops.map((stop) => stop.id), stopIds);
     assert.equal(unknown.legs.some((leg) => leg.classification === "departure"), false);
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: /Increase travellers/ }).click();
     await details.getByRole("button", { name: "Cancel", exact: true }).click();
     assert.equal((await storedTrip("unknown")).travellers, 2);
-    await details.getByRole("button", { name: "Edit trip", exact: true }).click();
     await details.getByRole("button", { name: /Increase travellers/ }).click();
     await details.getByRole("button", { name: "Save changes", exact: true }).click();
     await view.page.waitForFunction(() => Object.keys(localStorage)

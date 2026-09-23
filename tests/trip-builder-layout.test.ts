@@ -360,8 +360,16 @@ test("the activated Builder keeps one compact details and validation hierarchy",
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
   const details = readFileSync(new URL("../app/journey/new/trip-builder-details-editor.tsx", import.meta.url), "utf8");
 
-  assert.match(details, /\{!expanded \? <dl className=\{styles\.detailsSummary\}>/,
-    "the compact read-only summary must disappear whenever editable journey controls are open");
+  assert.match(builder, /<JourneyEndpointsEditor/,
+    "starting and ending points should use the canonical endpoint editor directly");
+  assert.match(details, /<MorroviaDatePicker[\s\S]*mode="range"/,
+    "dates should remain directly editable through the shared date picker");
+  assert.match(details, /<MorroviaQuantitySelector/,
+    "travellers should remain directly editable through the shared quantity control");
+  assert.doesNotMatch(details, /Edit trip|Editar viaje|detailsSummary|!expanded/,
+    "populated trips must not require a secondary edit mode");
+  assert.doesNotMatch(builder, /<TripBuilderDetailsEditor[^>]*expanded=/,
+    "the Builder should not gate canonical journey controls behind presentation state");
   assert.match(builder, /contextualResolvedPlaceMentions/,
     "ordinary self-referential stay-base relationships should be filtered from presentation");
   assert.match(builder, /\{\(effectiveIntent\.hardConstraints\.fixedCommitments\.length > 0 \|\| showTripDetails\) && <section id="builder-constraints"/,
@@ -376,6 +384,18 @@ test("the activated Builder keeps one compact details and validation hierarchy",
     "the overlapping Route insights panel must yield to the canonical Route Check and timing warnings");
   assert.match(builder, /searchParams\.set\("recover", "1"\)/,
     "a cloud-backed Builder with newer device edits must keep its recovery scope across refresh");
+});
+
+test("Journey is the only Add stop entry point after a route exists", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
+
+  assert.match(builder, /<div className=\{styles\.placesSectionHead\}>[\s\S]*?<button type="button" onClick=\{\(\) => openSummaryEditor\("stops"\)\}><Plus \/> \{language === "es" \? "Añadir parada" : "Add stop"\}<\/button>/,
+    "the Journey section should expose its canonical stop editor directly");
+  assert.doesNotMatch(builder, /\{stopSectionEditing && <button type="button" onClick=\{\(\) => openSummaryEditor\("stops"\)\}/,
+    "Add stop must remain visible without first entering an editing state");
+  assert.doesNotMatch(workspace, /onAddStop|>Add stop<|>Añadir parada</,
+    "the Route workspace must not duplicate the Journey Add stop action");
 });
 
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
