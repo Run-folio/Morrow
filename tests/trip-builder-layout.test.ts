@@ -398,6 +398,20 @@ test("Journey is the only Add stop entry point after a route exists", () => {
     "the Route workspace must not duplicate the Journey Add stop action");
 });
 
+test("night allocation is compact Route metadata instead of a separate band", () => {
+  const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
+  const workspace = readFileSync(new URL("../app/journey/new/trip-builder-route-workspace.tsx", import.meta.url), "utf8");
+
+  assert.match(builder, /nightStatus=\{\{ total: totalNights, allocated: allocatedNights, complete: allNightsAllocated, language \}\}/,
+    "the existing canonical night totals should feed Route presentation directly");
+  assert.doesNotMatch(builder, /className=\{styles\.timeAllocationState\}/,
+    "night allocation must not retain its own full-width band");
+  assert.match(workspace, /className=\{styles\.builderRouteNightStatus\}[\s\S]*role="status"/,
+    "Route metadata should retain an accessible status announcement");
+  assert.match(workspace, /nightStatus\.complete[\s\S]*nightStatus\.allocated[\s\S]*nightStatus\.total/,
+    "Route metadata must distinguish complete and unresolved allocation using canonical counts");
+});
+
 test("night allocation reads canonical arrival and departure transfer impacts", () => {
   const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 

@@ -1,9 +1,8 @@
 "use client";
 
-import { AlertTriangle, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
-import { EasyTButton } from "@/components/easyt/easyt-controls";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import type { JourneyStop } from "@/lib/journey";
 import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
@@ -23,15 +22,12 @@ export type TripBuilderRouteWorkspaceProps = {
   lockedStopIds: readonly string[];
   fixedOrder: boolean;
   routeCheckProposalStopIds: readonly string[] | null;
+  nightStatus: { total: number; allocated: number; complete: boolean; language: "en" | "es" };
   onSelectStop: (stopId: string) => void;
   onPreviewOrder: (stopIds: readonly string[] | null) => void;
   onCommitOrder: (stopIds: readonly string[], source: BuilderOrderSource) => boolean;
   onEditNights: (stopId: string, nights: number) => void;
   onTransportChoiceChange: (legId: string, identity: string | null) => void;
-  onOpenRouteCheck?: () => void;
-  routeCheckSummary: string;
-  onDismissRouteCheck: () => void;
-  onRouteCheckApplied: () => void;
 };
 
 function mapStop(stop: EasyTTrip["stops"][number]): JourneyStop {
@@ -62,15 +58,12 @@ export function TripBuilderRouteWorkspace({
   lockedStopIds,
   fixedOrder,
   routeCheckProposalStopIds,
+  nightStatus,
   onSelectStop,
   onPreviewOrder,
   onCommitOrder,
   onEditNights,
   onTransportChoiceChange,
-  onOpenRouteCheck,
-  routeCheckSummary,
-  onDismissRouteCheck,
-  onRouteCheckApplied,
 }: TripBuilderRouteWorkspaceProps) {
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const [mapCollapsed, setMapCollapsed] = useState(false);
@@ -102,7 +95,14 @@ export function TripBuilderRouteWorkspace({
       <div>
         <p>ROUTE PLAN</p>
         <h2 id="builder-route-title">Your route<span className="sr-only"> — Nights per stop</span></h2>
-        <span>Reorder stops, adjust the nights, and check how travel affects your time.</span>
+        <span className={styles.builderRouteNightStatus} role="status">
+          <CheckCircle2 aria-hidden="true" />
+          <strong>{nightStatus.total} {nightStatus.language === "es" ? "en total" : "total"}</strong>
+          <span aria-hidden="true">·</span>
+          <b>{nightStatus.complete
+            ? (nightStatus.language === "es" ? "Todas asignadas" : "All allocated")
+            : (nightStatus.language === "es" ? `${nightStatus.allocated} de ${nightStatus.total} asignadas` : `${nightStatus.allocated} of ${nightStatus.total} allocated`)}</b>
+        </span>
       </div>
     </header>
 
@@ -214,13 +214,6 @@ export function TripBuilderRouteWorkspace({
       </section>
     </div>
 
-    <section className={styles.builderRouteCheck} aria-label="Route Check">
-      <div><Sparkles aria-hidden="true" /><span><strong>Route Check</strong><small>{routeCheckProposal?.ok ? routeCheckProposal.trip.stops.map((stop) => stop.name).join(" → ") : routeCheckSummary}</small></span></div>
-      {routeCheckProposal?.ok ? <div className={styles.builderRouteCheckActions}>
-        <EasyTButton size="small" onClick={() => { if (routeCheckProposalStopIds && onCommitOrder(routeCheckProposalStopIds, "route-check")) { onRouteCheckApplied(); onDismissRouteCheck(); } }}>Apply order</EasyTButton>
-        <EasyTButton size="small" variant="secondary" onClick={onDismissRouteCheck}>Dismiss</EasyTButton>
-      </div> : onOpenRouteCheck ? <EasyTButton size="small" variant="secondary" onClick={onOpenRouteCheck}>Check route</EasyTButton> : null}
-    </section>
     <p className="sr-only" aria-live="polite">{reorder.draggingId ? `Moving stop ${reorder.draggingId}` : ""}</p>
   </section>;
 }
