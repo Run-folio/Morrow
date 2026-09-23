@@ -50,6 +50,7 @@ export async function renderBuilder({
   nearbyCandidates = [],
   nearbyStatus,
   mapUnavailable = false,
+  language,
 }: {
   query?: string;
   draft?: unknown;
@@ -61,6 +62,7 @@ export async function renderBuilder({
   nearbyCandidates?: unknown[];
   nearbyStatus?: "ready" | "empty" | "unavailable";
   mapUnavailable?: boolean;
+  language?: "en" | "es";
 } = {}) {
   const script = await builderBundle();
   const server = createServer(async (request, response) => {
@@ -125,6 +127,7 @@ export async function renderBuilder({
     await route.continue();
   });
   if (draft) await page.addInitScript((value: unknown) => localStorage.setItem("easyt-home-trip-draft", JSON.stringify(value)), draft);
+  if (language) await page.addInitScript((value: "en" | "es") => localStorage.setItem("easyt-language", value), language);
   if (mapUnavailable) await page.addInitScript(() => { (window as Window & { __MORROVIA_MAP_UNAVAILABLE__?: boolean }).__MORROVIA_MAP_UNAVAILABLE__ = true; });
   if (initialTrip) await page.addInitScript((value: { id: string; ownerId: string | null } & Record<string, unknown>) => {
     const scope = value.ownerId === null ? "guest" : `owner-${encodeURIComponent(value.ownerId)}`;

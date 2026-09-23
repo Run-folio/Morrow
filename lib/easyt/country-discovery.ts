@@ -6,12 +6,24 @@ import { routeFamilies } from "./route-catalog.ts";
 
 /** A read-only projection. Draft choices live on StructuredTripBrief; only the
  * Builder's existing Add stop boundary may turn a choice into a route stop. */
+export type CountryDiscoveryRecommendationReason =
+  | { kind: "interest-match"; interest: string }
+  | { kind: "named-place-country-match" }
+  | { kind: "minimum-stay-fits" }
+  | { kind: "supported-within"; parentName: string };
+
+export type CountryDiscoveryStayGuidance =
+  | { kind: "typical"; nights: number }
+  | { kind: "minimum"; nights: number };
+
 export type CountryDiscoveryCandidate = GuidedPlanningAreaSuggestion & {
   placeId: string;
   countryCode: string;
   alreadyInTrip: boolean;
   reason: string;
+  recommendationReason: CountryDiscoveryRecommendationReason;
   stayGuidance?: string;
+  recommendationStayGuidance?: CountryDiscoveryStayGuidance;
   recommendationProvenance: Array<{ id: string; label: string; url?: string; supports: string }>;
   score: number;
 };
@@ -92,20 +104,32 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
       + (matchedInterest ? COUNTRY_DISCOVERY_WEIGHTS.interest : 0)
       + (suggestion.anchorMatched ? COUNTRY_DISCOVERY_WEIGHTS.countryAnchor : 0)
       - (timeMismatch ? COUNTRY_DISCOVERY_WEIGHTS.timeMismatch : 0);
-    const reason = matchedInterest
-      ? `Matches your ${matchedInterest} interest.`
+    const recommendationReason: CountryDiscoveryRecommendationReason = matchedInterest
+      ? { kind: "interest-match", interest: matchedInterest }
       : suggestion.anchorMatched
-        ? `In the same country as a place you specifically named.`
+        ? { kind: "named-place-country-match" }
         : minimumNights !== undefined && nights !== undefined && minimumNights <= nights
+          ? { kind: "minimum-stay-fits" }
+          : { kind: "supported-within", parentName: mention.canonicalName };
+    const reason = recommendationReason.kind === "interest-match"
+      ? `Matches your ${recommendationReason.interest} interest.`
+      : recommendationReason.kind === "named-place-country-match"
+        ? `In the same country as a place you specifically named.`
+        : recommendationReason.kind === "minimum-stay-fits"
           ? `Its known minimum stay can fit a share of this trip's nights.`
-          : `A supported place within ${mention.canonicalName}; review how it fits your route.`;
-    const stayGuidance = idealNights !== undefined
-      ? `Typically ${idealNights} nights in Morrovia's reviewed route guidance`
-      : minimumNights !== undefined ? `Allow at least ${minimumNights} nights in existing route guidance` : undefined;
+          : `A supported place within ${recommendationReason.parentName}; review how it fits your route.`;
+    const recommendationStayGuidance: CountryDiscoveryStayGuidance | undefined = idealNights !== undefined
+      ? { kind: "typical", nights: idealNights }
+      : minimumNights !== undefined ? { kind: "minimum", nights: minimumNights } : undefined;
+    const stayGuidance = recommendationStayGuidance?.kind === "typical"
+      ? `Typically ${recommendationStayGuidance.nights} nights in Morrovia's reviewed route guidance`
+      : recommendationStayGuidance?.kind === "minimum"
+        ? `Allow at least ${recommendationStayGuidance.nights} nights in existing route guidance`
+        : undefined;
     const recommendationProvenance = knowledge?.roles.status === "known"
       ? knowledge.roles.sources.map(({ id, label, url, supports }) => ({ id, label, url, supports }))
       : suggestion.provenance.map(({ id, label, supports }) => ({ id, label, supports }));
-    return [{ ...suggestion, placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, stayGuidance, recommendationProvenance, score }];
+    return [{ ...suggestion, placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, recommendationReason, stayGuidance, recommendationStayGuidance, recommendationProvenance, score }];
   }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
   const existingWithinParent = [...existing].map((id) => findCatalogPlaceById(id)).filter((place): place is NonNullable<typeof place> => Boolean(place

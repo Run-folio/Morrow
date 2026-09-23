@@ -28,7 +28,7 @@ import type { JourneyImage } from "@/lib/journey";
 import { mediaImagesFor, PLACE_IMAGE_HINTS } from "@/lib/easyt/itinerary-media";
 import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
-import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { countryDiscoveryCandidatePresentation, easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
@@ -4226,6 +4226,7 @@ function TripBuilderDocument() {
         selectedPlaces={clarificationSelectedPlaces}
         discovery={clarificationDiscovery && activeClarificationMention ? {
           candidates: clarificationDiscovery.candidates.map((candidate) => {
+            const presentation = countryDiscoveryCandidatePresentation(language, candidate);
             const photo = routeDestinationPhoto(candidate.name, candidate.country);
             const src = photo?.variants.at(-1)?.src;
             const credit = src ? routeImageCredit(src) : null;
@@ -4234,8 +4235,8 @@ function TripBuilderDocument() {
               id: candidate.placeId,
               name: candidate.name,
               country: candidate.country,
-              reason: candidate.reason,
-              stayGuidance: candidate.stayGuidance,
+              reason: presentation.reason,
+              stayGuidance: presentation.stayGuidance,
               source: recommendationSource?.url ? { label: recommendationSource.label, url: recommendationSource.url } : undefined,
               alreadyInTrip: candidate.alreadyInTrip,
               image: credit ? { src: credit.src, alt: photo?.alt ?? candidate.name, creditHref: credit.fullCreditUrl, credit: credit.sourceLabel } : undefined,

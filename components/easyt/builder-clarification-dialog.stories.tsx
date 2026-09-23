@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { PlaceType } from "@/lib/easyt/place-intelligence";
 import { resolvePlaceMentions } from "@/lib/easyt/place-intelligence";
 import { buildCountryDiscovery } from "@/lib/easyt/country-discovery";
+import { countryDiscoveryCandidatePresentation } from "@/lib/easyt/i18n";
 import { routeDestinationPhoto, routeImageCredit } from "@/lib/easyt/route-images";
 import { useState, type ComponentProps } from "react";
 import { BuilderClarificationDialog, BuilderClarificationResume } from "./builder-clarification-dialog";
@@ -56,13 +57,17 @@ const tajikistanMention = resolvePlaceMentions("Tajikistan").mentions[0]!;
 const tajikistanDiscovery = buildCountryDiscovery(tajikistanMention, { totalNights: 8, interests: ["nature"] });
 function CountryDiscoveryFixture(args: ComponentProps<typeof BuilderClarificationDialog>) {
   const [selectedIds, setSelectedIds] = useState(tajikistanDiscovery.selectedIds);
+  const language = args.language ?? "en";
   return <BuilderClarificationDialog {...args}
     doneDisabled={!selectedIds.length}
     discovery={{
-      candidates: tajikistanDiscovery.candidates.map((candidate) => ({
-        id: candidate.placeId, name: candidate.name, country: candidate.country,
-        reason: candidate.reason, stayGuidance: candidate.stayGuidance, alreadyInTrip: false,
-      })),
+      candidates: tajikistanDiscovery.candidates.map((sourceCandidate) => {
+        const candidate = countryDiscoveryCandidatePresentation(language, sourceCandidate);
+        return {
+          id: candidate.placeId, name: candidate.name, country: candidate.country,
+          reason: candidate.reason, stayGuidance: candidate.stayGuidance, alreadyInTrip: false,
+        };
+      }),
       selectedIds,
       availableNights: tajikistanDiscovery.availableNights,
       onToggle: (id, selected) => setSelectedIds((current) => selected ? [...new Set([...current, id])] : current.filter((item) => item !== id)),
@@ -88,6 +93,32 @@ export const CountryDiscovery430: Story = { ...CountryDiscovery, parameters: { v
 export const CountryDiscovery768: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia768" } } };
 export const CountryDiscovery1024: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1024" } } };
 export const CountryDiscovery1440: Story = { ...CountryDiscovery, parameters: { viewport: { defaultViewport: "morrovia1440" } } };
+
+export const CountryDiscoverySpanish: Story = {
+  args: {
+    ...CountryDiscovery.args,
+    language: "es",
+    progress: "1 de 1",
+    title: "¿A dónde ir en Tajikistan?",
+    description: "Morrovia propone unos pocos lugares para empezar. Puedes cambiarlos antes de continuar.",
+    search: { ...bulgariaSearch, label: "Buscar dentro de Tajikistan", placeholder: "Buscar dentro de Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
+    doneLabel: "Continuar",
+    finishLaterLabel: "Terminar más tarde",
+  },
+  render: (args) => <CountryDiscoveryFixture {...args} />,
+};
+
+export const CountryDiscoverySpanishSparse: Story = {
+  args: {
+    ...CountryDiscoverySpanish.args,
+    itemKey: "eritrea-discovery-es",
+    title: "¿A dónde ir en Eritrea?",
+    discovery: { candidates: [], selectedIds: [], availableNights: 8, onToggle: noop },
+    search: { ...bulgariaSearch, label: "Buscar dentro de Eritrea", placeholder: "Buscar dentro de Eritrea", contextCountries: ["Eritrea"], parentConstraint: { canonicalName: "Eritrea", placeType: "country", parentCountries: ["Eritrea"] } },
+    doneDisabled: true,
+    doneDisabledReason: "Elige al menos un lugar para Eritrea antes de completarlo.",
+  },
+};
 
 const japanMention = resolvePlaceMentions("Japan").mentions[0]!;
 const japanDiscovery = buildCountryDiscovery(japanMention, { totalNights: 18, interests: ["food"] });

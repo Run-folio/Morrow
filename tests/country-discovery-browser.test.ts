@@ -86,3 +86,26 @@ test("Africa and Serengeti keep the park as an anchor with a reviewed nearby ove
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
+
+test("Spanish country discovery renders localized rationale and controls without changing canonical place facts", { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const capture = captureJourneyBrief("Starting from Madrid, 10 days in Tajikistan");
+  const draft = createHomeTripDraft({
+    capture, handoffId: "tajikistan-discovery-es", datesExplicit: true,
+    startDate: "2026-10-06", endDate: "2026-10-16", travellers: 2, travellersExplicit: true, interests: ["nature"],
+    origin: { name: "Madrid", country: "Spain", canonicalPlaceId: "madrid", coordinates: [-3.7038, 40.4168] },
+  });
+  draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
+  const view = await renderBuilder({ query: "?homeDraft=1", draft, language: "es" });
+  try {
+    const dialog = view.page.getByRole("dialog");
+    await dialog.getByRole("heading", { name: "¿A dónde ir en Tajikistan?" }).waitFor();
+    const text = await dialog.innerText();
+    assert.match(text, /Coincide con tu interés por la naturaleza\./);
+    assert.match(text, /Buscar un lugar concreto/);
+    assert.doesNotMatch(text, /Matches your|In the same country|known minimum stay|A supported place within|Typically|Allow at least|route guidance|See more places|Search for somewhere specific/);
+    assert.equal(await dialog.getByText("Tajikistan", { exact: true }).count() > 0, true,
+      "the canonical externally owned country name remains unchanged");
+    assert.equal(await dialog.getByRole("button", { name: /Continuar con [1-9] lugares?/ }).count(), 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});

@@ -4,6 +4,7 @@ import test from "node:test";
 
 const builder = readFileSync(new URL("../app/journey/new/trip-builder.tsx", import.meta.url), "utf8");
 const dialog = readFileSync(new URL("../components/easyt/builder-clarification-dialog.tsx", import.meta.url), "utf8");
+const i18n = readFileSync(new URL("../lib/easyt/i18n.ts", import.meta.url), "utf8");
 const stories = readFileSync(new URL("../components/easyt/builder-clarification-dialog.stories.tsx", import.meta.url), "utf8");
 
 test("country discovery is a draft on StructuredTripBrief and commits through canonical Add stop", () => {
@@ -16,9 +17,12 @@ test("country discovery is a draft on StructuredTripBrief and commits through ca
 
 test("recommendation-first clarification exposes selected cards and subordinate search", () => {
   assert.match(dialog, /aria-pressed=\{selected\}/);
-  assert.match(dialog, /Search for somewhere specific/);
-  assert.match(dialog, /See more places/);
-  assert.match(dialog, /Continue with/);
+  assert.match(dialog, /discoveryText\.searchSpecific/);
+  assert.match(dialog, /discoveryText\.seeMore/);
+  assert.match(dialog, /countryDiscoveryContinueLabel/);
+  assert.match(i18n, /Search for somewhere specific/);
+  assert.match(i18n, /See more places/);
+  assert.match(i18n, /Continue with/);
 });
 
 test("responsive Storybook covers discovery at required widths", () => {
