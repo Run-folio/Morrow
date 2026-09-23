@@ -1,4 +1,5 @@
 import type { EstimatedLeg, PlannerStop, RoutePlanningConstraints } from "./planner.ts";
+import { analyzeRouteCountryContinuity, canonicalCountryCodeForStop } from "./route-country-continuity.ts";
 import { transferDoorToDoorMinutes } from "./transfer-impact.ts";
 
 export type RouteCandidateSource =
@@ -7,6 +8,7 @@ export type RouteCandidateSource =
   | "nearest-neighbour"
   | "geographic"
   | "reverse"
+  | "country-block"
   | "local-swap";
 
 export type RouteConstraintIssue = {
@@ -45,10 +47,18 @@ export type RouteCandidate = {
 export type RouteCandidateGeneration = {
   candidates: RouteCandidate[];
   constraintIssues: RouteConstraintIssue[];
+  countryBlockRejections: CountryBlockRejection[];
   strategy: "exhaustive" | "bounded";
   rawCandidateCount: number;
   rejectedCandidateCount: number;
   truncated: boolean;
+};
+
+export type CountryBlockRejection = {
+  countryCode: string;
+  stopIds: string[];
+  issueCodes: RouteConstraintIssue["code"][];
+  constraintIds: string[];
 };
 
 type RouteOrigin = { name: string; coordinates?: [number, number] };
@@ -109,6 +119,68 @@ function nearestNeighbour(origin: RouteOrigin | PlannerStop, stops: PlannerStop[
     previous = next.stop;
   }
   return ordered;
+}
+
+function groupKnownSpan(
+  stops: PlannerStop[],
+  reverse: boolean,
+  preferredFirstCountry?: string | null,
+  preferredLastCountry?: string | null,
+) {
+  const groups = new Map<string, PlannerStop[]>();
+  for (const stop of stops) {
+    const countryCode = canonicalCountryCodeForStop(stop);
+    if (!countryCode) continue;
+    groups.set(countryCode, [...(groups.get(countryCode) ?? []), stop]);
+  }
+  let countryCodes = [...groups.keys()];
+  if (reverse) countryCodes = countryCodes.reverse();
+  if (preferredFirstCountry && countryCodes.includes(preferredFirstCountry)) {
+    countryCodes = [preferredFirstCountry, ...countryCodes.filter((code) => code !== preferredFirstCountry)];
+  }
+  if (preferredLastCountry && preferredLastCountry !== preferredFirstCountry && countryCodes.includes(preferredLastCountry)) {
+    countryCodes = [...countryCodes.filter((code) => code !== preferredLastCountry), preferredLastCountry];
+  }
+  return countryCodes.flatMap((countryCode) => groups.get(countryCode) ?? []);
+}
+
+function segmentedCountryBlockOrder(
+  stops: PlannerStop[],
+  reverse: boolean,
+  fixedStart?: PlannerStop,
+  fixedEnd?: PlannerStop,
+) {
+  const parts: Array<{ kind: "known"; stops: PlannerStop[] } | { kind: "unknown"; stop: PlannerStop }> = [];
+  let known: PlannerStop[] = [];
+  const flushKnown = () => {
+    if (!known.length) return;
+    parts.push({ kind: "known", stops: known });
+    known = [];
+  };
+  for (const stop of stops) {
+    if (canonicalCountryCodeForStop(stop)) {
+      known.push(stop);
+    } else {
+      flushKnown();
+      parts.push({ kind: "unknown", stop });
+    }
+  }
+  flushKnown();
+
+  const knownParts = parts.filter((part): part is { kind: "known"; stops: PlannerStop[] } => part.kind === "known");
+  const firstKnown = knownParts[0];
+  const lastKnown = knownParts.at(-1);
+  const startCountry = fixedStart ? canonicalCountryCodeForStop(fixedStart) : null;
+  const endCountry = fixedEnd ? canonicalCountryCodeForStop(fixedEnd) : null;
+  return parts.flatMap((part) => {
+    if (part.kind === "unknown") return [part.stop];
+    return groupKnownSpan(
+      part.stops,
+      reverse,
+      part === firstKnown ? startCountry : null,
+      part === lastKnown ? endCountry : null,
+    );
+  });
 }
 
 function globalConstraintIssues(stops: PlannerStop[], constraints?: RoutePlanningConstraints) {
@@ -202,12 +274,29 @@ function boundedSeeds(origin: RouteOrigin, flexible: PlannerStop[], start: Plann
   add([...flexible].sort((a, b) => (b.coordinates?.[0] ?? 0) - (a.coordinates?.[0] ?? 0)), "geographic");
   add([...flexible].sort((a, b) => (a.coordinates?.[1] ?? 0) - (b.coordinates?.[1] ?? 0)), "geographic");
   add([...flexible].sort((a, b) => (b.coordinates?.[1] ?? 0) - (a.coordinates?.[1] ?? 0)), "geographic");
+  add(segmentedCountryBlockOrder(flexible, false, start, end), "country-block");
+  add(segmentedCountryBlockOrder(flexible, true, start, end), "country-block");
   for (let index = 0; index < flexible.length - 1 && seeds.length < MAX_BOUNDED_CANDIDATES; index += 1) {
     const swapped = [...flexible];
     [swapped[index], swapped[index + 1]] = [swapped[index + 1], swapped[index]];
     add(swapped, "local-swap");
   }
   return seeds.slice(0, MAX_BOUNDED_CANDIDATES);
+}
+
+function constraintIdsFor(
+  issues: readonly RouteConstraintIssue[],
+  constraints: RoutePlanningConstraints | undefined,
+) {
+  const ids: string[] = [];
+  if (issues.some((issue) => issue.code === "forbidden-transport-mode")) {
+    if (constraints?.avoidDriving) ids.push("avoid-driving");
+    for (const mode of constraints?.excludedTransportModes ?? []) ids.push(`excluded-transport-mode:${mode}`);
+  }
+  if (issues.some((issue) => issue.code === "maximum-transfer-time-exceeded") && constraints?.maximumTransferMinutes !== undefined) {
+    ids.push(`maximum-transfer-minutes:${constraints.maximumTransferMinutes}`);
+  }
+  return ids;
 }
 
 /**
@@ -226,7 +315,7 @@ export function generateRouteCandidates(input: {
   const strategy = input.stops.length <= EXHAUSTIVE_FLEXIBLE_STOP_LIMIT ? "exhaustive" : "bounded";
   const globalIssues = globalConstraintIssues(input.stops, input.constraints);
   if (globalIssues.length) {
-    return { candidates: [], constraintIssues: globalIssues, strategy, rawCandidateCount: 0, rejectedCandidateCount: 0, truncated: strategy === "bounded" };
+    return { candidates: [], constraintIssues: globalIssues, countryBlockRejections: [], strategy, rawCandidateCount: 0, rejectedCandidateCount: 0, truncated: strategy === "bounded" };
   }
 
   const { start, end, flexible } = fixedParts(input.stops, input.constraints);
@@ -246,13 +335,32 @@ export function generateRouteCandidates(input: {
 
   const deduplicated = seeds.filter((seed, index, all) => all.findIndex((item) => orderKey(item.stops) === orderKey(seed.stops)) === index);
   const constraintIssues: RouteConstraintIssue[] = [];
+  const countryBlockRejections: CountryBlockRejection[] = [];
+  const originalContinuity = analyzeRouteCountryContinuity(original);
   const viable = deduplicated.flatMap((seed) => {
     const issues = candidateIssues(input.origin, seed.stops, input.constraints, input.estimateLeg, input.end);
     issues.forEach((issue) => {
       const key = `${issue.code}:${issue.stopIds.join("|")}`;
       if (!constraintIssues.some((item) => `${item.code}:${item.stopIds.join("|")}` === key)) constraintIssues.push(issue);
     });
-    if (issues.length) return [];
+    if (issues.length) {
+      const hardTransportIssues = issues.filter((issue) =>
+        issue.code === "forbidden-transport-mode" || issue.code === "maximum-transfer-time-exceeded");
+      if (seed.source === "country-block" && hardTransportIssues.length) {
+        const candidateContinuity = analyzeRouteCountryContinuity(seed.stops);
+        for (const countryCode of originalContinuity.repeatedCountryCodes) {
+          if ((candidateContinuity.reentriesByCountry[countryCode] ?? 0) >= (originalContinuity.reentriesByCountry[countryCode] ?? 0)) continue;
+          if (countryBlockRejections.some((rejection) => rejection.countryCode === countryCode)) continue;
+          countryBlockRejections.push({
+            countryCode,
+            stopIds: seed.stops.map((stop) => stop.id),
+            issueCodes: hardTransportIssues.map((issue) => issue.code),
+            constraintIds: constraintIdsFor(hardTransportIssues, input.constraints),
+          });
+        }
+      }
+      return [];
+    }
     const estimate = routeEstimate(input.origin, seed.stops, input.estimateLeg, input.end);
     return [{
       stops: seed.stops,
@@ -278,6 +386,7 @@ export function generateRouteCandidates(input: {
   return {
     candidates: viable,
     constraintIssues,
+    countryBlockRejections,
     strategy,
     rawCandidateCount: seeds.length,
     rejectedCandidateCount: deduplicated.length - viable.length,

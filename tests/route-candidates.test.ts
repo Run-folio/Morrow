@@ -1,9 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { generateRouteCandidates } from "../lib/easyt/route-candidates.ts";
+import { analyzeRouteCountryContinuity } from "../lib/easyt/route-country-continuity.ts";
 import type { EstimatedLeg, PlannerStop } from "../lib/easyt/planner.ts";
 
 const stop = (id: string, longitude: number): PlannerStop => ({ id, name: id, country: "Testland", coordinates: [longitude, 0] });
+const countryStop = (id: string, countryCode: string | undefined, longitude: number, canonicalPlaceId = id): PlannerStop => ({
+  id,
+  name: id,
+  country: countryCode ?? "Unknown",
+  ...(countryCode ? { countryCode } : {}),
+  canonicalPlaceId,
+  coordinates: [longitude, 0],
+});
 const origin = { name: "Origin", coordinates: [-1, 0] as [number, number] };
 const estimatedLeg = (from: { coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg => {
   const distanceKm = Math.abs((to.coordinates?.[0] ?? 0) - (from.coordinates?.[0] ?? 0)) * 100;
@@ -122,4 +131,100 @@ test("a maximum transfer ceiling rejects every violating candidate before scorin
 
   assert.equal(result.candidates.length, 0);
   assert.equal(result.constraintIssues.some((issue) => issue.code === "maximum-transfer-time-exceeded"), true);
+});
+
+test("bounded generation adds deterministic country-block candidates without exceeding twenty", () => {
+  const stops = [
+    countryStop("in-1", "IN", 0),
+    countryStop("cn-1", "CN", 1),
+    countryStop("jp-1", "JP", 2),
+    countryStop("in-2", "IN", 3),
+    countryStop("cn-2", "CN", 4),
+    countryStop("jp-2", "JP", 5),
+    countryStop("ae", "AE", 6),
+  ];
+  const first = generateRouteCandidates({ origin, stops, estimateLeg: estimatedLeg });
+  const second = generateRouteCandidates({ origin, stops, estimateLeg: estimatedLeg });
+  const countryBlocks = first.candidates.filter((candidate) => candidate.source === "country-block");
+
+  assert.ok(countryBlocks.length > 0);
+  assert.ok(countryBlocks.some((candidate) => analyzeRouteCountryContinuity(candidate.stops).reentryCount === 0));
+  assert.ok(first.candidates.length <= 20);
+  assert.deepEqual(
+    first.candidates.map((candidate) => ({ source: candidate.source, ids: candidate.stops.map((item) => item.id) })),
+    second.candidates.map((candidate) => ({ source: candidate.source, ids: candidate.stops.map((item) => item.id) })),
+  );
+});
+
+test("country-block grouping improves known spans without crossing an unknown barrier", () => {
+  const unknown = countryStop("unknown", undefined, 2);
+  const stops = [
+    countryStop("in-1", "IN", 0),
+    countryStop("in-2", "IN", 1),
+    unknown,
+    countryStop("jp-1", "JP", 3),
+    countryStop("cn-1", "CN", 4),
+    countryStop("jp-2", "JP", 5),
+    countryStop("ae-1", "AE", 6),
+  ];
+  const generated = generateRouteCandidates({ origin, stops, estimateLeg: estimatedLeg });
+  const countryBlocks = generated.candidates.filter((candidate) => candidate.source === "country-block");
+
+  assert.ok(countryBlocks.some(({ stops: candidateStops }) =>
+    candidateStops.map((item) => item.id).join("|") === "in-1|in-2|unknown|jp-1|jp-2|cn-1|ae-1"));
+  assert.ok(countryBlocks.every(({ stops: candidateStops }) => candidateStops.indexOf(unknown) === 2));
+});
+
+test("country-block candidates preserve fixed gateways, required and repeated occurrences", () => {
+  const stops = [
+    countryStop("in-gateway", "IN", 0, "mumbai"),
+    countryStop("cn-1", "CN", 1),
+    countryStop("in-return", "IN", 2, "mumbai"),
+    countryStop("jp-1", "JP", 3),
+    countryStop("cn-2", "CN", 4),
+    countryStop("jp-2", "JP", 5),
+    countryStop("ae-end", "AE", 6),
+  ];
+  const generated = generateRouteCandidates({
+    origin,
+    stops,
+    constraints: { fixedStartStopId: "in-gateway", fixedEndStopId: "ae-end", requiredStopIds: ["in-return"] },
+    estimateLeg: estimatedLeg,
+  });
+
+  assert.ok(generated.candidates.some((candidate) => candidate.source === "country-block"));
+  for (const candidate of generated.candidates) {
+    assert.equal(candidate.stops[0]?.id, "in-gateway");
+    assert.equal(candidate.stops.at(-1)?.id, "ae-end");
+    assert.equal(candidate.stops.filter((item) => item.canonicalPlaceId === "mumbai").length, 2);
+    assert.ok(candidate.stops.some((item) => item.id === "in-return"));
+  }
+});
+
+test("retains one concrete hard-transport rejection for a lower-block order", () => {
+  const stops = [
+    countryStop("in-1", "IN", 0),
+    countryStop("ae-1", "AE", 1),
+    countryStop("in-2", "IN", 2),
+    countryStop("cn-1", "CN", 3),
+    countryStop("cn-2", "CN", 4),
+    countryStop("jp-1", "JP", 5),
+    countryStop("jp-2", "JP", 6),
+  ];
+  const hardTransportLeg = (from: { name: string; coordinates?: [number, number] }, to: PlannerStop): EstimatedLeg => ({
+    ...estimatedLeg(from, to),
+    durationMinutes: from.name === "in-1" && to.id === "in-2" ? 300 : 30,
+  });
+  const generated = generateRouteCandidates({
+    origin,
+    stops,
+    constraints: { maximumTransferMinutes: 120 },
+    estimateLeg: hardTransportLeg,
+  });
+  const rejection = generated.countryBlockRejections.find((item) => item.countryCode === "IN");
+
+  assert.deepEqual(rejection?.stopIds, ["in-1", "in-2", "ae-1", "cn-1", "cn-2", "jp-1", "jp-2"]);
+  assert.deepEqual(rejection?.issueCodes, ["maximum-transfer-time-exceeded"]);
+  assert.deepEqual(rejection?.constraintIds, ["maximum-transfer-minutes:120"]);
+  assert.equal(generated.candidates.some((candidate) => candidate.stops.map((item) => item.id).join("|") === rejection?.stopIds.join("|")), false);
 });
