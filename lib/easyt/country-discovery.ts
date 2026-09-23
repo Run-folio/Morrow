@@ -11,6 +11,7 @@ export type CountryDiscoveryCandidate = GuidedPlanningAreaSuggestion & {
   alreadyInTrip: boolean;
   reason: string;
   stayGuidance?: string;
+  recommendationProvenance: Array<{ id: string; label: string; url?: string; supports: string }>;
   score: number;
 };
 
@@ -60,6 +61,9 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
     seen.add(identity);
     const knowledge = destinationKnowledge.findDestination({ canonicalPlaceId: suggestion.canonicalPlaceId, name: suggestion.name, country: suggestion.country });
     const sourceStop = routeFamilies.flatMap((route) => route.stops).find((stop) => key(stop.name, stop.country) === identity);
+    // The place catalogue owns identity and containment, not visitor appeal.
+    // It cannot alone make a place a recommendation.
+    if (!sourceStop && knowledge?.roles.status !== "known") return [];
     const minimumNights = knowledge?.minimumNights.status === "known" ? knowledge.minimumNights.value : sourceStop?.minimumNights;
     const idealNights = knowledge?.idealNights.status === "known" ? knowledge.idealNights.value : sourceStop?.recommendedNights;
     const tags = knowledge?.experienceTags.status === "known" ? knowledge.experienceTags.value : [];
@@ -76,15 +80,19 @@ export function buildCountryDiscovery(mention: ResolvedPlaceMention, context: Co
       : suggestion.anchorMatched
         ? `In the same country as a place you specifically named.`
         : minimumNights !== undefined && nights !== undefined && minimumNights <= nights
-          ? `Its known minimum stay fits within roughly ${nights} nights for this country.`
+          ? `Its known minimum stay can fit a share of this trip's nights.`
           : `A supported place within ${mention.canonicalName}; review how it fits your route.`;
     const stayGuidance = idealNights !== undefined
       ? `Typically ${idealNights} nights in Morrovia's reviewed route guidance`
       : minimumNights !== undefined ? `Allow at least ${minimumNights} nights in existing route guidance` : undefined;
-    return [{ ...suggestion, placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, stayGuidance, score }];
+    const recommendationProvenance = knowledge?.roles.status === "known"
+      ? knowledge.roles.sources.map(({ id, label, url, supports }) => ({ id, label, url, supports }))
+      : suggestion.provenance.map(({ id, label, supports }) => ({ id, label, supports }));
+    return [{ ...suggestion, placeId: suggestion.canonicalPlaceId, countryCode, alreadyInTrip: existing.has(suggestion.canonicalPlaceId), reason, stayGuidance, recommendationProvenance, score }];
   }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
-  const maxDefault = nights === undefined ? 2 : nights <= 7 ? 2 : nights <= 14 ? 3 : 4;
+  const evidenceSupportsPacing = candidates.some((candidate) => candidate.stayGuidance);
+  const maxDefault = !evidenceSupportsPacing || nights === undefined ? 2 : nights <= 7 ? 2 : nights <= 14 ? 3 : 4;
   const defaultIds = candidates.filter((candidate) => !candidate.alreadyInTrip && candidate.score > 0)
     .slice(0, Math.max(0, maxDefault - Math.min(existing.size, maxDefault)))
     .map((candidate) => candidate.placeId);

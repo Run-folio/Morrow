@@ -293,6 +293,15 @@ function curatedDestination(input: CuratedDestinationInput): DestinationKnowledg
 /** A deliberately modest set drawn from current curated route families. */
 export const CURATED_DESTINATION_KNOWLEDGE: readonly DestinationKnowledge[] = [
   ...[
+    { canonicalId: "puerto-princesa", name: "Puerto Princesa", coordinates: [118.7353, 9.7392] as [number, number], experienceTags: ["nature", "beach"] },
+    { canonicalId: "el-nido", name: "El Nido", coordinates: [119.3922, 11.1956] as [number, number], experienceTags: ["nature", "beach"] },
+  ].map((place) => curatedDestination({
+    ...place, country: "Philippines", region: "asia", roles: ["base"],
+    source: { id: "philippines-tourism:palawan", label: "Philippines tourism destination guide", kind: "official",
+      url: "https://philippines.travel/destinations/palawan/index", reviewedAt: "2026-09-23",
+      supports: "Puerto Princesa and El Nido are named Palawan visitor places with nature and coastal context; no transfer or stay duration claim." },
+  })),
+  ...[
     { canonicalId: "dushanbe", name: "Dushanbe", country: "Tajikistan", coordinates: [68.787, 38.5598] as [number, number], experienceTags: ["culture", "food"] },
     { canonicalId: "khujand", name: "Khujand", country: "Tajikistan", coordinates: [69.6247, 40.283] as [number, number], experienceTags: ["culture"] },
     { canonicalId: "panjakent", name: "Panjakent", country: "Tajikistan", coordinates: [67.6093, 39.4952] as [number, number], experienceTags: ["culture", "nature", "hiking"] },

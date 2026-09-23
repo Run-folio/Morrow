@@ -396,6 +396,8 @@ const benchmarkPlaces: PlaceCatalogEntry[] = [
   city("antsirabe", "Antsirabe", "Madagascar", [], { coordinates: [47.0333, -19.8667], reviewedAt: "2026-09-23" }),
   town("morondava", "Morondava", "Madagascar", [], { coordinates: [44.2833, -20.2833], reviewedAt: "2026-09-23" }),
   town("andasibe", "Andasibe", "Madagascar", [], { coordinates: [48.4167, -18.9333], reviewedAt: "2026-09-23" }),
+  city("puerto-princesa", "Puerto Princesa", "Philippines", [], { parentRegionId: "palawan", coordinates: [118.7353, 9.7392], reviewedAt: "2026-09-23" }),
+  town("el-nido", "El Nido", "Philippines", [], { parentRegionId: "palawan", coordinates: [119.3922, 11.1956], reviewedAt: "2026-09-23" }),
   place("sossusvlei", "Sossusvlei", [], "natural_area", "direct_destination", ["Namibia"], { coordinates: [15.2939, -24.7588], reviewedAt: "2026-09-10" }),
   place("damaraland", "Damaraland", [], "region", "planning_area", ["Namibia"], { coordinates: [14.5, -20.5], reviewedAt: "2026-09-10" }),
   place("etosha", "Etosha National Park", ["Etosha"], "natural_area", "direct_destination", ["Namibia"], { coordinates: [16.325, -18.8556], reviewedAt: "2026-09-10" }),
