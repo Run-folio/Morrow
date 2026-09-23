@@ -516,9 +516,8 @@ export function reviewTrip(trip: EasyTTrip): TripRecommendation[] {
   }
 
   const route = trip.brief.routeAssessment?.route;
-  const hasCountryContinuityIssue = surfacedCriticIssues.some((item) => item.code === "country-reentry");
   const hasBacktrackingEvidence = route?.reasons.some((reason) => /backtrack|doubl(?:e|ing) back/i.test(reason)) ?? false;
-  if (!hasCountryContinuityIssue && hasBacktrackingEvidence && route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
+  if (hasBacktrackingEvidence && route?.state === "recommendation" && (route.improvementMinutes ?? 0) >= 90) {
     results.push(recommendation(trip, {
       rule: "route-backtracking",
       severity: "warning",

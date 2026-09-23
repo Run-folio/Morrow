@@ -113,7 +113,7 @@ test("classifies repeated blocks from positive alternatives or typed proof only"
     countryCode: "IN",
     kind: "fixed-gateway-position",
     provenReentryCount: 1,
-    stopIds: ["mumbai", "agra", "dubai"],
+    stopIds: ["mumbai", "dubai", "agra"],
     constraintIds: ["fixed-start:mumbai", "fixed-end:agra"],
   };
 
@@ -201,6 +201,30 @@ test("does not let a partial chronology proof claim every re-entry for a country
   assert.equal(route.reentriesByCountry.IN, 3);
   assert.equal(proofs[0]?.provenReentryCount, 1);
   assert.equal(classifyCountryContinuity({ route, viableAlternatives: [route], proofs })[0]?.status, "unproven-protected");
+});
+
+test("does not apply chronology proof from another occurrence span", () => {
+  const stops = [
+    stop("a-1", "India", "IN"),
+    stop("b-1", "United Arab Emirates", "AE"),
+    stop("unknown", "Unknown"),
+    stop("a-2", "India", "IN"),
+    stop("b-2", "United Arab Emirates", "AE"),
+    stop("a-3", "India", "IN"),
+  ];
+  const route = analyzeRouteCountryContinuity(stops);
+  const proofs = fixedChronologyCountryContinuityProofs(stops, [
+    { label: "First India stay", date: "2026-10-01", stopId: "a-1" },
+    { label: "First UAE stay", date: "2026-10-02", stopId: "b-1" },
+    { label: "Second India stay", date: "2026-10-03", stopId: "a-2" },
+  ]);
+  const assessment = classifyCountryContinuity({ route, viableAlternatives: [route], proofs })[0];
+
+  assert.equal(route.reentriesByCountry.IN, 1);
+  assert.equal(proofs[0]?.provenReentryCount, 1);
+  assert.deepEqual(assessment?.affectedStopIds, ["a-2", "a-3"]);
+  assert.deepEqual(proofs[0]?.stopIds, ["a-1", "b-1", "a-2"]);
+  assert.equal(assessment?.status, "unproven-protected");
 });
 
 test("deduplicates the same dated occurrence before proving fixed chronology", () => {

@@ -259,7 +259,7 @@ git commit -m "feat: score observed country reentry"
 
 - [ ] Run `npm run test:route-intelligence` and confirm the new assertions fail.
 
-- [ ] Add pure fixed-gateway and linked fixed-position chronology proof builders. Chronology qualifies only when canonical stop IDs and dates structurally order the affected `A → B → A` occurrences. Retain `countryBlockRejections` as diagnostics; a single rejected bounded seed does not prove every lower-block ordering impossible and must not become `hard-transport-rejection` proof.
+- [ ] Add pure fixed-gateway and linked fixed-position chronology proof builders. Chronology qualifies only when canonical stop IDs and dates structurally order every affected same-span `A → B → A` transition; country/count matches or proof from another unknown-barrier span do not qualify. Retain `countryBlockRejections` as diagnostics; a single rejected bounded seed does not prove every lower-block ordering impossible and must not become `hard-transport-rejection` proof.
 
 - [ ] Pass those proofs to `scoreRouteCandidates`. Generalize the existing backtracking exception without changing its numeric bounds:
 

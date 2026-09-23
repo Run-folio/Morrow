@@ -165,6 +165,44 @@ function repeatedSpanIndexes(route: RouteCountryContinuity, countryCode: string)
   return new Set([...counts].filter(([, count]) => count > 1).map(([index]) => index));
 }
 
+function proofCoversRouteReentries(
+  route: RouteCountryContinuity,
+  countryCode: string,
+  proof: CountryContinuityConstraintProof,
+) {
+  const proofIndexes = new Map(proof.stopIds.map((stopId, index) => [stopId, index]));
+  let coveredReentries = 0;
+  for (let spanIndex = 0; spanIndex < route.knownSpanCount; spanIndex += 1) {
+    const spanBlocks = route.blocks.filter((block) => block.spanIndex === spanIndex);
+    const countryBlockIndexes = spanBlocks.flatMap((block, index) =>
+      block.countryCode === countryCode ? [index] : []);
+    for (let index = 1; index < countryBlockIndexes.length; index += 1) {
+      const previousIndex = countryBlockIndexes[index - 1]!;
+      const currentIndex = countryBlockIndexes[index]!;
+      const previousProofIndexes = spanBlocks[previousIndex]!.stopIds.flatMap((stopId) => {
+        const proofIndex = proofIndexes.get(stopId);
+        return proofIndex === undefined ? [] : [proofIndex];
+      });
+      const currentProofIndexes = spanBlocks[currentIndex]!.stopIds.flatMap((stopId) => {
+        const proofIndex = proofIndexes.get(stopId);
+        return proofIndex === undefined ? [] : [proofIndex];
+      });
+      const interveningProofIndexes = spanBlocks.slice(previousIndex + 1, currentIndex)
+        .flatMap((block) => block.stopIds)
+        .flatMap((stopId) => {
+          const proofIndex = proofIndexes.get(stopId);
+          return proofIndex === undefined ? [] : [proofIndex];
+        });
+      const coversTransition = previousProofIndexes.some((previousProofIndex) =>
+        interveningProofIndexes.some((interveningProofIndex) =>
+          previousProofIndex < interveningProofIndex
+          && currentProofIndexes.some((currentProofIndex) => interveningProofIndex < currentProofIndex)));
+      if (coversTransition) coveredReentries += 1;
+    }
+  }
+  return coveredReentries >= (route.reentriesByCountry[countryCode] ?? 0);
+}
+
 export function classifyCountryContinuity(input: {
   route: RouteCountryContinuity;
   viableAlternatives: readonly RouteCountryContinuity[];
@@ -179,11 +217,13 @@ export function classifyCountryContinuity(input: {
     const observedLowerBlockCount = lowerAlternatives.length
       ? Math.min(...lowerAlternatives.map((alternative) => alternative.blocksByCountry[countryCode] ?? 0))
       : undefined;
-    const proof = input.proofs?.find((item) =>
-      item.countryCode === countryCode && item.provenReentryCount >= currentReentries);
     const repeatedSpans = repeatedSpanIndexes(input.route, countryCode);
     const affectedBlocks = input.route.blocks.filter((block) =>
       block.countryCode === countryCode && repeatedSpans.has(block.spanIndex));
+    const proof = input.proofs?.find((item) =>
+      item.countryCode === countryCode
+      && item.provenReentryCount >= currentReentries
+      && proofCoversRouteReentries(input.route, countryCode, item));
     const firstBlockBySpan = new Set<number>();
     const legIndexes = affectedBlocks.flatMap((block) => {
       if (!firstBlockBySpan.has(block.spanIndex)) {
