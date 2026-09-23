@@ -60,6 +60,8 @@ export function createMorroviaFallbackMapStyle(): StyleSpecification {
 
 export const morroviaMapFallbackStyle = createMorroviaFallbackMapStyle();
 export const morroviaMapStyle = MORROVIA_DETAILED_BASEMAP_STYLE_URL;
+export const MORROVIA_STOP_MARKER_CLASS = "planner-map__stop";
+export const MORROVIA_STOP_MARKER_NUMBER_CLASS = "planner-map__stop-number";
 
 export const mapRouteCasing: LineLayerSpecification["paint"] = { "line-color": "rgba(255,255,255,.98)", "line-width": 10, "line-opacity": 0.98 };
 
