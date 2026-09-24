@@ -35,6 +35,19 @@ These typed events answer the minimum launch questions without replacing the exi
 | `accommodation_search_started` | The existing stay finder starts its map/inventory search. | `source`, `destination_count`, `has_dates`, `provider` |
 | `recommendation_performance` | A recommendation lane first becomes useful or finishes, independently of slower lanes. | categorical `surface`, `recommendation_kind`, `lane`, `milestone`, coarse bounded `duration_ms`, `result_count`, `outcome` |
 
+Visual Discovery emits six small, consent-gated events through `trackEvent`.
+`discovery_shown` fires once when a mention's modal first opens;
+`discovery_review_reached` fires once when its Review step is first reached.
+`discovery_direction_selected` and `discovery_place_choice_changed` fire on
+deliberate choices. `discovery_confirmed` records a deliberate enabled Confirm
+click; it does not assert that persistence succeeded. `discovery_closed_or_resumed`
+records Close versus Finish later. The allow-listed properties are `entry_kind`
+(continent, country, region, landmark, natural-area, clarification),
+`candidate_count` or `shortlist_count`, and categorical `action` where applicable.
+Never include a prompt, place or trip title, coordinates, source URL, photo
+credit, or a selected place identifier. Consent is checked by `trackEvent`;
+events seen before consent are not replayed.
+
 `affiliate_click` remains the generic monetisation handoff event and retains its existing `category` and `provider` contract. The established Omio/Viator `affiliate_link_clicked` event remains a separate source only where it is already in use; do not introduce PostHog-specific aliases for the same click.
 
 Recommendation performance events deliberately omit trip, stop, destination,

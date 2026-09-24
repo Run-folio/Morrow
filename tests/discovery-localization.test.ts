@@ -39,8 +39,8 @@ test("visual Discovery copy keeps one concise prompt per step", () => {
   assert.equal(es.reviewStatus.exploreOnly, "Aún no se puede añadir");
   assert.equal(en.reviewStatus.unavailable, "No longer reviewed");
   assert.equal(es.reviewStatus.unavailable, "Ya no figura entre los lugares revisados");
-  assert.equal(en.reviewStatus.resolveDetail, "Remove them or finish later.");
-  assert.equal(es.reviewStatus.resolveDetail, "Quítalos o termina más tarde.");
+  assert.equal(en.reviewStatus.resolveDetail, "Change an unavailable direction, remove unsupported places, or finish later.");
+  assert.equal(es.reviewStatus.resolveDetail, "Cambia una dirección no disponible, quita los lugares sin respaldo o termina más tarde.");
   assert.equal(en.sparse, "Limited coverage here");
   assert.equal(es.sparse, "Cobertura limitada aquí");
 });

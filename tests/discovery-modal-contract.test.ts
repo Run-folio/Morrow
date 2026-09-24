@@ -15,6 +15,15 @@ test("one shared dialog owns Escape, scroll lock, focus return and a single scro
   assert.doesNotMatch(read("components/easyt/discovery-modal.tsx"), /role="dialog"|history\.(pushState|popstate)/);
 });
 
+test("mobile Discovery has one scroll body and safe-area clearance below the last card", () => {
+  const css = read("components/easyt/builder-clarification-dialog.module.css");
+  assert.match(css, /\.discoveryDialog\s*\{[^}]*height:\s*100dvh/);
+  assert.match(css, /\.discoveryDialog \.body\s*\{[^}]*overflow-y:\s*auto/);
+  assert.doesNotMatch(css, /\.discoveryDialog\s*\{[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.discoveryDialog \.footer\s*\{[^}]*env\(safe-area-inset-bottom\)/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
 test("normal typed and sparse entries select Discovery; only recovery selects legacy renderer", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
   assert.match(builder, /discoveryEntryForBrief\(/);
@@ -67,6 +76,7 @@ test("the adaptive shell has an honest loading and sparse recovery presentation"
   assert.match(modal, /MorroviaSkeleton/);
   assert.match(stories, /AustraliaLoading/);
   assert.match(stories, /TajLandmarkProductionSparse/);
+  assert.match(stories, /AustraliaSaveError/);
 });
 
 test("visual Discovery uses the modal title and secondary geography without duplicate step headings", () => {
@@ -83,9 +93,9 @@ test("Builder commit locks every Discovery navigation and dismissal path", () =>
   const modal = read("components/easyt/discovery-modal.tsx");
   const shell = read("components/easyt/builder-clarification-shell.tsx");
   assert.match(builder, /loading=\{discoveryCommitting\}/);
-  assert.match(modal, /onDismiss=\{onClose\}[^>]*loading=\{loading\}/);
+  assert.match(modal, /onDismiss=\{\(\) => handleClose\("closed"\)\}[^>]*loading=\{loading\}/);
   assert.match(modal, /previousStep \? <EasyTButton disabled=\{loading\}/);
-  assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{onClose\}/);
+  assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{\(\) => handleClose\("finish_later"\)\}/);
   assert.match(shell, /if \(event\.key === "Escape"\) \{ event\.preventDefault\(\); if \(!loadingRef\.current\) dismissRef\.current\(\);/);
   assert.match(shell, /if \(event\.target === event\.currentTarget && !loading\) onDismiss\(\)/);
   assert.match(shell, /iconOnly variant="quiet" size="small" disabled=\{loading\}/);
