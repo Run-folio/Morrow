@@ -62,6 +62,20 @@ export function mapRouteLegActivationEvent(event: { type: string; detail?: numbe
   return event.type === "pointerup" || (event.type === "click" && event.detail === 0);
 }
 
+/** Keep MapLibre marker activation on one path for pointer and keyboard input. */
+export function bindMapMarkerActivation(marker: EventTarget, onActivate: (event: Event) => void) {
+  const activate = (event: Event) => {
+    event.stopPropagation();
+    if (mapRouteLegActivationEvent(event as Event & { detail?: number })) onActivate(event);
+  };
+  marker.addEventListener("pointerup", activate);
+  marker.addEventListener("click", activate);
+  return () => {
+    marker.removeEventListener("pointerup", activate);
+    marker.removeEventListener("click", activate);
+  };
+}
+
 function pointToSegmentDistanceSquared(point: MapPoint, from: MapPoint, to: MapPoint) {
   const deltaX = to.x - from.x;
   const deltaY = to.y - from.y;

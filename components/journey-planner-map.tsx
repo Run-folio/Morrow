@@ -17,7 +17,7 @@ import type { MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { applyMapCameraRequest, focusMapCamera, fitMapCamera, interruptMapCamera, type MapCamera } from "@/lib/easyt/map-camera";
 import { resolveMapCameraRequest, resolveMapInsets, resolveMapSurfacePolicy, type MorroviaMapInsets, type MorroviaMapSurface } from "@/lib/easyt/map-surface-policy";
 import { createMorroviaBasemapLifecycle, hasMorroviaActiveStyle, type MorroviaBasemapLifecycle, type MorroviaBasemapMap, type MorroviaBasemapStatus } from "@/lib/easyt/map-basemap-lifecycle";
-import { canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
+import { bindMapMarkerActivation, canonicalMapTransportMode, formatMapDuration, mapRouteBearing, mapRouteFitCoordinates, mapRouteLegActivationEvent, mapRouteLegIdAtPoint, mapRouteMarkerCoordinates, mapTransportModeLabel, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { tripLegClassificationLabel } from "@/lib/easyt/trip-legs";
 
 export type JourneyMapDestinationCard = {
@@ -43,6 +43,9 @@ type JourneyPlannerMapProps = {
   plannerPins: PlannerMapPin[];
   /** Optional stable pin selection. Existing Map surfaces remain unselected by default. */
   selectedPlannerPinId?: string | null;
+  /** Restrict interaction where only some projected pins have a detail owner. */
+  interactivePlannerPinIds?: readonly string[];
+  stopSelectionEnabled?: boolean;
   mapResults?: MapResultPlace[];
   selectedMapResult?: MapResultPlace | null;
   focusOffset?: [number, number];
@@ -115,6 +118,8 @@ export function JourneyPlannerMap({
   contextCardsHidden = false,
   plannerPins,
   selectedPlannerPinId = null,
+  interactivePlannerPinIds,
+  stopSelectionEnabled = true,
   mapResults = [],
   selectedMapResult = null,
   focusOffset,
@@ -430,7 +435,8 @@ export function JourneyPlannerMap({
     const selectRoute = (event: maplibregl.MapLayerMouseEvent) => {
       interruptMapCamera(map as unknown as MapCamera);
       currentCameraRequestRef.current = null;
-      const hitLegIds = event.features?.flatMap((feature) => typeof feature.properties?.id === "string" ? [feature.properties.id] : []) ?? [];
+      const hitLegIds = map.queryRenderedFeatures(event.point, { layers: ["trip-route-hit"] })
+        .flatMap((feature) => typeof feature.properties?.id === "string" ? [feature.properties.id] : []);
       const id = mapRouteLegIdAtPoint(spatialLegs, hitLegIds, event.point, (coordinates) => map.project(coordinates), selectedLegIdRef.current);
       const leg = spatialLegs.find((candidate) => candidate.id === id);
       if (leg) onLegSelectRef.current?.(leg);
@@ -692,13 +698,13 @@ export function JourneyPlannerMap({
           id: stop.id,
           sequence: index + 1,
           name: stop.city,
-          interactive: domainSelection,
+          interactive: domainSelection && stopSelectionEnabled,
           selected: stop.id === selectedId,
           origin: isOrigin,
           journeyEnd: isDestination,
         });
         element.classList.toggle("is-featured", stop.id === featuredStopId);
-        if (domainSelection) element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
+        if (domainSelection && stopSelectionEnabled) element.setAttribute("aria-label", `Show ${stop.city}, ${relationship}`);
         const number = element.querySelector<HTMLElement>(".planner-map__stop-number");
         if (number) number.textContent = presentationOnly
           ? String(index + 1)
@@ -732,8 +738,8 @@ export function JourneyPlannerMap({
           markerElement.classList.toggle("is-previewed", markerElement.dataset.mapStopId === id);
           markerElement.classList.toggle("is-preview-suppressed", Boolean(id) && markerElement.dataset.mapStopId !== id);
         });
-        if (domainSelection) {
-          element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onSelectRef.current(stop.id); });
+        if (domainSelection && stopSelectionEnabled) {
+          bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onSelectRef.current(stop.id); });
           element.addEventListener("mouseenter", () => previewStop(stop.id));
           element.addEventListener("mouseleave", () => previewStop(undefined));
           element.addEventListener("focus", () => previewStop(stop.id));
@@ -745,7 +751,7 @@ export function JourneyPlannerMap({
     if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawMarkers();
     else map.once("load", drawMarkers);
     return () => { map.off("load", drawMarkers); };
-  }, [destinationCards, domainSelection, presentationOnly, stops]);
+  }, [destinationCards, domainSelection, presentationOnly, stopSelectionEnabled, stops]);
 
   useEffect(() => {
     const mappedStops = stops.filter((stop) => stop.coordinates);
@@ -769,15 +775,16 @@ export function JourneyPlannerMap({
     const drawPins = () => {
       pinMarkersRef.current.forEach((marker) => marker.remove());
       pinMarkersRef.current = plannerPins.map((pin) => {
-        const element = document.createElement("button");
-        element.type = "button";
-        element.className = `planner-map__pin is-${pin.category} ${pin.id === selectedPlannerPinIdRef.current ? "is-active" : ""}`;
+        const interactive = !interactivePlannerPinIds || interactivePlannerPinIds.includes(pin.id);
+        const element = document.createElement(interactive ? "button" : "div");
+        if (element instanceof HTMLButtonElement) element.type = "button";
+        element.className = `planner-map__pin is-${pin.category} ${interactive ? "" : "is-context-only"} ${pin.id === selectedPlannerPinIdRef.current ? "is-active" : ""}`;
         element.dataset.plannerPinId = pin.id;
-        element.setAttribute("aria-label", `Show ${pin.title}`);
-        element.title = `Show ${pin.title}`;
+        if (interactive) element.setAttribute("aria-label", `Show ${pin.title}`);
+        else { element.setAttribute("aria-hidden", "true"); element.style.pointerEvents = "none"; }
+        element.title = pin.title;
         element.innerHTML = `<span>${pinSymbols[pin.category]}</span>`;
-        const selectPin = (event: Event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onPlannerPinSelectRef.current(pin); };
-        element.addEventListener("click", selectPin);
+        if (interactive) bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onPlannerPinSelectRef.current(pin); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat([pin.longitude, pin.latitude]).addTo(map);
       });
     };
@@ -785,7 +792,7 @@ export function JourneyPlannerMap({
     else if (hasMorroviaActiveStyle(map as unknown as MorroviaBasemapMap)) drawPins();
     else map.once("load", drawPins);
     return () => { map.off("load", drawPins); };
-  }, [domainSelection, plannerPins, surface.variant]);
+  }, [domainSelection, interactivePlannerPinIds, plannerPins, surface.variant]);
 
   useEffect(() => {
     pinMarkersRef.current.forEach((marker) => {
@@ -813,7 +820,7 @@ export function JourneyPlannerMap({
         element.title = `Show ${place.name}`;
         const PlaceIcon = place.kind === "stay" ? BedDouble : place.kind === "eat" ? Utensils : Landmark;
         element.innerHTML = renderToStaticMarkup(<><PlaceIcon aria-hidden="true" /><span>{place.price ? `${place.price.currency} ${Math.round(place.price.total)}` : place.kind === "stay" ? "Stay" : place.kind === "eat" ? "Eat" : "See"}</span></>);
-        element.addEventListener("click", (event) => { event.stopPropagation(); interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
+        bindMapMarkerActivation(element, () => { interruptMapCamera(map as unknown as MapCamera); currentCameraRequestRef.current = null; onMapResultSelectRef.current?.(place); });
         return new maplibregl.Marker({ element, anchor: "bottom" }).setLngLat(place.coordinates).addTo(map);
       });
     };

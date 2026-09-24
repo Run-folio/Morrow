@@ -30,7 +30,7 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForO
 import { canApplyCanonicalCopilotChange, tripEditorSyncAction, tripSyncRecoveryPath, tripSyncSignInPath } from "@/lib/easyt/trip-continuity";
 import { createTripMutationPersistenceQueue, mergeTripMutationDocuments } from "@/lib/easyt/trip-mutation-persistence";
 import { addMappedPlaceToTrip, removeMappedPlaceFromTrip } from "@/lib/easyt/map-place-itinerary";
-import { mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mergeMapResults, projectPersistedMapResults, type MapResultPlace } from "@/lib/easyt/map-result-selection";
+import { mapResultForDiscoveryPlace, mapResultForHandoffTarget, mapResultForLocalPlace, mapResultForSourceAtStop, mapResultPlanItem, mergeMapResults, projectPersistedMapResults, reconcileMapResultSelection, reconcilePlannerPinSelection, type MapResultPlace } from "@/lib/easyt/map-result-selection";
 import { itineraryIdeaForLocalPlace, itineraryIdeaForPlace, preferredItineraryIdeaDay, removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea } from "@/lib/easyt/itinerary-ideas";
 import { recommendationDetailForMapResult } from "@/lib/easyt/recommendation-detail";
 import { preferredItineraryDayPart, setDiscoveryPlaceScheduled } from "@/lib/easyt/itinerary-activity-placement";
@@ -437,6 +437,7 @@ export function JourneyMapPlannerWorkspace({
   const [localMapPlaces, setLocalMapPlaces] = useState<JourneyLocalPlace[]>(storyState?.localPlaces ?? []);
   const [seeMapPlaces, setSeeMapPlaces] = useState<JourneyItineraryDiscoveryResult[]>([]);
   const [selectedMapResult, setSelectedMapResult] = useState<MapResultPlace | null>(null);
+  const lastVisibleMapResultIdRef = useRef<string | null>(null);
   const [plannerWarning, setPlannerWarning] = useState("");
   const [lastPlannerTrip, setLastPlannerTrip] = useState<EasyTTrip | null>(null);
   const [undoMessage, setUndoMessage] = useState("");
@@ -799,14 +800,14 @@ export function JourneyMapPlannerWorkspace({
     .map((result) => result.sourceId), [mapResults, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   const selectedLocalPlace = selectedMapResult;
   const selectedLocalPlaceId = selectedMapResult?.selectionId ?? null;
-  const selectedRecommendationPart = customTrip && selectedPlanItem && selectedLocalPlace && selectedLocalPlace.kind !== "stay"
+  const selectedRecommendationPart = customTrip && selectedPlanItem && selectedLocalPlace && selectedLocalPlace.kind !== "stay" && selectedLocalPlace.stopId === selectedPlanItem.stopId
     ? mapPlanFreeTimePart ?? preferredItineraryDayPart(customTrip, selectedPlanItem.id, selectedLocalPlace.kind === "eat" ? "restaurant" : "activity")
     : null;
   const selectedRecommendationDetail = customTrip && selectedLocalPlace
     ? recommendationDetailForMapResult({
       trip: customTrip,
       result: selectedLocalPlace,
-      context: { surface: "map", activeDayId: selectedPlanItem?.id, activeDayPart: selectedRecommendationPart },
+      context: { surface: "map", activeDayId: selectedPlanItem?.stopId === selectedLocalPlace.stopId ? selectedPlanItem.id : undefined, activeDayPart: selectedRecommendationPart },
     })
     : null;
   const selectedMapStopFirstItem = customTrip?.planItems.filter((item) => item.stopId === selectedTripStop?.id).sort((left, right) => left.dayNumber - right.dayNumber)[0];
@@ -871,7 +872,7 @@ export function JourneyMapPlannerWorkspace({
   const showDayPlanner = Boolean(hasCanonicalPlanner && selected.coordinates && mapMode === "detail" && !selectedPlannerPin && !selectedRouteLeg);
   const mobileMapSheetView = tripStatusExpanded
     ? "status"
-    : shapeDayTab === "plan" && (pinPlacementMode || Boolean(pinCoordinates) || Boolean(selectedPlannerPin))
+    : shapeDayTab === "plan" && (pinPlacementMode || Boolean(pinCoordinates))
       ? "pin"
       : mobileShapeDayOpen
         ? "planner"
@@ -957,11 +958,20 @@ export function JourneyMapPlannerWorkspace({
     setMobileMapSheetSize("medium");
   }, [clearSelectedLocalPlace]);
   const selectMapResult = useCallback((result: MapResultPlace) => {
+    if (customTrip && result.stopId && customTrip.stops.some((stop) => stop.id === result.stopId)) {
+      const item = mapResultPlanItem(customTrip, result);
+      setSelectedMapStopId(result.stopId);
+      setMapDetailScope("stop");
+      if (item) {
+        setSelectedId(`${customTrip.id}-day-${item.dayNumber}`);
+        setSelectedDayId(`${customTrip.id}-calendar-${item.dayNumber}`);
+      }
+    }
     setSelectedMapResult(result);
     setSelectedPlannerPin(null);
     setSelectedRouteLegId(null);
     setMapMode("detail");
-  }, []);
+  }, [customTrip]);
   const selectMapPlanItem = useCallback((selectionId: string) => {
     const result = mapResults.find((candidate) => candidate.selectionId === selectionId);
     if (!result || result.stopId !== selectedPlanItem?.stopId || result.dayNumber !== selectedPlanItem.dayNumber) return;
@@ -1007,26 +1017,37 @@ export function JourneyMapPlannerWorkspace({
   }, []);
   const selectLocalPlace = useCallback((place: JourneyLocalPlace) => {
     const kind = localFinderKind === "stay" ? "stay" : "eat";
-    selectMapResult(mapResults.find((result) => result.kind === kind && result.sourceId === place.id)
-      ?? mapResultForLocalPlace(place, kind));
-  }, [localFinderKind, mapResults, selectMapResult]);
+    const stopId = selectedPlanItem?.stopId ?? selectedMapStopId;
+    const dayNumber = selectedPlanItem?.dayNumber ?? null;
+    selectMapResult(mapResultForSourceAtStop(mapResults, kind, place.id, stopId, dayNumber)
+      ?? mapResultForLocalPlace(place, kind, { stopId, dayNumber }));
+  }, [localFinderKind, mapResults, selectMapResult, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   const focusLocalPlace = useCallback((place: JourneyLocalPlace) => {
     const kind = localFinderKind === "stay" ? "stay" : "eat";
-    selectMapResult(mapResults.find((result) => result.kind === kind && result.sourceId === place.id)
-      ?? mapResultForLocalPlace(place, kind));
+    const stopId = selectedPlanItem?.stopId ?? selectedMapStopId;
+    const dayNumber = selectedPlanItem?.dayNumber ?? null;
+    selectMapResult(mapResultForSourceAtStop(mapResults, kind, place.id, stopId, dayNumber)
+      ?? mapResultForLocalPlace(place, kind, { stopId, dayNumber }));
     setMobileShapeDayOpen(false);
-  }, [localFinderKind, mapResults, selectMapResult]);
+  }, [localFinderKind, mapResults, selectMapResult, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   const selectSeePlace = useCallback((place: JourneyItineraryDiscoveryResult) => {
-    const result = mapResults.find((candidate) => candidate.kind === "see" && candidate.sourceId === place.id)
-      ?? mapResultForDiscoveryPlace(place);
+    const stopId = selectedPlanItem?.stopId ?? selectedMapStopId;
+    const dayNumber = selectedPlanItem?.dayNumber ?? null;
+    const result = mapResultForSourceAtStop(mapResults, "see", place.id, stopId, dayNumber)
+      ?? mapResultForDiscoveryPlace(place, { stopId, dayNumber });
     if (result) selectMapResult(result);
-  }, [mapResults, selectMapResult]);
+  }, [mapResults, selectMapResult, selectedMapStopId, selectedPlanItem?.dayNumber, selectedPlanItem?.stopId]);
   useEffect(() => {
-    if (!selectedMapResult) return;
-    const current = mapResults.find((result) => result.selectionId === selectedMapResult.selectionId)
-      ?? mapResults.find((result) => result.kind === selectedMapResult.kind && result.sourceId === selectedMapResult.sourceId);
-    if (current && current !== selectedMapResult) setSelectedMapResult(current);
+    const current = reconcileMapResultSelection(selectedMapResult, mapResults, lastVisibleMapResultIdRef.current);
+    if (!selectedMapResult) lastVisibleMapResultIdRef.current = null;
+    else if (current && mapResults.some((result) => result.selectionId === current.selectionId)) lastVisibleMapResultIdRef.current = current.selectionId;
+    if (current !== selectedMapResult) setSelectedMapResult(current);
   }, [mapResults, selectedMapResult]);
+  useEffect(() => {
+    if (!customTrip || !selectedPlannerPin) return;
+    const current = reconcilePlannerPinSelection(selectedPlannerPin, customTrip.brief.mapPins ?? []);
+    if (current !== selectedPlannerPin) setSelectedPlannerPin(current);
+  }, [customTrip, selectedPlannerPin]);
   const resetWholeRoute = useCallback(() => {
     setSelectedMapResult(null);
     setSelectedPlannerPin(null);
@@ -1556,12 +1577,18 @@ export function JourneyMapPlannerWorkspace({
     setPinDraft("");
     setPinCoordinates(null);
     setPinPlacementMode(false);
+    setMobileShapeDayOpen(false);
+    setMobileMapSheetCollapsed(false);
+    setMobileMapSheetSize("medium");
   };
 
   const selectPlannerPin = (pin: PlannerMapPin) => {
     setSelectedPlannerPin(pin);
     setSelectedMapResult(null);
     setSelectedRouteLegId(null);
+    setMobileShapeDayOpen(false);
+    setMobileMapSheetCollapsed(false);
+    setMobileMapSheetSize("medium");
     setPinEditDraft(pin.title);
     // A pin must always lead somewhere visible. The detailed map will centre
     // on its exact coordinates, including pins added on a different day.
@@ -1653,7 +1680,7 @@ export function JourneyMapPlannerWorkspace({
         ? updatePlannerTrip((trip) => selectMappedStayForStop(trip, stopId, stay), "Stay saved for this stop")
         : false;
     }
-    if (!selectedPlanItem) return false;
+    if (!selectedPlanItem || selectedPlanItem.stopId !== selectedLocalPlace.stopId) return false;
     const seePlace = selectedLocalPlace.kind === "see" ? seeMapPlaces.find((place) => place.id === selectedLocalPlace.sourceId) : null;
     if (seePlace) {
       handleAttractionSelection(selectedPlanItem.stopId, seePlace, true);
@@ -2404,6 +2431,7 @@ export function JourneyMapPlannerWorkspace({
               featuredStopId={!selectedRouteLeg && !selectedLocalPlace && !selectedPlannerPin && !copilotOpen ? selectedTripStop?.id ?? canonicalMapStops[0]?.id : undefined}
               destinationCards={canonicalDestinationCards}
               selectedLegId={selectedRouteLegId}
+              selectedPlannerPinId={selectedPlannerPin?.id}
               contextCardsHidden={copilotOpen || pinPlacementMode || Boolean(pinCoordinates)}
               plannerPins={persistedMapProjection.plannerPins}
               mapResults={mapResults}
@@ -2433,6 +2461,7 @@ export function JourneyMapPlannerWorkspace({
                   setSelectedDayId(`${customTrip.id}-calendar-${firstItem.dayNumber}`);
                 }
                 setSelectedMapResult(null);
+                setSelectedPlannerPin(null);
                 setSelectedRouteLegId(null);
                 setMapDetailScope("stop");
                 setMapMode("detail");
@@ -2842,7 +2871,7 @@ export function JourneyMapPlannerWorkspace({
             return changed;
           }}
         /></div> : null}
-        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
+        {(shapeDayTab === "stay" || shapeDayTab === "eat") && selectedBaseCoordinates ? <JourneyLocalFinder key={`${selectedDay.id}-${localFinderKind}`} tripId={customTrip?.id} stopId={selectedTripStop?.id} canonicalPlaceId={selectedTripStop?.canonicalPlaceId} kind={localFinderKind} city={localFinderKind === "stay" ? selectedTripStop?.name ?? selected.city : selected.city} country={localFinderKind === "stay" ? selectedTripStop?.country ?? selected.country : selected.country} locale={language} dayId={selectedDay.id} dayNumber={selectedPlanItem?.dayNumber} coordinates={localFinderKind === "stay" ? selectedBaseCoordinates : selected.coordinates ?? selectedBaseCoordinates} interests={selectedTripInterests} staySearch={selectedStayDates ? { ...selectedStayDates, adults: Math.max(1, customTrip?.travellers ?? 1), rooms: 1, currency: customTrip?.currency } : undefined} selectedPlaceId={selectedMapResult?.kind === (localFinderKind === "stay" ? "stay" : "eat") && (!selectedMapResult.stopId || selectedMapResult.stopId === selectedTripStop?.id) ? selectedMapResult.sourceId : null} savedPlaceIds={localFinderKind === "restaurant" ? scheduledRestaurantIds : undefined} initialState={storyState?.localFinderInitialState} onPlaceSelect={selectLocalPlace} onViewOnMap={focusLocalPlace} onPlacesChange={setLocalMapPlaces} onRestaurantSelect={handleRestaurantSelect} onSavePlace={saveLocalVenue} onRemovePlace={removeLocalVenue} /> : null}
       </aside> : null}
         </div>
       </div>

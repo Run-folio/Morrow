@@ -10,6 +10,27 @@ import {
   morroviaStopMarkerModel,
   setMorroviaStopMarkerState,
 } from "../components/easyt/morrovia-map-markers.ts";
+import { bindMapMarkerActivation } from "../lib/easyt/map-spatial-context.ts";
+
+test("marker pointer, touch and keyboard activation reaches the owner exactly once", () => {
+  const marker = new EventTarget();
+  const activated: string[] = [];
+  const unbind = bindMapMarkerActivation(marker, (event) => activated.push(event.type));
+  const dispatch = (type: string, detail: number) => {
+    const event = new Event(type, { bubbles: true });
+    Object.defineProperty(event, "detail", { value: detail });
+    marker.dispatchEvent(event);
+  };
+
+  dispatch("pointerup", 0); // mouse or touch
+  dispatch("click", 1); // browser's follow-up click
+  assert.deepEqual(activated, ["pointerup"]);
+  dispatch("click", 0); // Enter or Space on the marker button
+  assert.deepEqual(activated, ["pointerup", "click"]);
+  unbind();
+  dispatch("pointerup", 0);
+  assert.deepEqual(activated, ["pointerup", "click"]);
+});
 
 test("surface interaction never hides the requested attribution presentation", () => {
   assert.equal(morroviaMapOptions({ variant: "preview" }, "compact").interactive, false);

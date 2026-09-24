@@ -63,7 +63,6 @@ import {
   itineraryDayLegs,
   itineraryDayMapContext,
   itineraryDayMapSelection,
-  itinerarySelectionForMapPin,
   itinerarySuggestionCandidates,
   type ItineraryDiscoveryPlace,
 } from "@/lib/easyt/itinerary-day-context";
@@ -687,6 +686,16 @@ export default function TripItineraryWorkspace({
     () => active && dayMapContext ? itineraryDayMapSelection(dayMapContext, active, mapSelectionItemId) : null,
     [active, dayMapContext, mapSelectionItemId],
   );
+  const interactiveMapPinIds = useMemo(() => {
+    if (!active || !dayComposition) return [];
+    const activities = [...itineraryDayParts.flatMap((part) => dayComposition.planned[part]), ...dayComposition.unslotted];
+    const ids = activities.flatMap((activity) => activity.mapPinId ? [activity.mapPinId] : []);
+    const activeStop = workingTrip.stops.find((candidate) => candidate.id === active.stopId);
+    if (activeStop && stayBookingForStop(workingTrip, activeStop)) {
+      ids.push(...(workingTrip.brief.mapPins ?? []).filter((pin) => pin.dayNumber === active.dayNumber && pin.category === "stay").map((pin) => pin.id));
+    }
+    return ids;
+  }, [active, dayComposition, workingTrip]);
   const itineraryDaysOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-days");
   const itineraryPlannerOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-planner");
   const itinerarySuggestionsOrientationTarget = useWorkspaceOrientationTarget("itinerary", "itinerary-suggestions");
@@ -1567,6 +1576,8 @@ export default function TripItineraryWorkspace({
               selectedLegId={mapContext.selectedLegId}
               plannerPins={mapContext.pins}
               selectedPlannerPinId={mapContext.selectedPlannerPinId}
+              interactivePlannerPinIds={interactiveMapPinIds}
+              stopSelectionEnabled={false}
               focusCoordinates={mapContext.focusCoordinates}
               focusZoom={12}
               draftPinCoordinates={null}
@@ -1576,7 +1587,12 @@ export default function TripItineraryWorkspace({
               previewLabel={`${copy.mapPreview}: ${stop?.name ?? active.title}`}
               cameraSafeEdge={24}
               onMapPinDrop={() => undefined}
-              onPlannerPinSelect={(pin) => setSelectedItemId(itinerarySelectionForMapPin(pin, active))}
+              onPlannerPinSelect={(pin) => {
+                const activities = dayComposition ? [...itineraryDayParts.flatMap((part) => dayComposition.planned[part]), ...dayComposition.unslotted] : [];
+                const activity = activities.find((candidate) => candidate.mapPinId === pin.id);
+                if (activity) setSelectedItemId(activity.id);
+                else if (pin.category === "stay" && stayBooking) setSelectedItemId(`stay:${stayBooking.id}`);
+              }}
               onLegSelect={(leg) => setSelectedItemId(`leg-${leg.id}`)}
               onSelect={() => undefined}
             /> : null}

@@ -12,6 +12,10 @@ import {
   mapResultHandoffForLocalPlace,
   mergeMapResults,
   projectPersistedMapResults,
+  reconcileMapResultSelection,
+  mapResultForSourceAtStop,
+  mapResultPlanItem,
+  reconcilePlannerPinSelection,
 } from "../lib/easyt/map-result-selection.ts";
 import { mapWorkspaceHref, parseMapWorkspaceTarget } from "../lib/easyt/trip-workspace-links.ts";
 import type { ExploreResult } from "../lib/easyt/explore.ts";
@@ -60,6 +64,56 @@ test("rapid Stay and Eat result switching keeps the latest exact result as canon
   assert.equal(selected?.sourceId, "tokyo-eat-a");
   assert.equal(selected?.kind, "eat");
   assert.deepEqual(selected?.coordinates, tokyoStayA.coordinates);
+});
+
+test("a disappeared result clears, while a pending exact handoff remains selectable", () => {
+  const first = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo", dayNumber: 1 });
+  const second = mapResultForLocalPlace(tokyoStayB, "stay", { stopId: "tokyo", dayNumber: 1 });
+  assert.equal(reconcileMapResultSelection(first, [second], first.selectionId), null);
+  assert.equal(reconcileMapResultSelection(second, [], first.selectionId), second, "a newly selected handoff can precede inventory");
+  assert.equal(reconcileMapResultSelection(second, [first, second], first.selectionId), second);
+  assert.equal(reconcileMapResultSelection(null, [first], first.selectionId), null);
+});
+
+test("result reconciliation never aliases the same venue across repeated stops", () => {
+  const first = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo-first", dayNumber: 1 });
+  const repeated = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo-return", dayNumber: 8 });
+  assert.equal(reconcileMapResultSelection(first, [repeated], first.selectionId), null);
+  assert.notEqual(first.selectionId, repeated.selectionId);
+});
+
+test("finder rows select the current occurrence even when an earlier saved result shares the provider ID", () => {
+  const first = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo-first", dayNumber: 1 });
+  const repeated = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo-return", dayNumber: 8 });
+  assert.equal(mapResultForSourceAtStop([first, repeated], "stay", tokyoStayA.id, "tokyo-return", 8), repeated);
+  assert.equal(mapResultForSourceAtStop([first], "stay", tokyoStayA.id, "tokyo-return", 8), null);
+});
+
+test("Eat and See finder rows never jump to an earlier day at the same stop", () => {
+  const firstEat = mapResultForLocalPlace(tokyoStayA, "eat", { stopId: "tokyo", dayNumber: 1 });
+  const secondEat = mapResultForLocalPlace(tokyoStayA, "eat", { stopId: "tokyo", dayNumber: 2 });
+  const firstSee = mapResultForDiscoveryPlace({ id: "venue", title: "Venue", area: "Tokyo", type: "Culture", coordinates: [139.7, 35.6] }, { stopId: "tokyo", dayNumber: 1 })!;
+  assert.equal(mapResultForSourceAtStop([firstEat], "eat", tokyoStayA.id, "tokyo", 2), null);
+  assert.equal(mapResultForSourceAtStop([firstEat, secondEat], "eat", tokyoStayA.id, "tokyo", 2), secondEat);
+  assert.equal(mapResultForSourceAtStop([firstSee], "see", "venue", "tokyo", 2), null);
+});
+
+test("a cross-stop result pin resolves its own canonical day, including a repeated destination", () => {
+  const trip = tripFixture();
+  trip.stops.push({ ...trip.stops[0]!, id: "tokyo-return", order: 1 });
+  trip.planItems.push({ ...trip.planItems[0]!, id: "tokyo-return-day-8", stopId: "tokyo-return", dayNumber: 8 });
+  const first = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo", dayNumber: 1 });
+  const repeated = mapResultForLocalPlace(tokyoStayA, "stay", { stopId: "tokyo-return", dayNumber: 8 });
+  assert.equal(mapResultPlanItem(trip, first)?.id, "tokyo-day-1");
+  assert.equal(mapResultPlanItem(trip, repeated)?.id, "tokyo-return-day-8");
+  assert.equal(mapResultPlanItem(trip, { ...repeated, stopId: "missing" }), null);
+});
+
+test("a selected saved pin follows canonical edits and clears when removed", () => {
+  const pin = { id: "saved-pin", title: "Old title", category: "activity" as const, dayNumber: 1, longitude: 139.7, latitude: 35.6 };
+  const renamed = { ...pin, title: "New title" };
+  assert.equal(reconcilePlannerPinSelection(pin, [renamed]), renamed);
+  assert.equal(reconcilePlannerPinSelection(pin, []), null);
 });
 
 test("navigation handoff makes the exact target selectable before unrelated inventory arrives", () => {

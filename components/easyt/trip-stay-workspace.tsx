@@ -2,7 +2,7 @@
 
 import { BedDouble, Check, Map as MapIcon, MapPin, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { JourneyLocalFinder, type JourneyLocalFinderInitialState, type JourneyLocalFinderRenderState, type JourneyLocalPlace } from "@/components/journey-local-finder";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import { JourneyRouteStopTrack, type JourneyPlannerStripStop } from "@/components/journey-planner-strip";
@@ -74,10 +74,14 @@ function StayFinderSurface({
     dayNumber: mapDayNumber,
   })), [context.stop.id, finder.candidates, mapDayNumber]);
   const selectedMapResult = selected ? mapResults.find((result) => result.sourceId === selected.id) ?? null : null;
+  const detailRef = useRef<HTMLDivElement>(null);
 
   const selectPlace = (place: JourneyLocalPlace) => {
     setSelectedPlaceId(place.id);
     finder.selectPlace(place);
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      window.requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "start" }));
+    }
   };
 
   const chooseStay = (place: JourneyLocalPlace) => {
@@ -185,7 +189,7 @@ function StayFinderSurface({
         <EasyTLinkButton href={fullMapHref(selected)} icon={MapIcon} variant="quiet" fullWidth>Open full map</EasyTLinkButton>
       </section> : null}
 
-      {detail && selected ? <div className={styles.detail}>
+      {detail && selected ? <div ref={detailRef} className={styles.detail}>
         <ItineraryItemDetail
           detail={detail}
           embedded

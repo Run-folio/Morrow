@@ -136,7 +136,7 @@ test("the map library remains behind intersection and selection never recreates 
   assert.match(map, /await import\("maplibre-gl"\)/);
   assert.match(map, /IntersectionObserver/);
   assert.match(map, /\}, \[stops, title\]\)/);
-  assert.match(map, /event.stopPropagation\(\)/);
+  assert.match(map, /bindMapMarkerActivation/);
   assert.match(map, /morroviaMapOptions\(surface, "expanded"\)/);
   assert.match(map, /surface = \{ variant: "embedded", interaction: "pan-zoom" \}/);
   assert.match(map, /createMorroviaStopMarker/);

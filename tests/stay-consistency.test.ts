@@ -85,7 +85,7 @@ test("Map, Explore, and Stay share JourneyRouteStopTrack while keeping workspace
   assert.match(routeTrack, /active\.scrollIntoView/);
   assert.doesNotMatch(explore, />Open map<\/EasyTLinkButton>/);
   assert.match(routeTrack, />Whole route<\/button>/);
-  assert.match(map, /Fullscreen map/);
+  assert.match(map, /Full screen map/);
   assert.doesNotMatch(stay, /routeTimelineScopeId|scopeId: "all"/);
 });
 

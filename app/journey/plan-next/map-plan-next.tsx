@@ -10,6 +10,8 @@ import { cacheCanonicalTrip, canUseHydratedTripScope, loadActiveTrip, loadLocalT
 import { requestedTripMatch } from "@/lib/easyt/trip-id-resolution";
 import { authClient } from "@/lib/auth-client";
 import type { EasyTTrip, PlannerMapPin } from "@/lib/easyt/trip";
+
+const contextOnlyPlannerPinIds: string[] = [];
 import type { JourneyStop } from "@/lib/journey";
 import { mapRouteLegsFromTrip, type MapRouteLeg } from "@/lib/easyt/map-spatial-context";
 import { transferJourneyModeLabel } from "@/lib/easyt/transfer-journey";
@@ -176,7 +178,7 @@ export default function MapPlanNext() {
       </aside>
 
       <section className={styles.mapSurface} aria-label="Interactive trip map">
-        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }} onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
+        <JourneyPlannerMap stops={map.stops} legs={map.legs} selectedId={selectedStop.id} plannerPins={trip.brief.mapPins ?? []} interactivePlannerPinIds={contextOnlyPlannerPinIds} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }} onMapPinDrop={noopDrop} onPlannerPinSelect={noopPin} onSelect={onSelect} />
       </section>
 
       <aside className={styles.decisions}>

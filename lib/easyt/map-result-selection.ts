@@ -187,6 +187,52 @@ export function mapResultForDiscoveryPlace(place: {
   };
 }
 
+/** Keep one domain selection while inventory refreshes, then clear it if a
+ * previously visible result disappears. Stop IDs prevent repeated places from
+ * being replaced by a same-source sibling on another route occurrence. */
+export function reconcileMapResultSelection(
+  selected: MapResultPlace | null,
+  results: readonly MapResultPlace[],
+  previouslyVisibleSelectionId: string | null,
+): MapResultPlace | null {
+  if (!selected) return null;
+  const current = results.find((result) => result.selectionId === selected.selectionId)
+    ?? results.find((result) => result.kind === selected.kind
+      && result.sourceId === selected.sourceId
+      && result.stopId === selected.stopId);
+  return current ?? (previouslyVisibleSelectionId === selected.selectionId ? null : selected);
+}
+
+/** Resolve a finder row only within the active route-stop occurrence. */
+export function mapResultForSourceAtStop(
+  results: readonly MapResultPlace[],
+  kind: MapResultKind,
+  sourceId: string,
+  stopId: string | null,
+  dayNumber: number | null,
+): MapResultPlace | null {
+  const matches = results.filter((result) => result.kind === kind
+    && result.sourceId === sourceId
+    && result.stopId === stopId);
+  const sameDay = matches.find((result) => result.dayNumber === dayNumber);
+  return sameDay ?? (kind === "stay" ? matches[0] ?? null : null);
+}
+
+/** A map result's own stop/day is authoritative for its detail actions. */
+export function mapResultPlanItem(trip: EasyTTrip, result: MapResultPlace): EasyTTrip["planItems"][number] | null {
+  if (!result.stopId || !trip.stops.some((stop) => stop.id === result.stopId)) return null;
+  return trip.planItems.find((item) => item.stopId === result.stopId && item.dayNumber === result.dayNumber)
+    ?? trip.planItems.find((item) => item.stopId === result.stopId)
+    ?? null;
+}
+
+export function reconcilePlannerPinSelection(
+  selected: PlannerMapPin | null,
+  pins: readonly PlannerMapPin[],
+): PlannerMapPin | null {
+  return selected ? pins.find((pin) => pin.id === selected.id) ?? null : null;
+}
+
 export function projectPersistedMapResults(trip: EasyTTrip | null): {
   results: MapResultPlace[];
   plannerPins: PlannerMapPin[];

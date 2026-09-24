@@ -7,6 +7,7 @@ import { mapRouteCasing, mapRouteHit, mapRouteLine, mapRoutePlanning, mapRouteSe
 import mapPresentation from "@/components/easyt/morrovia-map-presentation.module.css";
 import { installMorroviaMapControls, MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "@/components/easyt/morrovia-map-runtime";
 import { applyMapCameraRequest, type MapCamera } from "@/lib/easyt/map-camera";
+import { bindMapMarkerActivation, mapRouteLegIdAtPoint } from "@/lib/easyt/map-spatial-context";
 import { resolveMapCameraRequest, resolveMapInsets, type MorroviaMapInsets, type MorroviaMapTarget } from "@/lib/easyt/map-surface-policy";
 import { normalizeRouteMapFailure } from "@/lib/easyt/route-map-runtime";
 import { editorialConnectionId, type RouteMapSelection } from "./route-map-selection";
@@ -78,20 +79,22 @@ export default function RouteLiveMap({ title, stops, className, selected = { kin
           origin: stop.index === 0,
           journeyEnd: stop.index === stops.length - 1,
         });
-        marker.addEventListener("click", (event) => {
-          event.stopPropagation();
-          onSelectRef.current?.({ kind: "stop", stopId: stop.id });
-        });
+        bindMapMarkerActivation(marker, () => onSelectRef.current?.({ kind: "stop", stopId: stop.id }));
         return new maplibregl.Marker({ element: marker, anchor: "center" }).setLngLat(stop.coordinates).addTo(map!);
       });
 
       const drawRoute = () => {
         if (!map || map.getSource("route-overview-line")) return;
-        const routeFeatures = stops.slice(0, -1).flatMap((stop, index) => {
+        const connections = stops.slice(0, -1).flatMap((stop, index) => {
           const next = stops[index + 1];
           if (!stop.coordinates || !next.coordinates || ![...stop.coordinates, ...next.coordinates].every(Number.isFinite)) return [];
-          return [{ type: "Feature" as const, properties: { connectionId: editorialConnectionId(stop.id, next.id, stop.onward?.id) }, geometry: { type: "LineString" as const, coordinates: [stop.coordinates, next.coordinates] } }];
+          return [{ id: editorialConnectionId(stop.id, next.id, stop.onward?.id), fromCoordinates: stop.coordinates, toCoordinates: next.coordinates }];
         });
+        const routeFeatures = connections.map((connection) => ({
+          type: "Feature" as const,
+          properties: { connectionId: connection.id },
+          geometry: { type: "LineString" as const, coordinates: [connection.fromCoordinates, connection.toCoordinates] },
+        }));
         map.addSource("route-overview-line", { type: "geojson", data: { type: "FeatureCollection", features: routeFeatures } });
         map.addLayer({ id: "route-overview-casing", type: "line", source: "route-overview-line", paint: mapRouteCasing });
         map.addLayer({ id: "route-overview-line", type: "line", source: "route-overview-line", paint: mapRouteLine });
@@ -99,8 +102,11 @@ export default function RouteLiveMap({ title, stops, className, selected = { kin
         map.addLayer({ id: "route-overview-selected", type: "line", source: "route-overview-line", filter: ["==", ["get", "connectionId"], ""], paint: mapRouteSelected });
         map.addLayer({ id: "route-overview-hit", type: "line", source: "route-overview-line", paint: mapRouteHit });
         map.on("click", "route-overview-hit", (event) => {
-          const connectionId = event.features?.[0]?.properties?.connectionId;
-          if (typeof connectionId === "string") onSelectRef.current?.({ kind: "connection", connectionId });
+          const hitIds = map?.queryRenderedFeatures(event.point, { layers: ["route-overview-hit"] })
+            .flatMap((feature) => typeof feature.properties?.connectionId === "string" ? [feature.properties.connectionId] : []) ?? [];
+          const current = selectionRef.current;
+          const connectionId = map && mapRouteLegIdAtPoint(connections, hitIds, event.point, (coordinates) => map!.project(coordinates), current.kind === "connection" ? current.connectionId : null);
+          if (connectionId) onSelectRef.current?.({ kind: "connection", connectionId });
         });
         map.on("mouseenter", "route-overview-hit", () => { if (map) map.getCanvas().style.cursor = "pointer"; });
         map.on("mouseleave", "route-overview-hit", () => { if (map) map.getCanvas().style.cursor = ""; });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, CarFront, ExternalLink, Map as MapIcon, Plane, Route, Ship, TrainFront, X, type LucideIcon } from "lucide-react";
 import { JourneyPlannerMap } from "@/components/journey-planner-map";
 import type { JourneyStop } from "@/lib/journey";
@@ -87,6 +87,7 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const items = useMemo(() => itineraryTransportAgenda(trip), [trip]);
   const [selectedLegId, setSelectedLegId] = useState<string | null>(items[0]?.leg.id ?? null);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const selectedDetailRef = useRef<HTMLDivElement>(null);
   const [mapLifecycle, setMapLifecycle] = useState<"ready" | "unavailable" | null>(null);
   const effectiveTrip = useMemo(() => tripWithEffectiveTransportChoices(trip), [trip]);
   const mapLegs = useMemo(() => mapRouteLegsFromTrip(effectiveTrip), [effectiveTrip]);
@@ -95,6 +96,13 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
   const needsAttention = items.filter((item) => transportJourneyKnowledge(item.leg) !== "known").length;
   const ready = items.length - needsAttention;
   const headingId = "transport-workspace-heading";
+  const selectJourney = (id: string) => {
+    setSelectedLegId(id);
+    if (window.matchMedia("(max-width: 820px)").matches) {
+      setMobileMapOpen(true);
+      window.requestAnimationFrame(() => selectedDetailRef.current?.scrollIntoView({ block: "start" }));
+    }
+  };
 
   useEffect(() => {
     if (!items.length) setSelectedLegId(null);
@@ -118,20 +126,20 @@ export default function TripTransportWorkspace({ trip, language = "en" }: { trip
     {!items.length ? <div className={styles.empty}><Route aria-hidden="true" /><p>{copy.empty}</p></div> : <div className={styles.layout}>
       <div className={styles.list} aria-label={language === "es" ? "Traslados en orden cronológico" : "Journeys in chronological order"}>
         {items.map((item, index) => <TransportCard item={item} index={index} language={language} copy={copy}
-          selected={item.leg.id === selected?.leg.id} onSelect={() => setSelectedLegId(item.leg.id)} key={item.leg.id} />)}
+          selected={item.leg.id === selected?.leg.id} onSelect={() => selectJourney(item.leg.id)} key={item.leg.id} />)}
       </div>
 
       <aside className={styles.mapPanel} id="transport-route-map" data-mobile-open={mobileMapOpen ? "true" : "false"}
         aria-label={language === "es" ? "Mapa contextual de la ruta" : "Contextual route map"}>
         <div className={styles.mapFrame}>
           {mapLifecycle === "unavailable" ? <div className={styles.mapUnavailable} role="status"><AlertCircle aria-hidden="true" /><p>{copy.mapUnavailable}</p></div> : <JourneyPlannerMap
-            stops={mapStops} legs={mapLegs} selectedId={selected?.to.id ?? mapStops[0]?.id ?? ""} selectedLegId={selectedLegId} contextCardsHidden
+            stops={mapStops} legs={mapLegs} selectedId={selected?.to.id ?? mapStops[0]?.id ?? ""} selectedLegId={selectedLegId} stopSelectionEnabled={false} contextCardsHidden
             plannerPins={[]} focusCoordinates={null} draftPinCoordinates={null} pinPlacementMode={false} overviewMode surface={{ variant: "workspace" }}
             cameraSafeEdge={42} onLifecycleChange={setMapLifecycle}
-            onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onLegSelect={(leg) => setSelectedLegId(leg.id)} onSelect={() => undefined}
+            onMapPinDrop={() => undefined} onPlannerPinSelect={() => undefined} onLegSelect={(leg) => selectJourney(leg.id)} onSelect={() => undefined}
           />}
         </div>
-        {selected ? <SelectedJourneyDetail trip={trip} item={selected} language={language} copy={copy} /> : null}
+        {selected ? <div ref={selectedDetailRef}><SelectedJourneyDetail trip={trip} item={selected} language={language} copy={copy} /></div> : null}
       </aside>
     </div>}
   </section>;

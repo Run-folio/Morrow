@@ -93,8 +93,8 @@ test("the contextual rail renders canonical map, booking, recommendation, and no
   assert.match(itinerary, /itineraryDayMapContext\(workingTrip, active, null\)/);
   assert.match(itinerary, /itineraryDayMapSelection\(dayMapContext, active, mapSelectionItemId\)/);
   assert.match(itinerary, /onLegSelect=\{\(leg\) => setSelectedItemId\(`leg-\$\{leg\.id\}`\)\}/);
-  assert.match(itinerary, /itinerarySelectionForMapPin\(pin, active\)/);
-  assert.match(itinerary, /onPlannerPinSelect=\{\(pin\) => setSelectedItemId\(itinerarySelectionForMapPin\(pin, active\)\)\}/);
+  assert.match(itinerary, /interactivePlannerPinIds=\{interactiveMapPinIds\}/);
+  assert.match(itinerary, /if \(activity\) setSelectedItemId\(activity\.id\)/);
   assert.match(itinerary, /selectedPlannerPinId=\{mapContext\.selectedPlannerPinId\}/);
   assert.match(itinerary, /bookingsForDay\(workingTrip, active, stop\)/);
   assert.match(itinerary, /itineraryDayLegs\(workingTrip, active\)/);
@@ -115,7 +115,7 @@ test("Itinerary uses embedded selection while full Map uses the shared workspace
   assert.match(map, /map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
-  assert.match(map, /\}, \[domainSelection, plannerPins, surface\.variant\]\);/);
+  assert.match(map, /\}, \[domainSelection, interactivePlannerPinIds, plannerPins, surface\.variant\]\);/);
 });
 
 test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook", () => {
