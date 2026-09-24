@@ -100,6 +100,7 @@ projectDiscovery(input: {
   mention: ResolvedPlaceMention; draft: DiscoveryDraft;
   context: { durationDays?: number; interests: string[]; existingPlaceIds: string[] };
 }): DiscoveryProjection;
+discoveryPlaceScore(place: DiscoveryPlace, context: { durationDays?: number; interests: string[]; existingPlaceIds: string[] }): number;
 discoveryEntryForBrief(brief: StructuredTripBrief, existingPlaceIds: string[]):
   { kind: "skip" | "clarification" | "continent" | "country" | "landmark" | "natural-area"; mentionId?: string };
 buildDiscoveryReview(input: { mention: ResolvedPlaceMention; draft: DiscoveryDraft;
@@ -111,6 +112,8 @@ renderDiscoveryReason(language: "en" | "es", place: DiscoveryPlace): string;
 ```
 
 `DiscoveryPlace` is a read-only projection of catalogue identity plus reviewed evidence, not a second catalogue row. `DiscoveryReview` contains `newBaseIds`, `reusedStopIds`, `visits`, `blockedIds`, and existing warning codes; `DiscoveryCommitPorts` binds to Builder's existing `addGuidedPlanningPlace`, `confirmAttractionVisit`, persistence, and completion actions. The review/commit module never imports `trip-builder.tsx`. A browse-only item can be shortlisted but never included in `newBaseIds`. Direction changes retain explicit shortlist IDs and flag out-of-group items for review. `set-step`/Back changes only `step`.
+
+Test examples below assume local `node:test` fixtures. Define `mention(name)` with `resolvePlaceMentions(name).mentions[0]` and an assertion that it exists, as in `tests/country-discovery.test.ts`. For the Task 8 Sydney fixture, use `tripFromBuilder` as in `tests/builder-persistence-acceptance.test.ts`, with an `existing-sydney-stop` carrying canonical ID `sydney`, a manual-night stop ID, and an explicit night allocation. Synthetic Kruger camp/gateway fixtures are typed contract data and never published destination content.
 
 ## Task 1: Canonical Australia evidence and 20+ coverage
 
@@ -141,6 +144,13 @@ assert.equal(discoveryPlaceForId("uluru-kata-tjuta")?.actionability === "overnig
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-content.test.ts`; expected failure: module/20-place threshold absent. Audit 26 candidate identities as a **review queue**, not automatically publishable facts: Sydney, Melbourne, Hobart, Adelaide, Brisbane, Cairns, Airlie Beach, Byron Bay, Gold Coast, Noosa, Port Douglas, Townsville, Darwin, Alice Springs, Uluru–Kata Tjuta, Kakadu, Perth, Fremantle, Margaret River, Broome, Esperance, Launceston, Freycinet, Cradle Mountain, Kangaroo Island, Great Ocean Road. For each published item inspect an official destination/park source, record exact URL, fact supported, reviewer date, coordinates/containment, role, and EN/ES relevance; omit failures and research replacements until at least 20 pass. Route-family `needs-review` is not independent visitor proof.
 - [ ] **Step 3: Implement the smallest data overlay.** Add canonical rows and coordinates to `place-catalog.ts`, keeping identity separate from visitor appeal. Add per-place reviewed evidence and actionability in `australia-discovery-content.ts`; `discovery-content.ts` joins it to canonical rows and validates coordinates, parent country, duplicate IDs, source dates, and image attribution. Parks/natural areas remain `visit` or `browse-only` without a verified base/access relationship. Use existing photo inventory helpers; encode five optional hero keys only after licensed image records exist. Do not silently downgrade missing evidence into an overnight base.
+
+```ts
+const catalog = findCatalogPlaceById(row.id);
+if (!catalog || !catalog.coordinates || !catalog.parentCountries.includes("Australia") || !row.relevance.sources.length) return null;
+const actionability = row.stayEvidence.length && ["city", "town", "transport_gateway"].includes(catalog.placeType)
+  ? "overnight-base" : row.accessEvidence.length ? "visit" : "browse-only";
+```
 - [ ] **Step 4: Run green and commit.** `node --experimental-strip-types --test tests/discovery-content.test.ts tests/destination-knowledge.test.ts tests/place-intelligence.test.ts`; `npm run typecheck`; `git diff --check`. Commit `feat(discovery): curate evidenced Australia collection`. Reviewer can reject this task independently if any of the 20+ rows lacks source support.
 
 ## Task 2: Versioned draft, migration, and durable empty choices
@@ -158,11 +168,22 @@ assert.equal(readDiscoveryDraft({ ...brief, countryDiscoveryChoices: { [mentionI
 assert.notEqual(readDiscoveryDraft(brief, mentionId).status, "migrated");
 const chosen = reduceDiscoveryDraft(createDiscoveryDraft(), { type: "add-shortlist", placeId: "sydney" });
 assert.deepEqual(reduceDiscoveryDraft(chosen, { type: "set-step", step: "directions" }).shortlistIds, ["sydney"]);
-assert.deepEqual(readDiscoveryDraft({ ...brief, discoveryDraftByMentionId: { [mentionId]: { ...chosen, version: 99 } } }, mentionId).status, "unsupported-version");
+const migrated = readDiscoveryDraft({ ...brief, countryDiscoveryChoices: { [mentionId]: [] } }, mentionId);
+assert.equal(readDiscoveryDraft({ ...brief, discoveryDraftByMentionId: { [mentionId]: migrated.draft } }, mentionId).status, "current");
+assert.equal(readDiscoveryDraft({ ...brief, discoveryDraftByMentionId: { [mentionId]: { ...chosen, version: 99 } as unknown as DiscoveryDraft } }, mentionId).status, "unsupported-version");
 ```
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-draft.test.ts tests/structured-trip-brief.test.ts tests/builder-persistence-acceptance.test.ts`; expected new module/field assertions fail. Add a test that an explicitly removed ID is retained through JSON stringify/parse and `mergeStructuredTripBrief`, and a saved draft never recomputes legacy defaults on reload.
 - [ ] **Step 3: Implement.** Freeze version at `1`; define actions `set-step`, `change-direction`, `add-shortlist`, `remove-shortlist`, `choose-base`, `choose-visit-base`, `mark-review-ready`, `mark-confirmed`, `reset`. Persist `removedIds` on explicit removal. `set-step` changes no other property; `change-direction` preserves shortlist/base/visit data but marks out-of-group items for review later. On read: current draft wins; otherwise migrate an own-property legacy array once, including `[]`; absence creates a new draft. Unknown/newer versions preserve raw brief and return an unsupported status that routes to ordinary clarification, never a reset. Write new state only to `discoveryDraftByMentionId`; keep legacy arrays readable without dual writes.
+
+```ts
+if (action.type === "set-step") return { ...draft, step: action.step };
+if (action.type === "remove-shortlist") return {
+  ...draft,
+  shortlistIds: draft.shortlistIds.filter(id => id !== action.placeId),
+  removedIds: [...new Set([...draft.removedIds, action.placeId])],
+};
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run typecheck`, `npm run test:persistence`, `git diff --check`; commit `feat(discovery): persist versioned per-mention draft`.
 
 ## Task 3: Deterministic directions, grouping, ranking, and contract fixtures
@@ -187,6 +208,13 @@ assert.ok(!JSON.stringify(noDuration).includes("fits the current plan"));
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-projection.test.ts tests/country-discovery.test.ts`; expected Australia 20+, directions, and new projection fail. Add data-driven count assertions for source ≥20 → eligible ≥20 → ranked ≥20 → first displayed bounded, with explicit reasons for any rejected row. Test no duration, 6-day and 24-day contexts, Sydney alone, Sydney+Melbourne, fixed non-Australia anchors, nature/coast interests, and explicit removal: the browse count stays broad while recommendation fit changes. Test stable sort and no `route-base:` ID leaks.
 - [ ] **Step 3: Implement.** Define curated, geography/experience group IDs in `discovery-directions.ts` (east/coast, southern cities/coast, Tasmania/nature, west, north/interior are editorial group labels, not feasible route claims). A direction filters presentation only; selected out-of-group IDs remain in the shortlist. Rank by explicit anchor, reviewed interest tag, evidence strength, and geographic diversity with stable ID tie-breaks. A direction can highlight places but cannot add stops. Preserve `country-discovery.ts` behaviour for other countries while Australia consumes this new projection; avoid a worldwide migration.
+
+```ts
+const places = australiaDiscoveryPlaces().filter(place => place.country === "Australia");
+const ranked = [...places].sort((a, b) => discoveryPlaceScore(b, context) - discoveryPlaceScore(a, context) || a.id.localeCompare(b.id));
+const visiblePlaceIds = ranked.filter(place => !draft.directionId || place.groupIds.includes(draft.directionId)).slice(0, 6).map(place => place.id);
+// Keep draft.shortlistIds unchanged when directionId changes.
+```
 - [ ] **Step 4: Add architecture contract fixtures.** `tests/discovery-projection.test.ts` must prove an Africa direction does not silently select a country; Taj remains an anchor while Agra is a base candidate; Kruger park and camp/gateway IDs remain different; Lake Atitlán visit and base differ; a precise route yields no discovery projection. Fixtures may use typed synthetic evidence where production coverage is incomplete and must not publish those examples as travel facts.
 - [ ] **Step 5: Run green and commit.** Run the red command, `npm run typecheck`, `git diff --check`; commit `feat(discovery): project evidenced directions and places`.
 
@@ -209,6 +237,12 @@ assert.equal(discoveryEntryForBrief(extractStructuredTripBrief("Sydney then Melb
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-entry.test.ts tests/discovery-modal-contract.test.ts tests/builder-clarification-followup.test.ts`; expected new owner assertions fail. In `tests/discovery-modal-contract.test.ts`, assert one `role="dialog"`, no nested dialog, Escape closes, return focus is preserved, internal Back emits only `{type:"set-step"}`, and no `history.pushState`/`popstate` integration. Use the existing Storybook/modal source-contract style where DOM simulation is unavailable.
 - [ ] **Step 3: Implement.** Route an actionable precise route directly to Builder. For resolved continent, country, landmark, and park/natural area return a typed entry, but open the new step UI end-to-end only for Australia. Currently unresolved Kruger returns `clarification` until canonical park evidence exists; the classifier must not invent that identity. Other entries keep the current #321 clarification until their evidence is ready; the pure classifier and fixtures establish extensibility without a five-geography rollout. Extract shared modal mechanics rather than growing the 352-line dialog. The new shell renders one scroll owner and one step slot; the Builder file only selects entry, passes callbacks, and retains existing resume state. Do not touch page/router history.
+
+```tsx
+return <BuilderClarificationShell open={open} onDismiss={onClose} title={title}>
+  <DiscoverySteps projection={projection} draft={draft} onAction={onAction} onConfirm={onConfirm} />
+</BuilderClarificationShell>;
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run typecheck`, `npm run build:check`, `git diff --check`; record the `/journey/new` initial JS route size and modal-opening baseline before image/map work, then commit `refactor(discovery): share clarification shell and classify entry`.
 
 ## Task 5: Visual Australia directions, places, shortlist, and locale
@@ -228,6 +262,12 @@ assert.equal(place.actionability === "browse-only" && availableActions(place).in
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-modal-contract.test.ts tests/discovery-localization.test.ts tests/country-discovery-localization.test.ts`; expected new story/copy/action contracts fail.
 - [ ] **Step 3: Implement.** Build image-led direction cards, progressively revealed place cards, clear selected treatment and emerging shortlist, contained search entry, evidence/source disclosure, intentional no-photo state, loading/sparse/error states. Use source-linked photo credits and asset variants; lazy-load place imagery and never request 20 full-resolution assets at once. Do not render English factual reasons directly in JSX. Build Storybook states for Australia directions, dense collection, selected shortlist, browse-only, reused stop, no photo, sparse evidence, review, and English/Spanish. Use 320/390/430/768/1024/1440/1680 viewport parameters.
+
+```tsx
+<EasyTButton aria-pressed={draft.shortlistIds.includes(place.id)} onClick={() => onAction({
+  type: draft.shortlistIds.includes(place.id) ? "remove-shortlist" : "add-shortlist", placeId: place.id,
+})}>{copy.actions.shortlist}</EasyTButton>
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run build-storybook`, `npm run audit:ui`, `npm run typecheck`, `git diff --check`; commit `feat(discovery): render visual Australia exploration`.
 
 ## Task 6: Controlled map ↔ card preview
@@ -246,6 +286,12 @@ assert.equal(discoveryMapTarget("melbourne", places)?.id, "melbourne");
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-map-target.test.ts tests/map-surface-policy.test.ts tests/map-camera-and-icons.test.ts`; expected new exact-target tests fail. Add modal source-contract assertions that card and pin both set the same `highlightedPlaceId`, pin click reveals/focuses the exact card, and no map handler references `addStop` or `onConfirm`.
 - [ ] **Step 3: Implement.** Render preview pins from canonical IDs/coordinates using shared basemap, marker activation, camera, attribution and selected-marker styling. A pin action focuses the matching card; a card action focuses the pin. Map failure/unavailable falls back to cards with a localized status. Mobile Map view is optional and returns to the same highlighted card; no drag gesture is required. Do not persist the highlight, create a second selected-place store, or infer route lines from visual proximity.
+
+```ts
+const target = discoveryMapTarget(place.id, places);
+if (target) bindMapMarkerActivation(markerElement, () => onHighlight(target.id));
+// The matching card's focus handler calls the same onHighlight(place.id).
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run typecheck`, `npm run build-storybook`, `git diff --check`; commit `feat(discovery): link exact map pins and cards`.
 
 ## Task 7: Explicit place actions, search fallback, and resume wiring
@@ -265,6 +311,12 @@ assert.deepEqual(reduceDiscoveryDraft(byCard, { type: "set-step", step: "directi
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-actions.test.ts tests/discovery-draft.test.ts tests/builder-persistence-acceptance.test.ts`; expected new action/search assertions fail. Add close/reload/resume tests using the existing owner-scoped recovery fixtures: explicit deselection stays removed; saved step/direction/base/visit restore; a blocked local save shows recovery feedback and does not claim durable success.
 - [ ] **Step 3: Implement.** Wire Builder hydration and structural snapshot to `discoveryDraftByMentionId` without another local key. Australia uses the new draft as its only write owner; legacy `countryDiscoveryChoices` callbacks remain solely for the unconverted #321 path. The same owner/trip identity and existing save/recovery path handles drafts. On resume revalidate IDs against current content, flag missing evidence, retain the original mention, and never silently replace choices. Back changes step only. A search result must pass canonical containment and actionability gates before entering the draft. No direct route mutation from the modal before Review confirmation.
+
+```ts
+const place = eligiblePlaces.find(item => item.id === result.canonicalPlaceId && item.country === result.country);
+if (!place) return draft;
+return reduceDiscoveryDraft(draft, { type: "add-shortlist", placeId: place.id });
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run test:persistence`, `npm run typecheck`, `git diff --check`; commit `feat(discovery): preserve explicit place choices and resume`.
 
 ## Task 8: Review, existing route intelligence, and idempotent Builder confirmation
@@ -285,6 +337,22 @@ assert.equal(review.primaryAction.kind, "confirm-selected-places");
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-review.test.ts tests/discovery-commit.test.ts tests/country-discovery-builder.test.ts tests/route-candidates.test.ts tests/plan-validator.test.ts`; expected new review/commit assertions fail. Add explicit tests for double-confirm, existing Sydney with manual nights, partial failure after one added stop then retry, old #321 chosen IDs, visit linked to base without a park overnight stop, and a fixed non-Australia anchor. Assert no commit method is called by a direction, pin, card highlight, or Back.
 - [ ] **Step 3: Implement.** Build a read-only review from current Builder route intelligence and `#335` country continuity; carry warning codes and uncertain fit, never claim feasibility from straight-line distance. Primary CTA enumerates the actual new base/visit actions and disables if all choices are unresolved. Confirm sequentially checks current canonical stop IDs before each Add, reuses existing stops/nights, links visits via `PlaceSelection`, records completed IDs only after durable success, and leaves the parent open on partial failure. On retry skip already committed IDs. Only final explicit confirmation calls route mutation ports; all preceding steps are draft-only.
+
+```ts
+const appliedIds: string[] = [];
+for (const canonicalId of review.newBaseIds) {
+  const stop = ports.findExistingStop(canonicalId) ?? await ports.addBase(canonicalId);
+  if (!stop) return { ok: false, committedIds: [], pendingIds: review.newBaseIds };
+  appliedIds.push(canonicalId);
+}
+for (const visit of review.visits) {
+  const base = ports.findExistingStop(visit.baseId);
+  if (!base || !await ports.linkVisit(visit.intentId, base.id)) return { ok: false, committedIds: [], pendingIds: review.newBaseIds };
+}
+if (!await ports.persist()) return { ok: false, committedIds: [], pendingIds: review.newBaseIds };
+ports.completeMention();
+return { ok: true, committedIds: appliedIds, pendingIds: [] };
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run test:night-allocation`, `npm run test:persistence`, `npm run typecheck`, `git diff --check`; commit `feat(discovery): review and confirm canonical Builder choices`.
 
 ## Task 9: Mobile, accessibility, analytics, and performance guardrails
@@ -303,6 +371,12 @@ assert.doesNotMatch(JSON.stringify(event), /rawPrompt|destinationName|coordinate
 
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-analytics.test.ts tests/discovery-performance.test.ts tests/discovery-localization.test.ts tests/discovery-modal-contract.test.ts tests/ui-convergence.test.ts`; expected new guards fail. Compare the `/journey/new` initial JS route artifact against Task 4's baseline after dynamic imports and document the delta in the task commit message. Add `performance.mark`/`performance.measure` around modal open-to-first-useful-card and a local 1,000-run `projectDiscovery` measurement; record results rather than inventing a universal millisecond threshold. Browser timing capture is conditional on the `AGENTS.md` opt-in rule.
 - [ ] **Step 3: Implement.** Use `100dvh`/safe-area layout with one content scroll owner and a compact action area that never overlays the last card; provide bottom padding, keyboard focus visibility, announcements, reduced motion, no-photo and map-failure alternatives. Add complete EN/ES labels. Add only the minimal funnel events to `LaunchAnalyticsEventMap` and `jtbd-analytics.md`, respecting consent and first-reached rules. Lazy-load MapLibre behind Task 6's dynamic map and image variants as cards enter view; memoize candidate projections and avoid rerendering all 20+ cards when highlight changes.
+
+```tsx
+const DiscoveryMap = dynamic(() => import("./discovery-map").then(module => module.DiscoveryMap), { ssr: false });
+<div className={styles.body}>{stepContent}</div>
+<div className={styles.actions}>{primaryAction}</div>
+```
 - [ ] **Step 4: Run green and commit.** Run the red command, `npm run typecheck`, `npm run build:check`, `npm run audit:ui`, `npm run build-storybook`, `git diff --check`; commit `feat(discovery): harden responsive accessible funnel`.
 
 ## Task 10: Whole-slice acceptance and independent review
