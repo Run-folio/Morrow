@@ -49,7 +49,7 @@ import { summarizeStampRows } from "@/lib/easyt/stamps";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
 import { dashboardHeroTrip } from "@/lib/easyt/trip-status";
-import { tripReadinessSummary } from "@/lib/easyt/trip-readiness-summary";
+import { accommodationProgress } from "@/lib/easyt/accommodation";
 import { mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { routeDestinationPhoto } from "@/lib/easyt/route-images";
 import { dashboardLibraryTrips, type DashboardLibraryView, type DashboardSortMode } from "@/lib/easyt/dashboard-library";
@@ -712,8 +712,8 @@ export function TripCard({ kind, trip, language, copy, recoveryIssues, working, 
   const resolvedKind = kind ?? (trip.status === "draft" ? "idea" : trip.status === "archived" ? "past" : "upcoming");
   const title = tripDisplayTitle(trip);
   const photo = dashboardTripPhoto(trip);
-  const readiness = tripReadinessSummary(trip);
-  const staySignal = readiness.signals.find((signal) => signal.id === "stays");
+  const stays = accommodationProgress(trip);
+  const stayLabel = stays.stops.length ? `${stays.sortedCount} of ${stays.stops.length} stays sorted` : "Overnight stays to confirm";
   const primaryHref = resolvedKind === "idea" ? `/journey/new?trip=${encodeURIComponent(trip.id)}` : tripWorkspaceHref(trip.id);
   const primaryLabel = resolvedKind === "idea"
     ? (language === "es" ? "Seguir planificando" : "Continue planning")
@@ -731,7 +731,7 @@ export function TripCard({ kind, trip, language, copy, recoveryIssues, working, 
       <h3><Link href={primaryHref} onClick={() => resolvedKind === "idea" ? trackEvent("trip_edit_started", { trip_id: trip.id, source: "dashboard" }) : trackTripReopened(trip)}>{title}</Link></h3>
       <p className={styles.tripRoute}>{routeLabel(trip, copy.routeWaiting)}</p>
       <p className={styles.tripFacts}><time>{formatTripDates(trip, language)}</time><span>{totalNights(trip)} {language === "es" ? "noches" : "nights"}</span><span>{trip.stops.length} {language === "es" ? "paradas" : "stops"}</span></p>
-      {staySignal && resolvedKind !== "past" ? <p className={styles.readinessLine}>{staySignal.label}<ArrowRight aria-hidden="true" /></p> : null}
+      {resolvedKind !== "past" ? <p className={styles.readinessLine}>{stayLabel}<ArrowRight aria-hidden="true" /></p> : null}
       {recoveryIssue ? <div className={styles.tripRecoveryNotice} role="status">
         <strong>{recoveryIssue.tripTitle} has device changes to review</strong>
         <span>The cloud trip remains saved.</span>

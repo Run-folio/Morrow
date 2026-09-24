@@ -36,7 +36,7 @@ test("lifecycle state selects truthful journey sections and readiness copy", () 
   assert.match(dashboard, /const upcomingTrips = useMemo/);
   assert.match(dashboard, /const ideaTrips = useMemo/);
   assert.match(dashboard, /const pastTrips = useMemo/);
-  assert.match(dashboard, /staySignal && resolvedKind !== "past"/);
+  assert.match(dashboard, /resolvedKind !== "past" \? <p className=\{styles\.readinessLine\}>\{stayLabel\}/);
   assert.match(dashboardStyles, /\.readinessLine \{[\s\S]*?var\(--morrovia-muted\)/);
 });
 
