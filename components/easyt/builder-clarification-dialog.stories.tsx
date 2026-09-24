@@ -104,6 +104,7 @@ export const CountryDiscoverySpanish: Story = {
     search: { ...bulgariaSearch, label: "Buscar dentro de Tajikistan", placeholder: "Buscar dentro de Tajikistan", contextCountries: ["Tajikistan"], parentConstraint: { canonicalName: "Tajikistan", placeType: "country", parentCountries: ["Tajikistan"] } },
     doneLabel: "Continuar",
     finishLaterLabel: "Terminar más tarde",
+    removeLabel: "Quitar Tajikistan del viaje",
   },
   render: (args) => <CountryDiscoveryFixture {...args} />,
 };
@@ -117,6 +118,7 @@ export const CountryDiscoverySpanishSparse: Story = {
     search: { ...bulgariaSearch, label: "Buscar dentro de Eritrea", placeholder: "Buscar dentro de Eritrea", contextCountries: ["Eritrea"], parentConstraint: { canonicalName: "Eritrea", placeType: "country", parentCountries: ["Eritrea"] } },
     doneDisabled: true,
     doneDisabledReason: "Elige al menos un lugar para Eritrea antes de completarlo.",
+    removeLabel: "Quitar Eritrea del viaje",
   },
 };
 

@@ -114,17 +114,18 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.match(source, /className=\{styles\.transfer\}><ArrowRight/);
   assert.match(source, /className=\{styles\.stopOverlay\}/);
   assert.match(source, /href=\{`\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/map`\}/);
-  assert.match(source, /<JourneyPlannerMap[\s\S]*overviewMode previewMode/);
+  assert.match(source, /<JourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/);
   assert.doesNotMatch(source, /View full map/);
   assert.doesNotMatch(source, /GEORGIA|Tbilisi|Stepantsminda|Ushguli|Mestia/);
 });
 
-test("the Overview map is the shared MapLibre surface in non-interactive preview mode", () => {
-  assert.match(mapSource, /previewMode\?: boolean/);
-  assert.match(mapSource, /interactive: !previewMode/);
-  assert.match(mapSource, /if \(!previewMode\) map\.addControl/);
-  assert.match(mapSource, /number\.textContent = previewMode[\s\S]*String\(index \+ 1\)/);
-  assert.match(mapSource, /previewMode \? previewLabel \?\? "Whole-trip route map preview" : "Interactive trip map"/);
+test("the Overview map uses the shared non-interactive preview surface policy", () => {
+  assert.match(mapSource, /surface: MorroviaMapSurface/);
+  assert.match(mapSource, /const presentationOnly = surface\.variant === "preview"/);
+  assert.match(mapSource, /morroviaMapOptions\(surface, "compact"\)/);
+  assert.match(mapSource, /installMorroviaMapControls\(map, maplibregl, surface\)/);
+  assert.match(mapSource, /number\.textContent = presentationOnly[\s\S]*String\(index \+ 1\)/);
+  assert.match(mapSource, /presentationOnly \? previewLabel \?\? "Whole-trip route map preview" : "Interactive trip map"/);
   assert.equal((mapSource.match(/new maplibregl\.Map\(/g) ?? []).length, 1);
 });
 

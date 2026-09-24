@@ -89,13 +89,12 @@ test("device-copy recovery is calm, explicit, and links to the protected review 
 
 test("the contextual rail renders canonical map, booking, recommendation, and note data", () => {
   assert.match(itinerary, /<JourneyPlannerMap/);
-  assert.match(itinerary, /previewMode/);
+  assert.match(itinerary, /surface=\{\{ variant: "embedded", interaction: "selection-only" \}\}/);
   assert.match(itinerary, /itineraryDayMapContext\(workingTrip, active, null\)/);
   assert.match(itinerary, /itineraryDayMapSelection\(dayMapContext, active, mapSelectionItemId\)/);
   assert.match(itinerary, /onLegSelect=\{\(leg\) => setSelectedItemId\(`leg-\$\{leg\.id\}`\)\}/);
-  assert.match(itinerary, /closest<HTMLElement>\("\[data-planner-pin-id\]"\)/);
   assert.match(itinerary, /itinerarySelectionForMapPin\(pin, active\)/);
-  assert.match(itinerary, /onPointerDownCapture=\{\(event\) => selectPreviewPin\(event\.target\)\}/);
+  assert.match(itinerary, /onPlannerPinSelect=\{\(pin\) => setSelectedItemId\(itinerarySelectionForMapPin\(pin, active\)\)\}/);
   assert.match(itinerary, /selectedPlannerPinId=\{mapContext\.selectedPlannerPinId\}/);
   assert.match(itinerary, /bookingsForDay\(workingTrip, active, stop\)/);
   assert.match(itinerary, /itineraryDayLegs\(workingTrip, active\)/);
@@ -107,15 +106,16 @@ test("the contextual rail renders canonical map, booking, recommendation, and no
   assert.doesNotMatch(itinerary, /weather|planned percentage|82%/i);
 });
 
-test("the itinerary preview is opt-in and the main Map default remains interactive", () => {
-  assert.match(map, /previewMode = false/);
+test("Itinerary uses embedded selection while full Map uses the shared workspace policy", () => {
+  assert.match(map, /const presentationOnly = surface\.variant === "preview"/);
+  assert.match(map, /const policy = resolveMapSurfacePolicy\(surface\)/);
   assert.match(map, /selectedPlannerPinId = null/);
-  assert.match(map, /interactive: !previewMode/);
+  assert.match(map, /morroviaMapOptions\(surface, "compact"\)/);
   assert.match(map, /previewLabel \?\? "Whole-trip route map preview"/);
   assert.match(map, /map\.remove\(\);\s*map\.off\("error", handleMapError\)/);
   assert.match(map, /map\.on\("error", handleMapError\)/);
   assert.match(map, /basemapLifecycle\.handleError\(event\)/);
-  assert.match(map, /\}, \[plannerPins, previewMode\]\);/);
+  assert.match(map, /\}, \[domainSelection, plannerPins, surface\.variant\]\);/);
 });
 
 test("Itinerary suggestions reuse discovery, the canonical idea bridge, Map's mapped-place mutation, and the shared persistence hook", () => {

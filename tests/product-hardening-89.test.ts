@@ -53,7 +53,8 @@ test("workspace landmarks and tab panels keep valid, distinguishable semantics",
   const stamps = read("app/journey/stamped/stamped-client.tsx");
   const mapStory = read("components/easyt/trip-map-workspace.stories.tsx");
 
-  assert.match(itinerary, /<div\s+className=\{styles\.dayPanel\}\s+role="tabpanel"/);
+  assert.match(itinerary, /<div\s+className=\{styles\.dayPanel\}\s+role=\{workspaceView === "days" \? "tabpanel" : "region"\}/);
+  assert.match(itinerary, /aria-labelledby=\{workspaceView === "days" \? `\$\{tabIdPrefix\}-tab-\$\{index\}` : undefined\}/);
   assert.doesNotMatch(itinerary, /<article\s+className=\{styles\.dayPanel\}\s+role="tabpanel"/);
   assert.match(map, /aria-label="Selected map context" aria-live="polite"/);
   assert.match(stamps, /<h2>\{selectedCountry\.name\}<\/h2>/);

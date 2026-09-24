@@ -84,22 +84,20 @@ test("dashboard route previews release off-screen MapLibre owners", () => {
   assert.match(dashboardSource, /routePreviewFallback/);
 });
 
-test("Itinerary preview selection does not recreate map pins or redraw route data", () => {
+test("embedded Itinerary selection updates pins without making the map a presentation-only preview", () => {
   const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
-  assert.match(mapSource, /const routeFocusKey = previewMode \? null : focusCoordinates/);
-  assert.match(mapSource, /const routeSelectionKey = previewMode \? null : selectedLegId/);
-  assert.match(mapSource, /\}, \[plannerPins, previewMode\]\);/);
+  assert.match(mapSource, /const routeFocusKey = presentationOnly \? null : focusCoordinates/);
+  assert.match(mapSource, /const routeSelectionKey = presentationOnly \? null : selectedLegId/);
+  assert.match(mapSource, /\}, \[domainSelection, plannerPins, surface\.variant\]\);/);
   assert.match(mapSource, /selectedPlannerPinIdRef\.current/);
-  assert.match(mapSource, /if \(previewMode\) \{[\s\S]*element\.addEventListener\("pointerdown", selectPin\)/);
-  assert.match(mapSource, /element\.addEventListener\("mousedown", selectPin\)/);
   assert.match(mapSource, /element\.addEventListener\("click", selectPin\)/);
-  assert.match(mapSource, /else \{\s*element\.addEventListener\("click", selectPin\)/);
+  assert.match(mapSource, /if \(surface\.variant === "embedded"\) drawPins\(\)/);
 });
 
-test("the canonical full Map does not inherit Overview preview mode", () => {
+test("the canonical full Map uses workspace policy rather than Overview preview policy", () => {
   const mapSource = readFileSync("components/journey-planner-map.tsx", "utf8");
   const workspaceSource = readFileSync("components/journey-map-planner-workspace.tsx", "utf8");
-  assert.match(mapSource, /previewMode = false/);
+  assert.match(mapSource, /const presentationOnly = surface\.variant === "preview"/);
   assert.match(workspaceSource, /<JourneyPlannerMap/);
-  assert.doesNotMatch(workspaceSource, /<JourneyPlannerMap[\s\S]{0,800}\bpreviewMode\b/);
+  assert.match(workspaceSource, /surface = \{ variant: "workspace" \}/);
 });

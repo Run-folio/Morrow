@@ -26,7 +26,8 @@ test("Stay settled states are neutral and the mapped-location blocker hands off 
 test("Builder keeps one blocker summary without repeating itinerary invariant copy at the CTA", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
 
-  assert.match(builder, /const timingWarningSummary = gateConflict \? gate/);
+  assert.match(builder, /const showRouteStatus = Boolean\(showTimingWarning \|\| routeRecommendationVisible \|\| routeCoverageNotice \|\| transportReviewNotice\)/);
+  assert.match(builder, /const timingWarningTitle = gateConflict/);
   assert.match(builder, /\{gate && gateConflict\?\.code !== "itinerary-stop-uncovered" && <small className=\{styles\.gate\}>\{gate\}<\/small>\}/);
   assert.doesNotMatch(builder, /\{gateConflict && <li>\{gateConflict\.message\}<\/li>\}/);
 });

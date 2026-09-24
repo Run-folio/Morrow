@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { buildCountryDiscovery } from "../lib/easyt/country-discovery.ts";
@@ -71,4 +72,13 @@ test("country-discovery controls and count-aware CTA are owned by the shared loc
   assert.equal(i18n.countryDiscoveryContinueLabel?.("es", 2), "Continuar con 2 lugares");
   assert.equal(i18n.countryDiscoveryContinueLabel?.("en", 1), "Continue with 1 place");
   assert.equal(i18n.countryDiscoveryContinueLabel?.("en", 2), "Continue with 2 places");
+});
+
+test("Spanish country-discovery stories do not inherit the English removal action", () => {
+  const stories = readFileSync(new URL("../components/easyt/builder-clarification-dialog.stories.tsx", import.meta.url), "utf8");
+  const spanish = stories.split("export const CountryDiscoverySpanish: Story = {")[1]?.split("export const CountryDiscoverySpanishSparse: Story = {")[0];
+  const sparse = stories.split("export const CountryDiscoverySpanishSparse: Story = {")[1]?.split("const japanMention")[0];
+
+  assert.match(spanish ?? "", /removeLabel: "Quitar Tajikistan del viaje"/);
+  assert.match(sparse ?? "", /removeLabel: "Quitar Eritrea del viaje"/);
 });
