@@ -58,6 +58,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
+import { discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
 import { commitDiscoverySelections } from "@/lib/easyt/discovery-confirmation";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -4341,17 +4342,20 @@ function TripBuilderDocument() {
           },
           onSelect: (suggestion) => {
             const parent = planningParentForMention(activeClarificationMention);
-            const withinParent = !parent || placeCandidateWithinPlanningParent({
+            const reviewedPlace = discoveryProjection.places.find((place) => place.id === suggestion.canonicalPlaceId
+              && place.country === suggestion.country);
+            const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";
+            const withinParent = discoveryPlaceWithinMention(suggestion.canonicalPlaceId, activeClarificationMention);
+            const suitableBase = !choosingBase || placeCandidateWithinPlanningParent({
               canonicalName: suggestion.name, placeType: suggestion.placeType,
               parentCountries: [suggestion.country], parentRegionId: suggestion.region,
               coordinates: suggestion.coordinates,
             }, parent);
-            const reviewedPlace = discoveryProjection.places.find((place) => place.id === suggestion.canonicalPlaceId
-              && place.country === suggestion.country);
-            const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";
-            if (!withinParent || !reviewedPlace || (choosingBase && reviewedPlace.actionability !== "overnight-base")) {
+            if (!withinParent || !reviewedPlace || !suitableBase
+              || reviewedPlace.actionability === "browse-only"
+              || (choosingBase && reviewedPlace.actionability !== "overnight-base")) {
               setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
-                ? `Aún no podemos confirmar ${suggestion.name} como base fiable para tu ruta. Tu idea original sigue guardada; busca otro lugar o termina más tarde.`
+                ? `Aún no podemos confirmar ${suggestion.name} como lugar revisado para tu viaje. Tu idea original sigue guardada; busca otro lugar o termina más tarde.`
                 : `We cannot confirm ${suggestion.name} as a reviewed place for your trip yet. Your original idea is saved; search for another place or Finish later.` }));
               return;
             }

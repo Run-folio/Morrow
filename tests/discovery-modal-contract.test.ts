@@ -108,8 +108,13 @@ test("Discovery exposes explicit base, split, reset and reviewed search actions 
   assert.match(steps, /copy\.actions\.visitFromBase/);
   assert.match(steps, /copy\.actions\.splitStay/);
   assert.match(modal, /type: "reset"/);
+  assert.match(modal, /draft\.removedIds\.length/);
   assert.match(builder, /selectCanonicalSearchResult\(/);
-  assert.match(builder, /placeCandidateWithinPlanningParent\(/);
+  assert.match(builder, /discoveryPlaceWithinMention\(/);
+  assert.match(builder, /reviewedPlace\.actionability === "browse-only"/);
+  assert.match(modal, /contextCountries=\{mention\.parentCountries\}/);
+  assert.match(modal, /includeNonRoutable/);
+  assert.doesNotMatch(modal, /parentConstraint=\{entry\.kind/);
   assert.match(builder, /onClose=\{\(\) => \{[\s\S]*?persistDeviceRecovery\(activeTripDocument\)/);
   assert.match(modal, /saveError \? <MorroviaStatusBanner/);
 });

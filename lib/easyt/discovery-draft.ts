@@ -113,7 +113,10 @@ export function selectCanonicalSearchResult(
 ): DiscoveryDraft {
   const place = eligiblePlaces.find(item => item.id === result.canonicalPlaceId && item.country === result.country);
   if (!place) return draft;
-  if (choice.type === "add-shortlist") return reduceDiscoveryDraft(draft, { type: "add-shortlist", placeId: place.id });
+  if (choice.type === "add-shortlist") {
+    if (place.actionability === "browse-only") return draft;
+    return reduceDiscoveryDraft(draft, { type: "add-shortlist", placeId: place.id });
+  }
   if (place.actionability !== "overnight-base" || !place.stayEvidence.length
     || !["city", "town", "transport_gateway"].includes(place.placeType)) return draft;
   return reduceDiscoveryDraft(draft, { type: choice.type, intentId: choice.intentId, baseId: place.id });

@@ -35,6 +35,7 @@ export function CanonicalPlaceAutocomplete({
   value,
   placeholder,
   contextCountries,
+  includeNonRoutable = false,
   parentConstraint,
   nearbyAnchor,
   allowedPlaceTypes,
@@ -61,6 +62,8 @@ export function CanonicalPlaceAutocomplete({
   value: string;
   placeholder: string;
   contextCountries?: string[];
+  /** Discovery can browse reviewed canonical anchors without making them route stops. */
+  includeNonRoutable?: boolean;
   parentConstraint?: PlanningParentConstraint;
   nearbyAnchor?: NearbyBaseAnchor;
   allowedPlaceTypes?: PlaceType[];
@@ -96,7 +99,7 @@ export function CanonicalPlaceAutocomplete({
   const allowedTypeKey = (allowedPlaceTypes ?? []).join("|");
   const parentConstraintKey = JSON.stringify(parentConstraint ?? null);
   const nearbyAnchorKey = JSON.stringify(nearbyAnchor ?? null);
-  const catalogSuggestions = useMemo(() => canonicalPlaceSuggestionsForQuery(deferredValue, contextCountries)
+  const catalogSuggestions = useMemo(() => canonicalPlaceSuggestionsForQuery(deferredValue, contextCountries, 8, includeNonRoutable)
     .filter((suggestion) => !excludeCanonicalIds.includes(suggestion.canonicalPlaceId))
     .filter((suggestion) => !allowedPlaceTypes?.length || allowedPlaceTypes.includes(suggestion.placeType))
     .filter((suggestion) => !nearbyAnchor || Boolean(placeCandidateSuitableAsNearbyBase(nearbyAnchor, {
@@ -114,7 +117,7 @@ export function CanonicalPlaceAutocomplete({
       parentCountries: [suggestion.country],
       parentRegionId: suggestion.region,
       coordinates: suggestion.coordinates,
-    }, parentConstraint)), [allowedPlaceTypes, contextCountries, deferredValue, excludeCanonicalIds, nearbyAnchor, parentConstraint]);
+    }, parentConstraint)), [allowedPlaceTypes, contextCountries, deferredValue, excludeCanonicalIds, includeNonRoutable, nearbyAnchor, parentConstraint]);
 
   useEffect(() => {
     const query = deferredValue.trim();

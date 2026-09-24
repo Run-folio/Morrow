@@ -52,7 +52,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   const searchElement = search ? <CanonicalPlaceAutocomplete language={language} label={`${easytCopy[language].builder.countryDiscovery.searchSpecific}: ${name}`}
     value={search.value} placeholder={copy.searchPlaceholder}
     contextCountries={mention.parentCountries}
-    parentConstraint={entry.kind === "country" || entry.kind === "region" ? { canonicalName: mention.canonicalName, placeType: mention.placeType, parentCountries: mention.parentCountries } : undefined}
+    includeNonRoutable
     invalid={Boolean(search.error)} onChange={search.onChange} onSelect={search.onSelect} /> : undefined;
 
   return <BuilderClarificationShell open={open} itemKey={`${mention.mentionId}:${step}`} title={copy.steps[step]}
@@ -62,7 +62,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     footer={<>
       <div>
         {previousStep ? <EasyTButton disabled={loading} icon={ArrowLeft} variant="quiet" onClick={() => onAction({ type: "set-step", step: previousStep })}>{copy.actions.back}</EasyTButton> : null}
-        {(draft.shortlistIds.length || Object.keys(draft.baseByIntentId).length || Object.keys(draft.visitBaseByIntentId).length || draft.directionId)
+        {(draft.shortlistIds.length || draft.removedIds.length || Object.keys(draft.baseByIntentId).length || Object.keys(draft.visitBaseByIntentId).length || draft.directionId)
           ? <EasyTButton disabled={loading} variant="quiet" onClick={() => {
             onAction({ type: "reset" });
             if (steps[0] !== "directions") onAction({ type: "set-step", step: steps[0] });

@@ -205,6 +205,18 @@ function isWithin(placeId: string, ancestorId: string): boolean {
   return false;
 }
 
+/** Canonical geography for a reviewed shortlist item, independent of overnight suitability. */
+export function discoveryPlaceWithinMention(placeId: string, mention: DiscoveryMention): boolean {
+  const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
+  const place = findCatalogPlaceById(placeId);
+  if (!anchor || !place || anchor.placeType !== mention.placeType) return false;
+  if (anchor.placeType === "country") return place.parentCountries.includes(anchor.canonicalName);
+  if (anchor.placeType === "continent" || anchor.placeType === "macro_region") {
+    return place.parentCountries.some(country => anchor.parentCountries.includes(country));
+  }
+  return isWithin(placeId, anchor.canonicalPlaceId);
+}
+
 export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryPlace[] {
   const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
   if (!anchor || anchor.placeType !== mention.placeType) return [];

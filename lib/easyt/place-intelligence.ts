@@ -693,13 +693,14 @@ export function canonicalPlaceSuggestionsForQuery(
   query: string,
   contextCountries: string[] = [],
   limit = 8,
+  includeNonRoutable = false,
 ): CanonicalPlaceSuggestion[] {
   const normalizedQuery = normalizePlacePhrase(query);
   if (normalizedQuery.length < 2) return [];
   const context = new Set(contextCountries.map(normalizePlacePhrase));
   const ranked: Array<{ score: number; suggestion: CanonicalPlaceSuggestion }> = [];
   for (const entry of PLACE_CATALOG) {
-      if (entry.routability !== "direct_destination" || entry.parentCountries.length !== 1) continue;
+      if ((!includeNonRoutable && entry.routability !== "direct_destination") || entry.parentCountries.length !== 1) continue;
       const labels = [entry.canonicalName, ...entry.aliases].map((label) => ({ label, normalized: normalizePlacePhrase(label) }));
       const exact = labels.some(({ normalized }) => normalized === normalizedQuery);
       const prefix = labels.some(({ normalized }) => normalized.startsWith(normalizedQuery));
