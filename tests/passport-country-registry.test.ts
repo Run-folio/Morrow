@@ -3,6 +3,7 @@ import test from "node:test";
 
 import passportIndex from "../lib/easyt/data/passport-index-visa-matrix.json" with { type: "json" };
 import { countries, countryFor, searchCountries } from "../lib/easyt/country-registry.ts";
+import { PLACE_CATALOG } from "../lib/easyt/place-catalog.ts";
 import {
   passportCountryCodeFor,
   passportCountryLabel,
@@ -118,10 +119,18 @@ test("alias and code search resolves one canonical country without duplicates", 
     "Türkiye": "TR",
     "Republic of Korea": "KR",
     "Ivory Coast": "CI",
+    "Bosnia and Herzegovina": "BA",
   };
   for (const [query, code] of Object.entries(expected)) {
     assert.equal(countryFor(query)?.code, code);
     assert.deepEqual(searchCountries(query).map((country) => country.code), [code]);
+  }
+});
+
+test("every curated place parent country resolves to the canonical country registry", () => {
+  const parentCountries = new Set(PLACE_CATALOG.flatMap((place) => place.parentCountries));
+  for (const name of parentCountries) {
+    assert.ok(countryFor(name), `${name} must not become an unknown-country routing barrier`);
   }
 });
 
