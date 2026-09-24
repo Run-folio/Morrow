@@ -40,8 +40,8 @@ test("partial confirmation leaves the parent open and explains unresolved choice
 
 test("provider-only search has a localized unresolved path with preserved intent", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
-  assert.match(builder, /discoveryConfirmationChoiceForId\(suggestion\.canonicalPlaceId/);
-  assert.match(builder, /"reason" in choice \|\| !suitableBase/);
+  assert.match(builder, /discoveryProjection\.places\.find\(\(place\) => place\.id === suggestion\.canonicalPlaceId/);
+  assert.match(builder, /!withinParent \|\| !reviewedPlace/);
   assert.match(builder, /Your original idea is saved; search for another place or Finish later/);
   assert.match(builder, /Tu idea original sigue guardada; busca otro lugar o termina más tarde/);
 });
@@ -98,4 +98,18 @@ test("Builder confirmation uses the same fail-closed review gate and base as Dis
   assert.match(builder, /const review = discoveryReviewState\(activeClarificationMention\.mentionId, discoveryDraft, discoveryProjection/);
   assert.match(builder, /const selectedBaseId = review\.base\?\.id/);
   assert.match(builder, /!review\.canConfirm/);
+});
+
+test("Discovery exposes explicit base, split, reset and reviewed search actions without early route mutation", () => {
+  const steps = read("components/easyt/discovery-steps.tsx");
+  const modal = read("components/easyt/discovery-modal.tsx");
+  const builder = read("app/journey/new/trip-builder.tsx");
+  assert.match(steps, /copy\.actions\.stayHere/);
+  assert.match(steps, /copy\.actions\.visitFromBase/);
+  assert.match(steps, /copy\.actions\.splitStay/);
+  assert.match(modal, /type: "reset"/);
+  assert.match(builder, /selectCanonicalSearchResult\(/);
+  assert.match(builder, /placeCandidateWithinPlanningParent\(/);
+  assert.match(builder, /onClose=\{\(\) => \{[\s\S]*?persistDeviceRecovery\(activeTripDocument\)/);
+  assert.match(modal, /saveError \? <MorroviaStatusBanner/);
 });

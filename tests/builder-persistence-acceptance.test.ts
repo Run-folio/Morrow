@@ -134,3 +134,33 @@ test("Builder trip persistence retains an explicit empty Discovery draft through
   assert.deepEqual(resumed.draft.shortlistIds, []);
   assert.deepEqual(resumed.draft.removedIds, ["sydney"]);
 });
+
+test("Discovery direction, step, base and visit choices resume under the same owner without replacement", () => {
+  const source = extractStructuredTripBrief("Australia and Petra");
+  const firstId = source.placeMentions![0]!.mentionId;
+  const secondId = source.placeMentions![1]!.mentionId;
+  let first = createDiscoveryDraft();
+  first = reduceDiscoveryDraft(first, { type: "change-direction", directionId: "australia-south" });
+  first = reduceDiscoveryDraft(first, { type: "add-shortlist", placeId: "melbourne" });
+  first = reduceDiscoveryDraft(first, { type: "choose-base", intentId: firstId, baseId: "melbourne" });
+  first = reduceDiscoveryDraft(first, { type: "set-step", step: "review" });
+  const second = reduceDiscoveryDraft(createDiscoveryDraft(), { type: "choose-visit-base", intentId: secondId, baseId: "wadi-musa" });
+  const trip = tripFromBuilder({ id: "trip-discovery-resume", origin: "London", stops: [], startDate: "2026-09-01", endDate: "2026-09-14",
+    picks: {}, mustDo: "Australia and Petra", pace: "slow", hotels: "few", budget: "mid", draft: [], status: "planned",
+    structuredBrief: { ...source, discoveryDraftByMentionId: { [firstId]: first, [secondId]: second } } });
+  const parsed: unknown = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-resume", trip, "2026-09-24T00:00:00.000Z")));
+  assert.ok(isEasyTTrip(parsed));
+  const values = new Map<string, string>();
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; }, key(index) { return [...values.keys()][index] ?? null; },
+    getItem(key) { return values.get(key) ?? null; }, setItem(key, value) { values.set(key, value); }, removeItem(key) { values.delete(key); },
+  };
+  assert.equal(saveTripRecoveryToStorage(storage, parsed, { writeId: "resume-1" }).stored, true);
+  const recovered = loadTripRecoveryFromStorage(storage, parsed.id, "owner-resume")!.trip;
+  assert.deepEqual(readDiscoveryDraft(recovered.brief.structuredBrief!, firstId).draft, first);
+  assert.deepEqual(readDiscoveryDraft(recovered.brief.structuredBrief!, secondId).draft, second);
+  assert.equal(loadTripRecoveryFromStorage(storage, parsed.id, "another-owner"), null);
+  const blocked = saveTripRecoveryToStorage(storage, { ...parsed, brief: { ...parsed.brief, mustDo: "changed" } }, { writeId: "resume-2" });
+  assert.equal(blocked.stored, false);
+  assert.equal(blocked.blockedByExistingRecovery, true);
+});

@@ -46,9 +46,9 @@ function Photo({ imageKey, name, language }: { imageKey: string | null; name: st
   </div>;
 }
 
-function PlaceCard({ place, draft, mention, entry, language, existing, baseId, onAction, onHighlight, onShowOnMap, registerCard, mapAvailable, highlighted }: {
+function PlaceCard({ place, draft, mention, entry, language, existing, baseId, splitSupported, onAction, onHighlight, onShowOnMap, registerCard, mapAvailable, highlighted }: {
   place: DiscoveryPlace; draft: DiscoveryDraft; mention: ResolvedPlaceMention; entry: DiscoveryEntry;
-  language: EasyTLanguage; existing: boolean; baseId: string | null; onAction: Props["onAction"];
+  language: EasyTLanguage; existing: boolean; baseId: string | null; splitSupported: boolean; onAction: Props["onAction"];
   onHighlight: Props["onHighlight"]; onShowOnMap: (id: string) => void;
   registerCard: (id: string, element: HTMLElement | null) => void; mapAvailable: boolean; highlighted: boolean;
 }) {
@@ -86,15 +86,20 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, o
         <EasyTButton variant="quiet" size="small" aria-label={`${copy.actions.explore}: ${place.name}`}
           aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{copy.actions.explore}</EasyTButton>
         {isBaseStep ? actions.includes("choose-base") ? <EasyTButton variant={baseSelected ? "secondary" : "primary"} size="small" icon={baseSelected ? Check : Plus}
-          aria-label={`${copy.actions.chooseBase}: ${place.name}`} aria-pressed={baseSelected}
-          onClick={() => onAction({ type: entry.kind === "landmark" ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id })}>
-          {baseSelected ? copy.roles.chosen : copy.actions.chooseBase}
+          aria-label={`${entry.kind === "landmark" || entry.kind === "natural-area" ? copy.actions.visitFromBase : baseId ? copy.actions.changeBase : copy.actions.chooseBase}: ${place.name}`} aria-pressed={baseSelected}
+          onClick={() => onAction({ type: entry.kind === "landmark" || entry.kind === "natural-area" ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id })}>
+          {baseSelected ? copy.roles.chosen : entry.kind === "landmark" || entry.kind === "natural-area" ? copy.actions.visitFromBase : baseId ? copy.actions.changeBase : copy.actions.chooseBase}
         </EasyTButton> : <span className={styles.notBase}>{copy.notBase}</span>
         : <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
           aria-label={`${selected ? copy.accessibility.removeFromShortlist : copy.accessibility.addToShortlist}: ${place.name}`}
           aria-pressed={selected} onClick={() => onAction({ type: selected ? "remove-shortlist" : "add-shortlist", placeId: place.id })}>
           {selected ? copy.actions.remove : copy.actions.shortlist}
         </EasyTButton>}
+        {!isBaseStep && actions.includes("stay-here") && !baseSelected ? <EasyTButton variant="secondary" size="small"
+          aria-label={`${copy.actions.stayHere}: ${place.name}`}
+          onClick={() => onAction({ type: "choose-base", intentId: mention.mentionId, baseId: place.id })}>{copy.actions.stayHere}</EasyTButton> : null}
+        {!isBaseStep && splitSupported && baseId && baseId !== place.id && !selected && actions.includes("stay-here")
+          ? <EasyTButton variant="quiet" size="small" onClick={() => onAction({ type: "add-shortlist", placeId: place.id })}>{copy.actions.splitStay}</EasyTButton> : null}
       </div>
     </div>
   </article>;
@@ -159,6 +164,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   }, [wantsMap, mapUnavailable, MapComponent, handleMapUnavailable]);
   const visible = allPlaces.slice(0, visibleCount);
   const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
+  const splitSupported = projection.places.filter(place => place.actionability === "overnight-base" && place.stayEvidence.length).length >= 2;
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
   const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
@@ -234,7 +240,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
       <div className={styles.placeColumn}>
         <div className={styles.placeGrid}>{visible.map(place => <PlaceCard key={place.id} place={place} draft={draft} mention={mention}
           entry={entry} language={language} existing={existingPlaceIds.includes(place.id)}
-          baseId={baseId} onAction={onAction} mapAvailable={!mapUnavailable && allPlaces.length > 0}
+          baseId={baseId} splitSupported={splitSupported} onAction={onAction} mapAvailable={!mapUnavailable && allPlaces.length > 0}
           highlighted={highlightedPlaceId === place.id} onHighlight={onHighlight}
           onShowOnMap={id => { onHighlight(id); if (!desktopMapVisible) setMobileMapOpen(true); }} registerCard={registerCard} />)}</div>
         {allPlaces.length > visible.length ? <EasyTButton variant="secondary" className={styles.more} onClick={() => setVisibleCount(count => count + 6)}>

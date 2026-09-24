@@ -1,4 +1,5 @@
 import type { StructuredTripBrief } from "./structured-trip-brief.ts";
+import type { DiscoveryPlace } from "./discovery-content.ts";
 
 export const DISCOVERY_DRAFT_VERSION = 1 as const;
 
@@ -101,4 +102,19 @@ export function reduceDiscoveryDraft(draft: DiscoveryDraft, action: DiscoveryDra
     case "reset":
       return createDiscoveryDraft();
   }
+}
+
+/** Cards and canonical search resolve to the same explicit draft action. */
+export function selectCanonicalSearchResult(
+  draft: DiscoveryDraft,
+  result: { canonicalPlaceId: string; country: string },
+  eligiblePlaces: readonly DiscoveryPlace[],
+  choice: { type: "add-shortlist" } | { type: "choose-base" | "choose-visit-base"; intentId: string } = { type: "add-shortlist" },
+): DiscoveryDraft {
+  const place = eligiblePlaces.find(item => item.id === result.canonicalPlaceId && item.country === result.country);
+  if (!place) return draft;
+  if (choice.type === "add-shortlist") return reduceDiscoveryDraft(draft, { type: "add-shortlist", placeId: place.id });
+  if (place.actionability !== "overnight-base" || !place.stayEvidence.length
+    || !["city", "town", "transport_gateway"].includes(place.placeType)) return draft;
+  return reduceDiscoveryDraft(draft, { type: choice.type, intentId: choice.intentId, baseId: place.id });
 }

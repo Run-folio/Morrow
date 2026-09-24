@@ -13,6 +13,7 @@ import { BuilderClarificationShell } from "./builder-clarification-shell";
 import { DiscoverySteps } from "./discovery-steps";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaSkeleton } from "./morrovia-loading-states";
+import { MorroviaStatusBanner } from "./morrovia-feedback";
 import styles from "./discovery-modal.module.css";
 
 type Search = {
@@ -22,7 +23,7 @@ type Search = {
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
 };
 
-export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, existingPlaceIds = [], loading = false }: {
+export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, existingPlaceIds = [], loading = false, saveError }: {
   open: boolean;
   entry: DiscoveryEntry;
   mention: ResolvedPlaceMention;
@@ -35,6 +36,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   search?: Search;
   existingPlaceIds?: readonly string[];
   loading?: boolean;
+  saveError?: string;
 }) {
   const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
   useEffect(() => setHighlightedPlaceId(null), [mention.mentionId, open]);
@@ -47,7 +49,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   const nextStep = steps[stepIndex + 1];
   const name = mention.canonicalName || mention.sourceText;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
-  const searchElement = search ? <CanonicalPlaceAutocomplete language={language} label={`${copy.searchWithin} ${name}`}
+  const searchElement = search ? <CanonicalPlaceAutocomplete language={language} label={`${easytCopy[language].builder.countryDiscovery.searchSpecific}: ${name}`}
     value={search.value} placeholder={copy.searchPlaceholder}
     contextCountries={mention.parentCountries}
     parentConstraint={entry.kind === "country" || entry.kind === "region" ? { canonicalName: mention.canonicalName, placeType: mention.placeType, parentCountries: mention.parentCountries } : undefined}
@@ -60,6 +62,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     footer={<>
       <div>
         {previousStep ? <EasyTButton disabled={loading} icon={ArrowLeft} variant="quiet" onClick={() => onAction({ type: "set-step", step: previousStep })}>{copy.actions.back}</EasyTButton> : null}
+        {(draft.shortlistIds.length || Object.keys(draft.baseByIntentId).length || Object.keys(draft.visitBaseByIntentId).length || draft.directionId)
+          ? <EasyTButton disabled={loading} variant="quiet" onClick={() => {
+            onAction({ type: "reset" });
+            if (steps[0] !== "directions") onAction({ type: "set-step", step: steps[0] });
+          }}>{copy.actions.reset}</EasyTButton> : null}
         <EasyTButton variant="quiet" disabled={loading} onClick={onClose}>{copy.actions.finishLater}</EasyTButton>
       </div>
       {nextStep ? <EasyTButton disabled={loading} onClick={() => onAction({ type: "set-step", step: nextStep })}>{copy.actions.continue}</EasyTButton>
@@ -82,5 +89,6 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
         existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
         highlightedPlaceId={highlightedPlaceId} onHighlight={setHighlightedPlaceId} />}
     {search?.error ? <p role="alert">{search.error}</p> : null}
+    {saveError ? <MorroviaStatusBanner tone="warning" title={copy.status.saveBlocked} detail={saveError} /> : null}
   </BuilderClarificationShell>;
 }

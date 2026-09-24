@@ -17,6 +17,7 @@ export function discoveryReviewState(mentionId: string, draft: DiscoveryDraft, p
   existingPlaceIds: readonly string[] = []) {
   const places = new Map(projection.places.map(place => [place.id, place]));
   const direction = projection.directions.find(item => item.id === draft.directionId);
+  const missingDirection = Boolean(draft.directionId && !direction);
   const { baseId, conflict } = resolveDiscoveryBaseChoice(draft, mentionId);
   const base = baseId ? places.get(baseId) : null;
   const choices: DiscoveryReviewChoice[] = draft.shortlistIds.map(id => {
@@ -38,8 +39,8 @@ export function discoveryReviewState(mentionId: string, draft: DiscoveryDraft, p
     base: baseId ? { id: baseId, name: base?.name ?? baseId, confirmable: baseConfirmable,
       existing: existingPlaceIds.includes(baseId) } : null,
     hasOutsideDirection: choices.some(choice => choice.outsideDirection),
-    hasUnresolvedChoices: conflict || choices.some(choice => !choice.confirmable) || Boolean(baseId && !baseConfirmable),
-    canConfirm: !conflict && (choices.length > 0 || Boolean(baseId))
+    hasUnresolvedChoices: conflict || missingDirection || choices.some(choice => !choice.confirmable) || Boolean(baseId && !baseConfirmable),
+    canConfirm: !conflict && !missingDirection && (choices.length > 0 || Boolean(baseId))
       && choices.every(choice => choice.confirmable)
       && (!baseId || baseConfirmable),
   };
