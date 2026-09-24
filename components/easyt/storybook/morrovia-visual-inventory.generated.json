@@ -5400,6 +5400,16 @@
         ]
       },
       {
+        "value": "3px",
+        "count": 150,
+        "examples": [
+          "app/journey/account.module.css",
+          "app/journey/dashboard/dashboard.module.css",
+          "app/journey/discover/discover.module.css",
+          "app/journey/easyt-navigation.module.css"
+        ]
+      },
+      {
         "value": "22px",
         "count": 149,
         "examples": [
@@ -5407,16 +5417,6 @@
           "app/journey/account.module.css",
           "app/journey/contact/contact.module.css",
           "app/journey/cookies/cookies.module.css"
-        ]
-      },
-      {
-        "value": "3px",
-        "count": 149,
-        "examples": [
-          "app/journey/account.module.css",
-          "app/journey/dashboard/dashboard.module.css",
-          "app/journey/discover/discover.module.css",
-          "app/journey/easyt-navigation.module.css"
         ]
       },
       {

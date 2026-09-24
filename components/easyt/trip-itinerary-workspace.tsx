@@ -1262,7 +1262,7 @@ export default function TripItineraryWorkspace({
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
       }} /> : null}
-      {workspaceView === "days" ? <nav className={`${styles.rail} ${unscheduledSavedIdeas.length ? styles.railWithSavedIdeas : ""}`} aria-label={copy.dayByDay}>
+      {workspaceView === "days" ? <nav className={styles.rail} aria-label={copy.dayByDay}>
         <div className={styles.railHeader}><h2>{copy.dayByDay}</h2><span>{days.length} {copy.days}</span></div>
         <div className={styles.dayList} role="tablist" aria-label={copy.dayByDay}>
           {days.map((day, dayIndex) => {

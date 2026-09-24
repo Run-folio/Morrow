@@ -14,13 +14,16 @@ const refinement = readFileSync(new URL("../components/journey-itinerary-refinem
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
 test("the itinerary restores the day rail beside the agenda without a second selection owner", () => {
-  assert.match(itinerary, /className=\{`\$\{styles\.rail\}/);
+  assert.match(itinerary, /<nav className=\{styles\.rail\} aria-label=\{copy\.dayByDay\}/);
   assert.match(itinerary, /className=\{styles\.dayList\} role="tablist"/);
   assert.match(itinerary, /onClick=\{\(\) => setSelectedIndex\(dayIndex\)\}/);
   assert.match(itinerary, /aria-selected=\{dayIndex === index\}/);
+  assert.doesNotMatch(itinerary, /styles\.railWithSavedIdeas/, "Saved Ideas in the context rail must not truncate the day navigator");
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
   assert.match(itinerary, /styles\.contextRail/);
   assert.match(styles, /grid-template-columns: minmax\(190px, 230px\) minmax\(0, 1fr\) minmax\(260px, 300px\)/);
+  assert.match(styles, /\.dayButton,\s*\.dayButtonActive\s*\{[^}]*grid-template-columns: 34px minmax\(0, 1fr\);/, "the narrow rail must reserve the text column instead of placing the date beside it");
+  assert.match(styles, /\.dayButton \.dayMeta,\s*\.dayButtonActive \.dayMeta\s*\{[^}]*grid-column: 2;/);
   assert.doesNotMatch(itinerary, /Edit trip brief/);
 });
 
@@ -163,7 +166,7 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   assert.equal((itinerary.match(/<SavedIdeasSection/g) ?? []).length, 1);
   assert.match(mobile, /\.dayPanel > \.details \{ order: 4; \}/);
   assert.match(mobile, /\.sequenceEditor \{ order: 5; \}/);
-  assert.match(itinerary, /className=\{`\$\{styles\.rail\}/);
+  assert.match(itinerary, /<nav className=\{styles\.rail\} aria-label=\{copy\.dayByDay\}/);
 });
 
 test("Calendar uses a compact selected-day summary and only mounts the context rail for unique detail capability", () => {
