@@ -45,6 +45,15 @@ const selectedDraft = { ...placesDraft, shortlistIds: australia.places.slice(0, 
 
 export const AustraliaDirections: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: initial } };
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
+export const AustraliaMapCardPreview: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const place = australia.places[0]!;
+    await userEvent.click(canvas.getByRole("button", { name: `Show on map: ${place.name}` }));
+    await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveAttribute("data-highlighted", "true");
+    await expect(args.actionSpy).not.toHaveBeenCalled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
 export const AustraliaShortlist: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: selectedDraft } };
 export const AustraliaReview: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: { ...selectedDraft, step: "review" } } };
 const supportedBase = australia.places.find(place => place.actionability === "overnight-base")!;
@@ -153,6 +162,18 @@ export const SparsePhilippines: Story = { args: { entry: { kind: "country", step
 
 export const Mobile390AustraliaDirections: Story = { ...AustraliaDirections, parameters: { viewport: { defaultViewport: "morrovia390" } } };
 export const Mobile390AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia390" } } };
+export const Mobile390MapOptional: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
+  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const place = australia.places[0]!;
+    await userEvent.click(canvas.getByRole("button", { name: `Show on map: ${place.name}` }));
+    await expect(canvas.getByRole("button", { name: "Cards" })).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Cards" }));
+    await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveFocus();
+    await expect(args.actionSpy).not.toHaveBeenCalled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
 export const Mobile390AustraliaShortlist: Story = { ...AustraliaShortlist, parameters: { viewport: { defaultViewport: "morrovia390" } } };
 export const Mobile390Sparse: Story = { ...SparsePhilippines, parameters: { viewport: { defaultViewport: "morrovia390" } } };
 export const Mobile320AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia320" } } };

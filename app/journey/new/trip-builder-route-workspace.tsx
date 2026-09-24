@@ -2,7 +2,7 @@
 
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { JourneyPlannerMap } from "@/components/journey-planner-map";
+import dynamic from "next/dynamic";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
 import type { JourneyStop } from "@/lib/journey";
 import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
@@ -12,6 +12,8 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
+
+const JourneyPlannerMap = dynamic(() => import("@/components/journey-planner-map").then(module => module.JourneyPlannerMap), { ssr: false });
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 

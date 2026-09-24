@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryDraft, DiscoveryDraftAction, DiscoveryStep } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
@@ -35,6 +36,8 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   existingPlaceIds?: readonly string[];
   loading?: boolean;
 }) {
+  const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
+  useEffect(() => setHighlightedPlaceId(null), [mention.mentionId, open]);
   const copy = easytCopy[language].builder.visualDiscovery;
   const steps: DiscoveryStep[] = entry.kind === "landmark" || entry.kind === "natural-area"
     ? ["bases", "review"] : projection.directions.length ? ["directions", "places", "review"] : ["places", "review"];
@@ -76,7 +79,8 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
       </div>
     </section>
       : <DiscoverySteps entry={entry} mention={mention} projection={projection} draft={{ ...draft, step }} language={language}
-        existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement} />}
+        existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
+        highlightedPlaceId={highlightedPlaceId} onHighlight={setHighlightedPlaceId} />}
     {search?.error ? <p role="alert">{search.error}</p> : null}
   </BuilderClarificationShell>;
 }

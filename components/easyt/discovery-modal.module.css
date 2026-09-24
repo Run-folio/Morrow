@@ -13,7 +13,13 @@
 .directionContent,.cardContent { display: grid; gap: 7px; padding: 16px; }
 .directionContent h4,.cardContent h4 { margin: 0; color: var(--morrovia-ink); font: 600 25px/1.13 var(--morrovia-display); letter-spacing: -.025em; }
 .directionContent button { margin-top: 5px; }
-.contentGrid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: start; gap: 20px; min-width: 0; }
+.contentGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 36%); align-items: start; gap: 20px; min-width: 0; }
+.sideRail { display: grid; gap: 12px; min-width: 0; }
+.mapPanel { position: relative; height: 300px; min-width: 0; overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-lilac); }
+.mapCanvas { width: 100%; height: 100%; }
+.mobileMapButton { display: none; justify-self: start; }
+.placeCard[data-highlighted="true"] { outline: 2px solid var(--morrovia-focus-ring); outline-offset: -3px; }
+.placeCard:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }
 .placeColumn { display: grid; min-width: 0; gap: 16px; }
 .placeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .placeCard .visual { height: 130px; }
@@ -56,7 +62,7 @@
 .loadingCard,.loadingShortlist { display: grid; align-content: start; gap: 11px; padding: 14px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); }
 .loadingShortlist { min-height: 94px; }
 .srAnnouncement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
-@media (max-width: 800px) { .directions { grid-template-columns: repeat(2,minmax(0,1fr)); } .contentGrid,.loadingLayout { grid-template-columns: minmax(0,1fr); } .shortlist { order: -1; } }
+@media (max-width: 800px) { .directions { grid-template-columns: repeat(2,minmax(0,1fr)); } .contentGrid,.loadingLayout { grid-template-columns: minmax(0,1fr); } .sideRail { order: -1; } .mobileMapButton { display: inline-flex; } .mapPanel { height: min(52svh, 380px); } }
 @media (max-width: 620px) { .step { gap: 13px; } .directions,.placeGrid,.loadingCards { grid-template-columns: 1fr; } .directionCard { display: grid; grid-template-columns: 38% minmax(0,1fr); } .directionCard .visual { height: 100%; min-height: 156px; } .directionContent { padding: 13px; } .directionContent h4 { font-size: 22px; } .placeCard .visual { height: 150px; } .shortlist { order: 0; } .loading { gap: 14px; } .loadingCard:nth-child(3) { display: none; } .reviewChoice { flex-wrap: wrap; } .reviewDetail { flex-basis: calc(100% - 36px); } .reviewChoice > button { margin-left: 28px; } }
 @media (max-width: 340px) { .directionCard { grid-template-columns: 1fr; } .directionCard .visual { height: 115px; min-height: 0; } .cardActions > button { flex: 1; } }
 @media (prefers-reduced-motion: reduce) { .step * { scroll-behavior: auto; } }

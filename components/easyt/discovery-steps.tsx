@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
@@ -24,7 +25,11 @@ type Props = {
   existingPlaceIds?: readonly string[];
   onAction: (action: DiscoveryDraftAction) => void;
   search?: React.ReactNode;
+  highlightedPlaceId: string | null;
+  onHighlight: (placeId: string) => void;
 };
+
+const DiscoveryMap = dynamic(() => import("./discovery-map"), { ssr: false });
 
 function Photo({ imageKey, name, language }: { imageKey: string | null; name: string; language: EasyTLanguage }) {
   const photo = imageKey ? routeEditorialPhoto(imageKey) : null;
@@ -42,9 +47,11 @@ function Photo({ imageKey, name, language }: { imageKey: string | null; name: st
   </div>;
 }
 
-function PlaceCard({ place, draft, mention, entry, language, existing, baseId, onAction }: {
+function PlaceCard({ place, draft, mention, entry, language, existing, baseId, onAction, onHighlight, onShowOnMap, registerCard, mapAvailable, highlighted }: {
   place: DiscoveryPlace; draft: DiscoveryDraft; mention: ResolvedPlaceMention; entry: DiscoveryEntry;
   language: EasyTLanguage; existing: boolean; baseId: string | null; onAction: Props["onAction"];
+  onHighlight: Props["onHighlight"]; onShowOnMap: (id: string) => void;
+  registerCard: (id: string, element: HTMLElement | null) => void; mapAvailable: boolean; highlighted: boolean;
 }) {
   const copy = easytCopy[language].builder.visualDiscovery;
   const [expanded, setExpanded] = useState(false);
@@ -56,7 +63,9 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, o
   const type = copy.types[place.placeType as keyof typeof copy.types] ?? copy.types.other;
   const location = mention.placeType === "country" && mention.canonicalName === place.country
     ? type : `${type} · ${place.country}`;
-  return <article className={styles.placeCard} data-selected={selected || baseSelected} data-actionability={place.actionability}>
+  return <article ref={element => registerCard(place.id, element)} tabIndex={-1} className={styles.placeCard}
+    data-selected={selected || baseSelected} data-highlighted={highlighted} data-actionability={place.actionability}
+    onFocus={() => onHighlight(place.id)}>
     <Photo imageKey={place.imageKey} name={place.name} language={language} />
     <div className={styles.cardContent}>
       <div className={styles.cardMeta}><span>{location}</span>{existing ? <span className={styles.existing}>{copy.roles.existing}</span> : null}</div>
@@ -73,6 +82,8 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, o
         <p>{copy.status.noFitClaim}</p>
       </div> : null}
       <div className={styles.cardActions}>
+        {mapAvailable ? <EasyTButton variant="quiet" size="small" icon={MapPin}
+          aria-label={`${copy.actions.showOnMap}: ${place.name}`} onClick={() => onShowOnMap(place.id)}>{copy.actions.showOnMap}</EasyTButton> : null}
         <EasyTButton variant="quiet" size="small" aria-label={`${copy.actions.explore}: ${place.name}`}
           aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{copy.actions.explore}</EasyTButton>
         {isBaseStep ? actions.includes("choose-base") ? <EasyTButton variant={baseSelected ? "secondary" : "primary"} size="small" icon={baseSelected ? Check : Plus}
@@ -90,17 +101,53 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, o
   </article>;
 }
 
-export function DiscoverySteps({ entry, mention, projection, draft, language, existingPlaceIds = [], onAction, search }: Props) {
+export function DiscoverySteps({ entry, mention, projection, draft, language, existingPlaceIds = [], onAction, search,
+  highlightedPlaceId, onHighlight }: Props) {
   const copy = easytCopy[language].builder.visualDiscovery;
   const [visibleCount, setVisibleCount] = useState(Math.max(6, projection.visiblePlaceIds.length));
+  const [desktopMapVisible, setDesktopMapVisible] = useState(false);
+  const [mobileMapOpen, setMobileMapOpen] = useState(false);
+  const [mapUnavailable, setMapUnavailable] = useState(false);
+  const [cardToFocus, setCardToFocus] = useState<string | null>(null);
+  const cardsRef = useRef(new Map<string, HTMLElement>());
+  const mapPanelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 801px)");
+    const update = () => { setDesktopMapVisible(query.matches); if (query.matches) setMobileMapOpen(false); };
+    update(); query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (!cardToFocus) return;
+    const card = cardsRef.current.get(cardToFocus);
+    if (!card) return;
+    card.focus();
+    card.scrollIntoView({ block: "nearest", behavior: "instant" });
+    setCardToFocus(null);
+  }, [cardToFocus, visibleCount, mobileMapOpen]);
+  useEffect(() => {
+    if (mobileMapOpen) mapPanelRef.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+  }, [mobileMapOpen]);
   useEffect(() => setVisibleCount(Math.max(6, projection.visiblePlaceIds.length)), [draft.directionId, projection.visiblePlaceIds.length]);
   const activeDirection = projection.directions.find(direction => direction.id === draft.directionId);
-  const allPlaces = activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places;
+  const allPlaces = useMemo(() => activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places,
+    [activeDirection, projection.places]);
   const visible = allPlaces.slice(0, visibleCount);
   const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
   const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
+  const registerCard = (id: string, element: HTMLElement | null) => {
+    if (element) cardsRef.current.set(id, element); else cardsRef.current.delete(id);
+  };
+  const handlePinHighlight = (id: string) => {
+    const index = allPlaces.findIndex(place => place.id === id);
+    if (index < 0) return;
+    onHighlight(id);
+    setVisibleCount(count => Math.max(count, index + 1));
+    setMobileMapOpen(false);
+    setCardToFocus(id);
+  };
 
   if (draft.step === "directions" && projection.directions.length) return <div className={styles.step} data-discovery-step="directions">
     <p className={styles.stepHelper}>{copy.directionIntro}</p>
@@ -146,6 +193,14 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
 
   return <div className={styles.step} data-discovery-step={draft.step}>
     <p className={styles.stepHelper}>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
+    {!mapUnavailable && allPlaces.length ? <EasyTButton variant="secondary" size="small" className={styles.mobileMapButton}
+      aria-expanded={mobileMapOpen} onClick={() => {
+        if (mobileMapOpen) {
+          if (highlightedPlaceId) handlePinHighlight(highlightedPlaceId);
+          else setMobileMapOpen(false);
+        } else setMobileMapOpen(true);
+      }}>{mobileMapOpen ? copy.actions.showCards : copy.actions.showMap}</EasyTButton> : null}
+    {mapUnavailable ? <MorroviaStatusBanner title={copy.status.mapUnavailable} detail={copy.status.mapUnavailableDetail} /> : null}
     {projection.places.length === 0 ? <MorroviaStatusBanner
       title={draft.step === "bases" ? copy.emptyBase : copy.empty}
       detail={draft.step === "bases" ? copy.emptyBaseDetail : copy.emptyDetail} />
@@ -154,15 +209,23 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
       <div className={styles.placeColumn}>
         <div className={styles.placeGrid}>{visible.map(place => <PlaceCard key={place.id} place={place} draft={draft} mention={mention}
           entry={entry} language={language} existing={existingPlaceIds.includes(place.id)}
-          baseId={baseId} onAction={onAction} />)}</div>
+          baseId={baseId} onAction={onAction} mapAvailable={!mapUnavailable && allPlaces.length > 0}
+          highlighted={highlightedPlaceId === place.id} onHighlight={onHighlight}
+          onShowOnMap={id => { onHighlight(id); if (!desktopMapVisible) setMobileMapOpen(true); }} registerCard={registerCard} />)}</div>
         {allPlaces.length > visible.length ? <EasyTButton variant="secondary" className={styles.more} onClick={() => setVisibleCount(count => count + 6)}>
           {copy.actions.showMore} ({allPlaces.length - visible.length})</EasyTButton> : null}
         {search ? <div className={styles.search}>{search}</div> : null}
       </div>
-      <aside className={styles.shortlist} aria-label={copy.accessibility.shortlist}>
+      <aside className={styles.sideRail}>
+      {(desktopMapVisible || mobileMapOpen) && !mapUnavailable && allPlaces.length ? <div ref={mapPanelRef} className={styles.mapPanel}>
+        <DiscoveryMap places={allPlaces} highlightedPlaceId={highlightedPlaceId} onHighlight={handlePinHighlight}
+          onUnavailable={() => setMapUnavailable(true)} language={language} />
+      </div> : null}
+      <div className={styles.shortlist} role="complementary" aria-label={copy.accessibility.shortlist}>
         <div className={styles.shortlistHeading}><strong>{copy.shortlist}</strong><span>{discoveryShortlistCount(language, draft.shortlistIds.length)}</span></div>
         {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol> : null}
         {baseName ? <p>{copy.roles.chosen}: {baseName}</p> : null}
+      </div>
       </aside>
     </div>
     <div className={styles.srAnnouncement} aria-live="polite">{discoveryShortlistCount(language, draft.shortlistIds.length)}</div>

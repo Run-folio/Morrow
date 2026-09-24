@@ -14,6 +14,7 @@ import {
   Check, FileSpreadsheet, GripVertical, Info, Lock, MapPin, Pencil, Plane, Plus, Route, Train, Trash2, X, CarFront, Ship, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
@@ -64,7 +65,7 @@ import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
 import { MorroviaQuantitySelector } from "@/components/easyt/morrovia-quantity-selector";
 import { MorroviaConfirmationDialog, MorroviaRecoveryFeedback, MorroviaSaveStatus, MorroviaStatusBanner } from "@/components/easyt/morrovia-feedback";
 import ResilientImage from "@/components/easyt/resilient-image";
-import TripItineraryWorkspace from "@/components/easyt/trip-itinerary-workspace";
+import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import { travelProfileStorageKey } from "@/lib/easyt/private-browser-context";
 import { curatedStopFor, reconcileCuratedRouteKnowledge, type CuratedRouteKnowledge } from "@/lib/easyt/curated-route-knowledge";
 import { buildCanonicalTripLegs } from "@/lib/easyt/trip-legs";
@@ -82,6 +83,11 @@ import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
 import { hasUsefulRouteSkeleton } from "./trip-builder-entry";
 import { durableBuilderRecoveryUrl } from "@/lib/easyt/builder-durable-url";
 import { clearTripLegTransportChoice, selectTripLegTransportChoice } from "@/lib/easyt/transport-mode-choice";
+
+const TripItineraryWorkspace = dynamic(() => import("@/components/easyt/trip-itinerary-workspace"), {
+  ssr: false,
+  loading: () => <MorroviaSectionStatus title="Opening your trip" detail="Preparing the itinerary and map." />,
+});
 
 /* ---------------------------------------------------------------- data */
 
