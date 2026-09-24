@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { homepageRouteStopCards, homepageRouteStopIndexes, immersiveHomepageRoutes, initialImmersiveRouteIndex, nextHomepageRoute, responsivePhotoSource, routeScrollCorrection } from "../lib/easyt/immersive-homepage-routes.ts";
 import { isPublishedPublicRouteKey, publicRouteDetailFor } from "../lib/easyt/public-route.ts";
-import { createHomepageDemo, homepageDemoReducer, homepageDemoDay } from "../lib/easyt/homepage-demo.ts";
+import { createHomepageDemo, homepageDemoReducer, homepageDemoDay, homepageDemoStopForDay, homepageDemoDate } from "../lib/easyt/homepage-demo.ts";
 import { homepageAffiliateImage } from "../lib/easyt/homepage-affiliate-imagery.ts";
 import { homepageRouteView } from "../lib/easyt/homepage-navigation.ts";
 import { existsSync } from "node:fs";
@@ -87,9 +87,12 @@ test("one night decision persists between demo views without changing catalogue 
   const route = routes[0];
   const original = structuredClone(route);
   let state = createHomepageDemo(routes);
+  assert.equal(state.view, "builder");
   const before = homepageDemoDay(state.nights[route.key], 1);
+  const totalBefore = state.nights[route.key].reduce((sum, nights) => sum + nights, 0);
   state = homepageDemoReducer(state, { type: "night", route, index: 0, value: route.stops[0].nights + 1 });
-  for (const view of ["itinerary", "map", "builder"] as const) {
+  assert.equal(state.nights[route.key].reduce((sum, nights) => sum + nights, 0), totalBefore, "night edits rebalance within the fixed sample trip dates");
+  for (const view of ["itinerary", "builder"] as const) {
     state = homepageDemoReducer(state, { type: "view", view });
     assert.equal(state.view, view);
     assert.equal(homepageDemoDay(state.nights[route.key], 1), before + 1);
@@ -102,8 +105,57 @@ test("one night decision persists between demo views without changing catalogue 
   assert.deepEqual(state.nights[route.key], route.stops.map((stop) => stop.nights));
 });
 
+test("homepage demo projects one dated canonical trip into Builder and Itinerary", () => {
+  const route = immersiveHomepageRoutes().find((candidate) => candidate.key === "peru-bolivia")!;
+  let state = createHomepageDemo([route]);
+  const nights = state.nights[route.key];
+  assert.deepEqual(route.stops.map((stop) => stop.country), ["Peru", "Peru", "Peru", "Peru", "Peru", "Bolivia", "Bolivia"]);
+  assert.equal(homepageDemoStopForDay(nights, 1), 0);
+  assert.equal(homepageDemoStopForDay(nights, homepageDemoDay(nights, 5)), 5);
+  assert.equal(homepageDemoDate(route.key, 1), "2027-06-01");
+  state = homepageDemoReducer(state, { type: "select", route, index: 5 });
+  assert.equal(state.day[route.key], homepageDemoDay(nights, 5));
+  state = homepageDemoReducer(state, { type: "view", view: "itinerary" });
+  assert.equal(state.selected[route.key], 5);
+  state = homepageDemoReducer(state, { type: "day", route, day: homepageDemoDay(nights, 6) });
+  assert.equal(state.selected[route.key], 6);
+});
+
+test("sample night edits preserve trip duration and published minimums across all routes", () => {
+  const routes = immersiveHomepageRoutes();
+  let state = createHomepageDemo(routes);
+  for (const route of routes) {
+    const expectedTotal = route.stops.reduce((sum, stop) => sum + stop.nights, 0);
+    for (const index of route.stops.keys()) {
+      state = homepageDemoReducer(state, { type: "night", route, index, value: state.nights[route.key][index] + 1 });
+      assert.equal(state.nights[route.key].reduce((sum, value) => sum + value, 0), expectedTotal);
+      assert.ok(state.nights[route.key].every((value, stopIndex) => value >= route.minimumNights[stopIndex]));
+      assert.equal(homepageDemoDate(route.key, expectedTotal + 1), homepageDemoDate(route.key, state.nights[route.key].reduce((sum, value) => sum + value, 1)));
+    }
+  }
+});
+
+test("homepage product frame follows the live Builder and Itinerary contracts", () => {
+  const product = readFileSync(new URL("../app/journey/home/immersive/product-demo.tsx", import.meta.url), "utf8");
+  const builder = readFileSync(new URL("../app/journey/home/immersive/demo-builder.tsx", import.meta.url), "utf8");
+  const itinerary = readFileSync(new URL("../app/journey/home/immersive/demo-itinerary.tsx", import.meta.url), "utf8");
+  const map = readFileSync(new URL("../app/journey/home/immersive/demo-map.tsx", import.meta.url), "utf8");
+  assert.match(product, /value: "builder", label: "Builder"/);
+  assert.match(product, /value: "itinerary"/);
+  assert.doesNotMatch(product, /value: "map"|See how it fits|More than getting there|A day to be here/);
+  assert.match(builder, /trip-builder\.module\.css/);
+  assert.match(builder, /builderRouteGrid|builderRouteRows|builderRouteNightStatus/);
+  assert.match(itinerary, /trip-itinerary-workspace\.module\.css/);
+  assert.match(itinerary, /workspaceToolbar|dayPanel|dayHeader/);
+  assert.doesNotMatch(itinerary, /\.rail\b|dayButtonActive|Weather|forecast|Confirmed|booked|Breakfast at your hotel/);
+  assert.match(map, /variant: "preview"/);
+  assert.doesNotMatch(map, /mapPlacePreview|DestinationPhoto/);
+  const stories = readFileSync(new URL("../app/journey/home/immersive/product-demo.stories.tsx", import.meta.url), "utf8");
+  for (const state of ["BuilderDesktop1440", "BuilderMobile390", "ItineraryDesktop1440", "ItineraryMobile390"]) assert.match(stories, new RegExp(state));
+});
+
 test("demo has no account, storage, analytics or mutation dependency and lazy-loads the map", () => {
-  for (const name of ["lib/easyt/homepage-demo.ts", "app/journey/home/immersive/product-demo.tsx", "app/journey/home/immersive/demo-map.tsx"]) {
+  for (const name of ["lib/easyt/homepage-demo.ts", "app/journey/home/immersive/product-demo.tsx", "app/journey/home/immersive/demo-builder.tsx", "app/journey/home/immersive/demo-itinerary.tsx", "app/journey/home/immersive/demo-map.tsx"]) {
     const source = readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
     assert.doesNotMatch(source, /localStorage|sessionStorage|trackEvent|fetch\(|repository|TripDocument/);
   }

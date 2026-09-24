@@ -1,0 +1,55 @@
+.builder {
+  --line: var(--morrovia-line);
+  --ink: var(--morrovia-ink);
+  --muted: var(--morrovia-muted);
+  --signal: var(--morrovia-signal);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: var(--morrovia-paper);
+}
+
+.tripDetails {
+  padding: 16px 18px;
+  border: 1px solid var(--morrovia-line);
+  border-radius: var(--morrovia-control-radius);
+  background: var(--morrovia-paper);
+}
+
+.demoRouteRow {
+  padding-inline: 14px;
+  cursor: pointer;
+}
+
+.demoRouteRow:focus-visible {
+  outline: 3px solid var(--morrovia-focus-ring);
+  outline-offset: -3px;
+}
+
+.itinerary { min-height: 540px; border: 0; border-radius: 0; }
+.dayPlan { display: grid; gap: 14px; margin-top: 18px; }
+.transferItem { display: grid; grid-template-columns: 20px minmax(0,1fr); align-items: start; gap: 12px; padding: 14px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); }
+.transferItem svg { width: 19px; height: 19px; color: var(--morrovia-action); }
+.transferItem div { display: grid; gap: 4px; min-width: 0; }
+.transferItem strong { font: var(--morrovia-type-control); }
+.transferItem span { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+
+@media (max-width: 700px) {
+  .builder { padding: 10px; gap: 10px; }
+  .tripDetails { padding: 14px; }
+  .demoRouteRow {
+    grid-template-columns: minmax(0,1fr) auto;
+    grid-template-areas: "identity nights" "transfer transfer" "usable usable";
+    padding: 12px;
+  }
+  .itinerary { min-height: 0; }
+}
+
+@media (max-width: 430px) {
+  .demoRouteRow { grid-template-columns: minmax(0,1fr); grid-template-areas: "identity" "transfer" "nights" "usable"; }
+  .demoRouteRow > div:nth-child(3), .demoRouteRow > div:nth-child(4) { justify-self: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demoRouteRow { transition: none; }
+}

@@ -112,7 +112,7 @@ test('all seven pass release, catalogue, sitemap, homepage and demo boundaries w
       assert.ok(publicRouteSitemapKeys().includes(route.key));
       assert.ok(route.photos.every(Boolean));
       assert.ok(existsSync(new URL(`../public${route.heroImage}`, import.meta.url)));
-      for (const view of ['map','builder','itinerary'] as const) {
+      for (const view of ['builder','itinerary'] as const) {
         demo = homepageDemoReducer(demo, {type:'view',view});
         assert.equal(demo.view,view);
         assert.deepEqual(demo.nights[route.key], route.stops.map(stop => stop.nights));
