@@ -19,6 +19,8 @@ export type DiscoveryPlace = {
   name: string;
   country: string;
   group: string;
+  /** Reviewed editorial group memberships; these are browse filters, not routes. */
+  groupIds: readonly string[];
   tags: readonly string[];
   placeType: PlaceTypeLiteral;
   coordinates: readonly [number, number];
@@ -27,6 +29,16 @@ export type DiscoveryPlace = {
   accessEvidence: readonly KnowledgeSource[];
   actionability: DiscoveryActionability;
   imageKey: string | null;
+};
+
+const australiaEditorialGroups: Record<string, readonly string[]> = {
+  "New South Wales": ["australia-east-coast"],
+  Queensland: ["australia-east-coast"],
+  Victoria: ["australia-south"],
+  "South Australia": ["australia-south"],
+  Tasmania: ["australia-tasmania"],
+  "Western Australia": ["australia-west"],
+  "Northern Territory": ["australia-north-interior"],
 };
 export type DiscoveryMention = {
   canonicalPlaceId?: string;
@@ -173,6 +185,7 @@ export function discoveryPlaceForId(id: string): DiscoveryPlace | null {
   const overnight = ["city", "town", "transport_gateway"].includes(catalog.placeType) && row.stayEvidence.length > 0;
   return {
     id, name: catalog.canonicalName, country: catalog.parentCountries[0]!, group: row.group,
+    groupIds: catalog.parentCountries[0] === "Australia" ? (australiaEditorialGroups[row.group] ?? []) : [],
     tags: row.tags, placeType: catalog.placeType, coordinates: catalog.coordinates,
     relevance: row.relevance, stayEvidence: row.stayEvidence, accessEvidence: row.accessEvidence,
     actionability: overnight ? "overnight-base" : row.accessEvidence.length ? "visit" : "browse-only",
