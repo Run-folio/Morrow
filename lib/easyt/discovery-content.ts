@@ -1,7 +1,7 @@
 import { AUSTRALIA_DISCOVERY_EVIDENCE } from "./australia-discovery-content.ts";
 import { CURATED_DESTINATION_KNOWLEDGE, type KnowledgeSource } from "./destination-knowledge.ts";
 import { findCatalogPlaceById, findCatalogPlacesByPhrase, type PlaceTypeLiteral } from "./place-catalog.ts";
-import { routeDestinationPhoto, routeEditorialPhoto, routeImageCredit } from "./route-images.ts";
+import { routeEditorialPhoto, routeImageCredit } from "./route-images.ts";
 
 export type DiscoveryActionability = "overnight-base" | "visit" | "browse-only";
 export type DiscoveryEvidenceRow = {
@@ -42,37 +42,51 @@ const reviewedSource = (source: KnowledgeSource) =>
   && Boolean(source.reviewedAt && /^\d{4}-\d{2}-\d{2}$/.test(source.reviewedAt))
   && Boolean(source.supports.trim());
 
-const translatedTags: Record<string, string> = {
-  nature: "naturaleza", wildlife: "fauna", beach: "playas", culture: "cultura",
-  food: "gastronomía", hiking: "senderismo", heritage: "patrimonio",
-};
+// A knowledge record is an input, not blanket proof for all its tags. Only
+// explicitly reviewed claims below enter Discovery. Existing route roles and
+// nights never become global stay or access evidence.
+function curatedSource(id: string, url: string): KnowledgeSource | null {
+  const record = CURATED_DESTINATION_KNOWLEDGE.find(value => value.canonicalId === id);
+  if (record?.experienceTags.status !== "known") return null;
+  return record.experienceTags.sources.find(source => source.url === url && reviewedSource(source)) ?? null;
+}
 
-// Existing destination roles and route-family nights are not stay evidence.
-// Only destination records carrying an official, dated source with visitor
-// context enter this read-only collection. A route stop's evidence stays scoped
-// to that route family and is never promoted to global base actionability.
-const existingReviewedRows: DiscoveryEvidenceRow[] = CURATED_DESTINATION_KNOWLEDGE.flatMap(destination => {
-  if (destination.experienceTags.status !== "known" || !destination.experienceTags.value.length) return [];
-  const sources = destination.experienceTags.sources.filter(reviewedSource);
-  if (!sources.length) return [];
-  const tags = destination.experienceTags.value.filter(tag => translatedTags[tag]);
-  if (!tags.length) return [];
-  const catalog = findCatalogPlaceById(destination.canonicalId);
-  if (!catalog || !catalog.parentCountries.includes(destination.country.status === "known" ? destination.country.value : "")) return [];
-  const photo = routeDestinationPhoto(catalog.canonicalName, catalog.parentCountries[0] ?? "");
-  const imageKey = photo && photo.variants.some(variant => routeImageCredit(variant.src)) ? photo.key : null;
-  return [{
-    id: destination.canonicalId,
-    group: catalog.parentCountries[0] ?? "",
-    tags,
-    relevance: {
-      en: `Explore ${destination.name} for ${tags.join(" and ")}.`,
-      es: `Explora ${destination.name} por ${tags.map(tag => translatedTags[tag]).join(" y ")}.`,
-      sources,
-    },
-    stayEvidence: [], accessEvidence: [], imageKey,
-  }];
-});
+function visitorRow(id: string, group: string, tags: readonly string[], en: string, es: string, source: KnowledgeSource | null): DiscoveryEvidenceRow[] {
+  return source ? [{ id, group, tags, relevance: { en, es, sources: [source] }, stayEvidence: [], accessEvidence: [], imageKey: null }] : [];
+}
+
+const existingReviewedRows: DiscoveryEvidenceRow[] = [
+  ...visitorRow("arusha", "Tanzania", ["safari"],
+    "Explore Arusha as a starting point for nearby national park visits.",
+    "Explora Arusha como punto de partida para visitar parques nacionales cercanos.",
+    curatedSource("arusha", "https://tanzaniaparks.go.tz/uploads/publications/en-1581671752-TANAPA%20GENERAL%20BROCHURES%202020-WEBSITE%20%281%29.pdf")),
+  ...visitorRow("puerto-princesa", "Philippines", ["nature"],
+    "Explore Puerto Princesa for its subterranean river national park.",
+    "Explora Puerto Princesa por su parque nacional del río subterráneo.",
+    curatedSource("puerto-princesa", "https://philippines.travel/destinations/palawan/index")),
+  ...visitorRow("el-nido", "Philippines", ["beach", "nature"],
+    "Explore El Nido for island hopping, lagoons and beaches.",
+    "Explora El Nido por sus excursiones entre islas, lagunas y playas.",
+    curatedSource("el-nido", "https://philippines.travel/destinations/palawan/index")),
+  ...visitorRow("dushanbe", "Tajikistan", ["culture"],
+    "Visit Dushanbe's museums and city parks.",
+    "Visita los museos y parques urbanos de Dusambé.",
+    { id: "tajikistan-tourism:dushanbe-tour", label: "Travel to Tajikistan", kind: "official",
+      url: "https://traveltajikistan.tj/en/dushanbe-city-tour/", reviewedAt: "2026-09-24",
+      supports: "The Dushanbe city tour lists the National Museum and Kurushi Kabir Park; it does not substantiate food as a visitor reason." }),
+  ...visitorRow("khujand", "Tajikistan", ["heritage"],
+    "Visit Khujand's fortress and cultural park.",
+    "Visita la fortaleza y el parque cultural de Juyand.",
+    { id: "tajikistan-tourism:khujand-fortress", label: "Travel to Tajikistan", kind: "official",
+      url: "https://traveltajikistan.tj/en/historical-cultural-and-archeological-complex-of-khujand-fortress-in-khujand/", reviewedAt: "2026-09-24",
+      supports: "The Khujand visitor page describes the fortress complex and Kamoli Khujandi cultural park." }),
+  ...visitorRow("panjakent", "Tajikistan", ["heritage"],
+    "Explore Panjakent for its historical sites and nearby Sarazm settlement.",
+    "Explora Panjakent por sus sitios históricos y el cercano asentamiento de Sarazm.",
+    { id: "tajikistan-tourism:ancient-sarazm", label: "Travel to Tajikistan", kind: "official",
+      url: "https://traveltajikistan.tj/en/ancient-sarazm/", reviewedAt: "2026-09-24",
+      supports: "The page links Penjikent/Panjakent with its historical sites and ancient Sarazm; it does not substantiate hiking." }),
+];
 
 const otherReviewedRows: DiscoveryEvidenceRow[] = [{
   id: "petra", group: "Jordan", tags: ["heritage"], imageKey: null,
@@ -112,27 +126,29 @@ function validCoordinates(coordinates: readonly [number, number] | undefined): c
     && coordinates[1] >= -90 && coordinates[1] <= 90);
 }
 
-// Deliberately broad envelopes catch misplaced points, not access or precise
-// boundaries. The catalog remains the identity/containment authority.
-const geographicEnvelopes: Record<string, readonly [number, number, number, number]> = {
+// Coarse admin-0/admin-1 envelopes reject misplaced points, not points just
+// across a border. Add a reviewed envelope whenever a new country is curated.
+const geographySource = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/";
+const geographyReviewedAt = "2026-09-24";
+const geographicEnvelopes: Record<string, {
+  bounds: readonly [number, number, number, number]; sourceUrl: string; reviewedAt: string;
+}> = Object.fromEntries(Object.entries({
   "New South Wales": [140, -38, 154, -28], Victoria: [140, -39.5, 150, -33.5],
   Tasmania: [143, -44, 149, -39], "South Australia": [129, -38.5, 142, -25],
   Queensland: [138, -29, 154, -10], "Northern Territory": [129, -26, 138, -10],
   "Western Australia": [112, -35.5, 129, -13],
   Jordan: [34.8, 29, 39.4, 33.5], Tajikistan: [67, 36, 75, 41],
   Tanzania: [29, -12, 41, -1], Philippines: [116, 4, 127, 22],
-  Madagascar: [43, -26, 51, -11],
-};
+} satisfies Record<string, readonly [number, number, number, number]>).map(([name, bounds]) =>
+  [name, { bounds, sourceUrl: geographySource, reviewedAt: geographyReviewedAt }]));
 
 function validContainment(country: string, group: string, coordinates: readonly [number, number]) {
-  // This is an open catalogue: source-backed places in a newly reviewed
-  // country must not disappear solely because it lacks a local bounds table.
   if (!findCatalogPlacesByPhrase(country).some(entry => entry.placeType === "country" && entry.canonicalName === country)) return false;
   if (country !== "Australia" && group !== country) return false;
   const expectedGroup = country === "Australia" ? group : country;
-  const bounds = geographicEnvelopes[expectedGroup];
-  if (!bounds) return country !== "Australia";
-  const [west, south, east, north] = bounds;
+  const evidence = geographicEnvelopes[expectedGroup];
+  if (!evidence?.sourceUrl.startsWith("https://") || !/^\d{4}-\d{2}-\d{2}$/.test(evidence.reviewedAt)) return false;
+  const [west, south, east, north] = evidence.bounds;
   return coordinates[0] >= west && coordinates[0] <= east
     && coordinates[1] >= south && coordinates[1] <= north;
 }

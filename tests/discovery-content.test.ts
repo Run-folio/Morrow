@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { australiaDiscoveryPlaces } from "../lib/easyt/australia-discovery-content.ts";
+import { australiaDiscoveryPlaces, AUSTRALIA_DISCOVERY_EVIDENCE } from "../lib/easyt/australia-discovery-content.ts";
 import { discoveryPlaceForId, discoveryPlacesForMention } from "../lib/easyt/discovery-content.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import { routeEditorialPhoto } from "../lib/easyt/route-images.ts";
@@ -47,4 +47,32 @@ test("continent and macro-region discovery use canonical containment even withou
   const southeastAsia = discoveryPlacesForMention({ canonicalPlaceId: "southeast-asia", canonicalName: "Southeast Asia", placeType: "macro_region", parentCountries: [] });
   assert.ok(africa.some(place => place.id === "arusha"));
   assert.ok(southeastAsia.some(place => place.id === "el-nido"));
+});
+
+test("unverified per-place themes and unreachable event sources are not promoted as visitor reasons", () => {
+  assert.equal(discoveryPlaceForId("morondava"), null);
+  const dushanbe = discoveryPlaceForId("dushanbe");
+  assert.ok(dushanbe);
+  assert.doesNotMatch(dushanbe.relevance.en, /food/i);
+  assert.equal(dushanbe.relevance.sources[0]?.url, "https://traveltajikistan.tj/en/dushanbe-city-tour/");
+  assert.equal(discoveryPlaceForId("khorog"), null);
+});
+
+test("a newly added country needs reviewed geographic containment before its place is published", () => {
+  const catalog = findCatalogPlaceById("sydney");
+  const row = AUSTRALIA_DISCOVERY_EVIDENCE.find(value => value.id === "sydney");
+  assert.ok(catalog && row);
+  const originalCountries = catalog.parentCountries;
+  const originalCoordinates = catalog.coordinates;
+  const originalGroup = row.group;
+  try {
+    catalog.parentCountries = ["Germany"];
+    catalog.coordinates = [120, -30];
+    row.group = "Germany";
+    assert.equal(discoveryPlaceForId("sydney"), null);
+  } finally {
+    catalog.parentCountries = originalCountries;
+    catalog.coordinates = originalCoordinates;
+    row.group = originalGroup;
+  }
 });
