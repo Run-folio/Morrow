@@ -17,3 +17,15 @@ export function discoveryFailureFocusTarget(
   if (highlightedPlaceId && places.some(place => place.id === highlightedPlaceId)) return highlightedPlaceId;
   return places[0]?.id ?? null;
 }
+
+/** Include an offscreen focused pin's card in the render before restoring focus. */
+export function discoveryFailureFocusPlan(
+  focusedPinId: string | null,
+  highlightedPlaceId: string | null,
+  places: readonly Pick<DiscoveryPlace, "id">[],
+  visibleCount: number,
+) {
+  const placeId = discoveryFailureFocusTarget(focusedPinId, highlightedPlaceId, places);
+  const index = places.findIndex(place => place.id === placeId);
+  return { placeId, visibleCount: index < 0 ? visibleCount : Math.max(visibleCount, index + 1) };
+}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
-import { discoveryFailureFocusTarget } from "@/lib/easyt/discovery-map-target";
+import { discoveryFailureFocusPlan } from "@/lib/easyt/discovery-map-target";
 import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
@@ -139,10 +139,14 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
     const active = document.activeElement;
     const focusedPinId = active instanceof HTMLElement ? active.closest<HTMLElement>("[data-map-place-id]")?.dataset.mapPlaceId ?? null : null;
     const mapOwnedFocus = active instanceof HTMLElement && (mapPanelRef.current?.contains(active) || mapToggleRef.current === active);
-    if (mapOwnedFocus) setCardToFocus(discoveryFailureFocusTarget(focusedPinId, highlightedPlaceId, allPlaces));
+    if (mapOwnedFocus) {
+      const focusPlan = discoveryFailureFocusPlan(focusedPinId, highlightedPlaceId, allPlaces, visibleCount);
+      setVisibleCount(focusPlan.visibleCount);
+      setCardToFocus(focusPlan.placeId);
+    }
     setMapUnavailable(true);
     setMobileMapOpen(false);
-  }, [allPlaces, highlightedPlaceId]);
+  }, [allPlaces, highlightedPlaceId, visibleCount]);
   useEffect(() => {
     if (!wantsMap || mapUnavailable || MapComponent) return;
     let active = true;

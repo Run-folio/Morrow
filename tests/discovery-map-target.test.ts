@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { discoveryFailureFocusTarget, discoveryMapTarget } from "../lib/easyt/discovery-map-target.ts";
+import { discoveryFailureFocusPlan, discoveryFailureFocusTarget, discoveryMapTarget } from "../lib/easyt/discovery-map-target.ts";
 import type { DiscoveryPlace } from "../lib/easyt/discovery-content.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -27,6 +27,17 @@ test("map failure restores the exact focused pin card, then highlight, then firs
   assert.equal(discoveryFailureFocusTarget(null, null, []), null);
 });
 
+test("map failure reveals an offscreen focused pin card before focus restoration", () => {
+  const offscreenPlaces = [...places, { id: "adelaide", coordinates: [138.6007, -34.9285] as [number, number] }];
+  assert.deepEqual(discoveryFailureFocusPlan("adelaide", "sydney", offscreenPlaces, 1),
+    { placeId: "adelaide", visibleCount: 3 });
+  assert.deepEqual(discoveryFailureFocusPlan(null, null, offscreenPlaces, 1),
+    { placeId: "sydney", visibleCount: 1 });
+  const steps = read("components/easyt/discovery-steps.tsx");
+  assert.match(steps, /const focusPlan = discoveryFailureFocusPlan\(/);
+  assert.match(steps, /setVisibleCount\(focusPlan\.visibleCount\);\s*setCardToFocus\(focusPlan\.placeId\)/);
+});
+
 test("Discovery map and cards share one transient canonical highlight owner", () => {
   const modal = read("components/easyt/discovery-modal.tsx");
   const steps = read("components/easyt/discovery-steps.tsx");
@@ -39,7 +50,7 @@ test("Discovery map and cards share one transient canonical highlight owner", ()
   assert.match(steps, /mapPanelRef\.current\?\.scrollIntoView/);
   assert.match(steps, /if \(highlightedPlaceId\) handlePinHighlight\(highlightedPlaceId\)/);
   assert.match(steps, /handleMapUnavailable/);
-  assert.match(steps, /setCardToFocus\(discoveryFailureFocusTarget\(/);
+  assert.match(steps, /setCardToFocus\(focusPlan\.placeId\)/);
   assert.doesNotMatch(map, /addStop|onConfirm|add-shortlist|remove-shortlist/);
   assert.doesNotMatch(map, /mapRouteLine|mapRouteCasing|sequence|stop-number/);
   assert.match(map, /MorroviaSectionStatus/);
