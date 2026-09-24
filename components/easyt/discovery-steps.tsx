@@ -6,6 +6,7 @@ import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
 import type { DiscoveryDraft, DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
+import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { availableActions, discoveryDirectionTitle, discoveryShortlistCount, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { routeEditorialPhoto, routeImageCredit } from "@/lib/easyt/route-images";
@@ -93,9 +94,9 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const allPlaces = activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places;
   const visible = allPlaces.slice(0, visibleCount);
   const baseId = draft.baseByIntentId[mention.mentionId] ?? draft.visitBaseByIntentId[mention.mentionId] ?? null;
-  const selected = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)).filter((place): place is DiscoveryPlace => Boolean(place));
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
   const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
+  const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
 
   if (draft.step === "directions" && projection.directions.length) return <div className={styles.step} data-discovery-step="directions">
     <div className={styles.lead}><span className={styles.eyebrow}>{copy.steps.directions}</span><h3>{mention.canonicalName || mention.sourceText}</h3><p>{copy.directionIntro}</p></div>
@@ -117,12 +118,27 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
 
   if (draft.step === "review") return <div className={styles.step} data-discovery-step="review">
     <div className={styles.lead}><span className={styles.eyebrow}>{copy.steps.review}</span><h3>{copy.review}</h3><p>{copy.reviewIntro}</p></div>
-    {selectedNames.length || baseName ? <div className={styles.reviewList}>
-      {selectedNames.map((name, index) => <div key={draft.shortlistIds[index]}><span>{String(index + 1).padStart(2, "0")}</span><strong>{name}</strong></div>)}
-      {baseName ? <div><MapPin aria-hidden="true" /><strong>{copy.roles.chosen}: {baseName}</strong></div> : null}
+    {review.choices.length || review.base ? <div className={styles.reviewList}>
+      {review.choices.map((choice, index) => <div key={choice.id} className={styles.reviewChoice}>
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <div className={styles.reviewDetail}>
+          <strong>{choice.name}</strong>
+          <small>{choice.role ? copy.roles[choice.role] : copy.reviewStatus.unavailable}</small>
+          <small>{choice.existing ? copy.roles.existing : choice.confirmable ? copy.reviewStatus.ready : copy.reviewStatus.exploreOnly}</small>
+          {choice.outsideDirection ? <small className={styles.reviewWarning}>{copy.reviewStatus.outsideDirection}</small> : null}
+        </div>
+        <EasyTButton variant="quiet" size="small" onClick={() => onAction({ type: "remove-shortlist", placeId: choice.id })}>
+          {copy.actions.remove}
+        </EasyTButton>
+      </div>)}
+      {review.base ? <div className={styles.reviewChoice}><MapPin aria-hidden="true" />
+        <div className={styles.reviewDetail}><strong>{copy.roles.chosen}: {review.base.name}</strong>
+          <small>{review.base.existing ? copy.roles.existing : review.base.confirmable ? copy.reviewStatus.ready : copy.reviewStatus.exploreOnly}</small>
+        </div>
+      </div> : null}
     </div> : <MorroviaStatusBanner title={copy.noDecision} detail={copy.empty} />}
-    {selected.some(place => place.actionability === "browse-only") ? <MorroviaStatusBanner tone="warning" title={copy.roles["browse-only"]} detail={copy.notBase} /> : null}
-    {selected.some(place => place.actionability === "visit") && !baseId ? <MorroviaStatusBanner tone="warning" title={copy.roles.visit} detail={copy.visitNeedsBase} /> : null}
+    {review.hasUnresolvedChoices ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
+    {review.hasOutsideDirection ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.outsideDirectionTitle} detail={copy.reviewStatus.outsideDirectionDetail} /> : null}
     <p className={styles.truth}>{copy.status.routeUnverified}</p>
   </div>;
 

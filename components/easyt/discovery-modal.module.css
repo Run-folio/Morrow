@@ -46,8 +46,13 @@
 .reviewList span { color: var(--morrovia-signal); font: var(--morrovia-type-metadata); }
 .reviewList strong { color: var(--morrovia-ink); font: 600 17px/1.3 var(--morrovia-ui); }
 .reviewList svg { width: 16px; height: 16px; color: var(--morrovia-action); }
+.reviewList .reviewChoice { align-items: flex-start; }
+.reviewDetail { display: grid; flex: 1; gap: 3px; min-width: 0; }
+.reviewDetail small { color: var(--morrovia-ink-soft); font: var(--morrovia-type-fine-print); }
+.reviewDetail .reviewWarning { color: var(--morrovia-signal); }
+.reviewChoice > button { flex: none; }
 .srAnnouncement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 @media (max-width: 800px) { .directions { grid-template-columns: repeat(2,minmax(0,1fr)); } .contentGrid { grid-template-columns: minmax(0,1fr); } .shortlist { order: -1; } }
-@media (max-width: 620px) { .step { gap: 18px; } .lead h3 { font-size: 33px; } .directions,.placeGrid { grid-template-columns: 1fr; } .directionCard { display: grid; grid-template-columns: 38% minmax(0,1fr); } .directionCard .visual { height: 100%; min-height: 156px; } .directionContent { padding: 13px; } .directionContent h4 { font-size: 22px; } .placeCard .visual { height: 150px; } .cardContent > p { min-height: 0; } .shortlist { order: 0; } }
+@media (max-width: 620px) { .step { gap: 18px; } .lead h3 { font-size: 33px; } .directions,.placeGrid { grid-template-columns: 1fr; } .directionCard { display: grid; grid-template-columns: 38% minmax(0,1fr); } .directionCard .visual { height: 100%; min-height: 156px; } .directionContent { padding: 13px; } .directionContent h4 { font-size: 22px; } .placeCard .visual { height: 150px; } .cardContent > p { min-height: 0; } .shortlist { order: 0; } .reviewChoice { flex-wrap: wrap; } .reviewDetail { flex-basis: calc(100% - 36px); } .reviewChoice > button { margin-left: 28px; } }
 @media (max-width: 340px) { .directionCard { grid-template-columns: 1fr; } .directionCard .visual { height: 115px; min-height: 0; } .cardActions > button { flex: 1; } }
 @media (prefers-reduced-motion: reduce) { .step * { scroll-behavior: auto; } }

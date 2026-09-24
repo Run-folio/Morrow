@@ -10,7 +10,7 @@ test("visual Discovery has complete English and Spanish UI grammar", () => {
   assert.equal(discoveryShortlistCount("es", 1), "1 lugar seleccionado");
   for (const language of ["en", "es"] as const) {
     const copy = easytCopy[language].builder.visualDiscovery;
-    for (const group of [copy.actions, copy.steps, copy.roles, copy.types, copy.status, copy.accessibility, copy.directions]) {
+    for (const group of [copy.actions, copy.steps, copy.roles, copy.reviewStatus, copy.types, copy.status, copy.accessibility, copy.directions]) {
       assert.ok(Object.values(group).every(value => typeof value === "string" && value.trim().length > 0));
     }
     assert.ok(copy.shortlist && copy.review && copy.sparse && copy.noPhoto);

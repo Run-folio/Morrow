@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { DiscoveryModal } from "./discovery-modal";
 import { createDiscoveryDraft, reduceDiscoveryDraft, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery, type DiscoveryProjection } from "@/lib/easyt/discovery-projection";
@@ -18,16 +19,17 @@ const taj = projection("Taj Mahal");
 const australiaMention = mention("Australia");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
-  language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean };
+  language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean;
+  actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void };
 
-function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading }: Scene) {
+function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, actionSpy, confirmSpy }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
   const [searchValue, setSearchValue] = useState("");
-  const onAction = (action: DiscoveryDraftAction) => setDraft(current => reduceDiscoveryDraft(current, action));
+  const onAction = (action: DiscoveryDraftAction) => { actionSpy?.(action); setDraft(current => reduceDiscoveryDraft(current, action)); };
   return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 20 }}>
     <p style={{ maxWidth: 780, margin: 0 }}>{note ?? "Reviewed production evidence; no licensed image is currently assigned to these places."}</p>
     <DiscoveryModal open entry={entry} mention={sceneMention} projection={sceneProjection} draft={draft} language={language} loading={loading}
-      existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => {}} onClose={() => {}}
+      existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => {}}
       search={{ value: searchValue, onChange: setSearchValue, onSelect: () => {} }} />
   </main>;
 }
@@ -45,6 +47,46 @@ export const AustraliaDirections: Story = { args: { entry: countryEntry, mention
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
 export const AustraliaShortlist: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: selectedDraft } };
 export const AustraliaReview: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: { ...selectedDraft, step: "review" } } };
+const supportedBase = australia.places.find(place => place.actionability === "overnight-base")!;
+const exploratoryVisit = australia.places.find(place => place.actionability === "visit")!;
+const outsideDirection = australia.directions.find(direction => !direction.placeIds.includes(supportedBase.id))!;
+export const AustraliaReviewMixed: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia,
+  draft: { ...initial, step: "review", directionId: outsideDirection.id, shortlistIds: [supportedBase.id, exploratoryVisit.id],
+    baseByIntentId: { [australiaMention.mentionId]: supportedBase.id } }, existingPlaceIds: [supportedBase.id] } };
+export const AustraliaReviewResolveInteraction: Story = { args: { ...AustraliaReviewMixed.args },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeDisabled();
+    await expect(canvas.getByText("Resolve exploratory choices before confirming")).toBeVisible();
+    await expect(canvas.getByText("A choice sits outside this direction")).toBeVisible();
+    await userEvent.click(canvas.getAllByRole("button", { name: "Remove from shortlist" })[1]!);
+    await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeEnabled();
+  } };
+export const DirectionToContainedPlacesInteraction: Story = { args: { ...AustraliaDirections.args, actionSpy: fn(), confirmSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getAllByRole("button", { name: "Explore this direction" })[0]!);
+    await expect(canvas.getByRole("heading", { name: "Australia" })).toBeVisible();
+    await expect(canvas.getByText("Your emerging shortlist")).toBeVisible();
+    const contained = australia.places.find(place => australia.directions[0]!.placeIds.includes(place.id))!;
+    const outside = australia.places.find(place => !australia.directions[0]!.placeIds.includes(place.id))!;
+    await expect(canvas.getByRole("heading", { name: contained.name })).toBeVisible();
+    await expect(canvas.queryByRole("heading", { name: outside.name })).not.toBeInTheDocument();
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "change-direction", directionId: australia.directions[0]!.id });
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "set-step", step: "places" });
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
+export const ShortlistAddRemoveInteraction: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getAllByRole("button", { name: "Add to shortlist" })[0]!);
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "add-shortlist", placeId: australia.places[0]!.id });
+    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("1 place shortlisted")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Remove from shortlist" }));
+    await expect(args.actionSpy).toHaveBeenCalledWith({ type: "remove-shortlist", placeId: australia.places[0]!.id });
+    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("0 places shortlisted")).toBeVisible();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
 export const AustraliaBrowseOnly: Story = { args: { entry: countryEntry, mention: australiaMention,
   projection: { ...australia, places: australia.places.filter(place => place.actionability === "browse-only").slice(0, 2), visiblePlaceIds: australia.places.filter(place => place.actionability === "browse-only").slice(0, 2).map(place => place.id) }, draft: placesDraft } };
 export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australia.places[0]!.id] } };
