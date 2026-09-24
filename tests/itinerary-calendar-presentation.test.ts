@@ -60,6 +60,7 @@ test("Calendar exposes truthful temporal and item semantics without relying on c
   assert.match(itinerary, /item\.kind === "transfer"/);
   assert.match(itinerary, /item\.kind === "accommodation"/);
   assert.match(itinerary, /item\.booking\.type/);
+  assert.match(itinerary, /<b>\{band\.stop\.order \+ 1\}<\/b>/, "repeated destination bands need a visible occurrence number");
 });
 
 test("continuous and representative Calendar stories cover all required widths", () => {
@@ -71,4 +72,11 @@ test("continuous and representative Calendar stories cover all required widths",
   assert.match(styles, /@media \(max-width: 540px\)[\s\S]*\.calendarGrid \{ grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(styles, /\.calendarItems \.calendarItem \{[\s\S]*min-height: 44px/);
   assert.match(styles, /--morrovia-mobile-dock-offset/);
+});
+
+test("restored rail and occurrence navigation have explicit responsive Storybook states", () => {
+  for (const story of ["RestoredDayRailMobile320", "RestoredDayRailMobile390", "RestoredDayRailMobile430", "RestoredDayRailTablet768", "RestoredDayRailDesktop1024", "RestoredDayRailDesktop1440", "RepeatedDestinationSecondOccurrence"]) {
+    assert.match(stories, new RegExp(`export const ${story}`));
+  }
+  assert.match(stories, /second Tokyo occurrence must remain active/);
 });

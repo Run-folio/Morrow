@@ -30,7 +30,36 @@ export default function DemoItinerary({ route, nights, day, es, onDay }: Props) 
         <EasyTButton icon={ChevronRight} iconOnly size="small" variant="secondary" disabled={day === totalDays} onClick={() => onDay(day + 1)}>{es ? "Día siguiente" : "Next day"}</EasyTButton>
       </div>
     </header>
-    <div className={itinerary.dayPanel} role="region" aria-label={`${es ? "Día" : "Day"} ${day}: ${stop.name}`}>
+    <nav className={itinerary.rail} aria-label={es ? "Día a día" : "Day by day"}>
+      <div className={itinerary.railHeader}><h2>{es ? "Día a día" : "Day by day"}</h2><span>{totalDays} {es ? "días" : "days"}</span></div>
+      <div className={itinerary.dayList} role="tablist" aria-label={es ? "Día a día" : "Day by day"}>
+        {days.map((number) => {
+          const dayStop = route.stops[homepageDemoStopForDay(nights, number)];
+          // morrovia-ui-audit-allow-next-line native-control -- Homepage projection retains the production day-tab keyboard contract.
+          return <button
+            type="button"
+            role="tab"
+            aria-selected={number === day}
+            aria-controls="homepage-demo-day-panel"
+            id={`homepage-demo-day-${number}`}
+            tabIndex={number === day ? 0 : -1}
+            className={number === day ? itinerary.dayButtonActive : itinerary.dayButton}
+            key={number}
+            onClick={() => onDay(number)}
+            onKeyDown={(event) => {
+              const next = event.key === "ArrowRight" || event.key === "ArrowDown" ? Math.min(totalDays, number + 1)
+                : event.key === "ArrowLeft" || event.key === "ArrowUp" ? Math.max(1, number - 1)
+                  : event.key === "Home" ? 1 : event.key === "End" ? totalDays : null;
+              if (next === null) return;
+              event.preventDefault();
+              onDay(next);
+              window.requestAnimationFrame(() => document.getElementById(`homepage-demo-day-${next}`)?.focus());
+            }}
+          ><b>{String(number).padStart(2, "0")}</b><span><strong>{dayStop.name}</strong><small>{dateLabel(homepageDemoDate(route.key, number), es)}</small></span></button>;
+        })}
+      </div>
+    </nav>
+    <div className={itinerary.dayPanel} role="tabpanel" id="homepage-demo-day-panel" aria-labelledby={`homepage-demo-day-${day}`}>
       <header className={itinerary.dayHeader}><div><p><span>{es ? "DÍA" : "DAY"} {String(day).padStart(2, "0")}</span><i aria-hidden="true">·</i><time dateTime={homepageDemoDate(route.key, day)}>{dateLabel(homepageDemoDate(route.key, day), es, true)}</time></p><h2>{stop.name}</h2><span className={itinerary.dayRole}>{stop.country}</span></div></header>
       <div className={itinerary.stayContext} data-state="missing"><BedDouble aria-hidden="true" /><div className={itinerary.stayContextCopy}><strong>{es ? "Estancia por elegir" : "Stay to choose"}</strong><span>{stop.name} · {nights[stopIndex]} {es ? "noches" : "nights"}</span></div></div>
       <div className={styles.dayPlan}>

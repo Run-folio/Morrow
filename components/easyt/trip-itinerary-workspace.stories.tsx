@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import EasyTNavigation from "@/app/journey/easyt-navigation";
 import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context";
-import { defaultTripIntent, type EasyTTrip, type ItineraryIdea, type PlanItem } from "@/lib/easyt/trip";
+import { defaultTripIntent, tripFromBuilder, type EasyTTrip, type ItineraryIdea, type PlanItem } from "@/lib/easyt/trip";
 import type { TripInterest } from "@/lib/easyt/trip-interest";
 import { affiliatePartners, getActivityBookingAction } from "@/lib/easyt/booking-readiness";
 import { tourTripFixture } from "./storybook/tour-trip.fixture";
@@ -890,3 +890,65 @@ export const Tablet768: Story = { globals: { viewport: { value: "morrovia768", i
 export const Desktop1024: Story = { globals: { viewport: { value: "morrovia1024", isRotated: false } } };
 export const DesktopLaptopHeight: Story = { globals: { viewport: { value: "morroviaLaptop", isRotated: false } } };
 export const Desktop1440: Story = { globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+
+export const RestoredDayRailMobile320: Story = Mobile320;
+export const RestoredDayRailMobile390: Story = Mobile390;
+export const RestoredDayRailMobile430: Story = Mobile430;
+export const RestoredDayRailTablet768: Story = Tablet768;
+export const RestoredDayRailDesktop1024: Story = Desktop1024;
+export const RestoredDayRailDesktop1440: Story = Desktop1440;
+
+const repeatedTokyoTrip = tripFromBuilder({
+  id: "storybook-itinerary-tokyo-kyoto-tokyo",
+  origin: "Tokyo",
+  originCountry: "Japan",
+  originCoordinates: [139.6917, 35.6895],
+  journeyEnd: { mode: "same_as_start" },
+  stops: [
+    { id: "tokyo-first", name: "Tokyo", country: "Japan", countryCode: "JP", coordinates: [139.6917, 35.6895] },
+    { id: "kyoto", name: "Kyoto", country: "Japan", countryCode: "JP", coordinates: [135.7681, 35.0116] },
+    { id: "tokyo-return", name: "Tokyo", country: "Japan", countryCode: "JP", coordinates: [139.6917, 35.6895] },
+  ],
+  startDate: "2026-09-01",
+  endDate: "2026-09-06",
+  picks: {},
+  mustDo: "Tokyo and Kyoto",
+  pace: "slow",
+  hotels: "few",
+  budget: "mid",
+  nightAllocations: { "tokyo-first": 2, kyoto: 2, "tokyo-return": 2 },
+  draft: [
+    { number: "1", date: "2026-09-01", destination: "Tokyo", stopId: "tokyo-first", title: "Arrive in Tokyo", reason: "Arrival day", items: [] },
+    { number: "2", date: "2026-09-02", destination: "Tokyo", stopId: "tokyo-first", title: "Explore Tokyo", reason: "First Tokyo stay", items: [] },
+    { number: "3", date: "2026-09-03", destination: "Kyoto", stopId: "kyoto", title: "Travel to Kyoto", reason: "Move to Kyoto", items: [] },
+    { number: "4", date: "2026-09-04", destination: "Kyoto", stopId: "kyoto", title: "Explore Kyoto", reason: "Kyoto stay", items: [] },
+    { number: "5", date: "2026-09-05", destination: "Tokyo", stopId: "tokyo-return", title: "Return to Tokyo", reason: "Second Tokyo stay", items: [] },
+    { number: "6", date: "2026-09-06", destination: "Tokyo", stopId: "tokyo-return", title: "Explore Tokyo again", reason: "Later day in the second Tokyo occurrence", items: [] },
+  ],
+});
+
+export const RepeatedDestinationSecondOccurrence: Story = {
+  args: { trip: repeatedTokyoTrip, selectedDayNumber: 2 },
+  globals: { viewport: { value: "morrovia1440", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const settle = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const destinations = canvasElement.querySelectorAll<HTMLButtonElement>('nav[aria-label="Route destinations"] button');
+    if (destinations.length !== 3) throw new Error("Expected three canonical stop occurrences");
+    destinations[2]!.click();
+    await settle();
+    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("05")) {
+      throw new Error("The second Tokyo occurrence must remain active at its first canonical day");
+    }
+    const nextDay = [...canvasElement.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent?.includes("06"));
+    if (!nextDay) throw new Error("Missing later day for the second Tokyo occurrence");
+    nextDay.click();
+    await settle();
+    if (destinations[2]!.getAttribute("aria-current") !== "step") throw new Error("The second Tokyo occurrence must remain active on later days");
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Calendar")?.click();
+    await settle();
+    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[data-selected="true"]')) throw new Error("Calendar lost the selected occurrence");
+    [...canvasElement.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.trim() === "Day by day")?.click();
+    await settle();
+    if (destinations[2]!.getAttribute("aria-current") !== "step" || !canvasElement.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.includes("06")) throw new Error("Day by day lost the selected occurrence");
+  },
+};

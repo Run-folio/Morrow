@@ -13,12 +13,26 @@ const detailStyles = readFileSync(new URL("../components/easyt/itinerary-item-de
 const refinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
-test("the itinerary uses one toolbar navigation owner and gives the agenda the primary width", () => {
-  assert.doesNotMatch(itinerary, /className=\{`\$\{styles\.rail\}/);
+test("the itinerary restores the day rail beside the agenda without a second selection owner", () => {
+  assert.match(itinerary, /className=\{`\$\{styles\.rail\}/);
+  assert.match(itinerary, /className=\{styles\.dayList\} role="tablist"/);
+  assert.match(itinerary, /onClick=\{\(\) => setSelectedIndex\(dayIndex\)\}/);
+  assert.match(itinerary, /aria-selected=\{dayIndex === index\}/);
   assert.match(itinerary, /className=\{styles\.dayPanel\}/);
   assert.match(itinerary, /styles\.contextRail/);
-  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) minmax\(280px, 320px\)/);
+  assert.match(styles, /grid-template-columns: minmax\(190px, 230px\) minmax\(0, 1fr\) minmax\(260px, 300px\)/);
   assert.doesNotMatch(itinerary, /Edit trip brief/);
+});
+
+test("destination context is a separate route-level control that drives the canonical selected day", () => {
+  assert.match(itinerary, /itineraryDestinationTrack\(workingTrip, activeDayId\)/);
+  assert.match(itinerary, /className=\{styles\.destinationTrack\} aria-label=\{language === "es" \? "Destinos de la ruta" : "Route destinations"\}/);
+  assert.match(itinerary, /aria-current=\{destination\.active \? "step" : undefined\}/);
+  assert.match(itinerary, /destination\.firstDayNumber/);
+  assert.match(itinerary, /setSelectedIndex\(dayIndex\)/);
+  assert.equal((itinerary.match(/role="tablist"/g) ?? []).length, 1, "destinations must not become competing day tabs");
+  assert.doesNotMatch(itinerary, /useState<[^>]*selectedDestination|setSelectedDestination|localStorage\.setItem\([^)]*destination/);
+  assert.match(styles, /\.destinationTrack \{[\s\S]*grid-column: 1 \/ -1/);
 });
 
 test("the selected day timeline uses canonical content and the shared Map persistence architecture", () => {
@@ -120,9 +134,14 @@ test("day navigation is owned by the toolbar and precedes planner content", () =
   assert.doesNotMatch(itinerary, /function DayNavigation/);
 });
 
-test("tablet and mobile layouts collapse without introducing another day track", () => {
-  assert.doesNotMatch(itinerary, /role="tablist" aria-label=\{copy\.dayByDay\}/);
+test("tablet and mobile retain the one horizontal day scroller", () => {
+  assert.match(itinerary, /role="tablist" aria-label=\{copy\.dayByDay\}/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.workspace \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.dayList \{[\s\S]*overflow-x: auto/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.destinationTrack \{ display: none; \}/);
+  const mobileRailRules = styles.slice(styles.indexOf("@media (max-width: 540px)"), styles.indexOf("@media (max-width: 640px)"));
+  assert.doesNotMatch(mobileRailRules, /\.rail \{ display: none; \}/);
+  assert.doesNotMatch(styles, /^\s*\.rail\s*\{\s*display:\s*none;/m, "later responsive rules must not hide the restored scroller");
   assert.match(styles, /\.railSavedIdeas \{[\s\S]*max-height: min\(34vh, 300px\)/);
 });
 
@@ -144,7 +163,7 @@ test("mobile composition keeps the plan before Saved Ideas and secondary discove
   assert.equal((itinerary.match(/<SavedIdeasSection/g) ?? []).length, 1);
   assert.match(mobile, /\.dayPanel > \.details \{ order: 4; \}/);
   assert.match(mobile, /\.sequenceEditor \{ order: 5; \}/);
-  assert.doesNotMatch(itinerary, /className=\{`\$\{styles\.rail\}/);
+  assert.match(itinerary, /className=\{`\$\{styles\.rail\}/);
 });
 
 test("Calendar uses a compact selected-day summary and only mounts the context rail for unique detail capability", () => {
@@ -186,7 +205,7 @@ test("activity, restaurant, and accommodation detail stay truthful and omit abse
 
 test("long canonical and provider content stays inside the timeline and planning rail", () => {
   const stories = readFileSync(new URL("../components/easyt/trip-itinerary-workspace.stories.tsx", import.meta.url), "utf8");
-  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) minmax\(280px, 320px\)/);
+  assert.match(styles, /grid-template-columns: minmax\(190px, 230px\) minmax\(0, 1fr\) minmax\(260px, 300px\)/);
   assert.match(styles, /\.rowSelect \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.savedIdeaSelect \{[\s\S]*white-space: normal/);
   assert.match(styles, /\.discoveryCopy > strong \{[\s\S]*-webkit-line-clamp: 2/);

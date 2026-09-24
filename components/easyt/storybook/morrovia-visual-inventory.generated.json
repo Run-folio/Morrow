@@ -5271,7 +5271,7 @@
     "observedSpacing": [
       {
         "value": "8px",
-        "count": 518,
+        "count": 519,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5281,7 +5281,7 @@
       },
       {
         "value": "10px",
-        "count": 503,
+        "count": 504,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5311,7 +5311,7 @@
       },
       {
         "value": "7px",
-        "count": 321,
+        "count": 322,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5331,7 +5331,7 @@
       },
       {
         "value": "9px",
-        "count": 282,
+        "count": 283,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5341,7 +5341,7 @@
       },
       {
         "value": "16px",
-        "count": 273,
+        "count": 274,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5351,7 +5351,7 @@
       },
       {
         "value": "4px",
-        "count": 231,
+        "count": 232,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -7853,6 +7853,14 @@
         ]
       },
       {
+        "value": "max-width: 640px",
+        "count": 2,
+        "examples": [
+          "app/journey/account.module.css",
+          "components/easyt/trip-itinerary-workspace.module.css"
+        ]
+      },
+      {
         "value": "max-width: 768px",
         "count": 2,
         "examples": [
@@ -7922,13 +7930,6 @@
         "count": 1,
         "examples": [
           "components/easyt/morrovia-loading-states.stories.module.css"
-        ]
-      },
-      {
-        "value": "max-width: 640px",
-        "count": 1,
-        "examples": [
-          "app/journey/account.module.css"
         ]
       },
       {
@@ -8256,6 +8257,6 @@
         }
       ]
     },
-    "documentedExceptions": 53
+    "documentedExceptions": 55
   }
 }

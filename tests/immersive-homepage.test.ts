@@ -151,7 +151,8 @@ test("homepage product frame follows the live Builder and Itinerary contracts", 
   assert.doesNotMatch(builder, /index === 0 \? \(es \? "Primer destino" : "First stop"\)/);
   assert.match(itinerary, /trip-itinerary-workspace\.module\.css/);
   assert.match(itinerary, /workspaceToolbar|dayPanel|dayHeader/);
-  assert.doesNotMatch(itinerary, /\.rail\b|dayButtonActive|Weather|forecast|Confirmed|booked|Breakfast at your hotel/);
+  assert.match(itinerary, /className=\{itinerary\.dayList\} role="tablist"/, "the projection keeps the restored production day rail");
+  assert.doesNotMatch(itinerary, /Weather|forecast|Confirmed|booked|Breakfast at your hotel/);
   assert.match(map, /variant: "preview"/);
   assert.match(map, /onLifecycleChange=/);
   assert.match(map, /builderRouteMapFallback/, "Builder's existing map-unavailable treatment remains available in the demo");

@@ -250,6 +250,16 @@ export function firstItineraryDayForStop(trip: Pick<WorkspaceTrip, "planItems">,
   return orderedDays(trip).find((day) => day.stopId === stopId)?.dayNumber ?? null;
 }
 
+/** Read-only route context for Itinerary; stop IDs distinguish repeated visits. */
+export function itineraryDestinationTrack(trip: Pick<WorkspaceTrip, "stops" | "planItems">, selectedDayId: string | null) {
+  const selectedStopId = trip.planItems.find((day) => day.id === selectedDayId)?.stopId ?? null;
+  return orderedStops(trip).map((stop) => ({
+    stop,
+    firstDayNumber: firstItineraryDayForStop(trip, stop.id),
+    active: stop.id === selectedStopId,
+  }));
+}
+
 export function itineraryDayForRecommendation(
   trip: Pick<WorkspaceTrip, "planItems">,
   recommendation: Pick<TripRecommendation, "affectedDays">,

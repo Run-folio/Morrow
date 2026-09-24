@@ -55,7 +55,7 @@ import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLe
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, itineraryDestinationTrack, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -551,6 +551,7 @@ export default function TripItineraryWorkspace({
   const copy = useMemo(() => itineraryCopy(language), [language]);
   const calendarWeeks = useMemo(() => itineraryCalendarWeeks(workingTrip), [workingTrip]);
   const activeDayId = days[Math.min(selectedIndex, Math.max(0, days.length - 1))]?.id ?? null;
+  const destinations = useMemo(() => itineraryDestinationTrack(workingTrip, activeDayId), [workingTrip, activeDayId]);
   useEffect(() => {
     if (presentation !== "shell") return;
     const restoreOrientation = () => {
@@ -1225,6 +1226,21 @@ export default function TripItineraryWorkspace({
         </div>
         <ItinerarySubviewSwitch value={workspaceView} onChange={setWorkspaceView} copy={copy} />
       </header>
+      <nav className={styles.destinationTrack} aria-label={language === "es" ? "Destinos de la ruta" : "Route destinations"}>
+        <ol>{destinations.map((destination, destinationIndex) => <li key={destination.stop.id}>
+          <EasyTButton
+            className={styles.destinationJump}
+            variant="quiet"
+            aria-current={destination.active ? "step" : undefined}
+            aria-label={`${language === "es" ? "Parada" : "Stop"} ${destinationIndex + 1}: ${destination.stop.name}${destination.firstDayNumber === null ? "" : `, ${copy.day} ${destination.firstDayNumber}`}`}
+            disabled={destination.firstDayNumber === null}
+            onClick={() => {
+              const dayIndex = days.findIndex((day) => day.dayNumber === destination.firstDayNumber);
+              if (dayIndex >= 0) setSelectedIndex(dayIndex);
+            }}
+          ><b>{destinationIndex + 1}</b><span>{destination.stop.name}</span></EasyTButton>
+        </li>)}</ol>
+      </nav>
       {workspaceView === "calendar" ? <ItineraryCalendar
         weeks={calendarWeeks.filter((week) => week.days.some((day) => day?.id === active.id))}
         selectedDayId={active.id}
@@ -1246,11 +1262,48 @@ export default function TripItineraryWorkspace({
         setSelectedRecommendation(null);
         setSelectedItemId(itemId);
       }} /> : null}
+      {workspaceView === "days" ? <nav className={`${styles.rail} ${unscheduledSavedIdeas.length ? styles.railWithSavedIdeas : ""}`} aria-label={copy.dayByDay}>
+        <div className={styles.railHeader}><h2>{copy.dayByDay}</h2><span>{days.length} {copy.days}</span></div>
+        <div className={styles.dayList} role="tablist" aria-label={copy.dayByDay}>
+          {days.map((day, dayIndex) => {
+            const dayStop = stopForDay(workingTrip, day);
+            const DayIcon = iconForPlanItem(day.type);
+            // morrovia-ui-audit-allow-next-line native-control -- Restored itinerary day tab has its own roving-focus keyboard contract.
+            return <button
+              type="button"
+              role="tab"
+              aria-selected={dayIndex === index}
+              aria-controls={`${tabIdPrefix}-days-panel`}
+              id={`${tabIdPrefix}-tab-${dayIndex}`}
+              tabIndex={dayIndex === index ? 0 : -1}
+              className={dayIndex === index ? styles.dayButtonActive : styles.dayButton}
+              key={day.id}
+              onClick={() => setSelectedIndex(dayIndex)}
+              onKeyDown={(event) => {
+                const nextIndex = event.key === "ArrowRight" || event.key === "ArrowDown"
+                  ? Math.min(days.length - 1, dayIndex + 1)
+                  : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                    ? Math.max(0, dayIndex - 1)
+                    : event.key === "Home" ? 0 : event.key === "End" ? days.length - 1 : null;
+                if (nextIndex === null) return;
+                event.preventDefault();
+                setSelectedIndex(nextIndex);
+                window.requestAnimationFrame(() => document.getElementById(`${tabIdPrefix}-tab-${nextIndex}`)?.focus());
+              }}
+            >
+              <b>{pad(day.dayNumber)}</b>
+              <span><strong>{dayStop?.name ?? day.title}</strong><small>{day.title}</small></span>
+              <span className={styles.dayMeta}><time dateTime={day.date}>{displayDate(day.date, language, true)}</time><DayIcon aria-hidden="true" /></span>
+            </button>;
+          })}
+        </div>
+      </nav> : null}
       <div
         className={styles.dayPanel}
-        role="tabpanel"
+        role={workspaceView === "days" ? "tabpanel" : "region"}
         id={`${tabIdPrefix}-days-panel`}
-        aria-label={`${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}`}
+        aria-labelledby={workspaceView === "days" ? `${tabIdPrefix}-tab-${index}` : undefined}
+        aria-label={workspaceView === "calendar" ? `${copy.day} ${active.dayNumber}: ${stop?.name ?? active.title}` : undefined}
       >
         <header className={styles.dayHeader}>
           <div>
@@ -1870,7 +1923,7 @@ function ItineraryCalendar({ weeks, selectedDayId, copy, language, dragItem, nat
     {weeks.map((week, weekIndex) => <section className={styles.calendarWeek} key={week.id} aria-labelledby={`${panelId}-week-${weekIndex}`}>
       <h3 id={`${panelId}-week-${weekIndex}`}>{copy.weekOf} {week.startDate ? <time dateTime={week.startDate}>{displayDate(week.startDate, language)}</time> : copy.timeNotSet}</h3>
       <div className={styles.calendarBands} aria-label="Overnight destinations">
-        {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><span>{band.stop.name} · {band.span} {band.span === 1 ? "night" : "nights"}{band.continued ? " · continued" : ""}</span></div>)}
+        {itineraryCalendarNightBands(week).map((band) => <div key={`${band.stop.id}-${band.start}`} style={{ gridColumn: `${band.start + 1} / span ${band.span}` }}><BedDouble aria-hidden="true" /><b>{band.stop.order + 1}</b><span>{band.stop.name} · {band.span} {language === "es" ? (band.span === 1 ? "noche" : "noches") : (band.span === 1 ? "night" : "nights")}{band.continued ? (language === "es" ? " · continúa" : " · continued") : ""}</span></div>)}
       </div>
       <div className={styles.calendarGrid}>
         {week.days.map((day, dayIndex) => day ? <article
