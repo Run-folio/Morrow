@@ -162,6 +162,7 @@ const actionability = row.stayEvidence.length && ["city", "town", "transport_gat
 - [ ] **Step 1: Write failing migration/reducer tests.** Test absent legacy versus explicit empty, one-time migration, unsupported version, and Back:
 
 ```ts
+const brief = extractStructuredTripBrief("Australia");
 const mentionId = "mention-australia";
 assert.deepEqual(readDiscoveryDraft({ ...brief, countryDiscoveryChoices: { [mentionId]: [] } }, mentionId).draft.shortlistIds, []);
 assert.equal(readDiscoveryDraft({ ...brief, countryDiscoveryChoices: { [mentionId]: [] } }, mentionId).status, "migrated");
@@ -386,6 +387,18 @@ const DiscoveryMap = dynamic(() => import("./discovery-map").then(module => modu
 **Interfaces:** Exercises Tasks 1–9 end to end through pure projection/draft/review/commit ports and the Builder handoff contract. Retains the existing #321/Tajikistan and map test suites as regression gates. A future reviewer evaluates the whole branch after focused task gates.
 
 - [ ] **Step 1: Write failing whole-slice acceptance tests before final wiring adjustments.** The matrix includes no duration, short and long trip, Sydney, Sydney+Melbourne, non-Australia fixed anchors, interests, explicit deselection, reload/resume, search/card parity, map/card exact ID, browse-only park, existing stop reuse/manual nights, partial retry, EN/ES and unknown-version fallback. Assert 20+ content and source → eligible → ranked → displayed counts with a bounded initial display. Assert shared fixtures: Africa no silent country, Taj separate from Agra, Kruger park separate from camp/gateway, Lake Atitlán visit separate from base, precise route skips.
+
+```ts
+test("Australia remains broad in browse and conservative at confirmation", () => {
+  const draft = createDiscoveryDraft();
+  const projection = projectDiscovery({ mention: mention("Australia"), draft, context: { interests: [], existingPlaceIds: [] } });
+  assert.ok(projection.counts.source >= 20);
+  assert.ok(projection.counts.eligible >= 20);
+  assert.equal(projection.counts.ranked, projection.places.length);
+  assert.ok(projection.counts.displayed < projection.counts.ranked);
+  assert.ok(projection.recommendedIds.length < projection.counts.displayed);
+});
+```
 - [ ] **Step 2: Run red.** `node --experimental-strip-types --test tests/discovery-acceptance.test.ts`; expected the first missing integration assertion fails. Resolve only the failing integration boundary in its existing owner; do not create a new planner or broaden the content rollout.
 - [ ] **Step 3: Run complete green gate.** `node --experimental-strip-types --test tests/discovery-*.test.ts tests/country-discovery.test.ts tests/country-discovery-builder.test.ts tests/country-discovery-localization.test.ts tests/structured-trip-brief.test.ts tests/builder-persistence-acceptance.test.ts tests/map-result-selection.test.ts tests/mobile-map-drawer.test.ts`; then `npm run typecheck`, `npm run build:check`, `npm run audit:ui`, `npm run build-storybook`, `git diff --check`. Inspect all exit codes. Run `MORROVIA_BUILDER_BROWSER_TESTS=1 node --experimental-strip-types --test tests/country-discovery-browser.test.ts` only if a later execution request explicitly authorizes browser-level validation under `AGENTS.md`; otherwise record `MANUAL HOSTED VERIFICATION REQUIRED` rather than silently launching a browser.
 - [ ] **Step 4: Visual and accessibility acceptance.** Compare actual Storybook states side by side with the two approved mockups as hierarchy/interaction references at 320, 390, 430, 768, 1024, 1440, and 1680 px. Verify one scroll owner, last-card clearance, focus trap/return, Escape, Back preservation, pin/card keyboard operation, image credits, map failure, reduced motion, and EN/ES. Founder visual acceptance is required before declaring UI complete; no mockup travel fact becomes production content. Record any difference and its reason in the review summary, not as a silent styling exception.
