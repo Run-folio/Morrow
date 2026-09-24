@@ -4,7 +4,7 @@ import ProductDemo from "./product-demo";
 import { immersiveHomepageRoutes } from "@/lib/easyt/immersive-homepage-routes";
 import styles from "./immersive.module.css";
 const routes = immersiveHomepageRoutes();
-function Sample({ initialView = "builder" }: { initialView?: "builder" | "itinerary" }) { const [index, setIndex] = useState(0); return <main className={styles.page}><ProductDemo routes={routes} route={routes[index]} change={setIndex} initialView={initialView} /></main>; }
+function Sample({ initialView = "builder", initialItineraryView = "days", initialDay, initialNights, initialRoute = "namibia-self-drive" }: { initialView?: "builder" | "itinerary"; initialItineraryView?: "days" | "calendar"; initialDay?: number; initialNights?: number[]; initialRoute?: string }) { const [index, setIndex] = useState(Math.max(0, routes.findIndex((route) => route.key === initialRoute))); return <main className={styles.page}><ProductDemo routes={routes} route={routes[index]} change={setIndex} initialView={initialView} initialItineraryView={initialItineraryView} initialDay={initialDay} initialNights={initialNights} /></main>; }
 const meta = { title: "Morrovia/05 Product Patterns/Homepage/Product showcase", component: Sample, parameters: { layout: "fullscreen" } } satisfies Meta<typeof Sample>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -16,3 +16,12 @@ export const ItineraryDesktop1440: Story = { args: { initialView: "itinerary" },
 export const ItineraryTablet768: Story = { args: { initialView: "itinerary" }, globals: { viewport: { value: "morrovia768", isRotated: false } } };
 export const ItineraryMobile390: Story = { args: { initialView: "itinerary" }, globals: { viewport: { value: "morrovia390", isRotated: false } } };
 export const ItineraryMobile320: Story = { args: { initialView: "itinerary" }, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const PopulatedDayByDay: Story = { args: { initialView: "itinerary" } };
+export const CalendarDesktop1440: Story = { args: { initialView: "itinerary", initialItineraryView: "calendar" }, globals: { viewport: { value: "morrovia1440", isRotated: false } } };
+export const CalendarDesktop1024: Story = { ...CalendarDesktop1440, globals: { viewport: { value: "morrovia1024", isRotated: false } } };
+export const CalendarTablet768: Story = { ...CalendarDesktop1440, globals: { viewport: { value: "morrovia768", isRotated: false } } };
+export const CalendarMobile430: Story = { ...CalendarDesktop1440, globals: { viewport: { value: "morrovia430", isRotated: false } } };
+export const CalendarMobile390: Story = { ...CalendarDesktop1440, globals: { viewport: { value: "morrovia390", isRotated: false } } };
+export const CalendarMobile320: Story = { ...CalendarDesktop1440, globals: { viewport: { value: "morrovia320", isRotated: false } } };
+export const SparseTransferDay: Story = { args: { initialView: "itinerary", initialDay: 2 } };
+export const RebalancedBuilderToItinerary: Story = { args: { initialView: "itinerary", initialNights: [1, 2, 3, 2, 3, 1, 1] } };

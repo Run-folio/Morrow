@@ -1,20 +1,21 @@
 import type { ImmersiveRoute } from "./immersive-homepage-routes.ts";
 
-export type HomepageDemoState = { nights: Record<string, number[]>; selected: Record<string, number>; day: Record<string, number>; view: "builder" | "itinerary" };
-export type HomepageDemoAction = { type: "view"; view: HomepageDemoState["view"] } | { type: "select"; route: ImmersiveRoute; index: number } | { type: "day"; route: ImmersiveRoute; day: number } | { type: "night"; route: ImmersiveRoute; index: number; value: number } | { type: "reset"; route: ImmersiveRoute };
+export type HomepageDemoState = { nights: Record<string, number[]>; selected: Record<string, number>; day: Record<string, number>; manualDay: Record<string, boolean>; view: "builder" | "itinerary"; itineraryView: "days" | "calendar" };
+export type HomepageDemoAction = { type: "view"; view: HomepageDemoState["view"] } | { type: "itineraryView"; view: HomepageDemoState["itineraryView"] } | { type: "select"; route: ImmersiveRoute; index: number } | { type: "day"; route: ImmersiveRoute; day: number } | { type: "night"; route: ImmersiveRoute; index: number; value: number } | { type: "reset"; route: ImmersiveRoute };
 export function createHomepageDemo(routes: readonly ImmersiveRoute[]): HomepageDemoState {
-  return { nights: Object.fromEntries(routes.map((route) => [route.key, route.stops.map((stop) => stop.nights)])), selected: {}, day: {}, view: "builder" };
+  return { nights: Object.fromEntries(routes.map((route) => [route.key, route.stops.map((stop) => stop.nights)])), selected: {}, day: {}, manualDay: {}, view: "builder", itineraryView: "days" };
 }
 /** This reducer has no persistence, account, analytics or network dependencies. */
 export function homepageDemoReducer(state: HomepageDemoState, action: HomepageDemoAction): HomepageDemoState {
   if (action.type === "view") return { ...state, view: action.view };
+  if (action.type === "itineraryView") return { ...state, itineraryView: action.view };
   const { route } = action;
-  if (action.type === "reset") return { ...state, nights: { ...state.nights, [route.key]: route.stops.map((stop) => stop.nights) }, selected: { ...state.selected, [route.key]: 0 }, day: { ...state.day, [route.key]: 1 } };
+  if (action.type === "reset") return { ...state, nights: { ...state.nights, [route.key]: route.stops.map((stop) => stop.nights) }, selected: { ...state.selected, [route.key]: 0 }, day: { ...state.day, [route.key]: 1 }, manualDay: { ...state.manualDay, [route.key]: false }, itineraryView: "days" };
   const currentNights = state.nights[route.key] ?? route.stops.map((stop) => stop.nights);
   if (action.type === "day") {
     const totalDays = currentNights.reduce((sum, nights) => sum + nights, 1);
     if (!Number.isInteger(action.day) || action.day < 1 || action.day > totalDays) return state;
-    return { ...state, day: { ...state.day, [route.key]: action.day }, selected: { ...state.selected, [route.key]: homepageDemoStopForDay(currentNights, action.day) } };
+    return { ...state, day: { ...state.day, [route.key]: action.day }, selected: { ...state.selected, [route.key]: homepageDemoStopForDay(currentNights, action.day) }, manualDay: { ...state.manualDay, [route.key]: true } };
   }
   if (!Number.isInteger(action.index) || !route.stops[action.index]) return state;
   if (action.type === "select") return { ...state, selected: { ...state.selected, [route.key]: action.index }, day: { ...state.day, [route.key]: homepageDemoDay(currentNights, action.index) } };
@@ -31,7 +32,7 @@ export function homepageDemoReducer(state: HomepageDemoState, action: HomepageDe
     nights[partner] -= direction;
   }
   if (nights.every((night, index) => night === currentNights[index])) return state;
-  return { ...state, nights: { ...state.nights, [route.key]: nights }, selected: { ...state.selected, [route.key]: action.index }, day: { ...state.day, [route.key]: homepageDemoDay(nights, action.index) } };
+  return { ...state, nights: { ...state.nights, [route.key]: nights }, selected: { ...state.selected, [route.key]: action.index }, day: { ...state.day, [route.key]: state.manualDay[route.key] ? state.day[route.key] : homepageDemoDay(nights, action.index) } };
 }
 export function homepageDemoCanAdjustNight(route: ImmersiveRoute, nights: readonly number[], index: number, direction: -1 | 1) {
   if (!route.stops[index] || (direction < 0 ? nights[index] <= route.minimumNights[index] : nights[index] >= 28)) return false;
