@@ -98,3 +98,12 @@ export function builderClarificationRemovalPlan({
   });
   return { ownershipKnown: true, removableStopIds, preservedStopIds };
 }
+
+/** Discovery owns inline save/retry feedback; competing dialogs still retain precedence. */
+export function shouldYieldBuilderClarification(input: {
+  discoveryDraftOpen: boolean;
+  saveBlocked: boolean;
+  competingModal: boolean;
+}) {
+  return input.competingModal || (input.saveBlocked && !input.discoveryDraftOpen);
+}

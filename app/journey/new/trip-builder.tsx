@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useId, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import { acknowledgeTripBuildSave, cacheCanonicalTrip, canUseHydratedTripScope, claimGuestTripRecoveryForOwner, EASYT_BEFORE_NEW_TRIP_EVENT, EASYT_LAST_OWNER_CHANGE_EVENT, EASYT_LAST_OWNER_KEY, EasyTTripAuthError, EasyTTripPromotionConflictError, EasyTTripSaveConflictError, forgetRememberedOwner, loadActiveTrip, loadRememberedOwner, loadRequestedTrip, loadTripRecovery, markTripRecoveryState, ownerIdForBrowserRecovery, rememberLastOwner, saveTripRecovery, saveTripRecoveryToEasyT, shouldAllowNewTripNavigation, tripDocumentsCanonicalEquivalent, type TripRecoveryHandle } from "@/lib/easyt/storage";
 import { tripBuildDocumentsCanonicalEquivalent } from "@/lib/easyt/trip-promotion";
 import { EasyTTripPersistenceError, isTripPersistenceAuthenticationError, tripRecoveryStateForPersistenceError } from "@/lib/easyt/trip-persistence-error";
@@ -56,10 +56,11 @@ import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderCla
 import { DiscoveryModal } from "@/components/easyt/discovery-modal";
 import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
-import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
+import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
+import { commitDiscoveryReview } from "@/lib/easyt/discovery-commit";
+import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
-import { commitDiscoverySelections } from "@/lib/easyt/discovery-confirmation";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
@@ -77,7 +78,7 @@ import { builderDetailsFingerprint, prepareBuilderDocumentCommit } from "@/lib/e
 import { currentBuilderRouteProposal, validateBuilderStopOrder } from "@/lib/easyt/trip-builder-order";
 import { normalizeTripInterests, tripInterestIds, tripInterestLabels, type TripInterest } from "@/lib/easyt/trip-interest";
 import { canonicalJourneyEndpointPlace, isSameCanonicalPlace, journeyEndFromCapturedIntent, journeyEndpointIdentityIsCoherent, journeyEndpointPlaceFromSuggestion, normalizeJourneyEnd, plannerEndpointForJourneyEnd, resolveTypedJourneyEndpoint } from "@/lib/easyt/journey-endpoints";
-import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification } from "@/lib/easyt/builder-clarification";
+import { builderClarificationProgress, builderClarificationRemovalPlan, builderClarificationResumeLabel, orderedBuilderClarificationIds, shouldAutoOpenBuilderClarification, shouldYieldBuilderClarification } from "@/lib/easyt/builder-clarification";
 import { fixedCommitmentDisplayLabel, projectFixedCommitmentsToStops } from "@/lib/easyt/fixed-commitment";
 import { createAbortableEffectScope } from "@/lib/easyt/abortable-effect";
 import { withProviderTimeout } from "@/lib/easyt/provider-timeout";
@@ -1334,12 +1335,16 @@ function TripBuilderDocument() {
 
   useEffect(() => {
     if (!clarificationOpen) return;
-    const clarificationMustYield = productTourOpen
-      || Boolean(cloudSaveError || cloudConflictTrip || deviceRecoveryBlocked || deviceStorageBlocked || pendingStopRemoval);
+    const clarificationMustYield = shouldYieldBuilderClarification({
+      discoveryDraftOpen: Boolean(activeClarificationMention
+        && capturedStructuredBrief.discoveryDraftByMentionId?.[activeClarificationMention.mentionId]?.version === 1),
+      saveBlocked: Boolean(cloudSaveError || deviceRecoveryBlocked || deviceStorageBlocked),
+      competingModal: Boolean(productTourOpen || cloudConflictTrip || pendingStopRemoval),
+    });
     if (!clarificationMustYield) return;
     setClarificationDismissed(true);
     setClarificationOpen(false);
-  }, [clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, productTourOpen]);
+  }, [activeClarificationMention, capturedStructuredBrief.discoveryDraftByMentionId, clarificationOpen, cloudConflictTrip, cloudSaveError, deviceRecoveryBlocked, deviceStorageBlocked, pendingStopRemoval, productTourOpen]);
 
   const openClarificationSession = (preferredMentionId?: string) => {
     if (!pendingClarificationIds.length) return;
@@ -3548,6 +3553,15 @@ function TripBuilderDocument() {
       context: { durationDays: effectiveStructuredBrief.duration?.value, interests: effectiveIntent.preferences.interests,
         existingPlaceIds: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []) } }); }
     catch { return null; } })() : null;
+  const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection && discoveryDraft.step === "review"
+    ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
+      trip: activeTripDocument, constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
+  // flushSync checkpoints must read the document and handlers from the committed render,
+  // never the closure that started a multi-choice confirmation.
+  const discoveryOwnersRef = useRef({ trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery });
+  useLayoutEffect(() => {
+    discoveryOwnersRef.current = { trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery };
+  });
   const renderedDiscoveryEntry: DiscoveryEntry = !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
     ? { kind: "legacy-recovery", step: "places", mentionId: activeClarificationMention?.mentionId, reason: "technical-failure" }
     : discoveryEntry;
@@ -4254,6 +4268,7 @@ function TripBuilderDocument() {
         entry={renderedDiscoveryEntry}
         mention={activeClarificationMention}
         projection={discoveryProjection}
+        canonicalReview={canonicalDiscoveryReview}
         draft={discoveryDraft}
         loading={discoveryCommitting}
         saveError={saveState === "error" ? cloudSaveError : undefined}
@@ -4272,40 +4287,72 @@ function TripBuilderDocument() {
           });
         }}
         onConfirm={() => {
-          const review = discoveryReviewState(activeClarificationMention.mentionId, discoveryDraft, discoveryProjection,
-            stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []));
-          const selectedBaseId = review.base?.id;
-          const selectedIds = [...new Set([...review.choices.map((choice) => choice.id), ...(selectedBaseId ? [selectedBaseId] : [])])];
-          if (discoveryCommitRef.current || !review.canConfirm) return;
+          const review = canonicalDiscoveryReview;
+          if (discoveryCommitRef.current || !review?.canConfirm || discoveryDraft.step !== "review") return;
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
+          const mention = activeClarificationMention;
+          const checkpoint = async () => {
+            const owners = discoveryOwnersRef.current;
+            const recovery = owners.persistDeviceRecovery(owners.trip);
+            setDeviceRecoveryBlocked(recovery.blockedByExistingRecovery);
+            setDeviceStorageBlocked(!recovery.stored && !recovery.blockedByExistingRecovery);
+            setSaveState(recovery.stored ? "local" : "error");
+            if (!recovery.stored) setCloudSaveError(language === "es"
+              ? "No pudimos guardar estas elecciones. Vuelve a intentarlo antes de cerrar."
+              : "These choices could not be saved. Retry before closing.");
+            return recovery.stored;
+          };
           void (async () => {
             try {
-              const result = await commitDiscoverySelections(selectedIds, discoveryProjection, async (suggestion, id) => {
-                const isBaseChoice = id === selectedBaseId;
-                const visitChoice = isBaseChoice && (discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area");
-                const added = await addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId,
-                  isBaseChoice ? {
-                    kind: visitChoice ? "visit" : "base",
-                    selectedCanonicalPlaceId: suggestion.canonicalPlaceId,
-                    selectedName: suggestion.name,
-                    selectedPlaceType: suggestion.placeType,
-                    selectedParentCountries: [suggestion.country],
-                    provenance: suggestion.provenance[0]!,
-                    ...(visitChoice ? { relationshipType: "visit-from-base" as const } : {}),
-                  } : undefined, suggestion);
-                return Boolean(added);
+              const result = await commitDiscoveryReview(review, {
+                currentTrip: () => discoveryOwnersRef.current.trip,
+                addBase: async choice => {
+                  const suggestion = choice.suggestion;
+                  if (!suggestion.coordinates) return false;
+                  let added: ReturnType<typeof addGuidedPlanningPlace> | undefined;
+                  // Reviewed canonical coordinates keep Add stop on its synchronous
+                  // mutation branch. React flushes the canonical projection before save.
+                  flushSync(() => { added = discoveryOwnersRef.current.addGuidedPlanningPlace(mention, {
+                    ...suggestion, coordinates: suggestion.coordinates!, regionCanonicalPlaceId: mention.canonicalPlaceId ?? "",
+                    reason: "Traveller confirmed this reviewed place.", anchorMatched: false,
+                  }); });
+                  return Boolean(await added);
+                },
+                linkVisit: async (visit, stopId) => {
+                  flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, {
+                    ...visit.proposal, target: { ...visit.proposal.target, routeStopId: stopId },
+                  }));
+                  return Boolean(discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
+                    selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId));
+                },
+                persist: checkpoint,
+                completeMention: async () => {
+                  flushSync(() => {
+                    setCompletedPlanningAreaMentionIds(current => [...new Set([...current, mention.mentionId])]);
+                    setCapturedStructuredBrief(current => ({ ...current, discoveryDraftByMentionId: {
+                      ...current.discoveryDraftByMentionId, [mention.mentionId]: reduceDiscoveryDraft(discoveryDraft, { type: "mark-confirmed" }),
+                    } }));
+                  });
+                  if (await checkpoint()) return true;
+                  flushSync(() => {
+                    setCompletedPlanningAreaMentionIds(current => current.filter(id => id !== mention.mentionId));
+                    setCapturedStructuredBrief(current => ({ ...current, discoveryDraftByMentionId: {
+                      ...current.discoveryDraftByMentionId, [mention.mentionId]: discoveryDraft,
+                    } }));
+                  });
+                  return false;
+                },
               });
-              if (!result.allConfirmed) {
-                const committedNames = result.committed.map((choice) => choice.name).join(", ");
-                const unresolvedNames = result.unresolved.map((choice) => choice.name).join(", ");
-                setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
-                  ? `${result.committed.length ? `Confirmados: ${committedNames}. ` : ""}Aún sin confirmar: ${unresolvedNames}. Tus elecciones siguen guardadas; vuelve a intentarlo o termina más tarde.`
-                  : `${result.committed.length ? `Confirmed: ${committedNames}. ` : ""}Still unresolved: ${unresolvedNames}. Your choices are saved; retry or Finish later.` }));
+              if (!result.ok) {
+                const names = result.committedIds.map(id => discoveryProjection.places.find(place => place.id === id)?.name ?? mention.canonicalName).join(", ");
+                setBaseSearchErrors(current => ({ ...current, [mention.mentionId]: language === "es"
+                  ? `${names ? `Guardados: ${names}. ` : ""}Quedan elecciones sin confirmar. Vuelve a intentarlo; se conservarán las elecciones guardadas.`
+                  : `${names ? `Saved: ${names}. ` : ""}Some choices still need confirmation. Retry; saved choices will be reused.` }));
                 return;
               }
-              setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
-              completePlanningArea(activeClarificationMention, true);
+              setCloudSaveError("");
+              completePlanningArea(mention, true);
               advanceClarificationSession();
             } finally {
               discoveryCommitRef.current = false;

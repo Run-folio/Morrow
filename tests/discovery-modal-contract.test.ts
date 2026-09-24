@@ -33,8 +33,8 @@ test("Back changes only the draft step and does not route browser history", () =
 test("partial confirmation leaves the parent open and explains unresolved choices in review", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
   const modal = read("components/easyt/discovery-modal.tsx");
-  assert.match(builder, /commitDiscoverySelections\(/);
-  assert.match(builder, /if \(!result\.allConfirmed\)[\s\S]*?return;/);
+  assert.match(builder, /commitDiscoveryReview\(/);
+  assert.match(builder, /if \(!result\.ok\)[\s\S]*?return;/);
   assert.match(modal, /search\?\.error[^\n]*role="alert"/);
 });
 
@@ -95,9 +95,9 @@ test("Builder commit locks every Discovery navigation and dismissal path", () =>
 
 test("Builder confirmation uses the same fail-closed review gate and base as Discovery", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
-  assert.match(builder, /const review = discoveryReviewState\(activeClarificationMention\.mentionId, discoveryDraft, discoveryProjection/);
-  assert.match(builder, /const selectedBaseId = review\.base\?\.id/);
-  assert.match(builder, /!review\.canConfirm/);
+  assert.match(builder, /const review = canonicalDiscoveryReview/);
+  assert.match(builder, /canonicalReview=\{canonicalDiscoveryReview\}/);
+  assert.match(builder, /!review\?\.canConfirm/);
 });
 
 test("Discovery exposes explicit base, split, reset and reviewed search actions without early route mutation", () => {

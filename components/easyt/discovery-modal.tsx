@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryDraft, DiscoveryDraftAction, DiscoveryStep } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
+import type { DiscoveryReview } from "@/lib/easyt/discovery-review";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { CanonicalPlaceSuggestion, ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
-import { easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { discoveryConfirmLabel, easytCopy, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { BuilderClarificationShell } from "./builder-clarification-shell";
 import { DiscoverySteps } from "./discovery-steps";
@@ -23,7 +24,7 @@ type Search = {
   onSelect: (suggestion: CanonicalPlaceSuggestion) => void;
 };
 
-export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, existingPlaceIds = [], loading = false, saveError }: {
+export function DiscoveryModal({ open, entry, mention, projection, draft, onAction, onConfirm, onClose, language = "en", search, existingPlaceIds = [], loading = false, saveError, canonicalReview }: {
   open: boolean;
   entry: DiscoveryEntry;
   mention: ResolvedPlaceMention;
@@ -37,6 +38,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   existingPlaceIds?: readonly string[];
   loading?: boolean;
   saveError?: string;
+  canonicalReview?: DiscoveryReview;
 }) {
   const [highlightedPlaceId, setHighlightedPlaceId] = useState<string | null>(null);
   useEffect(() => setHighlightedPlaceId(null), [mention.mentionId, open]);
@@ -70,7 +72,9 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
         <EasyTButton variant="quiet" disabled={loading} onClick={onClose}>{copy.actions.finishLater}</EasyTButton>
       </div>
       {nextStep ? <EasyTButton disabled={loading} onClick={() => onAction({ type: "set-step", step: nextStep })}>{copy.actions.continue}</EasyTButton>
-        : <EasyTButton icon={Check} disabled={loading || !review.canConfirm} onClick={onConfirm}>{copy.actions.confirm}</EasyTButton>}
+        : <EasyTButton icon={Check} disabled={loading || !(canonicalReview?.canConfirm ?? review.canConfirm)} onClick={onConfirm}>{canonicalReview
+          ? discoveryConfirmLabel(language, canonicalReview.primaryAction.baseCount, canonicalReview.primaryAction.visitCount)
+          : copy.actions.confirm}</EasyTButton>}
     </>}>
     {loading ? <section className={styles.loading} role="status" aria-label={copy.status.loading} aria-busy="true">
       <span className={styles.srAnnouncement}>{copy.status.loading}</span>
@@ -86,7 +90,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
       </div>
     </section>
       : <DiscoverySteps entry={entry} mention={mention} projection={projection} draft={{ ...draft, step }} language={language}
-        existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
+        canonicalReview={canonicalReview} existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement}
         highlightedPlaceId={highlightedPlaceId} onHighlight={setHighlightedPlaceId} />}
     {search?.error ? <p role="alert">{search.error}</p> : null}
     {saveError ? <MorroviaStatusBanner tone="warning" title={copy.status.saveBlocked} detail={saveError} /> : null}

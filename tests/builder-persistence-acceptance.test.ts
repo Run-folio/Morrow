@@ -164,3 +164,56 @@ test("Discovery direction, step, base and visit choices resume under the same ow
   assert.equal(blocked.stored, false);
   assert.equal(blocked.blockedByExistingRecovery, true);
 });
+
+test("Discovery saves canonical progress under the same owner after each action and reload retries only missing IDs", async () => {
+  const { fixture } = await import('./helpers/discovery-fixture.ts');
+  const { buildDiscoveryReview } = await import('../lib/easyt/discovery-review.ts');
+  const { commitDiscoveryReview } = await import('../lib/easyt/discovery-commit.ts');
+  const input = fixture('Australia', ['melbourne', 'airlie-beach']);
+  const review = buildDiscoveryReview(input);
+  let current = canonicalTripForOwner('review-owner', input.trip, '2026-09-24T00:00:00.000Z');
+  const initialLocks = structuredClone(current.brief.scheduleLocks);
+  const values = new Map<string, string>();
+  let failWrite = false;
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; }, key: index => [...values.keys()][index] ?? null,
+    getItem: key => values.get(key) ?? null, removeItem: key => { values.delete(key); },
+    setItem: (key, value) => { if (failWrite) throw new Error('Device storage denied'); values.set(key, value); },
+  };
+  let handle: import('../lib/easyt/storage.ts').TripRecoveryHandle | undefined;
+  let checkpoints = 0;
+  let failSecond = true;
+  const added: string[] = [];
+  const ports: import('../lib/easyt/discovery-commit.ts').DiscoveryCommitPorts = {
+    currentTrip: () => current,
+    addBase: async choice => {
+      added.push(choice.id);
+      current = { ...current, stops: [...current.stops, { ...current.stops[0]!, id: choice.id,
+        canonicalPlaceId: choice.id, name: choice.name, country: choice.suggestion.country,
+        longitude: choice.suggestion.coordinates![0], latitude: choice.suggestion.coordinates![1], nights: 1 }] };
+      return true;
+    },
+    linkVisit: async () => false,
+    persist: async () => {
+      failWrite = failSecond && ++checkpoints === 2;
+      const saved = saveTripRecoveryToStorage(storage, current, { replace: handle, writeId: `review-progress-${checkpoints}` });
+      if (saved.stored) handle = saved.handle;
+      return saved.stored;
+    },
+    completeMention: async () => true,
+  };
+  const partial = await commitDiscoveryReview(review, ports);
+  assert.equal(partial.ok, false);
+  assert.deepEqual(partial.committedIds, ['melbourne']);
+  const recovered = loadTripRecoveryFromStorage(storage, current.id, 'review-owner');
+  assert.ok(recovered);
+  assert.ok(isEasyTTrip(recovered.trip));
+  assert.equal(recovered.trip.stops.some(stop => stop.canonicalPlaceId === 'airlie-beach'), false);
+  assert.equal(loadTripRecoveryFromStorage(storage, current.id, 'another-owner'), null);
+  current = recovered.trip; handle = recovered; failSecond = false; failWrite = false;
+  assert.equal((await commitDiscoveryReview(review, ports)).ok, true);
+  assert.deepEqual(added, ['melbourne', 'airlie-beach', 'airlie-beach']);
+  assert.equal(current.stops.filter(stop => stop.canonicalPlaceId === 'melbourne').length, 1);
+  assert.equal(current.stops.find(stop => stop.canonicalPlaceId === 'sydney')?.nights, 5);
+  assert.deepEqual(current.brief.scheduleLocks, initialLocks);
+});

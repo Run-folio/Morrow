@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
+import type { DiscoveryReview } from "@/lib/easyt/discovery-review";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
 import { discoveryFailureFocusPlan } from "@/lib/easyt/discovery-map-target";
@@ -9,7 +10,7 @@ import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAct
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
-import { availableActions, discoveryDirectionTitle, discoveryShortlistCount, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { discoveryWarningText, availableActions, discoveryDirectionTitle, discoveryShortlistCount, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { routeEditorialPhoto, routeImageCredit } from "@/lib/easyt/route-images";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
@@ -18,6 +19,7 @@ import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import styles from "./discovery-modal.module.css";
 
 type Props = {
+  canonicalReview?: DiscoveryReview;
   entry: DiscoveryEntry;
   mention: ResolvedPlaceMention;
   projection: DiscoveryProjection;
@@ -106,7 +108,7 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, s
 }
 
 export function DiscoverySteps({ entry, mention, projection, draft, language, existingPlaceIds = [], onAction, search,
-  highlightedPlaceId, onHighlight }: Props) {
+  highlightedPlaceId, onHighlight, canonicalReview }: Props) {
   const copy = easytCopy[language].builder.visualDiscovery;
   const [visibleCount, setVisibleCount] = useState(Math.max(6, projection.visiblePlaceIds.length));
   const [desktopMapVisible, setDesktopMapVisible] = useState(false);
@@ -199,6 +201,23 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
 
   if (draft.step === "review") return <div className={styles.step} data-discovery-step="review">
     <p className={styles.stepHelper}>{copy.reviewIntro}</p>
+    {canonicalReview ? <>
+      <p>{language === "es" ? "Tu idea" : "Your original idea"}: {canonicalReview.originalIntent}</p>
+      {canonicalReview.direction ? <p>{copy.steps.directions}: {discoveryDirectionTitle(language, canonicalReview.direction.titleKey)}</p> : null}
+      <p>{copy.status.noFitClaim}</p>
+      {canonicalReview.existingStops.length ? <div className={styles.reviewList}>
+        {canonicalReview.existingStops.map(stop => <div className={styles.reviewChoice} key={stop.id}>
+          <div className={styles.reviewDetail}><strong>{stop.name}</strong><small>{copy.roles.existing} · {stop.nights} {language === "es" ? "noches" : "nights"}</small></div>
+        </div>)}
+      </div> : null}
+      {canonicalReview.visits.map(visit => <p key={visit.intentId}>{visit.name}: {copy.actions.visitFromBase}: {canonicalReview.bases.find(base => base.id === visit.baseId)?.name}</p>)}
+      {canonicalReview.continuity.reentryCount > 0 ? <MorroviaStatusBanner tone="warning"
+        title={language === "es" ? "Revisa el orden entre países" : "Review the order between countries"}
+        detail={language === "es" ? "La ruta vuelve a entrar en un país. Revisa las fechas fijas y el orden en Builder." : "The route re-enters a country. Review fixed dates and ordering in Builder."} /> : null}
+      {canonicalReview.warnings.length ? <MorroviaStatusBanner tone="warning"
+        title={language === "es" ? "Comprobaciones de ruta y tiempo" : "Route and timing checks"}
+        detail={[...new Set(canonicalReview.warnings.map(warning => discoveryWarningText(language, warning, [...canonicalReview.existingStops, ...canonicalReview.bases.map(base => ({ id: `discovery:${base.id}`, name: base.name }))])))].join(" ")} /> : null}
+    </> : null}
     {review.choices.length || review.base ? <div className={styles.reviewList}>
       {review.choices.map((choice, index) => <div key={choice.id} className={styles.reviewChoice}>
         <span>{String(index + 1).padStart(2, "0")}</span>
@@ -219,7 +238,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
         </div>
       </div> : null}
     </div> : <MorroviaStatusBanner title={copy.noDecision} detail={copy.noDecisionDetail} />}
-    {review.hasUnresolvedChoices ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
+    {(canonicalReview ? canonicalReview.blockedIds.length > 0 : review.hasUnresolvedChoices) ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
   </div>;
 
   return <div className={styles.step} data-discovery-step={draft.step}>

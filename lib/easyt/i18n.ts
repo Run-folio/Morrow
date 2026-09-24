@@ -222,3 +222,53 @@ export function languageFromStorage(): EasyTLanguage {
     return "en";
   }
 }
+
+export function discoveryConfirmLabel(language: EasyTLanguage, baseCount: number, visitCount: number): string {
+  const actions = [baseCount ? `${baseCount} ${baseCount === 1 ? 'base' : 'bases'}` : '',
+    visitCount ? `${visitCount} ${language === 'es' ? visitCount === 1 ? 'visita' : 'visitas' : visitCount === 1 ? 'visit' : 'visits'}` : ''].filter(Boolean);
+  return actions.length ? `${language === 'es' ? 'Añadir' : 'Add'} ${actions.join(language === 'es' ? ' y ' : ' and ')}`
+    : language === 'es' ? 'Confirmar lugares existentes' : 'Confirm existing places';
+}
+
+/** Translate the existing diagnostic code; never generate a new travel assertion. */
+export function discoveryWarningText(language: EasyTLanguage, warning: { code: string; message: string; stopIds?: string[] },
+  stops: readonly { id: string; name: string }[]): string {
+  if (language === 'en') return warning.message;
+  const messages: Record<string, string> = {
+    'hard-constraint-violation': 'La propuesta entra en conflicto con una condición del viaje.',
+    'required-stop-missing': 'Falta una parada obligatoria.',
+    'fixed-start-broken': 'La propuesta cambia el inicio fijado.', 'fixed-start-missing': 'Falta el inicio fijado.',
+    'fixed-end-broken': 'La propuesta cambia el final fijado.', 'fixed-end-missing': 'Falta el final fijado.',
+    'fixed-endpoint-conflict': 'Los extremos fijados de la ruta entran en conflicto.',
+    'total-nights-mismatch': 'El total de noches no coincide con la duración.',
+    'below-minimum-stay': 'La estancia queda por debajo del mínimo recomendado.',
+    'minimum-stay-conflict': 'La duración no permite respetar las estancias mínimas.',
+    'minimum-stay-compromise': 'Algunas estancias requieren reducir el tiempo recomendado.',
+    'one-night-anchor-after-large-transfer': 'Una parada importante tiene una sola noche después de un traslado largo.',
+    'one-night-anchor': 'Una parada importante tiene una sola noche.',
+    'extreme-pacing': 'La ruta tiene demasiadas estancias muy cortas.',
+    'excessive-travel-day-burden': 'Los traslados consumen demasiado tiempo del viaje.',
+    'unnecessary-backtracking': 'El orden de la ruta requiere retrocesos que conviene revisar.',
+    'unsupported-transfer': 'No hay información suficiente para confirmar un traslado.',
+    'duplicate-stop': 'La ruta repite una parada.', 'duplicate-stop-id': 'La ruta repite una parada.',
+    'fixed-date-conflict': 'La propuesta entra en conflicto con una fecha fijada.',
+    'fixed-commitment-conflict': 'La propuesta entra en conflicto con un compromiso fijado.',
+    'transport-restriction-conflict': 'Un traslado entra en conflicto con tus restricciones de transporte.',
+    'forbidden-transport-mode': 'Un traslado utiliza un medio de transporte excluido.',
+    'maximum-transfer-time-conflict': 'Un traslado supera tu límite de tiempo.',
+    'maximum-transfer-time-exceeded': 'Un traslado supera tu límite de tiempo.',
+    'country-reentry': 'La ruta vuelve a entrar en un país; revisa el orden y los compromisos fijados.',
+    'invalid-total-nights': 'Falta una duración válida para repartir las noches.',
+    'no-stops': 'No hay bases para repartir las noches.',
+    'fixed-nights-exceed-total': 'Las noches fijadas superan la duración disponible.',
+    'fixed-night-mismatch': 'La distribución no respeta una estancia fijada.',
+    'fixed-below-minimum': 'Una estancia fijada queda por debajo del mínimo recomendado.',
+    'unallocated-nights': 'Quedan noches por asignar.', 'overallocated-nights': 'Hay más noches asignadas que disponibles.',
+    'unlinked-fixed-commitment': 'Un compromiso fijado todavía no está vinculado a una parada.',
+    'excluded-stop-present': 'La propuesta incluye una parada excluida.',
+    'maximum-stops-exceeded': 'La propuesta supera tu límite de paradas.',
+    'required-stops-exceed-maximum': 'Las paradas obligatorias superan tu límite de paradas.',
+  };
+  const names = warning.stopIds?.map(id => stops.find(stop => stop.id === id)?.name).filter(Boolean).join(', ');
+  return `${messages[warning.code] ?? 'Hay una comprobación pendiente de ruta o tiempo.'}${names ? ` (${names})` : ''}`;
+}

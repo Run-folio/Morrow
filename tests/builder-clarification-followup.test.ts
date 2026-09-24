@@ -214,7 +214,7 @@ test("32 an endpoint equal to a selected stop still uses one canonical route sto
 
 test("33 Product Tour prevents and displaces clarification auto-open", () => {
   assert.equal(shouldAutoOpenBuilderClarification({ hydrated: true, placesStep: true, arrivedFromHomepage: true, resolving: false, itemCount: 4, alreadyOpened: false, explicitlyDismissed: false, competingModal: true, recoveryBlocked: false }), false);
-  assert.match(builder, /clarificationMustYield = productTourOpen/);
+  assert.match(builder, /clarificationMustYield = shouldYieldBuilderClarification/);
 });
 
 test("34 recovery and conflict state prevent auto-open", () => {

@@ -1,3 +1,5 @@
+import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
+import { tripFromBuilder, type EasyTTrip } from "@/lib/easyt/trip";
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
@@ -19,16 +21,17 @@ const taj = projection("Taj Mahal");
 const australiaMention = mention("Australia");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
-  language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean;
+  canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean;
   actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void };
 
-function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, actionSpy, confirmSpy, closeSpy }: Scene) {
+function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
   const [searchValue, setSearchValue] = useState("");
   const onAction = (action: DiscoveryDraftAction) => { actionSpy?.(action); setDraft(current => reduceDiscoveryDraft(current, action)); };
   return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 20 }}>
     <p style={{ maxWidth: 780, margin: 0 }}>{note ?? "Reviewed production evidence; no licensed image is currently assigned to these places."}</p>
     <DiscoveryModal open entry={entry} mention={sceneMention} projection={sceneProjection} draft={draft} language={language} loading={loading}
+      canonicalReview={canonicalTrip ? buildDiscoveryReview({ mention: sceneMention, draft, projection: sceneProjection, trip: canonicalTrip }) : undefined}
       existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => closeSpy?.()}
       search={{ value: searchValue, onChange: setSearchValue, onSelect: () => {} }} />
   </main>;
@@ -210,3 +213,12 @@ export const Tablet768AustraliaPlaces: Story = { ...AustraliaPlaces, parameters:
 export const Desktop1024AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia1024" } } };
 export const Desktop1440AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia1440" } } };
 export const Desktop1680AustraliaPlaces: Story = { ...AustraliaPlaces, parameters: { viewport: { defaultViewport: "morrovia1680" } } };
+
+const reviewTrip = tripFromBuilder({ id: "discovery-review-story", origin: "London", stops: [
+  { id: "existing-sydney", name: "Sydney", country: "Australia", canonicalPlaceId: "sydney", coordinates: [151.2093, -33.8688] },
+], startDate: "2026-10-01", endDate: "2026-10-15", picks: {}, mustDo: "Australia", pace: "slow", hotels: "few", budget: "mid", draft: [],
+nightAllocations: { "existing-sydney": 5 }, manualNightStopIds: ["existing-sydney"] });
+export const CanonicalReviewWithWarnings: Story = { args: { ...AustraliaReview.args, canonicalTrip: reviewTrip,
+  existingPlaceIds: ["sydney"], draft: { ...initial, step: "review", shortlistIds: ["sydney", "melbourne", "uluru-kata-tjuta"] } } };
+export const CanonicalReviewSpanish390: Story = { args: { ...CanonicalReviewWithWarnings.args, language: "es" },
+  globals: { viewport: { value: "morrovia390", isRotated: false } } };
