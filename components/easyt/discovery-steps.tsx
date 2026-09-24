@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryReview } from "@/lib/easyt/discovery-review";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
@@ -8,6 +8,7 @@ import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
 import { discoveryFailureFocusPlan } from "@/lib/easyt/discovery-map-target";
 import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
+import { discoveryMapPlacesKey } from "@/lib/easyt/discovery-projection-key";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { discoveryWarningText, availableActions, discoveryDirectionTitle, discoveryShortlistCount, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
@@ -48,7 +49,7 @@ function Photo({ imageKey, name, language }: { imageKey: string | null; name: st
   </div>;
 }
 
-function PlaceCard({ place, draft, mention, entry, language, existing, baseId, splitSupported, onAction, onHighlight, onShowOnMap, registerCard, mapAvailable, highlighted }: {
+const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, language, existing, baseId, splitSupported, onAction, onHighlight, onShowOnMap, registerCard, mapAvailable, highlighted }: {
   place: DiscoveryPlace; draft: DiscoveryDraft; mention: ResolvedPlaceMention; entry: DiscoveryEntry;
   language: EasyTLanguage; existing: boolean; baseId: string | null; splitSupported: boolean; onAction: Props["onAction"];
   onHighlight: Props["onHighlight"]; onShowOnMap: (id: string) => void;
@@ -64,7 +65,7 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, s
   const type = copy.types[place.placeType as keyof typeof copy.types] ?? copy.types.other;
   const location = mention.placeType === "country" && mention.canonicalName === place.country
     ? type : `${type} · ${place.country}`;
-  return <article ref={element => registerCard(place.id, element)} tabIndex={-1} className={styles.placeCard}
+  return <article ref={element => registerCard(place.id, element)} tabIndex={-1} className={styles.placeCard} data-discovery-card="true"
     data-selected={selected || baseSelected} data-highlighted={highlighted} data-actionability={place.actionability}
     onFocus={() => onHighlight(place.id)}>
     <Photo imageKey={place.imageKey} name={place.name} language={language} />
@@ -105,7 +106,7 @@ function PlaceCard({ place, draft, mention, entry, language, existing, baseId, s
       </div>
     </div>
   </article>;
-}
+});
 
 export function DiscoverySteps({ entry, mention, projection, draft, language, existingPlaceIds = [], onAction, search,
   highlightedPlaceId, onHighlight, canonicalReview }: Props) {
@@ -141,6 +142,10 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const activeDirection = projection.directions.find(direction => direction.id === draft.directionId);
   const allPlaces = useMemo(() => activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places,
     [activeDirection, projection.places]);
+  const mapPlacesKey = discoveryMapPlacesKey(allPlaces);
+  // Recommendations can change after a shortlist edit; marker geometry cannot.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const mapPlaces = useMemo(() => allPlaces, [mapPlacesKey]);
   const wantsMap = (desktopMapVisible || mobileMapOpen) && (draft.step === "places" || draft.step === "bases") && allPlaces.length > 0;
   const handleMapUnavailable = useCallback(() => {
     const active = document.activeElement;
@@ -170,9 +175,13 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
   const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
-  const registerCard = (id: string, element: HTMLElement | null) => {
+  const registerCard = useCallback((id: string, element: HTMLElement | null) => {
     if (element) cardsRef.current.set(id, element); else cardsRef.current.delete(id);
-  };
+  }, []);
+  const handleShowOnMap = useCallback((id: string) => {
+    onHighlight(id);
+    if (!desktopMapVisible) setMobileMapOpen(true);
+  }, [desktopMapVisible, onHighlight]);
   const handlePinHighlight = (id: string) => {
     const index = allPlaces.findIndex(place => place.id === id);
     if (index < 0) return;
@@ -185,7 +194,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   if (draft.step === "directions" && projection.directions.length) return <div className={styles.step} data-discovery-step="directions">
     <p className={styles.stepHelper}>{copy.directionIntro}</p>
     <div className={styles.directions}>
-      {projection.directions.map((direction, index) => <article className={styles.directionCard} key={direction.id} data-selected={draft.directionId === direction.id}>
+      {projection.directions.map((direction, index) => <article className={styles.directionCard} key={direction.id} data-selected={draft.directionId === direction.id} data-discovery-card="true">
         <Photo imageKey={direction.imageKey} name={discoveryDirectionTitle(language, direction.titleKey)} language={language} />
         <div className={styles.directionContent}><span className={styles.directionNumber}>{String(index + 1).padStart(2, "0")}</span>
           <h4>{discoveryDirectionTitle(language, direction.titleKey)}</h4>
@@ -261,7 +270,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
           entry={entry} language={language} existing={existingPlaceIds.includes(place.id)}
           baseId={baseId} splitSupported={splitSupported} onAction={onAction} mapAvailable={!mapUnavailable && allPlaces.length > 0}
           highlighted={highlightedPlaceId === place.id} onHighlight={onHighlight}
-          onShowOnMap={id => { onHighlight(id); if (!desktopMapVisible) setMobileMapOpen(true); }} registerCard={registerCard} />)}</div>
+          onShowOnMap={handleShowOnMap} registerCard={registerCard} />)}</div>
         {allPlaces.length > visible.length ? <EasyTButton variant="secondary" className={styles.more} onClick={() => setVisibleCount(count => count + 6)}>
           {copy.actions.showMore} ({allPlaces.length - visible.length})</EasyTButton> : null}
         {search ? <div className={styles.search}>{search}</div> : null}
@@ -269,7 +278,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
       <aside className={styles.sideRail}>
       <div id={mapRegionId} ref={mapPanelRef} className={styles.mapPanel} hidden={!wantsMap || mapUnavailable || !allPlaces.length}>
         {wantsMap && !mapUnavailable && allPlaces.length ? MapComponent
-          ? <MapComponent places={allPlaces} highlightedPlaceId={highlightedPlaceId} onHighlight={handlePinHighlight}
+          ? <MapComponent places={mapPlaces} highlightedPlaceId={highlightedPlaceId} onHighlight={handlePinHighlight}
               onUnavailable={handleMapUnavailable} language={language} />
           : <div className={styles.mapLoadStatus}><MorroviaSectionStatus compact title={copy.status.openingMap}
               detail={copy.status.openingMapDetail} /></div> : null}

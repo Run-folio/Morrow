@@ -147,6 +147,15 @@
   .footer { padding-inline: 14px; }
 }
 
+@media (max-width: 620px) and (max-height: 420px) {
+  .discoveryDialog .header { gap: 3px; padding-block: 8px 7px; }
+  .discoveryDialog .header h2 { font-size: 22px; }
+  .discoveryDialog .footer { flex-direction: row; align-items: center; gap: 6px; padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); }
+  .discoveryDialog .footer > div { flex-wrap: wrap; justify-content: flex-start; gap: 2px; }
+  .discoveryDialog .footer > div button { min-height: 44px; padding-inline: 6px; }
+  .discoveryDialog .footer > button { width: auto; min-width: 100px; min-height: 44px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shapes article > button > svg { transition: none; }
 }

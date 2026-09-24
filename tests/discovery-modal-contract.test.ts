@@ -93,9 +93,9 @@ test("Builder commit locks every Discovery navigation and dismissal path", () =>
   const modal = read("components/easyt/discovery-modal.tsx");
   const shell = read("components/easyt/builder-clarification-shell.tsx");
   assert.match(builder, /loading=\{discoveryCommitting\}/);
-  assert.match(modal, /onDismiss=\{\(\) => handleClose\("closed"\)\}[^>]*loading=\{loading\}/);
+  assert.match(modal, /onDismiss=\{\(\) => onClose\("closed"\)\}[^>]*loading=\{loading\}/);
   assert.match(modal, /previousStep \? <EasyTButton disabled=\{loading\}/);
-  assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{\(\) => handleClose\("finish_later"\)\}/);
+  assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{\(\) => onClose\("finish_later"\)\}/);
   assert.match(shell, /if \(event\.key === "Escape"\) \{ event\.preventDefault\(\); if \(!loadingRef\.current\) dismissRef\.current\(\);/);
   assert.match(shell, /if \(event\.target === event\.currentTarget && !loading\) onDismiss\(\)/);
   assert.match(shell, /iconOnly variant="quiet" size="small" disabled=\{loading\}/);
@@ -126,6 +126,6 @@ test("Discovery exposes explicit base, split, reset and reviewed search actions 
   assert.match(modal, /contextCountries=\{mention\.parentCountries\}/);
   assert.match(modal, /includeNonRoutable/);
   assert.doesNotMatch(modal, /parentConstraint=\{entry\.kind/);
-  assert.match(builder, /onClose=\{\(\) => \{[\s\S]*?persistDeviceRecovery\(activeTripDocument\)/);
+  assert.match(builder, /onClose=\{\(action\) => \{[\s\S]*?persistDeviceRecovery\(activeTripDocument\)/);
   assert.match(modal, /saveError \? <MorroviaStatusBanner/);
 });

@@ -60,6 +60,8 @@ import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { commitDiscoveryReview, completeDiscoveryMention } from "@/lib/easyt/discovery-commit";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
+import { discoveryProjectionKey } from "@/lib/easyt/discovery-projection-key";
+import { discoveryChoiceEvent, discoveryConfirmedEvent, discoveryDismissedEvent } from "@/lib/easyt/discovery-funnel";
 import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -3535,11 +3537,18 @@ function TripBuilderDocument() {
   const discoveryDraft = discoveryRead && discoveryEntry.kind !== "legacy-recovery"
     ? { ...discoveryRead.draft, step: discoveryRead.status === "current" ? discoveryRead.draft.step : discoveryEntry.step }
     : null;
-  const discoveryProjection = activeClarificationMention && discoveryDraft && discoveryEntry.kind !== "skip"
+  const discoveryExistingPlaceIds = stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []);
+  const discoveryProjectionIdentity = activeClarificationMention && discoveryDraft && discoveryEntry.kind !== "skip"
+    ? discoveryProjectionKey({ mention: activeClarificationMention, draft: discoveryDraft,
+      durationDays: effectiveStructuredBrief.duration?.value, interests: effectiveIntent.preferences.interests,
+      existingPlaceIds: discoveryExistingPlaceIds }) : null;
+  const discoveryProjection = useMemo(() => activeClarificationMention && discoveryDraft && discoveryEntry.kind !== "skip"
     ? (() => { try { return projectDiscovery({ mention: activeClarificationMention, draft: discoveryDraft,
       context: { durationDays: effectiveStructuredBrief.duration?.value, interests: effectiveIntent.preferences.interests,
-        existingPlaceIds: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []) } }); }
-    catch { return null; } })() : null;
+        existingPlaceIds: discoveryExistingPlaceIds } }); }
+    catch { return null; } })() : null, [discoveryProjectionIdentity]);
+  const discoveryEventKind = discoveryEntry.kind === "skip" || discoveryEntry.kind === "legacy-recovery"
+    ? "clarification" : discoveryEntry.kind;
   const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection && discoveryDraft.step === "review"
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
       trip: activeTripDocument, currentValidation: finalPlanValidation,
@@ -4264,6 +4273,11 @@ function TripBuilderDocument() {
         existingPlaceIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
         onAction={(action) => {
           if (discoveryCommitRef.current) return;
+          if (discoveryRead?.status === "unsupported-version") return;
+          const nextDraft = reduceDiscoveryDraft(discoveryDraft, action);
+          const event = discoveryChoiceEvent(discoveryEventKind, discoveryDraft, nextDraft, action, discoveryProjection.places.length);
+          if (event?.name === "discovery_direction_selected") trackEvent("discovery_direction_selected", event.properties);
+          else if (event?.name === "discovery_place_choice_changed") trackEvent("discovery_place_choice_changed", event.properties);
           setCapturedStructuredBrief((current) => {
             const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
             if (read.status === "unsupported-version") return current;
@@ -4337,6 +4351,8 @@ function TripBuilderDocument() {
                 return;
               }
               setCloudSaveError("");
+              const completion = discoveryConfirmedEvent(result.ok, discoveryEventKind, discoveryDraft.shortlistIds.length);
+              if (completion) trackEvent("discovery_confirmed", completion);
               completePlanningArea(mention, true);
               advanceClarificationSession();
             } finally {
@@ -4345,11 +4361,13 @@ function TripBuilderDocument() {
             }
           })();
         }}
-        onClose={() => {
+        onClose={(action) => {
           if (discoveryCommitRef.current) return;
           if (lastAcknowledgedCanonicalRef.current
             && tripDocumentsCanonicalEquivalent(activeTripDocument, lastAcknowledgedCanonicalRef.current)) {
             dismissClarificationSession();
+            const dismissal = discoveryDismissedEvent(true, discoveryEventKind, action, discoveryDraft.shortlistIds.length);
+            if (dismissal) trackEvent("discovery_dismissed", dismissal);
             return;
           }
           const recovery = persistDeviceRecovery(activeTripDocument);
@@ -4364,6 +4382,8 @@ function TripBuilderDocument() {
           }
           setCloudSaveError("");
           dismissClarificationSession();
+          const dismissal = discoveryDismissedEvent(recovery.stored, discoveryEventKind, action, discoveryDraft.shortlistIds.length);
+          if (dismissal) trackEvent("discovery_dismissed", dismissal);
         }}
         search={{
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
@@ -4388,6 +4408,13 @@ function TripBuilderDocument() {
               return;
             }
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+            const searchChoice = choosingBase
+              ? { type: "choose-visit-base" as const, intentId: activeClarificationMention.mentionId, baseId: suggestion.canonicalPlaceId }
+              : { type: "add-shortlist" as const, placeId: suggestion.canonicalPlaceId };
+            const searchDraft = selectCanonicalSearchResult(discoveryDraft, suggestion, discoveryProjection.places,
+              choosingBase ? { type: "choose-visit-base", intentId: activeClarificationMention.mentionId } : { type: "add-shortlist" });
+            const searchEvent = discoveryChoiceEvent(discoveryEventKind, discoveryDraft, searchDraft, searchChoice, discoveryProjection.places.length);
+            if (searchEvent?.name === "discovery_place_choice_changed") trackEvent("discovery_place_choice_changed", searchEvent.properties);
             setCapturedStructuredBrief((current) => {
               const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
               if (read.status === "unsupported-version") return current;

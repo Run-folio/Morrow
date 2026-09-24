@@ -38,10 +38,13 @@ These typed events answer the minimum launch questions without replacing the exi
 Visual Discovery emits six small, consent-gated events through `trackEvent`.
 `discovery_shown` fires once when a mention's modal first opens;
 `discovery_review_reached` fires once when its Review step is first reached.
-`discovery_direction_selected` and `discovery_place_choice_changed` fire on
-deliberate choices. `discovery_confirmed` records a deliberate enabled Confirm
-click; it does not assert that persistence succeeded. `discovery_closed_or_resumed`
-records Close versus Finish later. The allow-listed properties are `entry_kind`
+`discovery_direction_selected` and `discovery_place_choice_changed` fire only
+when a deliberate action changes the accepted draft, including eligible
+canonical-search choices. `discovery_confirmed` fires only after all selected
+choices and mention completion are durably saved; partial or failed attempts
+do not count. `discovery_dismissed` fires only after Builder accepts Close or
+Finish later, never when its recovery save refuses dismissal. It makes no
+claim that the traveller resumed. The allow-listed properties are `entry_kind`
 (continent, country, region, landmark, natural-area, clarification),
 `candidate_count` or `shortlist_count`, and categorical `action` where applicable.
 Never include a prompt, place or trip title, coordinates, source URL, photo

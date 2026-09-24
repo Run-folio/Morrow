@@ -34,7 +34,7 @@ export type LaunchAnalyticsEventMap = {
   discovery_place_choice_changed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; action: "add" | "remove" | "choose_base" | "choose_visit_base"; shortlist_count: number };
   discovery_review_reached: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; shortlist_count: number };
   discovery_confirmed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; shortlist_count: number };
-  discovery_closed_or_resumed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; action: "closed" | "finish_later"; shortlist_count: number };
+  discovery_dismissed: { entry_kind: LaunchAnalyticsEventMap["discovery_shown"]["entry_kind"]; action: "closed" | "finish_later"; shortlist_count: number };
   workspace_orientation_started: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number };
   workspace_orientation_completed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };
   workspace_orientation_dismissed: { workspace: "overview" | "map" | "itinerary"; orientation_version: number; source: "automatic" | "replay"; total_steps: number; last_step_reached: number };

@@ -2,7 +2,7 @@ import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
 import { tripFromBuilder, type EasyTTrip } from "@/lib/easyt/trip";
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { DiscoveryModal } from "./discovery-modal";
 import { createDiscoveryDraft, reduceDiscoveryDraft, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery, type DiscoveryProjection } from "@/lib/easyt/discovery-projection";
@@ -21,15 +21,16 @@ const taj = projection("Taj Mahal");
 const australiaMention = mention("Australia");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
-  canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string;
+  canonicalTrip?: EasyTTrip; language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean; saveError?: string; timingDecoy?: boolean;
   actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void };
 
-function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
+function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, saveError, timingDecoy, actionSpy, confirmSpy, closeSpy, canonicalTrip }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
   const [searchValue, setSearchValue] = useState("");
   const onAction = (action: DiscoveryDraftAction) => { actionSpy?.(action); setDraft(current => reduceDiscoveryDraft(current, action)); };
   return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 20 }}>
     <p style={{ maxWidth: 780, margin: 0 }}>{note ?? "Reviewed production evidence; no licensed image is currently assigned to these places."}</p>
+    {timingDecoy ? <article data-discovery-card="true">Outside modal timing decoy</article> : null}
     <DiscoveryModal open entry={entry} mention={sceneMention} projection={sceneProjection} draft={draft} language={language} loading={loading} saveError={saveError}
       canonicalReview={canonicalTrip ? buildDiscoveryReview({ mention: sceneMention, draft, projection: sceneProjection, trip: canonicalTrip }) : undefined}
       existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => closeSpy?.()}
@@ -48,6 +49,14 @@ const selectedDraft = { ...placesDraft, shortlistIds: australia.places.slice(0, 
 
 export const AustraliaDirections: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: initial } };
 export const AustraliaPlaces: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: placesDraft } };
+export const MeasuredFirstCard: Story = { args: { ...AustraliaPlaces.args },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole("heading", { name: "Airlie Beach" })).toBeVisible();
+    await waitFor(() => expect(performance.getEntriesByName("discovery-mounted-to-first-card-paint")).toHaveLength(1), { timeout: 4000 });
+    const measures = performance.getEntriesByName("discovery-mounted-to-first-card-paint");
+    await expect(measures).toHaveLength(1);
+    await expect(measures[0]!.duration).toBeGreaterThanOrEqual(0);
+  } };
 export const AustraliaMapCardPreview: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -174,6 +183,11 @@ export const TajLandmarkBaseFixture: Story = { args: { entry: { kind: "landmark"
   note: "LAYOUT FIXTURE: the base is a placeholder, not an evidenced Taj Mahal access or overnight recommendation." } };
 export const TajLandmarkProductionSparse: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: mention("Taj Mahal"), projection: taj,
   draft: { ...initial, step: "bases" }, note: "Production: no reviewed Taj base in Discovery. Search or Finish later preserves the landmark intent." } };
+export const ScopedTimingIgnoresOutsideCard: Story = { args: { ...TajLandmarkProductionSparse.args, timingDecoy: true },
+  play: async () => {
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await expect(performance.getEntriesByName("discovery-mounted-to-first-card-paint")).toHaveLength(0);
+  } };
 export const SparsePhilippines: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Philippines"),
   projection: { ...philippines, places: philippines.places.slice(0, 2), visiblePlaceIds: philippines.places.slice(0, 2).map(place => place.id) }, draft: placesDraft,
   note: "Real reviewed Philippine places, intentionally limited to two for the sparse layout state; no overnight claim." } };
@@ -191,6 +205,19 @@ export const Mobile390MapOptional: Story = { args: { ...AustraliaPlaces.args, ac
     await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveFocus();
     await expect(args.actionSpy).not.toHaveBeenCalled();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
+export const MobileMapPreservesCanvasAfterShortlist: Story = { args: { ...AustraliaPlaces.args },
+  parameters: { viewport: { defaultViewport: "morrovia390" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Map" }));
+    await canvas.findByRole("button", { name: "Show card for Airlie Beach" });
+    const mapCanvas = canvasElement.querySelector(".maplibregl-canvas");
+    await expect(mapCanvas).not.toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Add to shortlist: Airlie Beach" }));
+    await expect(canvasElement.querySelector(".maplibregl-canvas")).toBe(mapCanvas);
+    await userEvent.click(canvas.getByRole("button", { name: "Remove from shortlist: Airlie Beach" }));
+    await expect(canvasElement.querySelector(".maplibregl-canvas")).toBe(mapCanvas);
   } };
 export const Mobile390PinRevealsExactCard: Story = { ...AustraliaPinRevealsExactCard,
   globals: { viewport: { value: "morrovia390" } },
