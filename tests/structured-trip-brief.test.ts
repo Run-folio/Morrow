@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
+import { createDiscoveryDraft, reduceDiscoveryDraft, readDiscoveryDraft } from "../lib/easyt/discovery-draft.ts";
 import {
   extractStructuredTripBrief,
   formatStructuredTripBriefDebug,
@@ -34,6 +35,17 @@ test("historical compatibility derives from saved selections without reparsing o
   assert.equal(compatible.mustVisit[0]?.id, "saved-route-stop");
   assert.equal(compatible.placeMentions, undefined);
   assert.equal(compatible.placeIssues, undefined);
+});
+
+test("brief merge preserves a per-mention removal without writing to legacy choices", () => {
+  const base = extractStructuredTripBrief("Australia");
+  const mentionId = base.placeMentions?.[0]?.mentionId ?? "mention-australia";
+  const removed = reduceDiscoveryDraft(createDiscoveryDraft(), { type: "remove-shortlist", placeId: "sydney" });
+  const saved = { ...base, discoveryDraftByMentionId: { [mentionId]: removed } };
+  const merged = mergeStructuredTripBrief(saved, { travellers: 2 });
+
+  assert.deepEqual(readDiscoveryDraft(merged, mentionId).draft.removedIds, ["sydney"]);
+  assert.equal(merged.countryDiscoveryChoices, undefined);
 });
 
 test("explicit prompt preserves gateways, exact nights and a must-visit anchor", () => {

@@ -20,6 +20,7 @@ import {
 } from "./planning-confidence.ts";
 import { normalizeTripInterests } from "./trip-interest.ts";
 import type { FixedCommitmentConstraint } from "./fixed-commitment.ts";
+import type { DiscoveryDraft } from "./discovery-draft.ts";
 
 export const STRUCTURED_TRIP_BRIEF_VERSION = 1 as const;
 
@@ -112,6 +113,8 @@ export type StructuredTripBrief = {
   /** Explicit recommendation drafts by broad mention. Empty means the traveller
    * removed every default; unlike absence, it must not regenerate defaults. */
   countryDiscoveryChoices?: Record<string, string[]>;
+  /** Versioned Discovery decisions keyed by the original geographic mention. */
+  discoveryDraftByMentionId?: Record<string, DiscoveryDraft>;
   /** Broad planning areas remain open for multiple child selections until the
    * traveller explicitly says that the route has enough places. */
   completedPlanningAreaMentionIds?: string[];

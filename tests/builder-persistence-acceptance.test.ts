@@ -5,6 +5,8 @@ import { defaultTripIntent, isEasyTTrip, tripFromBuilder } from "../lib/easyt/tr
 import { canonicalTripForOwner, tripBuildDocumentsCanonicalEquivalent } from "../lib/easyt/trip-promotion.ts";
 import { normalizedLegEndpoints } from "../lib/easyt/trip-persistence.ts";
 import { extractStructuredTripBrief, mergeStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
+import { createDiscoveryDraft, readDiscoveryDraft, reduceDiscoveryDraft } from "../lib/easyt/discovery-draft.ts";
+import { loadTripRecoveryFromStorage, saveTripRecoveryToStorage, type EasyTBrowserStorage } from "../lib/easyt/storage.ts";
 
 test("the open-world Builder acceptance trip round-trips every reviewed decision", () => {
   const prompt = "cancun, tulum, belize, tikal, antigua, lake atitlan, starting from London. Prefer nature.";
@@ -83,4 +85,52 @@ test("the open-world Builder acceptance trip round-trips every reviewed decision
     fromStopId: parsed.stops.at(-1)!.id,
     toStopId: null,
   });
+});
+
+test("Builder trip persistence retains an explicit empty Discovery draft through owner canonicalization", () => {
+  const source = extractStructuredTripBrief("Australia");
+  const mentionId = source.placeMentions?.[0]?.mentionId ?? "mention-australia";
+  const draft = reduceDiscoveryDraft(
+    reduceDiscoveryDraft(createDiscoveryDraft(), { type: "add-shortlist", placeId: "sydney" }),
+    { type: "remove-shortlist", placeId: "sydney" },
+  );
+  const structuredBrief = { ...source, countryDiscoveryChoices: { [mentionId]: ["sydney"] }, discoveryDraftByMentionId: { [mentionId]: draft } };
+  const trip = tripFromBuilder({
+    id: "trip-discovery-draft-persistence",
+    origin: "London",
+    stops: [],
+    startDate: "2026-09-01",
+    endDate: "2026-09-07",
+    picks: {},
+    mustDo: "Australia",
+    pace: "slow",
+    hotels: "few",
+    budget: "mid",
+    draft: [],
+    status: "planned",
+    structuredBrief,
+  });
+  const parsed: unknown = JSON.parse(JSON.stringify(canonicalTripForOwner("owner-discovery", trip, "2026-09-24T00:00:00.000Z")));
+  assert.ok(isEasyTTrip(parsed));
+  assert.equal(tripBuildDocumentsCanonicalEquivalent(trip, parsed, "owner-discovery"), true);
+  const read = readDiscoveryDraft(parsed.brief.structuredBrief!, mentionId);
+  assert.equal(read.status, "current");
+  assert.deepEqual(read.draft.shortlistIds, []);
+  assert.deepEqual(read.draft.removedIds, ["sydney"]);
+
+  const values = new Map<string, string>();
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, value); },
+    removeItem(key) { values.delete(key); },
+  };
+  assert.equal(saveTripRecoveryToStorage(storage, parsed, { writeId: "discovery-draft-recovery" }).stored, true);
+  const recovered = loadTripRecoveryFromStorage(storage, parsed.id, "owner-discovery")?.trip;
+  assert.ok(recovered?.brief.structuredBrief);
+  const resumed = readDiscoveryDraft(recovered.brief.structuredBrief, mentionId);
+  assert.equal(resumed.status, "current");
+  assert.deepEqual(resumed.draft.shortlistIds, []);
+  assert.deepEqual(resumed.draft.removedIds, ["sydney"]);
 });
