@@ -42,9 +42,9 @@ function Photo({ imageKey, name, language }: { imageKey: string | null; name: st
   </div>;
 }
 
-function PlaceCard({ place, draft, mention, entry, language, existing, recommended, baseId, onAction }: {
+function PlaceCard({ place, draft, mention, entry, language, existing, baseId, onAction }: {
   place: DiscoveryPlace; draft: DiscoveryDraft; mention: ResolvedPlaceMention; entry: DiscoveryEntry;
-  language: EasyTLanguage; existing: boolean; recommended: boolean; baseId: string | null; onAction: Props["onAction"];
+  language: EasyTLanguage; existing: boolean; baseId: string | null; onAction: Props["onAction"];
 }) {
   const copy = easytCopy[language].builder.visualDiscovery;
   const [expanded, setExpanded] = useState(false);
@@ -54,12 +54,13 @@ function PlaceCard({ place, draft, mention, entry, language, existing, recommend
   const actions = availableActions(place);
   const role = copy.roles[place.actionability];
   const type = copy.types[place.placeType as keyof typeof copy.types] ?? copy.types.other;
+  const location = mention.placeType === "country" && mention.canonicalName === place.country
+    ? type : `${type} · ${place.country}`;
   return <article className={styles.placeCard} data-selected={selected || baseSelected} data-actionability={place.actionability}>
     <Photo imageKey={place.imageKey} name={place.name} language={language} />
     <div className={styles.cardContent}>
-      <div className={styles.cardMeta}><span>{type} · {place.country}</span>{existing ? <span className={styles.existing}>{copy.roles.existing}</span> : null}</div>
+      <div className={styles.cardMeta}><span>{location}</span>{existing ? <span className={styles.existing}>{copy.roles.existing}</span> : null}</div>
       <h4>{place.name}</h4>
-      {recommended && !existing ? <span className={styles.recommended}>{copy.status.worthConsidering}</span> : null}
       <p>{renderDiscoveryReason(language, place)}</p>
       <div className={styles.role}><MapPin aria-hidden="true" /><span>{role}</span></div>
       {expanded ? <div className={styles.evidence}>
@@ -72,12 +73,15 @@ function PlaceCard({ place, draft, mention, entry, language, existing, recommend
         <p>{copy.status.noFitClaim}</p>
       </div> : null}
       <div className={styles.cardActions}>
-        <EasyTButton variant="quiet" size="small" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{copy.actions.explore}</EasyTButton>
+        <EasyTButton variant="quiet" size="small" aria-label={`${copy.actions.explore}: ${place.name}`}
+          aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{copy.actions.explore}</EasyTButton>
         {isBaseStep ? actions.includes("choose-base") ? <EasyTButton variant={baseSelected ? "secondary" : "primary"} size="small" icon={baseSelected ? Check : Plus}
-          aria-pressed={baseSelected} onClick={() => onAction({ type: entry.kind === "landmark" ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id })}>
+          aria-label={`${copy.actions.chooseBase}: ${place.name}`} aria-pressed={baseSelected}
+          onClick={() => onAction({ type: entry.kind === "landmark" ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id })}>
           {baseSelected ? copy.roles.chosen : copy.actions.chooseBase}
         </EasyTButton> : <span className={styles.notBase}>{copy.notBase}</span>
         : <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
+          aria-label={`${selected ? copy.accessibility.removeFromShortlist : copy.accessibility.addToShortlist}: ${place.name}`}
           aria-pressed={selected} onClick={() => onAction({ type: selected ? "remove-shortlist" : "add-shortlist", placeId: place.id })}>
           {selected ? copy.actions.remove : copy.actions.shortlist}
         </EasyTButton>}
@@ -99,25 +103,24 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);
 
   if (draft.step === "directions" && projection.directions.length) return <div className={styles.step} data-discovery-step="directions">
-    <div className={styles.lead}><span className={styles.eyebrow}>{copy.steps.directions}</span><h3>{mention.canonicalName || mention.sourceText}</h3><p>{copy.directionIntro}</p></div>
+    <p className={styles.stepHelper}>{copy.directionIntro}</p>
     <div className={styles.directions}>
       {projection.directions.map((direction, index) => <article className={styles.directionCard} key={direction.id} data-selected={draft.directionId === direction.id}>
         <Photo imageKey={direction.imageKey} name={discoveryDirectionTitle(language, direction.titleKey)} language={language} />
         <div className={styles.directionContent}><span className={styles.directionNumber}>{String(index + 1).padStart(2, "0")}</span>
           <h4>{discoveryDirectionTitle(language, direction.titleKey)}</h4>
           <p>{direction.placeIds.length} {copy.directionCount}</p>
-          <EasyTButton variant="secondary" fullWidth onClick={() => {
+          <EasyTButton variant="secondary" fullWidth aria-label={`${copy.accessibility.direction}: ${discoveryDirectionTitle(language, direction.titleKey)}`} onClick={() => {
             onAction({ type: "change-direction", directionId: direction.id });
             onAction({ type: "set-step", step: "places" });
           }}>{copy.directions.supported}</EasyTButton>
         </div>
       </article>)}
     </div>
-    <p className={styles.truth}>{copy.status.noFitClaim}</p>
   </div>;
 
   if (draft.step === "review") return <div className={styles.step} data-discovery-step="review">
-    <div className={styles.lead}><span className={styles.eyebrow}>{copy.steps.review}</span><h3>{copy.review}</h3><p>{copy.reviewIntro}</p></div>
+    <p className={styles.stepHelper}>{copy.reviewIntro}</p>
     {review.choices.length || review.base ? <div className={styles.reviewList}>
       {review.choices.map((choice, index) => <div key={choice.id} className={styles.reviewChoice}>
         <span>{String(index + 1).padStart(2, "0")}</span>
@@ -127,7 +130,8 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
           <small>{choice.existing ? copy.roles.existing : choice.confirmable ? copy.reviewStatus.ready : copy.reviewStatus.exploreOnly}</small>
           {choice.outsideDirection ? <small className={styles.reviewWarning}>{copy.reviewStatus.outsideDirection}</small> : null}
         </div>
-        <EasyTButton variant="quiet" size="small" onClick={() => onAction({ type: "remove-shortlist", placeId: choice.id })}>
+        <EasyTButton variant="quiet" size="small" aria-label={`${copy.accessibility.removeFromShortlist}: ${choice.name}`}
+          onClick={() => onAction({ type: "remove-shortlist", placeId: choice.id })}>
           {copy.actions.remove}
         </EasyTButton>
       </div>)}
@@ -136,35 +140,29 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
           <small>{review.base.existing ? copy.roles.existing : review.base.confirmable ? copy.reviewStatus.ready : copy.reviewStatus.exploreOnly}</small>
         </div>
       </div> : null}
-    </div> : <MorroviaStatusBanner title={copy.noDecision} detail={copy.empty} />}
+    </div> : <MorroviaStatusBanner title={copy.noDecision} detail={copy.noDecisionDetail} />}
     {review.hasUnresolvedChoices ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
-    {review.hasOutsideDirection ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.outsideDirectionTitle} detail={copy.reviewStatus.outsideDirectionDetail} /> : null}
-    <p className={styles.truth}>{copy.status.routeUnverified}</p>
   </div>;
 
   return <div className={styles.step} data-discovery-step={draft.step}>
-    <div className={styles.lead}><span className={styles.eyebrow}>{copy.steps[draft.step]}</span>
-      <h3>{mention.canonicalName || mention.sourceText}</h3>
-      <p>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
-    </div>
-    {projection.places.length === 0 ? <MorroviaStatusBanner title={copy.empty} detail={copy.intro} />
-      : projection.places.length <= 2 ? <MorroviaStatusBanner title={copy.sparse} detail={copy.status.routeUnverified} /> : null}
+    <p className={styles.stepHelper}>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
+    {projection.places.length === 0 ? <MorroviaStatusBanner
+      title={draft.step === "bases" ? copy.emptyBase : copy.empty}
+      detail={draft.step === "bases" ? copy.emptyBaseDetail : copy.emptyDetail} />
+      : projection.places.length <= 2 ? <MorroviaStatusBanner title={copy.sparse} detail={copy.sparseDetail} /> : null}
     <div className={styles.contentGrid}>
       <div className={styles.placeColumn}>
         <div className={styles.placeGrid}>{visible.map(place => <PlaceCard key={place.id} place={place} draft={draft} mention={mention}
           entry={entry} language={language} existing={existingPlaceIds.includes(place.id)}
-          recommended={projection.recommendedIds.includes(place.id)} baseId={baseId} onAction={onAction} />)}</div>
+          baseId={baseId} onAction={onAction} />)}</div>
         {allPlaces.length > visible.length ? <EasyTButton variant="secondary" className={styles.more} onClick={() => setVisibleCount(count => count + 6)}>
           {copy.actions.showMore} ({allPlaces.length - visible.length})</EasyTButton> : null}
         {search ? <div className={styles.search}>{search}</div> : null}
       </div>
       <aside className={styles.shortlist} aria-label={copy.accessibility.shortlist}>
-        <span className={styles.eyebrow}>{copy.shortlist}</span>
-        <strong>{discoveryShortlistCount(language, draft.shortlistIds.length)}</strong>
-        {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol>
-          : <p>{copy.shortlistEmpty}</p>}
+        <div className={styles.shortlistHeading}><strong>{copy.shortlist}</strong><span>{discoveryShortlistCount(language, draft.shortlistIds.length)}</span></div>
+        {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol> : null}
         {baseName ? <p>{copy.roles.chosen}: {baseName}</p> : null}
-        <small>{copy.status.noFitClaim}</small>
       </aside>
     </div>
     <div className={styles.srAnnouncement} aria-live="polite">{discoveryShortlistCount(language, draft.shortlistIds.length)}</div>

@@ -25,6 +25,8 @@
 }
 
 .discoveryDialog { width: min(980px, 100%); }
+.discoveryDialog .header { padding-block: 20px 14px; }
+.discoveryDialog .body { padding-block: 16px; }
 
 .header { position: relative; display: grid; flex: none; gap: 7px; padding: 24px 64px 17px 24px; border-bottom: 1px solid var(--morrovia-line); }
 .header > p { margin: 0; color: var(--morrovia-signal); font: 800 10px/1.2 var(--morrovia-meta); letter-spacing: .11em; text-transform: uppercase; }
@@ -119,6 +121,8 @@
   .discoveryOverlay { place-items: stretch; padding: 0; }
   .discoveryDialog { width: 100%; height: 100svh; max-height: 100svh; border: 0; border-radius: 0; }
   .discoveryDialog { overflow-y: auto; overscroll-behavior: contain; }
+  .discoveryDialog .header { padding: 14px 52px 11px 18px; }
+  .discoveryDialog .body { padding: 11px 18px; }
   .discoveryDialog .body { flex: none; min-height: auto; overflow: visible; overscroll-behavior: auto; }
   .discoveryDialog .footer { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
   .header { padding: 20px 58px 15px 18px; }

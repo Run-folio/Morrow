@@ -11,7 +11,8 @@ import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { BuilderClarificationShell } from "./builder-clarification-shell";
 import { DiscoverySteps } from "./discovery-steps";
 import { EasyTButton } from "./easyt-controls";
-import { MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaSkeleton } from "./morrovia-loading-states";
+import styles from "./discovery-modal.module.css";
 
 type Search = {
   value: string;
@@ -50,7 +51,7 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
     invalid={Boolean(search.error)} onChange={search.onChange} onSelect={search.onSelect} /> : undefined;
 
   return <BuilderClarificationShell open={open} itemKey={`${mention.mentionId}:${step}`} title={copy.steps[step]}
-    description={`${mention.sourceText}. ${copy.intro}`}
+    description={name}
     progress={`${stepIndex + 1} / ${steps.length}`} closeLabel={copy.accessibility.close}
     onDismiss={onClose} discovery loading={loading}
     footer={<>
@@ -61,7 +62,19 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
       {nextStep ? <EasyTButton disabled={loading} onClick={() => onAction({ type: "set-step", step: nextStep })}>{copy.actions.continue}</EasyTButton>
         : <EasyTButton icon={Check} disabled={loading || !review.canConfirm} onClick={onConfirm}>{copy.actions.confirm}</EasyTButton>}
     </>}>
-    {loading ? <MorroviaStatusBanner role="status" title={copy.status.loading} detail={copy.intro} />
+    {loading ? <section className={styles.loading} role="status" aria-label={copy.status.loading} aria-busy="true">
+      <span className={styles.srAnnouncement}>{copy.status.loading}</span>
+      <div className={styles.loadingIntro}><MorroviaSkeleton width="36%" height={18} />
+        <MorroviaSkeleton width="58%" height={12} /></div>
+      <div className={styles.loadingLayout}>
+        <div className={styles.loadingCards}>{[0, 1, 2].map(index => <div className={styles.loadingCard} key={index}>
+          <MorroviaSkeleton height={112} radius="card" /><MorroviaSkeleton width="57%" height={22} />
+          <MorroviaSkeleton width="82%" height={12} /><MorroviaSkeleton width="42%" height={34} />
+        </div>)}</div>
+        <div className={styles.loadingShortlist}><MorroviaSkeleton width="55%" height={20} />
+          <MorroviaSkeleton width="35%" height={12} /></div>
+      </div>
+    </section>
       : <DiscoverySteps entry={entry} mention={mention} projection={projection} draft={{ ...draft, step }} language={language}
         existingPlaceIds={existingPlaceIds} onAction={onAction} search={searchElement} />}
     {search?.error ? <p role="alert">{search.error}</p> : null}

@@ -57,17 +57,21 @@ export const AustraliaReviewResolveInteraction: Story = { args: { ...AustraliaRe
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeDisabled();
-    await expect(canvas.getByText("Resolve exploratory choices before confirming")).toBeVisible();
-    await expect(canvas.getByText("A choice sits outside this direction")).toBeVisible();
-    await userEvent.click(canvas.getAllByRole("button", { name: "Remove from shortlist" })[1]!);
+    await expect(canvas.getByText("Some places aren’t ready to add yet.")).toBeVisible();
+    await expect(canvas.getAllByText("Outside your selected direction")[0]).toBeVisible();
+    const remove = canvas.getAllByRole("button", { name: /Remove from shortlist:/ })[1]!;
+    await expect(remove).toHaveTextContent(/^Remove$/);
+    await userEvent.click(remove);
     await expect(canvas.getByRole("button", { name: "Confirm places" })).toBeEnabled();
   } };
 export const DirectionToContainedPlacesInteraction: Story = { args: { ...AustraliaDirections.args, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole("button", { name: "Explore this direction" })[0]!);
-    await expect(canvas.getByRole("heading", { name: "Australia" })).toBeVisible();
-    await expect(canvas.getByText("Your emerging shortlist")).toBeVisible();
+    const explore = canvas.getAllByRole("button", { name: /Explore direction:/ })[0]!;
+    await expect(explore).toHaveTextContent(/^Explore$/);
+    await userEvent.click(explore);
+    await expect(canvas.getByText("Australia")).toBeVisible();
+    await expect(canvas.getByText("Shortlist")).toBeVisible();
     const contained = australia.places.find(place => australia.directions[0]!.placeIds.includes(place.id))!;
     const outside = australia.places.find(place => !australia.directions[0]!.placeIds.includes(place.id))!;
     await expect(canvas.getByRole("heading", { name: contained.name })).toBeVisible();
@@ -79,12 +83,16 @@ export const DirectionToContainedPlacesInteraction: Story = { args: { ...Austral
 export const ShortlistAddRemoveInteraction: Story = { args: { ...AustraliaPlaces.args, actionSpy: fn(), confirmSpy: fn() },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getAllByRole("button", { name: "Add to shortlist" })[0]!);
+    const add = canvas.getAllByRole("button", { name: /Add to shortlist:/ })[0]!;
+    await expect(add).toHaveTextContent(/^Add$/);
+    await userEvent.click(add);
     await expect(args.actionSpy).toHaveBeenCalledWith({ type: "add-shortlist", placeId: australia.places[0]!.id });
-    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("1 place shortlisted")).toBeVisible();
-    await userEvent.click(canvas.getByRole("button", { name: "Remove from shortlist" }));
+    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("1 place")).toBeVisible();
+    const remove = canvas.getByRole("button", { name: /Remove from shortlist:/ });
+    await expect(remove).toHaveTextContent(/^Remove$/);
+    await userEvent.click(remove);
     await expect(args.actionSpy).toHaveBeenCalledWith({ type: "remove-shortlist", placeId: australia.places[0]!.id });
-    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("0 places shortlisted")).toBeVisible();
+    await expect(within(canvas.getByRole("complementary", { name: "Shortlist places" })).getByText("0 places")).toBeVisible();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
 export const AustraliaBrowseOnly: Story = { args: { entry: countryEntry, mention: australiaMention,
@@ -124,7 +132,7 @@ const africaFixtureDirections: DiscoveryDirection[] = [
   { id: "fixture-a", titleKey: "fixture.direction.a", placeIds: africaFixturePlaces.slice(0, 3).map(place => place.id), imageKey: null },
   { id: "fixture-b", titleKey: "fixture.direction.b", placeIds: africaFixturePlaces.slice(3).map(place => place.id), imageKey: null },
 ];
-const africaMention = { ...mention("Africa"), sourceText: "Africa — layout fixture" };
+const africaMention = { ...mention("Africa"), canonicalName: "Africa · layout fixture", sourceText: "Africa — layout fixture" };
 const africaFixture = projectDiscovery({ mention: africaMention, draft: initial, context: { interests: [], existingPlaceIds: [] }, evidence: { places: africaFixturePlaces, directions: africaFixtureDirections } });
 export const AfricaDirectionsFixture: Story = { args: { entry: { kind: "continent", step: "directions" }, mention: africaMention, projection: africaFixture, draft: initial,
   note: "LAYOUT FIXTURE: two direction groups and six placeholder locations. Production Africa has one reviewed place; these are not recommendations." } };
@@ -134,7 +142,7 @@ const tajFixtureBase: DiscoveryPlace = { ...australia.places[0]!, id: "fixture-t
   relevance: { en: "Layout fixture only; base evidence is not available.", es: "Solo maqueta; no hay evidencia verificada de la base.", sources: [fixtureSource] },
   stayEvidence: [fixtureSource], accessEvidence: [] };
 const tajFixtureProjection = { ...taj, places: [tajFixtureBase], visiblePlaceIds: [tajFixtureBase.id], counts: { source: 1, eligible: 1, ranked: 1, displayed: 1 } };
-export const TajLandmarkBaseFixture: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: { ...mention("Taj Mahal"), sourceText: "Taj Mahal — base layout fixture" },
+export const TajLandmarkBaseFixture: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: { ...mention("Taj Mahal"), canonicalName: "Taj Mahal · base layout fixture", sourceText: "Taj Mahal — base layout fixture" },
   projection: tajFixtureProjection, draft: { ...initial, step: "bases" },
   note: "LAYOUT FIXTURE: the base is a placeholder, not an evidenced Taj Mahal access or overnight recommendation." } };
 export const TajLandmarkProductionSparse: Story = { args: { entry: { kind: "landmark", step: "bases" }, mention: mention("Taj Mahal"), projection: taj,

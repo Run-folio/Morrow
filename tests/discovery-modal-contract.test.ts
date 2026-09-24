@@ -55,7 +55,7 @@ test("global visual steps own direction, shortlist, and progressive display with
   assert.match(steps, /"remove-shortlist" : "add-shortlist"/);
   assert.match(steps, /availableActions\(place\)/);
   assert.match(steps, /visiblePlaceIds/);
-  assert.match(steps, /projection\.recommendedIds\.includes\(place\.id\)/);
+  assert.doesNotMatch(steps, /projection\.recommendedIds\.includes\(place\.id\)/);
   assert.doesNotMatch(steps, /Australia|places\.length\s*[><=]+\s*20/);
 });
 
@@ -64,8 +64,18 @@ test("the adaptive shell has an honest loading and sparse recovery presentation"
   const stories = read("components/easyt/discovery-modal.stories.tsx");
   assert.match(modal, /loading\?: boolean/);
   assert.match(modal, /copy\.status\.loading/);
+  assert.match(modal, /MorroviaSkeleton/);
   assert.match(stories, /AustraliaLoading/);
   assert.match(stories, /TajLandmarkProductionSparse/);
+});
+
+test("visual Discovery uses the modal title and secondary geography without duplicate step headings", () => {
+  const modal = read("components/easyt/discovery-modal.tsx");
+  const steps = read("components/easyt/discovery-steps.tsx");
+  assert.match(modal, /title=\{copy\.steps\[step\]\}/);
+  assert.match(modal, /description=\{name\}/);
+  assert.doesNotMatch(steps, /<h3>|styles\.eyebrow\}>\{copy\.steps/);
+  assert.doesNotMatch(steps, /<p className=\{styles\.truth\}>/);
 });
 
 test("Builder commit locks every Discovery navigation and dismissal path", () => {
@@ -79,7 +89,7 @@ test("Builder commit locks every Discovery navigation and dismissal path", () =>
   assert.match(shell, /if \(event\.key === "Escape"\) \{ event\.preventDefault\(\); if \(!loadingRef\.current\) dismissRef\.current\(\);/);
   assert.match(shell, /if \(event\.target === event\.currentTarget && !loading\) onDismiss\(\)/);
   assert.match(shell, /iconOnly variant="quiet" size="small" disabled=\{loading\}/);
-  assert.match(modal, /loading \? <MorroviaStatusBanner[\s\S]*?: <DiscoverySteps/);
+  assert.match(modal, /loading \? <section className=\{styles\.loading\}[\s\S]*?: <DiscoverySteps/);
   assert.match(builder, /onAction=\{\(action\) => \{\s*if \(discoveryCommitRef\.current\) return;/);
 });
 
