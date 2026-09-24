@@ -63,6 +63,8 @@ type JourneyPlannerMapProps = {
   preserveCameraOnResize?: boolean;
   /** Changes whenever surrounding Map UI should interrupt in-flight camera movement. */
   cameraInteractionKey?: string;
+  /** Refocus at a discrete overlay boundary, such as opening the mobile drawer. */
+  cameraLayoutKey?: string;
   onMapPinDrop: (coordinates: [number, number]) => void;
   onPlannerPinSelect: (pin: PlannerMapPin) => void;
   onMapResultSelect?: (place: MapResultPlace) => void;
@@ -133,6 +135,7 @@ export function JourneyPlannerMap({
   cameraOcclusions,
   preserveCameraOnResize = false,
   cameraInteractionKey,
+  cameraLayoutKey,
   onMapPinDrop,
   onPlannerPinSelect,
   onMapResultSelect,
@@ -224,7 +227,7 @@ export function JourneyPlannerMap({
       ? { kind: "leg" as const, id: selectedLeg.id, coordinates: mapRouteFitCoordinates(selectedLeg) }
       : null;
   }, [selectedLegId, spatialLegs]);
-  const cameraRequestKey = presentationOnly
+  const cameraTargetKey = presentationOnly
     ? null
     : selectedLegTarget
       ? `leg:${selectedLegTarget.id}:${selectedLegTarget.coordinates.map((coordinate) => coordinate.join(",")).join(";")}`
@@ -237,6 +240,7 @@ export function JourneyPlannerMap({
           : selectedStop?.coordinates
             ? `stop:${selectedStop.id}:${selectedStop.coordinates.join(",")}:${focusZoom ?? "auto"}`
             : null;
+  const cameraRequestKey = cameraTargetKey && cameraLayoutKey ? `${cameraTargetKey}|layout:${cameraLayoutKey}` : cameraTargetKey;
   const cameraFrameKey = cameraRequestKey
     ? `${cameraRequestKey}|${cameraOcclusionKey}|${cameraViewportKey}`
     : null;

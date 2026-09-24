@@ -114,7 +114,7 @@ test("desktop Map has one persistent left rail and only contextual secondary det
     "shared status cards reflow to the desktop rail's container width");
   assert.match(mapStylesSource, /\.shellPlanner \.finderDock :global\(\[class\*="sectionStatus"\]\)>button\{grid-column:1\/-1!important;width:100%\}/);
   assert.doesNotMatch(mapStylesSource, /\.shellPlanner:not\(\.shellPlannerExpanded\)[\s\S]*right:18px!important;[\s\S]*width:clamp\(350px,24vw,400px\)!important/);
-  assert.match(mapWorkspaceSource, /const mapFocusOffset: \[number, number\] = isShellPresentation[\s\S]*hasExplicitMapContext[\s\S]*\? \[0, -80\][\s\S]*: \[180, -80\]/,
+  assert.match(mapWorkspaceSource, /const mapFocusOffset: \[number, number\] \| undefined = isShellPresentation[\s\S]*hasExplicitMapContext[\s\S]*\? \[0, -80\][\s\S]*: \[180, -80\]/,
     "selected-result focus should stay in the usable canvas between the rail and contextual card on narrow desktop");
   assert.match(mapWorkspaceSource, /focusOffset=\{mapFocusOffset\}/);
 });
@@ -168,7 +168,7 @@ test("the canonical Map workspace keeps one MapLibre camera model", () => {
   assert.doesNotMatch(transportWorkspaceSource, /transportCameraOcclusions|detailRailRef|mapPanelRef/);
   const cameraInteractionKey = mapWorkspaceSource.match(/const cameraInteractionKey = JSON\.stringify\(\[([\s\S]*?)\]\);/)?.[1];
   assert.ok(cameraInteractionKey);
-  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapSheetSize", "mobileMapSheetCollapsed"]) {
+  for (const state of ["selectedDayId", "shapeDayTab", "mobileShapeDayOpen", "destinationExpanded", "copilotOpen", "pinPlacementMode", "Boolean(pinCoordinates)", "transferDetailsExpanded", "mapCoachVisible", "tripStatusExpanded", "tripHealthDetail", "selectedRouteLegId", "mapMode", "mobileMapDrawerOpen"]) {
     assert.match(cameraInteractionKey, new RegExp(state.replace(/[()]/g, "\\$&")), state);
   }
 });
@@ -338,13 +338,12 @@ test("mobile navigation has no persistent dock and Map keeps one contextual shee
   assert.equal((mapWorkspaceSource.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
 });
 
-test("mobile Map has one contextual sheet owner with explicit reachable sizes", () => {
+test("mobile Map has one contextual two-state drawer owner", () => {
   assert.equal((mapWorkspaceSource.match(/id="map-contextual-sheet"/g) ?? []).length, 1);
   assert.match(mapWorkspaceSource, /data-mobile-sheet-view=\{mobileMapSheetView\}/);
-  assert.match(mapWorkspaceSource, /data-mobile-sheet-size=\{mobileMapSheetSize\}/);
-  assert.match(mapWorkspaceSource, /\["peek", "medium", "expanded"\] as MobileMapSheetSize\[\]/);
-  assert.match(mapWorkspaceSource, /aria-label="Map sheet size"/);
-  assert.match(mapWorkspaceSource, /setMobileMapSheetCollapsed\(true\)/);
+  assert.match(mapWorkspaceSource, /data-mobile-drawer-state=\{mobileMapDrawerOpen \? "open" : "collapsed"\}/);
+  assert.match(mapWorkspaceSource, /aria-label=\{mobileMapDrawerOpen \? "Collapse map results" : "Open map results"\}/);
+  assert.doesNotMatch(mapWorkspaceSource, /MobileMapSheetSize|mobileMapSheetSize|mobileMapSheetCollapsed/);
   for (const view of ["planner", "context", "status", "pin"]) {
     assert.match(mapDockStylesSource, new RegExp(`data-mobile-sheet-view="${view}"`));
   }
@@ -354,23 +353,20 @@ test("mobile Map has one contextual sheet owner with explicit reachable sizes", 
 });
 
 test("mobile result detail replaces the list and has a visible route back", () => {
-  assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace \? "Results" : "Map"/);
-  assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapSheetCollapsed\(false\);[\s\S]*setMobileMapSheetSize\("medium"\);/);
+  assert.match(mapWorkspaceSource, /const dismissSelectedMapResult = useCallback\(\(\) => \{[\s\S]*clearSelectedLocalPlace\(\);[\s\S]*setMobileShapeDayOpen\(true\);[\s\S]*setMobileMapDrawerOpen\(true\);/);
   assert.match(mapWorkspaceSource, /if \(selectedMapResult\) \{[\s\S]*dismissSelectedMapResult\(\);/);
-  assert.match(mapWorkspaceSource, /mobileMapSheetView === "context" && selectedLocalPlace[\s\S]*dismissSelectedMapResult\(\);/);
   assert.match(mapWorkspaceSource, /aria-label="Close selected place details"[\s\S]*onClose=\{dismissSelectedMapResult\}/);
-  assert.match(mapWorkspaceSource, /onMapResultSelect=\{\(place\) => \{ setMobileShapeDayOpen\(false\); selectMapResult\(place\); \}\}/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="planner"[\s\S]*\[class\*="finderDock"\]/);
   assert.match(mapDockStylesSource, /data-mobile-sheet-view="context"[\s\S]*\[class\*="canonicalPlannerStatus"\]/);
 });
 
 test("short and landscape Map viewports retain recoverable canvas and safe-area controls", () => {
   assert.match(mapDockStylesSource, /@media \(max-width:980px\) and \(max-height:520px\)/);
-  assert.match(mapDockStylesSource, /--mobile-map-sheet-peek-height:112px/);
-  assert.match(mapDockStylesSource, /--mobile-map-sheet-medium-height:min\(48%,240px\)/);
-  assert.match(mapDockStylesSource, /padding:0 12px env\(safe-area-inset-bottom\)/);
+  assert.match(mapDockStylesSource, /--mobile-map-visible-space:112px/);
+  assert.match(mapDockStylesSource, /--mobile-map-drawer-collapsed-height:72px/);
+  assert.match(mapDockStylesSource, /padding:10px 2px calc\(24px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(mapDockStylesSource, /bottom:max\(10px,env\(safe-area-inset-bottom\)\)!important/);
-  for (const story of ["Mobile320MapCanvas", "Mobile390StayResultsMedium", "Mobile430SelectedStayMedium", "Mobile390EatResultsMedium", "Mobile430SelectedEatMedium", "Mobile390SeeExpanded", "Mobile390SavedPinPeek", "MobileShortStayMedium", "MobileLandscapePeek", "Tablet768StayMedium"]) {
+  for (const story of ["Mobile320MapCanvas", "Mobile390StayResultsOpen", "Mobile430SelectedStayOpen", "Mobile390EatResultsOpen", "Mobile430SelectedEatOpen", "Mobile390SeeOpen", "Mobile390SavedPinOpen", "MobileShortStayOpen", "MobileLandscapeCollapsed", "Tablet768StayOpen", "Mobile390ShortResultsOpen", "Mobile390MediumResultsOpen", "Mobile390LongResultsOpen", "Mobile390EmptyResultsOpen", "Mobile390SelectedDetailOpen"]) {
     assert.match(mapStoriesSource, new RegExp(`export const ${story}`), story);
   }
 });

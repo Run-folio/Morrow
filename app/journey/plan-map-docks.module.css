@@ -71,16 +71,15 @@
   .plan :global([class*="pinDockExpanded"]) { width:min(200px,calc(100vw - 781px)); }
 }
 
-/* Mobile and tablet have one presentation owner: a contextual sheet over the
-   existing MapLibre canvas. Finder, result detail, trip status and pin tools
-   replace one another inside it instead of establishing competing docks. */
+/* Mobile Map keeps one contextual drawer over the existing canvas. Its body is
+   the only vertical scroll owner; the finder and detail surfaces remain the
+   same canonical content owners used by desktop. */
 @media (max-width:980px) {
   .plan {
     --mobile-map-strip-height:72px;
-    --mobile-map-sheet-peek-height:clamp(132px,24%,172px);
-    --mobile-map-sheet-medium-height:min(52%,440px);
-    --mobile-map-sheet-expanded-height:calc(100% - var(--mobile-map-strip-height) - 8px);
-    --mobile-map-sheet-height:0px;
+    --mobile-map-visible-space:136px;
+    --mobile-map-drawer-collapsed-height:72px;
+    --mobile-map-sheet-height:var(--mobile-map-drawer-collapsed-height);
     height:100svh;
     min-height:100svh;
     padding:0;
@@ -94,9 +93,7 @@
     border:0;
   }
 
-  .plan:has(:global([class*="mobileMapSheetPeek"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-peek-height); }
-  .plan:has(:global([class*="mobileMapSheetMedium"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-medium-height); }
-  .plan:has(:global([class*="mobileMapSheetExpanded"]:not([class*="mobileMapSheetCollapsed"]))) { --mobile-map-sheet-height:var(--mobile-map-sheet-expanded-height); }
+  .plan:has(:global([data-mobile-drawer-state="open"])) { --mobile-map-sheet-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-visible-space)); }
 
   .plan :global([class*="mapContextualSurface"]) {
     position:absolute;
@@ -110,7 +107,7 @@
     height:var(--mobile-map-sheet-height);
     max-height:calc(100% - var(--mobile-map-strip-height) - 8px);
     margin:0 auto;
-    padding:0 12px env(safe-area-inset-bottom);
+    padding:0 12px;
     overflow:hidden;
     border:1px solid var(--hairline);
     border-bottom:0;
@@ -118,47 +115,51 @@
     background:color-mix(in srgb,var(--morrovia-paper) 98%,transparent);
     box-shadow:var(--morrovia-shadow-overlay);
     backdrop-filter:blur(16px);
-    transition:height .2s ease;
+    transition:height .18s ease;
   }
-
-  .plan :global([class*="mapContextualSurface"][class*="mobileMapSheetCollapsed"]) { display:none; }
   .plan :global([class*="mobileMapSheetControls"]) {
-    min-height:52px;
+    min-height:72px;
     flex:0 0 auto;
-    display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto;
-    align-items:center;
-    gap:8px;
+    display:block;
     border-bottom:1px solid var(--hairline);
   }
-  .plan :global([class*="mobileMapSheetControls"]) > strong {
-    overflow:hidden;
-    color:var(--accent);
-    font:700 11px/1.2 var(--morrovia-ui);
-    text-align:center;
-    text-overflow:ellipsis;
-    white-space:nowrap;
+  .plan .mobileMapDrawerToggle {
+    position:relative;
+    display:flex;
+    width:100%;
+    min-height:71px;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:18px 8px 8px;
+    border:0;
+    background:transparent;
+    color:var(--morrovia-ink);
+    font:700 13px/1.2 var(--morrovia-ui);
+    text-align:left;
+    cursor:pointer;
+    touch-action:none;
   }
-  .plan :global([class*="mobileMapSheetControls"]) > button { min-height:40px;padding-inline:8px; }
-  .plan :global([class*="mobileMapSheetControls"]) > div { display:flex;align-items:center;gap:2px; }
-  .plan :global([class*="mobileMapSheetControls"]) > div button { min-width:44px;min-height:40px;padding-inline:6px;font-size:8px; }
-  .plan :global([class*="mobileMapSheetControls"]) > div button[aria-pressed="true"] { color:#fff;background:var(--accent); }
-  .plan :global([class*="mobileMapSheetBody"]) { position:relative;display:block;flex:1;min-height:0;overflow:hidden; }
+  .plan .mobileMapDrawerToggle:focus-visible { outline:3px solid var(--morrovia-focus-ring);outline-offset:-4px; }
+  .plan .mobileMapDrawerToggle svg { flex:0 0 20px;width:20px;height:20px;color:var(--morrovia-action); }
+  .plan .mobileMapDrawerGrip { position:absolute;top:8px;left:50%;width:36px;height:4px;border-radius:var(--morrovia-control-radius);background:var(--morrovia-line);transform:translateX(-50%); }
+  .plan .mobileMapDrawerTitle { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .plan :global([class*="mobileMapSheetBody"]) { position:relative;display:block;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:10px 2px calc(24px + env(safe-area-inset-bottom)); }
+  .plan :global([data-mobile-drawer-state="collapsed"]) :global([class*="mobileMapSheetBody"]) { display:none; }
 
   .plan :global([class*="mobileMapSheetBody"]) > :global([class*="finderDock"]),
   .plan :global([class*="mobileMapSheetBody"]) > :global([class*="canonicalPlannerStatus"]),
   .plan :global([class*="mobileMapSheetBody"]) > :global([class*="pinDock"]) {
-    position:absolute!important;
-    inset:0!important;
+    position:relative!important;
+    inset:auto!important;
     display:none!important;
     width:100%!important;
-    height:100%!important;
+    height:auto!important;
     max-width:none!important;
     max-height:none!important;
     margin:0!important;
-    padding:0 2px 14px!important;
-    overflow-y:auto!important;
-    overscroll-behavior:contain;
+    padding:0 2px!important;
+    overflow:visible!important;
     border:0!important;
     border-radius:0!important;
     background:transparent!important;
@@ -174,17 +175,19 @@
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="status"]) :global([class*="canonicalPlannerStatus"]) { display:block!important; }
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="context"]) :global([class*="canonicalPlannerStatus"][class*="mapContextHidden"]) { display:block!important; }
   .plan :global([class*="mapContextualSurface"][data-mobile-sheet-view="pin"]) :global([class*="pinDock"]) { flex-direction:column; }
+  .plan :global([class*="finderDock"]) { flex-direction:column; }
   .plan :global([class*="finderDock"]) > header { position:relative;flex:0 0 auto;padding-top:12px; }
   .plan :global([class*="finderDock"]) > header::before { content:none; }
   .plan :global([class*="shapeDayPlan"]),
   .plan :global([class*="restaurantFinder"]),
   .plan :global([class*="shapeDaySee"]) {
-    flex:1;
-    min-height:0;
+    flex:none!important;
+    min-height:auto!important;
     margin:10px 0 0;
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    padding:0 2px 18px 0;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding:0 2px 0 0;
   }
 
   .plan :global([class*="mobileTripStatus"]) { position:static;z-index:1;display:block;justify-self:start; }
@@ -192,13 +195,14 @@
   .plan :global([class*="mobileTripStatus"]) summary::-webkit-details-marker { display:none; }
   .plan :global([class*="mobileTripStatus"]) summary b { padding:4px 7px;color:var(--accent);background:var(--mist);border:1px solid var(--hairline);border-radius:6px;font:700 7px var(--morrovia-meta); }
 
-  .plan:has(:global([class*="mapContextualSurface"]:not([class*="mobileMapSheetCollapsed"]))) :global([class*="mapDayControl"]),
-  .plan:has(:global([class*="mapContextualSurface"]:not([class*="mobileMapSheetCollapsed"]))) :global([class*="mapAssistant"]) { display:none!important; }
+  .plan:has(:global([data-mobile-drawer-state="open"])) :global([class*="mapDayControl"]),
+  .plan:has(:global([data-mobile-drawer-state="open"])) :global([class*="mapAssistant"]) { display:none!important; }
   .plan :global([class*="mapDayControl"]) { bottom:max(10px,env(safe-area-inset-bottom))!important; }
   .plan :global(.planner-map .maplibregl-ctrl-bottom-right) { bottom:calc(var(--mobile-map-sheet-height) + 4px)!important; }
   .plan :global([class*="undoToast"]),
   .plan :global([class*="mapSaveStatus"]) { top:calc(var(--mobile-map-strip-height) + 8px)!important;bottom:auto!important; }
   .plan :global([class*="mapRecoveryFeedback"]) { top:calc(var(--mobile-map-strip-height) + 8px)!important;bottom:auto!important;max-height:calc(100% - var(--mobile-map-strip-height) - var(--mobile-map-sheet-height) - 20px);overflow:auto; }
+  @media (prefers-reduced-motion:reduce) { .plan :global([class*="mapContextualSurface"]) { transition:none; } }
 }
 
 @media (max-width:680px) {
@@ -228,23 +232,15 @@
 
 @media (max-width:360px) {
   .plan :global([class*="mapContextualSurface"]) { padding-right:8px;padding-left:8px; }
-  .plan :global([class*="mobileMapSheetControls"]) { grid-template-columns:auto minmax(0,1fr);gap:4px; }
-  .plan :global([class*="mobileMapSheetControls"]) > strong { display:none; }
-  .plan :global([class*="mobileMapSheetControls"]) > div { justify-self:end; }
   .plan :global([class*="finderTabs"]) { gap:3px;padding:3px; }
   .plan :global([class*="finderTabs"]) button { min-height:44px;padding:0 2px;font-size:9px; }
   .plan :global([class*="shapeDayPlan"]) :global([class*="editableActivities"]) li { grid-template-columns:24px minmax(0,1fr) auto auto !important;gap:5px;padding:12px 0;font-size:13px; }
 }
 
-@media (max-width:520px) {
-  .plan :global([class*="mobileMapSheetControls"]) > strong { display:none; }
-}
-
 @media (max-width:980px) and (max-height:520px) {
   .plan {
     --mobile-map-strip-height:72px;
-    --mobile-map-sheet-peek-height:112px;
-    --mobile-map-sheet-medium-height:min(48%,240px);
+    --mobile-map-visible-space:112px;
     min-height:420px;
   }
   .plan :global([class*="mapContextualSurface"]) { max-height:calc(100% - var(--mobile-map-strip-height) - 4px); }

@@ -179,7 +179,7 @@
     "rawColors": [
       {
         "value": "#fff",
-        "count": 520,
+        "count": 519,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/admin/feedback/feedback.module.css",
@@ -5281,7 +5281,7 @@
       },
       {
         "value": "10px",
-        "count": 504,
+        "count": 505,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5291,7 +5291,7 @@
       },
       {
         "value": "12px",
-        "count": 469,
+        "count": 470,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5301,7 +5301,7 @@
       },
       {
         "value": "14px",
-        "count": 329,
+        "count": 328,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5351,7 +5351,7 @@
       },
       {
         "value": "4px",
-        "count": 232,
+        "count": 231,
         "examples": [
           "app/journey/about/about.module.css",
           "app/journey/account.module.css",
@@ -5381,7 +5381,7 @@
       },
       {
         "value": "6px",
-        "count": 226,
+        "count": 225,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/discover/discover.module.css",
@@ -7626,7 +7626,7 @@
       },
       {
         "value": "max-width: 520px",
-        "count": 36,
+        "count": 35,
         "examples": [
           "app/journey/account.module.css",
           "app/journey/dashboard/dashboard.module.css",
@@ -8034,7 +8034,7 @@
       "native-confirm": 0,
       "legacy-ui-import": 0,
       "deprecated-ui-owner": 0,
-      "raw-color": 1913,
+      "raw-color": 1912,
       "large-accent-surface": 0,
       "raw-radius": 562,
       "raw-shadow": 172,

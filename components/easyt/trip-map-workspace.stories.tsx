@@ -690,7 +690,7 @@ export const MapWorkspaceMobile390SelectedStay: Story = {
       shapeDayTab: "stay",
       localPlaces: [providerPlaces.hotel],
       selectedLocalPlaceId: providerPlaces.hotel.id,
-      mobileSheetSize: "medium",
+      mobileDrawerOpen: true,
     },
   },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
@@ -766,65 +766,101 @@ export const Mobile390PinComposer: Story = {
 
 export const Mobile320MapCanvas: Story = {
   ...GoldenTriangle,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview", mobileSheetCollapsed: true } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "overview", mobileDrawerOpen: false } },
   globals: { viewport: { value: "morrovia320", isRotated: false } },
 };
 
-export const Mobile390StayResultsMedium: Story = {
+export const Mobile390StayResultsOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileSheetSize: "medium" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [providerPlaces.hotel, { ...providerPlaces.hotel, id: "booking-old-delhi-courtyard", name: "Old Delhi Courtyard", coordinates: [77.227, 28.647], mapsUrl: "https://www.google.com/maps/search/?api=1&query=Old%20Delhi%20Courtyard", distanceKm: 1.8 }], accommodationInventoryStatus: "not-requested" } } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
-export const Mobile430SelectedStayMedium: Story = {
+export const Mobile430SelectedStayOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.hotel], selectedLocalPlaceId: providerPlaces.hotel.id, mobileSheetSize: "medium" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [providerPlaces.hotel], selectedLocalPlaceId: providerPlaces.hotel.id, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia430", isRotated: false } },
 };
 
-export const Mobile390EatResultsMedium: Story = {
+export const Mobile390EatResultsOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileSheetSize: "medium" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
-export const Mobile430SelectedEatMedium: Story = {
+export const Mobile430SelectedEatOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", localPlaces: [providerPlaces.restaurant], selectedLocalPlaceId: providerPlaces.restaurant.id, mobileSheetSize: "medium" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "eat", localPlaces: [providerPlaces.restaurant], selectedLocalPlaceId: providerPlaces.restaurant.id, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia430", isRotated: false } },
 };
 
-export const Mobile390SeeExpanded: Story = {
+export const Mobile390SeeOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, mobileSheetSize: "expanded" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "see", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
-export const Mobile390TripStatusExpanded: Story = {
+export const Mobile390TripStatusOpen: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileShapeDayOpen: true, tripStatusExpanded: true, mobileSheetSize: "expanded" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileShapeDayOpen: true, tripStatusExpanded: true, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
-export const MobileShortStayMedium: Story = {
-  ...Mobile390StayResultsMedium,
+export const MobileShortStayOpen: Story = {
+  ...Mobile390StayResultsOpen,
   globals: { viewport: { value: "morrovia390short", isRotated: false } },
 };
 
-export const MobileLandscapePeek: Story = {
+export const MobileLandscapeCollapsed: Story = {
   ...DetailedBasemap,
-  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileSheetSize: "peek" } },
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", mobileDrawerOpen: false } },
   globals: { viewport: { value: "morroviaLandscape", isRotated: false } },
 };
 
-export const Tablet768StayMedium: Story = {
-  ...Mobile390StayResultsMedium,
+export const Tablet768StayOpen: Story = {
+  ...Mobile390StayResultsOpen,
   globals: { viewport: { value: "morrovia768", isRotated: false } },
 };
 
-export const Mobile390SavedPinPeek: Story = {
+export const Mobile390SavedPinOpen: Story = {
   ...SavedPinReloaded,
-  args: { storyTrip: goldenTriangleWithPin, storyState: { mapMode: "detail", selectedPlannerPinId: "saved-red-fort", mobileSheetSize: "peek" } },
+  args: { storyTrip: goldenTriangleWithPin, storyState: { mapMode: "detail", selectedPlannerPinId: "saved-red-fort", mobileDrawerOpen: true } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+const drawerPlanTrip = (count: number): EasyTTrip => ({
+  ...goldenTriangleTrip,
+  id: `drawer-plan-${count}`,
+  planItems: goldenTriangleTrip.planItems.map((item) => item.dayNumber === 1
+    ? { ...item, notes: Array.from({ length: count }, (_, index) => `Delhi activity ${String(index + 1).padStart(2, "0")}`) }
+    : item),
+});
+
+export const Mobile390ShortResultsOpen: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: drawerPlanTrip(2), storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile390MediumResultsOpen: Story = {
+  ...Mobile390ShortResultsOpen,
+  args: { storyTrip: drawerPlanTrip(8), storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+};
+
+export const Mobile390LongResultsOpen: Story = {
+  ...Mobile390ShortResultsOpen,
+  args: { storyTrip: drawerPlanTrip(20), storyState: { mapMode: "detail", shapeDayTab: "plan", mobileShapeDayOpen: true, mobileDrawerOpen: true } },
+};
+
+export const Mobile390EmptyResultsOpen: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", shapeDayTab: "stay", mobileShapeDayOpen: true, mobileDrawerOpen: true, localFinderInitialState: { corePlaces: [], coreUnavailable: false, accommodationInventoryStatus: "empty" } } },
+  globals: { viewport: { value: "morrovia390", isRotated: false } },
+};
+
+export const Mobile390SelectedDetailOpen: Story = {
+  ...DetailedBasemap,
+  args: { storyTrip: goldenTriangleTrip, storyState: { mapMode: "detail", localPlaces: [{ ...providerPlaces.hotel, description: "A restored heritage stay close to Old Delhi's historic lanes. Check current room availability, access and cancellation terms before booking. The map selection keeps this property linked to its existing detail and to the correct Delhi stop." }], selectedLocalPlaceId: providerPlaces.hotel.id, mobileDrawerOpen: true } },
   globals: { viewport: { value: "morrovia390", isRotated: false } },
 };
 
