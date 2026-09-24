@@ -58,7 +58,7 @@ import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discove
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
-import { discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
+import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
 import { commitDiscoverySelections } from "@/lib/easyt/discovery-confirmation";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
@@ -4341,17 +4341,13 @@ function TripBuilderDocument() {
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
           },
           onSelect: (suggestion) => {
-            const parent = planningParentForMention(activeClarificationMention);
             const reviewedPlace = discoveryProjection.places.find((place) => place.id === suggestion.canonicalPlaceId
               && place.country === suggestion.country);
             const choosingBase = discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area";
-            const withinParent = discoveryPlaceWithinMention(suggestion.canonicalPlaceId, activeClarificationMention);
-            const suitableBase = !choosingBase || placeCandidateWithinPlanningParent({
-              canonicalName: suggestion.name, placeType: suggestion.placeType,
-              parentCountries: [suggestion.country], parentRegionId: suggestion.region,
-              coordinates: suggestion.coordinates,
-            }, parent);
-            if (!withinParent || !reviewedPlace || !suitableBase
+            const suitablePlace = Boolean(reviewedPlace && (choosingBase
+              ? discoveryBaseSuitableForMention(reviewedPlace, activeClarificationMention)
+              : discoveryPlaceWithinMention(suggestion.canonicalPlaceId, activeClarificationMention)));
+            if (!suitablePlace || !reviewedPlace
               || reviewedPlace.actionability === "browse-only"
               || (choosingBase && reviewedPlace.actionability !== "overnight-base")) {
               setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"

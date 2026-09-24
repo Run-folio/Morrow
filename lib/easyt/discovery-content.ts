@@ -1,6 +1,7 @@
 import { AUSTRALIA_DISCOVERY_EVIDENCE } from "./australia-discovery-content.ts";
 import { CURATED_DESTINATION_KNOWLEDGE, type KnowledgeSource } from "./destination-knowledge.ts";
 import { findCatalogPlaceById, findCatalogPlacesByPhrase, type PlaceTypeLiteral } from "./place-catalog.ts";
+import { placeCandidateSuitableAsNearbyBase } from "./place-intelligence.ts";
 import { routeEditorialPhoto, routeImageCredit } from "./route-images.ts";
 
 export type DiscoveryActionability = "overnight-base" | "visit" | "browse-only";
@@ -217,6 +218,29 @@ export function discoveryPlaceWithinMention(placeId: string, mention: DiscoveryM
   return isWithin(placeId, anchor.canonicalPlaceId);
 }
 
+/** A base may be the attraction's parent settlement or a reviewed nearby gateway. */
+export function discoveryBaseSuitableForMention(place: DiscoveryPlace, mention: DiscoveryMention): boolean {
+  const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
+  const base = findCatalogPlaceById(place.id);
+  if (!anchor || !base || !["landmark", "natural_area"].includes(anchor.placeType)
+    || place.actionability !== "overnight-base" || !place.stayEvidence.length
+    || !["city", "town", "transport_gateway"].includes(base.placeType)
+    || base.canonicalName !== place.name || !base.parentCountries.includes(place.country)
+    || !anchor.parentCountries.includes(place.country)) return false;
+  if (anchor.parentRegionId === base.canonicalPlaceId) return true;
+  if (!anchor.coordinates) return false;
+  return Boolean(placeCandidateSuitableAsNearbyBase({
+    canonicalPlaceId: anchor.canonicalPlaceId, canonicalName: anchor.canonicalName,
+    placeType: anchor.placeType, parentCountries: [...anchor.parentCountries],
+    parentRegionId: anchor.parentRegionId, coordinates: [...anchor.coordinates] as [number, number],
+  }, {
+    providerId: base.canonicalPlaceId, canonicalName: base.canonicalName,
+    placeType: base.placeType, parentCountries: [...base.parentCountries],
+    parentRegionId: base.parentRegionId, coordinates: [...place.coordinates] as [number, number],
+    routability: base.routability,
+  }));
+}
+
 export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryPlace[] {
   const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
   if (!anchor || anchor.placeType !== mention.placeType) return [];
@@ -228,5 +252,7 @@ export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryP
   if (anchor.placeType === "continent" || anchor.placeType === "macro_region") {
     return places.filter(place => anchor.parentCountries.includes(place.country));
   }
-  return places.filter(place => isWithin(place.id, anchor.canonicalPlaceId));
+  return places.filter(place => isWithin(place.id, anchor.canonicalPlaceId)
+    || ((anchor.placeType === "landmark" || anchor.placeType === "natural_area")
+      && discoveryBaseSuitableForMention(place, mention)));
 }

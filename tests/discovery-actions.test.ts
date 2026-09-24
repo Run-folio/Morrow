@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { discoveryPlaceWithinMention, discoveryPlacesForMention } from "../lib/easyt/discovery-content.ts";
+import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention, discoveryPlacesForMention } from "../lib/easyt/discovery-content.ts";
 import { createDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "../lib/easyt/discovery-draft.ts";
 import { projectDiscovery } from "../lib/easyt/discovery-projection.ts";
 import { discoveryReviewState } from "../lib/easyt/discovery-review-state.ts";
@@ -40,6 +40,17 @@ test("search and card shortlist the same reviewed visit-only place", () => {
 test("Discovery search can present a canonical visit-only natural area", () => {
   assert.equal(canonicalPlaceSuggestionsForQuery("Kakadu", ["Australia"]).some(item => item.canonicalPlaceId === "kakadu"), false);
   assert.equal(canonicalPlaceSuggestionsForQuery("Kakadu", ["Australia"], 8, true).some(item => item.canonicalPlaceId === "kakadu"), true);
+});
+
+test("a reviewed parent settlement base is eligible for a landmark without descendant containment", () => {
+  const taj = extractStructuredTripBrief("Taj Mahal").placeMentions![0]!;
+  const agra = { ...places[0]!, id: "agra", name: "Agra", country: "India", placeType: "city" as const,
+    coordinates: [78.008, 27.176] as const, actionability: "overnight-base" as const,
+    stayEvidence: places.find(place => place.stayEvidence.length)!.stayEvidence };
+  assert.equal(discoveryPlaceWithinMention(agra.id, taj), false);
+  assert.equal(discoveryBaseSuitableForMention(agra, taj), true);
+  assert.equal(discoveryBaseSuitableForMention({ ...agra, actionability: "browse-only", stayEvidence: [] }, taj), false);
+  assert.equal(discoveryBaseSuitableForMention(places.find(place => place.id === "melbourne")!, taj), false);
 });
 
 test("Stay here and split stay use only reviewed overnight settlements", () => {

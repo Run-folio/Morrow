@@ -41,7 +41,7 @@ test("partial confirmation leaves the parent open and explains unresolved choice
 test("provider-only search has a localized unresolved path with preserved intent", () => {
   const builder = read("app/journey/new/trip-builder.tsx");
   assert.match(builder, /discoveryProjection\.places\.find\(\(place\) => place\.id === suggestion\.canonicalPlaceId/);
-  assert.match(builder, /!withinParent \|\| !reviewedPlace/);
+  assert.match(builder, /!suitablePlace \|\| !reviewedPlace/);
   assert.match(builder, /Your original idea is saved; search for another place or Finish later/);
   assert.match(builder, /Tu idea original sigue guardada; busca otro lugar o termina más tarde/);
 });
@@ -111,6 +111,7 @@ test("Discovery exposes explicit base, split, reset and reviewed search actions 
   assert.match(modal, /draft\.removedIds\.length/);
   assert.match(builder, /selectCanonicalSearchResult\(/);
   assert.match(builder, /discoveryPlaceWithinMention\(/);
+  assert.match(builder, /discoveryBaseSuitableForMention\(/);
   assert.match(builder, /reviewedPlace\.actionability === "browse-only"/);
   assert.match(modal, /contextCountries=\{mention\.parentCountries\}/);
   assert.match(modal, /includeNonRoutable/);
