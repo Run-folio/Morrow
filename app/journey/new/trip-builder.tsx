@@ -4247,6 +4247,7 @@ function TripBuilderDocument() {
         projection={discoveryProjection}
         draft={discoveryDraft}
         language={language}
+        existingPlaceIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
         onAction={(action) => setCapturedStructuredBrief((current) => {
           const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
           if (read.status === "unsupported-version") return current;

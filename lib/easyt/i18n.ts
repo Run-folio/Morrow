@@ -1,5 +1,6 @@
 import type { CountryDiscoveryRecommendationReason, CountryDiscoveryStayGuidance } from "./country-discovery.ts";
 import { normalizeTripInterests, tripInterestLabels } from "./trip-interest.ts";
+import type { DiscoveryPlace } from "./discovery-content.ts";
 
 export type EasyTLanguage = "en" | "es";
 
@@ -26,6 +27,15 @@ export const easytCopy = {
       source: "Source", alreadyInTrip: "Already in trip", selectedRemove: "Selected · Remove", add: "Add",
       alreadyInTripAria: "already in trip", selectedRemoveAria: "selected, remove", addAria: "not selected, add",
       seeMore: "See more places", searchSpecific: "Search for somewhere specific",
+    }, visualDiscovery: {
+      actions: { shortlist: "Add to shortlist", remove: "Remove from shortlist", explore: "Explore", showMore: "Show more places", chooseBase: "Choose base", changeBase: "Change base", back: "Back", continue: "Continue", confirm: "Confirm places", finishLater: "Finish later", search: "Search for a specific place" },
+      steps: { directions: "Choose a direction", places: "Explore places", bases: "Choose a base", review: "Review your choices" },
+      roles: { "overnight-base": "Overnight base supported", visit: "Visit from a base", "browse-only": "Explore only", existing: "Already in your trip", chosen: "Chosen base", selected: "On your shortlist" },
+      types: { continent: "Continent", country: "Country", region: "Region", city: "City", town: "Town", landmark: "Landmark", natural_area: "Natural area", island: "Island", transport_gateway: "Transport gateway", other: "Place" },
+      status: { worthConsidering: "Worth considering", routeUnverified: "Route fit still needs checking", noFitClaim: "Travel time and route fit have not been checked", evidence: "Reviewed source", searchError: "Search is unavailable. Your original idea is saved.", loading: "Finding reviewed places…" },
+      accessibility: { close: "Close Discovery", direction: "Explore direction", shortlist: "Shortlist places", search: "Search within", source: "Read reviewed source", noPhoto: "No licensed photo available" },
+      directions: { australiaEastCoast: "East coast", australiaSouth: "Southern cities and coast", australiaTasmania: "Tasmania and nature", australiaWest: "Western Australia", australiaNorthInterior: "North and interior", fixtureA: "Direction A (fixture)", fixtureB: "Direction B (fixture)", supported: "Explore this direction" },
+      intro: "Your original idea is preserved. Explore reviewed places, then decide what belongs in your trip.", directionIntro: "Choose the area you want to explore first. This is a browsing preference, not a route commitment.", placesIntro: "Start with a few reviewed places. Show more as you explore; nothing is added to your route yet.", baseIntro: "Choose a supported base for this visit. If none is verified, search for a specific place or finish later.", shortlist: "Your emerging shortlist", shortlistEmpty: "No places shortlisted yet.", review: "Review before changing your route", reviewIntro: "Only confirmed, supported places can be added to your trip. Your original idea stays saved.", sparse: "Reviewed coverage is limited here. Explore the available places or search for somewhere specific.", empty: "No reviewed places are available for this idea yet. Search for a specific place or finish later.", noPhoto: "No licensed photo yet", sources: "Why consider it", notBase: "Overnight suitability is not verified", visitNeedsBase: "A visit needs a confirmed base before it can be added to the trip.", directionCount: "reviewed places", selectedCount: "places shortlisted", noDecision: "No supported base has been chosen yet.", searchPlaceholder: "Search for a place", searchWithin: "Search within", source: "Source",
     } },
   },
   es: {
@@ -40,9 +50,55 @@ export const easytCopy = {
       source: "Fuente", alreadyInTrip: "Ya en el viaje", selectedRemove: "Seleccionado · Quitar", add: "Añadir",
       alreadyInTripAria: "ya en el viaje", selectedRemoveAria: "seleccionado, quitar", addAria: "no seleccionado, añadir",
       seeMore: "Ver más lugares", searchSpecific: "Buscar un lugar concreto",
+    }, visualDiscovery: {
+      actions: { shortlist: "Añadir a la selección", remove: "Quitar de la selección", explore: "Explorar", showMore: "Ver más lugares", chooseBase: "Elegir base", changeBase: "Cambiar base", back: "Atrás", continue: "Continuar", confirm: "Confirmar lugares", finishLater: "Terminar más tarde", search: "Buscar un lugar concreto" },
+      steps: { directions: "Elige una dirección", places: "Explora lugares", bases: "Elige una base", review: "Revisa tus elecciones" },
+      roles: { "overnight-base": "Base para pernoctar verificada", visit: "Visita desde una base", "browse-only": "Solo para explorar", existing: "Ya está en tu viaje", chosen: "Base elegida", selected: "En tu selección" },
+      types: { continent: "Continente", country: "País", region: "Región", city: "Ciudad", town: "Localidad", landmark: "Lugar de interés", natural_area: "Área natural", island: "Isla", transport_gateway: "Centro de transporte", other: "Lugar" },
+      status: { worthConsidering: "Vale la pena considerarlo", routeUnverified: "Falta comprobar cómo encaja en la ruta", noFitClaim: "Aún no se han comprobado los tiempos ni la ruta", evidence: "Fuente revisada", searchError: "La búsqueda no está disponible. Tu idea original sigue guardada.", loading: "Buscando lugares revisados…" },
+      accessibility: { close: "Cerrar Discovery", direction: "Explorar dirección", shortlist: "Lugares seleccionados", search: "Buscar dentro de", source: "Leer fuente revisada", noPhoto: "No hay foto con licencia disponible" },
+      directions: { australiaEastCoast: "Costa este", australiaSouth: "Ciudades y costa del sur", australiaTasmania: "Tasmania y naturaleza", australiaWest: "Australia Occidental", australiaNorthInterior: "Norte e interior", fixtureA: "Dirección A (maqueta)", fixtureB: "Dirección B (maqueta)", supported: "Explorar esta dirección" },
+      intro: "Tu idea original se conserva. Explora lugares revisados y decide cuáles incluir en el viaje.", directionIntro: "Elige primero la zona que quieres explorar. Es una preferencia de navegación, no una ruta confirmada.", placesIntro: "Empieza por unos pocos lugares revisados. Descubre más a medida que exploras; aún no se añade nada a la ruta.", baseIntro: "Elige una base verificada para esta visita. Si no hay ninguna, busca un lugar concreto o termina más tarde.", shortlist: "Tu selección en curso", shortlistEmpty: "Todavía no has seleccionado lugares.", review: "Revisa antes de cambiar la ruta", reviewIntro: "Solo se pueden añadir al viaje lugares confirmados y verificados. Tu idea original sigue guardada.", sparse: "La información revisada es limitada aquí. Explora los lugares disponibles o busca uno concreto.", empty: "Aún no hay lugares revisados para esta idea. Busca un lugar concreto o termina más tarde.", noPhoto: "Aún no hay foto con licencia", sources: "Por qué considerarlo", notBase: "La idoneidad para pernoctar no está verificada", visitNeedsBase: "Una visita necesita una base confirmada antes de añadirse al viaje.", directionCount: "lugares revisados", selectedCount: "lugares seleccionados", noDecision: "Todavía no has elegido una base verificada.", searchPlaceholder: "Buscar un lugar", searchWithin: "Buscar dentro de", source: "Fuente",
     } },
   },
 } as const;
+
+export type DiscoveryPlaceAction = "explore" | "shortlist" | "stay-here" | "visit-from-base" | "choose-base";
+
+/** Action affordances follow reviewed role evidence, never a display geography. */
+export function availableActions(place: DiscoveryPlace): DiscoveryPlaceAction[] {
+  return place.actionability === "overnight-base"
+    ? ["explore", "shortlist", "stay-here", "choose-base"]
+    : place.actionability === "visit"
+      ? ["explore", "shortlist", "visit-from-base"]
+      : ["explore", "shortlist"];
+}
+
+export function renderDiscoveryReason(language: EasyTLanguage, place: DiscoveryPlace): string {
+  return place.relevance[language];
+}
+
+export function discoveryShortlistCount(language: EasyTLanguage, count: number): string {
+  return language === "es"
+    ? `${count} ${count === 1 ? "lugar seleccionado" : "lugares seleccionados"}`
+    : `${count} ${count === 1 ? "place shortlisted" : "places shortlisted"}`;
+}
+
+const discoveryDirectionKeys = {
+  "discovery.direction.australiaEastCoast": "australiaEastCoast",
+  "discovery.direction.australiaSouth": "australiaSouth",
+  "discovery.direction.australiaTasmania": "australiaTasmania",
+  "discovery.direction.australiaWest": "australiaWest",
+  "discovery.direction.australiaNorthInterior": "australiaNorthInterior",
+  "fixture.direction.a": "fixtureA",
+  "fixture.direction.b": "fixtureB",
+} as const;
+
+export function discoveryDirectionTitle(language: EasyTLanguage, titleKey: string): string {
+  const key = discoveryDirectionKeys[titleKey as keyof typeof discoveryDirectionKeys];
+  return key ? easytCopy[language].builder.visualDiscovery.directions[key]
+    : easytCopy[language].builder.visualDiscovery.directions.supported;
+}
 
 type CountryDiscoveryPresentationCandidate = {
   reason: string;

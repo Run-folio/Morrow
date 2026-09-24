@@ -1,0 +1,53 @@
+.step { display: grid; gap: 22px; min-width: 0; padding-bottom: 8px; }
+.lead { display: grid; gap: 8px; max-width: 680px; }
+.eyebrow,.directionNumber { color: var(--morrovia-signal); font: var(--morrovia-type-eyebrow); letter-spacing: .1em; text-transform: uppercase; }
+.lead h3 { margin: 0; color: var(--morrovia-ink); font: 600 clamp(29px, 3.8vw, 48px)/1.08 var(--morrovia-display); letter-spacing: -.04em; }
+.lead p,.directionContent p,.cardContent p,.shortlist p,.truth { margin: 0; color: var(--morrovia-ink-soft); font: var(--morrovia-type-supporting-body); }
+.directions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.directionCard,.placeCard { min-width: 0; overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.directionCard[data-selected="true"],.placeCard[data-selected="true"] { border-color: var(--morrovia-action); border-width: 2px; }
+.visual { position: relative; height: 150px; overflow: hidden; background: var(--morrovia-lilac); }
+.visual img { width: 100%; height: 100%; object-fit: cover; }
+.noPhoto { display: flex; height: 100%; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 16px; color: var(--morrovia-ink-soft); background: radial-gradient(circle at 75% 25%, var(--morrovia-lilac-strong), transparent 45%), linear-gradient(135deg, var(--morrovia-paper), var(--morrovia-lilac)); }
+.noPhoto svg { width: 48px; height: 48px; stroke-width: 1; opacity: .65; }
+.noPhoto span { max-width: 130px; font: var(--morrovia-type-fine-print); text-align: right; }
+.directionContent,.cardContent { display: grid; gap: 9px; padding: 16px; }
+.directionContent h4,.cardContent h4 { margin: 0; color: var(--morrovia-ink); font: 600 25px/1.13 var(--morrovia-display); letter-spacing: -.025em; }
+.directionContent button { margin-top: 5px; }
+.truth { padding-top: 3px; }
+.contentGrid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; align-items: start; gap: 20px; min-width: 0; }
+.placeColumn { display: grid; min-width: 0; gap: 16px; }
+.placeGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.placeCard .visual { height: 130px; }
+.cardMeta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px; color: var(--morrovia-muted); font: var(--morrovia-type-metadata); }
+.cardMeta .existing { color: var(--morrovia-success); }
+.recommended { justify-self: start; padding: 4px 7px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-control-radius); color: var(--morrovia-signal); font: var(--morrovia-type-metadata); }
+.cardContent h4 { font-size: 23px; }
+.cardContent > p { min-height: 3em; }
+.role { display: flex; align-items: center; gap: 6px; color: var(--morrovia-ink-soft); font: var(--morrovia-type-metadata); }
+.role svg { width: 15px; height: 15px; flex: none; }
+.cardActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 3px; }
+.notBase { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.evidence { display: grid; gap: 5px; padding: 10px 0; border-top: 1px solid var(--morrovia-line); }
+.evidence > span { color: var(--morrovia-ink); font: var(--morrovia-type-metadata); }
+.evidence ul { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.evidence a { display: inline-flex; align-items: center; gap: 3px; color: var(--morrovia-action); font: var(--morrovia-type-fine-print); text-underline-offset: 2px; }
+.evidence a svg { width: 13px; height: 13px; }
+.evidence p { margin: 0; color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.shortlist { display: grid; gap: 10px; padding: 15px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.shortlist strong { color: var(--morrovia-ink); font: 600 20px/1.2 var(--morrovia-display); }
+.shortlist ol { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: var(--morrovia-ink); font: var(--morrovia-type-supporting-body); }
+.shortlist small { color: var(--morrovia-muted); font: var(--morrovia-type-fine-print); }
+.search { display: grid; padding: 18px; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.more { justify-self: start; }
+.reviewList { display: grid; gap: 0; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-paper); }
+.reviewList > div { display: flex; align-items: center; gap: 14px; min-height: 54px; padding: 11px 16px; }
+.reviewList > div + div { border-top: 1px solid var(--morrovia-line); }
+.reviewList span { color: var(--morrovia-signal); font: var(--morrovia-type-metadata); }
+.reviewList strong { color: var(--morrovia-ink); font: 600 17px/1.3 var(--morrovia-ui); }
+.reviewList svg { width: 16px; height: 16px; color: var(--morrovia-action); }
+.srAnnouncement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (max-width: 800px) { .directions { grid-template-columns: repeat(2,minmax(0,1fr)); } .contentGrid { grid-template-columns: minmax(0,1fr); } .shortlist { order: -1; } }
+@media (max-width: 620px) { .step { gap: 18px; } .lead h3 { font-size: 33px; } .directions,.placeGrid { grid-template-columns: 1fr; } .directionCard { display: grid; grid-template-columns: 38% minmax(0,1fr); } .directionCard .visual { height: 100%; min-height: 156px; } .directionContent { padding: 13px; } .directionContent h4 { font-size: 22px; } .placeCard .visual { height: 150px; } .cardContent > p { min-height: 0; } .shortlist { order: 0; } }
+@media (max-width: 340px) { .directionCard { grid-template-columns: 1fr; } .directionCard .visual { height: 115px; min-height: 0; } .cardActions > button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .step * { scroll-behavior: auto; } }

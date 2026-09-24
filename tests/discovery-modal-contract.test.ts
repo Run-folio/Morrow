@@ -45,3 +45,25 @@ test("provider-only search has a localized unresolved path with preserved intent
   assert.match(builder, /Your original idea is saved; search for another place or Finish later/);
   assert.match(builder, /Tu idea original sigue guardada; busca otro lugar o termina más tarde/);
 });
+
+test("global visual steps own direction, shortlist, and progressive display without country gates", () => {
+  const steps = read("components/easyt/discovery-steps.tsx");
+  const modal = read("components/easyt/discovery-modal.tsx");
+  assert.match(modal, /<DiscoverySteps/);
+  assert.match(steps, /type: "change-direction"/);
+  assert.match(steps, /type: "set-step", step: "places"/);
+  assert.match(steps, /"remove-shortlist" : "add-shortlist"/);
+  assert.match(steps, /availableActions\(place\)/);
+  assert.match(steps, /visiblePlaceIds/);
+  assert.match(steps, /projection\.recommendedIds\.includes\(place\.id\)/);
+  assert.doesNotMatch(steps, /Australia|places\.length\s*[><=]+\s*20/);
+});
+
+test("the adaptive shell has an honest loading and sparse recovery presentation", () => {
+  const modal = read("components/easyt/discovery-modal.tsx");
+  const stories = read("components/easyt/discovery-modal.stories.tsx");
+  assert.match(modal, /loading\?: boolean/);
+  assert.match(modal, /copy\.status\.loading/);
+  assert.match(stories, /AustraliaLoading/);
+  assert.match(stories, /TajLandmarkProductionSparse/);
+});
