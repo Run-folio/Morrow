@@ -50,6 +50,8 @@ import {
 } from "../lib/easyt/trip-copilot-apply.ts";
 import { tripCopilotMutationHash, tripCopilotStateHash } from "../lib/easyt/trip-copilot-state.ts";
 import { canonicalTripForOwner, canPromoteTripForOwner } from "../lib/easyt/trip-promotion.ts";
+import { createDiscoveryDraft, reduceDiscoveryDraft } from "../lib/easyt/discovery-draft.ts";
+import { extractStructuredTripBrief } from "../lib/easyt/structured-trip-brief.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 import { NIKKO_ROUTE_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
 
@@ -715,6 +717,33 @@ test("semantic comparison ignores canonical/provider metadata but protects every
     } } },
   ];
   meaningfulVariants.forEach((variant) => assert.equal(tripDocumentsCanonicalEquivalent(variant, base), false));
+});
+
+test("a newer Discovery-only device recovery survives an older canonical cache", () => {
+  const structuredBrief = extractStructuredTripBrief("Australia");
+  const mentionId = structuredBrief.placeMentions?.[0]?.mentionId;
+  assert.ok(mentionId);
+  const canonical = browserTrip({ id: "trip-discovery-recovery", brief: { ...browserTrip().brief, structuredBrief } });
+  const draft = reduceDiscoveryDraft(
+    reduceDiscoveryDraft(createDiscoveryDraft(), { type: "add-shortlist", placeId: "sydney" }),
+    { type: "remove-shortlist", placeId: "sydney" },
+  );
+  const device = {
+    ...canonical,
+    brief: { ...canonical.brief, structuredBrief: { ...structuredBrief, discoveryDraftByMentionId: { [mentionId]: draft } } },
+  };
+  assert.equal(tripDocumentsCanonicalEquivalent(device, canonical), false);
+
+  const storage = new MemoryBrowserStorage();
+  assert.equal(cacheCanonicalTripToStorage(storage, canonical), true);
+  assert.equal(saveTripRecoveryToStorage(storage, device, { writeId: "discovery-device-edit" }).stored, true);
+  const refreshed = cacheCanonicalTripWithRecoveryToStorage(storage, canonical);
+  assert.equal(refreshed.stored, true);
+  assert.equal(refreshed.recoveryResolved, false);
+  assert.deepEqual(
+    loadTripRecoveryFromStorage(storage, canonical.id, canonical.ownerId)?.trip.brief.structuredBrief?.discoveryDraftByMentionId?.[mentionId]?.removedIds,
+    ["sydney"],
+  );
 });
 
 test("semantic comparison treats absent and empty optional authored collections as equivalent", () => {

@@ -552,6 +552,7 @@ function travellerStructuredIntent(trip: EasyTTrip) {
     hardConstraints: structured.hardConstraints,
     placeMentions: (structured.placeMentions ?? []).map(({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role }) => ({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role })),
     placeSelections: structured.placeSelections,
+    discoveryDraftByMentionId: nonEmptyRecord(structured.discoveryDraftByMentionId),
     completedPlanningAreaMentionIds: [...(structured.completedPlanningAreaMentionIds ?? [])].sort(),
     removedPlaceMentionIds: [...(structured.removedPlaceMentionIds ?? [])].sort(),
   };
