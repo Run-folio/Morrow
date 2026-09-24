@@ -77,3 +77,13 @@ test('Review action labels enumerate only new base and visit actions in both lan
   assert.match(discoveryWarningText('es', { code: 'unsupported-transfer', message: 'Unknown transfer', stopIds: ['stop'] }, [{ id: 'stop', name: 'Sydney' }]), /Sydney/);
   assert.doesNotMatch(discoveryWarningText('es', { code: 'unsupported-transfer', message: 'Unknown transfer' }, []), /Unknown transfer/);
 });
+
+test('Review retains authoritative fixed arrival conflicts and protection when no new stop is selected', () => {
+  const input = fixture('Australia', ['sydney']);
+  input.trip.brief.scheduleLocks!.arrivalDates['fixed-london'] = '2026-10-08';
+  const before = JSON.stringify(input.trip);
+  const review = buildDiscoveryReview(input);
+  assert.ok(review.validation.issues.some(issue => issue.code === 'fixed-date-conflict'));
+  assert.ok(review.warnings.some(issue => issue.code === 'fixed-date-conflict'));
+  assert.equal(JSON.stringify(input.trip), before);
+});

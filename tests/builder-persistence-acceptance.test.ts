@@ -166,7 +166,7 @@ test("Discovery direction, step, base and visit choices resume under the same ow
 });
 
 test("Discovery saves canonical progress under the same owner after each action and reload retries only missing IDs", async () => {
-  const { fixture } = await import('./helpers/discovery-fixture.ts');
+  const { fixture, applyDiscoveryAddSideEffects } = await import('./helpers/discovery-fixture.ts');
   const { buildDiscoveryReview } = await import('../lib/easyt/discovery-review.ts');
   const { commitDiscoveryReview } = await import('../lib/easyt/discovery-commit.ts');
   const input = fixture('Australia', ['melbourne', 'airlie-beach']);
@@ -188,9 +188,7 @@ test("Discovery saves canonical progress under the same owner after each action 
     currentTrip: () => current,
     addBase: async choice => {
       added.push(choice.id);
-      current = { ...current, stops: [...current.stops, { ...current.stops[0]!, id: choice.id,
-        canonicalPlaceId: choice.id, name: choice.name, country: choice.suggestion.country,
-        longitude: choice.suggestion.coordinates![0], latitude: choice.suggestion.coordinates![1], nights: 1 }] };
+      applyDiscoveryAddSideEffects(current, input.mention, choice);
       return true;
     },
     linkVisit: async () => false,
@@ -216,4 +214,61 @@ test("Discovery saves canonical progress under the same owner after each action 
   assert.equal(current.stops.filter(stop => stop.canonicalPlaceId === 'melbourne').length, 1);
   assert.equal(current.stops.find(stop => stop.canonicalPlaceId === 'sydney')?.nights, 5);
   assert.deepEqual(current.brief.scheduleLocks, initialLocks);
+});
+
+test("existing Sydney resolves its parent only after durable completion; failed completion retains its saved selection", async () => {
+  const { fixture, applyDiscoveryAddSideEffects } = await import('./helpers/discovery-fixture.ts');
+  const { buildDiscoveryReview } = await import('../lib/easyt/discovery-review.ts');
+  const { commitDiscoveryReview, completeDiscoveryMention } = await import('../lib/easyt/discovery-commit.ts');
+  const input = fixture('Australia', ['sydney']);
+  let current = canonicalTripForOwner('existing-base-owner', input.trip, '2026-09-24T00:00:00.000Z');
+  current.brief.structuredBrief!.discoveryDraftByMentionId = { [input.mention.mentionId]: input.draft };
+  const originalNights = current.stops[0]!.nights;
+  const originalSydneyId = current.stops[0]!.id;
+  const values = new Map<string, string>();
+  let writeCount = 0;
+  const storage: EasyTBrowserStorage = {
+    get length() { return values.size; }, key: index => [...values.keys()][index] ?? null,
+    getItem: key => values.get(key) ?? null, removeItem: key => { values.delete(key); },
+    setItem: (key, value) => { if (writeCount === 2) throw new Error('Completion save denied'); values.set(key, value); },
+  };
+  let handle: import('../lib/easyt/storage.ts').TripRecoveryHandle | undefined;
+  let adds = 0;
+  const ports: import('../lib/easyt/discovery-commit.ts').DiscoveryCommitPorts = {
+    currentTrip: () => current,
+    addBase: async choice => { adds++; applyDiscoveryAddSideEffects(current, input.mention, choice); return true; },
+    linkVisit: async () => false,
+    persist: async () => {
+      writeCount++;
+      const saved = saveTripRecoveryToStorage(storage, current, { replace: handle, writeId: `completion-${writeCount}` });
+      if (saved.stored) handle = saved.handle;
+      return saved.stored;
+    },
+    completeMention: () => {
+      const original = structuredClone(current.brief.structuredBrief!);
+      return completeDiscoveryMention({
+        stage: () => { current.brief.structuredBrief = mergeStructuredTripBrief({ ...original, discoveryDraftByMentionId: {
+          ...original.discoveryDraftByMentionId, [input.mention.mentionId]: { ...input.draft, reviewState: 'confirmed' },
+        } }, { completedPlanningAreaMentionIds: [input.mention.mentionId] }); },
+        rollback: () => { current.brief.structuredBrief = original; }, persist: ports.persist,
+      });
+    },
+  };
+  const partial = await commitDiscoveryReview(buildDiscoveryReview({ ...input, trip: current }), ports);
+  assert.equal(partial.ok, false);
+  assert.deepEqual(partial.committedIds, ['sydney']);
+  assert.equal(current.brief.structuredBrief?.completedPlanningAreaMentionIds?.includes(input.mention.mentionId), false);
+  assert.equal(current.brief.structuredBrief?.discoveryDraftByMentionId?.[input.mention.mentionId]?.reviewState, 'editing');
+  const recovered = loadTripRecoveryFromStorage(storage, current.id, 'existing-base-owner');
+  assert.ok(recovered); current = recovered.trip; handle = recovered;
+  assert.equal(current.brief.structuredBrief?.placeSelections?.[0]?.routeStopId, originalSydneyId);
+  assert.equal(current.brief.structuredBrief?.completedPlanningAreaMentionIds?.includes(input.mention.mentionId), false);
+  assert.equal((await commitDiscoveryReview(buildDiscoveryReview({ ...input, trip: current }), ports)).ok, true);
+  const complete = loadTripRecoveryFromStorage(storage, current.id, 'existing-base-owner')!.trip;
+  assert.ok(complete.brief.structuredBrief?.completedPlanningAreaMentionIds?.includes(input.mention.mentionId));
+  assert.equal(complete.brief.structuredBrief?.discoveryDraftByMentionId?.[input.mention.mentionId]?.reviewState, 'confirmed');
+  assert.equal(complete.brief.structuredBrief?.placeSelections?.[0]?.mentionId, input.mention.mentionId);
+  assert.equal(complete.stops.filter(stop => stop.canonicalPlaceId === 'sydney').length, 1);
+  assert.equal(complete.stops.find(stop => stop.id === originalSydneyId)?.nights, originalNights);
+  assert.equal(adds, 1);
 });

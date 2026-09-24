@@ -193,6 +193,56 @@ export type AttractionVisitCandidate = {
   reason: string;
 };
 
+/** Canonical explicit visit selection, shared by Builder confirmation and retry checks.
+ * A discovery preview may name a temporary route occurrence; provenance always binds
+ * to the accepted occurrence without changing the reviewed relationship evidence. */
+export function confirmedAttractionVisitSelection(
+  mention: Pick<ResolvedPlaceMention, "mentionId" | "canonicalName">,
+  proposal: AttractionVisitCandidate,
+  target: AttractionVisitTarget = proposal.target,
+): PlaceSelection {
+  return {
+    mentionId: mention.mentionId,
+    kind: "visit",
+    selectedCanonicalPlaceId: target.canonicalPlaceId ?? `route-stop:${target.routeStopId}`,
+    selectedName: target.name,
+    selectedPlaceType: "town",
+    selectedParentCountries: target.country ? [target.country] : undefined,
+    routeStopId: target.routeStopId,
+    provenance: {
+      id: `builder-attraction-visit:${mention.mentionId}:${target.routeStopId}`,
+      label: "Traveller builder selection",
+      kind: "builder",
+      supports: `The traveller confirmed ${target.name} as the visit base for ${mention.canonicalName}.`,
+    },
+    relationshipType: proposal.relationshipType,
+    confidence: {
+      ...proposal.confidence,
+      sources: proposal.confidence.sources.map(source => source.id === `attraction-visit:${mention.mentionId}:${proposal.target.routeStopId}`
+        ? { ...source, id: `attraction-visit:${mention.mentionId}:${target.routeStopId}` } : source),
+    },
+  };
+}
+
+/** Compare semantic confidence fields, independent of JSON/JSONB property order. */
+function visitConfidenceKey(confidence: PlaceSelection["confidence"]) {
+  return confidence ? JSON.stringify([confidence.version, confidence.state, confidence.level, confidence.freshness, confidence.scope,
+    confidence.reason, confidence.confirmation.needed, confidence.confirmation.reason,
+    confidence.sources.map(source => [source.id, source.label, source.kind, source.supports, source.url, source.reviewedAt])]) : null;
+}
+
+export function isConfirmedAttractionVisitSelection(selection: PlaceSelection, expected: PlaceSelection): boolean {
+  return selection.kind === "visit" && selection.mentionId === expected.mentionId && selection.routeStopId === expected.routeStopId
+    && selection.selectedCanonicalPlaceId === expected.selectedCanonicalPlaceId && selection.selectedName === expected.selectedName
+    && selection.relationshipType === expected.relationshipType
+    && selection.selectedPlaceType === expected.selectedPlaceType
+    && JSON.stringify(selection.selectedParentCountries) === JSON.stringify(expected.selectedParentCountries)
+    && selection.provenance.id === expected.provenance.id && selection.provenance.kind === expected.provenance.kind
+    && selection.provenance.label === expected.provenance.label
+    && selection.provenance.supports === expected.provenance.supports
+    && visitConfidenceKey(selection.confidence) === visitConfidenceKey(expected.confidence);
+}
+
 /** A city cannot be selected as the base for that same canonical city. This
  * normalizes legacy/manual state without touching genuine anchor/base pairs,
  * whose canonical identities differ. */

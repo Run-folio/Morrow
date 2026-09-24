@@ -45,7 +45,7 @@ import { buildCountryDiscovery, updateCountryDiscoveryChoice } from "@/lib/easyt
 import { countryCodeFor } from "@/lib/easyt/country-registry";
 import { findCatalogPlaceById } from "@/lib/easyt/place-catalog";
 import { extractStructuredTripBrief, mergeStructuredTripBrief, routeConstraintsFromStructuredTripBrief, routeScoringPreferencesFromStructuredBrief, structuredTripBriefFromSavedSelections, type StructuredTripBrief } from "@/lib/easyt/structured-trip-brief";
-import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
+import { OVERNIGHT_BASE_PLACE_TYPES, PLACE_INTELLIGENCE_PARSER_VERSION, PLACE_INTELLIGENCE_VERSION, appendSelectedPlanningAreaMention, confirmedAttractionVisitSelection, canonicalPlaceFactsMatch, canonicalPlaceSuggestionFor, canonicalPlaceSuggestionSuitableAsNearbyBase, canonicalPlaceSuggestionsForQuery, guidedPlanningAreaShapes, guidedPlanningAreaSuggestions, inferAttractionVisitSelections, isOvernightBaseEligible, nearbyBaseAnchorForMention, nearbyBaseSearchPreposition, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, placeMentionSupportsMultipleSelections, placeMentionsNeedingReview, placeResolutionIssuesForMentions, placeSuggestionRequiresBaseSelection, planningAreaSuggestionsWithinParent, rankAttractionVisitTargets, regionalBaseSuggestions, selectPlaceCandidate, type AttractionVisitCandidate, type CanonicalPlaceSuggestion, type GuidedPlanningAreaShape, type GuidedPlanningAreaSuggestion, type NearbyBaseSuggestion, type PlaceIntelligenceResult, type PlaceIssue, type PlaceIssueOption, type PlaceSelection, type PlaceType, type PlanningParentConstraint, type ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
 import { isDuplicatePlaceIdentity } from "@/lib/easyt/place-autocomplete";
 import { MorroviaTripCapture } from "@/components/easyt/morrovia-trip-capture";
 import { CanonicalPlaceAutocomplete } from "@/components/easyt/canonical-place-autocomplete";
@@ -57,7 +57,7 @@ import { DiscoveryModal } from "@/components/easyt/discovery-modal";
 import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import { readDiscoveryDraft, reduceDiscoveryDraft, selectCanonicalSearchResult } from "@/lib/easyt/discovery-draft";
 import { buildDiscoveryReview } from "@/lib/easyt/discovery-review";
-import { commitDiscoveryReview } from "@/lib/easyt/discovery-commit";
+import { commitDiscoveryReview, completeDiscoveryMention } from "@/lib/easyt/discovery-commit";
 import { flushSync } from "react-dom";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { discoveryBaseSuitableForMention, discoveryPlaceWithinMention } from "@/lib/easyt/discovery-content";
@@ -2307,27 +2307,14 @@ function TripBuilderDocument() {
     }
   };
 
-  const confirmAttractionVisit = (mention: CapturedLocation, proposal: AttractionVisitCandidate) => {
-    const stop = stops.find((item) => item.id === proposal.target.routeStopId);
+  const confirmAttractionVisit = (mention: CapturedLocation, proposal: AttractionVisitCandidate, routeStopId = proposal.target.routeStopId) => {
+    const stop = stops.find((item) => item.id === routeStopId);
     if (!stop) return;
     rememberStructuralChange("confirm_attraction_visit_base", 0);
-    setPlaceSelections((current) => [{
-      mentionId: mention.mentionId,
-      kind: "visit",
-      selectedCanonicalPlaceId: stop.canonicalPlaceId ?? `route-stop:${stop.id}`,
-      selectedName: stop.name,
-      selectedPlaceType: "town",
-      selectedParentCountries: stop.country ? [stop.country] : undefined,
-      routeStopId: stop.id,
-      provenance: {
-        id: `builder-attraction-visit:${mention.mentionId}:${stop.id}`,
-        label: "Traveller builder selection",
-        kind: "builder",
-        supports: `The traveller confirmed ${stop.name} as the visit base for ${mention.canonicalName}.`,
-      },
-      relationshipType: proposal.relationshipType,
-      confidence: proposal.confidence,
-    }, ...current.filter((selection) => selection.mentionId !== mention.mentionId)]);
+    const selection = confirmedAttractionVisitSelection(mention, proposal, {
+      routeStopId: stop.id, name: stop.name, canonicalPlaceId: stop.canonicalPlaceId, country: stop.country,
+    });
+    setPlaceSelections((current) => [selection, ...current.filter((item) => item.mentionId !== mention.mentionId)]);
     setRemovedPlaceMentionIds((current) => current.filter((mentionId) => mentionId !== mention.mentionId));
   };
 
@@ -3555,7 +3542,8 @@ function TripBuilderDocument() {
     catch { return null; } })() : null;
   const canonicalDiscoveryReview = activeClarificationMention && discoveryDraft && discoveryProjection && discoveryDraft.step === "review"
     ? buildDiscoveryReview({ mention: activeClarificationMention, draft: discoveryDraft, projection: discoveryProjection,
-      trip: activeTripDocument, constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
+      trip: activeTripDocument, currentValidation: finalPlanValidation,
+      constraints: { ...structuredRouteConstraints, fixedCommitments: projectedFixedCommitments } }) : undefined;
   // flushSync checkpoints must read the document and handlers from the committed render,
   // never the closure that started a multi-choice confirmation.
   const discoveryOwnersRef = useRef({ trip: activeTripDocument, addGuidedPlanningPlace, confirmAttractionVisit, persistDeviceRecovery });
@@ -4320,29 +4308,26 @@ function TripBuilderDocument() {
                   return Boolean(await added);
                 },
                 linkVisit: async (visit, stopId) => {
-                  flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, {
-                    ...visit.proposal, target: { ...visit.proposal.target, routeStopId: stopId },
-                  }));
+                  flushSync(() => discoveryOwnersRef.current.confirmAttractionVisit(mention, visit.proposal, stopId));
                   return Boolean(discoveryOwnersRef.current.trip.brief.structuredBrief?.placeSelections?.some(selection =>
                     selection.mentionId === visit.intentId && selection.kind === "visit" && selection.routeStopId === stopId));
                 },
                 persist: checkpoint,
-                completeMention: async () => {
-                  flushSync(() => {
+                completeMention: () => completeDiscoveryMention({
+                  stage: () => flushSync(() => {
                     setCompletedPlanningAreaMentionIds(current => [...new Set([...current, mention.mentionId])]);
                     setCapturedStructuredBrief(current => ({ ...current, discoveryDraftByMentionId: {
                       ...current.discoveryDraftByMentionId, [mention.mentionId]: reduceDiscoveryDraft(discoveryDraft, { type: "mark-confirmed" }),
                     } }));
-                  });
-                  if (await checkpoint()) return true;
-                  flushSync(() => {
+                  }),
+                  persist: checkpoint,
+                  rollback: () => flushSync(() => {
                     setCompletedPlanningAreaMentionIds(current => current.filter(id => id !== mention.mentionId));
                     setCapturedStructuredBrief(current => ({ ...current, discoveryDraftByMentionId: {
                       ...current.discoveryDraftByMentionId, [mention.mentionId]: discoveryDraft,
                     } }));
-                  });
-                  return false;
-                },
+                  }),
+                }),
               });
               if (!result.ok) {
                 const names = result.committedIds.map(id => discoveryProjection.places.find(place => place.id === id)?.name ?? mention.canonicalName).join(", ");
