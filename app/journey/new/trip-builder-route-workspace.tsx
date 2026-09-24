@@ -1,9 +1,9 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, GripVertical, Map as MapIcon, MoreHorizontal, Route } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TripTransportChoiceControl from "@/components/easyt/trip-transport-choice-control";
+import { MorroviaSectionStatus } from "@/components/easyt/morrovia-loading-states";
 import type { JourneyStop } from "@/lib/journey";
 import { formatMapDuration, mapRouteLegsFromTrip } from "@/lib/easyt/map-spatial-context";
 import { buildBuilderRoutePreview } from "@/lib/easyt/trip-builder-route-preview";
@@ -12,8 +12,6 @@ import type { EasyTTrip } from "@/lib/easyt/trip";
 import { effectiveTripLeg, tripWithEffectiveTransportChoices } from "@/lib/easyt/transport-mode-choice";
 import styles from "./trip-builder.module.css";
 import { useBuilderStopReorder } from "./use-builder-stop-reorder";
-
-const JourneyPlannerMap = dynamic(() => import("@/components/journey-planner-map").then(module => module.JourneyPlannerMap), { ssr: false });
 
 export type BuilderOrderSource = "drag" | "move-menu" | "route-check";
 
@@ -70,6 +68,16 @@ export function TripBuilderRouteWorkspace({
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [mapLifecycle, setMapLifecycle] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [JourneyPlannerMap, setJourneyPlannerMap] = useState<typeof import("@/components/journey-planner-map").JourneyPlannerMap | null>(null);
+  useEffect(() => {
+    let active = true;
+    import("@/components/journey-planner-map").then(module => {
+      if (active) setJourneyPlannerMap(() => module.JourneyPlannerMap);
+    }).catch(() => {
+      if (active) setMapLifecycle("unavailable");
+    });
+    return () => { active = false; };
+  }, []);
   const preview = previewStopIds ? buildBuilderRoutePreview(canonicalTrip, previewStopIds) : null;
   const recommendedTrip = preview?.ok ? preview.trip : canonicalTrip;
   const presentedTrip = tripWithEffectiveTransportChoices(recommendedTrip);
@@ -193,7 +201,7 @@ export function TripBuilderRouteWorkspace({
             <MapIcon aria-hidden="true" />
             <strong>Route map unavailable</strong>
             <span>The route list still works, and you can continue building your trip.</span>
-          </div> : <JourneyPlannerMap
+          </div> : JourneyPlannerMap ? <JourneyPlannerMap
             stops={mapStops}
             legs={mapLegs}
             comparisonLegs={comparisonLegs}
@@ -211,7 +219,7 @@ export function TripBuilderRouteWorkspace({
             onMapPinDrop={() => undefined}
             onPlannerPinSelect={() => undefined}
             onSelect={(stopId) => selectStop(stopId, true)}
-          />}
+          /> : <MorroviaSectionStatus compact title="Opening route map" detail="The route list remains available." />}
         </div>
       </section>
     </div>

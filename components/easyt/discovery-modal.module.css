@@ -16,7 +16,9 @@
 .contentGrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 36%); align-items: start; gap: 20px; min-width: 0; }
 .sideRail { display: grid; gap: 12px; min-width: 0; }
 .mapPanel { position: relative; height: 300px; min-width: 0; overflow: hidden; border: 1px solid var(--morrovia-line); border-radius: var(--morrovia-radius); background: var(--morrovia-lilac); }
+.mapPanel[hidden] { display: none; }
 .mapCanvas { width: 100%; height: 100%; }
+.mapLoadStatus { position: absolute; z-index: 2; inset: 12px; align-content: start; }
 .mobileMapButton { display: none; justify-self: start; }
 .placeCard[data-highlighted="true"] { outline: 2px solid var(--morrovia-focus-ring); outline-offset: -3px; }
 .placeCard:focus-visible { outline: 3px solid var(--morrovia-focus-ring); outline-offset: 2px; }

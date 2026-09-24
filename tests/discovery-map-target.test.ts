@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { discoveryMapTarget } from "../lib/easyt/discovery-map-target.ts";
+import { discoveryFailureFocusTarget, discoveryMapTarget } from "../lib/easyt/discovery-map-target.ts";
 import type { DiscoveryPlace } from "../lib/easyt/discovery-content.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -20,6 +20,13 @@ test("map targeting refuses invalid geography", () => {
   assert.equal(discoveryMapTarget("sydney", [{ ...places[0], coordinates: [Number.NaN, -33.8688] }]), null);
 });
 
+test("map failure restores the exact focused pin card, then highlight, then first card", () => {
+  assert.equal(discoveryFailureFocusTarget("melbourne", "sydney", places), "melbourne");
+  assert.equal(discoveryFailureFocusTarget("unknown", "sydney", places), "sydney");
+  assert.equal(discoveryFailureFocusTarget(null, "unknown", places), "sydney");
+  assert.equal(discoveryFailureFocusTarget(null, null, []), null);
+});
+
 test("Discovery map and cards share one transient canonical highlight owner", () => {
   const modal = read("components/easyt/discovery-modal.tsx");
   const steps = read("components/easyt/discovery-steps.tsx");
@@ -31,20 +38,26 @@ test("Discovery map and cards share one transient canonical highlight owner", ()
   assert.match(steps, /focus\(\)/);
   assert.match(steps, /mapPanelRef\.current\?\.scrollIntoView/);
   assert.match(steps, /if \(highlightedPlaceId\) handlePinHighlight\(highlightedPlaceId\)/);
+  assert.match(steps, /handleMapUnavailable/);
+  assert.match(steps, /setCardToFocus\(discoveryFailureFocusTarget\(/);
   assert.doesNotMatch(map, /addStop|onConfirm|add-shortlist|remove-shortlist/);
   assert.doesNotMatch(map, /mapRouteLine|mapRouteCasing|sequence|stop-number/);
+  assert.match(map, /MorroviaSectionStatus/);
 });
 
 test("Discovery map is rendered only for desktop context or the opened mobile map", () => {
   const steps = read("components/easyt/discovery-steps.tsx");
-  assert.match(steps, /dynamic\(\(\) => import\("\.\/discovery-map"\)/);
+  assert.match(steps, /import\("\.\/discovery-map"\)\.then/);
+  assert.match(steps, /handleMapUnavailable\(\)/);
   assert.match(steps, /desktopMapVisible \|\| mobileMapOpen/);
   assert.match(steps, /MorroviaStatusBanner/);
+  assert.match(steps, /aria-controls=\{mapRegionId\}/);
 });
 
 test("Builder route map remains available through a lazy workspace import", () => {
   const workspace = read("app/journey/new/trip-builder-route-workspace.tsx");
-  assert.match(workspace, /dynamic\(\(\) => import\("@\/components\/journey-planner-map"\)/);
+  assert.match(workspace, /import\("@\/components\/journey-planner-map"\)\.then/);
+  assert.match(workspace, /setMapLifecycle\("unavailable"\)/);
   assert.match(workspace, /<JourneyPlannerMap[\s\S]*onLifecycleChange=\{setMapLifecycle\}/);
   assert.doesNotMatch(workspace, /^import \{ JourneyPlannerMap \} from/m);
 });
@@ -54,4 +67,9 @@ test("generated Builder itinerary is lazy so its Trip Map does not enter initial
   assert.match(builder, /dynamic\(\(\) => import\("@\/components\/easyt\/trip-itinerary-workspace"\)/);
   assert.match(builder, /<TripItineraryWorkspace/);
   assert.doesNotMatch(builder, /^import TripItineraryWorkspace from/m);
+});
+
+test("mobile pin interaction story starts at its mobile viewport", () => {
+  const stories = read("components/easyt/discovery-modal.stories.tsx");
+  assert.match(stories, /Mobile390PinRevealsExactCard[\s\S]*?globals: \{ viewport: \{ value: "morrovia390" \} \}/);
 });

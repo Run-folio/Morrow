@@ -54,6 +54,20 @@ export const AustraliaMapCardPreview: Story = { args: { ...AustraliaPlaces.args,
     await expect(args.actionSpy).not.toHaveBeenCalled();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };
+const pinRevealProjection = { ...australia, visiblePlaceIds: australia.places.slice(0, 6).map(place => place.id) };
+const offscreenPinPlace = australia.places[10]!;
+export const AustraliaPinRevealsExactCard: Story = { args: { ...AustraliaPlaces.args, projection: pinRevealProjection, actionSpy: fn(), confirmSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.queryByRole("heading", { name: offscreenPinPlace.name })).not.toBeInTheDocument();
+    const pin = await canvas.findByRole("button", { name: `Show card for ${offscreenPinPlace.name}` });
+    await userEvent.click(pin);
+    const card = canvas.getByRole("heading", { name: offscreenPinPlace.name }).closest("article");
+    await expect(card).toHaveFocus();
+    await expect(card).toHaveAttribute("data-highlighted", "true");
+    await expect(args.actionSpy).not.toHaveBeenCalled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
 export const AustraliaShortlist: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: selectedDraft } };
 export const AustraliaReview: Story = { args: { entry: countryEntry, mention: australiaMention, projection: australia, draft: { ...selectedDraft, step: "review" } } };
 const supportedBase = australia.places.find(place => place.actionability === "overnight-base")!;
@@ -171,6 +185,20 @@ export const Mobile390MapOptional: Story = { args: { ...AustraliaPlaces.args, ac
     await expect(canvas.getByRole("button", { name: "Cards" })).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "Cards" }));
     await expect(canvas.getByRole("heading", { name: place.name }).closest("article")).toHaveFocus();
+    await expect(args.actionSpy).not.toHaveBeenCalled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+  } };
+export const Mobile390PinRevealsExactCard: Story = { ...AustraliaPinRevealsExactCard,
+  globals: { viewport: { value: "morrovia390" } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Map" }));
+    const pin = await canvas.findByRole("button", { name: `Show card for ${offscreenPinPlace.name}` });
+    await userEvent.click(pin);
+    const card = canvas.getByRole("heading", { name: offscreenPinPlace.name }).closest("article");
+    await expect(card).toHaveFocus();
+    await expect(card).toHaveAttribute("data-highlighted", "true");
+    await expect(canvas.getByRole("button", { name: "Map" })).toHaveAttribute("aria-expanded", "false");
     await expect(args.actionSpy).not.toHaveBeenCalled();
     await expect(args.confirmSpy).not.toHaveBeenCalled();
   } };

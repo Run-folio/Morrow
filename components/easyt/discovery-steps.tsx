@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
+import { discoveryFailureFocusTarget } from "@/lib/easyt/discovery-map-target";
 import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
@@ -13,6 +13,7 @@ import { availableActions, discoveryDirectionTitle, discoveryShortlistCount, eas
 import { routeEditorialPhoto, routeImageCredit } from "@/lib/easyt/route-images";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
+import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import MorroviaPhotoCredit from "./morrovia-photo-credit";
 import styles from "./discovery-modal.module.css";
 
@@ -28,8 +29,6 @@ type Props = {
   highlightedPlaceId: string | null;
   onHighlight: (placeId: string) => void;
 };
-
-const DiscoveryMap = dynamic(() => import("./discovery-map"), { ssr: false });
 
 function Photo({ imageKey, name, language }: { imageKey: string | null; name: string; language: EasyTLanguage }) {
   const photo = imageKey ? routeEditorialPhoto(imageKey) : null;
@@ -108,16 +107,19 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const [desktopMapVisible, setDesktopMapVisible] = useState(false);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [mapUnavailable, setMapUnavailable] = useState(false);
+  const [MapComponent, setMapComponent] = useState<typeof import("./discovery-map").default | null>(null);
   const [cardToFocus, setCardToFocus] = useState<string | null>(null);
   const cardsRef = useRef(new Map<string, HTMLElement>());
   const mapPanelRef = useRef<HTMLDivElement>(null);
+  const mapToggleRef = useRef<HTMLButtonElement>(null);
+  const mapRegionId = useId();
   useEffect(() => {
     const query = window.matchMedia("(min-width: 801px)");
     const update = () => { setDesktopMapVisible(query.matches); if (query.matches) setMobileMapOpen(false); };
     update(); query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!cardToFocus) return;
     const card = cardsRef.current.get(cardToFocus);
     if (!card) return;
@@ -132,6 +134,25 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const activeDirection = projection.directions.find(direction => direction.id === draft.directionId);
   const allPlaces = useMemo(() => activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places,
     [activeDirection, projection.places]);
+  const wantsMap = (desktopMapVisible || mobileMapOpen) && (draft.step === "places" || draft.step === "bases") && allPlaces.length > 0;
+  const handleMapUnavailable = useCallback(() => {
+    const active = document.activeElement;
+    const focusedPinId = active instanceof HTMLElement ? active.closest<HTMLElement>("[data-map-place-id]")?.dataset.mapPlaceId ?? null : null;
+    const mapOwnedFocus = active instanceof HTMLElement && (mapPanelRef.current?.contains(active) || mapToggleRef.current === active);
+    if (mapOwnedFocus) setCardToFocus(discoveryFailureFocusTarget(focusedPinId, highlightedPlaceId, allPlaces));
+    setMapUnavailable(true);
+    setMobileMapOpen(false);
+  }, [allPlaces, highlightedPlaceId]);
+  useEffect(() => {
+    if (!wantsMap || mapUnavailable || MapComponent) return;
+    let active = true;
+    import("./discovery-map").then(module => {
+      if (active) setMapComponent(() => module.default);
+    }).catch(() => {
+      if (active) handleMapUnavailable();
+    });
+    return () => { active = false; };
+  }, [wantsMap, mapUnavailable, MapComponent, handleMapUnavailable]);
   const visible = allPlaces.slice(0, visibleCount);
   const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
@@ -193,8 +214,8 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
 
   return <div className={styles.step} data-discovery-step={draft.step}>
     <p className={styles.stepHelper}>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
-    {!mapUnavailable && allPlaces.length ? <EasyTButton variant="secondary" size="small" className={styles.mobileMapButton}
-      aria-expanded={mobileMapOpen} onClick={() => {
+    {!mapUnavailable && allPlaces.length ? <EasyTButton ref={mapToggleRef} variant="secondary" size="small" className={styles.mobileMapButton}
+      aria-expanded={mobileMapOpen} aria-controls={mapRegionId} onClick={() => {
         if (mobileMapOpen) {
           if (highlightedPlaceId) handlePinHighlight(highlightedPlaceId);
           else setMobileMapOpen(false);
@@ -217,10 +238,13 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
         {search ? <div className={styles.search}>{search}</div> : null}
       </div>
       <aside className={styles.sideRail}>
-      {(desktopMapVisible || mobileMapOpen) && !mapUnavailable && allPlaces.length ? <div ref={mapPanelRef} className={styles.mapPanel}>
-        <DiscoveryMap places={allPlaces} highlightedPlaceId={highlightedPlaceId} onHighlight={handlePinHighlight}
-          onUnavailable={() => setMapUnavailable(true)} language={language} />
-      </div> : null}
+      <div id={mapRegionId} ref={mapPanelRef} className={styles.mapPanel} hidden={!wantsMap || mapUnavailable || !allPlaces.length}>
+        {wantsMap && !mapUnavailable && allPlaces.length ? MapComponent
+          ? <MapComponent places={allPlaces} highlightedPlaceId={highlightedPlaceId} onHighlight={handlePinHighlight}
+              onUnavailable={handleMapUnavailable} language={language} />
+          : <div className={styles.mapLoadStatus}><MorroviaSectionStatus compact title={copy.status.openingMap}
+              detail={copy.status.openingMapDetail} /></div> : null}
+      </div>
       <div className={styles.shortlist} role="complementary" aria-label={copy.accessibility.shortlist}>
         <div className={styles.shortlistHeading}><strong>{copy.shortlist}</strong><span>{discoveryShortlistCount(language, draft.shortlistIds.length)}</span></div>
         {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol> : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as maplibre from "maplibre-gl";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
 import { discoveryMapTarget } from "@/lib/easyt/discovery-map-target";
@@ -11,6 +11,7 @@ import { resolveMapCameraRequest, resolveMapInsets } from "@/lib/easyt/map-surfa
 import { MORROVIA_STOP_MARKER_CLASS } from "./morrovia-map-presentation";
 import mapPresentation from "./morrovia-map-presentation.module.css";
 import { MORROVIA_MAP_WORKER_URL, morroviaMapOptions } from "./morrovia-map-runtime";
+import { MorroviaSectionStatus } from "./morrovia-loading-states";
 import styles from "./discovery-modal.module.css";
 
 /** Controlled spatial preview. All selection and trip decisions stay with Discovery. */
@@ -27,6 +28,7 @@ export default function DiscoveryMap({ places, highlightedPlaceId, onHighlight, 
   const highlightedRef = useRef(highlightedPlaceId);
   highlightedRef.current = highlightedPlaceId;
   const sceneRef = useRef<{ map: maplibre.Map; markers: Map<string, HTMLButtonElement>; ready: boolean } | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -38,6 +40,7 @@ export default function DiscoveryMap({ places, highlightedPlaceId, onHighlight, 
     let resize: ResizeObserver | null = null;
     let lifecycle: ReturnType<typeof createMorroviaBasemapLifecycle> | null = null;
     const markers = new Map<string, HTMLButtonElement>();
+    setMapReady(false);
     const fail = () => { if (!disposed) callbacksRef.current.onUnavailable(); };
     const timeout = window.setTimeout(fail, 18_000);
     const camera = () => {
@@ -69,7 +72,7 @@ export default function DiscoveryMap({ places, highlightedPlaceId, onHighlight, 
         markers.set(target.id, marker);
       });
       lifecycle = createMorroviaBasemapLifecycle(map as unknown as MorroviaBasemapMap, {
-        onStyleReady: () => { if (disposed || !sceneRef.current) return; sceneRef.current.ready = true; window.clearTimeout(timeout); camera(); },
+        onStyleReady: () => { if (disposed || !sceneRef.current) return; sceneRef.current.ready = true; window.clearTimeout(timeout); setMapReady(true); camera(); },
       });
       const mapLifecycle = lifecycle;
       map.on("error", event => { if (!mapLifecycle.handleError(event)) fail(); });
@@ -104,6 +107,11 @@ export default function DiscoveryMap({ places, highlightedPlaceId, onHighlight, 
     }
   }, [highlightedPlaceId, places]);
 
-  return <div className={`${styles.mapCanvas} ${mapPresentation.surface}`} ref={containerRef} role="region"
-    aria-label={language === "es" ? "Mapa de los lugares disponibles" : "Map of available places"} />;
+  return <>
+    <div className={`${styles.mapCanvas} ${mapPresentation.surface}`} ref={containerRef} role="region"
+      aria-label={language === "es" ? "Mapa de los lugares disponibles" : "Map of available places"} />
+    {!mapReady ? <div className={styles.mapLoadStatus}><MorroviaSectionStatus compact
+      title={language === "es" ? "Abriendo mapa" : "Opening map"}
+      detail={language === "es" ? "Las tarjetas de lugares siguen disponibles." : "The place cards remain available."} /></div> : null}
+  </>;
 }
