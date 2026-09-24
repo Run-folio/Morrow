@@ -21,6 +21,7 @@ const prompt = read("components/easyt/morrovia-trip-capture.tsx");
 const promptCss = read("components/easyt/morrovia-trip-capture.module.css");
 const autocomplete = read("components/easyt/canonical-place-autocomplete.tsx");
 const clarification = read("components/easyt/builder-clarification-dialog.tsx");
+const clarificationShell = read("components/easyt/builder-clarification-shell.tsx");
 const clarificationCss = read("components/easyt/builder-clarification-dialog.module.css");
 const repository = read("lib/easyt/repository.ts");
 
@@ -246,13 +247,14 @@ test("38 the 390px clarification is a usable bottom sheet", () => {
 });
 
 test("39 dialog close restores focus safely", () => {
-  assert.match(clarification, /const returnFocus = document\.activeElement/);
-  assert.match(clarification, /returnFocus\?\.focus\(\)/);
+  assert.match(clarification, /<BuilderClarificationShell/);
+  assert.match(clarificationShell, /const returnFocus = document\.activeElement/);
+  assert.match(clarificationShell, /returnFocus\?\.focus\(\)/);
   assert.match(builder, /clarificationResumeRef\.current\?\.focus\(\)/);
 });
 
 test("40 Escape dismisses without mutating canonical work", () => {
-  const keyboard = clarification.slice(clarification.indexOf("const onKeyDown"), clarification.indexOf("document.addEventListener"));
+  const keyboard = clarificationShell.slice(clarificationShell.indexOf("const onKeyDown"), clarificationShell.indexOf("document.addEventListener"));
   assert.match(keyboard, /event\.key === "Escape"/);
   assert.match(keyboard, /dismissRef\.current\(\)/);
   assert.doesNotMatch(keyboard, /onRemove|onDone|onSelect|setPlace/);

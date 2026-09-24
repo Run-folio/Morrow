@@ -52,6 +52,10 @@ import { JourneyEndpointsEditor } from "@/components/easyt/journey-endpoints-edi
 import { TripBuilderDetailsEditor, type TripBuilderDetailsDraft } from "./trip-builder-details-editor";
 import { TripBuilderRouteWorkspace, type BuilderOrderSource } from "./trip-builder-route-workspace";
 import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderClarificationChoice, type BuilderClarificationRouteShape, type BuilderClarificationSelectedPlace, type BuilderClarificationSuggestion } from "@/components/easyt/builder-clarification-dialog";
+import { DiscoveryModal } from "@/components/easyt/discovery-modal";
+import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
+import { readDiscoveryDraft, reduceDiscoveryDraft } from "@/lib/easyt/discovery-draft";
+import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
@@ -3520,6 +3524,26 @@ function TripBuilderDocument() {
       existingPlaceIds: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []),
       explicitChoiceIds: capturedStructuredBrief.countryDiscoveryChoices?.[activeClarificationMention.mentionId],
     }) : null;
+  const discoveryEntry: DiscoveryEntry = activeClarificationMention
+    ? discoveryEntryForBrief({ ...effectiveStructuredBrief, placeMentions: activePlaceMentions },
+      stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []), activeClarificationMention.mentionId)
+    : { kind: "legacy-recovery", step: "places", reason: "technical-failure" };
+  const discoveryRead = activeClarificationMention
+    ? readDiscoveryDraft(capturedStructuredBrief, activeClarificationMention.mentionId) : null;
+  const discoveryDraft = discoveryRead && discoveryEntry.kind !== "legacy-recovery"
+    ? { ...discoveryRead.draft, step: discoveryRead.status === "current" ? discoveryRead.draft.step : discoveryEntry.step }
+    : null;
+  const discoveryProjection = activeClarificationMention && discoveryDraft && discoveryEntry.kind !== "skip"
+    ? (() => { try { return projectDiscovery({ mention: activeClarificationMention, draft: discoveryDraft,
+      context: { durationDays: effectiveStructuredBrief.duration?.value, interests: effectiveIntent.preferences.interests,
+        existingPlaceIds: stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []) } }); }
+    catch { return null; } })() : null;
+  const renderedDiscoveryEntry: DiscoveryEntry = !discoveryProjection && discoveryEntry.kind !== "skip" && discoveryEntry.kind !== "legacy-recovery"
+    ? { kind: "legacy-recovery", step: "places", mentionId: activeClarificationMention?.mentionId, reason: "technical-failure" }
+    : discoveryEntry;
+  useEffect(() => {
+    if (clarificationOpen && renderedDiscoveryEntry.kind === "skip") advanceClarificationSession();
+  }, [activeClarificationId, clarificationOpen, renderedDiscoveryEntry.kind]);
   const clarificationGuidedSuggestions = activeClarificationMention && clarificationSupportsMultiple
     && !clarificationUsesNearbyBases
     ? guidedPlanningAreaSuggestions(activeClarificationMention, {
@@ -4215,7 +4239,98 @@ function TripBuilderDocument() {
 
       </div>
 
-      <BuilderClarificationDialog
+      {activeClarificationMention && discoveryDraft && discoveryProjection && renderedDiscoveryEntry.kind !== "skip" && renderedDiscoveryEntry.kind !== "legacy-recovery" ? <DiscoveryModal
+        open={clarificationOpen && Boolean(activeClarificationId)}
+        entry={renderedDiscoveryEntry}
+        mention={activeClarificationMention}
+        projection={discoveryProjection}
+        draft={discoveryDraft}
+        language={language}
+        onAction={(action) => setCapturedStructuredBrief((current) => {
+          const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
+          if (read.status === "unsupported-version") return current;
+          const base = read.status === "current" ? read.draft : { ...read.draft, step: discoveryEntry.step };
+          return { ...current, discoveryDraftByMentionId: {
+            ...current.discoveryDraftByMentionId,
+            [activeClarificationMention.mentionId]: reduceDiscoveryDraft(base, action),
+          } };
+        })}
+        onConfirm={() => {
+          const selectedBaseId = discoveryDraft.visitBaseByIntentId[activeClarificationMention.mentionId]
+            ?? discoveryDraft.baseByIntentId[activeClarificationMention.mentionId];
+          const selectedIds = [...new Set([...discoveryDraft.shortlistIds, ...(selectedBaseId ? [selectedBaseId] : [])])];
+          if (discoveryCommitRef.current || !selectedIds.length) return;
+          discoveryCommitRef.current = true;
+          setDiscoveryCommitting(true);
+          void (async () => {
+            try {
+              let committed = 0;
+              for (const id of selectedIds) {
+                const place = discoveryProjection.places.find((item) => item.id === id);
+                if (place && place.actionability !== "overnight-base") continue;
+                const catalog = findCatalogPlaceById(id);
+                if (!catalog || catalog.routability !== "direct_destination") continue;
+                const suggestion = canonicalPlaceSuggestionFor(catalog.canonicalName, [...catalog.parentCountries]);
+                if (!suggestion || suggestion.canonicalPlaceId !== id) continue;
+                const isBaseChoice = id === selectedBaseId;
+                const visitChoice = isBaseChoice && discoveryEntry.kind === "landmark";
+                const added = await addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId,
+                  isBaseChoice ? {
+                    kind: visitChoice ? "visit" : "base",
+                    selectedCanonicalPlaceId: suggestion.canonicalPlaceId,
+                    selectedName: suggestion.name,
+                    selectedPlaceType: suggestion.placeType,
+                    selectedParentCountries: [suggestion.country],
+                    provenance: suggestion.provenance[0]!,
+                    ...(visitChoice ? { relationshipType: "visit-from-base" as const } : {}),
+                  } : undefined, suggestion);
+                if (!added) return;
+                committed += 1;
+              }
+              if (!committed) return;
+              completePlanningArea(activeClarificationMention, true);
+              advanceClarificationSession();
+            } finally {
+              discoveryCommitRef.current = false;
+              setDiscoveryCommitting(false);
+            }
+          })();
+        }}
+        onClose={dismissClarificationSession}
+        search={{
+          value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
+          error: baseSearchErrors[activeClarificationMention.mentionId],
+          onChange: (value) => {
+            setBaseSearchInputs((current) => ({ ...current, [activeClarificationMention.mentionId]: value }));
+            setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
+          },
+          onSelect: (suggestion) => {
+            const place = discoveryProjection.places.find((item) => item.id === suggestion.canonicalPlaceId);
+            const catalog = findCatalogPlaceById(suggestion.canonicalPlaceId);
+            const actionable = place ? place.actionability === "overnight-base" : catalog?.routability === "direct_destination";
+            const suitableBase = !clarificationUsesNearbyBases || Boolean(activeNearbyBaseAnchor
+              && (canonicalPlaceSuggestionSuitableAsNearbyBase(activeNearbyBaseAnchor, suggestion)
+                || (catalog && catalog.canonicalPlaceId === activeNearbyBaseAnchor.parentRegionId
+                  && catalog.parentCountries.some((country) => activeNearbyBaseAnchor.parentCountries.includes(country)))));
+            if (!actionable || !suitableBase) {
+              setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                ? "No podemos verificar este lugar como base de ruta para tu idea. Prueba otro lugar."
+                : "We cannot verify this place as a route base for your idea. Try another place." }));
+              return;
+            }
+            setCapturedStructuredBrief((current) => {
+              const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
+              if (read.status === "unsupported-version") return current;
+              const base = read.status === "current" ? read.draft : { ...read.draft, step: discoveryEntry.step };
+              return { ...current, discoveryDraftByMentionId: { ...current.discoveryDraftByMentionId,
+                [activeClarificationMention.mentionId]: reduceDiscoveryDraft(base,
+                  discoveryEntry.kind === "landmark" || discoveryEntry.kind === "natural-area"
+                    ? { type: discoveryEntry.kind === "landmark" ? "choose-visit-base" : "choose-base", intentId: activeClarificationMention.mentionId, baseId: suggestion.canonicalPlaceId }
+                    : { type: "add-shortlist", placeId: suggestion.canonicalPlaceId }) } };
+            });
+          },
+        }}
+      /> : renderedDiscoveryEntry.kind === "legacy-recovery" ? <BuilderClarificationDialog
         open={clarificationOpen && Boolean(activeClarificationId) && Boolean(activeProviderClarification || activeClarificationMention)}
         language={language}
         itemKey={activeClarificationId ?? "clarification"}
@@ -4430,7 +4545,7 @@ function TripBuilderDocument() {
           const guided = clarificationGuidedShapes.find((item) => item.id === shape.id);
           if (guided) void applyGuidedPlanningShape(activeClarificationMention, guided);
         }}
-      />
+      /> : null}
 
       {cloudSaveError ? <div className={styles.recoveryFeedback}><MorroviaRecoveryFeedback
         title={deviceStorageBlocked || deviceRecoveryBlocked

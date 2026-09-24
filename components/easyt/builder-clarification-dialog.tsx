@@ -1,12 +1,13 @@
 "use client";
 
 import { ArrowLeft, Check, ChevronRight, Plus, X } from "lucide-react";
-import { forwardRef, useEffect, useId, useRef, useState } from "react";
+import { forwardRef, useEffect, useId, useState } from "react";
 import type { CanonicalPlaceSuggestion, NearbyBaseAnchor, PlaceType, PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 import { countryDiscoveryContinueLabel, easytCopy } from "@/lib/easyt/i18n";
 import { CanonicalPlaceAutocomplete } from "./canonical-place-autocomplete";
 import { EasyTButton } from "./easyt-controls";
 import ResilientImage from "./resilient-image";
+import { BuilderClarificationShell } from "./builder-clarification-shell";
 import styles from "./builder-clarification-dialog.module.css";
 
 export type BuilderClarificationSelectedPlace = {
@@ -142,12 +143,8 @@ export function BuilderClarificationDialog({
   onChoose?: (choice: BuilderClarificationChoice) => void;
   onApplyShape?: (shape: BuilderClarificationRouteShape) => void;
 }) {
-  const titleId = useId();
-  const descriptionId = useId();
+  const searchErrorId = useId();
   const disabledReasonId = useId();
-  const dialogRef = useRef<HTMLElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const dismissRef = useRef(onDismiss);
   const [reviewingShapeId, setReviewingShapeId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [showAllDiscovery, setShowAllDiscovery] = useState(false);
@@ -171,71 +168,23 @@ export function BuilderClarificationDialog({
     suggested: "SUGGESTED PLACES",
     remove: "Remove",
   };
-  dismissRef.current = onDismiss;
-
-  useEffect(() => {
-    if (!open) return;
-    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusable = () => [...(dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    ) ?? [])];
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        dismissRef.current();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (!items.length) { event.preventDefault(); return; }
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
-      returnFocus?.focus();
-    };
-  }, [open]);
-
   useEffect(() => {
     if (!open) return;
     setReviewingShapeId(null);
     setShowSearch(false);
     setShowAllDiscovery(false);
-    window.requestAnimationFrame(() => titleRef.current?.focus());
   }, [itemKey, open]);
 
   if (!open) return null;
 
-  return <div
-    className={styles.overlay}
-    role="presentation"
-    onMouseDown={(event) => { if (event.target === event.currentTarget) onDismiss(); }}
-  >
-    <section
-      ref={dialogRef}
-      className={styles.dialog}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      aria-describedby={descriptionId}
-      data-builder-clarification-ui="true"
-      onMouseDown={(event) => event.stopPropagation()}
-    >
-      <header className={styles.header}>
-        <p aria-live="polite">{progress}</p>
-        <EasyTButton icon={X} iconOnly variant="quiet" size="small" onClick={onDismiss}>{text.close}</EasyTButton>
-        <h2 ref={titleRef} id={titleId} tabIndex={-1}>{title}</h2>
-        <span id={descriptionId}>{description}</span>
-      </header>
-
-      <div className={styles.body}>
+  return <BuilderClarificationShell open={open} itemKey={itemKey} progress={progress} title={title}
+    description={description} closeLabel={text.close} onDismiss={onDismiss}
+    footer={<>
+      <div>{onBack ? <EasyTButton icon={ArrowLeft} variant="quiet" onClick={onBack}>{backLabel}</EasyTButton> : null}
+        <EasyTButton variant="quiet" onClick={onDismiss}>{finishLaterLabel}</EasyTButton></div>
+      {doneLabel && onDone ? <EasyTButton icon={Check} disabled={doneDisabled} aria-describedby={doneDisabled && doneDisabledReason ? disabledReasonId : undefined} onClick={onDone}>{discovery ? countryDiscoveryContinueLabel(language, discovery.selectedIds.length + selectedPlaces.length) : doneLabel}</EasyTButton> : null}
+    </>}
+    afterFooter={removeLabel && onRemoveItem ? <EasyTButton className={styles.remove} variant="quiet" size="small" onClick={onRemoveItem}>{removeLabel}</EasyTButton> : null}>
         {question ? <p className={styles.question}>{question}</p> : null}
         {choices.length ? <section className={styles.choices} aria-label={text.choices}>
           {choices.map((choice) => <EasyTButton key={choice.id} variant="secondary" onClick={() => onChoose?.(choice)}>
@@ -329,24 +278,15 @@ export function BuilderClarificationDialog({
             allowedPlaceTypes={search.allowedPlaceTypes}
             showPlaceType={false}
             invalid={Boolean(search.error)}
-            describedBy={search.error ? `${descriptionId}-search-error` : undefined}
+            describedBy={search.error ? searchErrorId : undefined}
             emptyMessage={search.emptyMessage}
             failureMessage={search.failureMessage}
             onChange={search.onChange}
             onSelect={search.onSelect}
           />
-          {search.error ? <p id={`${descriptionId}-search-error`} role="alert">{search.error}</p> : null}
+          {search.error ? <p id={searchErrorId} role="alert">{search.error}</p> : null}
         </section> : null}
 
         {doneLabel && onDone && doneDisabled && doneDisabledReason ? <p id={disabledReasonId} className={styles.disabledReason}>{doneDisabledReason}</p> : null}
-      </div>
-
-      <footer className={styles.footer}>
-        <div>{onBack ? <EasyTButton icon={ArrowLeft} variant="quiet" onClick={onBack}>{backLabel}</EasyTButton> : null}
-          <EasyTButton variant="quiet" onClick={onDismiss}>{finishLaterLabel}</EasyTButton></div>
-        {doneLabel && onDone ? <EasyTButton icon={Check} disabled={doneDisabled} aria-describedby={doneDisabled && doneDisabledReason ? disabledReasonId : undefined} onClick={onDone}>{discovery ? countryDiscoveryContinueLabel(language, discovery.selectedIds.length + selectedPlaces.length) : doneLabel}</EasyTButton> : null}
-      </footer>
-      {removeLabel && onRemoveItem ? <EasyTButton className={styles.remove} variant="quiet" size="small" onClick={onRemoveItem}>{removeLabel}</EasyTButton> : null}
-    </section>
-  </div>;
+  </BuilderClarificationShell>;
 }
