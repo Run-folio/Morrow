@@ -29,3 +29,19 @@ test("Back changes only the draft step and does not route browser history", () =
   assert.match(modal, /onAction\(\{ type: "set-step", step: previousStep \}\)/);
   assert.doesNotMatch(modal, /history\.(pushState|replaceState|popstate)/);
 });
+
+test("partial confirmation leaves the parent open and explains unresolved choices in review", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  const modal = read("components/easyt/discovery-modal.tsx");
+  assert.match(builder, /commitDiscoverySelections\(/);
+  assert.match(builder, /if \(!result\.allConfirmed\)[\s\S]*?return;/);
+  assert.match(modal, /search\?\.error[^\n]*role="alert"/);
+});
+
+test("provider-only search has a localized unresolved path with preserved intent", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  assert.match(builder, /discoveryConfirmationChoiceForId\(suggestion\.canonicalPlaceId/);
+  assert.match(builder, /"reason" in choice \|\| !suitableBase/);
+  assert.match(builder, /Your original idea is saved; search for another place or Finish later/);
+  assert.match(builder, /Tu idea original sigue guardada; busca otro lugar o termina más tarde/);
+});

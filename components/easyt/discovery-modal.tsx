@@ -80,7 +80,6 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
         contextCountries={mention.parentCountries}
         parentConstraint={entry.kind === "country" || entry.kind === "region" ? { canonicalName: mention.canonicalName, placeType: mention.placeType, parentCountries: mention.parentCountries } : undefined}
         invalid={Boolean(search.error)} onChange={search.onChange} onSelect={search.onSelect} /> : null}
-      {search?.error ? <p role="alert">{search.error}</p> : null}
     </section> : null}
     {step === "review" ? <section aria-label={spanish ? "Revisar selección" : "Review selection"}>
       <p>{spanish ? "Tu idea original sigue guardada. Solo se añadirán lugares confirmados." : "Your original idea is preserved. Only confirmed places will be added."}</p>
@@ -88,5 +87,6 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
         : baseName ? <p>{spanish ? "Base elegida" : "Chosen base"}: {baseName}</p>
           : <p>{spanish ? "Todavía no has elegido una base verificada." : "You have not chosen a verified base yet."}</p>}
     </section> : null}
+    {search?.error ? <p role="alert">{search.error}</p> : null}
   </BuilderClarificationShell>;
 }

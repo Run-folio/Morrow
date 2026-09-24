@@ -56,6 +56,7 @@ import { DiscoveryModal } from "@/components/easyt/discovery-modal";
 import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import { readDiscoveryDraft, reduceDiscoveryDraft } from "@/lib/easyt/discovery-draft";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
+import { commitDiscoverySelections, discoveryConfirmationChoiceForId } from "@/lib/easyt/discovery-confirmation";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
 import { EasyTButton, EasyTLinkButton } from "@/components/easyt/easyt-controls";
 import { MorroviaDatePicker } from "@/components/easyt/morrovia-date-picker";
@@ -4264,14 +4265,7 @@ function TripBuilderDocument() {
           setDiscoveryCommitting(true);
           void (async () => {
             try {
-              let committed = 0;
-              for (const id of selectedIds) {
-                const place = discoveryProjection.places.find((item) => item.id === id);
-                if (place && place.actionability !== "overnight-base") continue;
-                const catalog = findCatalogPlaceById(id);
-                if (!catalog || catalog.routability !== "direct_destination") continue;
-                const suggestion = canonicalPlaceSuggestionFor(catalog.canonicalName, [...catalog.parentCountries]);
-                if (!suggestion || suggestion.canonicalPlaceId !== id) continue;
+              const result = await commitDiscoverySelections(selectedIds, discoveryProjection, async (suggestion, id) => {
                 const isBaseChoice = id === selectedBaseId;
                 const visitChoice = isBaseChoice && discoveryEntry.kind === "landmark";
                 const added = await addStop(suggestion.name, suggestion.country, activeClarificationMention.mentionId,
@@ -4284,10 +4278,17 @@ function TripBuilderDocument() {
                     provenance: suggestion.provenance[0]!,
                     ...(visitChoice ? { relationshipType: "visit-from-base" as const } : {}),
                   } : undefined, suggestion);
-                if (!added) return;
-                committed += 1;
+                return Boolean(added);
+              });
+              if (!result.allConfirmed) {
+                const committedNames = result.committed.map((choice) => choice.name).join(", ");
+                const unresolvedNames = result.unresolved.map((choice) => choice.name).join(", ");
+                setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
+                  ? `${result.committed.length ? `Confirmados: ${committedNames}. ` : ""}Aún sin confirmar: ${unresolvedNames}. Tus elecciones siguen guardadas; vuelve a intentarlo o termina más tarde.`
+                  : `${result.committed.length ? `Confirmed: ${committedNames}. ` : ""}Still unresolved: ${unresolvedNames}. Your choices are saved; retry or Finish later.` }));
+                return;
               }
-              if (!committed) return;
+              setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
               completePlanningArea(activeClarificationMention, true);
               advanceClarificationSession();
             } finally {
@@ -4305,19 +4306,19 @@ function TripBuilderDocument() {
             setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
           },
           onSelect: (suggestion) => {
-            const place = discoveryProjection.places.find((item) => item.id === suggestion.canonicalPlaceId);
+            const choice = discoveryConfirmationChoiceForId(suggestion.canonicalPlaceId, discoveryProjection);
             const catalog = findCatalogPlaceById(suggestion.canonicalPlaceId);
-            const actionable = place ? place.actionability === "overnight-base" : catalog?.routability === "direct_destination";
             const suitableBase = !clarificationUsesNearbyBases || Boolean(activeNearbyBaseAnchor
               && (canonicalPlaceSuggestionSuitableAsNearbyBase(activeNearbyBaseAnchor, suggestion)
                 || (catalog && catalog.canonicalPlaceId === activeNearbyBaseAnchor.parentRegionId
                   && catalog.parentCountries.some((country) => activeNearbyBaseAnchor.parentCountries.includes(country)))));
-            if (!actionable || !suitableBase) {
+            if ("reason" in choice || !suitableBase) {
               setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: language === "es"
-                ? "No podemos verificar este lugar como base de ruta para tu idea. Prueba otro lugar."
-                : "We cannot verify this place as a route base for your idea. Try another place." }));
+                ? `Aún no podemos confirmar ${suggestion.name} como base fiable para tu ruta. Tu idea original sigue guardada; busca otro lugar o termina más tarde.`
+                : `We cannot confirm ${suggestion.name} as a reliable route base yet. Your original idea is saved; search for another place or Finish later.` }));
               return;
             }
+            setBaseSearchErrors((current) => ({ ...current, [activeClarificationMention.mentionId]: "" }));
             setCapturedStructuredBrief((current) => {
               const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
               if (read.status === "unsupported-version") return current;
