@@ -746,6 +746,26 @@ test("a newer Discovery-only device recovery survives an older canonical cache",
   );
 });
 
+test("a legacy country choice-only recovery remains distinct, including an explicit empty choice", () => {
+  const structuredBrief = extractStructuredTripBrief("Australia");
+  const mentionId = structuredBrief.placeMentions?.[0]?.mentionId;
+  assert.ok(mentionId);
+  const canonical = browserTrip({ id: "trip-legacy-choice-recovery", brief: { ...browserTrip().brief, structuredBrief } });
+  const storage = new MemoryBrowserStorage();
+  assert.equal(cacheCanonicalTripToStorage(storage, canonical), true);
+  const device = { ...canonical, brief: { ...canonical.brief,
+    structuredBrief: { ...structuredBrief, countryDiscoveryChoices: { [mentionId]: [] } } } };
+  assert.equal(tripDocumentsCanonicalEquivalent(device, canonical), false);
+  assert.equal(tripDocumentsCanonicalEquivalent({ ...canonical, brief: { ...canonical.brief,
+    structuredBrief: { ...structuredBrief, countryDiscoveryChoices: {} } } }, canonical), true);
+  assert.equal(tripDocumentsCanonicalEquivalent({ ...canonical, brief: { ...canonical.brief,
+    structuredBrief: { ...structuredBrief, countryDiscoveryChoices: { [mentionId]: ["sydney"] } } } }, device), false);
+  assert.equal(saveTripRecoveryToStorage(storage, device, { writeId: "legacy-choice-edit" }).stored, true);
+  const refreshed = cacheCanonicalTripWithRecoveryToStorage(storage, canonical);
+  assert.equal(refreshed.recoveryResolved, false);
+  assert.deepEqual(loadTripRecoveryFromStorage(storage, canonical.id, canonical.ownerId)?.trip.brief.structuredBrief?.countryDiscoveryChoices?.[mentionId], []);
+});
+
 test("semantic comparison treats absent and empty optional authored collections as equivalent", () => {
   const absent = browserTrip({ id: "trip-semantic-empty-defaults" });
   const empty = {

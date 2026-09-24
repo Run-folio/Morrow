@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight, Compass, MapPin, Plus, Check } from "lucide-react";
 import type { DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import type { DiscoveryPlace } from "@/lib/easyt/discovery-content";
-import type { DiscoveryDraft, DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
+import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAction } from "@/lib/easyt/discovery-draft";
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import type { ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
@@ -93,7 +93,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const activeDirection = projection.directions.find(direction => direction.id === draft.directionId);
   const allPlaces = activeDirection ? projection.places.filter(place => activeDirection.placeIds.includes(place.id)) : projection.places;
   const visible = allPlaces.slice(0, visibleCount);
-  const baseId = draft.baseByIntentId[mention.mentionId] ?? draft.visitBaseByIntentId[mention.mentionId] ?? null;
+  const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
   const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
   const review = discoveryReviewState(mention.mentionId, draft, projection, existingPlaceIds);

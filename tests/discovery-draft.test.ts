@@ -43,6 +43,16 @@ test("Back changes only the visible step and preserves every explicit decision",
   assert.deepEqual(back, { ...draft, step: "directions" });
 });
 
+test("an explicit base choice replaces the opposite choice for the same intent", () => {
+  const intentId = "coast";
+  const base = reduceDiscoveryDraft(createDiscoveryDraft(), { type: "choose-base", intentId, baseId: "sydney" });
+  const visitBase = reduceDiscoveryDraft(base, { type: "choose-visit-base", intentId, baseId: "melbourne" });
+  assert.equal(visitBase.baseByIntentId[intentId], undefined);
+  assert.equal(visitBase.visitBaseByIntentId[intentId], "melbourne");
+  const changedBack = reduceDiscoveryDraft(visitBase, { type: "choose-base", intentId, baseId: "sydney" });
+  assert.equal(changedBack.visitBaseByIntentId[intentId], undefined);
+});
+
 test("changing direction preserves decisions and requires renewed review", () => {
   const chosen = reduceDiscoveryDraft(createDiscoveryDraft(), { type: "add-shortlist", placeId: "sydney" });
   const ready = reduceDiscoveryDraft(chosen, { type: "mark-review-ready" });

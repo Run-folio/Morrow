@@ -52,11 +52,11 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
   return <BuilderClarificationShell open={open} itemKey={`${mention.mentionId}:${step}`} title={copy.steps[step]}
     description={`${mention.sourceText}. ${copy.intro}`}
     progress={`${stepIndex + 1} / ${steps.length}`} closeLabel={copy.accessibility.close}
-    onDismiss={onClose} discovery
+    onDismiss={onClose} discovery loading={loading}
     footer={<>
       <div>
-        {previousStep ? <EasyTButton icon={ArrowLeft} variant="quiet" onClick={() => onAction({ type: "set-step", step: previousStep })}>{copy.actions.back}</EasyTButton> : null}
-        <EasyTButton variant="quiet" onClick={onClose}>{copy.actions.finishLater}</EasyTButton>
+        {previousStep ? <EasyTButton disabled={loading} icon={ArrowLeft} variant="quiet" onClick={() => onAction({ type: "set-step", step: previousStep })}>{copy.actions.back}</EasyTButton> : null}
+        <EasyTButton variant="quiet" disabled={loading} onClick={onClose}>{copy.actions.finishLater}</EasyTButton>
       </div>
       {nextStep ? <EasyTButton disabled={loading} onClick={() => onAction({ type: "set-step", step: nextStep })}>{copy.actions.continue}</EasyTButton>
         : <EasyTButton icon={Check} disabled={loading || !review.canConfirm} onClick={onConfirm}>{copy.actions.confirm}</EasyTButton>}

@@ -1,6 +1,6 @@
 import type { DiscoveryActionability } from "./discovery-content.ts";
 import { discoveryConfirmationChoiceForId } from "./discovery-confirmation.ts";
-import type { DiscoveryDraft } from "./discovery-draft.ts";
+import { resolveDiscoveryBaseChoice, type DiscoveryDraft } from "./discovery-draft.ts";
 import type { DiscoveryProjection } from "./discovery-projection.ts";
 
 export type DiscoveryReviewChoice = {
@@ -17,7 +17,7 @@ export function discoveryReviewState(mentionId: string, draft: DiscoveryDraft, p
   existingPlaceIds: readonly string[] = []) {
   const places = new Map(projection.places.map(place => [place.id, place]));
   const direction = projection.directions.find(item => item.id === draft.directionId);
-  const baseId = draft.baseByIntentId[mentionId] ?? draft.visitBaseByIntentId[mentionId] ?? null;
+  const { baseId, conflict } = resolveDiscoveryBaseChoice(draft, mentionId);
   const base = baseId ? places.get(baseId) : null;
   const choices: DiscoveryReviewChoice[] = draft.shortlistIds.map(id => {
     const place = places.get(id);
@@ -38,8 +38,8 @@ export function discoveryReviewState(mentionId: string, draft: DiscoveryDraft, p
     base: baseId ? { id: baseId, name: base?.name ?? baseId, confirmable: baseConfirmable,
       existing: existingPlaceIds.includes(baseId) } : null,
     hasOutsideDirection: choices.some(choice => choice.outsideDirection),
-    hasUnresolvedChoices: choices.some(choice => !choice.confirmable) || Boolean(baseId && !baseConfirmable),
-    canConfirm: (choices.length > 0 || Boolean(baseId))
+    hasUnresolvedChoices: conflict || choices.some(choice => !choice.confirmable) || Boolean(baseId && !baseConfirmable),
+    canConfirm: !conflict && (choices.length > 0 || Boolean(baseId))
       && choices.every(choice => choice.confirmable)
       && (!baseId || baseConfirmable),
   };

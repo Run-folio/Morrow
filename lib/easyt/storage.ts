@@ -553,6 +553,8 @@ function travellerStructuredIntent(trip: EasyTTrip) {
     placeMentions: (structured.placeMentions ?? []).map(({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role }) => ({ mentionId, sourceText, canonicalName, canonicalPlaceId, parentCountries, coordinates, routability, directlyRoutable, requiresBaseSelection, isAnchor, role })),
     placeSelections: structured.placeSelections,
     discoveryDraftByMentionId: nonEmptyRecord(structured.discoveryDraftByMentionId),
+    countryDiscoveryChoices: structured.countryDiscoveryChoices && Object.keys(structured.countryDiscoveryChoices).length
+      ? structured.countryDiscoveryChoices : undefined,
     completedPlanningAreaMentionIds: [...(structured.completedPlanningAreaMentionIds ?? [])].sort(),
     removedPlaceMentionIds: [...(structured.removedPlaceMentionIds ?? [])].sort(),
   };

@@ -67,3 +67,25 @@ test("the adaptive shell has an honest loading and sparse recovery presentation"
   assert.match(stories, /AustraliaLoading/);
   assert.match(stories, /TajLandmarkProductionSparse/);
 });
+
+test("Builder commit locks every Discovery navigation and dismissal path", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  const modal = read("components/easyt/discovery-modal.tsx");
+  const shell = read("components/easyt/builder-clarification-shell.tsx");
+  assert.match(builder, /loading=\{discoveryCommitting\}/);
+  assert.match(modal, /onDismiss=\{onClose\}[^>]*loading=\{loading\}/);
+  assert.match(modal, /previousStep \? <EasyTButton disabled=\{loading\}/);
+  assert.match(modal, /variant="quiet" disabled=\{loading\} onClick=\{onClose\}/);
+  assert.match(shell, /if \(event\.key === "Escape"\) \{ event\.preventDefault\(\); if \(!loadingRef\.current\) dismissRef\.current\(\);/);
+  assert.match(shell, /if \(event\.target === event\.currentTarget && !loading\) onDismiss\(\)/);
+  assert.match(shell, /iconOnly variant="quiet" size="small" disabled=\{loading\}/);
+  assert.match(modal, /loading \? <MorroviaStatusBanner[\s\S]*?: <DiscoverySteps/);
+  assert.match(builder, /onAction=\{\(action\) => \{\s*if \(discoveryCommitRef\.current\) return;/);
+});
+
+test("Builder confirmation uses the same fail-closed review gate and base as Discovery", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  assert.match(builder, /const review = discoveryReviewState\(activeClarificationMention\.mentionId, discoveryDraft, discoveryProjection/);
+  assert.match(builder, /const selectedBaseId = review\.base\?\.id/);
+  assert.match(builder, /!review\.canConfirm/);
+});

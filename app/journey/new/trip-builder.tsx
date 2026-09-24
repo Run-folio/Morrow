@@ -55,6 +55,7 @@ import { BuilderClarificationDialog, BuilderClarificationResume, type BuilderCla
 import { DiscoveryModal } from "@/components/easyt/discovery-modal";
 import { discoveryEntryForBrief, type DiscoveryEntry } from "@/lib/easyt/discovery-entry";
 import { readDiscoveryDraft, reduceDiscoveryDraft } from "@/lib/easyt/discovery-draft";
+import { discoveryReviewState } from "@/lib/easyt/discovery-review-state";
 import { projectDiscovery } from "@/lib/easyt/discovery-projection";
 import { commitDiscoverySelections, discoveryConfirmationChoiceForId } from "@/lib/easyt/discovery-confirmation";
 import { PRODUCT_TOUR_STATE_EVENT } from "@/components/easyt/easyt-product-tour";
@@ -4246,22 +4247,27 @@ function TripBuilderDocument() {
         mention={activeClarificationMention}
         projection={discoveryProjection}
         draft={discoveryDraft}
+        loading={discoveryCommitting}
         language={language}
         existingPlaceIds={stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : [])}
-        onAction={(action) => setCapturedStructuredBrief((current) => {
-          const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
-          if (read.status === "unsupported-version") return current;
-          const base = read.status === "current" ? read.draft : { ...read.draft, step: discoveryEntry.step };
-          return { ...current, discoveryDraftByMentionId: {
-            ...current.discoveryDraftByMentionId,
-            [activeClarificationMention.mentionId]: reduceDiscoveryDraft(base, action),
-          } };
-        })}
+        onAction={(action) => {
+          if (discoveryCommitRef.current) return;
+          setCapturedStructuredBrief((current) => {
+            const read = readDiscoveryDraft(current, activeClarificationMention.mentionId);
+            if (read.status === "unsupported-version") return current;
+            const base = read.status === "current" ? read.draft : { ...read.draft, step: discoveryEntry.step };
+            return { ...current, discoveryDraftByMentionId: {
+              ...current.discoveryDraftByMentionId,
+              [activeClarificationMention.mentionId]: reduceDiscoveryDraft(base, action),
+            } };
+          });
+        }}
         onConfirm={() => {
-          const selectedBaseId = discoveryDraft.visitBaseByIntentId[activeClarificationMention.mentionId]
-            ?? discoveryDraft.baseByIntentId[activeClarificationMention.mentionId];
-          const selectedIds = [...new Set([...discoveryDraft.shortlistIds, ...(selectedBaseId ? [selectedBaseId] : [])])];
-          if (discoveryCommitRef.current || !selectedIds.length) return;
+          const review = discoveryReviewState(activeClarificationMention.mentionId, discoveryDraft, discoveryProjection,
+            stops.flatMap((stop) => stop.canonicalPlaceId ? [stop.canonicalPlaceId] : []));
+          const selectedBaseId = review.base?.id;
+          const selectedIds = [...new Set([...review.choices.map((choice) => choice.id), ...(selectedBaseId ? [selectedBaseId] : [])])];
+          if (discoveryCommitRef.current || !review.canConfirm) return;
           discoveryCommitRef.current = true;
           setDiscoveryCommitting(true);
           void (async () => {
@@ -4298,7 +4304,7 @@ function TripBuilderDocument() {
             }
           })();
         }}
-        onClose={dismissClarificationSession}
+        onClose={() => { if (!discoveryCommitRef.current) dismissClarificationSession(); }}
         search={{
           value: baseSearchInputs[activeClarificationMention.mentionId] ?? "",
           error: baseSearchErrors[activeClarificationMention.mentionId],

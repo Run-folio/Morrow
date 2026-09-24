@@ -6,7 +6,7 @@ import { EasyTButton } from "./easyt-controls";
 import styles from "./builder-clarification-dialog.module.css";
 
 /** One modal owner for legacy recovery and the adaptive Discovery step slot. */
-export function BuilderClarificationShell({ open, itemKey, progress, title, description, closeLabel, onDismiss, children, footer, afterFooter, discovery = false }: {
+export function BuilderClarificationShell({ open, itemKey, progress, title, description, closeLabel, onDismiss, children, footer, afterFooter, discovery = false, loading = false }: {
   open: boolean;
   itemKey: string;
   progress?: string;
@@ -18,13 +18,16 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
   footer?: ReactNode;
   afterFooter?: ReactNode;
   discovery?: boolean;
+  loading?: boolean;
 }) {
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dismissRef = useRef(onDismiss);
+  const loadingRef = useRef(loading);
   dismissRef.current = onDismiss;
+  loadingRef.current = loading;
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +38,7 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
       'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ) ?? [])];
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); dismissRef.current(); return; }
+      if (event.key === "Escape") { event.preventDefault(); if (!loadingRef.current) dismissRef.current(); return; }
       if (event.key !== "Tab") return;
       const items = focusable();
       if (!items.length) { event.preventDefault(); return; }
@@ -57,13 +60,13 @@ export function BuilderClarificationShell({ open, itemKey, progress, title, desc
   }, [itemKey, open]);
 
   if (!open) return null;
-  return <div className={`${styles.overlay}${discovery ? ` ${styles.discoveryOverlay}` : ""}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onDismiss(); }}>
+  return <div className={`${styles.overlay}${discovery ? ` ${styles.discoveryOverlay}` : ""}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onDismiss(); }}>
     <section ref={dialogRef} className={`${styles.dialog}${discovery ? ` ${styles.discoveryDialog}` : ""}`}
       role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}
       data-builder-clarification-ui="true" onMouseDown={(event) => event.stopPropagation()}>
       <header className={styles.header}>
         {progress ? <p aria-live="polite">{progress}</p> : null}
-        <EasyTButton icon={X} iconOnly variant="quiet" size="small" onClick={onDismiss}>{closeLabel}</EasyTButton>
+        <EasyTButton icon={X} iconOnly variant="quiet" size="small" disabled={loading} onClick={onDismiss}>{closeLabel}</EasyTButton>
         <h2 ref={titleRef} id={titleId} tabIndex={-1}>{title}</h2>
         <span id={descriptionId}>{description}</span>
       </header>

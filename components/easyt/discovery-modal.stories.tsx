@@ -20,16 +20,16 @@ const australiaMention = mention("Australia");
 
 type Scene = { entry: DiscoveryEntry; mention: ResolvedPlaceMention; projection: DiscoveryProjection; draft: DiscoveryDraft;
   language?: "en" | "es"; existingPlaceIds?: string[]; note?: string; loading?: boolean;
-  actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void };
+  actionSpy?: (action: DiscoveryDraftAction) => void; confirmSpy?: () => void; closeSpy?: () => void };
 
-function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, actionSpy, confirmSpy }: Scene) {
+function SceneModal({ entry, mention: sceneMention, projection: sceneProjection, draft: initialDraft, language = "en", existingPlaceIds = [], note, loading, actionSpy, confirmSpy, closeSpy }: Scene) {
   const [draft, setDraft] = useState(initialDraft);
   const [searchValue, setSearchValue] = useState("");
   const onAction = (action: DiscoveryDraftAction) => { actionSpy?.(action); setDraft(current => reduceDiscoveryDraft(current, action)); };
   return <main className="morrovia-editorial-page" style={{ minHeight: "100vh", padding: 20 }}>
     <p style={{ maxWidth: 780, margin: 0 }}>{note ?? "Reviewed production evidence; no licensed image is currently assigned to these places."}</p>
     <DiscoveryModal open entry={entry} mention={sceneMention} projection={sceneProjection} draft={draft} language={language} loading={loading}
-      existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => {}}
+      existingPlaceIds={existingPlaceIds} onAction={onAction} onConfirm={() => confirmSpy?.()} onClose={() => closeSpy?.()}
       search={{ value: searchValue, onChange: setSearchValue, onSelect: () => {} }} />
   </main>;
 }
@@ -92,6 +92,19 @@ export const AustraliaBrowseOnly: Story = { args: { entry: countryEntry, mention
 export const AustraliaExistingStop: Story = { args: { ...AustraliaPlaces.args, existingPlaceIds: [australia.places[0]!.id] } };
 export const AustraliaNoPhoto: Story = { args: { ...AustraliaPlaces.args } };
 export const AustraliaLoading: Story = { args: { ...AustraliaPlaces.args, loading: true } };
+export const AustraliaLoadingInteraction: Story = { args: { ...AustraliaLoading.args, actionSpy: fn(), confirmSpy: fn(), closeSpy: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("button", { name: "Back" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Finish later" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Close Discovery" })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.pointer({ keys: "[MouseLeft]", target: canvasElement.querySelector<HTMLElement>('[role="presentation"]')! });
+    await expect(args.actionSpy).not.toHaveBeenCalled();
+    await expect(args.confirmSpy).not.toHaveBeenCalled();
+    await expect(args.closeSpy).not.toHaveBeenCalled();
+  } };
 export const AustraliaSpanish: Story = { args: { ...AustraliaPlaces.args, language: "es" } };
 export const TajikistanSmallerCountry: Story = { args: { entry: { kind: "country", step: "places" }, mention: mention("Tajikistan"), projection: tajikistan, draft: placesDraft,
   note: "Production: three reviewed Tajikistan places, with no licensed images or verified overnight bases." } };

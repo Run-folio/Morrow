@@ -42,3 +42,13 @@ test("review preserves and flags choices outside the selected browsing direction
   assert.equal(review.choices[0]?.outsideDirection, true);
   assert.equal(review.hasOutsideDirection, true);
 });
+
+test("conflicting persisted base choices cannot confirm either choice", () => {
+  const anotherBase = projection.places.find(place => place.actionability === "overnight-base" && place.id !== base.id)!;
+  const draft = { ...createDiscoveryDraft(), baseByIntentId: selectedBase,
+    visitBaseByIntentId: { [mention.mentionId]: anotherBase.id }, shortlistIds: [base.id] };
+  const review = discoveryReviewState(mention.mentionId, draft, projection);
+  assert.equal(review.base, null);
+  assert.equal(review.hasUnresolvedChoices, true);
+  assert.equal(review.canConfirm, false);
+});

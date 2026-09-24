@@ -40,6 +40,14 @@ export function createDiscoveryDraft(): DiscoveryDraft {
   };
 }
 
+/** Persisted drafts may predate the mutually exclusive reducer actions. Never guess between conflicting bases. */
+export function resolveDiscoveryBaseChoice(draft: DiscoveryDraft, intentId: string): { baseId: string | null; conflict: boolean } {
+  const base = draft.baseByIntentId[intentId];
+  const visitBase = draft.visitBaseByIntentId[intentId];
+  if (base && visitBase && base !== visitBase) return { baseId: null, conflict: true };
+  return { baseId: base ?? visitBase ?? null, conflict: false };
+}
+
 /** Reading never mutates the brief; callers persist a migrated draft once under its mention ID. */
 export function readDiscoveryDraft(brief: StructuredTripBrief, mentionId: string): DiscoveryDraftRead {
   const drafts = brief.discoveryDraftByMentionId;
@@ -81,9 +89,11 @@ export function reduceDiscoveryDraft(draft: DiscoveryDraft, action: DiscoveryDra
         reviewState: "editing",
       };
     case "choose-base":
-      return { ...draft, baseByIntentId: { ...draft.baseByIntentId, [action.intentId]: action.baseId }, reviewState: "editing" };
+      return { ...draft, baseByIntentId: { ...draft.baseByIntentId, [action.intentId]: action.baseId },
+        visitBaseByIntentId: Object.fromEntries(Object.entries(draft.visitBaseByIntentId).filter(([id]) => id !== action.intentId)), reviewState: "editing" };
     case "choose-visit-base":
-      return { ...draft, visitBaseByIntentId: { ...draft.visitBaseByIntentId, [action.intentId]: action.baseId }, reviewState: "editing" };
+      return { ...draft, visitBaseByIntentId: { ...draft.visitBaseByIntentId, [action.intentId]: action.baseId },
+        baseByIntentId: Object.fromEntries(Object.entries(draft.baseByIntentId).filter(([id]) => id !== action.intentId)), reviewState: "editing" };
     case "mark-review-ready":
       return { ...draft, reviewState: "ready" };
     case "mark-confirmed":
