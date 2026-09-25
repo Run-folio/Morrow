@@ -92,6 +92,16 @@ export function discoveryShortlistCount(language: EasyTLanguage, count: number):
     : `${count} ${count === 1 ? "place" : "places"}`;
 }
 
+export function discoveryStayInLabel(language: EasyTLanguage, placeName: string): string {
+  return language === "es" ? `Alojarse en ${placeName}` : `Stay in ${placeName}`;
+}
+
+export function discoveryVisitBaseAriaLabel(language: EasyTLanguage, baseName: string, intentName: string): string {
+  return language === "es"
+    ? `Usar ${baseName} como base para visitar ${intentName}`
+    : `Use ${baseName} as the base for visiting ${intentName}`;
+}
+
 const discoveryDirectionKeys = {
   "discovery.direction.australiaEastCoast": "australiaEastCoast",
   "discovery.direction.australiaSouth": "australiaSouth",

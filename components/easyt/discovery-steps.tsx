@@ -9,7 +9,7 @@ import { resolveDiscoveryBaseChoice, type DiscoveryDraft, type DiscoveryDraftAct
 import type { DiscoveryProjection } from "@/lib/easyt/discovery-projection";
 import { discoveryMapPlacesKey } from "@/lib/easyt/discovery-projection-key";
 import type { ResolvedPlaceMention } from "@/lib/easyt/place-intelligence";
-import { availableActions, discoveryDirectionTitle, discoveryShortlistCount, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { availableActions, discoveryDirectionTitle, discoveryShortlistCount, discoveryStayInLabel, discoveryVisitBaseAriaLabel, easytCopy, renderDiscoveryReason, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { routeEditorialPhoto, routeImageCredit, routeImagePhoto } from "@/lib/easyt/route-images";
 import { EasyTButton } from "./easyt-controls";
 import { MorroviaStatusBanner } from "./morrovia-feedback";
@@ -54,6 +54,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
   const copy = easytCopy[language].builder.visualDiscovery;
   const selected = draft.shortlistIds.includes(place.id);
   const isBaseStep = draft.step === "bases";
+  const isSpecialResolution = isBaseStep && (entry.kind === "landmark" || entry.kind === "natural-area");
   const baseSelected = baseId === place.id;
   const actions = availableActions(place);
   const role = copy.roles[place.actionability];
@@ -73,9 +74,10 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
       <div className={styles.role}><MapPin aria-hidden="true" /><span>{role}</span></div>
       <div className={styles.cardActions}>
         {isBaseStep ? actions.includes("choose-base") ? <EasyTButton variant={baseSelected ? "secondary" : "primary"} size="small" icon={baseSelected ? Check : Plus}
-          aria-label={`${entry.kind === "landmark" || entry.kind === "natural-area" ? copy.actions.visitFromBase : baseId ? copy.actions.changeBase : copy.actions.chooseBase}: ${place.name}`} aria-pressed={baseSelected}
-          onClick={(event) => { event.stopPropagation(); onAction({ type: entry.kind === "landmark" || entry.kind === "natural-area" ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id }); }}>
-          {baseSelected ? copy.roles.chosen : entry.kind === "landmark" || entry.kind === "natural-area" ? copy.actions.visitFromBase : baseId ? copy.actions.changeBase : copy.actions.chooseBase}
+          aria-label={isSpecialResolution ? discoveryVisitBaseAriaLabel(language, place.name, mention.canonicalName || mention.sourceText)
+            : `${baseId ? copy.actions.changeBase : copy.actions.chooseBase}: ${place.name}`} aria-pressed={baseSelected}
+          onClick={(event) => { event.stopPropagation(); onAction({ type: isSpecialResolution ? "choose-visit-base" : "choose-base", intentId: mention.mentionId, baseId: place.id }); }}>
+          {baseSelected ? copy.roles.chosen : isSpecialResolution ? discoveryStayInLabel(language, place.name) : baseId ? copy.actions.changeBase : copy.actions.chooseBase}
         </EasyTButton> : <span className={styles.notBase}>{copy.notBase}</span>
         : place.actionability === "overnight-base" ? <EasyTButton variant={selected ? "secondary" : "primary"} size="small" icon={selected ? Check : Plus}
           aria-label={`${selected ? copy.accessibility.removeFromShortlist : copy.accessibility.addToShortlist}: ${place.name}`}
@@ -90,6 +92,7 @@ const PlaceCard = memo(function PlaceCard({ place, draft, mention, entry, langua
 export function DiscoverySteps({ entry, mention, projection, draft, language, existingPlaceIds = [], onAction, search,
   highlightedPlaceId, onHighlight }: Props) {
   const copy = easytCopy[language].builder.visualDiscovery;
+  const specialResolution = draft.step === "bases" && (entry.kind === "landmark" || entry.kind === "natural-area");
   const [visibleCount, setVisibleCount] = useState(Math.max(6, projection.visiblePlaceIds.length));
   const [desktopMapVisible, setDesktopMapVisible] = useState(false);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
@@ -151,7 +154,6 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
   const visible = allPlaces.slice(0, visibleCount);
   const { baseId } = resolveDiscoveryBaseChoice(draft, mention.mentionId);
   const selectedNames = draft.shortlistIds.map(id => projection.places.find(place => place.id === id)?.name ?? id);
-  const baseName = baseId ? projection.places.find(place => place.id === baseId)?.name ?? baseId : null;
   const registerCard = useCallback((id: string, element: HTMLElement | null) => {
     if (element) cardsRef.current.set(id, element); else cardsRef.current.delete(id);
   }, []);
@@ -218,13 +220,12 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
           : <div className={styles.mapLoadStatus}><MorroviaSectionStatus compact title={copy.status.openingMap}
               detail={copy.status.openingMapDetail} /></div> : null}
       </div>
-      <div className={styles.shortlist} role="complementary" aria-label={copy.accessibility.shortlist}>
+      {!specialResolution ? <div className={styles.shortlist} role="complementary" aria-label={copy.accessibility.shortlist}>
         <div className={styles.shortlistHeading}><strong>{copy.shortlist}</strong><span>{discoveryShortlistCount(language, draft.shortlistIds.length)}</span></div>
         {selectedNames.length ? <ol>{selectedNames.map((name, index) => <li key={draft.shortlistIds[index]}>{name}</li>)}</ol> : null}
-        {draft.step === "bases" && baseName ? <p>{copy.roles.chosen}: {baseName}</p> : null}
-      </div>
+      </div> : null}
       </aside>
     </div>
-    <div className={styles.srAnnouncement} aria-live="polite">{discoveryShortlistCount(language, draft.shortlistIds.length)}</div>
+    {!specialResolution ? <div className={styles.srAnnouncement} aria-live="polite">{discoveryShortlistCount(language, draft.shortlistIds.length)}</div> : null}
   </div>;
 }

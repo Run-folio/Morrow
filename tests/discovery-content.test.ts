@@ -5,6 +5,7 @@ import { discoveryPlaceForId, discoveryPlacesForMention, discoveryPlaceWithinMen
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
 import { resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
 import { routeEditorialPhoto } from "../lib/easyt/route-images.ts";
+import { adaptedDiscoveryPlaces } from "../lib/easyt/discovery-evidence-adapter.ts";
 
 const resolvedMention = (name: string) => {
   const mention = resolvePlaceMentions(name).mentions[0];
@@ -91,6 +92,23 @@ test("derived actionability separates browse, visit and overnight evidence", () 
   for (const place of [...namibia, ...(petra ? [petra] : [])]) {
     if (place.actionability === "overnight-base") assert.ok(place.stayEvidence.length > 0, place.id);
     if (place.actionability === "visit") assert.ok(place.accessEvidence.length > 0, place.id);
+  }
+});
+
+test("route-derived browse-only descriptions do not imply unsupported stay actionability", () => {
+  const namibia = discoveryPlacesForMention(resolvedMention("Namibia"));
+  const expectedBrowseOnly = ["Sossusvlei", "Damaraland", "Etosha National Park", "Waterberg"];
+  for (const name of expectedBrowseOnly) {
+    const place = namibia.find(candidate => candidate.name === name);
+    assert.ok(place, name);
+    assert.equal(place.actionability, "browse-only", `${name} actionability must remain unchanged`);
+    assert.equal(place.stayEvidence.length, 0, `${name} must not gain stay evidence`);
+    assert.doesNotMatch(place.relevance.en, /\b(base|overnight|multi-night)\b|ready to stay|suitable for \d+ nights?/i, name);
+  }
+  assert.match(namibia.find(place => place.id === "damaraland")!.relevance.en, /desert-and-mountain region/i);
+  assert.match(namibia.find(place => place.id === "etosha")!.relevance.en, /access depending on the chosen gate/i);
+  for (const place of adaptedDiscoveryPlaces().filter(candidate => candidate.actionability === "browse-only" && candidate.groupIds.length)) {
+    assert.doesNotMatch(place.relevance.en, /\b(base|overnight|multi-night)\b|ready to stay|suitable for \d+ nights?/i, place.id);
   }
 });
 

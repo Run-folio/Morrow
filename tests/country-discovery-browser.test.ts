@@ -69,6 +69,7 @@ test('provider-selected Japan reaches production Discovery evidence through the 
     const text = await dialog.innerText();
     assert.doesNotMatch(text, /Review choices|Chosen base|Stay here|Split stay|Route and timing checks|No licensed photo yet/);
     assert.equal(await dialog.locator('[data-photo="unavailable"]').count(), 0);
+    assert.equal(await dialog.getByText('Shortlist', { exact: true }).count(), 1, 'country exploration retains its shortlist');
     const kanazawa = dialog.getByRole('heading', { name: 'Kanazawa', exact: true }).locator('..').locator('..');
     assert.equal(await kanazawa.getByRole('button').count(), 1, 'normal place cards expose one visible mutation action');
     const footer = dialog.locator('footer');
@@ -110,6 +111,11 @@ test('provider-selected Africa starts with truthful reviewed route-family direct
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
     await dialog.getByRole('heading', { name: 'Windhoek', exact: true }).waitFor();
     assert.equal(await dialog.getByRole('heading', { name: 'Marrakech', exact: true }).count(), 0);
+    assert.equal(await dialog.getByText('Shortlist', { exact: true }).count(), 1, 'continent place exploration retains its shortlist');
+    const africaText = await dialog.innerText();
+    assert.match(africaText, /A remote desert-and-mountain region between Namibia's major highlights\./);
+    assert.match(africaText, /One of Namibia's major wildlife areas, with access depending on the chosen gate and stay\./);
+    assert.doesNotMatch(africaText, /flexible regional base|multi-night wildlife chapter/);
     const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
       try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
     }));
@@ -155,8 +161,15 @@ for (const [intent, base] of [['Taj Mahal', 'Agra'], ['Lake Atitlán', 'Panajach
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Choose a base', exact: true }).waitFor();
     assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 1);
-    assert.equal(await dialog.getByRole('button', { name: `Visit from base: ${base}`, exact: true }).count(), 1);
-    await dialog.getByRole('button', { name: `Visit from base: ${base}`, exact: true }).click();
+    assert.equal(await dialog.getByRole('button', { name: `Visit from base: ${base}`, exact: true }).count(), 0);
+    assert.equal(await dialog.getByText('Shortlist', { exact: true }).count(), 0);
+    const chooseBase = dialog.getByRole('button', {
+      name: `Use ${base} as the base for visiting ${intent}`,
+      exact: true,
+    });
+    assert.equal(await chooseBase.count(), 1);
+    assert.equal(await chooseBase.textContent(), `Stay in ${base}`);
+    await chooseBase.click();
     await dialog.getByRole('button', { name: 'Add to trip', exact: true }).evaluate((button: HTMLButtonElement) => button.click());
     await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     assert.equal(await view.page.getByRole('heading', { name: 'Review choices', exact: true }).count(), 0);

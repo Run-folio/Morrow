@@ -115,8 +115,9 @@ export function DiscoveryModal({ open, entry, mention, projection, draft, onActi
           <MorroviaSkeleton height={112} radius="card" /><MorroviaSkeleton width="57%" height={22} />
           <MorroviaSkeleton width="82%" height={12} /><MorroviaSkeleton width="42%" height={34} />
         </div>)}</div>
-        <div className={styles.loadingShortlist}><MorroviaSkeleton width="55%" height={20} />
+        {!specialResolution ? <div className={styles.loadingShortlist}><MorroviaSkeleton width="55%" height={20} />
           <MorroviaSkeleton width="35%" height={12} /></div>
+          : null}
       </div>
     </section>
       : <DiscoverySteps entry={entry} mention={mention} projection={projection} draft={effectiveDraft} language={language}

@@ -28,6 +28,14 @@ const validReviewedSource = (source: KnowledgeSource | null | undefined): source
   source?.url?.startsWith("https://") && source.reviewedAt?.match(/^\d{4}-\d{2}-\d{2}$/) && source.supports.trim(),
 );
 
+const browseOnlyRouteCopy: Readonly<Record<string, string>> = {
+  "sacred-valley": "An Andean valley known for landscapes, villages and Inca heritage.",
+  sossusvlei: "A major Namib desert landscape reached by a substantial road journey.",
+  damaraland: "A remote desert-and-mountain region between Namibia's major highlights.",
+  etosha: "One of Namibia's major wildlife areas, with access depending on the chosen gate and stay.",
+  naxos: "A Cycladic island known for villages, beaches and mountain landscapes.",
+};
+
 const catalogByPhrase = new Map<string, PlaceCatalogEntry[]>();
 for (const place of PLACE_CATALOG) {
   for (const phrase of [place.canonicalName, ...place.aliases]) {
@@ -121,6 +129,7 @@ function routeCandidates() {
       && stop.minimumNights > 0;
     const staySource = isExplicitBase ? routeSource(route, stop.country,
       `${route.title} explicitly uses ${stop.name} as an overnight base with a ${stop.minimumNights}-night minimum.`) : null;
+    const supportsOvernightAction = isExplicitBase && ["city", "town", "transport_gateway"].includes(catalog.placeType);
     const candidate = canonicalCandidate({
       catalog,
       country: stop.country,
@@ -128,7 +137,7 @@ function routeCandidates() {
       groupIds: [`route-family:${route.key}`],
       tags: route.interests,
       relevance: {
-        en: stop.reason,
+        en: supportsOvernightAction ? stop.reason : browseOnlyRouteCopy[catalog.canonicalPlaceId] ?? stop.reason,
         es: `${stop.name} forma parte de una ruta revisada de Morrovia.`,
         source: relevanceSource,
       },
