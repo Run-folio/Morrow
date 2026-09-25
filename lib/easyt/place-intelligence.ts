@@ -544,6 +544,31 @@ export type CanonicalPlaceSuggestion = {
   provenance: PlaceProvenance[];
 };
 
+/**
+ * Reconnect an exact provider result to Morrovia's reviewed identity catalogue.
+ * Ambiguous names and contradictory type or containment evidence deliberately
+ * remain provider identities.
+ */
+export function catalogPlaceForProviderIdentity(input: {
+  canonicalName: string;
+  placeType: PlaceType;
+  parentCountries: readonly string[];
+  coordinates?: [number, number];
+}) {
+  const providerCountries = new Set(input.parentCountries.map(normalizePlacePhrase));
+  const matches = findCatalogPlacesByPhrase(input.canonicalName).filter((entry) => {
+    if (!compatibleCoordinatePlaceType(entry.placeType, input.placeType)) return false;
+    if (entry.placeType !== "continent" && entry.parentCountries.length
+      && (providerCountries.size === 0
+        || !entry.parentCountries.some((country) => providerCountries.has(normalizePlacePhrase(country))))) return false;
+    return canonicalPlaceFactsMatch(entry.canonicalPlaceId, {
+      country: input.parentCountries[0],
+      coordinates: input.coordinates,
+    });
+  });
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 const planningAreaPlaceTypes = new Set<PlaceType>([
   "continent", "country", "macro_region", "region", "sub_region", "island", "archipelago",
   "natural_area", "coast", "mountain_range", "valley", "travel_corridor",

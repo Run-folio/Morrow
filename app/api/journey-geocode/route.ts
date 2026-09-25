@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { needsDestinationConfirmation } from "@/lib/easyt/destination-resolution";
 import { createOpenWorldPlaceProvider, searchOpenWorldNearbyBaseSuggestions, searchOpenWorldTravelCandidates } from "@/lib/easyt/open-world-place.server";
-import { placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
+import { catalogPlaceForProviderIdentity, placeCandidateSuitableAsNearbyBase, placeCandidateWithinPlanningParent, type GeographicBounds, type NearbyBaseAnchor, type NearbyBaseSuggestion, type PlaceProviderCandidate, type PlaceType, type PlanningParentConstraint } from "@/lib/easyt/place-intelligence";
 
 function normalise(value: string) {
   return value.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[’']/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -34,8 +34,14 @@ function distanceFrom(nearby: [number, number] | undefined, candidate: PlaceProv
 
 function responseCandidate(candidate: PlaceProviderCandidate) {
   const country = candidate.parentCountries?.[0] ?? "";
+  const catalogPlace = catalogPlaceForProviderIdentity({
+    canonicalName: candidate.canonicalName,
+    placeType: candidate.placeType,
+    parentCountries: candidate.parentCountries ?? [],
+    coordinates: candidate.coordinates,
+  });
   return {
-    canonicalPlaceId: `open-world:${candidate.providerId}`,
+    canonicalPlaceId: catalogPlace?.canonicalPlaceId ?? `open-world:${candidate.providerId}`,
     name: candidate.canonicalName,
     country,
     countryCode: "countryCode" in candidate && typeof candidate.countryCode === "string" ? candidate.countryCode : undefined,

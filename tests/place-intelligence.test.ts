@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  catalogPlaceForProviderIdentity,
   canonicalPlaceFactsMatch,
   canonicalPlaceSuggestionFor,
   canonicalPlaceSuggestionsForQuery,
@@ -17,6 +18,44 @@ import {
 } from "../lib/easyt/place-intelligence.ts";
 import { isDuplicatePlaceIdentity, placeAutocompleteKeyAction } from "../lib/easyt/place-autocomplete.ts";
 import { NIKKO_CANONICAL_FIXTURE } from "./fixtures/prebeta-place-trip-state.ts";
+
+test("exact provider geography reconnects to one reviewed catalogue identity and ambiguous facts fail closed", () => {
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Japan",
+    placeType: "country",
+    parentCountries: ["Japan"],
+    coordinates: [138, 37],
+  })?.canonicalPlaceId, "japan");
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Georgia",
+    placeType: "country",
+    parentCountries: ["Georgia"],
+    coordinates: [43.5, 42],
+  })?.canonicalPlaceId, "georgia-country");
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Africa",
+    placeType: "continent",
+    parentCountries: [],
+    coordinates: [20, 2],
+  })?.canonicalPlaceId, "continent-africa");
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Georgia",
+    placeType: "unknown",
+    parentCountries: [],
+  }), undefined);
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Tokyo",
+    placeType: "city",
+    parentCountries: ["United States"],
+    coordinates: [-95, 35],
+  }), undefined);
+  assert.equal(catalogPlaceForProviderIdentity({
+    canonicalName: "Paris",
+    placeType: "city",
+    parentCountries: [],
+    coordinates: [-95.5555, 33.6609],
+  }), undefined);
+});
 
 test("Nikko suggestions and prompt capture converge on one canonical identity", () => {
   const suggestion = canonicalPlaceSuggestionFor("Nikko", ["Japan"]);

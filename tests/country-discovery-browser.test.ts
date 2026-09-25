@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
-import { createHomeTripDraft, handoffRouteStops } from '../lib/easyt/home-trip-handoff.ts';
+import { createHomeTripDraft, handoffRouteStops, homepageSubmissionFingerprint, projectHomepageInput } from '../lib/easyt/home-trip-handoff.ts';
+import type { CanonicalPlaceSuggestion, PlaceType } from '../lib/easyt/place-intelligence.ts';
+import { emptyHomepageInput } from './fixtures/homepage-dual-entry.ts';
 import { builderBrowserTestsEnabled, renderBuilder } from './helpers/builder-render.ts';
 
 const homeDraft = (destination: string) => {
@@ -12,6 +14,128 @@ const homeDraft = (destination: string) => {
   draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
   return draft;
 };
+
+const providerHomepageDraft = (input: {
+  name: string;
+  country: string;
+  canonicalPlaceId: string;
+  placeType: PlaceType;
+  routability: CanonicalPlaceSuggestion['routability'];
+  coordinates: [number, number];
+}) => {
+  const snapshot = emptyHomepageInput();
+  snapshot.entries = [{ id: `provider-${input.name}`, text: input.name, selection: {
+    canonicalPlaceId: input.canonicalPlaceId,
+    name: input.name,
+    label: input.name,
+    country: input.country,
+    placeType: input.placeType,
+    routability: input.routability,
+    coordinates: input.coordinates,
+    provenance: [{
+      id: input.canonicalPlaceId,
+      label: 'OpenStreetMap contributors',
+      kind: 'provider',
+      supports: 'The homepage place picker returned this typed provider candidate.',
+    }],
+  } }];
+  const result = projectHomepageInput({ snapshot, profile: null, handoffId: `provider-${input.name}` });
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error(`Expected ${input.name} homepage input to project`);
+  return {
+    ...result.draft,
+    homepage: { ...result.draft.homepage!, receipt: {
+      version: 1 as const,
+      ownerId: null,
+      handoffId: `provider-${input.name}`,
+      inputFingerprint: homepageSubmissionFingerprint(result.draft),
+      tripId: `trip-provider-${input.name.toLocaleLowerCase()}`,
+    } },
+  };
+};
+
+test('provider-selected Japan reaches production Discovery evidence through the real homepage handoff', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Japan', country: 'Japan', canonicalPlaceId: 'open-world:nominatim:relation:382313',
+    placeType: 'country', routability: 'planning_area', coordinates: [138, 37],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Tokyo', exact: true }).waitFor();
+    assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('provider-selected Namibia reaches its reviewed Discovery set', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Namibia', country: 'Namibia', canonicalPlaceId: 'open-world:nominatim:relation:195266',
+    placeType: 'country', routability: 'planning_area', coordinates: [17, -22],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Windhoek', exact: true }).waitFor();
+    assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('provider-selected Africa retains reviewed cross-country Discovery evidence', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Africa', country: '', canonicalPlaceId: 'open-world:nominatim:continent:africa',
+    placeType: 'continent', routability: 'planning_area', coordinates: [20, 2],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('provider-selected Australia retains its rich Discovery directions', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Australia', country: 'Australia', canonicalPlaceId: 'open-world:nominatim:relation:80500',
+    placeType: 'country', routability: 'planning_area', coordinates: [134, -25],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Choose a direction', exact: true }).waitFor();
+    assert.ok(await dialog.getByRole('button', { name: /^Explore direction:/ }).count() > 1);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('provider-selected genuine zero remains unresolved without fabricated places', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Eritrea', country: 'Eritrea', canonicalPlaceId: 'open-world:nominatim:relation:296961',
+    placeType: 'country', routability: 'planning_area', coordinates: [39, 15],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('provider-selected actionable Tokyo still skips Discovery', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const draft = providerHomepageDraft({
+    name: 'Tokyo', country: 'Japan', canonicalPlaceId: 'open-world:nominatim:relation:1543125',
+    placeType: 'city', routability: 'direct_destination', coordinates: [139.6917, 35.6895],
+  });
+  const view = await renderBuilder({ query: '?homeDraft=1', draft });
+  try {
+    assert.equal(await view.page.getByRole('dialog').count(), 0);
+    assert.equal(await view.page.getByRole('button', { name: 'Continue shaping your route', exact: true }).count(), 0);
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
 
 test('Tajikistan uses adaptive sparse Discovery, search blocks unreviewed stays, and explicit empty choices survive reload', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Tajikistan') });

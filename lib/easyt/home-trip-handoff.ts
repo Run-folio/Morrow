@@ -1,5 +1,6 @@
 import { captureJourneyBrief, type JourneyCaptureResult } from "./journey-capture.ts";
-import { isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { catalogPlaceForProviderIdentity, isOvernightBaseEligible, normalizePlacePhrase, placeResolutionIssuesForMentions, type CanonicalPlaceSuggestion, type GeographicBounds, type PlaceRoutability, type ResolvedPlaceMention } from "./place-intelligence.ts";
+import { findCatalogPlaceById } from "./place-catalog.ts";
 import type { EasyTTrip, JourneyEndSelection, JourneyEndpointPlace, TripBudgetPreference } from "./trip.ts";
 import type { CuratedRouteKnowledge } from "./curated-route-knowledge.ts";
 import { normalizeTripInterests, tripInterestIds, type TripInterest } from "./trip-interest.ts";
@@ -588,7 +589,27 @@ function homepageEntryRoutability(selection: CanonicalPlaceSuggestion): PlaceRou
 }
 
 function homepageEntryMention(entry: HomepageDestinationEntry, order: number): ResolvedPlaceMention {
-  const selection = entry.selection!;
+  const originalSelection = entry.selection!;
+  const catalogPlace = findCatalogPlaceById(originalSelection.canonicalPlaceId)
+    ? undefined
+    : catalogPlaceForProviderIdentity({
+      canonicalName: originalSelection.name,
+      placeType: originalSelection.placeType,
+      parentCountries: originalSelection.country ? [originalSelection.country] : [],
+      coordinates: originalSelection.coordinates,
+    });
+  const selection: CanonicalPlaceSuggestion = catalogPlace ? {
+    ...originalSelection,
+    canonicalPlaceId: catalogPlace.canonicalPlaceId,
+    name: catalogPlace.canonicalName,
+    country: catalogPlace.parentCountries[0] ?? originalSelection.country,
+    placeType: catalogPlace.placeType,
+    routability: catalogPlace.routability,
+    provenance: [...originalSelection.provenance, {
+      ...catalogPlace.provenance,
+      kind: catalogPlace.provenance.kind === "curated" ? "curated_alias" as const : "canonical" as const,
+    }],
+  } : originalSelection;
   const routability = homepageEntryRoutability(selection);
   const provenance = [...selection.provenance, {
     id: `homepage-entry:${entry.id}`,
