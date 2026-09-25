@@ -29,7 +29,7 @@ import type { JourneyImage } from "@/lib/journey";
 import { mediaImagesFor, PLACE_IMAGE_HINTS } from "@/lib/easyt/itinerary-media";
 import styles from "./trip-builder.module.css";
 import mobilePolish from "./trip-builder-mobile.module.css";
-import { countryDiscoveryCandidatePresentation, easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
+import { countryDiscoveryCandidatePresentation, discoveryPendingDecisionLabel, easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
 import { inspirationByKey } from "@/lib/easyt/inspiration";
 import { publicRouteDetailFor } from "@/lib/easyt/public-route";
 import { routePlannerPayload } from "@/lib/easyt/public-route-handoff";
@@ -1249,6 +1249,15 @@ function TripBuilderDocument() {
       ?? locationChoices.find((item) => item.mention.mentionId === mentionId)?.mention;
     return mention ? [placeDisplayName(mention)] : [];
   });
+  const pendingClarificationLabel = pendingClarificationIds.length === 1
+    ? (() => {
+      const mention = activePlaceMentions.find(item => item.mentionId === pendingClarificationIds[0])
+        ?? locationChoices.find(item => item.mention.mentionId === pendingClarificationIds[0])?.mention;
+      return mention ? discoveryPendingDecisionLabel(language, mention.placeType) : builderClarificationResumeLabel(1);
+    })()
+    : language === "es"
+      ? `${pendingClarificationIds.length} áreas pendientes`
+      : builderClarificationResumeLabel(pendingClarificationIds.length);
 
   useEffect(() => {
     if (!clarificationOpen || !activeClarificationMention || !activeNearbyBaseAnchor) {
@@ -4057,7 +4066,7 @@ function TripBuilderDocument() {
                 {!clarificationOpen && pendingClarificationIds.length > 0 && <BuilderClarificationResume
                   ref={clarificationResumeRef}
                   ariaLabel={language === "es" ? "Ruta por completar" : "Route shaping to finish"}
-                  label={language === "es" ? `${pendingClarificationIds.length} ${pendingClarificationIds.length === 1 ? "área pendiente" : "áreas pendientes"}` : builderClarificationResumeLabel(pendingClarificationIds.length)}
+                  label={pendingClarificationLabel}
                   itemNames={pendingClarificationNames}
                   actionLabel={language === "es" ? "Continuar dando forma a la ruta" : "Continue shaping your route"}
                   onContinue={() => openClarificationSession()}

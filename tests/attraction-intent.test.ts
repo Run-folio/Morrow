@@ -167,6 +167,20 @@ test("provider locality evidence is generic, while multiple plausible gateways a
   assert.deepEqual(inferAttractionVisitSelections([proximityOnly], [proposal[0]!.target]), []);
 });
 
+test("natural-area proximity cannot silently become a confirmed visit relationship", () => {
+  const lake = captureJourneyBrief("Lake Atitlán").mentions.find((mention) => mention.canonicalPlaceId === "lake-atitlan");
+  assert.ok(lake);
+  const unrelatedNearbyStop = {
+    routeStopId: "nearby-town",
+    name: "Nearby Town",
+    country: "Guatemala",
+    coordinates: [...lake.coordinates!] as [number, number],
+  };
+  const ranked = rankAttractionVisitTargets({ ...lake, parentRegionId: undefined }, [unrelatedNearbyStop]);
+  assert.ok((ranked[0]?.score ?? 0) >= 100, "the fixture must exercise the former high-confidence proximity branch");
+  assert.deepEqual(inferAttractionVisitSelections([{ ...lake, parentRegionId: undefined }], [unrelatedNearbyStop]), []);
+});
+
 test("provider failure and an unknown attraction preserve unresolved intent without fabricating a visit relationship", async () => {
   const capture = await captureJourneyBriefWithProvider("Start in Paris, then visit Mystery Temple", {
     id: "offline-provider",

@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { australiaDiscoveryPlaces, AUSTRALIA_DISCOVERY_EVIDENCE } from "../lib/easyt/australia-discovery-content.ts";
-import { discoveryPlaceForId, discoveryPlacesForMention } from "../lib/easyt/discovery-content.ts";
+import { discoveryPlaceForId, discoveryPlacesForMention, discoveryPlaceWithinMention } from "../lib/easyt/discovery-content.ts";
 import { findCatalogPlaceById } from "../lib/easyt/place-catalog.ts";
+import { resolvePlaceMentions } from "../lib/easyt/place-intelligence.ts";
 import { routeEditorialPhoto } from "../lib/easyt/route-images.ts";
+
+const resolvedMention = (name: string) => {
+  const mention = resolvePlaceMentions(name).mentions[0];
+  assert.ok(mention, `${name} should resolve`);
+  return mention;
+};
 
 test("Australia has at least 20 distinct, geographically canonical and visitor-reviewed places", () => {
   const places = australiaDiscoveryPlaces();
@@ -37,8 +44,105 @@ test("the shared gate returns smaller and sparse countries without Australia's c
   }
 });
 
-test("an unsupported catalog identity never becomes discovery content", () => {
-  assert.equal(discoveryPlaceForId("london"), null);
+test("existing reviewed country evidence reaches Adaptive Discovery without country-specific rows", () => {
+  const expected = new Map([
+    ["Namibia", ["windhoek", "swakopmund", "sossusvlei"]],
+    ["Japan", ["tokyo", "kyoto"]],
+    ["Italy", ["rome", "florence"]],
+    ["Madagascar", ["antananarivo", "morondava"]],
+    ["Thailand", ["bangkok", "chiang-mai"]],
+  ]);
+  for (const [country, placeIds] of expected) {
+    const places = discoveryPlacesForMention(resolvedMention(country));
+    assert.ok(places.length > 0, `${country} should expose reviewed existing evidence`);
+    assert.ok(placeIds.some(id => places.some(place => place.id === id)), `${country} should include an expected canonical place`);
+    assert.ok(places.every(place => place.country === country), `${country} must not leak cross-country candidates`);
+    assert.ok(places.every(place => !place.id.startsWith("route-base:")), `${country} must only expose canonical identities`);
+  }
+});
+
+test("continents aggregate the same eligible pool without selecting a default country", () => {
+  const expectations = new Map([
+    ["Africa", { minimum: 2, countries: ["Namibia", "Madagascar", "Tanzania"] }],
+    ["Europe", { minimum: 2, countries: ["Italy"] }],
+    ["Americas", { minimum: 2, countries: ["United States", "Canada", "Mexico", "Guatemala"] }],
+  ]);
+  for (const [name, expected] of expectations) {
+    const places = discoveryPlacesForMention(resolvedMention(name));
+    assert.ok(places.length >= expected.minimum, `${name} should aggregate existing reviewed evidence`);
+    assert.ok(places.some(place => expected.countries.includes(place.country)), `${name} should contain a supported country`);
+  }
+});
+
+test("derived actionability separates browse, visit and overnight evidence", () => {
+  const namibia = discoveryPlacesForMention(resolvedMention("Namibia"));
+  const sossusvlei = namibia.find(place => place.id === "sossusvlei");
+  const windhoek = namibia.find(place => place.id === "windhoek");
+  assert.ok(sossusvlei);
+  assert.equal(sossusvlei.actionability, "browse-only");
+  assert.equal(sossusvlei.stayEvidence.length, 0);
+  assert.ok(windhoek);
+  assert.equal(windhoek.actionability, "overnight-base");
+  assert.ok(windhoek.stayEvidence.length > 0);
+
+  const petra = discoveryPlaceForId("petra");
+  assert.equal(petra?.actionability, "visit");
+  assert.ok((petra?.accessEvidence.length ?? 0) > 0);
+  for (const place of [...namibia, ...(petra ? [petra] : [])]) {
+    if (place.actionability === "overnight-base") assert.ok(place.stayEvidence.length > 0, place.id);
+    if (place.actionability === "visit") assert.ok(place.accessEvidence.length > 0, place.id);
+  }
+});
+
+test("multi-country route evidence is bound to the candidate country before it can authorize a stay", () => {
+  const expectedSources = new Map([
+    ["panajachel", "Guatemala tourism"],
+    ["quito", "Ecuador Travel"],
+    ["hoi-an", "Vietnam tourism"],
+    ["siem-reap", "Cambodia tourism"],
+    ["seville", "Spain Travel"],
+  ]);
+  for (const [placeId, expectedLabel] of expectedSources) {
+    const place = discoveryPlaceForId(placeId);
+    assert.ok(place, placeId);
+    assert.equal(place.relevance.sources[0]?.label, expectedLabel, `${place.name} relevance must use matching country evidence`);
+    if (place.actionability === "overnight-base") {
+      assert.equal(place.stayEvidence[0]?.label, expectedLabel, `${place.name} stay evidence must use matching country evidence`);
+    }
+  }
+});
+
+test("generic containment accepts global places and rejects cross-country leakage", () => {
+  const japan = resolvedMention("Japan");
+  const namibia = resolvedMention("Namibia");
+  const tokyo = discoveryPlaceForId("tokyo");
+  const windhoek = discoveryPlaceForId("windhoek");
+  assert.ok(tokyo && windhoek);
+  assert.equal(discoveryPlaceWithinMention(tokyo.id, japan), true);
+  assert.equal(discoveryPlaceWithinMention(windhoek.id, japan), false);
+  assert.equal(discoveryPlaceWithinMention(tokyo.id, namibia), false);
+  assert.equal(discoveryPlaceWithinMention(windhoek.id, namibia), true);
+});
+
+test("curated Australia remains authoritative over derived evidence", () => {
+  const places = discoveryPlacesForMention(resolvedMention("Australia"));
+  assert.equal(places.length, 24);
+  assert.deepEqual(places.map(place => place.id), australiaDiscoveryPlaces().map(place => place.id));
+  assert.equal(places.find(place => place.id === "port-douglas")?.actionability, "overnight-base");
+  assert.equal(places.find(place => place.id === "kakadu")?.actionability, "visit");
+});
+
+test("existing anchor relationships surface canonical bases while uncatalogued Kruger stays unresolved", () => {
+  const taj = discoveryPlacesForMention(resolvedMention("Taj Mahal"));
+  const atitlan = discoveryPlacesForMention(resolvedMention("Lake Atitlán"));
+  const kruger = discoveryPlacesForMention(resolvedMention("Kruger National Park"));
+  assert.ok(taj.some(place => place.id === "agra" && place.actionability === "overnight-base"));
+  assert.ok(atitlan.some(place => place.id === "panajachel" && place.actionability === "overnight-base"));
+  assert.deepEqual(kruger, []);
+});
+
+test("an unsupported or synthetic identity never becomes discovery content", () => {
+  assert.equal(discoveryPlaceForId("route-base:namibia:windhoek"), null);
   assert.deepEqual(discoveryPlacesForMention({ canonicalPlaceId: "unknown", canonicalName: "Unknown", placeType: "country", parentCountries: [] }), []);
 });
 
@@ -49,8 +153,10 @@ test("continent and macro-region discovery use canonical containment even withou
   assert.ok(southeastAsia.some(place => place.id === "el-nido"));
 });
 
-test("unverified per-place themes and unreachable event sources are not promoted as visitor reasons", () => {
-  assert.equal(discoveryPlaceForId("morondava"), null);
+test("place-specific official knowledge is browseable without promoting unsupported roles or themes", () => {
+  const morondava = discoveryPlaceForId("morondava");
+  assert.equal(morondava?.actionability, "browse-only");
+  assert.equal(morondava?.stayEvidence.length, 0);
   const dushanbe = discoveryPlaceForId("dushanbe");
   assert.ok(dushanbe);
   assert.doesNotMatch(dushanbe.relevance.en, /food/i);

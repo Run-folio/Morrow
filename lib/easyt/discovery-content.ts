@@ -1,6 +1,7 @@
 import { AUSTRALIA_DISCOVERY_EVIDENCE } from "./australia-discovery-content.ts";
+import { adaptedDiscoveryPlaces } from "./discovery-evidence-adapter.ts";
 import { CURATED_DESTINATION_KNOWLEDGE, type KnowledgeSource } from "./destination-knowledge.ts";
-import { findCatalogPlaceById, findCatalogPlacesByPhrase, type PlaceTypeLiteral } from "./place-catalog.ts";
+import { findCatalogPlaceById, PLACE_CATALOG, type PlaceTypeLiteral } from "./place-catalog.ts";
 import { placeCandidateSuitableAsNearbyBase } from "./place-intelligence.ts";
 import { routeEditorialPhoto, routeImageCredit } from "./route-images.ts";
 
@@ -139,31 +140,13 @@ function validCoordinates(coordinates: readonly [number, number] | undefined): c
     && coordinates[1] >= -90 && coordinates[1] <= 90);
 }
 
-// Coarse admin-0/admin-1 envelopes reject misplaced points, not points just
-// across a border. Add a reviewed envelope whenever a new country is curated.
-const geographySource = "https://www.naturalearthdata.com/downloads/10m-cultural-vectors/";
-const geographyReviewedAt = "2026-09-24";
-const geographicEnvelopes: Record<string, {
-  bounds: readonly [number, number, number, number]; sourceUrl: string; reviewedAt: string;
-}> = Object.fromEntries(Object.entries({
-  "New South Wales": [140, -38, 154, -28], Victoria: [140, -39.5, 150, -33.5],
-  Tasmania: [143, -44, 149, -39], "South Australia": [129, -38.5, 142, -25],
-  Queensland: [138, -29, 154, -10], "Northern Territory": [129, -26, 138, -10],
-  "Western Australia": [112, -35.5, 129, -13],
-  Jordan: [34.8, 29, 39.4, 33.5], Tajikistan: [67, 36, 75, 41],
-  Tanzania: [29, -12, 41, -1], Philippines: [116, 4, 127, 22],
-} satisfies Record<string, readonly [number, number, number, number]>).map(([name, bounds]) =>
-  [name, { bounds, sourceUrl: geographySource, reviewedAt: geographyReviewedAt }]));
-
-function validContainment(country: string, group: string, coordinates: readonly [number, number]) {
-  if (!findCatalogPlacesByPhrase(country).some(entry => entry.placeType === "country" && entry.canonicalName === country)) return false;
-  if (country !== "Australia" && group !== country) return false;
-  const expectedGroup = country === "Australia" ? group : country;
-  const evidence = geographicEnvelopes[expectedGroup];
-  if (!evidence?.sourceUrl.startsWith("https://") || !/^\d{4}-\d{2}-\d{2}$/.test(evidence.reviewedAt)) return false;
-  const [west, south, east, north] = evidence.bounds;
-  return coordinates[0] >= west && coordinates[0] <= east
-    && coordinates[1] >= south && coordinates[1] <= north;
+const canonicalCountryNames = new Set(PLACE_CATALOG.filter(place => place.placeType === "country").map(place => place.canonicalName));
+function validContainment(id: string, country: string, group: string) {
+  if (!canonicalCountryNames.has(country)) return false;
+  if (AUSTRALIA_DISCOVERY_EVIDENCE.some(row => row.id === id)) {
+    return country === "Australia" && Boolean(australiaEditorialGroups[group]);
+  }
+  return group === country;
 }
 
 export function discoveryPlaceForId(id: string): DiscoveryPlace | null {
@@ -171,8 +154,9 @@ export function discoveryPlaceForId(id: string): DiscoveryPlace | null {
   if (duplicates.has(id)) return null;
   const row = rows.get(id);
   const catalog = findCatalogPlaceById(id);
-  if (!row || !catalog || !validCoordinates(catalog.coordinates) || catalog.parentCountries.length !== 1
-    || !validContainment(catalog.parentCountries[0]!, row.group, catalog.coordinates)) return null;
+  if (!row) return (adaptedDiscoveryPlaces().find(place => place.id === id) as DiscoveryPlace | undefined) ?? null;
+  if (!catalog || !validCoordinates(catalog.coordinates) || catalog.parentCountries.length !== 1
+    || !validContainment(id, catalog.parentCountries[0]!, row.group)) return null;
   if (!row.relevance.en.trim() || !row.relevance.es.trim()
     || !row.relevance.sources.length || !row.relevance.sources.every(reviewedSource)
     || !row.stayEvidence.every(reviewedSource) || !row.accessEvidence.every(reviewedSource)) return null;
@@ -244,10 +228,15 @@ export function discoveryBaseSuitableForMention(place: DiscoveryPlace, mention: 
 export function discoveryPlacesForMention(mention: DiscoveryMention): DiscoveryPlace[] {
   const anchor = mention.canonicalPlaceId ? findCatalogPlaceById(mention.canonicalPlaceId) : null;
   if (!anchor || anchor.placeType !== mention.placeType) return [];
-  const places = [...indexReviewedRows().rows.keys()].flatMap(id => {
+  const curatedIndex = indexReviewedRows();
+  const curated = [...curatedIndex.rows.keys()].flatMap(id => {
     const place = discoveryPlaceForId(id);
     return place ? [place] : [];
   });
+  // Curated rows are richer and authoritative. Existing reviewed evidence
+  // expands global coverage only where no curated row owns the ID. An invalid
+  // curated row fails closed instead of falling through to weaker evidence.
+  const places = [...curated, ...adaptedDiscoveryPlaces().filter(place => !curatedIndex.rows.has(place.id))] as DiscoveryPlace[];
   if (anchor.placeType === "country") return places.filter(place => place.country === anchor.canonicalName);
   if (anchor.placeType === "continent" || anchor.placeType === "macro_region") {
     return places.filter(place => anchor.parentCountries.includes(place.country));

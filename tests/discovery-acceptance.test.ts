@@ -22,17 +22,17 @@ const entryAndProjection = (name: string) => {
 };
 
 // Catches shell routing by collection size and unsupported travel defaults.
-for (const [name, kind, count] of [
-  ['Tajikistan', 'country', 3], ['Africa', 'continent', 1],
-  ['Taj Mahal', 'landmark', 0], ['Kruger National Park', 'clarification', 0],
-  ['Lake Atitlán', 'natural-area', 0], ['Philippines', 'country', 2], ['Eritrea', 'country', 0],
+for (const [name, kind, count, recommendationCount] of [
+  ['Tajikistan', 'country', 3, 0], ['Africa', 'continent', 15, 0],
+  ['Taj Mahal', 'landmark', 1, 1], ['Kruger National Park', 'clarification', 0, 0],
+  ['Lake Atitlán', 'natural-area', 1, 1], ['Philippines', 'country', 4, 1], ['Eritrea', 'country', 0, 0],
 ] as const) test(`${name}: adaptive entry retains original intent at evidenced depth`, () => {
   const { entry, mention, draft, projection } = entryAndProjection(name);
   assert.equal(entry.kind, kind);
   assert.equal(mention.sourceText, name);
   assert.equal(projection.counts.source, count);
   assert.equal(projection.counts.eligible, count);
-  assert.deepEqual(projection.recommendedIds, []);
+  assert.equal(projection.recommendedIds.length, recommendationCount);
   assert.deepEqual(draft.shortlistIds, []);
   assert.equal(buildDiscoveryReview({ ...fixture(name, []), mention, draft, projection }).canConfirm, false);
 });
@@ -127,10 +127,9 @@ const contractPlace = (id: string, name: string, country: string, coordinates: r
     stayEvidence: actionability === 'overnight-base' ? [source] : [], accessEvidence: [] };
 };
 
-test('Taj Mahal contract links a reused canonical Agra base; production still invents no base', async () => {
+test('Taj Mahal production evidence links a reused canonical Agra base without creating a Taj stop', async () => {
   const input = fixture('Taj Mahal', []);
-  assert.equal(input.projection.places.length, 0);
-  input.projection.places.push(contractPlace('agra', 'Agra', 'India', [78.008, 27.176]));
+  assert.deepEqual(input.projection.places.map(place => place.id), ['agra']);
   input.trip.stops.push({ ...input.trip.stops[0]!, id: 'existing-agra', canonicalPlaceId: 'agra', name: 'Agra', country: 'India', longitude: 78.008, latitude: 27.176, nights: 3 });
   input.draft = reduceDiscoveryDraft(input.draft, { type: 'choose-visit-base', intentId: input.mention.mentionId, baseId: 'agra' });
   const review = buildDiscoveryReview(input);
@@ -163,15 +162,19 @@ test('Kruger park, camp and gateway remain distinct; equal coordinates authorize
   }
 });
 
-test('Lake Atitlán preserves stay versus visit base choices and blocks an unsupported relationship', () => {
+test('Lake Atitlán preserves stay versus visit semantics and accepts its reviewed Panajachel relationship', () => {
   const input = fixture('Lake Atitlán', []);
+  assert.deepEqual(input.projection.places.map(place => place.id), ['panajachel']);
   const stay = reduceDiscoveryDraft(input.draft, { type: 'choose-base', intentId: input.mention.mentionId, baseId: 'panajachel' });
   assert.equal(stay.baseByIntentId[input.mention.mentionId], 'panajachel');
   const visit = reduceDiscoveryDraft(stay, { type: 'choose-visit-base', intentId: input.mention.mentionId, baseId: 'panajachel' });
   assert.deepEqual(visit.baseByIntentId, {}); assert.equal(visit.visitBaseByIntentId[input.mention.mentionId], 'panajachel');
   const review = buildDiscoveryReview({ ...input, draft: visit });
-  assert.equal(review.originalIntent, 'Lake Atitlán'); assert.equal(review.canConfirm, false);
-  assert.deepEqual(review.newBaseIds, []); assert.deepEqual(review.visits, []);
+  assert.equal(review.originalIntent, 'Lake Atitlán'); assert.equal(review.canConfirm, true);
+  assert.deepEqual(review.newBaseIds, ['panajachel']);
+  assert.equal(review.visits[0]?.baseId, 'panajachel');
+  assert.equal(review.visits[0]?.proposal.relationshipType, 'visit-from-base');
+  assert.ok(!review.bases.some(base => base.id === 'lake-atitlan'));
 });
 
 test('partial checkpoint failure → reload → retry → double confirm preserves fixed anchors and manual nights', async () => {

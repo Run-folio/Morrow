@@ -191,6 +191,7 @@ export type AttractionVisitCandidate = {
   confidence: PlanningConfidence;
   score: number;
   reason: string;
+  evidenceKind: "explicit-route" | "canonical-parent" | "provider-locality" | "canonical-containment" | "proximity";
 };
 
 /** Canonical explicit visit selection, shared by Builder confirmation and retry checks.
@@ -974,19 +975,36 @@ function attractionVisitCandidate(
   const targetParent = normalizePlacePhrase(targetCatalog?.parentRegionId ?? "");
   let score = 0;
   let relationshipType: AttractionVisitCandidate["relationshipType"] = "visit-from-base";
+  let evidenceKind: AttractionVisitCandidate["evidenceKind"] = "proximity";
   let reason = "";
 
-  if (anchorParent && (anchorParent === targetIdentity || anchorParent === targetName)) {
+  const explicitRouteRelationship = routeFamilies.find(route => route.reviewedAt
+    && route.sourceLinks.some(source => source.url.startsWith("https://"))
+    && route.bases.some(base => normalizePlacePhrase(base) === targetName)
+    && route.stops.some(stop => normalizePlacePhrase(stop.name) === targetName
+      && mention.parentCountries.includes(stop.country))
+    && route.visitIntents?.some(visit => normalizePlacePhrase(visit.name) === normalizePlacePhrase(mention.canonicalName)
+      && normalizePlacePhrase(visit.base) === targetName));
+
+  if (explicitRouteRelationship) {
+    score = 130;
+    relationshipType = "visit-from-base";
+    evidenceKind = "explicit-route";
+    reason = `${explicitRouteRelationship.title} explicitly reviews ${target.name} as the base for ${mention.canonicalName}.`;
+  } else if (anchorParent && (anchorParent === targetIdentity || anchorParent === targetName)) {
     score = 125;
     relationshipType = "within-stop";
+    evidenceKind = "canonical-parent";
     reason = "The attraction's canonical parent is already an overnight stop.";
   } else if (accessPlace && accessPlace === targetName) {
     score = 120;
     relationshipType = "within-stop";
+    evidenceKind = "provider-locality";
     reason = "Provider-backed locality evidence places the attraction at this existing stop.";
   } else if (anchorParent && targetParent && anchorParent === targetParent) {
     score = 110;
     relationshipType = "visit-from-base";
+    evidenceKind = "canonical-containment";
     reason = "The attraction and overnight stop share reviewed canonical containment.";
   } else if (mention.coordinates && target.coordinates) {
     const distance = coordinateDistanceKm(mention.coordinates, target.coordinates);
@@ -1011,6 +1029,7 @@ function attractionVisitCandidate(
     mentionId: mention.mentionId,
     target,
     relationshipType,
+    evidenceKind,
     score,
     reason,
     confidence: createPlanningConfidence({
@@ -1032,7 +1051,8 @@ export function rankAttractionVisitTargets(
   mention: ResolvedPlaceMention,
   targets: readonly AttractionVisitTarget[],
 ) {
-  if (mention.status !== "resolved" || mention.routability !== "anchor_or_poi" || mention.placeType !== "landmark") return [];
+  if (mention.status !== "resolved" || !["anchor_or_poi", "needs_base_selection"].includes(mention.routability)
+    || !["landmark", "natural_area"].includes(mention.placeType)) return [];
   return targets
     .flatMap((target) => attractionVisitCandidate(mention, target) ?? [])
     .sort((left, right) => right.score - left.score || left.target.name.localeCompare(right.target.name));
@@ -1057,7 +1077,8 @@ export function inferAttractionVisitSelections(
   const byMention = new Map(retained.filter(selection => !multiPlaceMentionIds.has(selection.mentionId))
     .map((selection) => [selection.mentionId, selection]));
   for (const mention of mentions) {
-    if (mention.status !== "resolved" || mention.routability !== "anchor_or_poi" || mention.placeType !== "landmark") continue;
+    if (mention.status !== "resolved" || !["anchor_or_poi", "needs_base_selection"].includes(mention.routability)
+      || !["landmark", "natural_area"].includes(mention.placeType)) continue;
     const existing = byMention.get(mention.mentionId);
     if (existing?.routeStopId && targetIds.has(existing.routeStopId)) {
       if (existing.kind === "base") {
@@ -1077,6 +1098,8 @@ export function inferAttractionVisitSelections(
     const best = ranked[0];
     const next = ranked[1];
     if (!best || best.score < 100 || (next && best.score - next.score < 15)) continue;
+    if (mention.placeType === "natural_area"
+      && !["explicit-route", "canonical-parent", "canonical-containment"].includes(best.evidenceKind)) continue;
     const targetCatalog = best.target.canonicalPlaceId ? findCatalogPlaceById(best.target.canonicalPlaceId) : undefined;
     const provenance: PlaceProvenance = {
       id: `attraction-visit:${mention.mentionId}:${best.target.routeStopId}`,

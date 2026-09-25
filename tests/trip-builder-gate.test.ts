@@ -468,7 +468,11 @@ test("Build requires explicit continuation without adding unresolved intent and 
     assert.equal(await unresolvedRow.getByText("Kruger National Park", { exact: true }).count(), 1);
     assert.equal(await unresolvedRow.getByRole("link", { name: "Choose a nearby base", exact: true }).count(), 1);
     assert.equal(await view.page.getByText("Choose where to stay for Kruger National Park before Morrovia adds it to the route.", { exact: true }).count(), 0);
-    const saved = await recoveryTrip();
+    const saved = await view.page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .map((key) => JSON.parse(localStorage.getItem(key)!))
+      .find((record) => record.trip?.brief?.structuredBrief?.placeIssues
+        ?.some((issue: { mentionId: string }) => issue.mentionId === "place-kruger-national-park"))?.trip) as EasyTTrip;
     assert.equal(saved.brief.structuredBrief?.placeIssues?.some((issue) => issue.mentionId === "place-kruger-national-park"), true);
     assert.equal(saved.stops.some((stop) => stop.canonicalPlaceId === "fixture:kruger-national-park"), false);
     await view.page.reload();
@@ -499,7 +503,7 @@ test("Overview recovery deep-link opens the exact retained Builder mention", { s
   } finally { await view.close(); }
 });
 
-test("post-Build Kruger recovery adds a canonical base before the Overview reminder disappears", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("post-Build Kruger recovery preserves the unresolved reminder until canonical evidence exists", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const view = await renderBuilder({
     query: "?homeDraft=1",
     draft: krugerAttentionDraft(),
@@ -525,29 +529,30 @@ test("post-Build Kruger recovery adds a canonical base before the Overview remin
     const recoveryLink = view.page.getByRole("link", { name: "Choose a nearby base", exact: true });
     await recoveryLink.waitFor({ timeout: 10_000 });
     await recoveryLink.click();
-    const suggestion = view.page.getByRole("dialog").getByRole("button", { name: /Hazyview/ }).first();
-    try { await suggestion.waitFor({ timeout: 5_000 }); } catch (error) {
-      throw new Error(`Post-Build recovery did not render the retained mention's nearby base:\n${await view.page.locator("body").innerText()}`, { cause: error });
-    }
-    await suggestion.click();
-    await view.page.getByRole("button", { name: /Finish shaping route|Done with Kruger National Park/ }).click();
-    await view.page.waitForFunction(() => Object.keys(localStorage)
-      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
-      .map((key) => JSON.parse(localStorage.getItem(key)!))
-      .some((record) => record.trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === "open-world:fixture:hazyview")));
+    const dialog = view.page.getByRole("dialog");
+    await dialog.getByText("We don't have a reviewed base here yet.", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole("button", { name: /Hazyview/ }).count(), 0);
+    await dialog.getByRole("button", { name: "Finish later", exact: true }).click();
     const savedTripId = await view.page.evaluate(() => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
       .map((key) => JSON.parse(localStorage.getItem(key)!))
-      .find((record) => record.trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === "open-world:fixture:hazyview"))?.trip?.id) as string;
+      .find((record) => record.trip?.brief?.structuredBrief?.placeIssues
+        ?.some((issue: { mentionId: string }) => issue.mentionId === "place-kruger-national-park"))?.trip?.id) as string;
     assert.ok(savedTripId);
     await view.page.goto(new URL(`/journey/${encodeURIComponent(savedTripId)}`, view.page.url()).href);
     await view.page.getByLabel("Trip overview").waitFor();
-    assert.equal(await view.page.getByLabel("Places not included in this route").count(), 0);
+    assert.equal(await view.page.getByLabel("Places not included in this route").getByText("Kruger National Park", { exact: true }).count(), 1);
+    const saved = await view.page.evaluate(() => Object.keys(localStorage)
+      .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
+      .map((key) => JSON.parse(localStorage.getItem(key)!))
+      .find((record) => record.trip?.brief?.structuredBrief?.placeIssues
+        ?.some((issue: { mentionId: string }) => issue.mentionId === "place-kruger-national-park"))?.trip) as EasyTTrip;
+    assert.equal(saved.stops.some((stop) => stop.canonicalPlaceId === "open-world:fixture:hazyview"), false);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
 
-test("choosing a provider-backed Kruger base creates the canonical stop through the existing flow", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
+test("a provider-backed nearby place cannot bypass Kruger's missing canonical identity", { skip: !builderBrowserTestsEnabled, timeout: 30_000 }, async () => {
   const view = await renderBuilder({
     query: "?homeDraft=1",
     draft: krugerAttentionDraft(),
@@ -567,24 +572,17 @@ test("choosing a provider-backed Kruger base creates the canonical stop through 
     }],
   });
   try {
-    const suggestion = view.page.getByRole("button", { name: /Hazyview/ });
-    try { await suggestion.waitFor({ timeout: 5_000 }); } catch (error) {
-      throw new Error(`Nearby suggestion did not render:\n${await view.page.locator("body").innerText()}`, { cause: error });
-    }
-    await suggestion.click({ timeout: 5_000 });
-    const finish = view.page.getByRole("button", { name: "Finish shaping route", exact: true });
-    try { await finish.waitFor({ timeout: 5_000 }); } catch (error) {
-      throw new Error(`Base selection did not become completable:\n${await view.page.locator("body").innerText()}`, { cause: error });
-    }
-    await finish.click({ timeout: 5_000 });
-    await view.page.waitForFunction(() => Object.keys(localStorage)
+    const dialog = view.page.getByRole("dialog");
+    await dialog.getByText("We don't have a reviewed base here yet.", { exact: true }).waitFor();
+    assert.equal(await dialog.getByRole("button", { name: /Hazyview/ }).count(), 0);
+    assert.equal(await dialog.getByRole("combobox", { name: /Search for somewhere specific: Kruger National Park/ }).count(), 1);
+    await dialog.getByRole("button", { name: "Finish later", exact: true }).click();
+    await view.page.getByRole("button", { name: /Build trip/ }).click();
+    assert.equal(await view.page.getByRole("button", { name: "Continue without adding Kruger National Park", exact: true }).count(), 1);
+    const documents = await view.page.evaluate(() => Object.keys(localStorage)
       .filter((key) => key.startsWith("easyt:trip-recovery:v2:"))
-      .some((key) => {
-        const trip = JSON.parse(localStorage.getItem(key)!).trip;
-        return trip?.stops?.some((stop: { canonicalPlaceId?: string }) => stop.canonicalPlaceId === "open-world:fixture:hazyview")
-          && trip?.brief?.structuredBrief?.placeSelections?.some((selection: { mentionId: string; selectedCanonicalPlaceId: string }) => selection.mentionId === "place-kruger-national-park"
-            && selection.selectedCanonicalPlaceId === "open-world:fixture:hazyview");
-      }), undefined, { timeout: 5_000 });
+      .map((key) => JSON.parse(localStorage.getItem(key)!)));
+    assert.equal(documents.some((record: { trip?: EasyTTrip }) => record.trip?.stops?.some((stop) => stop.canonicalPlaceId === "open-world:fixture:hazyview")), false);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
@@ -596,9 +594,9 @@ test("provider unavailability never makes an unverified model base actionable", 
     nearbyStatus: "unavailable",
   });
   try {
-    await view.page.getByText(/Nearby place discovery is temporarily unavailable/).waitFor({ timeout: 5_000 });
+    await view.page.getByText("We don't have a reviewed base here yet.", { exact: true }).waitFor({ timeout: 5_000 });
     assert.equal(await view.page.getByRole("button", { name: /Hoedspruit/ }).count(), 0);
-    assert.equal(await view.page.getByRole("combobox", { name: "Have somewhere else in mind?" }).count(), 1);
+    assert.equal(await view.page.getByRole("combobox", { name: /Search for somewhere specific: Kruger National Park/ }).count(), 1);
     await view.page.getByRole("button", { name: "Finish later", exact: true }).click();
     const build = view.page.getByRole("button", { name: /Build trip/ });
     assert.equal(await build.isDisabled(), false);

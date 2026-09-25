@@ -250,6 +250,13 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
     {(canonicalReview ? canonicalReview.blockedIds.length > 0 : review.hasUnresolvedChoices) ? <MorroviaStatusBanner tone="warning" title={copy.reviewStatus.resolveTitle} detail={copy.reviewStatus.resolveDetail} /> : null}
   </div>;
 
+  if (projection.places.length === 0) return <div className={styles.emptyState} data-discovery-state="empty">
+    <MorroviaStatusBanner
+      title={draft.step === "bases" ? copy.emptyBase : copy.empty}
+      detail={draft.step === "bases" ? copy.emptyBaseDetail : copy.emptyDetail} />
+    {search ? <div className={styles.search}>{search}</div> : null}
+  </div>;
+
   return <div className={styles.step} data-discovery-step={draft.step}>
     <p className={styles.stepHelper}>{draft.step === "bases" ? copy.baseIntro : copy.placesIntro}</p>
     {!mapUnavailable && allPlaces.length ? <EasyTButton ref={mapToggleRef} variant="secondary" size="small" className={styles.mobileMapButton}
@@ -260,10 +267,7 @@ export function DiscoverySteps({ entry, mention, projection, draft, language, ex
         } else setMobileMapOpen(true);
       }}>{mobileMapOpen ? copy.actions.showCards : copy.actions.showMap}</EasyTButton> : null}
     {mapUnavailable ? <MorroviaStatusBanner title={copy.status.mapUnavailable} detail={copy.status.mapUnavailableDetail} /> : null}
-    {projection.places.length === 0 ? <MorroviaStatusBanner
-      title={draft.step === "bases" ? copy.emptyBase : copy.empty}
-      detail={draft.step === "bases" ? copy.emptyBaseDetail : copy.emptyDetail} />
-      : projection.places.length <= 2 ? <MorroviaStatusBanner title={copy.sparse} detail={copy.sparseDetail} /> : null}
+    {projection.places.length <= 2 ? <MorroviaStatusBanner title={copy.sparse} detail={copy.sparseDetail} /> : null}
     <div className={styles.contentGrid}>
       <div className={styles.placeColumn}>
         <div className={styles.placeGrid}>{visible.map(place => <PlaceCard key={place.id} place={place} draft={draft} mention={mention}

@@ -47,13 +47,13 @@ test('Tajikistan uses adaptive sparse Discovery, search blocks unreviewed stays,
   } finally { await view.close(); }
 });
 
-test('Africa retains its continent intent and sparse reviewed place without a default country or overnight stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+test('Africa aggregates reviewed places while retaining continent intent without a default country or overnight stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
   const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Africa') });
   await view.page.setViewportSize({ width: 390, height: 844 });
   try {
     const dialog = view.page.getByRole('dialog');
     await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
-    assert.equal(await dialog.getByRole('heading', { name: 'Arusha', exact: true }).count(), 1);
+    assert.ok(await dialog.locator('[data-discovery-card="true"]').count() > 1);
     assert.equal(await dialog.getByRole('button', { name: /^Explore direction:/ }).count(), 0);
     await dialog.getByRole('button', { name: /^Add to shortlist:/ }).first().click();
     await dialog.getByRole('button', { name: /^Remove from shortlist:/ }).first().click();
@@ -90,6 +90,49 @@ test('Spanish sparse Discovery localizes controls and evidence without changing 
     assert.equal(await dialog.getByRole('button', { name: 'Confirmar lugares existentes', exact: true }).isDisabled(), true);
     await dialog.getByRole('button', { name: 'Atrás', exact: true }).click();
     await dialog.getByRole('heading', { name: 'Explora lugares', exact: true }).waitFor();
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+for (const [destination, expectedPlace] of [
+  ['Namibia', 'Windhoek'], ['Japan', 'Tokyo'], ['Italy', 'Rome'], ['Madagascar', 'Antananarivo'], ['Thailand', 'Bangkok'],
+] as const) test(`${destination} production evidence reaches Adaptive Discovery`, { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft(destination) });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: expectedPlace, exact: true }).waitFor();
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('genuine zero content keeps unresolved intent, renders no empty rails, and creates no stop', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Eritrea') });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByText("We don't have reviewed places here yet.", { exact: true }).waitFor();
+    assert.equal(await dialog.locator('[data-discovery-card="true"]').count(), 0);
+    assert.equal(await dialog.locator('[data-discovery-map]').count(), 0);
+    assert.equal(await dialog.getByText('Shortlist', { exact: true }).count(), 0);
+    await dialog.getByRole('button', { name: 'Finish later', exact: true }).click();
+    await view.page.getByText('Places still to choose', { exact: true }).waitFor();
+    const trips = await view.page.evaluate(() => Object.values(localStorage).flatMap(raw => {
+      try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
+    }));
+    assert.ok(trips.length > 0);
+    assert.ok(trips.every((trip: { stops: unknown[] }) => trip.stops.length === 0));
+    assert.ok(trips.every((trip: { brief: { structuredBrief: { placeMentions: Array<{ canonicalName: string }> } } }) =>
+      trip.brief.structuredBrief.placeMentions.some(mention => mention.canonicalName === 'Eritrea')));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Spanish genuine zero content and pending intent remain localized', { skip: !builderBrowserTestsEnabled, timeout: 45_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Eritrea'), language: 'es' });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByText('Aún no tenemos lugares revisados aquí.', { exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Terminar más tarde', exact: true }).click();
+    await view.page.getByText('Lugares aún por elegir', { exact: true }).waitFor();
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });

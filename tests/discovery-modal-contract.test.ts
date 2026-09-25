@@ -79,6 +79,29 @@ test("the adaptive shell has an honest loading and sparse recovery presentation"
   assert.match(stories, /AustraliaSaveError/);
 });
 
+test("a genuine zero-result entry renders only the intentional search state", () => {
+  const steps = read("components/easyt/discovery-steps.tsx");
+  const copy = read("lib/easyt/i18n.ts");
+  assert.match(steps, /if \(projection\.places\.length === 0\) return/);
+  assert.match(steps, /data-discovery-state="empty"/);
+  assert.match(steps, /copy\.empty/);
+  assert.match(steps, /\{search \? <div className=\{styles\.search\}>\{search\}<\/div> : null\}/);
+  assert.match(copy, /We don't have reviewed places here yet\./);
+  assert.match(copy, /Aún no tenemos lugares revisados aquí\./);
+});
+
+test("pending unresolved intent uses semantic EN and ES labels", () => {
+  const builder = read("app/journey/new/trip-builder.tsx");
+  const copy = read("lib/easyt/i18n.ts");
+  assert.match(builder, /discoveryPendingDecisionLabel\(language, mention\.placeType\)/);
+  assert.match(copy, /Places still to choose/);
+  assert.match(copy, /Base still to choose/);
+  assert.match(copy, /Stay or base still to choose/);
+  assert.match(copy, /Lugares aún por elegir/);
+  assert.match(copy, /Base aún por elegir/);
+  assert.match(copy, /Estancia o base aún por elegir/);
+});
+
 test("visual Discovery uses the modal title and secondary geography without duplicate step headings", () => {
   const modal = read("components/easyt/discovery-modal.tsx");
   const steps = read("components/easyt/discovery-steps.tsx");
