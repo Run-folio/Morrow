@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("Overview keeps unresolved stays in the canonical Stay workspace instead of an affiliate hero", () => {
   const source = readFileSync("components/easyt/trip-overview-workspace.tsx", "utf8");
-  assert.match(source, /mapWorkspaceHref\(trip\.id, accommodation\.stops\.find[\s\S]*"stay"\)/);
+  assert.match(source, /mapWorkspaceHref\(trip\.id, accommodation\.stops\.find[\s\S]*"stay"[\s\S]*tripWorkspaceHref\(trip\.id\)\)/);
   assert.match(source, /label: "View stays"/);
   assert.doesNotMatch(source, /getBookingAction|missingStayAction|journey-accommodation-search/);
 });

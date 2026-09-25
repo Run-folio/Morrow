@@ -278,7 +278,7 @@ export default function TripModeClient() {
   const bookings = trip?.brief.bookings ?? [];
   const dayNotes = tripDay && trip ? trip.brief.dayNotes?.[tripDay.dayNumber] ?? [] : [];
   const pins = tripDay && trip ? trip.brief.mapPins?.filter((pin) => pin.dayNumber === tripDay.dayNumber) ?? [] : [];
-  const tripHref = trip ? mapWorkspaceHref(trip.id) : "/journey/new";
+  const tripHref = trip ? mapWorkspaceHref(trip.id, null, "plan", null, null, null, `/journey/trip?trip=${encodeURIComponent(trip.id)}`) : "/journey/new";
   const syncAction = tripEditorSyncAction({
     hasCloudConflict: Boolean(syncConflict),
     hasDeviceRecoveryIssue: localWriteIssue === "existing-recovery" || localWriteIssue === "preserved-recovery",

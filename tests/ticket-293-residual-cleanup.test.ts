@@ -9,7 +9,7 @@ test("guest persistence has one visible owner and a secondary promotion action",
   const shell = read("components/easyt/trip-shell-client.tsx");
 
   assert.match(resolver, /title="Saved on this device"[\s\S]*variant="secondary"[\s\S]*>Save this trip<\/EasyTLinkButton>/);
-  assert.match(shell, /trip\.ownerId \? <MorroviaSaveStatus state=\{mutation\.saveState\} \/> : null/);
+  assert.match(shell, /trip\.ownerId && mutation\.saveState !== "idle" \? <MorroviaSaveStatus state=\{mutation\.saveState\} \/> : null/);
   assert.doesNotMatch(shell, /<div className=\{styles\.headerActions\}>\s*<MorroviaSaveStatus state=\{mutation\.saveState\} \/>/);
 });
 

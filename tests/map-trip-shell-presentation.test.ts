@@ -78,7 +78,7 @@ test("the same Map workspace can expand above page chrome without a second map",
   assert.doesNotMatch(tripMapWorkspaceStylesSource, /\.wideMap:has\(\[data-map-expanded="true"\]\)\s*\{[^}]*position:\s*fixed/);
   assert.match(mapStylesSource, /\.shellPlannerExpanded/);
   assert.match(mapStylesSource, /\.canonicalPlanner\.shellPlannerExpanded\{[^}]*position:fixed/);
-  assert.match(plannerStripStylesSource, /@media\(max-width:980px\)[\s\S]*?\.integrated \.fullTrip\[data-map-expand-control\]\{display:none/);
+  assert.match(plannerStripStylesSource, /@media\(max-width:980px\)[\s\S]*?\.integrated \.fullTrip\[data-map-expand-control\]:not\(\[aria-pressed="true"\]\)\{display:none/);
   assert.equal((mapWorkspaceSource.match(/<JourneyPlannerMap/g) ?? []).length, 1);
 });
 
@@ -382,19 +382,37 @@ test("Map workspace navigation contains no legacy planner destinations", () => {
   assert.match(mapWorkspaceSource, /mapWorkspaceHref\(/);
 });
 
-test("TripShell keeps Overview canonical and exposes one first-class Journey destination", () => {
+test("TripShell keeps five planning tabs and moves Route into header actions", () => {
   const overview = tripShellSource.indexOf('{ id: "overview", label: "Overview", icon: House, suffix: "" }');
-  const journey = tripShellSource.indexOf('{ id: "journey", label: "Journey", icon: Route, href: personalRouteHref }');
-  const map = tripShellSource.indexOf('{ id: "map", label: "Map"');
   const itinerary = tripShellSource.indexOf('{ id: "itinerary", label: "Itinerary"');
   const explore = tripShellSource.indexOf('{ id: "explore", label: "Explore"');
   const stay = tripShellSource.indexOf('{ id: "stay", label: "Stay"');
   const transport = tripShellSource.indexOf('{ id: "transport", label: "Transport"');
 
   assert.ok(overview >= 0);
-  assert.ok(overview < journey && journey < map && map < itinerary && itinerary < explore && explore < stay && stay < transport);
-  assert.equal((tripShellSource.match(/id: "journey"/g) ?? []).length, 1);
-  assert.match(tripShellSource, /"href" in view \? view\.href\(tripId\)/);
+  assert.ok(overview < itinerary && itinerary < explore && explore < stay && stay < transport);
+  assert.doesNotMatch(tripShellSource, /id: "journey"|id: "map"/);
+  assert.match(tripShellSource, /href=\{personalRouteHref\(trip\.id\)\}[\s\S]*>Route<\/EasyTLinkButton>[\s\S]*aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>/);
+  assert.match(tripShellSource, /trip\.ownerId && mutation\.saveState !== "idle" \? <MorroviaSaveStatus state=\{mutation\.saveState\} \/> : null/);
   assert.doesNotMatch(tripShellSource, /id: "prep"|label: "Prep"|suffix: "\/prep"/);
   assert.match(tripShellSource, /: "overview";/);
+});
+
+test("Map is a focused route with shared planner ownership and an explicit return action", () => {
+  const shell = readFileSync(new URL("../components/easyt/trip-shell.tsx", import.meta.url), "utf8");
+  const map = readFileSync(new URL("../components/easyt/trip-map-workspace.tsx", import.meta.url), "utf8");
+  assert.match(shell, /TripShellChrome/);
+  assert.match(map, /returnTo.*searchParams\.get\("returnTo"\)/);
+  assert.match(map, /JourneyMapPlannerWorkspace trip=\{trip\} presentation="shell"/);
+  assert.match(map, /expandedReturnHref=\{returnTo\}/);
+  assert.doesNotMatch(map, /returnBar|Back to trip/);
+  assert.match(mapWorkspaceSource, /useState\(Boolean\(expandedReturnHref\)\)/);
+  assert.match(mapWorkspaceSource, /router\.replace\(expandedReturnHref\)/);
+  assert.doesNotMatch(mapWorkspaceSource, /router\.push\(expandedReturnHref\)/);
+});
+
+test("expanded Map exposes its existing return control at touch widths", () => {
+  const strip = readFileSync(new URL("../components/journey-planner-strip.module.css", import.meta.url), "utf8");
+  assert.match(strip, /@media\(max-width:980px\)\{[\s\S]*?\.integrated \.fullTrip\[data-map-expand-control\]:not\(\[aria-pressed="true"\]\)\{display:none\}/);
+  assert.match(mapWorkspaceSource, /fullTripLabel=\{expandedReturnHref \? "Back to trip"/);
 });

@@ -47,7 +47,7 @@ import type { ItineraryDiscoveryPlace } from "@/lib/easyt/itinerary-day-context"
 import type { JourneyLocalPlace } from "@/lib/easyt/local-place";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { removeItineraryIdea, saveItineraryIdea, scheduleItineraryIdea, validIdeaDays } from "@/lib/easyt/itinerary-ideas";
-import { mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, mapWorkspaceHref, itineraryWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { routeTimelineStopsForTrip } from "@/lib/easyt/route-timeline";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
@@ -529,6 +529,7 @@ export default function TripExploreWorkspace({
             mapDayNumber,
             mapSelectionId,
             mapResultHandoffForExploreResult(selectedResult, mapSelectionId, mapDayNumber),
+            exploreWorkspaceHref(workingTrip.id, selectedResult.stopId, chosenDay),
           )
           : null;
         return <ItineraryItemDetail

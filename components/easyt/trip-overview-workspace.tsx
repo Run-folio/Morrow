@@ -34,6 +34,7 @@ import {
   itineraryWorkspaceHref,
   mapWorkspaceHref,
   tripBuilderHref,
+  tripWorkspaceHref,
 } from "@/lib/easyt/trip-workspace-links";
 import styles from "./trip-overview-workspace.module.css";
 import { endEndpointForTrip, originEndpointForTrip } from "@/lib/easyt/trip-legs";
@@ -96,7 +97,7 @@ type TripOverviewWorkspaceProps = {
 type ReadinessTileAction = { href: string; label: string };
 
 function routeIssueHref(tripId: string) {
-  return mapWorkspaceHref(tripId);
+  return mapWorkspaceHref(tripId, null, "plan", null, null, null, tripWorkspaceHref(tripId));
 }
 
 function recommendationHref(trip: EasyTTrip, recommendation: TripRecommendation) {
@@ -361,10 +362,10 @@ export default function TripOverviewWorkspace({
     if (category.id === "itinerary") return { href: `/journey/${encodeURIComponent(trip.id)}/itinerary`, label: "Open itinerary" };
     if (category.id === "accommodation" && !accommodation.stops.length) return null;
     if (category.id === "accommodation") return {
-      href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay"),
+      href: mapWorkspaceHref(trip.id, accommodation.stops.find((stop) => !stayBookingForStop(trip, stop))?.id, "stay", null, null, null, tripWorkspaceHref(trip.id)),
       label: "View stays",
     };
-    if (category.id === "transport") return { href: mapWorkspaceHref(trip.id), label: "Review transport" };
+    if (category.id === "transport") return { href: routeIssueHref(trip.id), label: "Review transport" };
     return null;
   };
 
@@ -380,7 +381,7 @@ export default function TripOverviewWorkspace({
             </div>
             <div className={styles.routeActions}>
               <EasyTLinkButton href={primaryAction.href} size="small">{primaryAction.label}<ArrowRight aria-hidden="true" /></EasyTLinkButton>
-              <EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/map`} size="small" variant="secondary" icon={Map}>Explore on map</EasyTLinkButton>
+              <EasyTLinkButton href={routeIssueHref(trip.id)} size="small" variant="secondary" icon={Map}>Explore on map</EasyTLinkButton>
               <EasyTLinkButton href={personalRouteHref(trip.id)} size="small" variant="secondary" icon={Route}>View journey</EasyTLinkButton>
               <EasyTLinkButton href={tripBuilderHref(trip.id, trip.ownerId)} size="small" variant="quiet" icon={SlidersHorizontal}>Adjust route</EasyTLinkButton>
             </div>
@@ -389,7 +390,7 @@ export default function TripOverviewWorkspace({
             <div className={styles.routeJourney}>
               {orderedStops.length ? <ol className={styles.routeList} aria-label={`Trip route from ${trip.brief.origin}${journeyEnd ? ` to ${journeyEnd.name}` : ""}`} tabIndex={0}>
                 {[
-                  { id: origin.id, name: origin.name, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
+                  { id: origin.id, name: origin.name, image: initialPlaceImages[origin.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[origin.id]], meta: "Journey origin", href: routeIssueHref(trip.id), transfer: conciseTransferLabel(trip.legs.find((item) => item.classification === "arrival" || item.fromEndpoint?.kind === "origin")) },
                   ...orderedStops.map((stop, index) => {
                     const next = orderedStops[index + 1];
                     const leg = next
@@ -397,7 +398,7 @@ export default function TripOverviewWorkspace({
                       : journeyEnd ? trip.legs.find((item) => item.fromStopId === stop.id && item.toStopId === journeyEnd.id) : null;
                     return { id: stop.id, name: stop.name, image: initialPlaceImages[stop.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[stop.id]], meta: `${formatTripNights(stop.nights)}${journeyEndIsLastStop && index === orderedStops.length - 1 ? " · Journey end" : ""}`, href: itineraryWorkspaceHref(trip.id, firstItineraryDayForStop(trip, stop.id)), transfer: conciseTransferLabel(leg) };
                   }),
-                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: `/journey/${encodeURIComponent(trip.id)}/map`, transfer: null }] : []),
+                  ...(journeyEnd && !journeyEndIsLastStop ? [{ id: journeyEnd.id, name: journeyEnd.name, image: initialPlaceImages[journeyEnd.id] ?? resolvedPlaceImages[imageCacheKeysByOccurrence[journeyEnd.id]], meta: "Journey end", href: routeIssueHref(trip.id), transfer: null }] : []),
                 ].map((step, index, steps) => <li key={step.id} className={styles.routeStep}>
                   <Link className={styles.routeStopLink} href={step.href}><article>
                     <div className={styles.stopNumber}>{index + 1}</div>

@@ -11,6 +11,11 @@ import { getCurrentPartnerAction } from "../lib/easyt/booking-readiness.ts";
 import { semanticSamePlaceArrival } from "../lib/easyt/itinerary-presentation.ts";
 import type { EasyTTrip } from "../lib/easyt/trip.ts";
 
+test("accommodation fallback opens full Map with its itinerary day return target", () => {
+  const module = readFileSync(new URL("../components/easyt/destination-accommodation-module.tsx", import.meta.url), "utf8");
+  assert.match(module, /mapWorkspaceHref\(trip\.id, stop\.id, "stay", null, null, null, itineraryWorkspaceHref\(trip\.id, trip\.planItems\.find\(\(day\) => day\.stopId === stop\.id\)\?\.dayNumber\)\)/);
+});
+
 const trip = (): EasyTTrip => ({
   schemaVersion: 1,
   id: "italy-greece",

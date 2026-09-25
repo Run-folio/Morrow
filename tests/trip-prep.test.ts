@@ -41,7 +41,7 @@ test("derives directive prep tasks from canonical readiness and checklist state"
   });
   assert.deepEqual(tasks.map((task) => task.id), ["traveller-passport", "accommodation", "travel-insurance", "trip-flights", "checklist-offline"]);
   assert.equal(tasks.find((task) => task.id === "traveller-passport")?.status, "urgent");
-  assert.equal(tasks.find((task) => task.id === "accommodation")?.action?.href, "/journey/prep-trip/map?stop=cusco&mode=stay");
+  assert.equal(tasks.find((task) => task.id === "accommodation")?.action?.href, "/journey/prep-trip/map?stop=cusco&mode=stay&returnTo=%2Fjourney%2Fprep-trip%23before-you-go");
   assert.equal(tasks.find((task) => task.id === "checklist-offline")?.category, "nice");
   assert.deepEqual(groupTripPrepTasks(tasks).must.map((task) => task.id), ["traveller-passport", "accommodation", "travel-insurance", "trip-flights"]);
   assert.deepEqual(groupTripPrepTasks(tasks).nice.map((task) => task.id), ["checklist-offline"]);

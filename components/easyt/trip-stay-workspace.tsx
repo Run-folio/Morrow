@@ -111,6 +111,7 @@ function StayFinderSurface({
       mapDayNumber,
       selectionId,
       place && selectionId ? mapResultHandoffForLocalPlace(place, "stay", context.stop.id, mapDayNumber, selectionId) : null,
+      stayWorkspaceHref(workingTrip.id, context.stop.id, selectionId),
     );
   };
 

@@ -55,7 +55,7 @@ import { affiliateProviderLabel, getCurrentPartnerAction, omioBookingActionForLe
 import { removeStayBooking, stayBookingForStop } from "@/lib/easyt/accommodation";
 import { routeEndpointForLeg } from "@/lib/easyt/trip-legs";
 import { transferJourneyModeLabel, transferJourneySegmentSummary } from "@/lib/easyt/transfer-journey";
-import { exploreWorkspaceHref, itineraryDestinationTrack, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { exploreWorkspaceHref, itineraryDestinationTrack, itineraryWorkspaceHref, mapWorkspaceHref, stayWorkspaceHref, transportWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { mapResultHandoffForExploreResult, mapResultSelectionId, mapResultSelectionIdForIdea } from "@/lib/easyt/map-result-selection";
 import { recommendationDetailForExploreResult } from "@/lib/easyt/recommendation-detail";
 import { tripSyncRecoveryPath } from "@/lib/easyt/trip-continuity";
@@ -777,8 +777,9 @@ export default function TripItineraryWorkspace({
     : null;
   const experienceAction = activityAction === undefined ? getCurrentPartnerAction("activities") : activityAction;
   const unscheduledSavedIdeas = (workingTrip.brief.itineraryIdeas ?? []).filter((idea) => idea.stopId === active.stopId && !idea.dayId);
-  const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber);
-  const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber);
+  const mapReturnHref = itineraryWorkspaceHref(workingTrip.id, active.dayNumber);
+  const mapPlanHref = mapWorkspaceHref(workingTrip.id, active.stopId, "plan", active.dayNumber, null, null, mapReturnHref);
+  const mapIdeasHref = mapWorkspaceHref(workingTrip.id, active.stopId, "see", active.dayNumber, null, null, mapReturnHref);
   const selectedItemMapHref = selectedActivity
     ? selectedActivity.mapPinId
       ? mapWorkspaceHref(
@@ -787,10 +788,12 @@ export default function TripItineraryWorkspace({
         selectedActivity.category === "restaurant" ? "eat" : "see",
         active.dayNumber,
         mapResultSelectionIdForIdea(selectedActivity.id),
+        null,
+        mapReturnHref,
       )
       : null
     : selectedStayPinId
-      ? mapWorkspaceHref(workingTrip.id, active.stopId, "stay", active.dayNumber, `saved:${selectedStayPinId}`)
+      ? mapWorkspaceHref(workingTrip.id, active.stopId, "stay", active.dayNumber, `saved:${selectedStayPinId}`, null, mapReturnHref)
       : null;
   const selectedRecommendationState = selectedRecommendation
     ? ideaStateForPlace(workingTrip, selectedRecommendation.stopId, selectedRecommendation.idea.placeId)
@@ -816,6 +819,7 @@ export default function TripItineraryWorkspace({
       selectedRecommendationMapDayNumber,
       selectedRecommendationMapSelectionId,
       mapResultHandoffForExploreResult(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber),
+      mapReturnHref,
     )
     : null;
   const dayPendingKey = `itinerary-day-${active.dayNumber}`;

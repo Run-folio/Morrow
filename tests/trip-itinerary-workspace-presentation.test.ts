@@ -13,6 +13,11 @@ const detailStyles = readFileSync(new URL("../components/easyt/itinerary-item-de
 const refinement = readFileSync(new URL("../components/journey-itinerary-refinement.tsx", import.meta.url), "utf8");
 const mapWorkspace = readFileSync(new URL("../components/journey-map-planner-workspace.tsx", import.meta.url), "utf8");
 
+test("Itinerary map handoffs preserve the selected day as the return destination", () => {
+  assert.match(itinerary, /const mapReturnHref = itineraryWorkspaceHref\(workingTrip\.id, active\.dayNumber\)/);
+  assert.match(itinerary, /mapResultHandoffForExploreResult\(selectedRecommendation, selectedRecommendationMapSelectionId, selectedRecommendationMapDayNumber\),\s*mapReturnHref/);
+});
+
 test("the itinerary restores the day rail beside the agenda without a second selection owner", () => {
   assert.match(itinerary, /<nav className=\{styles\.rail\} aria-label=\{copy\.dayByDay\}/);
   assert.match(itinerary, /className=\{styles\.dayList\} role="tablist"/);
@@ -42,7 +47,7 @@ test("the selected day timeline uses canonical content and the shared Map persis
   assert.match(itinerary, /itineraryNotesWithSourceIndexesForDisplay\(active, incomingLeg, workingTrip\)/);
   assert.match(itinerary, /workingTrip\.brief\.dayNotes\?\.\[active\.dayNumber\]/);
   assert.match(itinerary, /workingTrip\.brief\.customActivities\?\.\[active\.dayNumber\]/);
-  assert.match(itinerary, /mapWorkspaceHref\(workingTrip\.id, active\.stopId, "see", active\.dayNumber\)/);
+  assert.match(itinerary, /mapWorkspaceHref\(workingTrip\.id, active\.stopId, "see", active\.dayNumber, null, null, mapReturnHref\)/);
   assert.match(itinerary, /<InsertionControl/);
   assert.match(itinerary, /useOptionalTripShellMutation\(\)/);
   assert.match(itinerary, /const mutation = shellMutation \?\? localMutation/);

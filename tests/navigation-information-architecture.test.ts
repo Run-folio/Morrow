@@ -87,3 +87,9 @@ test("the navigation Storybook fixture exercises the App Router and compact mobi
   assert.match(structureStory, /export const MobileCompactHeader390/);
   assert.doesNotMatch(structureStory, /MobileDock390/);
 });
+
+test("dashboard offers the map as contextual preview rather than a workspace tab", () => {
+  const dashboard = read("app/journey/dashboard/dashboard-client.tsx");
+  assert.doesNotMatch(dashboard, /<Link href=\{`\/journey\/\$\{encodeURIComponent\(featuredTrip\.id\)\}\/map`\}[^>]*>Map<\/Link>/);
+  assert.match(dashboard, /className=\{styles\.currentMap\} href=\{mapWorkspaceHref\(featuredTrip\.id, null, "plan", null, null, null, "\/journey\/dashboard"\)\}/);
+});

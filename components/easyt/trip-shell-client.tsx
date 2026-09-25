@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BedDouble, CalendarDays, Clock3, Edit3, House, Map, MapPin, Route, Sparkles } from "lucide-react";
+import { BedDouble, CalendarDays, Clock3, Edit3, House, MapPin, Route, Sparkles } from "lucide-react";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
@@ -23,7 +23,7 @@ import { isEasyTTrip, type EasyTTrip } from "@/lib/easyt/trip";
 import ResilientImage from "@/components/easyt/resilient-image";
 import { journeyReauthenticationPath, tripConflictResolutionActions } from "@/lib/easyt/trip-continuity";
 import { ownerBoundaryState } from "@/lib/easyt/private-browser-context";
-import { shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
+import { isTripMapPathname, shouldResetOverviewEntry, tripBuilderHref, tripWorkspaceHref, workspaceViewFromPathname, workspaceVisitKey } from "@/lib/easyt/trip-workspace-links";
 import { EasyTButton, EasyTLinkButton } from "./easyt-controls";
 import { EasyTField } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaFormDialog, MorroviaSaveStatus, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -95,8 +95,9 @@ export function TripShellIdentityAndActions() {
       </dl>
     </div>
     <div className={styles.headerActions}>
-      {trip.ownerId ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
-      <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary">Edit trip brief</EasyTLinkButton>
+      {trip.ownerId && mutation.saveState !== "idle" ? <MorroviaSaveStatus state={mutation.saveState} /> : null}
+      <EasyTLinkButton className={styles.editAction} href={personalRouteHref(trip.id)} icon={Route} size="small" variant="secondary">Route</EasyTLinkButton>
+      <EasyTLinkButton className={styles.editAction} href={editHref} icon={Edit3} size="small" variant="secondary" aria-label="Edit trip brief">Edit</EasyTLinkButton>
       <WorkspaceOrientationLauncher onRenameTrip={openRename} />
     </div>
     <MorroviaFormDialog
@@ -302,8 +303,6 @@ export function useTripShellTrip() {
 
 const views = [
   { id: "overview", label: "Overview", icon: House, suffix: "" },
-  { id: "journey", label: "Journey", icon: Route, href: personalRouteHref },
-  { id: "map", label: "Map", icon: Map, suffix: "/map" },
   { id: "itinerary", label: "Itinerary", icon: CalendarDays, suffix: "/itinerary" },
   { id: "explore", label: "Explore", icon: Sparkles, suffix: "/explore" },
   { id: "stay", label: "Stay", icon: BedDouble, suffix: "/stay" },
@@ -320,9 +319,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
     ? "transport"
     : remainder.startsWith("/itinerary")
     ? "itinerary"
-    : remainder.startsWith("/map")
-      ? "map"
-      : remainder.startsWith("/explore")
+    : remainder.startsWith("/explore")
         ? "explore"
         : remainder.startsWith("/stay")
           ? "stay"
@@ -338,7 +335,7 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
           <Link
             key={view.id}
             className={active ? styles.subnavActive : undefined}
-            href={"href" in view ? view.href(tripId) : view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
+            href={view.id === "overview" ? tripWorkspaceHref(tripId) : `${baseHref}${view.suffix}`}
             aria-current={active ? "page" : undefined}
           >
             <Icon aria-hidden="true" />
@@ -348,6 +345,11 @@ export function TripShellNavigation({ tripId }: { tripId: string }) {
       })}
     </nav>
   );
+}
+
+export function TripShellChrome({ tripId, children }: { tripId: string; children: ReactNode }) {
+  const pathname = usePathname();
+  return isTripMapPathname(pathname, tripId) ? null : <>{children}</>;
 }
 
 /**

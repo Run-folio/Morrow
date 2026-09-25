@@ -325,6 +325,7 @@ export function makeEasyTJourney(trip: EasyTTrip) {
 export type JourneyMapPlannerWorkspaceProps = {
   trip?: EasyTTrip | null;
   presentation?: "focused" | "shell";
+  expandedReturnHref?: string;
   surface?: MorroviaMapSurface;
   canonicalMutation?: TripMutationPersistence | null;
   activityAction?: ResolvedAffiliateAction | null;
@@ -353,6 +354,7 @@ const emptyJourneyDay: JourneyCalendarDay = { id: "empty", date: "Date to confir
 export function JourneyMapPlannerWorkspace({
   trip: providedTrip = null,
   presentation = "focused",
+  expandedReturnHref,
   surface = { variant: "workspace" },
   canonicalMutation = null,
   activityAction,
@@ -427,7 +429,7 @@ export function JourneyMapPlannerWorkspace({
   const [selectedPlannerPin, setSelectedPlannerPin] = useState<PlannerMapPin | null>(() => providedTrip?.brief.mapPins?.find((pin) => pin.id === storyState?.selectedPlannerPinId) ?? null);
   const [pinEditDraft, setPinEditDraft] = useState("");
   const [mapMode, setMapMode] = useState<"overview" | "detail">(() => storyState?.mapMode ?? (providedTrip ? initialMapCameraMode(providedTrip, searchParams) : "overview"));
-  const [isExpandedMap, setIsExpandedMap] = useState(false);
+  const [isExpandedMap, setIsExpandedMap] = useState(Boolean(expandedReturnHref));
   const [mapDetailScope, setMapDetailScope] = useState<"stop" | "day">("stop");
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(storyState?.selectedRouteLegId ?? null);
   const [transferDetailsExpanded, setTransferDetailsExpanded] = useState(false);
@@ -1103,6 +1105,10 @@ export function JourneyMapPlannerWorkspace({
   }, []);
   const toggleExpandedMap = useCallback(() => {
     if (isExpandedMap) {
+      if (expandedReturnHref) {
+        router.replace(expandedReturnHref);
+        return;
+      }
       restoreScrollOnExitRef.current = true;
       setIsExpandedMap(false);
       window.requestAnimationFrame(() => workspaceRef.current?.querySelector<HTMLButtonElement>("[data-map-expand-control]")?.focus({ preventScroll: true }));
@@ -1110,14 +1116,14 @@ export function JourneyMapPlannerWorkspace({
       restoreScrollOnExitRef.current = false;
       setIsExpandedMap(true);
     }
-  }, [isExpandedMap]);
+  }, [expandedReturnHref, isExpandedMap, router]);
   useEffect(() => {
     if (!isExpandedMap) return;
     const previousOverflow = document.body.style.overflow;
     const scrollY = window.scrollY;
     document.body.style.overflow = "hidden";
     const mobile = window.matchMedia("(max-width: 980px)");
-    const leaveMobileExpansion = () => { if (mobile.matches) { restoreScrollOnExitRef.current = true; setIsExpandedMap(false); } };
+    const leaveMobileExpansion = () => { if (mobile.matches && !expandedReturnHref) { restoreScrollOnExitRef.current = true; setIsExpandedMap(false); } };
     mobile.addEventListener("change", leaveMobileExpansion);
     leaveMobileExpansion();
     return () => {
@@ -1126,7 +1132,7 @@ export function JourneyMapPlannerWorkspace({
       if (restoreScrollOnExitRef.current) window.scrollTo({ top: scrollY, behavior: "instant" });
       restoreScrollOnExitRef.current = false;
     };
-  }, [isExpandedMap]);
+  }, [expandedReturnHref, isExpandedMap]);
   useEffect(() => {
     const onMapEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -2545,7 +2551,7 @@ export function JourneyMapPlannerWorkspace({
         stops={canonicalStripStops}
         addStopHref={`/journey/new?trip=${encodeURIComponent(customTrip.id)}`}
         fullTripHref={isShellPresentation ? undefined : mapWorkspaceHref(customTrip.id)}
-        fullTripLabel={isExpandedMap ? "Exit full screen map" : "Full screen map"}
+        fullTripLabel={expandedReturnHref ? "Back to trip" : isExpandedMap ? "Exit full screen map" : "Full screen map"}
         fullTripExpanded={isExpandedMap}
         onFullTrip={isShellPresentation ? toggleExpandedMap : undefined}
         wholeRouteActive={mapMode === "overview"}

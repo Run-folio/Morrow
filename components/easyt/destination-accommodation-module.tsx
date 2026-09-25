@@ -16,6 +16,7 @@ import type { BookingCandidateView, BookingImportPayload } from "@/lib/easyt/boo
 import type { StayBookingDraft } from "@/lib/easyt/accommodation";
 import type { EasyTTrip, TripStop } from "@/lib/easyt/trip";
 import { formatIsoDate } from "@/lib/easyt/trip-lifecycle";
+import { itineraryWorkspaceHref, mapWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { affiliateDisclosure, MorroviaAffiliateLink } from "./affiliate-link";
 import { EasyTButton, EasyTField, EasyTLinkButton } from "./easyt-controls";
 import { MorroviaConfirmationDialog, MorroviaContextualDisclosure, MorroviaStatusBanner } from "./morrovia-feedback";
@@ -251,7 +252,7 @@ export default function DestinationAccommodationModule({
     {state.status === "needs_stay" && !editing ? <>
       <div className={styles.primaryAction}>
         {primaryAction ? <MorroviaAffiliateLink action={primaryAction} context={{ placement: "itinerary_accommodation", tripId: trip.id, stopId: stop.id, workspaceView: "itinerary", destinationCount: 1 }} variant="primary" />
-          : <EasyTLinkButton href={`/journey/${encodeURIComponent(trip.id)}/map?stop=${encodeURIComponent(stop.id)}&mode=stay`} icon={BedDouble}>Find a stay</EasyTLinkButton>}
+          : <EasyTLinkButton href={mapWorkspaceHref(trip.id, stop.id, "stay", null, null, null, itineraryWorkspaceHref(trip.id, trip.planItems.find((day) => day.stopId === stop.id)?.dayNumber))} icon={BedDouble}>Find a stay</EasyTLinkButton>}
         {primaryAction ? <small>{affiliateDisclosure}</small> : null}
       </div>
       <MorroviaContextualDisclosure

@@ -9,6 +9,12 @@ const shellSource = readFileSync("components/easyt/trip-shell.tsx", "utf8");
 const resolverSource = readFileSync("components/easyt/trip-shell-resolver.tsx", "utf8");
 const shellClientSource = readFileSync("components/easyt/trip-shell-client.tsx", "utf8");
 
+test("Overview map actions return to Overview and keep direct route context", () => {
+  assert.match(source, /Explore on map/);
+  assert.doesNotMatch(source, /href=\{`\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/map`\}/);
+  assert.match(source, /mapWorkspaceHref\(tripId, null, "plan", null, null, null, tripWorkspaceHref\(tripId\)\)/);
+});
+
 test("Overview prioritises the route, one planning action and three next-to-arrange decisions", () => {
   const tripHeader = shellSource.indexOf('<header className={styles.tripHeader}>');
   const shellContent = shellSource.indexOf('<div className={styles.content}>{children}</div>');
@@ -113,7 +119,7 @@ test("route storytelling resolves imagery, stays image-led and links to the cano
   assert.match(source, /conciseTransferLabel\(leg\)/);
   assert.match(source, /className=\{styles\.transfer\}><ArrowRight/);
   assert.match(source, /className=\{styles\.stopOverlay\}/);
-  assert.match(source, /href=\{`\/journey\/\$\{encodeURIComponent\(trip\.id\)\}\/map`\}/);
+  assert.match(source, /href=\{routeIssueHref\(trip\.id\)\}/);
   assert.match(source, /<JourneyPlannerMap[\s\S]*overviewMode surface=\{\{ variant: "preview" \}\}/);
   assert.doesNotMatch(source, /View full map/);
   assert.doesNotMatch(source, /GEORGIA|Tbilisi|Stepantsminda|Ushguli|Mestia/);

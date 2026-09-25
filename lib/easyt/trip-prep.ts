@@ -3,7 +3,7 @@ import type { BookingReadinessAction } from "./booking-readiness.ts";
 import { tripIntentForTrip, type EasyTTrip, type TripChecklistItem } from "./trip.ts";
 import { deriveTripDateFacts } from "./trip-facts.ts";
 import type { ReadinessCard, TravelReadinessProfile } from "./travel-readiness.ts";
-import { mapWorkspaceHref } from "./trip-workspace-links.ts";
+import { mapWorkspaceHref, tripWorkspaceHref } from "./trip-workspace-links.ts";
 
 export type TripPrepTaskStatus = "complete" | "in-progress" | "to-do" | "urgent";
 export type TripPrepTaskCategory = "must" | "good" | "nice";
@@ -178,7 +178,7 @@ export function deriveTripPrepTasks({
         : firstMissing
           ? {
             label: "Find stays",
-            href: mapWorkspaceHref(trip.id, firstMissing.id, "stay"),
+            href: mapWorkspaceHref(trip.id, firstMissing.id, "stay", null, null, null, `${tripWorkspaceHref(trip.id)}#before-you-go`),
             stopId: firstMissing.id,
           }
           : undefined,

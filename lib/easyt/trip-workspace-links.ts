@@ -20,6 +20,14 @@ export function tripWorkspaceHref(tripId: string) {
   return `/journey/${encodeURIComponent(tripId)}`;
 }
 
+export function isTripMapPathname(pathname: string, tripId: string) {
+  try {
+    return new URL(pathname, "https://morrovia.invalid").pathname === `${tripWorkspaceHref(tripId)}/map`;
+  } catch {
+    return false;
+  }
+}
+
 /** Device-only trips must opt into the recovery path when they return to the
  * Builder. Account-owned trips continue through the canonical cloud path. */
 export function tripBuilderHref(
@@ -68,12 +76,14 @@ export function mapWorkspaceHref(
   dayNumber?: number | null,
   resultSelectionId?: string | null,
   resultHandoff?: MapResultHandoffTarget | null,
+  returnTo?: string | null,
 ) {
   const query = new URLSearchParams();
   if (stopId) query.set("stop", stopId);
   if (mode !== "plan") query.set("mode", mode);
   if (dayNumber) query.set("day", String(dayNumber));
   if (resultSelectionId) query.set("result", resultSelectionId);
+  if (returnTo) query.set("returnTo", mapWorkspaceReturnHref(tripId, returnTo));
   if (resultSelectionId
     && stopId
     && resultHandoff?.selectionId === resultSelectionId
@@ -93,6 +103,23 @@ export function mapWorkspaceHref(
   }
   const suffix = query.toString();
   return `/journey/${encodeURIComponent(tripId)}/map${suffix ? `?${suffix}` : ""}`;
+}
+
+export function mapWorkspaceReturnHref(tripId: string, requested: string | null) {
+  const fallback = tripWorkspaceHref(tripId);
+  if (!requested) return fallback;
+  try {
+    const url = new URL(requested, "https://morrovia.invalid");
+    const pathname = url.pathname;
+    const base = fallback;
+    const sameTripWorkspace = pathname === base || ["/itinerary", "/explore", "/stay", "/transport"].some((suffix) => pathname === `${base}${suffix}`);
+    const dashboard = pathname === "/journey/dashboard";
+    const tripMode = pathname === "/journey/trip" && url.searchParams.get("trip") === tripId;
+    if (url.origin !== "https://morrovia.invalid" || !(sameTripWorkspace || dashboard || tripMode)) return fallback;
+    return `${pathname}${url.search}${url.hash}`;
+  } catch {
+    return fallback;
+  }
 }
 
 export function itineraryWorkspaceHref(tripId: string, dayNumber?: number | null) {

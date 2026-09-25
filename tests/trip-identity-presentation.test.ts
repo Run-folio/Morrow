@@ -10,7 +10,7 @@ test("Rename trip lives under More and uses the shared accessible form dialog", 
   const dialog = read("components/easyt/morrovia-feedback.tsx");
   assert.match(launcher, /role="menuitem"[\s\S]*Rename trip/);
   assert.match(launcher, /buttonRef\.current\?\.focus\(\); setOpen\(false\); onRenameTrip\(\)/);
-  assert.match(shell, /Edit trip brief[\s\S]*WorkspaceOrientationLauncher onRenameTrip/);
+  assert.match(shell, /aria-label="Edit trip brief"[\s\S]*>Edit<\/EasyTLinkButton>[\s\S]*WorkspaceOrientationLauncher onRenameTrip/);
   assert.match(shell, /MorroviaFormDialog[\s\S]*EasyTField/);
   assert.match(shell, /Array\.from\(normalizedTitle\)\.length > 80/);
   assert.match(shell, /renameTripIdentity\(current, normalizedTitle\)/);

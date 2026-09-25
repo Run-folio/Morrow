@@ -12,6 +12,8 @@ import {
   itineraryWorkspaceHref,
   initialMapCameraMode,
   mapWorkspaceHref,
+  mapWorkspaceReturnHref,
+  isTripMapPathname,
   mapWorkspaceSelectionForTarget,
   parseItineraryWorkspaceTarget,
   parseMapWorkspaceTarget,
@@ -158,6 +160,27 @@ test("Overview preparation stay actions target the stable Map stop in Stay mode"
     parseMapWorkspaceTarget(trip, new URLSearchParams("stop=sacred-valley&mode=see&day=3")),
     { stopId: "sacred-valley", mode: "see", dayNumber: 3, resultSelectionId: null },
   );
+});
+
+test("contextual Map links retain the exact source workspace while keeping selection parameters", () => {
+  assert.equal(
+    mapWorkspaceHref(trip.id, "sacred-valley", "see", 3, "result:see:42", null, "/journey/trip-real/itinerary?day=3"),
+    "/journey/trip-real/map?stop=sacred-valley&mode=see&day=3&result=result%3Asee%3A42&returnTo=%2Fjourney%2Ftrip-real%2Fitinerary%3Fday%3D3",
+  );
+});
+
+test("Map return target remains within the current trip workspace", () => {
+  assert.equal(mapWorkspaceReturnHref(trip.id, "/journey/trip-real/itinerary?day=3"), "/journey/trip-real/itinerary?day=3");
+  assert.equal(mapWorkspaceReturnHref(trip.id, "/journey/dashboard"), "/journey/dashboard");
+  assert.equal(mapWorkspaceReturnHref(trip.id, "/journey/trip?trip=trip-real"), "/journey/trip?trip=trip-real");
+  assert.equal(mapWorkspaceReturnHref(trip.id, "https://example.com"), "/journey/trip-real");
+  assert.equal(mapWorkspaceReturnHref(trip.id, "/journey/another-trip/itinerary"), "/journey/trip-real");
+});
+
+test("focused Map route matches encoded trip IDs without swallowing other workspaces", () => {
+  assert.equal(isTripMapPathname("/journey/caf%C3%A9%20trip/map", "café trip"), true);
+  assert.equal(isTripMapPathname("/journey/caf%C3%A9%20trip/itinerary", "café trip"), false);
+  assert.equal(isTripMapPathname("/journey/another/map", "café trip"), false);
 });
 
 test("invalid Map and Itinerary deep links fall back to the first canonical context", () => {

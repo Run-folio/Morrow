@@ -44,7 +44,7 @@ import { journeyReauthenticationPath, tripSyncRecoveryPath } from "@/lib/easyt/t
 import { runClientMutation } from "@/lib/easyt/client-mutation";
 import { trackEvent } from "@/lib/analytics";
 import { easytCopy, languageFromStorage, type EasyTLanguage } from "@/lib/easyt/i18n";
-import { tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
+import { mapWorkspaceHref, tripWorkspaceHref } from "@/lib/easyt/trip-workspace-links";
 import { summarizeStampRows } from "@/lib/easyt/stamps";
 import { formatIsoDate, parseIsoDate } from "@/lib/easyt/trip-lifecycle";
 import { tripDisplayTitle } from "@/lib/easyt/trip-display";
@@ -477,13 +477,12 @@ export default function DashboardClient({ trips, stamps, ownerId }: { trips: Eas
               </EasyTLinkButton>
               <nav className={styles.workspaceLinks} aria-label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vistas" : "views"}`}>
                 <Link href={tripWorkspaceHref(featuredTrip.id)} onClick={() => trackTripReopened(featuredTrip)}>Overview</Link>
-                <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/map`} onClick={() => trackTripReopened(featuredTrip)}>Map</Link>
                 <Link href={`/journey/${encodeURIComponent(featuredTrip.id)}/itinerary`} onClick={() => trackTripReopened(featuredTrip)}>Itinerary</Link>
               </nav>
               <TripActionsMenu trip={featuredTrip} language={language} copy={copy} working={working === featuredTrip.id} workingAction={working === featuredTrip.id ? workingAction : null} onAction={runAction} onGift={openGift} onRemove={(trip) => { setDeleteError(""); setPendingDelete(trip); }} />
             </div>
           </div>
-          <Link className={styles.currentMap} href={`/journey/${encodeURIComponent(featuredTrip.id)}/map`} onClick={() => trackTripReopened(featuredTrip)} aria-label={`${isSpanish ? "Abrir mapa de" : "Open map for"} ${tripDisplayTitle(featuredTrip)}`}>
+          <Link className={styles.currentMap} href={mapWorkspaceHref(featuredTrip.id, null, "plan", null, null, null, "/journey/dashboard")} onClick={() => trackTripReopened(featuredTrip)} aria-label={`${isSpanish ? "Abrir mapa de" : "Open map for"} ${tripDisplayTitle(featuredTrip)}`}>
             <TripRoutePreview trip={featuredTrip} label={`${tripDisplayTitle(featuredTrip)} ${isSpanish ? "vista previa de la ruta" : "route preview"}`} />
             <span>{featuredTrip.stops.length} {isSpanish ? "lugares, un viaje" : "places, one journey"}<ArrowRight aria-hidden="true" /></span>
           </Link>

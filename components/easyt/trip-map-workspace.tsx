@@ -1,7 +1,9 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { JourneyMapPlannerWorkspace, type JourneyMapPlannerWorkspaceProps } from "@/components/journey-map-planner-workspace";
 import { useTripShellMutation } from "@/components/easyt/trip-shell-client";
+import { mapWorkspaceReturnHref } from "@/lib/easyt/trip-workspace-links";
 import type { EasyTTrip } from "@/lib/easyt/trip";
 import styles from "./trip-map-workspace.module.css";
 
@@ -11,5 +13,7 @@ import styles from "./trip-map-workspace.module.css";
  */
 export default function TripMapWorkspace({ trip, storyState, activityAction }: { trip: EasyTTrip; storyState?: JourneyMapPlannerWorkspaceProps["storyState"]; activityAction?: JourneyMapPlannerWorkspaceProps["activityAction"] }) {
   const canonicalMutation = useTripShellMutation();
-  return <div className={styles.wideMap}><JourneyMapPlannerWorkspace trip={trip} presentation="shell" surface={{ variant: "workspace" }} canonicalMutation={canonicalMutation} storyState={storyState} activityAction={activityAction} /></div>;
+  const searchParams = useSearchParams();
+  const returnTo = mapWorkspaceReturnHref(trip.id, searchParams.get("returnTo"));
+  return <div className={styles.wideMap}><JourneyMapPlannerWorkspace trip={trip} presentation="shell" surface={{ variant: "workspace" }} canonicalMutation={canonicalMutation} storyState={storyState} activityAction={activityAction} expandedReturnHref={returnTo} /></div>;
 }
