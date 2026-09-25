@@ -49,7 +49,10 @@ export function discoveryEntryForBrief(
   if (!mention) return { kind: "skip", step: "review", reason: "actionable-route" };
   const read = readDiscoveryDraft(brief, mention.mentionId);
   if (read.status === "unsupported-version") return { kind: "legacy-recovery", step: "places", mentionId: mention.mentionId, reason: "unsupported-version" };
-  const kind = mention.status === "resolved" && mention.canonicalPlaceId ? broadType(mention) : "clarification";
+  const semanticKind = broadType(mention);
+  const kind = mention.status === "resolved" && mention.canonicalPlaceId
+    ? semanticKind
+    : semanticKind === "natural-area" ? semanticKind : "clarification";
   if (kind === "clarification") return { kind, step: "places", mentionId: mention.mentionId, reason: "unresolved-identity" };
   try {
     const projection = projectDiscovery({ mention, draft: read.draft ?? createDiscoveryDraft(), context: { interests: [], existingPlaceIds: [...actionablePlaceIds] } });

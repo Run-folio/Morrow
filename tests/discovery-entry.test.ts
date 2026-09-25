@@ -9,7 +9,7 @@ for (const [prompt, kind, step] of [
   ["Africa", "continent", "places"],
   ["Taj Mahal", "landmark", "bases"],
   ["Lake Atitlán", "natural-area", "bases"],
-  ["Kruger National Park", "clarification", "places"],
+  ["Kruger National Park", "natural-area", "bases"],
 ] as const) {
   test(`${prompt} enters ${kind} at ${step}`, () => {
     const entry = discoveryEntryForBrief(extractStructuredTripBrief(prompt), []);

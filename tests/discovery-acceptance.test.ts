@@ -9,7 +9,7 @@ import { buildDiscoveryReview } from '../lib/easyt/discovery-review.ts';
 import { commitDiscoveryReview, type DiscoveryCommitPorts } from '../lib/easyt/discovery-commit.ts';
 import { extractStructuredTripBrief } from '../lib/easyt/structured-trip-brief.ts';
 import { canonicalPlaceSuggestionsForQuery, confirmedAttractionVisitSelection, inferAttractionVisitSelections } from '../lib/easyt/place-intelligence.ts';
-import { discoveryConfirmLabel } from '../lib/easyt/i18n.ts';
+import { discoveryConfirmLabel, discoveryPendingDecisionLabel } from '../lib/easyt/i18n.ts';
 import { fixture, applyDiscoveryAddSideEffects } from './helpers/discovery-fixture.ts';
 
 const context = { interests: [] as string[], existingPlaceIds: [] as string[] };
@@ -24,7 +24,7 @@ const entryAndProjection = (name: string) => {
 // Catches shell routing by collection size and unsupported travel defaults.
 for (const [name, kind, count, recommendationCount] of [
   ['Tajikistan', 'country', 3, 0], ['Africa', 'continent', 15, 0],
-  ['Taj Mahal', 'landmark', 1, 1], ['Kruger National Park', 'clarification', 0, 0],
+  ['Taj Mahal', 'landmark', 1, 1], ['Kruger National Park', 'natural-area', 0, 0],
   ['Lake Atitlán', 'natural-area', 1, 1], ['Philippines', 'country', 4, 1], ['Eritrea', 'country', 0, 0],
 ] as const) test(`${name}: adaptive entry retains original intent at evidenced depth`, () => {
   const { entry, mention, draft, projection } = entryAndProjection(name);
@@ -35,6 +35,16 @@ for (const [name, kind, count, recommendationCount] of [
   assert.equal(projection.recommendedIds.length, recommendationCount);
   assert.deepEqual(draft.shortlistIds, []);
   assert.equal(buildDiscoveryReview({ ...fixture(name, []), mention, draft, projection }).canConfirm, false);
+});
+
+test('uncatalogued park wording preserves natural-area semantics without inventing identity', () => {
+  const { entry, mention, projection } = entryAndProjection('Kruger National Park');
+  assert.equal(entry.kind, 'natural-area');
+  assert.equal(entry.step, 'bases');
+  assert.equal(mention.placeType, 'natural_area');
+  assert.equal(mention.canonicalPlaceId, undefined);
+  assert.equal(discoveryPendingDecisionLabel('en', mention.placeType), 'Stay or base still to choose');
+  assert.deepEqual(projection.places, []);
 });
 
 test('Australia: entry → evidenced broad projection → exact map IDs → explicit review → durable Builder ports', async () => {

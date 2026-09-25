@@ -594,6 +594,12 @@ type BroadPlanningIntent = { placeType: PlaceType; routability: "needs_base_sele
  * this guard applies only when the traveller's surviving phrase is generic. */
 function broadPlanningIntentForPhrase(value: string): BroadPlanningIntent | undefined {
   const phrase = normalizePlacePhrase(value).replace(/^the\s+/, "");
+  // Preserve explicit geography semantics even when the named entity has no
+  // canonical catalogue identity. This shapes the unresolved decision only;
+  // it does not supply identity, coordinates, containment, or route truth.
+  if (/\b(?:national park|nature reserve|protected area)\b/.test(phrase)) {
+    return { placeType: "natural_area", routability: "needs_base_selection" };
+  }
   const placeType = ({
     fjord: "natural_area",
     fjords: "natural_area",
