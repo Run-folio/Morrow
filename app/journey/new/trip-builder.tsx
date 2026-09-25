@@ -4382,7 +4382,11 @@ function TripBuilderDocument() {
               setCloudSaveError("");
               const completion = discoveryConfirmedEvent(result.ok, discoveryEventKind, discoveryDraft.shortlistIds.length);
               if (completion) trackEvent("discovery_confirmed", completion);
+              // Discovery has committed canonical route bases. Return to the
+              // existing Builder editing surface instead of retaining its
+              // compact, desktop-hidden handoff summary state.
               completePlanningArea(mention, true);
+              setShowStopEditor(true);
               advanceClarificationSession();
             } finally {
               discoveryCommitRef.current = false;

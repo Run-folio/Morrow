@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { captureJourneyBrief } from '../lib/easyt/journey-capture.ts';
 import { createHomeTripDraft, handoffRouteStops, homepageSubmissionFingerprint, projectHomepageInput } from '../lib/easyt/home-trip-handoff.ts';
@@ -14,6 +15,12 @@ const homeDraft = (destination: string) => {
   draft.destinations = handoffRouteStops(capture.mentions, capture.journeyEnd);
   return draft;
 };
+
+test('Discovery completion restores the standard Builder stop editing state', () => {
+  const builder = readFileSync(new URL('../app/journey/new/trip-builder.tsx', import.meta.url), 'utf8');
+  assert.match(builder, /completePlanningArea\(mention, true\);\s*setShowStopEditor\(true\);/,
+    'successful Discovery must restore the existing Builder stop editor after its canonical commit');
+});
 
 const providerHomepageDraft = (input: {
   name: string;
@@ -150,6 +157,31 @@ test('Japan card focus drives the map, Add stays isolated, and direct commit ope
       try { const trip = JSON.parse(raw).trip; return trip ? [trip] : []; } catch { return []; }
     }));
     assert.ok(trips.some((trip: { stops: Array<{ canonicalPlaceId?: string }> }) => trip.stops.some(stop => stop.canonicalPlaceId === 'kanazawa')));
+    assert.deepEqual(view.errors, []);
+  } finally { await view.close(); }
+});
+
+test('Japan Discovery handoff returns to the editable Builder surface', { skip: !builderBrowserTestsEnabled, timeout: 60_000 }, async () => {
+  const view = await renderBuilder({ query: '?homeDraft=1', draft: homeDraft('Japan') });
+  await view.page.setViewportSize({ width: 1440, height: 900 });
+  try {
+    const dialog = view.page.getByRole('dialog');
+    await dialog.getByRole('heading', { name: 'Explore places', exact: true }).waitFor();
+    for (const name of ['Kanazawa', 'Kyoto', 'Osaka']) {
+      await dialog.getByRole('button', { name: `Add to shortlist: ${name}` }).click();
+    }
+    await dialog.getByRole('button', { name: 'Add 3 places', exact: true }).click();
+    await view.page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+
+    const stops = view.page.locator('#builder-stops');
+    await stops.waitFor();
+    assert.doesNotMatch(await stops.getAttribute('class') ?? '', /mobileStopSummary/,
+      'a completed Discovery handoff must not retain the desktop-hidden summary state');
+    await view.page.getByRole('button', { name: 'Add stop', exact: true }).click();
+    await view.page.getByRole('combobox', { name: 'Add a destination' }).waitFor();
+    assert.equal(await view.page.locator('[data-builder-route-workspace]').count(), 1);
+    assert.equal(await view.page.locator('[role="listitem"][draggable="true"]').count(), 3);
+    assert.equal(await view.page.getByRole('button', { name: /Remove Kanazawa/ }).count(), 1);
     assert.deepEqual(view.errors, []);
   } finally { await view.close(); }
 });
